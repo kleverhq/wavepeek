@@ -84,16 +84,22 @@ RUN chown -R ubuntu:ubuntu /opt
 USER ubuntu
 
 # Install OpenCode
-RUN curl -fsSL https://opencode.ai/install | bash
+ENV OPENCODE_VERSION=1.1.25
+RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
 
 # Install Rust toolchain
 ENV RUSTUP_HOME=/home/ubuntu/.rustup
 ENV CARGO_HOME=/home/ubuntu/.cargo
+ENV RUST_VERSION=1.93.0
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
-    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy
+    /home/ubuntu/.cargo/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
+    /home/ubuntu/.cargo/bin/rustup default ${RUST_VERSION} && \
+    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy --toolchain ${RUST_VERSION}
 
 # Install Python tooling for hooks
-RUN pipx install pre-commit commitizen
+ENV PRECOMMIT_VERSION=4.5.1
+ENV COMMITIZEN_VERSION=4.12.1
+RUN pipx install pre-commit==${PRECOMMIT_VERSION} commitizen==${COMMITIZEN_VERSION}
 
 # Update PATH
 ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${SLANG_SERVER_INSTALL}/bin:${PATH}"

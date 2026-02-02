@@ -1,8 +1,8 @@
-# wavegrep
+# wavepeek
 
 🚧🚧🚧 **EARLY STAGE OF THE PROJECT. UNDER CONSTRUCTION** 🚧🚧🚧
 
-`wavegrep` is a command-line “grep-like” tool for waveform inspection. It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
+`wavepeek` is a command-line tool for RTL waveform inspection. It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
 
 Primary goals:
 

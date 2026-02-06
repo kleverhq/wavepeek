@@ -1,0 +1,97 @@
+name: Release CI
+
+on:
+  push:
+    tags:
+      - v*.*.*
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Package and release
+    runs-on: ubuntu-24.04
+    env:
+      RELEASE_DRY_RUN: ${{ vars.RELEASE_DRY_RUN }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Resolve release mode
+        id: release_mode
+        run: |
+          dry_run="${RELEASE_DRY_RUN:-0}"
+          echo "dry_run=${dry_run}" >> "$GITHUB_OUTPUT"
+          if [ "$dry_run" = "1" ]; then
+            echo "Release mode: dry-run (side effects disabled)."
+          else
+            echo "Release mode: real release (side effects enabled)."
+          fi
+
+      - name: Print runtime provenance
+        run: |
+          echo "devcontainer_config=.devcontainer/devcontainer.json"
+          echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
+          sha256sum .devcontainer/Dockerfile
+
+      - name: Validate tag matches Cargo.toml version
+        run: |
+          python3 - <<'PY'
+          import os
+          import tomllib
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          if not tag.startswith("v"):
+              raise SystemExit(f"error: expected tag that starts with 'v', got {tag!r}")
+
+          tag_version = tag[1:]
+          with open("Cargo.toml", "rb") as fh:
+              package = tomllib.load(fh)["package"]
+          crate_version = package["version"]
+
+          if tag_version != crate_version:
+              raise SystemExit(
+                  "error: tag version "
+                  f"({tag_version}) does not match Cargo.toml version ({crate_version})"
+              )
+
+          print(f"tag_version={tag_version}")
+          PY
+
+      - name: Run release quality gate in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: make ci
+
+      - name: Build crate package in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: cargo package --locked
+
+      - name: Require crates.io token in real release mode
+        if: steps.release_mode.outputs.dry_run != '1'
+        env:
+          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: |
+          if [ -z "$CRATES_IO_TOKEN" ]; then
+            echo "error: secrets.CRATES_IO_TOKEN is required when RELEASE_DRY_RUN is not 1"
+            exit 1
+          fi
+
+      - name: Publish crate to crates.io
+        if: steps.release_mode.outputs.dry_run != '1'
+        uses: devcontainers/ci@v0.3
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: cargo publish --locked
+
+      - name: Create GitHub Release
+        if: steps.release_mode.outputs.dry_run != '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true

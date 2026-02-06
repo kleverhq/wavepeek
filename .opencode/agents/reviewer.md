@@ -10,6 +10,9 @@ permission:
   bash:
     "*": ask
     "git *": allow
+    "make ci": allow
+    "make *check*": allow
+    "cargo run": allow
 ---
 You are a focused reviewer. Review the provided scope only (plan or implementation), not the entire repository. Provide concise, prioritized findings.
 

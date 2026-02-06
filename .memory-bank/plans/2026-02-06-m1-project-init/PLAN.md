@@ -38,19 +38,19 @@
 - `R5`: Add pre-merge CI workflow that runs all checks, triggers on pull requests to `master`, and triggers on direct pushes to `master`.
 - `R6`: Run pre-merge CI on one OS in the development container environment, with explicit runtime provenance tied to `.devcontainer` (Dockerfile or pinned equivalent image).
 - `R7`: Add release workflow triggered by semver tags matching `v*.*.*`.
-- `R8`: Add release dry-run gate controlled by GitHub repo variable (for example `RELEASE_DRY_RUN=1`) so pipeline fully executes but skips side effects (crate publish + GitHub Release creation), and require evidence that no side effects occurred.
+- `R8`: Add release dry-run gate controlled by GitHub repo variable (for example `RELEASE_DRY_RUN=1`) so pipeline fully executes but skips side effects (crate publish + GitHub Release creation), and require explicit verification that no side effects occurred.
 - `R9`: Add `.memory-bank/RELEASE.md` with an explicit release checklist (version bump, commit, tag, push, verification, rollback notes).
-- `R10`: Capture manual human validation feedback for CI and release dry-run runs in milestone evidence.
+- `R10`: Capture manual human validation feedback for CI and release dry-run runs.
 - **Non-functional / constraints:**
 - `R11`: Keep automation simple and deterministic; avoid introducing unnecessary abstraction in M1 workflows.
 - `R12`: Preserve local/CI command parity using existing Make targets wherever possible.
 
 ## Traceability Matrix
-| Scope item | Requirement IDs | Tasks | DoD checks | Evidence artifact |
+| Scope item | Requirement IDs | Tasks | DoD checks | Primary artifacts |
 |---|---|---|---|---|
 | Rust scaffold + module placeholders + CLI help surface | R1, R2, R3 | Task 1 | D1, D2, D3, D4 | `Cargo.toml`, `src/` tree, help outputs |
-| Local workflow alignment + pre-merge CI on master | R4, R5, R6, R11, R12 | Task 2 | D5, D6, D7, D12 | `Make` logs, `.github/workflows/ci.yml`, CI run URL + runtime proof |
-| Semver release workflow + dry-run gate + runbook + human feedback | R7, R8, R9, R10, R11 | Task 3 | D8, D9, D10, D11, D13 | `.github/workflows/release.yml`, `.memory-bank/RELEASE.md`, dry-run verification notes |
+| Local workflow alignment + pre-merge CI on master | R4, R5, R6, R11, R12 | Task 2 | D5, D6, D7, D12 | `Make` logs, `.github/workflows/ci.yml`, CI run logs + runtime proof |
+| Semver release workflow + dry-run gate + runbook + human feedback | R7, R8, R9, R10, R11 | Task 3 | D8, D9, D10, D11, D13 | `.github/workflows/release.yml`, `.memory-bank/RELEASE.md`, release run logs |
 
 ## Proposed Solution
 - Task 1: bootstrap Rust crate and PRD module skeleton, then wire `clap` command/help contracts only.
@@ -65,7 +65,7 @@
 - **No dry-run mode in release workflow:** rejected because it makes release debugging risky.
 
 ## Risks and Mitigations
-- **Risk:** dry-run gate misconfiguration causes accidental side effects. **Mitigation:** make publish/release steps explicitly conditional on `RELEASE_DRY_RUN != 1` and verify in dry-run evidence.
+- **Risk:** dry-run gate misconfiguration causes accidental side effects. **Mitigation:** make publish/release steps explicitly conditional on `RELEASE_DRY_RUN != 1` and verify in dry-run logs.
 - **Risk:** `master` naming mismatch with current default branch settings. **Mitigation:** target `master` as requested and document branch expectation in release/CI notes.
 - **Risk:** devcontainer and CI environment drift. **Mitigation:** run CI job in devcontainer-compatible environment and keep toolchain setup minimal.
 - **Risk:** manual validation feedback is delayed. **Mitigation:** make feedback capture a DoD criterion and block closure until recorded.
@@ -79,9 +79,9 @@
 ## Observability
 - Pre-merge CI: at least one green run on PR to `master` and one green run on direct push to `master`.
 - Release CI: at least one green semver-tag dry-run with explicit log lines showing side effects were skipped.
-- Runtime provenance: milestone evidence includes the exact CI container source used for the green runs.
-- Side-effect audit: dry-run evidence includes before/after release state checks and publish-step status.
-- Human validation: feedback links/notes captured in milestone evidence document.
+- Runtime provenance: CI logs include the exact CI container source used for the green runs.
+- Side-effect audit: dry-run logs include before/after release state checks and publish-step status.
+- Human validation: feedback is reviewed after CI and dry-run release runs.
 
 ## Open Questions
 - None blocking for M1.
@@ -103,9 +103,9 @@
 - [ ] `D8`: `.github/workflows/release.yml` exists with tag trigger `v*.*.*`.
 - [ ] `D9`: With `RELEASE_DRY_RUN=1`, release workflow run is green, logs show publish/release side effects were skipped, and no new GitHub Release is created for the dry-run tag.
 - [ ] `D10`: `.memory-bank/RELEASE.md` exists with checklist covering version bump, commit, tag, push, dry-run/real mode, verification, and rollback notes.
-- [ ] `D11`: Manual human validation feedback for CI and release dry-run is recorded in milestone evidence (link or file path).
-- [ ] `D12`: CI evidence includes explicit runtime provenance showing the job environment is derived from `.devcontainer` baseline.
-- [ ] `D13`: Dry-run evidence confirms publish step was not executed (no registry upload action invoked).
+- [ ] `D11`: Manual human validation feedback for CI and release dry-run is provided by reviewer.
+- [ ] `D12`: CI logs include explicit runtime provenance showing the job environment is derived from `.devcontainer` baseline.
+- [ ] `D13`: Dry-run logs confirm publish step was not executed (no registry upload action invoked).
 
 ## Implementation Plan (Task Breakdown)
 
@@ -128,8 +128,8 @@
 1. Validate and adjust local quality gates only where needed to preserve Make-first workflow.
 2. Create `.github/workflows/ci.yml` with checks (format/lint/test/build).
 3. Configure triggers for `pull_request` to `master` and direct `push` to `master`.
-4. Run CI in one Linux/devcontainer baseline and capture runtime provenance evidence for human review.
-- Outputs: Green local checks, green pre-merge CI workflow, manual CI feedback request package.
+4. Run CI in one Linux/devcontainer baseline and capture runtime provenance logs for human review.
+- Outputs: Green local checks, green pre-merge CI workflow, manual CI feedback request.
 
 ### Task 3: Release workflow, dry-run gate, and runbook (~4h)
 - Goal: Make release process testable, debuggable, and documented without accidental side effects.
@@ -139,5 +139,5 @@
 1. Create `.github/workflows/release.yml` triggered by tags `v*.*.*`.
 2. Implement dry-run gate via repo variable `RELEASE_DRY_RUN` so pipeline runs fully while skipping crate publish and GitHub Release creation when enabled.
 3. Add `.memory-bank/RELEASE.md` with concrete release checklist (bump, commit, tag, push, verify, rollback).
-4. Execute and document one manual human-verified dry-run cycle, including explicit no-side-effect checks (no release created, no publish invocation), then incorporate feedback.
-- Outputs: Release automation with safe debug mode, release runbook, and captured human validation evidence.
+4. Execute one manual human-verified dry-run cycle, including explicit no-side-effect checks (no release created, no publish invocation), then incorporate feedback.
+- Outputs: Release automation with safe debug mode, release runbook, and captured human validation feedback.

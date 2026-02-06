@@ -44,6 +44,9 @@ check-commit:
 ## Check everything
 check: format-check lint check-build check-commit
 
+## CI quality gate (no commit-msg hook)
+ci: format-check lint test check-build
+
 ## Fix everything
 fix: format lint-fix
 

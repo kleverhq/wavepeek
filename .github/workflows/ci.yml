@@ -1,0 +1,32 @@
+name: Pre-merge CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Format, lint, test, build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Print runtime provenance
+        run: |
+          echo "devcontainer_config=.devcontainer/devcontainer.json"
+          echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
+          sha256sum .devcontainer/Dockerfile
+
+      - name: Run checks in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/devcontainer.json
+          runCmd: make ci

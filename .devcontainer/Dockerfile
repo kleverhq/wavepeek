@@ -53,7 +53,7 @@ FROM ubuntu:24.04
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates curl git nano openssh-client make libatomic1 bash-completion \
-    jq ripgrep \
+    jq ripgrep gh \
     g++ mold ccache perl-doc z3 gtkwave \
     python3 pipx \
     locales \

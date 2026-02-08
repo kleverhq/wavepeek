@@ -74,6 +74,20 @@ Notes for agents:
 - If you change formatting/lints, re-run `make check` (or at least the impacted
   targets) before proposing a commit.
 
+## Changelog Policy
+
+- The repository changelog lives in `CHANGELOG.md`.
+- Changelog entries must follow the
+  [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) format.
+- Keep sections deterministic and human-scannable: use the standard buckets
+  (`Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`) and avoid
+  ad-hoc headings.
+- Add user-visible changes to `## [Unreleased]` as part of normal feature/fix
+  work.
+- During release prep, move `Unreleased` items into a versioned heading
+  `## [X.Y.Z] - YYYY-MM-DD`, then create a new empty `Unreleased` section.
+- Keep comparison links at the bottom updated for `Unreleased` and each release.
+
 ## Code Style (Rust)
 
 The project goal is a deterministic, machine-friendly CLI for waveform
@@ -158,4 +172,5 @@ Wavepeek is "LLM-first" and expects output stability:
 - Developer workflow entrypoints: `Makefile`, `.pre-commit-config.yaml`.
 - Product/architecture requirements: `.memory-bank/PRD.md`.
 - Release process and checklist: `.memory-bank/RELEASE.md`.
+- Changelog: `CHANGELOG.md` (Keep a Changelog format).
 - Agent workflow docs (OpenCode skills): `.opencode/README.md`.

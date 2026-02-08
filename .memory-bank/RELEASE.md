@@ -20,21 +20,25 @@ crate publish and GitHub Release creation.
 ## Checklist
 
 1. Choose a new semver version `X.Y.Z` and confirm tag `vX.Y.Z` does not exist.
-2. Update `Cargo.toml` version to `X.Y.Z`.
-3. Run local checks:
+2. Update `CHANGELOG.md` using [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/):
+   - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
+   - keep a fresh `## [Unreleased]` section for future changes;
+   - update bottom links for `Unreleased` and the new version tag.
+3. Update `Cargo.toml` version to `X.Y.Z`.
+4. Run local checks:
 
    ```bash
    make ci
    ```
 
-4. Commit release prep:
+5. Commit release prep:
 
    ```bash
-   git add Cargo.toml Cargo.lock
+   git add CHANGELOG.md Cargo.toml Cargo.lock
    git commit -m "chore(release): prepare vX.Y.Z"
    ```
 
-5. Push commit and tag:
+6. Push commit and tag:
 
    ```bash
    git push origin master
@@ -42,13 +46,13 @@ crate publish and GitHub Release creation.
    git push origin vX.Y.Z
    ```
 
-6. Wait for `.github/workflows/release.yml` to finish.
-7. Check workflow logs for:
+7. Wait for `.github/workflows/release.yml` to finish.
+8. Check workflow logs for:
    - tag/version validation
    - `make ci`
    - `cargo package --locked`
    - expected mode behavior (skip side effects in dry-run, execute in real mode)
-8. Verify final state:
+9. Verify final state:
    - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
    - Real release: crate published and GitHub Release created for `vX.Y.Z`.
 

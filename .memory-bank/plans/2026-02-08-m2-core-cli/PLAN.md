@@ -102,22 +102,22 @@
 
 ## Definition of Done
 - Sign-off gate policy: `make ci` is the authoritative quality gate; `make pre-commit` is a parity check with local hooks and must also pass before merge.
-- [ ] `D1`: `src/cli/mod.rs` dispatch passes typed args and no M2 subcommand returns `Unimplemented` in normal success paths.
-- [ ] `D2`: JSON envelope (`schema_version`, `command`, `data`, `warnings`) is emitted for `info`, `tree`, and `signals` in default mode.
-- [ ] `D3`: `Waveform::open` successfully reads at least one VCD fixture and one FST fixture.
-- [ ] `D4`: File open/parse failures return `error: file: ...` with exit code `2`.
-- [ ] `D5`: `wavepeek info --waves <fixture>` returns required metadata keys and normalized time strings.
-- [ ] `D6`: `wavepeek tree` output is deterministic DFS + lexicographic child order, respects `--max-depth`, and emits truncation warning when bounded.
-- [ ] `D7`: `wavepeek tree --filter <invalid regex>` fails with `error: args: ...` and exit code `1`.
-- [ ] `D8`: `wavepeek signals` enforces exact scope lookup, returns sorted non-recursive signals, and emits truncation warning when bounded.
-- [ ] `D9`: `--human` mode works for `info`, `tree`, and `signals`; warnings are printed to stderr instead of JSON envelope.
-- [ ] `D10`: Error formatting is stable for runtime args/file/scope-or-signal failures and stdout is empty on errors.
-- [ ] `D11`: Integration tests verify both VCD and FST behavior for at least one query per implemented command.
-- [ ] `D12`: Hand-crafted fixtures exist under `tests/fixtures/hand/` and are used by tests.
-- [ ] `D13`: `make ci` exits `0` on the M2 branch.
-- [ ] `D14`: `make pre-commit` exits `0` on the M2 branch.
-- [ ] `D15`: CLI parse/validation failures (for example unknown flag or forbidden `--waves` on `schema`) are emitted as `error: args: ...` with exit code `1`.
-- [ ] `D16`: Tests lock canonical path emission and `signals.kind` fallback mapping (`unknown`) across VCD and FST fixtures.
+- [x] `D1`: `src/cli/mod.rs` dispatch passes typed args and no M2 subcommand returns `Unimplemented` in normal success paths.
+- [x] `D2`: JSON envelope (`schema_version`, `command`, `data`, `warnings`) is emitted for `info`, `tree`, and `signals` in default mode.
+- [x] `D3`: `Waveform::open` successfully reads at least one VCD fixture and one FST fixture.
+- [x] `D4`: File open/parse failures return `error: file: ...` with exit code `2`.
+- [x] `D5`: `wavepeek info --waves <fixture>` returns required metadata keys and normalized time strings.
+- [x] `D6`: `wavepeek tree` output is deterministic DFS + lexicographic child order, respects `--max-depth`, and emits truncation warning when bounded.
+- [x] `D7`: `wavepeek tree --filter <invalid regex>` fails with `error: args: ...` and exit code `1`.
+- [x] `D8`: `wavepeek signals` enforces exact scope lookup, returns sorted non-recursive signals, and emits truncation warning when bounded.
+- [x] `D9`: `--human` mode works for `info`, `tree`, and `signals`; warnings are printed to stderr instead of JSON envelope.
+- [x] `D10`: Error formatting is stable for runtime args/file/scope-or-signal failures and stdout is empty on errors.
+- [x] `D11`: Integration tests verify both VCD and FST behavior for at least one query per implemented command.
+- [x] `D12`: Hand-crafted fixtures exist under `tests/fixtures/hand/` and are used by tests.
+- [x] `D13`: `make ci` exits `0` on the M2 branch.
+- [x] `D14`: `make pre-commit` exits `0` on the M2 branch.
+- [x] `D15`: CLI parse/validation failures (for example unknown flag or forbidden `--waves` on `schema`) are emitted as `error: args: ...` with exit code `1`.
+- [x] `D16`: Tests lock canonical path emission and `signals.kind` fallback mapping (`unknown`) across VCD and FST fixtures.
 
 ## Implementation Plan (Task Breakdown)
 
@@ -253,3 +253,9 @@
   - Added integration suite `tests/signals_cli.rs` covering VCD/FST parity, filter behavior, truncation warnings, scope-not-found errors, and invalid regex errors.
   - Removed temporary waveform module `dead_code` allowance after command wiring started consuming adapter APIs.
   - Validation: `cargo test` passed.
+- Task 8 completed.
+  - Expanded integration matrix with human-mode warning routing checks for both `tree` and `signals` (`warnings` to stderr, non-JSON stdout).
+  - Reviewer feedback loop found a gap (warning text asserted on stderr but not explicitly absent from stdout); tests were tightened with explicit negative stdout assertions.
+  - Completed DoD verification and checked off all `D1`..`D16` items in this document.
+  - Ran full quality gates: `make ci` and `make pre-commit`, both passing cleanly.
+  - Result: M2 core CLI (`info`, `tree`, `signals`) is now end-to-end implemented with deterministic VCD/FST behavior and locked contracts.

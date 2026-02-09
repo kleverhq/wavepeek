@@ -169,3 +169,22 @@ fn tree_output_is_bit_for_bit_deterministic_across_runs() {
     assert_eq!(first.stdout, second.stdout);
     assert_eq!(first.stderr, second.stderr);
 }
+
+#[test]
+fn tree_human_mode_routes_truncation_warning_to_stderr() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["tree", "--waves", fixture.as_str(), "--max", "1", "--human"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("0 top"))
+        .stdout(predicate::str::contains("schema_version").not())
+        .stdout(predicate::str::contains("warning: truncated output").not())
+        .stderr(predicate::str::contains(
+            "warning: truncated output to 1 entries",
+        ));
+}

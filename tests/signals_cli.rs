@@ -203,3 +203,31 @@ fn signals_invalid_regex_is_args_error() {
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args: invalid regex"));
 }
+
+#[test]
+fn signals_human_mode_routes_truncation_warning_to_stderr() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+
+    command
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--max",
+            "1",
+            "--human",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("top.cfg cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("schema_version").not())
+        .stdout(predicate::str::contains("warning: truncated output").not())
+        .stderr(predicate::str::contains(
+            "warning: truncated output to 1 entries",
+        ));
+}

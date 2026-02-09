@@ -1,0 +1,31 @@
+$date
+  2026-02-09
+$end
+$version
+  wavepeek hand fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var reg 8 " data $end
+$var parameter 8 # cfg $end
+$scope module cpu $end
+$var wire 1 $ valid $end
+$upscope $end
+$scope module mem $end
+$var wire 1 % ready $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+b00000000 "
+b10101010 #
+0$
+0%
+#5
+1!
+1$
+#10
+b00001111 "
+1%

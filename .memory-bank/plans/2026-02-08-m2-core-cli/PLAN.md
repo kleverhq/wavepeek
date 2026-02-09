@@ -236,3 +236,8 @@
   - Added focused waveform adapter tests for metadata, DFS order, scope errors, missing-file/parse-file errors, and unknown kind fallback behavior.
   - Surprise: adapter is introduced ahead of command wiring, so temporary `dead_code` allowance is kept in this module until Tasks 5-7 consume it.
   - Validation: `cargo test` passed.
+- Task 5 completed.
+  - Implemented `info` command engine path to load waveforms, extract metadata via adapter, and emit PRD envelope/human outputs through shared output pipeline.
+  - Added hand-crafted `tests/fixtures/hand/m2_core.vcd` plus generated `tests/fixtures/hand/m2_core.fst` for cross-format metadata parity checks.
+  - Added integration tests in `tests/info_cli.rs` for VCD/FST JSON contract, human-mode smoke output, and missing/invalid-file error handling with exit code `2` and empty stdout.
+  - Validation: `cargo test` passed.

@@ -209,3 +209,12 @@
 3. Complete integration matrix checks across `info`, `tree`, and `signals` (JSON contract, warnings, and error categories).
 4. Run `make ci` and `make pre-commit`, fixing failures until both pass.
 - Outputs: M2 behavior covered by deterministic integration tests and green quality gates.
+
+## Execution Notes
+
+### 2026-02-09 (autonomous run)
+- Task 1 completed.
+  - Decision: replaced `CommandKind` with typed `engine::Command` variants so CLI forwards full subcommand args (`--human`, `--max`, `--filter`, etc.) into engine handlers.
+  - Decision: threaded typed args through non-M2 stub handlers (`schema`, `at`, `changes`, `when`) as ignored parameters to keep behavior unchanged while avoiding dead-code warnings.
+  - Added unit tests in `src/cli/mod.rs` to lock dispatch argument forwarding for `info`, `tree`, and `signals`.
+  - Validation: `cargo test` passed.

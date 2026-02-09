@@ -8,7 +8,7 @@ pub mod when;
 
 use clap::{Parser, Subcommand};
 
-use crate::engine::{self, CommandKind};
+use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
 
 #[derive(Debug, Parser)]
@@ -68,15 +68,106 @@ pub fn run() -> Result<(), WavepeekError> {
 }
 
 fn dispatch(command: Command) -> Result<(), WavepeekError> {
-    let command_kind = match command {
-        Command::Schema(_) => CommandKind::Schema,
-        Command::Info(_) => CommandKind::Info,
-        Command::Tree(_) => CommandKind::Tree,
-        Command::Signals(_) => CommandKind::Signals,
-        Command::At(_) => CommandKind::At,
-        Command::Changes(_) => CommandKind::Changes,
-        Command::When(_) => CommandKind::When,
-    };
+    let engine_command = into_engine_command(command);
 
-    engine::run(command_kind)
+    engine::run(engine_command)
+}
+
+fn into_engine_command(command: Command) -> EngineCommand {
+    match command {
+        Command::Schema(args) => EngineCommand::Schema(args),
+        Command::Info(args) => EngineCommand::Info(args),
+        Command::Tree(args) => EngineCommand::Tree(args),
+        Command::Signals(args) => EngineCommand::Signals(args),
+        Command::At(args) => EngineCommand::At(args),
+        Command::Changes(args) => EngineCommand::Changes(args),
+        Command::When(args) => EngineCommand::When(args),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use clap::Parser;
+
+    use super::{Cli, EngineCommand, into_engine_command};
+
+    #[test]
+    fn info_dispatch_keeps_human_and_waves_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "info",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--human",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::Info(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert!(args.human);
+            }
+            other => panic!("expected info command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn tree_dispatch_keeps_bounded_query_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "tree",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--max",
+            "12",
+            "--max-depth",
+            "3",
+            "--filter",
+            "^top\\..*",
+            "--human",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::Tree(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.max, 12);
+                assert_eq!(args.max_depth, 3);
+                assert_eq!(args.filter, "^top\\..*");
+                assert!(args.human);
+            }
+            other => panic!("expected tree command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn signals_dispatch_keeps_scope_filter_and_max_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "signals",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--scope",
+            "top.cpu",
+            "--max",
+            "7",
+            "--filter",
+            ".*clk.*",
+            "--human",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::Signals(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.scope, "top.cpu");
+                assert_eq!(args.max, 7);
+                assert_eq!(args.filter, ".*clk.*");
+                assert!(args.human);
+            }
+            other => panic!("expected signals command, got {other:?}"),
+        }
+    }
 }

@@ -229,3 +229,10 @@
   - Added clap error normalization helper that strips usage/noise into a stable one-line args message.
   - Updated integration tests to assert args-category stderr prefix and empty stdout for parse/validation failures.
   - Validation: `cargo test` passed.
+- Task 4 completed.
+  - Implemented `src/waveform/mod.rs` adapter over `wellen::simple::Waveform` with file-open/parse error mapping into `error: file: ...`.
+  - Added metadata extraction (`time_unit`, `time_precision`, normalized `time_start`/`time_end`) plus deterministic DFS scope traversal and scope-local signal lookup helpers.
+  - Introduced canonical path policy docs in the module and encoded signal-kind mapping with explicit `unknown` fallback.
+  - Added focused waveform adapter tests for metadata, DFS order, scope errors, missing-file/parse-file errors, and unknown kind fallback behavior.
+  - Surprise: adapter is introduced ahead of command wiring, so temporary `dead_code` allowance is kept in this module until Tasks 5-7 consume it.
+  - Validation: `cargo test` passed.

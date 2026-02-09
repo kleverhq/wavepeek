@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Keep a Changelog-based release notes workflow and release runbook updates.
+- Implemented M2 core CLI commands: `info`, `tree`, and `signals`, with default JSON envelope output and `--human` mode.
+- Added a waveform adapter over `wellen` with VCD/FST support for metadata reads, deterministic hierarchy traversal, and scope-local signal listing.
+- Added hand-crafted waveform fixtures in `tests/fixtures/hand/` and integration coverage for VCD/FST parity, deterministic ordering, warning behavior, and error paths.
+
+### Changed
+- Refactored command dispatch to pass typed CLI arguments through engine handlers, preserving per-command flags (`--human`, `--max`, `--max-depth`, `--filter`, `--scope`).
+- Normalized CLI parse/validation failures to `error: args: ...` (except `--help`/`--version`) with stable stderr-only error reporting semantics.
+
+### Fixed
+- Standardized runtime error categories and exit-code mapping: `args`/`scope`/`signal` errors exit with code `1`, while file open/parse errors exit with code `2`.
+- Stabilized `signals.kind` fallback mapping to `unknown` for unmapped parser kinds across both VCD and FST inputs.
 
 ## [0.1.0] - 2026-02-08
 

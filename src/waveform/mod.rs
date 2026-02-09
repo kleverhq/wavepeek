@@ -5,8 +5,6 @@
 //! - Scope and signal names are preserved exactly as provided by the parser.
 //! - No additional escaping or normalization pass is applied.
 
-#![allow(dead_code)]
-
 use std::cmp::Ordering;
 use std::path::Path;
 

@@ -246,3 +246,10 @@
   - Added semantic args validation for `tree --max` (`> 0`) and normalized invalid regex failures into `error: args: ...`.
   - Added integration suite `tests/tree_cli.rs` covering deterministic VCD/FST ordering, depth limiting, truncation warnings, invalid regex handling, and repeat-run byte-for-byte determinism.
   - Validation: `cargo test` passed.
+- Task 7 completed.
+  - Implemented `signals` command end-to-end using exact scope lookup in adapter, non-recursive scope-local enumeration, regex name filtering, and `--max` truncation warnings.
+  - Added semantic args validation for `signals --max` (`> 0`) and normalized invalid regex failures into `error: args: ...`.
+  - Wired stable signal metadata shape (`name`, `path`, `kind`, optional `width`) with deterministic alphabetical ordering by name.
+  - Added integration suite `tests/signals_cli.rs` covering VCD/FST parity, filter behavior, truncation warnings, scope-not-found errors, and invalid regex errors.
+  - Removed temporary waveform module `dead_code` allowance after command wiring started consuming adapter APIs.
+  - Validation: `cargo test` passed.

@@ -1,0 +1,9 @@
+{
+    "name": "wavepeek-ci",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "target": "ci"
+    },
+    "remoteUser": "ubuntu",
+    "updateRemoteUserUID": false
+}

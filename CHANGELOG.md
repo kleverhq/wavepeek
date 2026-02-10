@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Refactored command dispatch to pass typed CLI arguments through engine handlers, preserving per-command flags (`--human`, `--max`, `--max-depth`, `--filter`, `--scope`).
 - Normalized CLI parse/validation failures to `error: args: ...` (except `--help`/`--version`) with stable stderr-only error reporting semantics.
+- Reworked devcontainer image builds into explicit `base`/`ci`/`dev` Docker targets and switched GitHub Actions to `.devcontainer/devcontainer.ci.json` so CI skips dev-only tools (`opencode`, `surfer`, `slang-server`, GUI dependencies) while keeping local development unchanged.
 
 ### Fixed
 - Standardized runtime error categories and exit-code mapping: `args`/`scope`/`signal` errors exit with code `1`, while file open/parse errors exit with code `2`.

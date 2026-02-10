@@ -78,19 +78,16 @@ RUN ${CARGO_HOME}/bin/cargo install --locked \
     --root ${SURFER_INSTALL} \
     surfer
 
-# ---- Main Image --------------------------------------------------------------
-FROM ubuntu:24.04
+# ---- Base Image --------------------------------------------------------------
+FROM ubuntu:24.04 AS base
 
 # Install necessary system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl git nano openssh-client make libatomic1 bash-completion \
+    ca-certificates curl git make libatomic1 \
     openssl libssl-dev pkg-config \
-    libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
-    jq ripgrep gh \
-    g++ mold ccache perl-doc z3 gtkwave \
+    g++ mold ccache \
     gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf \
-    python3 pipx \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
@@ -109,23 +106,8 @@ RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /worksp
 ENV VERILATOR_INSTALL=/opt/verilator
 COPY --from=verilator_builder ${VERILATOR_INSTALL} ${VERILATOR_INSTALL}
 
-# Install slang-server
-ENV SLANG_SERVER_INSTALL=/opt/slang-server
-COPY --from=slang_server_builder ${SLANG_SERVER_INSTALL} ${SLANG_SERVER_INSTALL}
-
-# Install surfer
-ENV SURFER_INSTALL=/opt/surfer
-COPY --from=surfer_builder ${SURFER_INSTALL} ${SURFER_INSTALL}
-
-# Add user rights to access the install directories
-RUN chown -R ubuntu:ubuntu /opt
-
 # Switch to non-root user
 USER ubuntu
-
-# Install OpenCode
-ENV OPENCODE_VERSION=1.1.53
-RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
 
 # Install Rust toolchain
 ENV RUSTUP_HOME=/home/ubuntu/.rustup
@@ -135,6 +117,42 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup default ${RUST_VERSION} && \
     /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy --toolchain ${RUST_VERSION}
+
+# ---- CI Image ----------------------------------------------------------------
+FROM base AS ci
+
+# Update PATH
+ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${PATH}"
+
+# ---- Dev Image ---------------------------------------------------------------
+FROM base AS dev
+
+USER root
+
+# Install development-only dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nano openssh-client bash-completion \
+    libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
+    jq ripgrep gh \
+    perl-doc z3 gtkwave \
+    python3 pipx \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+USER ubuntu
+
+# Install slang-server
+ENV SLANG_SERVER_INSTALL=/opt/slang-server
+COPY --from=slang_server_builder --chown=ubuntu:ubuntu ${SLANG_SERVER_INSTALL} ${SLANG_SERVER_INSTALL}
+
+# Install surfer
+ENV SURFER_INSTALL=/opt/surfer
+COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INSTALL}
+
+# Install OpenCode
+ENV OPENCODE_VERSION=1.1.53
+RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
 
 # Prefer X11 backend in devcontainer GUI sessions.
 ENV WINIT_UNIX_BACKEND=x11

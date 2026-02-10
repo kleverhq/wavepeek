@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Implemented M2 core CLI commands: `info`, `tree`, and `signals`, with default JSON envelope output and `--human` mode.
 - Added a waveform adapter over `wellen` with VCD/FST support for metadata reads, deterministic hierarchy traversal, and scope-local signal listing.
 - Added hand-crafted waveform fixtures in `tests/fixtures/hand/` and integration coverage for VCD/FST parity, deterministic ordering, warning behavior, and error paths.
+- Expanded the devcontainer toolset with Surfer (with X11/Mesa runtime support) plus `riscv64-unknown-elf` GCC/binutils/picolibc packages for SCR1 software build workflows.
 
 ### Changed
 - Refactored command dispatch to pass typed CLI arguments through engine handlers, preserving per-command flags (`--human`, `--max`, `--max-depth`, `--filter`, `--scope`).

@@ -6,6 +6,9 @@ bootstrap:
 	cargo --version
 	cargo fmt --version
 	cargo clippy --version
+	verilator --version
+	riscv64-unknown-elf-gcc --version
+	riscv64-unknown-elf-objcopy --version
 	pre-commit install --hook-type commit-msg --hook-type pre-commit
 
 ## Format with rustfmt

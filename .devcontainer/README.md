@@ -14,13 +14,16 @@ Custom Ubuntu 24.04 devcontainer with ready-to-use tooling for RTL and Rust work
 ## Image and tooling
 
 - Base image: Ubuntu 24.04 (chosen as a reasonable default).
-- Installs system tools: `git`, `curl`, `make`, `g++`, `mold`, `ccache`, `z3`, `gtkwave`, `npm`, `openssh-client`, `bash-completion`.
+- Installs system tools: `git`, `curl`, `make`, `g++`, `mold`, `ccache`, `z3`, `gtkwave`, `gcc-riscv64-unknown-elf`, `binutils-riscv64-unknown-elf`, `picolibc-riscv64-unknown-elf`, `npm`, `openssh-client`, `bash-completion`.
 - Installs Verilator at `/opt/verilator` for RTL workflows.
 - Installs `slang-server` at `/opt/slang-server` for SystemVerilog language services.
+- Installs `surfer` (Rust-based waveform viewer).
+- Installs Mesa/X11 runtime libs required by `surfer` in containerized GUI sessions.
 - Installs CLI agent (OpenCode) for out-of-box access.
 - Installs Rust toolchain (rustup + cargo, with rustfmt/clippy).
 - Installs Python-based `pre-commit` and `commitizen`.
 - Extends `PATH` with cargo, Verilator, and slang-server.
+- Sets `WINIT_UNIX_BACKEND=x11` so Surfer uses X11 in VS Code devcontainer environments.
 
 ## Container behavior
 

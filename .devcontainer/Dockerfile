@@ -46,6 +46,38 @@ RUN git clone --branch ${SLANG_SERVER_VERSION} --depth 1 https://github.com/huds
     mkdir -p ${SLANG_SERVER_INSTALL}/bin && \
     cp build/bin/slang-server ${SLANG_SERVER_INSTALL}/bin/
 
+# ---- Surfer Builder ------------------------------------------------------------
+FROM ubuntu:24.04 AS surfer_builder
+
+# Avoid prompts from apt
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Setup environment variables
+ENV SURFER_INSTALL=/opt/surfer \
+    RUSTUP_HOME=/opt/rustup \
+    CARGO_HOME=/opt/cargo \
+    RUST_VERSION=1.93.0
+
+# Install build dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates curl git pkg-config libssl-dev build-essential && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Rust toolchain
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
+    ${CARGO_HOME}/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
+    ${CARGO_HOME}/bin/rustup default ${RUST_VERSION}
+
+# Build Surfer
+ARG SURFER_VERSION=v0.5.0
+RUN ${CARGO_HOME}/bin/cargo install --locked \
+    --git https://gitlab.com/surfer-project/surfer.git \
+    --tag ${SURFER_VERSION} \
+    --root ${SURFER_INSTALL} \
+    surfer
+
 # ---- Main Image --------------------------------------------------------------
 FROM ubuntu:24.04
 
@@ -53,8 +85,11 @@ FROM ubuntu:24.04
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ca-certificates curl git nano openssh-client make libatomic1 bash-completion \
+    openssl libssl-dev pkg-config \
+    libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
     jq ripgrep gh \
     g++ mold ccache perl-doc z3 gtkwave \
+    gcc-riscv64-unknown-elf binutils-riscv64-unknown-elf picolibc-riscv64-unknown-elf \
     python3 pipx \
     locales \
     && locale-gen en_US.UTF-8 \
@@ -78,6 +113,10 @@ COPY --from=verilator_builder ${VERILATOR_INSTALL} ${VERILATOR_INSTALL}
 ENV SLANG_SERVER_INSTALL=/opt/slang-server
 COPY --from=slang_server_builder ${SLANG_SERVER_INSTALL} ${SLANG_SERVER_INSTALL}
 
+# Install surfer
+ENV SURFER_INSTALL=/opt/surfer
+COPY --from=surfer_builder ${SURFER_INSTALL} ${SURFER_INSTALL}
+
 # Add user rights to access the install directories
 RUN chown -R ubuntu:ubuntu /opt
 
@@ -97,10 +136,13 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup default ${RUST_VERSION} && \
     /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy --toolchain ${RUST_VERSION}
 
+# Prefer X11 backend in devcontainer GUI sessions.
+ENV WINIT_UNIX_BACKEND=x11
+
 # Install Python tooling for hooks
 ENV PRECOMMIT_VERSION=4.5.1
 ENV COMMITIZEN_VERSION=4.12.1
 RUN pipx install pre-commit==${PRECOMMIT_VERSION} commitizen==${COMMITIZEN_VERSION}
 
 # Update PATH
-ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${SLANG_SERVER_INSTALL}/bin:${PATH}"
+ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${SLANG_SERVER_INSTALL}/bin:${SURFER_INSTALL}/bin:${PATH}"

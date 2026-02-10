@@ -173,4 +173,5 @@ Wavepeek is "LLM-first" and expects output stability:
 - Product/architecture requirements: `.agents/PRD.md`.
 - Release process and checklist: `.agents/RELEASE.md`.
 - Changelog: `CHANGELOG.md` (Keep a Changelog format).
+- Devcontainer rationale and non-obvious setup decisions: `.devcontainer/AGENTS.md`.
 - Agent workflow docs (OpenCode skills): `.opencode/README.md`.

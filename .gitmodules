@@ -2,3 +2,7 @@
 	path = third_party/src1
 	url = ../../syntacore/scr1
 	branch = master
+[submodule "third_party/picorv32"]
+	path = third_party/picorv32
+	url = ../../YosysHQ/picorv32
+	branch = main

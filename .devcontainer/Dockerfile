@@ -1,6 +1,3 @@
-# Shared tool versions
-ARG RISCV_XPACK_VERSION=14.2.0-3
-
 # ---- Verilator Builder -------------------------------------------------------
 FROM ubuntu:24.04 AS verilator_builder
 
@@ -81,32 +78,8 @@ RUN ${CARGO_HOME}/bin/cargo install --locked \
     --root ${SURFER_INSTALL} \
     surfer
 
-# ---- RISC-V Toolchain Builder ------------------------------------------------
-FROM ubuntu:24.04 AS riscv_toolchain_builder
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-ARG RISCV_XPACK_VERSION
-ENV RISCV_TOOLCHAIN_INSTALL=/opt/riscv/xpack-riscv-none-elf-gcc-${RISCV_XPACK_VERSION}
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ca-certificates curl && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN curl -fsSL -o /tmp/riscv-toolchain.tar.gz \
-    "https://github.com/xpack-dev-tools/riscv-none-elf-gcc-xpack/releases/download/v${RISCV_XPACK_VERSION}/xpack-riscv-none-elf-gcc-${RISCV_XPACK_VERSION}-linux-x64.tar.gz" && \
-    mkdir -p /opt/riscv && \
-    tar -xzf /tmp/riscv-toolchain.tar.gz -C /opt/riscv && \
-    rm -f /tmp/riscv-toolchain.tar.gz
-
 # ---- Base Image --------------------------------------------------------------
 FROM ubuntu:24.04 AS base
-
-ARG RISCV_XPACK_VERSION
-ENV RISCV_XPACK_VERSION=${RISCV_XPACK_VERSION}
-ENV RISCV_TOOLCHAIN_INSTALL=/opt/riscv/xpack-riscv-none-elf-gcc-${RISCV_XPACK_VERSION}
 
 # Install necessary system dependencies
 RUN apt-get update && \
@@ -118,21 +91,6 @@ RUN apt-get update && \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install complete bare-metal RISC-V toolchain with newlib/nano specs.
-# SCR1 expects riscv64-unknown-elf-* names, while xPack ships riscv-none-elf-*;
-# create compatibility symlinks in /usr/local/bin.
-COPY --from=riscv_toolchain_builder /opt/riscv /opt/riscv
-
-RUN for src in ${RISCV_TOOLCHAIN_INSTALL}/bin/riscv-none-elf-*; do \
-        dst="/usr/local/bin/$(basename "$src" | sed 's/^riscv-none-elf-/riscv64-unknown-elf-/')"; \
-        ln -sf "$src" "$dst"; \
-    done
-
-# SCR1 links bare-metal tests with `-nostdlib -lc -lgcc --specs=nano.specs`.
-# With modern xPack toolchains, add the missing link tail to resolve
-# libc/libgcc circular refs and satisfy nosys `_sbrk` symbol expectations.
-ENV ADD_LDFLAGS="-lc -lnosys -Wl,--defsym=end=_end"
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
@@ -163,7 +121,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
 FROM base AS ci
 
 # Update PATH
-ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${RISCV_TOOLCHAIN_INSTALL}/bin:${PATH}"
+ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${PATH}"
 
 # ---- Dev Image ---------------------------------------------------------------
 FROM base AS dev
@@ -204,4 +162,4 @@ ENV COMMITIZEN_VERSION=4.12.1
 RUN pipx install pre-commit==${PRECOMMIT_VERSION} commitizen==${COMMITIZEN_VERSION}
 
 # Update PATH
-ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${SLANG_SERVER_INSTALL}/bin:${SURFER_INSTALL}/bin:${RISCV_TOOLCHAIN_INSTALL}/bin:${PATH}"
+ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${VERILATOR_INSTALL}/bin:${SLANG_SERVER_INSTALL}/bin:${SURFER_INSTALL}/bin:${PATH}"

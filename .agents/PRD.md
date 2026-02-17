@@ -662,7 +662,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 | Level | What | How | Fixtures |
 |-------|------|-----|----------|
 | **Unit tests** | Individual functions in `engine/`, `expr/`, `waveform/` | `#[cfg(test)]` modules, `cargo test` | Hand-crafted VCD strings (inline or small `.vcd` files) |
-| **Integration tests** | Full CLI invocations end-to-end | `assert_cmd` in `tests/` directory | Verilator-generated VCD/FST files |
+| **Integration tests** | Full CLI invocations end-to-end | `assert_cmd` in `tests/` directory | Committed VCD/FST fixtures |
 | **Expression tests** | Lexer, parser, evaluator independently | Unit tests in `expr/` submodules | None (pure logic, string inputs) |
 
 **Test fixture strategy (two sources):**
@@ -672,13 +672,10 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
    multi-bit signals, X/Z values, multiple scopes, deep hierarchy, time edge cases
    (zero duration, single timestamp). Stored in `tests/fixtures/hand/`.
 
-2. **Verilator-generated fixtures** — For integration tests. Small Verilog modules
-   simulated with Verilator to produce realistic VCD/FST dumps. Covers: realistic
-   hierarchy names, typical signal patterns, clock-data relationships, multi-format
-   consistency (same design exported as VCD and FST should produce identical output).
-   Source Verilog in `tests/fixtures/src/`, generated dumps in `tests/fixtures/gen/`.
-   Generation is a manual step (not part of `cargo test`), with a Makefile target
-   `make fixtures`.
+2. **Committed representative FST fixtures** — For integration tests. Fixtures are
+   checked into the repository and cover realistic hierarchy names, typical signal
+   patterns, clock-data relationships, and multi-format consistency (same design
+   represented as VCD and FST should produce identical output).
 
 **What to assert in integration tests:**
 
@@ -720,7 +717,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - `at` command (§3.2.4)
 - `changes` command — unclocked + clocked modes (§3.2.5)
 - Time parsing with mandatory units (`--from`, `--to`, `--time`)
-- Verilator-generated test fixtures (`make fixtures`)
+- Expanded committed fixtures for value-extraction scenarios
 
 ### M4: Query Engine (→ v0.4.0)
 

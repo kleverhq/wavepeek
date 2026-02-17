@@ -98,7 +98,7 @@
 - Canonical path policy in M2 is dot-separated full path; escaped identifiers are preserved verbatim from parser output (no extra normalization pass).
 - `signals.kind` uses a frozen M2 enum mapping with explicit fallback value `unknown` for unmapped parser kinds.
 - Warnings remain free-form strings in JSON envelope for M2.
-- A small committed FST fixture is acceptable for M2 integration tests; `make fixtures` automation stays in M3.
+- A small committed FST fixture is acceptable for M2 integration tests; fixture automation stays in M3.
 
 ## Definition of Done
 - Sign-off gate policy: `make ci` is the authoritative quality gate; `make pre-commit` is a parity check with local hooks and must also pass before merge.

@@ -6,10 +6,8 @@ bootstrap:
 	cargo --version
 	cargo fmt --version
 	cargo clippy --version
-	verilator --version
 	gtkwave --version
 	surfer --version
-	slang-server --version
 	pre-commit install --hook-type commit-msg --hook-type pre-commit
 
 ## Format with rustfmt

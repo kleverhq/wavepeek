@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "external_directory": {
+      "*": "ask",
+      "**/.cargo/registry/src/**": "allow",
+      "/tmp/**": "allow",
+      "/opt/**": "allow"
+    },
+    "bash": {
+        "cargo publish": "ask",
+        "cargo run": "allow",
+        "cargo test": "allow",
+        "cargo bench": "allow",
+    }
+  }
+}

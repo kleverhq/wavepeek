@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Args;
 
 #[derive(Debug, Args)]
-pub struct TreeArgs {
+pub struct ModulesArgs {
     /// Path to VCD/FST waveform file
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
@@ -16,7 +16,10 @@ pub struct TreeArgs {
     /// Regex filter for scope path
     #[arg(long, default_value = ".*")]
     pub filter: String,
-    /// Human-friendly output mode
+    /// Render visual tree in human mode
     #[arg(long)]
-    pub human: bool,
+    pub tree: bool,
+    /// Strict JSON envelope output
+    #[arg(long)]
+    pub json: bool,
 }

@@ -8,7 +8,7 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
-use wellen::{ScopeRef, Timescale, TimescaleUnit, VarType, simple};
+use wellen::{ScopeRef, ScopeType, Timescale, TimescaleUnit, VarType, simple};
 
 use crate::error::WavepeekError;
 
@@ -20,7 +20,6 @@ pub struct Waveform {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WaveformMetadata {
     pub time_unit: String,
-    pub time_precision: String,
     pub time_start: String,
     pub time_end: String,
 }
@@ -83,7 +82,6 @@ impl Waveform {
             WavepeekError::File("waveform is missing timescale metadata".to_string())
         })?;
         let time_unit = format_timescale(timescale)?;
-        let time_precision = time_unit.clone();
 
         let time_table = self.inner.time_table();
         let time_start = time_table.first().copied().unwrap_or(0);
@@ -91,20 +89,19 @@ impl Waveform {
 
         Ok(WaveformMetadata {
             time_unit,
-            time_precision,
             time_start: normalize_time(time_start, timescale)?,
             time_end: normalize_time(time_end, timescale)?,
         })
     }
 
-    pub fn scopes_depth_first(&self, max_depth: usize) -> Vec<ScopeEntry> {
+    pub fn module_scopes_depth_first(&self, max_depth: usize) -> Vec<ScopeEntry> {
         let hierarchy = self.inner.hierarchy();
         let mut roots: Vec<ScopeRef> = hierarchy.scopes().collect();
         sort_scope_refs(hierarchy, &mut roots);
 
         let mut entries = Vec::new();
         for scope_ref in roots {
-            collect_scope_entries(hierarchy, scope_ref, 0, max_depth, &mut entries);
+            collect_module_scope_entries(hierarchy, scope_ref, 0, max_depth, &mut entries);
         }
 
         entries
@@ -140,27 +137,37 @@ impl Waveform {
     }
 }
 
-fn collect_scope_entries(
+fn collect_module_scope_entries(
     hierarchy: &wellen::Hierarchy,
     scope_ref: ScopeRef,
-    depth: usize,
+    module_depth: usize,
     max_depth: usize,
     entries: &mut Vec<ScopeEntry>,
 ) {
     let scope = &hierarchy[scope_ref];
-    entries.push(ScopeEntry {
-        path: scope.full_name(hierarchy),
-        depth,
-    });
+    let is_module_scope = scope.scope_type() == ScopeType::Module;
 
-    if depth >= max_depth {
+    let mut child_module_depth = module_depth;
+    if is_module_scope {
+        if module_depth > max_depth {
+            return;
+        }
+
+        entries.push(ScopeEntry {
+            path: scope.full_name(hierarchy),
+            depth: module_depth,
+        });
+        child_module_depth = module_depth + 1;
+    }
+
+    if child_module_depth > max_depth {
         return;
     }
 
     let mut children: Vec<ScopeRef> = scope.scopes(hierarchy).collect();
     sort_scope_refs(hierarchy, &mut children);
     for child in children {
-        collect_scope_entries(hierarchy, child, depth + 1, max_depth, entries);
+        collect_module_scope_entries(hierarchy, child, child_module_depth, max_depth, entries);
     }
 }
 
@@ -267,7 +274,6 @@ mod tests {
         let metadata = waveform.metadata().expect("metadata should be available");
 
         assert_eq!(metadata.time_unit, "1ns");
-        assert_eq!(metadata.time_precision, "1ns");
         assert_eq!(metadata.time_start, "0ns");
         assert_eq!(metadata.time_end, "10ns");
     }
@@ -277,7 +283,7 @@ mod tests {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-        let scopes = waveform.scopes_depth_first(5);
+        let scopes = waveform.module_scopes_depth_first(5);
 
         assert_eq!(
             scopes,

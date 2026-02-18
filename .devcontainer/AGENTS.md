@@ -14,3 +14,15 @@ This directory is designed so local development and CI share one foundation whil
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
 - CI disables UID remapping (`updateRemoteUserUID: false`) to keep ephemeral runner behavior more reproducible.
+
+## RTL fixture provisioning
+- Large waveform fixtures are baked into the image at build time under `/opt/rtl-artifacts` by a dedicated Docker stage (`rtl_artifacts`).
+- Fixture payload is controlled by `RTL_ARTIFACTS_VERSION` build arg and is shared by both `ci` and `dev` targets through the common `base` stage.
+- Integrity is enforced during build via pinned SHA-256 checks and a persisted manifest at `/opt/rtl-artifacts/MANIFEST.json`.
+- Test/runtime commands never download fixtures from the network; `make ci`/`make pre-commit` assert the local fixture payload is present.
+
+## Bumping fixture version
+1. Update `RTL_ARTIFACTS_VERSION` in `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json`.
+2. Update fixture URLs/checksums and manifest content in `.devcontainer/Dockerfile` (`rtl_artifacts` stage).
+3. Rebuild both container targets and run `make ci` + `make pre-commit` inside container to verify payload and tests.
+4. Confirm CI logs include `/opt/rtl-artifacts/MANIFEST.json` output for provenance.

@@ -67,8 +67,8 @@
 | Args error quality + help hints | VF-R3, VF-R14 | Task 3 | D3, D4 | `src/cli/mod.rs`, `tests/cli_contract.rs` |
 | Help text formatting style | VF-R4 | Task 4 | D5 | `src/cli/mod.rs` |
 | Output mode migration | VF-R6, VF-R12, VF-R13 | Task 5 | D6, D7, D8 | `src/cli/*`, `src/engine/*`, `src/output.rs`, integration tests |
-| `tree` to `modules` + hierarchy correctness | VF-R7, VF-R11 | Task 6 | D9, D10, D11 | `src/cli/mod.rs`, `src/engine/mod.rs`, `src/engine/tree.rs`, `src/waveform/mod.rs`, tests |
-| Human tree-style rendering | VF-R8 | Task 7 | D12, D13 | `src/cli/mod.rs`, `src/cli/tree.rs`, `src/output.rs`, tests |
+| `tree` to `modules` + hierarchy correctness | VF-R7, VF-R11 | Task 6 | D9, D10, D11 | `src/cli/mod.rs`, `src/engine/mod.rs`, `src/engine/modules.rs`, `src/waveform/mod.rs`, tests |
+| Human tree-style rendering | VF-R8 | Task 7 | D12, D13 | `src/cli/mod.rs`, `src/cli/modules.rs`, `src/output.rs`, tests |
 | Remove `time_precision` | VF-R5 | Task 8 | D14 | `src/waveform/mod.rs`, `src/engine/info.rs`, `src/output.rs`, tests, PRD |
 | Signals human format + `--abs` | VF-R9 | Task 9 | D15, D16 | `src/cli/signals.rs`, `src/engine/signals.rs`, `src/output.rs`, tests |
 | Container fixture provisioning | VF-R10, VF-R16, VF-R17, VF-R18, VF-R20, VF-R22 | Task 10 | D17, D18, D19, D20, D22 | `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.ci.json`, `.devcontainer/devcontainer.json` |
@@ -139,30 +139,30 @@
 - Fixture downloads happen only during container image build; test/runtime execution does not perform network fixture fetches.
 
 ## Definition of Done
-- [ ] `D1`: `wavepeek` with no arguments exits `0` and prints top-level help to stdout.
-- [ ] `D2`: Integration tests explicitly cover `-h`, `--help`, `-V`, and `--version`.
-- [ ] `D3`: Missing-required-argument errors include the missing flag names in stderr.
-- [ ] `D4`: `error: args:` help hints are context-correct: global parse failures suggest `wavepeek --help`, subcommand failures suggest `wavepeek <cmd> --help`.
-- [ ] `D5`: Command `long_about` strings are multiline literals in CLI definitions.
-- [ ] `D6`: Default output for implemented commands in this scope (`info`, `modules`, `signals`) is human-readable when no format flag is provided.
-- [ ] `D7`: `--json` output matches strict envelope keys and deterministic ordering/content.
-- [ ] `D8`: `--human` is removed for commands in scope (`info`, `modules`, `signals`) and tests assert the expected args error/hint if passed.
-- [ ] `D9`: `modules` command exists and is shown in help output as canonical command.
-- [ ] `D10`: `tree` invocation is rejected (no alias) with `error: args:` and help hint.
-- [ ] `D11`: Regression test with `scr1_max_axi_coremark.fst` confirms module paths (not signal leaves) in module listing.
-- [ ] `D12`: `modules --tree` renders visual hierarchy format in default human mode.
-- [ ] `D13`: `modules --json --tree` keeps flat JSON list behavior and does not emit extra warning.
-- [ ] `D14`: `info` output no longer includes `time_precision` in JSON or human mode.
-- [ ] `D15`: `signals` human mode defaults to short names; no scope prefix unless `--abs` is set.
-- [ ] `D16`: `signals --json` continues to include full signal paths deterministically.
-- [ ] `D17`: Integration tests for commands in scope use fixture files from `/opt/rtl-artifacts`.
-- [ ] `D18`: Dockerfile contains dedicated fixture layer that downloads required artifacts and verifies SHA-256 checksums.
-- [ ] `D19`: Fixture layer uses `RTL_ARTIFACTS_VERSION` variable and keeps install path stable as `/opt/rtl-artifacts`.
-- [ ] `D20`: Both `ci` and `dev` image targets include `/opt/rtl-artifacts` fixture payload.
-- [ ] `D21`: `make ci` and `make pre-commit` pass inside container with fixture-backed tests and no runtime fixture download.
-- [ ] `D22`: CI output includes manifest-based provenance check (`/opt/rtl-artifacts/MANIFEST.json`) with artifact version and checksums.
-- [ ] `D23`: PRD and changelog reflect direct cutover decisions (`modules` rename, no aliases, default human + `--json`, container-baked fixtures, container-only make workflow).
-- [ ] `D24`: Container-only guard is enforced: `make ci`/`make pre-commit` fail fast with clear message when container marker is absent.
+- [x] `D1`: `wavepeek` with no arguments exits `0` and prints top-level help to stdout.
+- [x] `D2`: Integration tests explicitly cover `-h`, `--help`, `-V`, and `--version`.
+- [x] `D3`: Missing-required-argument errors include the missing flag names in stderr.
+- [x] `D4`: `error: args:` help hints are context-correct: global parse failures suggest `wavepeek --help`, subcommand failures suggest `wavepeek <cmd> --help`.
+- [x] `D5`: Command `long_about` strings are multiline literals in CLI definitions.
+- [x] `D6`: Default output for implemented commands in this scope (`info`, `modules`, `signals`) is human-readable when no format flag is provided.
+- [x] `D7`: `--json` output matches strict envelope keys and deterministic ordering/content.
+- [x] `D8`: `--human` is removed for commands in scope (`info`, `modules`, `signals`) and tests assert the expected args error/hint if passed.
+- [x] `D9`: `modules` command exists and is shown in help output as canonical command.
+- [x] `D10`: `tree` invocation is rejected (no alias) with `error: args:` and help hint.
+- [x] `D11`: Regression test with `scr1_max_axi_coremark.fst` confirms module paths (not signal leaves) in module listing.
+- [x] `D12`: `modules --tree` renders visual hierarchy format in default human mode.
+- [x] `D13`: `modules --json --tree` keeps flat JSON list behavior and does not emit extra warning.
+- [x] `D14`: `info` output no longer includes `time_precision` in JSON or human mode.
+- [x] `D15`: `signals` human mode defaults to short names; no scope prefix unless `--abs` is set.
+- [x] `D16`: `signals --json` continues to include full signal paths deterministically.
+- [x] `D17`: Integration tests for commands in scope use fixture files from `/opt/rtl-artifacts`.
+- [x] `D18`: Dockerfile contains dedicated fixture layer that downloads required artifacts and verifies SHA-256 checksums.
+- [x] `D19`: Fixture layer uses `RTL_ARTIFACTS_VERSION` variable and keeps install path stable as `/opt/rtl-artifacts`.
+- [x] `D20`: Both `ci` and `dev` image targets include `/opt/rtl-artifacts` fixture payload.
+- [x] `D21`: `make ci` and `make pre-commit` pass inside container with fixture-backed tests and no runtime fixture download.
+- [x] `D22`: CI output includes manifest-based provenance check (`/opt/rtl-artifacts/MANIFEST.json`) with artifact version and checksums.
+- [x] `D23`: PRD and changelog reflect direct cutover decisions (`modules` rename, no aliases, default human + `--json`, container-baked fixtures, container-only make workflow).
+- [x] `D24`: Container-only guard is enforced: `make ci`/`make pre-commit` fail fast with clear message when container marker is absent.
 
 ## Implementation Plan (Task Breakdown)
 
@@ -219,7 +219,7 @@
 
 ### Task 6: Rename `tree` to `modules` and fix hierarchy semantics (~3-4h)
 - Goal: Align command semantics/naming and close issue 9 with real fixture regression.
-- Inputs: `src/cli/mod.rs`, `src/engine/mod.rs`, `src/engine/tree.rs`, `src/waveform/mod.rs`, tests.
+- Inputs: `src/cli/mod.rs`, `src/engine/mod.rs`, `src/engine/modules.rs`, `src/waveform/mod.rs`, tests.
 - Known-unknowns: parser nuances that may expose signal-like leaves as hierarchy scopes in specific FST dumps.
 - Steps:
 1. Add canonical `modules` command and wire command dispatch/output naming.
@@ -287,3 +287,47 @@
 5. Re-check cutover behavior (no `tree`, no `--human`, default human + `--json`, help hints).
 6. Confirm DoD checklist completion and record evidence links.
 - Outputs: Green gates and release-ready corrective scope with explicit verification trail.
+
+## Execution Log (Living Doc)
+
+### 2026-02-18 - Task 1 (docs baseline)
+- Completed PRD contract cutover updates:
+  - `tree` renamed to `modules` in command contract sections.
+  - Default mode documented as human for implemented scope (`info`, `modules`, `signals`) with explicit `--json` for strict envelope mode.
+  - `info` output fields updated to remove `time_precision`.
+  - External fixture provisioning model documented as container-baked payload at `/opt/rtl-artifacts`.
+  - Container-only quality gate rule documented for `make ci` and `make pre-commit`.
+- Completed changelog migration notes under `## [Unreleased]` to reflect direct cutover policy and user-visible behavior changes.
+- Decision: keep `schema`/`at`/`changes`/`when` docs on existing `--human` semantics for now (outside this corrective implementation scope).
+
+### 2026-02-18 - Tasks 2-4 (CLI entry/help/errors/help text)
+- `src/cli/mod.rs` updated to print top-level help on empty invocation and exit `0`.
+- Added deterministic clap error normalization with contextual hints (`wavepeek --help` vs `wavepeek <cmd> --help`) while preserving missing-argument detail lines.
+- Converted command `long_about` values to multiline raw literals.
+- Coverage added/updated in `tests/cli_contract.rs` for no-args behavior, `-h`/`--help`, `-V`/`--version`, and help-hint assertions.
+
+### 2026-02-18 - Tasks 5-9 (output migration + command surface changes)
+- Removed `--human` from `info`/`modules`/`signals`; added explicit `--json` switch.
+- Renamed command surface from `tree` to `modules` (no alias), including dispatch and output command key.
+- Added `modules --tree` visual renderer; confirmed `--json --tree` keeps flat JSON list with no extra warning.
+- Removed `time_precision` from waveform metadata model, info engine/output, tests, and PRD/changelog contract text.
+- Added `signals --abs`; human default now uses short names, JSON keeps full canonical paths.
+- Updated hierarchy traversal to emit module scopes only and keep deterministic depth-first ordering.
+
+### 2026-02-18 - Task 10 (fixture provisioning + container model)
+- Added dedicated Docker fixture stage in `.devcontainer/Dockerfile` keyed by `RTL_ARTIFACTS_VERSION`.
+- Added pinned downloads + SHA-256 verification for `picorv32_test_vcd.fst` and `scr1_max_axi_coremark.fst`.
+- Added `/opt/rtl-artifacts/MANIFEST.json` with version/files/checksums and copied payload through shared `base` stage so both `ci` and `dev` inherit it.
+- Added `WAVEPEEK_IN_CONTAINER=1` to both devcontainer configs and documented fixture workflow/version-bump process in `.devcontainer/AGENTS.md`.
+- Added Makefile fixture checks + manifest assertions (`version`, filenames, checksums) and manifest log output for CI provenance.
+
+### 2026-02-18 - Task 11 (regression sweep + gates)
+- Added external-fixture integration coverage in:
+  - `tests/info_cli.rs` (`picorv32_test_vcd.fst`)
+  - `tests/modules_cli.rs` (`scr1_max_axi_coremark.fst` regression semantics)
+  - `tests/signals_cli.rs` (`picorv32_test_vcd.fst` short-name human output)
+- Validation evidence:
+  - `cargo test` passed with `WAVEPEEK_RTL_ARTIFACTS_DIR=/tmp/rtl-artifacts`.
+  - `make ci` passed with `WAVEPEEK_IN_CONTAINER=1 RTL_ARTIFACTS_DIR=/tmp/rtl-artifacts WAVEPEEK_RTL_ARTIFACTS_DIR=/tmp/rtl-artifacts`.
+  - `make pre-commit` passed with the same env override.
+  - `make ci`/`make pre-commit` fail-fast confirmed when container marker is unset.

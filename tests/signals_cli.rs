@@ -16,8 +16,62 @@ fn fixture_path(filename: &str) -> PathBuf {
         .join(filename)
 }
 
+fn rtl_fixture_path(filename: &str) -> PathBuf {
+    let base = std::env::var("WAVEPEEK_RTL_ARTIFACTS_DIR")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| PathBuf::from("/opt/rtl-artifacts"));
+    base.join(filename)
+}
+
 #[test]
-fn signals_are_sorted_with_stable_shape_for_vcd() {
+fn signals_human_mode_uses_short_names_by_default() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    command
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--max",
+            "50",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("clk kind=wire width=1"))
+        .stdout(predicate::str::contains("top.cfg").not())
+        .stdout(predicate::str::contains("schema_version").not())
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn signals_human_mode_supports_absolute_paths_with_abs_flag() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+
+    command
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--abs",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("top.cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("top.clk kind=wire width=1"));
+}
+
+#[test]
+fn signals_json_shape_for_vcd_keeps_full_paths() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -31,6 +85,7 @@ fn signals_are_sorted_with_stable_shape_for_vcd() {
             "top",
             "--max",
             "50",
+            "--json",
         ])
         .assert()
         .success();
@@ -52,7 +107,7 @@ fn signals_are_sorted_with_stable_shape_for_vcd() {
 }
 
 #[test]
-fn signals_are_sorted_with_stable_shape_for_fst() {
+fn signals_json_shape_for_fst_keeps_full_paths() {
     let fixture = fixture_path("m2_core.fst");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -66,6 +121,7 @@ fn signals_are_sorted_with_stable_shape_for_fst() {
             "top",
             "--max",
             "50",
+            "--json",
         ])
         .assert()
         .success();
@@ -98,6 +154,7 @@ fn signals_filter_applies_to_signal_names() {
             "top",
             "--filter",
             "^c.*",
+            "--json",
         ])
         .assert()
         .success();
@@ -129,6 +186,7 @@ fn signals_emit_truncation_warning_when_max_is_hit() {
             "top",
             "--max",
             "1",
+            "--json",
         ])
         .assert()
         .success();
@@ -201,7 +259,8 @@ fn signals_invalid_regex_is_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args: invalid regex"));
+        .stderr(predicate::str::starts_with("error: args: invalid regex"))
+        .stderr(predicate::str::contains("See 'wavepeek signals --help'."));
 }
 
 #[test]
@@ -220,14 +279,76 @@ fn signals_human_mode_routes_truncation_warning_to_stderr() {
             "top",
             "--max",
             "1",
-            "--human",
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("top.cfg cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("cfg kind=unknown width=8"))
         .stdout(predicate::str::contains("schema_version").not())
         .stdout(predicate::str::contains("warning: truncated output").not())
         .stderr(predicate::str::contains(
             "warning: truncated output to 1 entries",
         ));
+}
+
+#[test]
+fn signals_json_output_is_bit_for_bit_deterministic_across_runs() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let first = wavepeek_cmd()
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--json",
+        ])
+        .output()
+        .expect("first run should execute");
+    let second = wavepeek_cmd()
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--json",
+        ])
+        .output()
+        .expect("second run should execute");
+
+    assert!(first.status.success());
+    assert!(second.status.success());
+    assert_eq!(first.stdout, second.stdout);
+    assert_eq!(first.stderr, second.stderr);
+}
+
+#[test]
+fn signals_external_picorv32_fixture_uses_short_names_by_default() {
+    let fixture = rtl_fixture_path("picorv32_test_vcd.fst");
+    assert!(
+        fixture.exists(),
+        "required external fixture is missing: {}",
+        fixture.display()
+    );
+
+    let mut command = wavepeek_cmd();
+    let fixture = fixture.to_string_lossy().into_owned();
+    command
+        .args([
+            "signals",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "testbench.top.uut",
+            "--max",
+            "8",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "BARREL_SHIFTER kind=unknown width=1",
+        ))
+        .stdout(predicate::str::contains("testbench.top.uut.BARREL_SHIFTER").not());
 }

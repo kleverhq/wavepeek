@@ -40,10 +40,10 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 ### 1.4 Design Principles
 
 1. **LLM-first** — Output formats, command structure, and error messages are designed for machine consumption
-2. **Self-documenting I/O** — Commands read as unambiguous descriptions of what they do. Default output is structured JSON with a stable, versioned schema.
+2. **Self-documenting I/O** — Commands read as unambiguous descriptions of what they do. Human-readable output is the default UX for implemented discovery commands, while strict machine output is explicit via `--json`.
 3. **Composable commands** — Unix philosophy: do one thing well, combine via pipes. Command names are unambiguous first, short second
 4. **Deterministic output** — Same input always produces same output (no timestamps, random IDs, etc.)
-5. **Stable formats** — JSON is the default output with an explicit schema version (`schema_version`). Human-friendly output is opt-in via `--human` and does not have a strict contract.
+5. **Stable formats** — JSON output uses an explicit schema version (`schema_version`) when `--json` is requested. Human-readable output remains intentionally flexible and is the default for implemented discovery commands.
 6. **Minimal footprint** — Fast startup, low memory, no background processes
 
 ---
@@ -88,9 +88,9 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   of `--signals`), or inherently finite output (e.g., `schema`). When list output is truncated due
   to `--max`, a warning is emitted.
 - **Bounded recursion.** Recursive commands have `--max-depth` with a default of 5.
-- **Output format.** Default output is JSON with a strict, stable contract.
-  All commands support `--human` for a human-friendly output mode that is not a strict contract.
-- **JSON envelope (default mode).** On success, default JSON output is a single object:
+- **Output format.** For implemented command surface in this phase (`info`, `modules`, `signals`), default output is human-readable.
+  Strict machine output is enabled explicitly with `--json`.
+- **JSON envelope (`--json` mode).** On success, JSON output is a single object:
 
   ```json
   {
@@ -104,7 +104,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   Notes:
   - `command` is the subcommand name and can be used to discriminate the shape of `data`.
   - `data` is an object for scalar outputs (e.g., `info`) and an array for list-like outputs.
-  - `warnings` is an array of free-form strings. In `--human` mode, warnings are printed to stderr.
+  - `warnings` is an array of free-form strings. In human mode, warnings are printed to stderr.
   - On error, stdout is empty; stderr contains `error: <category>: <message>` (see §5.6).
 - **Time format.** All time values require explicit units: `fs`, `ps`, `ns`, `us`, `ms`, `s`.
   The numeric part may be an integer or a decimal (e.g., `2000ps`, `1.5ns`).
@@ -120,7 +120,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 
 #### 3.2.0 `schema` — JSON schema export
 
-Outputs the JSON schema for wavepeek's default JSON output.
+Outputs the JSON schema for wavepeek's strict `--json` output envelope.
 
 ```
 wavepeek schema [--human]
@@ -140,42 +140,41 @@ wavepeek schema [--human]
 Outputs basic metadata about the waveform dump.
 
 ```
-wavepeek info --waves <file> [--human]
+wavepeek info --waves <file> [--json]
 ```
 
 **Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--waves <file>` | required | Path to VCD/FST file |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
-- Default output: JSON envelope with `data` as a single object.
-- In `--human` mode, prints a readable summary.
+- Default output: human-readable metadata summary.
+- `--json` prints strict JSON envelope output.
 
 **Output fields:**
 | Key | Description |
 |-----|-------------|
 | `time_unit` | Time unit of the dump (e.g., `1ns`) |
-| `time_precision` | Time precision (e.g., `1ps`) |
-| `time_start` | Start time of the dump (normalized to `time_precision`, e.g., `0ps`) |
-| `time_end` | End time of the dump (normalized to `time_precision`, e.g., `10000ps`) |
+| `time_start` | Start time of the dump (normalized time value, e.g., `0ns`) |
+| `time_end` | End time of the dump (normalized time value, e.g., `10000ns`) |
 
 **Examples:**
 ```bash
-# Default JSON
+# Default human-readable output
 wavepeek info --waves dump.vcd
 
-# Human-friendly
-wavepeek info --waves dump.vcd --human
+# Strict JSON envelope
+wavepeek info --waves dump.vcd --json
 ```
 
-#### 3.2.2 `tree` — Hierarchy exploration
+#### 3.2.2 `modules` — Hierarchy exploration
 
 Outputs a flat list of module instances, recursively traversing the hierarchy.
 
 ```
-wavepeek tree --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [--human]
+wavepeek modules --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [--tree] [--json]
 ```
 
 **Parameters:**
@@ -185,31 +184,35 @@ wavepeek tree --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [-
 | `--max <n>` | 50 | Maximum number of entries in output |
 | `--max-depth <n>` | 5 | Maximum traversal depth |
 | `--filter <regex>` | `.*` | Filter by full path (regex) |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--tree` | off | Render hierarchy as an indented tree in human mode |
+| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
 - Outputs flat list of instance paths with metadata
 - Ordering: pre-order depth-first traversal; children at each scope are visited in lexicographic order
-- Default output: JSON envelope with `data` as an array of objects.
+- Default output: human-readable list mode.
+- `--tree` switches human output to visual hierarchy rendering.
+- `--json` returns strict JSON envelope with a flat `data` array.
 - Invalid regex is an `args` error.
 - Each item has:
   - `path`: full scope path (string)
   - `depth`: integer depth (root = 0)
 - If results exceed `--max`, output is truncated and a warning is emitted.
+- Legacy `tree` command name is not supported.
 
 **Examples:**
 ```bash
-# List all modules (max 50, JSON output)
-wavepeek tree --waves dump.vcd
+# List all modules (default human output)
+wavepeek modules --waves dump.vcd
 
 # Find ALU-related modules
-wavepeek tree --waves dump.vcd --filter ".*alu.*"
+wavepeek modules --waves dump.vcd --filter ".*alu.*"
 
-# Explore 2 levels deep, human-friendly
-wavepeek tree --waves dump.vcd --max-depth 2 --human
+# Explore 2 levels deep with visual tree rendering
+wavepeek modules --waves dump.vcd --max-depth 2 --tree
 
 # Get all modules
-wavepeek tree --waves dump.vcd --max 1000
+wavepeek modules --waves dump.vcd --max 1000
 ```
 
 #### 3.2.3 `signals` — Signal listing
@@ -217,7 +220,7 @@ wavepeek tree --waves dump.vcd --max 1000
 Lists signals within a specific scope with their metadata.
 
 ```
-wavepeek signals --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--human]
+wavepeek signals --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -227,26 +230,29 @@ wavepeek signals --waves <file> --scope <path> [--max <n>] [--filter <regex>] [-
 | `--scope <path>` | required | Exact scope path (e.g., `top.cpu`) |
 | `--max <n>` | 50 | Maximum number of entries in output |
 | `--filter <regex>` | `.*` | Filter by signal name (regex) |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--abs` | off | Show full signal paths in human mode |
+| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
 - Lists signals directly in the specified scope (non-recursive)
-- Output fields (JSON): `name`, `path`, `kind`, `width` (signal metadata is TBD; `kind` will be a stable string enum and `width` will be optional)
+- Human mode defaults to short signal names (without scope prefix); `--abs` shows full paths.
+- Output fields (JSON): `name`, `path`, `kind`, `width` (`path` stays full/canonical in JSON mode)
 - Sorted alphabetically by name
-- Default output: JSON envelope with `data` as an array of objects.
+- Default output: human-readable listing.
+- `--json` returns strict JSON envelope with `data` as an array of objects.
 - Invalid regex is an `args` error.
 - If results exceed `--max`, output is truncated and a warning is emitted.
 
 **Examples:**
 ```bash
-# List signals in top.cpu
+# List signals in top.cpu (default human, short names)
 wavepeek signals --waves dump.vcd --scope top.cpu
 
 # Find clock signals
 wavepeek signals --waves dump.vcd --scope top.cpu --filter ".*clk.*"
 
-# Human-friendly
-wavepeek signals --waves dump.vcd --scope top.cpu --human
+# Human output with full paths
+wavepeek signals --waves dump.vcd --scope top.cpu --abs
 ```
 
 #### 3.2.4 `at` — Value extraction at time point
@@ -460,7 +466,7 @@ wavepeek when --waves dump.vcd --clk clk --scope top.cpu --cond "(a || b) && !re
 ### 4.4 LLM Agent Integration
 - Ready-made skill definition for LLM CLI agents (OpenCode, Codex CLI, Claude Code)
 - Skill shipped in repo with setup instructions
-- Deterministic default JSON output with stable schema versioning
+- Deterministic `--json` output with stable schema versioning for machine consumers
 
 ---
 
@@ -473,8 +479,8 @@ wavepeek when --waves dump.vcd --clk clk --scope top.cpu --cond "(a || b) && !re
 | **Language** | Rust stable (MSRV TBD) | Performance, memory safety, zero-cost abstractions. Ideal for parsing large binary/text dump files without GC pauses. |
 | **CLI framework** | `clap` (derive API) | De-facto standard for Rust CLIs. Derive API provides self-documenting argument definitions with compile-time validation. |
 | **Waveform parsing** | `wellen` | Unified interface for VCD and FST formats. Battle-tested in the [Surfer](https://surfer-project.org/) waveform viewer. Multi-threaded VCD parsing via `rayon`. Optimized for on-demand signal access (loads hierarchy first, signal data lazily). |
-| **Serialization** | `serde` + `serde_json` | Standard Rust serialization. Used for default JSON output and JSON schema export. |
-| **Pattern matching** | `regex` | For `--filter` flag in `tree` and `signals` commands. |
+| **Serialization** | `serde` + `serde_json` | Standard Rust serialization. Used for strict `--json` envelope output and JSON schema export. |
+| **Pattern matching** | `regex` | For `--filter` flag in `modules` and `signals` commands. |
 | **Error handling** | `thiserror` | Typed error enums with `#[derive(Error)]`. All error variants are known at compile time. No runtime error boxing (no `anyhow`). |
 | **Build automation** | Cargo + Make | Cargo for compilation. Makefile provides shorthand targets: `make format`, `make format-check`, `make lint`, `make test`, `make check`. |
 
@@ -487,10 +493,10 @@ The CLI layer formats results for output.
 **Layers (top to bottom):**
 
 1. **CLI Layer** (`clap`) — Argument parsing, validation, output formatting.
-   Default JSON output to stdout (strict contract), human-friendly output via `--human`, errors to stderr.
+   Human-readable default output for implemented discovery commands (`info`, `modules`, `signals`), strict JSON via `--json`, errors to stderr.
    Passes typed command structs down to the engine.
 
-2. **Engine Layer** — Business logic per command: `info`, `tree`, `signals`,
+2. **Engine Layer** — Business logic per command: `info`, `modules`, `signals`,
    `at`, `changes`, `when`, `schema`. Operates on waveform abstractions, returns structured
    results. Contains expression evaluator (for `when`).
 
@@ -500,7 +506,7 @@ The CLI layer formats results for output.
 
 **Key architectural decisions:**
 
-- **Stable output schema.** Default JSON output uses a versioned schema.
+- **Stable output schema.** JSON output in `--json` mode uses a versioned schema.
   Implementation may introduce internal data structures to stabilize the output contract
   independently of upstream dependency APIs.
 
@@ -524,7 +530,7 @@ src/
 ├── cli/                 # CLI layer: argument definitions and output formatting
 │   ├── mod.rs           # Top-level CLI struct, subcommand dispatch
 │   ├── info.rs          # `info` command args + output
-│   ├── tree.rs          # `tree` command args + output
+│   ├── modules.rs       # `modules` command args + output
 │   ├── signals.rs       # `signals` command args + output
 │   ├── at.rs            # `at` command args + output
 │   ├── changes.rs       # `changes` command args + output
@@ -533,7 +539,7 @@ src/
 ├── engine/              # Business logic per command
 │   ├── mod.rs           # Shared types (result structs, time parsing)
 │   ├── info.rs          # Dump metadata extraction
-│   ├── tree.rs          # Hierarchy traversal with depth/filter
+│   ├── modules.rs       # Hierarchy traversal with depth/filter
 │   ├── signals.rs       # Signal listing within scope
 │   ├── at.rs            # Value extraction at time point
 │   ├── changes.rs       # Value change tracking (clocked/unclocked)
@@ -569,7 +575,7 @@ src/
 | `clap` | ~4 | CLI argument parsing | With `derive` feature for declarative argument definitions. |
 | `serde` | ~1 | Serialization framework | With `derive` feature. |
 | `serde_json` | ~1 | JSON output | Default output serialization and schema export. |
-| `regex` | ~1 | Pattern matching | For `--filter` in `tree` and `signals`. |
+| `regex` | ~1 | Pattern matching | For `--filter` in `modules` and `signals`. |
 | `thiserror` | ~2 | Error type derivation | `#[derive(Error)]` for typed error enums. |
 
 **Dev dependencies:**
@@ -646,8 +652,8 @@ error: expr: parse error in condition: unexpected token ')' at position 12
 **Warnings:**
 
 - Warnings (e.g., output truncation due to `--max`, no matches in a query) do not change exit code (still `0`).
-- In default JSON mode, warnings are appended to the `warnings` array in the JSON envelope.
-- In `--human` mode, warnings are printed to stderr as free-form text.
+- In `--json` mode, warnings are appended to the `warnings` array in the JSON envelope.
+- In human mode, warnings are printed to stderr as free-form text.
 
 **Error enum:**
 
@@ -662,7 +668,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 | Level | What | How | Fixtures |
 |-------|------|-----|----------|
 | **Unit tests** | Individual functions in `engine/`, `expr/`, `waveform/` | `#[cfg(test)]` modules, `cargo test` | Hand-crafted VCD strings (inline or small `.vcd` files) |
-| **Integration tests** | Full CLI invocations end-to-end | `assert_cmd` in `tests/` directory | Committed VCD/FST fixtures |
+| **Integration tests** | Full CLI invocations end-to-end | `assert_cmd` in `tests/` directory | Hand fixtures + container-provisioned fixtures at `/opt/rtl-artifacts` |
 | **Expression tests** | Lexer, parser, evaluator independently | Unit tests in `expr/` submodules | None (pure logic, string inputs) |
 
 **Test fixture strategy (two sources):**
@@ -672,19 +678,24 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
    multi-bit signals, X/Z values, multiple scopes, deep hierarchy, time edge cases
    (zero duration, single timestamp). Stored in `tests/fixtures/hand/`.
 
-2. **Committed representative FST fixtures** — For integration tests. Fixtures are
-   checked into the repository and cover realistic hierarchy names, typical signal
-   patterns, clock-data relationships, and multi-format consistency (same design
-   represented as VCD and FST should produce identical output).
+2. **Container-provisioned representative fixtures** — For integration tests.
+   Required large fixtures are downloaded during devcontainer/CI image build from
+   a pinned release version and installed under `/opt/rtl-artifacts` with checksum
+   verification and a manifest. Runtime test execution does not download fixtures.
 
 **What to assert in integration tests:**
 
 - Exact stdout output (deterministic output is a design principle)
 - Exit code
 - Stderr content for error cases
-- Default JSON output validates against expected JSON structure and schema version
-- `--human` output is not asserted for exact formatting (no strict contract)
+- `--json` output validates against expected JSON structure and schema version
+- Human output is not asserted for exact formatting (no strict contract)
 - Consistency: same query on VCD and FST of the same design produces identical output
+
+**Quality gate execution environment:**
+
+- `make ci` and `make pre-commit` are container-only workflows.
+- Outside containerized environments these targets fail fast with a clear diagnostic.
 
 ---
 
@@ -703,11 +714,11 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 ### M2: Core CLI (→ v0.2.0)
 
 - `info` command (§3.2.1)
-- `tree` command (§3.2.2)
+- `modules` command (§3.2.2)
 - `signals` command (§3.2.3)
 - VCD + FST format support
-- JSON default output (strict, versioned schema)
-- `--human` output for all commands (no strict contract)
+- Human default output for discovery commands with explicit `--json` contract mode
+- `tree` command surface replaced by `modules` (no alias)
 - Error handling: WavepeekError enum, exit codes, stderr format (§5.6)
 - Hand-crafted VCD test fixtures
 - Integration tests with `assert_cmd`
@@ -717,7 +728,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - `at` command (§3.2.4)
 - `changes` command — unclocked + clocked modes (§3.2.5)
 - Time parsing with mandatory units (`--from`, `--to`, `--time`)
-- Expanded committed fixtures for value-extraction scenarios
+- Expanded container-provisioned fixtures for value-extraction scenarios
 
 ### M4: Query Engine (→ v0.4.0)
 

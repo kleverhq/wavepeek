@@ -7,7 +7,7 @@ pub struct InfoArgs {
     /// Path to VCD/FST waveform file
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
-    /// Human-friendly output mode
+    /// Strict JSON envelope output
     #[arg(long)]
-    pub human: bool,
+    pub json: bool,
 }

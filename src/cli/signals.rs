@@ -16,7 +16,10 @@ pub struct SignalsArgs {
     /// Regex filter for signal name
     #[arg(long, default_value = ".*")]
     pub filter: String,
-    /// Human-friendly output mode
+    /// Show absolute paths in human output
     #[arg(long)]
-    pub human: bool,
+    pub abs: bool,
+    /// Strict JSON envelope output
+    #[arg(long)]
+    pub json: bool,
 }

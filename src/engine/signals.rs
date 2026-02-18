@@ -17,12 +17,15 @@ pub struct SignalEntry {
 pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
     if args.max == 0 {
         return Err(WavepeekError::Args(
-            "--max must be greater than 0".to_string(),
+            "--max must be greater than 0. See 'wavepeek signals --help'.".to_string(),
         ));
     }
 
     let filter = Regex::new(args.filter.as_str()).map_err(|error| {
-        WavepeekError::Args(format!("invalid regex '{}': {error}", args.filter))
+        WavepeekError::Args(format!(
+            "invalid regex '{}': {error}. See 'wavepeek signals --help'.",
+            args.filter
+        ))
     })?;
 
     let waveform = Waveform::open(args.waves.as_path())?;
@@ -49,7 +52,11 @@ pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Signals,
-        human: args.human,
+        json: args.json,
+        human_options: crate::engine::HumanRenderOptions {
+            modules_tree: false,
+            signals_abs: args.abs,
+        },
         data: CommandData::Signals(entries),
         warnings,
     })

@@ -1,9 +1,9 @@
 pub mod at;
 pub mod changes;
 pub mod info;
+pub mod modules;
 pub mod schema;
 pub mod signals;
-pub mod tree;
 pub mod when;
 
 use serde::Serialize;
@@ -15,7 +15,7 @@ use crate::error::WavepeekError;
 pub enum Command {
     Schema(cli::schema::SchemaArgs),
     Info(cli::info::InfoArgs),
-    Tree(cli::tree::TreeArgs),
+    Modules(cli::modules::ModulesArgs),
     Signals(cli::signals::SignalsArgs),
     At(cli::at::AtArgs),
     Changes(cli::changes::ChangesArgs),
@@ -26,7 +26,7 @@ pub enum Command {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandName {
     Info,
-    Tree,
+    Modules,
     Signals,
 }
 
@@ -34,10 +34,16 @@ impl CommandName {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Info => "info",
-            Self::Tree => "tree",
+            Self::Modules => "modules",
             Self::Signals => "signals",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct HumanRenderOptions {
+    pub modules_tree: bool,
+    pub signals_abs: bool,
 }
 
 #[allow(dead_code)]
@@ -45,7 +51,7 @@ impl CommandName {
 #[serde(untagged)]
 pub enum CommandData {
     Info(info::InfoData),
-    Tree(Vec<tree::TreeEntry>),
+    Modules(Vec<modules::ModulesEntry>),
     Signals(Vec<signals::SignalEntry>),
 }
 
@@ -54,7 +60,9 @@ pub struct CommandResult {
     #[serde(skip)]
     pub command: CommandName,
     #[serde(skip)]
-    pub human: bool,
+    pub json: bool,
+    #[serde(skip)]
+    pub human_options: HumanRenderOptions,
     pub data: CommandData,
     pub warnings: Vec<String>,
 }
@@ -63,7 +71,7 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
     match command {
         Command::Schema(args) => schema::run(args),
         Command::Info(args) => info::run(args),
-        Command::Tree(args) => tree::run(args),
+        Command::Modules(args) => modules::run(args),
         Command::Signals(args) => signals::run(args),
         Command::At(args) => at::run(args),
         Command::Changes(args) => changes::run(args),

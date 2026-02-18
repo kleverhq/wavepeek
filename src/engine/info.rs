@@ -7,7 +7,6 @@ use serde::Serialize;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct InfoData {
     pub time_unit: String,
-    pub time_precision: String,
     pub time_start: String,
     pub time_end: String,
 }
@@ -18,10 +17,10 @@ pub fn run(args: InfoArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Info,
-        human: args.human,
+        json: args.json,
+        human_options: crate::engine::HumanRenderOptions::default(),
         data: CommandData::Info(InfoData {
             time_unit: metadata.time_unit,
-            time_precision: metadata.time_precision,
             time_start: metadata.time_start,
             time_end: metadata.time_end,
         }),

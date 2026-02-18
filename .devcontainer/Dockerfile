@@ -30,6 +30,46 @@ RUN ${CARGO_HOME}/bin/cargo install --locked \
     --root ${SURFER_INSTALL} \
     surfer
 
+# ---- RTL Fixture Layer --------------------------------------------------------
+FROM ubuntu:24.04 AS rtl_artifacts
+
+ENV DEBIAN_FRONTEND=noninteractive
+ARG RTL_ARTIFACTS_VERSION=v1.0.0
+ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p ${RTL_ARTIFACTS_DIR} && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/picorv32_test_vcd.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/picorv32_test_vcd.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_coremark.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_coremark.fst && \
+    printf '%s  %s\n' \
+      e01bbb94f3e934227ed371fdc1091a7b35868eeb1eb017567672e5d0e9621b25 \
+      ${RTL_ARTIFACTS_DIR}/picorv32_test_vcd.fst | sha256sum -c - && \
+    printf '%s  %s\n' \
+      1413002528f41c9e1dcbb5ff9f80e6e5edcb0e06093a18b8ada23da4ab283053 \
+      ${RTL_ARTIFACTS_DIR}/scr1_max_axi_coremark.fst | sha256sum -c -
+
+RUN cat <<EOF > ${RTL_ARTIFACTS_DIR}/MANIFEST.json
+{
+  "version": "${RTL_ARTIFACTS_VERSION}",
+  "files": [
+    {
+      "name": "picorv32_test_vcd.fst",
+      "sha256": "e01bbb94f3e934227ed371fdc1091a7b35868eeb1eb017567672e5d0e9621b25"
+    },
+    {
+      "name": "scr1_max_axi_coremark.fst",
+      "sha256": "1413002528f41c9e1dcbb5ff9f80e6e5edcb0e06093a18b8ada23da4ab283053"
+    }
+  ]
+}
+EOF
+
 # ---- Base Image --------------------------------------------------------------
 FROM ubuntu:24.04 AS base
 
@@ -52,6 +92,9 @@ RUN if ! id -u ubuntu >/dev/null 2>&1; then useradd -m -s /bin/bash ubuntu; fi
 
 # Ensure /workspaces exists and is writable
 RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /workspaces
+
+# Provision pinned RTL fixtures for tests
+COPY --from=rtl_artifacts /opt/rtl-artifacts /opt/rtl-artifacts
 
 # Switch to non-root user
 USER ubuntu

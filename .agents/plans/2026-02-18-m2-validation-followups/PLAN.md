@@ -11,7 +11,7 @@
 - Rename `tree` command to `modules` as a direct cutover (no compatibility alias).
 - Fix module hierarchy listing on realistic FST data (regression-proofed).
 - Remove redundant `time_precision` field and keep only `time_unit` in `info` output.
-- Switch default output mode to human-readable and introduce explicit `--json` envelope mode as the only machine-output switch for commands in scope.
+- Switch default output mode to human-readable and introduce explicit `--json` envelope mode as the only machine-output switch for all commands.
 - Improve human output ergonomics (`modules --tree`, `signals` short names + `--abs`).
 - Provision required large fixtures in devcontainer image layer at stable path `/opt/rtl-artifacts`.
 
@@ -40,24 +40,24 @@
 - `VF-R3` (issues 4-5): All `error: args:` messages include specific failure context and a help hint (`See 'wavepeek <cmd> --help'` or `See 'wavepeek --help'`).
 - `VF-R4` (issue 6): Convert long command help descriptions to multiline string literals in CLI definitions.
 - `VF-R5` (issue 7): Remove `time_precision` from `info` data model/output/docs; keep `time_unit`, `time_start`, `time_end`.
-- `VF-R6` (issue 8): For implemented command surface in this release (`info`, `modules`, `signals`), default output mode is human-readable; `--json` enables strict envelope output.
+- `VF-R6` (issue 8): Default output mode is human-readable for all commands; `--json` enables strict envelope output.
 - `VF-R7` (issues 9, 11): Rename `tree` to canonical `modules`, remove `tree` from CLI surface, and ensure output is module hierarchy (not signals).
 - `VF-R8` (issue 10): Add optional human renderer `--tree` for `modules`; in JSON mode, `--tree` is accepted but ignored (no extra warning).
 - `VF-R9` (issue 12): In `signals` human mode, print names without scope by default; `--abs` prints full paths; JSON remains full-path.
 - `VF-R10` (issue 13): Provision required fixtures (`picorv32_test_vcd.fst`, `scr1_max_axi_coremark.fst`) in devcontainer image build from release `v1.0.0` and expose them under `/opt/rtl-artifacts`.
 - `VF-R11`: Expand integration matrix to lock all fixture-dependent corrected behaviors and regressions using fixtures available at `/opt/rtl-artifacts`.
-- `VF-R12`: Remove `--human` flag from commands in scope (`info`, `modules`, `signals`); output mode control is default human + explicit `--json`.
+- `VF-R12`: Remove `--human` flag from CLI surface; output mode control is default human + explicit `--json`.
 - **Non-functional / constraints:**
 - `VF-R13`: Preserve deterministic JSON output in `--json` mode (`schema_version`, `command`, `data`, `warnings`).
 - `VF-R14`: Keep stderr error format stable: `error: <category>: <message>`.
 - `VF-R15`: `make ci` and `make pre-commit` run only inside containerized environments (devcontainer/CI container).
-- `VF-R16`: Docker image fixture layer is versioned by variable (`RTL_ARTIFACTS_VERSION`) and checksum-verified.
+- `VF-R16`: Docker image fixture layer is versioned by variable (`RTL_ARTIFACTS_VERSION`).
 - `VF-R17`: Fixture install path is stable (`/opt/rtl-artifacts`) without embedding version in directory name.
 - `VF-R18`: Fixture provisioning is implemented as a dedicated Dockerfile layer to maximize cache reuse.
 - `VF-R19`: `make ci` and `make pre-commit` include tests depending on `/opt/rtl-artifacts`; no runtime fixture download in test execution.
 - `VF-R20`: Both `ci` and `dev` image targets include the same `/opt/rtl-artifacts` fixture payload.
 - `VF-R21`: Enforce container-only quality-gate execution via explicit guard (outside-container `make ci`/`make pre-commit` fails fast with clear message).
-- `VF-R22`: Persist fixture provenance manifest (`version`, `files`, `sha256`) in image and assert it in CI logs for reproducibility even with cached layers.
+- `VF-R22`: Keep fixture provenance reproducible by pinning artifact version in Dockerfile and using stable artifact names/paths.
 
 ## Traceability Matrix
 | Scope item | Requirement IDs | Tasks | DoD checks | Primary artifacts |
@@ -99,7 +99,7 @@
 - **Risk:** Breaking CLI contracts during direct cutover (`tree`, `--human`). **Mitigation:** update PRD/changelog first and lock behavior with integration tests in the same change set.
 - **Risk:** JSON/human mode confusion after cutover. **Mitigation:** single-mode rule (default human + explicit `--json`) and focused contract tests.
 - **Risk:** `modules` hierarchy bug is fixture-specific and hard to generalize. **Mitigation:** codify regression tests against downloaded real fixtures plus existing small fixtures.
-- **Risk:** Network flakiness shifts to container build stage. **Mitigation:** isolated fixture Docker layer with checksum verification and layer caching; build fails fast on mismatch.
+- **Risk:** Network flakiness shifts to container build stage. **Mitigation:** isolated fixture Docker layer with version pinning and layer caching.
 - **Risk:** Container image size increase from bundled fixtures. **Mitigation:** keep fixture set minimal to required files and rely on Docker layer caching.
 
 ## Rollout / Migration Plan
@@ -115,17 +115,17 @@
 
 ## Observability
 - Add integration assertions for all CLI entry/error/help/version behaviors.
-- Emit clear container build logs for fixture download source, artifact version, and checksum validation results.
-- Emit and inspect `/opt/rtl-artifacts/MANIFEST.json` in CI for reproducible fixture provenance.
+- Emit clear container build logs for fixture download source and artifact version.
+- Validate reproducible fixture provenance via pinned Dockerfile version and stable install path.
 - Track fixture-layer build failures as infrastructure-classified in CI triage.
 - Verify deterministic JSON stability by repeated-run assertions in `--json` mode.
 
 ## Resolved Decisions
 - Command surface cutover: `tree` is replaced by `modules` immediately in this fix scope; no command alias is kept.
 - Output mode cutover: default is human and explicit `--json` enables envelope mode; no `WAVEPEEK_OUTPUT_DEFAULT` bridge is used.
-- `--human` flag handling: remove `--human` from commands in scope and rely on default human mode.
+- `--human` flag handling: remove `--human` from CLI surface and rely on default human mode.
 - `--json --tree` interaction: JSON output stays flat list; `--tree` is ignored without extra warning.
-- Fixture integrity source: pin SHA-256 checksums for required release assets in Dockerfile logic and verify at image build time.
+- Fixture integrity source: pin release version in Dockerfile for required artifacts.
 - Fixture provisioning model: download artifacts in a dedicated Dockerfile layer, keyed by `RTL_ARTIFACTS_VERSION`, and install at stable path `/opt/rtl-artifacts` in both `ci` and `dev` targets.
 - Quality-gate execution model: all `make` quality gates are container-only and include fixture-backed tests.
 
@@ -146,7 +146,7 @@
 - [x] `D5`: Command `long_about` strings are multiline literals in CLI definitions.
 - [x] `D6`: Default output for implemented commands in this scope (`info`, `modules`, `signals`) is human-readable when no format flag is provided.
 - [x] `D7`: `--json` output matches strict envelope keys and deterministic ordering/content.
-- [x] `D8`: `--human` is removed for commands in scope (`info`, `modules`, `signals`) and tests assert the expected args error/hint if passed.
+- [x] `D8`: `--human` is removed from CLI surface and tests assert the expected args error/hint if passed.
 - [x] `D9`: `modules` command exists and is shown in help output as canonical command.
 - [x] `D10`: `tree` invocation is rejected (no alias) with `error: args:` and help hint.
 - [x] `D11`: Regression test with `scr1_max_axi_coremark.fst` confirms module paths (not signal leaves) in module listing.
@@ -156,11 +156,11 @@
 - [x] `D15`: `signals` human mode defaults to short names; no scope prefix unless `--abs` is set.
 - [x] `D16`: `signals --json` continues to include full signal paths deterministically.
 - [x] `D17`: Integration tests for commands in scope use fixture files from `/opt/rtl-artifacts`.
-- [x] `D18`: Dockerfile contains dedicated fixture layer that downloads required artifacts and verifies SHA-256 checksums.
+- [x] `D18`: Dockerfile contains dedicated fixture layer that downloads required artifacts pinned by version.
 - [x] `D19`: Fixture layer uses `RTL_ARTIFACTS_VERSION` variable and keeps install path stable as `/opt/rtl-artifacts`.
 - [x] `D20`: Both `ci` and `dev` image targets include `/opt/rtl-artifacts` fixture payload.
 - [x] `D21`: `make ci` and `make pre-commit` pass inside container with fixture-backed tests and no runtime fixture download.
-- [x] `D22`: CI output includes manifest-based provenance check (`/opt/rtl-artifacts/MANIFEST.json`) with artifact version and checksums.
+- [x] `D22`: Fixture provenance is pinned by Dockerfile version and stable artifact paths.
 - [x] `D23`: PRD and changelog reflect direct cutover decisions (`modules` rename, no aliases, default human + `--json`, container-baked fixtures, container-only make workflow).
 - [x] `D24`: Container-only guard is enforced: `make ci`/`make pre-commit` fail fast with clear message when container marker is absent.
 
@@ -173,7 +173,7 @@
 - Steps:
 1. Update PRD sections for output default mode, command naming (`modules`), and `info` field set.
 2. Add migration notes and user-visible changes under `## [Unreleased]` in `CHANGELOG.md`.
-3. Record direct cutover policy (no command aliases, no output-default bridge, no `--human` in scope commands) in docs.
+3. Record direct cutover policy (no command aliases, no output-default bridge, no `--human`) in docs.
 - Outputs: Documentation baseline that matches the intended implementation.
 
 ### Task 2: Fix top-level invocation/help/version contracts (~2-3h)
@@ -212,8 +212,8 @@
 - Known-unknowns: none blocking; direct cutover policy is pre-decided in this plan.
 - Steps:
 1. Introduce output-mode flags such that default is human and `--json` enforces envelope mode.
-2. Remove `--human` flag handling for commands in scope and keep output selection as default human vs explicit `--json`.
-3. Update integration tests to assert default human output, explicit JSON envelope output, and rejected `--human` behavior.
+2. Remove `--human` flag handling and keep output selection as default human vs explicit `--json`.
+3. Update integration tests to assert default human output, explicit JSON envelope output, and rejected `--human` behavior across command surface.
 4. Keep JSON schema contract deterministic and unchanged in `--json` mode.
 - Outputs: Migrated output behavior with explicit tests for both user-facing and machine-facing modes.
 
@@ -266,13 +266,12 @@
 - Known-unknowns: none blocking; artifact names and source release are fixed.
 - Steps:
 1. Add dedicated Dockerfile layer/stage that downloads required artifacts using variable `RTL_ARTIFACTS_VERSION`.
-2. Verify artifact SHA-256 checksums during image build and fail build on mismatch.
+2. Pin artifact release version in Dockerfile (`RTL_ARTIFACTS_VERSION`).
 3. Install artifacts into stable path `/opt/rtl-artifacts` (no version in directory name).
 4. Ensure both `ci` and `dev` targets include `/opt/rtl-artifacts` payload.
-5. Generate fixture provenance manifest (for example `/opt/rtl-artifacts/MANIFEST.json`) containing artifact version, file names, and checksums.
-6. Add container marker env (for example `WAVEPEEK_IN_CONTAINER=1`) in devcontainer/CI configs and enforce Makefile guard for `make ci`/`make pre-commit`.
-7. Update test paths to consume `/opt/rtl-artifacts/*` directly and remove runtime fixture download logic.
-8. Document fixture provisioning behavior and version bump workflow in docs.
+5. Add container marker env (for example `WAVEPEEK_IN_CONTAINER=1`) in devcontainer/CI configs and enforce Makefile guard for `make ci`/`make pre-commit`.
+6. Update test paths to consume `/opt/rtl-artifacts/*` directly and remove runtime fixture download logic.
+7. Document fixture provisioning behavior and version bump workflow in docs.
 - Outputs: Fixture-backed tests run without network access during `cargo test`/`make` execution.
 
 ### Task 11: Final regression sweep and quality gates (~2-3h)
@@ -282,7 +281,7 @@
 - Steps:
 1. Run focused CLI integration suites for each corrected issue area.
 2. Run `make ci` and `make pre-commit` inside container and fix regressions until green.
-3. Assert fixture provenance output in CI logs via manifest inspection.
+3. Assert fixture payload availability/version pin assumptions during CI-quality-gate execution.
 4. Verify container guard behavior by running gate commands with container marker unset and confirming fail-fast diagnostics.
 5. Re-check cutover behavior (no `tree`, no `--human`, default human + `--json`, help hints).
 6. Confirm DoD checklist completion and record evidence links.
@@ -298,7 +297,7 @@
   - External fixture provisioning model documented as container-baked payload at `/opt/rtl-artifacts`.
   - Container-only quality gate rule documented for `make ci` and `make pre-commit`.
 - Completed changelog migration notes under `## [Unreleased]` to reflect direct cutover policy and user-visible behavior changes.
-- Decision: keep `schema`/`at`/`changes`/`when` docs on existing `--human` semantics for now (outside this corrective implementation scope).
+- Decision update: output contract (`default human` + `--json`) is now applied across all command docs.
 
 ### 2026-02-18 - Tasks 2-4 (CLI entry/help/errors/help text)
 - `src/cli/mod.rs` updated to print top-level help on empty invocation and exit `0`.
@@ -307,7 +306,7 @@
 - Coverage added/updated in `tests/cli_contract.rs` for no-args behavior, `-h`/`--help`, `-V`/`--version`, and help-hint assertions.
 
 ### 2026-02-18 - Tasks 5-9 (output migration + command surface changes)
-- Removed `--human` from `info`/`modules`/`signals`; added explicit `--json` switch.
+- Removed `--human` from CLI args and applied explicit `--json` switch semantics across command surface.
 - Renamed command surface from `tree` to `modules` (no alias), including dispatch and output command key.
 - Added `modules --tree` visual renderer; confirmed `--json --tree` keeps flat JSON list with no extra warning.
 - Removed `time_precision` from waveform metadata model, info engine/output, tests, and PRD/changelog contract text.
@@ -316,10 +315,10 @@
 
 ### 2026-02-18 - Task 10 (fixture provisioning + container model)
 - Added dedicated Docker fixture stage in `.devcontainer/Dockerfile` keyed by `RTL_ARTIFACTS_VERSION`.
-- Added pinned downloads + SHA-256 verification for `picorv32_test_vcd.fst` and `scr1_max_axi_coremark.fst`.
-- Added `/opt/rtl-artifacts/MANIFEST.json` with version/files/checksums and copied payload through shared `base` stage so both `ci` and `dev` inherit it.
+- Added pinned downloads for `picorv32_test_vcd.fst` and `scr1_max_axi_coremark.fst` via `RTL_ARTIFACTS_VERSION`.
+- Copied `/opt/rtl-artifacts` payload through shared `base` stage so both `ci` and `dev` inherit it.
 - Added `WAVEPEEK_IN_CONTAINER=1` to both devcontainer configs and documented fixture workflow/version-bump process in `.devcontainer/AGENTS.md`.
-- Added Makefile fixture checks + manifest assertions (`version`, filenames, checksums) and manifest log output for CI provenance.
+- Added Makefile fixture checks for required files and simplified version-pinned provisioning workflow.
 
 ### 2026-02-18 - Task 11 (regression sweep + gates)
 - Added external-fixture integration coverage in:
@@ -331,3 +330,9 @@
   - `make ci` passed with `WAVEPEEK_IN_CONTAINER=1 RTL_ARTIFACTS_DIR=/tmp/rtl-artifacts WAVEPEEK_RTL_ARTIFACTS_DIR=/tmp/rtl-artifacts`.
   - `make pre-commit` passed with the same env override.
   - `make ci`/`make pre-commit` fail-fast confirmed when container marker is unset.
+
+### 2026-02-18 - Post-implementation user-directed adjustments
+- Removed `RTL_ARTIFACTS_VERSION` overrides from `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json`; version pin now lives only in `.devcontainer/Dockerfile` (same style as `SURFER_VERSION`).
+- Dropped checksum/manifest workflow: removed Dockerfile SHA checks, removed manifest generation, and simplified Makefile fixture checks to required file presence.
+- Expanded output-contract cutover to all command docs/CLI flags: default human + explicit `--json`, no `--human` surface.
+- Strengthened container enforcement model by attaching `require-container` to leaf Makefile command targets (not only aggregate gates).

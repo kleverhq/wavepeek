@@ -2,10 +2,7 @@
     "name": "wavepeek-ci",
     "build": {
         "dockerfile": "Dockerfile",
-        "target": "ci",
-        "args": {
-            "RTL_ARTIFACTS_VERSION": "v1.0.0"
-        }
+        "target": "ci"
     },
     "containerEnv": {
         "WAVEPEEK_IN_CONTAINER": "1"

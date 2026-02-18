@@ -2,7 +2,7 @@ use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct SchemaArgs {
-    /// Human-friendly output mode
+    /// Strict JSON envelope output
     #[arg(long)]
-    pub human: bool,
+    pub json: bool,
 }

@@ -156,7 +156,7 @@ Wavepeek is "LLM-first" and expects output stability:
 
 - No positional arguments; all args are named flags.
 - The waveform file flag is always `--waves`.
-- Default output: JSON envelope with stable schema version; `--human` enables human-friendly output without a strict contract.
+- Default output is human-readable; `--json` enables strict JSON envelope output with stable schema version.
 - Time values require explicit units; reject bare numbers.
 
 ### Testing Expectations

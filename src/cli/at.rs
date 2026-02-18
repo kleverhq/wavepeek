@@ -16,7 +16,7 @@ pub struct AtArgs {
     /// Comma-separated signal names
     #[arg(long, value_delimiter = ',', num_args = 1..)]
     pub signals: Vec<String>,
-    /// Human-friendly output mode
+    /// Strict JSON envelope output
     #[arg(long)]
-    pub human: bool,
+    pub json: bool,
 }

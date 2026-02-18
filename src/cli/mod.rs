@@ -28,11 +28,12 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     #[command(
-        about = "Export JSON schema for default output",
-        long_about = r#"Outputs the JSON schema for wavepeek's default JSON output.
+        about = "Export JSON schema for strict output",
+        long_about = r#"Outputs the JSON schema for wavepeek's strict JSON envelope output.
 
-By default this command returns structured JSON output; use --human for
-a human-friendly summary."#
+By default this command prints a human-readable summary.
+
+Use --json to print structured JSON output."#
     )]
     Schema(schema::SchemaArgs),
     #[command(
@@ -71,7 +72,9 @@ Use --json for strict envelope mode."#
         long_about = r#"Gets signal values at a specific time point.
 
 Supports full signal paths or names relative to --scope while preserving
-the order from --signals."#
+the order from --signals.
+
+Default output is human-readable. Use --json for strict envelope mode."#
     )]
     At(at::AtArgs),
     #[command(
@@ -79,7 +82,9 @@ the order from --signals."#
         long_about = r#"Outputs snapshots of signal values over a time range.
 
 Supports unclocked mode (any tracked signal change) and clocked mode
-(posedge of --clk)."#
+(posedge of --clk).
+
+Default output is human-readable. Use --json for strict envelope mode."#
     )]
     Changes(changes::ChangesArgs),
     #[command(
@@ -87,7 +92,9 @@ Supports unclocked mode (any tracked signal change) and clocked mode
         long_about = r#"Finds clock cycles where a boolean expression evaluates to true.
 
 The condition is evaluated on each posedge of --clk and can return all,
-first N, or last N matches."#
+first N, or last N matches.
+
+Default output is human-readable. Use --json for strict envelope mode."#
     )]
     When(when::WhenArgs),
 }

@@ -40,10 +40,10 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 ### 1.4 Design Principles
 
 1. **LLM-first** — Output formats, command structure, and error messages are designed for machine consumption
-2. **Self-documenting I/O** — Commands read as unambiguous descriptions of what they do. Human-readable output is the default UX for implemented discovery commands, while strict machine output is explicit via `--json`.
+2. **Self-documenting I/O** — Commands read as unambiguous descriptions of what they do. Human-readable output is the default UX, while strict machine output is explicit via `--json`.
 3. **Composable commands** — Unix philosophy: do one thing well, combine via pipes. Command names are unambiguous first, short second
 4. **Deterministic output** — Same input always produces same output (no timestamps, random IDs, etc.)
-5. **Stable formats** — JSON output uses an explicit schema version (`schema_version`) when `--json` is requested. Human-readable output remains intentionally flexible and is the default for implemented discovery commands.
+5. **Stable formats** — JSON output uses an explicit schema version (`schema_version`) when `--json` is requested. Human-readable output remains intentionally flexible and is the default for all commands.
 6. **Minimal footprint** — Fast startup, low memory, no background processes
 
 ---
@@ -88,7 +88,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   of `--signals`), or inherently finite output (e.g., `schema`). When list output is truncated due
   to `--max`, a warning is emitted.
 - **Bounded recursion.** Recursive commands have `--max-depth` with a default of 5.
-- **Output format.** For implemented command surface in this phase (`info`, `modules`, `signals`), default output is human-readable.
+- **Output format.** Default output is human-readable for all commands.
   Strict machine output is enabled explicitly with `--json`.
 - **JSON envelope (`--json` mode).** On success, JSON output is a single object:
 
@@ -123,17 +123,17 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 Outputs the JSON schema for wavepeek's strict `--json` output envelope.
 
 ```
-wavepeek schema [--human]
+wavepeek schema [--json]
 ```
 
 **Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
-- Default output: JSON envelope with `data` containing one or more JSON Schema documents.
-- `--human` prints a short summary (e.g., schema version and available schemas).
+- Default output: human-readable summary (e.g., schema version and available schemas).
+- `--json` prints strict JSON envelope output with `data` containing one or more JSON Schema documents.
 
 #### 3.2.1 `info` — Dump metadata
 
@@ -260,7 +260,7 @@ wavepeek signals --waves dump.vcd --scope top.cpu --abs
 Gets signal values at a specific time point.
 
 ```
-wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--human]
+wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--json]
 ```
 
 **Parameters:**
@@ -270,7 +270,7 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--h
 | `--time <time>` | required | Time point with units (e.g., `1337ns`, `10us`) |
 | `--scope <path>` | — | Scope for short signal names |
 | `--signals <names>` | required | Comma-separated signal names |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--json` | off | Strict JSON envelope output |
 
 **Modes:**
 - `--signals clk,data` (no scope) — names are full paths
@@ -278,7 +278,8 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--h
 
 **Behavior:**
 - Outputs signal values at specified time
-- Default output: JSON envelope with `data` as an object:
+- Default output: human-readable value summary.
+- `--json` outputs JSON envelope with `data` as an object:
   - `time`: normalized time string in `time_precision` units
   - `signals`: array of `{ name, path, value }` in the same order as `--signals`
 - Values are emitted as Verilog literals: `<width>'h<digits>` (including `x`/`z`).
@@ -292,8 +293,8 @@ wavepeek at --waves dump.vcd --time 100ns --signals top.cpu.clk,top.cpu.data
 # Get values relative to scope (shorter)
 wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk,data,valid
 
-# Human-friendly
-wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --human
+# Strict JSON envelope
+wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --json
 ```
 
 #### 3.2.5 `changes` — Value changes over time range
@@ -302,7 +303,7 @@ Outputs snapshots of signal values over a time range. Supports two modes:
 unclocked (trigger on any signal change) and clocked (trigger on posedge of a clock).
 
 ```
-wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--human]
+wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--json]
 ```
 
 **Parameters:**
@@ -315,7 +316,7 @@ wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] -
 | `--signals <names>` | required | Comma-separated signal names |
 | `--clk <name>` | — | Clock signal for posedge-triggered snapshots |
 | `--max <n>` | 50 | Maximum number of snapshot rows |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--json` | off | Strict JSON envelope output |
 
 **Modes:**
 - **Unclocked** (no `--clk`): row appears when any of `--signals` changes
@@ -325,7 +326,8 @@ wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] -
 
 **Behavior:**
 - Each row shows current value of all signals (snapshot)
-- Default output: JSON envelope with `data` as an array of snapshots.
+- Default output: human-readable snapshot list.
+- `--json` outputs JSON envelope with `data` as an array of snapshots.
 - Each snapshot:
   - `time`: normalized time string in `time_precision` units
   - `signals`: array of `{ name, path, value }` in the same order as `--signals`
@@ -351,8 +353,8 @@ wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals 
 # Clocked: snapshot per clock cycle
 wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --clk clk --signals data,valid,ready
 
-# Human-friendly
-wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --human
+# Strict JSON envelope
+wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --json
 ```
 
 #### 3.2.6 `when` — Event search
@@ -361,7 +363,7 @@ Finds clock cycles where a boolean expression evaluates to true.
 Expression is evaluated on every posedge of the specified clock.
 
 ```
-wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope <path>] --cond <expr> [--first [<n>]] [--last [<n>]] [--max <n>] [--human]
+wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope <path>] --cond <expr> [--first [<n>]] [--last [<n>]] [--max <n>] [--json]
 ```
 
 **Parameters:**
@@ -376,13 +378,14 @@ wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope
 | `--first [<n>]` | 1 if flag present | Return first N matches |
 | `--last [<n>]` | 1 if flag present | Return last N matches |
 | `--max <n>` | 50 | Maximum matches (when neither --first nor --last) |
-| `--human` | off | Human-friendly output (no strict contract) |
+| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
 - Expression is evaluated at every posedge (clean `0 -> 1` transition) of `--clk`.
   Transitions involving `x`/`z` do not count as posedge.
 - Outputs timestamps where the expression is true after 2-state casting (unknown `x` counts as false).
-- Default output: JSON envelope with `data` as an array of objects: `{ "time": "<normalized>" }`.
+- Default output: human-readable timestamp list.
+- `--json` outputs JSON envelope with `data` as an array of objects: `{ "time": "<normalized>" }`.
 - `--clk` follows same scope convention as `--signals`: short name with `--scope`, full path without
 - **No qualifier:** return all matches up to `--max`
 - **`--first`:** return first N matches (default N=1 if no value given)
@@ -493,7 +496,7 @@ The CLI layer formats results for output.
 **Layers (top to bottom):**
 
 1. **CLI Layer** (`clap`) — Argument parsing, validation, output formatting.
-   Human-readable default output for implemented discovery commands (`info`, `modules`, `signals`), strict JSON via `--json`, errors to stderr.
+   Human-readable default output for all commands, strict JSON via `--json`, errors to stderr.
    Passes typed command structs down to the engine.
 
 2. **Engine Layer** — Business logic per command: `info`, `modules`, `signals`,
@@ -680,8 +683,8 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 
 2. **Container-provisioned representative fixtures** — For integration tests.
    Required large fixtures are downloaded during devcontainer/CI image build from
-   a pinned release version and installed under `/opt/rtl-artifacts` with checksum
-   verification and a manifest. Runtime test execution does not download fixtures.
+   a pinned release version and installed under `/opt/rtl-artifacts`.
+   Runtime test execution does not download fixtures.
 
 **What to assert in integration tests:**
 
@@ -717,7 +720,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - `modules` command (§3.2.2)
 - `signals` command (§3.2.3)
 - VCD + FST format support
-- Human default output for discovery commands with explicit `--json` contract mode
+- Human default output for all commands with explicit `--json` contract mode
 - `tree` command surface replaced by `modules` (no alias)
 - Error handling: WavepeekError enum, exit codes, stderr format (§5.6)
 - Hand-crafted VCD test fixtures

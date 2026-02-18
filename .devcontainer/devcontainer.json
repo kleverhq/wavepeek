@@ -2,10 +2,7 @@
     "name": "wavepeek-workspace",
     "build": {
         "dockerfile": "Dockerfile",
-        "target": "dev",
-        "args": {
-            "RTL_ARTIFACTS_VERSION": "v1.0.0"
-        }
+        "target": "dev"
     },
     "containerEnv": {
         "WAVEPEEK_IN_CONTAINER": "1"

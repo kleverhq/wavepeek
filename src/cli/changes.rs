@@ -25,7 +25,7 @@ pub struct ChangesArgs {
     /// Maximum number of snapshot rows
     #[arg(long, default_value_t = 50)]
     pub max: usize,
-    /// Human-friendly output mode
+    /// Strict JSON envelope output
     #[arg(long)]
-    pub human: bool,
+    pub json: bool,
 }

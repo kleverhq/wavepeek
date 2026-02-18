@@ -43,7 +43,7 @@ pub struct WhenArgs {
     /// Maximum number of matches when no qualifier is used
     #[arg(long, value_name = "N", conflicts_with_all = ["first", "last"])]
     pub max: Option<usize>,
-    /// Human-friendly output mode
+    /// Strict JSON envelope output
     #[arg(long)]
-    pub human: bool,
+    pub json: bool,
 }

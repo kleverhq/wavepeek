@@ -11,13 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Keep a Changelog-based release notes workflow and release runbook updates.
 - Added canonical `modules` command with optional `--tree` human renderer for hierarchy inspection.
 - Added `signals --abs` for full-path human output while keeping concise short-name default.
-- Added dedicated devcontainer fixture provisioning under `/opt/rtl-artifacts` with pinned version/checksum verification and provenance manifest.
+- Added dedicated devcontainer fixture provisioning under `/opt/rtl-artifacts` pinned by release version in Dockerfile.
 - Added fixture-backed regression coverage for realistic external FST artifacts alongside hand-crafted fixtures.
 - Expanded the devcontainer toolset with Surfer (with X11/Mesa runtime support).
 
 ### Changed
-- Switched implemented discovery commands (`info`, `modules`, `signals`) to default human output with explicit `--json` machine contract mode.
-- Renamed command surface from `tree` to `modules` without compatibility alias and removed `--human` from migrated commands.
+- Switched CLI contract to default human output with explicit `--json` machine contract mode.
+- Renamed command surface from `tree` to `modules` without compatibility alias and removed `--human` from the CLI surface.
 - Updated CLI entry/help/version behavior: no-args now prints top-level help to stdout with exit code `0`, and both short/long help/version flags are covered by integration tests.
 - Improved `error: args:` diagnostics to preserve actionable clap context and append deterministic help hints (`wavepeek --help` or `wavepeek <cmd> --help`).
 - Removed `time_precision` from `info` output contract; metadata now exposes `time_unit`, `time_start`, and `time_end`.

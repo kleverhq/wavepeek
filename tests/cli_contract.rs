@@ -174,7 +174,16 @@ fn unknown_flags_are_normalized_to_args_category() {
 }
 
 #[test]
-fn migrated_discovery_commands_reject_human_flag() {
+fn all_commands_reject_human_flag() {
+    let mut schema = wavepeek_cmd();
+    schema
+        .args(["schema", "--human"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--human'"))
+        .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
+
     let mut info = wavepeek_cmd();
     info.args(["info", "--waves", "dump.vcd", "--human"])
         .assert()
@@ -202,6 +211,49 @@ fn migrated_discovery_commands_reject_human_flag() {
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains("See 'wavepeek signals --help'."));
+
+    let mut at = wavepeek_cmd();
+    at.args([
+        "at",
+        "--waves",
+        "dump.vcd",
+        "--time",
+        "1ns",
+        "--signals",
+        "sig",
+        "--human",
+    ])
+    .assert()
+    .failure()
+    .stderr(predicate::str::starts_with("error: args:"))
+    .stderr(predicate::str::contains("unexpected argument '--human'"))
+    .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+
+    let mut changes = wavepeek_cmd();
+    changes
+        .args([
+            "changes",
+            "--waves",
+            "dump.vcd",
+            "--signals",
+            "sig",
+            "--human",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--human'"))
+        .stderr(predicate::str::contains("See 'wavepeek changes --help'."));
+
+    let mut when = wavepeek_cmd();
+    when.args([
+        "when", "--waves", "dump.vcd", "--clk", "clk", "--cond", "1", "--human",
+    ])
+    .assert()
+    .failure()
+    .stderr(predicate::str::starts_with("error: args:"))
+    .stderr(predicate::str::contains("unexpected argument '--human'"))
+    .stderr(predicate::str::contains("See 'wavepeek when --help'."));
 }
 
 #[test]

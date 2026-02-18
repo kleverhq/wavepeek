@@ -31,8 +31,6 @@ enum Command {
         about = "Export JSON schema for strict output",
         long_about = r#"Outputs the JSON schema for wavepeek's strict JSON envelope output.
 
-By default this command prints a human-readable summary.
-
 Use --json to print structured JSON output."#
     )]
     Schema(schema::SchemaArgs),
@@ -40,8 +38,6 @@ Use --json to print structured JSON output."#
         about = "Show dump metadata (time unit and bounds)",
         long_about = r#"Outputs basic metadata about the waveform dump, including
 time unit and dump boundaries.
-
-By default this command prints human-readable output.
 
 Requires --waves <file>. Use --json for strict envelope mode."#
     )]
@@ -53,7 +49,7 @@ traversing the hierarchy.
 
 Traversal is deterministic and output is bounded by --max and --max-depth.
 
-Use --tree for visual hierarchy rendering in human mode. Use --json for
+Use --tree for visual hierarchy rendering. Use --json for
 strict envelope mode."#
     )]
     Modules(modules::ModulesArgs),
@@ -63,7 +59,7 @@ strict envelope mode."#
 
 Listing is non-recursive, sorted by signal name, and bounded by --max.
 
-Human mode prints short names by default; use --abs for full paths.
+Use --abs to print full paths.
 Use --json for strict envelope mode."#
     )]
     Signals(signals::SignalsArgs),
@@ -74,7 +70,7 @@ Use --json for strict envelope mode."#
 Supports full signal paths or names relative to --scope while preserving
 the order from --signals.
 
-Default output is human-readable. Use --json for strict envelope mode."#
+Use --json for strict envelope mode."#
     )]
     At(at::AtArgs),
     #[command(
@@ -84,7 +80,7 @@ Default output is human-readable. Use --json for strict envelope mode."#
 Supports unclocked mode (any tracked signal change) and clocked mode
 (posedge of --clk).
 
-Default output is human-readable. Use --json for strict envelope mode."#
+Use --json for strict envelope mode."#
     )]
     Changes(changes::ChangesArgs),
     #[command(
@@ -94,7 +90,7 @@ Default output is human-readable. Use --json for strict envelope mode."#
 The condition is evaluated on each posedge of --clk and can return all,
 first N, or last N matches.
 
-Default output is human-readable. Use --json for strict envelope mode."#
+Use --json for strict envelope mode."#
     )]
     When(when::WhenArgs),
 }

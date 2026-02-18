@@ -16,7 +16,7 @@ pub struct ModulesArgs {
     /// Regex filter for scope path
     #[arg(long, default_value = ".*")]
     pub filter: String,
-    /// Render visual tree in human mode
+    /// Render hierarchy as a tree
     #[arg(long)]
     pub tree: bool,
     /// Strict JSON envelope output

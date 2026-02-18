@@ -336,3 +336,4 @@
 - Dropped checksum/manifest workflow: removed Dockerfile SHA checks, removed manifest generation, and simplified Makefile fixture checks to required file presence.
 - Expanded output-contract cutover to all command docs/CLI flags: default human + explicit `--json`, no `--human` surface.
 - Strengthened container enforcement model by attaching `require-container` to leaf Makefile command targets (not only aggregate gates).
+- Removed explicit wording about "human/human-readable mode" from CLI help text; help now focuses on behavior and `--json` strict-mode switch.

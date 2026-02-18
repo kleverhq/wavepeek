@@ -249,7 +249,8 @@ fn modules_tree_mode_renders_visual_hierarchy() {
         .assert()
         .success()
         .stdout(predicate::str::contains("top"))
-        .stdout(predicate::str::contains("|- cpu"))
+        .stdout(predicate::str::contains("├── cpu"))
+        .stdout(predicate::str::contains("└── mem"))
         .stdout(predicate::str::contains("schema_version").not())
         .stderr(predicate::str::is_empty());
 }

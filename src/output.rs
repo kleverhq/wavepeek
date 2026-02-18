@@ -63,11 +63,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
         }
         CommandData::Modules(scopes) => {
             if options.modules_tree {
-                scopes
-                    .iter()
-                    .map(|entry| render_module_tree_line(entry.depth, entry.path.as_str()))
-                    .collect::<Vec<_>>()
-                    .join("\n")
+                render_modules_tree(scopes)
             } else {
                 scopes
                     .iter()
@@ -97,14 +93,59 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
     }
 }
 
-fn render_module_tree_line(depth: usize, path: &str) -> String {
-    let label = path.rsplit('.').next().unwrap_or(path);
-    if depth == 0 {
-        return label.to_string();
+fn render_modules_tree(scopes: &[crate::engine::modules::ModulesEntry]) -> String {
+    if scopes.is_empty() {
+        return String::new();
     }
 
-    let indent = "  ".repeat(depth.saturating_sub(1));
-    format!("{indent}|- {label}")
+    let mut lines = Vec::with_capacity(scopes.len());
+    let mut ancestor_last = Vec::new();
+
+    for (index, entry) in scopes.iter().enumerate() {
+        let label = entry.path.rsplit('.').next().unwrap_or(entry.path.as_str());
+        let is_last = modules_entry_is_last_sibling(scopes, index);
+
+        if entry.depth == 0 {
+            lines.push(label.to_string());
+        } else {
+            let mut line = String::new();
+
+            for depth in 1..entry.depth {
+                let ancestor_is_last = ancestor_last.get(depth).copied().unwrap_or(true);
+                if ancestor_is_last {
+                    line.push_str("    ");
+                } else {
+                    line.push_str("│   ");
+                }
+            }
+
+            line.push_str(if is_last { "└── " } else { "├── " });
+            line.push_str(label);
+            lines.push(line);
+        }
+
+        ancestor_last.truncate(entry.depth);
+        ancestor_last.push(is_last);
+    }
+
+    lines.join("\n")
+}
+
+fn modules_entry_is_last_sibling(
+    scopes: &[crate::engine::modules::ModulesEntry],
+    index: usize,
+) -> bool {
+    let depth = scopes[index].depth;
+    for next in scopes.iter().skip(index + 1) {
+        if next.depth < depth {
+            return true;
+        }
+        if next.depth == depth {
+            return false;
+        }
+    }
+
+    true
 }
 
 fn signal_display_name(entry: &crate::engine::signals::SignalEntry, abs: bool) -> &str {
@@ -127,7 +168,7 @@ mod tests {
 
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 
-    use super::{SCHEMA_VERSION, render_json};
+    use super::{SCHEMA_VERSION, render_human, render_json};
 
     #[test]
     fn json_envelope_has_required_shape_for_info() {
@@ -172,5 +213,39 @@ mod tests {
         assert_eq!(value["warnings"][0], "truncated to 1 entries");
         assert_eq!(value["data"][0]["path"], "top.cpu");
         assert_eq!(value["data"][0]["depth"], 1);
+    }
+
+    #[test]
+    fn modules_tree_render_matches_linux_tree_style() {
+        let rendered = render_human(
+            &CommandData::Modules(vec![
+                crate::engine::modules::ModulesEntry {
+                    path: "top".to_string(),
+                    depth: 0,
+                },
+                crate::engine::modules::ModulesEntry {
+                    path: "top.cpu".to_string(),
+                    depth: 1,
+                },
+                crate::engine::modules::ModulesEntry {
+                    path: "top.cpu.alu".to_string(),
+                    depth: 2,
+                },
+                crate::engine::modules::ModulesEntry {
+                    path: "top.cpu.regs".to_string(),
+                    depth: 2,
+                },
+                crate::engine::modules::ModulesEntry {
+                    path: "top.mem".to_string(),
+                    depth: 1,
+                },
+            ]),
+            HumanRenderOptions {
+                modules_tree: true,
+                signals_abs: false,
+            },
+        );
+
+        assert_eq!(rendered, "top\n├── cpu\n│   ├── alu\n│   └── regs\n└── mem");
     }
 }

@@ -4,6 +4,8 @@
 - This plan addresses the 13 post-M2 validation findings and aligns the CLI behavior with the latest product direction for human-first defaults, clearer argument errors, and stronger regression coverage.
 - The work is split into contract updates, CLI UX fixes, command-surface changes (`tree` -> `modules`), output-mode migration, and container-level fixture provisioning.
 - The expected result is a more usable CLI for both humans and agents: readable defaults, explicit opt-in JSON contract, cleaner metadata, and reproducible tests against real-world waveform artifacts.
+- This revision adds a follow-up breaking-contract scope focused on metadata fidelity (`VarType`/`ScopeType`) and singular command names (`scope`, `signal`, `change`).
+- Tasks 1-11 are historical baseline checkpoints; Tasks 12-13 define final command contracts for this plan revision.
 
 ## Goals
 - Fix CLI entry/help/version behavior and lock it with integration tests.
@@ -12,11 +14,14 @@
 - Fix module hierarchy listing on realistic FST data (regression-proofed).
 - Remove redundant `time_precision` field and keep only `time_unit` in `info` output.
 - Switch default output mode to human-readable and introduce explicit `--json` envelope mode as the only machine-output switch for all commands.
-- Improve human output ergonomics (`modules --tree`, `signals` short names + `--abs`).
+- Improve human output ergonomics (`scope --tree`, `signal` short names + `--abs`).
 - Provision required large fixtures in devcontainer image layer at stable path `/opt/rtl-artifacts`.
+- Preserve full parser-provided signal type fidelity in output (`VarType` aliases, no coarse collapsing).
+- Extend hierarchy listing to all scopes with explicit `kind` from `ScopeType`.
+- Singularize command surface as direct cutover: `modules` -> `scope`, `signals` -> `signal`, `changes` -> `change`.
 
 ## Non-Goals
-- Implementing M3/M4 functional scope (`at`, `changes`, `when`) beyond CLI contract touchpoints required for output-mode migration.
+- Implementing M3/M4 functional scope (`at`, `change`, `when`) beyond CLI contract touchpoints required for output-mode migration.
 - Replacing `schema_version` with a hosted `$schema` URL in this iteration.
 - Defining a long-term warning-code taxonomy (warnings remain free-form text).
 - Supporting `make` execution outside containerized environments.
@@ -32,6 +37,7 @@
 - Output contracts carry redundant/noisy fields for default usage, while human-readable workflows require extra flags.
 - `tree` naming/behavior mismatches user expectation (`modules` hierarchy), and a reported real-world fixture may expose traversal/classification issues.
 - Current fixture strategy is too narrow to confidently prevent regressions on realistic dumps.
+- Signal and scope typing is currently lossy (`map_signal_kind` collapse, module-only hierarchy filter), reducing debug value and hiding parser-provided structure.
 
 ## Requirements
 - **Functional:**
@@ -47,6 +53,11 @@
 - `VF-R10` (issue 13): Provision required fixtures (`picorv32_test_vcd.fst`, `scr1_max_axi_coremark.fst`) in devcontainer image build from release `v1.0.0` and expose them under `/opt/rtl-artifacts`.
 - `VF-R11`: Expand integration matrix to lock all fixture-dependent corrected behaviors and regressions using fixtures available at `/opt/rtl-artifacts`.
 - `VF-R12`: Remove `--human` flag from CLI surface; output mode control is default human + explicit `--json`.
+- `VF-R23`: `signal` output `kind` uses full parser-native `VarType` aliases (explicit stable string mapping), without collapsing multiple kinds into coarse buckets.
+- `VF-R24`: `scope` command replaces `modules`, lists all hierarchy scopes (not only modules), and includes `kind` derived from `ScopeType` for each entry.
+- `VF-R25`: `signal` command replaces `signals` as canonical surface; existing listing semantics and flags (`--scope`, `--max`, `--filter`, `--abs`, `--json`) are preserved.
+- `VF-R26`: `change` command replaces `changes` as canonical surface (execution may remain unimplemented in this milestone, but CLI/help/error contracts use singular form).
+- `VF-R27`: Legacy predecessor commands (`modules`, `signals`, `changes`) are removed from CLI surface and rejected with `error: args:` plus contextual help hint.
 - **Non-functional / constraints:**
 - `VF-R13`: Preserve deterministic JSON output in `--json` mode (`schema_version`, `command`, `data`, `warnings`).
 - `VF-R14`: Keep stderr error format stable: `error: <category>: <message>`.
@@ -58,6 +69,8 @@
 - `VF-R20`: Both `ci` and `dev` image targets include the same `/opt/rtl-artifacts` fixture payload.
 - `VF-R21`: Enforce container-only quality-gate execution via explicit guard (outside-container `make ci`/`make pre-commit` fails fast with clear message).
 - `VF-R22`: Keep fixture provenance reproducible by pinning artifact version in Dockerfile and using stable artifact names/paths.
+- `VF-R28`: Bump JSON envelope `schema_version` for the singular-command and payload-shape breaking changes introduced by this follow-up.
+- `VF-R29`: Keep deterministic ordering guarantees unchanged after widening hierarchy scope coverage (stable DFS + lexical tie-breakers).
 
 ## Traceability Matrix
 | Scope item | Requirement IDs | Tasks | DoD checks | Primary artifacts |
@@ -73,6 +86,8 @@
 | Signals human format + `--abs` | VF-R9 | Task 9 | D15, D16 | `src/cli/signals.rs`, `src/engine/signals.rs`, `src/output.rs`, tests |
 | Container fixture provisioning | VF-R10, VF-R16, VF-R17, VF-R18, VF-R20, VF-R22 | Task 10 | D17, D18, D19, D20, D22 | `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.ci.json`, `.devcontainer/devcontainer.json` |
 | Full regression + quality gates | VF-R11, VF-R15, VF-R19, VF-R21 | Task 11 | D21, D23, D24 | `tests/*.rs`, `Makefile` targets |
+| Full-fidelity kinds + all-scope listing (`modules` -> `scope`) | VF-R23, VF-R24, VF-R28, VF-R29 | Task 12 | D25, D26, D27, D30, D31 | `src/waveform/mod.rs`, `src/engine/scope.rs` (or renamed `modules.rs`), `src/cli/scope.rs` (or renamed `modules.rs`), `src/output.rs`, tests |
+| Singular CLI surface for listing/range commands | VF-R25, VF-R26, VF-R27, VF-R28 | Task 13 | D28, D29, D31, D32 | `src/cli/mod.rs`, `src/cli/signals.rs`, `src/cli/changes.rs`, `src/engine/mod.rs`, tests, PRD/changelog |
 
 ## Proposed Solution
 - Apply a direct contract cutover for unreleased `v0.2.0`:
@@ -80,10 +95,13 @@
 - Keep cutover strict: no command aliases, no output-default compatibility bridge, and no `--human` compatibility mode.
 - Improve argument error UX by preserving the key clap diagnostic line and appending deterministic help hints instead of stripping all context.
 - Refactor command naming and rendering in one pass:
-- Promote `modules` as canonical command name.
+- Promote singular command names as canonical (`scope`, `signal`, `change`) and remove plural predecessors.
 - Keep JSON data shape deterministic and flat.
 - Add optional human renderer `--tree` for visual hierarchy output.
 - Simplify metadata schema by removing redundant `time_precision` output field and updating all dependent tests/docs.
+- Replace coarse signal-kind collapsing with explicit parser-native `VarType` alias mapping.
+- Expand hierarchy listing from module-only to all scopes and add explicit `kind` from `ScopeType` in scope entries.
+- Bump JSON `schema_version` to reflect this breaking contract revision.
 - Add a dedicated Dockerfile layer that downloads pinned fixture artifacts at image-build time (versioned by `RTL_ARTIFACTS_VERSION`) and installs them at `/opt/rtl-artifacts`.
 - Ensure both dev and CI container targets include the same fixture payload so `make ci` and `make pre-commit` can execute full fixture-backed coverage without runtime downloads.
 - Extend integration tests to include new CLI contracts and fixture-backed regressions as part of normal quality gates.
@@ -94,6 +112,8 @@
 - **Lazy runtime fixture download in tests:** rejected due added runtime complexity and network-dependent test execution.
 - **Separate external-fixture test job outside `make ci`/`make pre-commit`:** rejected because target workflow requires full coverage in standard quality gates.
 - **Commit large real-world fixtures into repository:** rejected due to repository bloat and slower clone/check cycles.
+- **Keep coarse signal/module taxonomy for readability:** rejected because it hides parser-level type detail needed for debugging and root-cause analysis.
+- **Keep plural command aliases (`modules`/`signals`/`changes`) during transition:** rejected because direct cutover is accepted and avoids long-term CLI surface drift.
 
 ## Risks and Mitigations
 - **Risk:** Breaking CLI contracts during direct cutover (`tree`, `--human`). **Mitigation:** update PRD/changelog first and lock behavior with integration tests in the same change set.
@@ -101,6 +121,8 @@
 - **Risk:** `modules` hierarchy bug is fixture-specific and hard to generalize. **Mitigation:** codify regression tests against downloaded real fixtures plus existing small fixtures.
 - **Risk:** Network flakiness shifts to container build stage. **Mitigation:** isolated fixture Docker layer with version pinning and layer caching.
 - **Risk:** Container image size increase from bundled fixtures. **Mitigation:** keep fixture set minimal to required files and rely on Docker layer caching.
+- **Risk:** Full-scope traversal may significantly increase entry count and trigger more truncation warnings. **Mitigation:** keep deterministic ordering, preserve `--max`/`--max-depth`, and add focused fixture regressions for bounded output.
+- **Risk:** Implicit stringification of upstream enums may change across dependency updates. **Mitigation:** use explicit internal mapping tables for `VarType`/`ScopeType` alias strings and lock with tests.
 
 ## Rollout / Migration Plan
 - Phase 1: Update PRD/changelog contract language and document direct cutover policy.
@@ -108,10 +130,13 @@
 - Phase 3: Migrate output-mode defaults and command naming (`modules`, `--json`) as direct cutover.
 - Phase 4: Apply behavior refinements (`modules --tree`, `signals --abs`, `info` field simplification).
 - Phase 5: Add container fixture layer at `/opt/rtl-artifacts` and run full quality gates.
+- Phase 6: Land Task 12 follow-up (`modules` -> `scope`, full-fidelity `VarType`/`ScopeType`, all-scope traversal, `schema_version` bump).
+- Phase 7: Land Task 13 follow-up (`signals` -> `signal`, `changes` -> `change`) and complete docs/tests cutover.
 - Rollback:
 - Unit A rollback (CLI/help/errors): revert Task 2-4 commit set only.
 - Unit B rollback (output-mode migration): revert Task 5 commit set and restore prior mode behavior.
 - Unit C rollback (command rename): revert Task 6 commit set and restore `tree` command surface.
+- Unit D rollback (singularization + fidelity follow-up): revert Task 12-13 commit set together to avoid mixed command/type contracts.
 
 ## Observability
 - Add integration assertions for all CLI entry/error/help/version behaviors.
@@ -121,48 +146,65 @@
 - Verify deterministic JSON stability by repeated-run assertions in `--json` mode.
 
 ## Resolved Decisions
-- Command surface cutover: `tree` is replaced by `modules` immediately in this fix scope; no command alias is kept.
+- Baseline checkpoint (Tasks 6-11): `tree` was replaced by `modules` with no alias; superseded by follow-up singular cutover in Tasks 12-13 (`scope`, `signal`, `change`).
 - Output mode cutover: default is human and explicit `--json` enables envelope mode; no `WAVEPEEK_OUTPUT_DEFAULT` bridge is used.
 - `--human` flag handling: remove `--human` from CLI surface and rely on default human mode.
 - `--json --tree` interaction: JSON output stays flat list; `--tree` is ignored without extra warning.
 - Fixture integrity source: pin release version in Dockerfile for required artifacts.
 - Fixture provisioning model: download artifacts in a dedicated Dockerfile layer, keyed by `RTL_ARTIFACTS_VERSION`, and install at stable path `/opt/rtl-artifacts` in both `ci` and `dev` targets.
 - Quality-gate execution model: all `make` quality gates are container-only and include fixture-backed tests.
+- Follow-up command policy: singular names are canonical (`scope`, `signal`, `change`) and plural predecessors are removed without aliases.
+- Follow-up type policy: preserve parser-native type fidelity by exposing explicit string aliases for `VarType` and `ScopeType` rather than coarse categories.
+- Follow-up hierarchy policy: scope listing prints all scope kinds, not only `module` scopes.
+- Follow-up contract constants: JSON `schema_version` increments from `1` to `2` when Task 12 lands.
+- Follow-up alias coverage: mappings are exhaustive for all `wellen::VarType` and `wellen::ScopeType` variants in the pinned dependency version; future upstream additions fall back to `unknown` until mapped explicitly.
 
 ## Open Questions
 - Should `$schema` URL support replace or complement `schema_version` in a future milestone.
 
 ## Assumptions
 - The team accepts default human output + explicit `--json` for strict contract mode.
-- `schema_version` remains the JSON envelope version marker in this scope.
+- `schema_version` remains the JSON envelope version marker in this scope and is incremented for this breaking follow-up.
 - The fix is shipped before `v0.2.0` release, so direct CLI contract cleanup is acceptable.
 - Fixture downloads happen only during container image build; test/runtime execution does not perform network fixture fetches.
+- Stable lowercase aliases (explicit mapping table) are acceptable wire format for `VarType` and `ScopeType` in human and JSON outputs.
 
 ## Definition of Done
+### Baseline checkpoints (completed; may be superseded by follow-up)
 - [x] `D1`: `wavepeek` with no arguments exits `0` and prints top-level help to stdout.
 - [x] `D2`: Integration tests explicitly cover `-h`, `--help`, `-V`, and `--version`.
 - [x] `D3`: Missing-required-argument errors include the missing flag names in stderr.
 - [x] `D4`: `error: args:` help hints are context-correct: global parse failures suggest `wavepeek --help`, subcommand failures suggest `wavepeek <cmd> --help`.
 - [x] `D5`: Command `long_about` strings are multiline literals in CLI definitions.
-- [x] `D6`: Default output for implemented commands in this scope (`info`, `modules`, `signals`) is human-readable when no format flag is provided.
+- [x] `D6`: Historical checkpoint: default output for implemented commands at Task 5 stage (`info`, `modules`, `signals`) is human-readable when no format flag is provided (superseded naming in D27-D29).
 - [x] `D7`: `--json` output matches strict envelope keys and deterministic ordering/content.
 - [x] `D8`: `--human` is removed from CLI surface and tests assert the expected args error/hint if passed.
-- [x] `D9`: `modules` command exists and is shown in help output as canonical command.
+- [x] `D9`: Historical checkpoint: `modules` command exists at Task 6 stage (superseded by canonical `scope` in D27).
 - [x] `D10`: `tree` invocation is rejected (no alias) with `error: args:` and help hint.
 - [x] `D11`: Regression test with `scr1_max_axi_coremark.fst` confirms module paths (not signal leaves) in module listing.
-- [x] `D12`: `modules --tree` renders visual hierarchy format in default human mode.
-- [x] `D13`: `modules --json --tree` keeps flat JSON list behavior and does not emit extra warning.
+- [x] `D12`: Historical checkpoint: `modules --tree` renders visual hierarchy format at Task 7 stage (superseded by `scope --tree` in D30).
+- [x] `D13`: Historical checkpoint: `modules --json --tree` keeps flat JSON list behavior at Task 7 stage.
 - [x] `D14`: `info` output no longer includes `time_precision` in JSON or human mode.
-- [x] `D15`: `signals` human mode defaults to short names; no scope prefix unless `--abs` is set.
-- [x] `D16`: `signals --json` continues to include full signal paths deterministically.
+- [x] `D15`: Historical checkpoint: `signals` human mode defaults to short names at Task 9 stage (superseded by canonical `signal` in D28).
+- [x] `D16`: Historical checkpoint: `signals --json` includes full signal paths deterministically at Task 9 stage (superseded naming in D28).
 - [x] `D17`: Integration tests for commands in scope use fixture files from `/opt/rtl-artifacts`.
 - [x] `D18`: Dockerfile contains dedicated fixture layer that downloads required artifacts pinned by version.
 - [x] `D19`: Fixture layer uses `RTL_ARTIFACTS_VERSION` variable and keeps install path stable as `/opt/rtl-artifacts`.
 - [x] `D20`: Both `ci` and `dev` image targets include `/opt/rtl-artifacts` fixture payload.
 - [x] `D21`: `make ci` and `make pre-commit` pass inside container with fixture-backed tests and no runtime fixture download.
 - [x] `D22`: Fixture provenance is pinned by Dockerfile version and stable artifact paths.
-- [x] `D23`: PRD and changelog reflect direct cutover decisions (`modules` rename, no aliases, default human + `--json`, container-baked fixtures, container-only make workflow).
+- [x] `D23`: Historical checkpoint (Tasks 1-11): PRD/changelog reflected first-cutover decisions (`tree` -> `modules`, no aliases at that stage, default human + `--json`, container-baked fixtures, container-only make workflow); superseded for command naming by `D27`-`D32`.
 - [x] `D24`: Container-only guard is enforced: `make ci`/`make pre-commit` fail fast with clear message when container marker is absent.
+
+### Final follow-up checkpoints (pending)
+- [ ] `D25`: `signal` output `kind` exposes parser-native type aliases (for example `parameter` is no longer emitted as `unknown`) in both human and JSON modes.
+- [ ] `D26`: `scope` output includes `kind` for every entry and includes non-module scope kinds when present in fixture data.
+- [ ] `D27`: `scope` is canonical command in help/dispatch/output; `modules` invocation is rejected with `error: args:` and context help hint.
+- [ ] `D28`: `signal` is canonical command in help/dispatch/output; `signals` invocation is rejected with `error: args:` and context help hint.
+- [ ] `D29`: `change` is canonical command in help/dispatch/output; `changes` invocation is rejected with `error: args:` and context help hint.
+- [ ] `D30`: `scope --tree` remains deterministic and readable with mixed `ScopeType` entries and preserved sort order.
+- [ ] `D31`: JSON envelope reflects follow-up break: singular `command` values and incremented `schema_version`.
+- [ ] `D32`: PRD/changelog and CLI contract tests explicitly document and lock the singular command cutover and kind-fidelity contract.
 
 ## Implementation Plan (Task Breakdown)
 
@@ -287,6 +329,31 @@
 6. Confirm DoD checklist completion and record evidence links.
 - Outputs: Green gates and release-ready corrective scope with explicit verification trail.
 
+### Task 12: Full-fidelity kinds + all-scope listing with `scope` cutover (~3-4h)
+- Goal: Preserve parser-native type information and widen hierarchy visibility while migrating `modules` to canonical `scope` command.
+- Inputs: `src/waveform/mod.rs`, `src/engine/modules.rs` (or renamed `scope.rs`), `src/cli/modules.rs` (or renamed `scope.rs`), `src/output.rs`, fixture-backed tests.
+- Known-unknowns: final alias vocabulary for `VarType`/`ScopeType` strings (resolved by explicit mapping table + tests).
+- Steps:
+1. Define explicit stable mapping for all `wellen::VarType` variants in the pinned dependency version to lowercase aliases and remove coarse `SignalKind` collapsing.
+2. Define explicit stable mapping for all `wellen::ScopeType` variants in the pinned dependency version and include `kind` in scope entry model/output.
+3. Rework hierarchy traversal to emit all scopes (not only modules) with deterministic ordering and clear depth semantics.
+4. Rename command surface from `modules` to `scope` across CLI dispatch, engine command naming, and output envelope `command` field.
+5. Update/extend tests for mixed scope kinds, deterministic ordering, `--tree` rendering, and kind-fidelity assertions in human/JSON modes.
+6. Increment JSON `schema_version` and lock migration behavior in contract tests.
+- Outputs: Canonical `scope` contract with all-scope visibility and faithful `kind` metadata.
+
+### Task 13: Singularize `signal`/`change` command surface and docs (~2-3h)
+- Goal: Complete singular naming consistency for command surface and user-facing contracts.
+- Inputs: `src/cli/mod.rs`, `src/cli/signals.rs`, `src/cli/changes.rs`, `src/engine/mod.rs`, `tests/cli_contract.rs`, `tests/signals_cli.rs`, docs.
+- Known-unknowns: none blocking; direct cutover without aliases is pre-approved.
+- Steps:
+1. Rename CLI command nodes and dispatch wiring: `signals` -> `signal`, `changes` -> `change`.
+2. Update parse-error contextual hints, help text examples, and unimplemented-command messages to singular forms.
+3. Update JSON envelope command-name assertions and integration tests to singular values.
+4. Add explicit rejection tests for removed plural commands with stable `error: args:` + help hints.
+5. Update PRD and changelog migration notes with the singular command cutover and no-alias policy.
+- Outputs: Consistent singular CLI surface with locked tests and synchronized documentation.
+
 ## Execution Log (Living Doc)
 
 ### 2026-02-18 - Task 1 (docs baseline)
@@ -337,3 +404,11 @@
 - Expanded output-contract cutover to all command docs/CLI flags: default human + explicit `--json`, no `--human` surface.
 - Strengthened container enforcement model by attaching `require-container` to leaf Makefile command targets (not only aggregate gates).
 - Removed explicit wording about "human/human-readable mode" from CLI help text; help now focuses on behavior and `--json` strict-mode switch.
+
+### 2026-02-18 - Plan follow-up extension (Tasks 12-13)
+- Added follow-up requirements `VF-R23`-`VF-R29` for kind fidelity, all-scope visibility, singular command cutover, and schema-version bump.
+- Added two new implementation tasks:
+  - Task 12: full-fidelity `VarType`/`ScopeType`, all-scope traversal, `modules` -> `scope` cutover.
+  - Task 13: singular command cutover for `signals`/`changes` -> `signal`/`change`, including docs/tests.
+- Extended DoD with pending checks `D25`-`D32` and updated traceability matrix links.
+- This update is planning-only; no implementation evidence is recorded yet for Tasks 12-13.

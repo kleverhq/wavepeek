@@ -1,0 +1,27 @@
+$date
+  2026-02-18
+$end
+$version
+  wavepeek scope fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$scope module cpu $end
+$var wire 1 ! clk $end
+$upscope $end
+$scope function helper $end
+$var wire 1 " helper_flag $end
+$upscope $end
+$scope task worker $end
+$var wire 1 # done $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+0#
+#5
+1!
+1"
+1#

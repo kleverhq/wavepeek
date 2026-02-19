@@ -197,12 +197,12 @@
 - [x] `D24`: Container-only guard is enforced: `make ci`/`make pre-commit` fail fast with clear message when container marker is absent.
 
 ### Final follow-up checkpoints (pending)
-- [ ] `D25`: `signal` output `kind` exposes parser-native type aliases (for example `parameter` is no longer emitted as `unknown`) in both human and JSON modes.
-- [ ] `D26`: `scope` output includes `kind` for every entry and includes non-module scope kinds when present in fixture data.
-- [ ] `D27`: `scope` is canonical command in help/dispatch/output; `modules` invocation is rejected with `error: args:` and context help hint.
+- [x] `D25`: `signal` output `kind` exposes parser-native type aliases (for example `parameter` is no longer emitted as `unknown`) in both human and JSON modes.
+- [x] `D26`: `scope` output includes `kind` for every entry and includes non-module scope kinds when present in fixture data.
+- [x] `D27`: `scope` is canonical command in help/dispatch/output; `modules` invocation is rejected with `error: args:` and context help hint.
 - [ ] `D28`: `signal` is canonical command in help/dispatch/output; `signals` invocation is rejected with `error: args:` and context help hint.
 - [ ] `D29`: `change` is canonical command in help/dispatch/output; `changes` invocation is rejected with `error: args:` and context help hint.
-- [ ] `D30`: `scope --tree` remains deterministic and readable with mixed `ScopeType` entries and preserved sort order.
+- [x] `D30`: `scope --tree` remains deterministic and readable with mixed `ScopeType` entries and preserved sort order.
 - [ ] `D31`: JSON envelope reflects follow-up break: singular `command` values and incremented `schema_version`.
 - [ ] `D32`: PRD/changelog and CLI contract tests explicitly document and lock the singular command cutover and kind-fidelity contract.
 
@@ -412,3 +412,12 @@
   - Task 13: singular command cutover for `signals`/`changes` -> `signal`/`change`, including docs/tests.
 - Extended DoD with pending checks `D25`-`D32` and updated traceability matrix links.
 - This update is planning-only; no implementation evidence is recorded yet for Tasks 12-13.
+
+### 2026-02-18 - Task 12 (scope cutover + kind fidelity)
+- Replaced coarse signal kind collapsing with explicit parser-native alias mapping for all `wellen::VarType` variants in `src/waveform/mod.rs`; `parameter` now remains `parameter` in both human and JSON outputs.
+- Reworked hierarchy traversal to include all scopes (not only modules) and attached stable `kind` aliases from explicit `ScopeType` mapping (with `unknown` fallback for future non-exhaustive variants).
+- Cut command surface from `modules` to canonical `scope` across CLI dispatch, engine command naming, output envelope `command`, human render options, and error hints.
+- Bumped output `SCHEMA_VERSION` to `2` and updated contract/integration assertions accordingly.
+- Added mixed-scope fixture `tests/fixtures/hand/scope_mixed_kinds.vcd` and regression tests for `scope --json`/`scope --tree` to lock deterministic ordering and non-module kinds (`function`, `task`).
+- Verification evidence: `cargo fmt` + `cargo test` passed locally (including `tests/modules_cli.rs` now exercising `scope` behavior).
+- Surprise/decision: external SCR1 fixture is reliable for broad hierarchy sanity checks but not guaranteed to always expose non-module scope kinds, so a dedicated hand-crafted fixture was added to make `ScopeType` coverage deterministic.

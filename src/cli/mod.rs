@@ -1,8 +1,8 @@
 pub mod at;
 pub mod changes;
 pub mod info;
-pub mod modules;
 pub mod schema;
+pub mod scope;
 pub mod signals;
 pub mod when;
 
@@ -43,8 +43,8 @@ Requires --waves <file>. Use --json for strict envelope mode."#
     )]
     Info(info::InfoArgs),
     #[command(
-        about = "List hierarchy instances (deterministic DFS)",
-        long_about = r#"Outputs a flat list of module instances by recursively
+        about = "List hierarchy scopes (deterministic DFS)",
+        long_about = r#"Outputs a flat list of hierarchy scopes by recursively
 traversing the hierarchy.
 
 Traversal is deterministic and output is bounded by --max and --max-depth.
@@ -52,7 +52,7 @@ Traversal is deterministic and output is bounded by --max and --max-depth.
 Use --tree for visual hierarchy rendering. Use --json for
 strict envelope mode."#
     )]
-    Modules(modules::ModulesArgs),
+    Scope(scope::ScopeArgs),
     #[command(
         about = "List signals in scope with metadata",
         long_about = r#"Lists signals within a specific scope with signal metadata.
@@ -231,7 +231,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
     match command {
         Command::Schema(args) => EngineCommand::Schema(args),
         Command::Info(args) => EngineCommand::Info(args),
-        Command::Modules(args) => EngineCommand::Modules(args),
+        Command::Scope(args) => EngineCommand::Scope(args),
         Command::Signals(args) => EngineCommand::Signals(args),
         Command::At(args) => EngineCommand::At(args),
         Command::Changes(args) => EngineCommand::Changes(args),
@@ -271,10 +271,10 @@ mod tests {
     }
 
     #[test]
-    fn modules_dispatch_keeps_bounded_query_args() {
+    fn scope_dispatch_keeps_bounded_query_args() {
         let cli = Cli::parse_from([
             "wavepeek",
-            "modules",
+            "scope",
             "--waves",
             "fixtures/sample.vcd",
             "--max",
@@ -289,7 +289,7 @@ mod tests {
 
         let command = into_engine_command(cli.command);
         match command {
-            EngineCommand::Modules(args) => {
+            EngineCommand::Scope(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
                 assert_eq!(args.max, 12);
                 assert_eq!(args.max_depth, 3);
@@ -297,7 +297,7 @@ mod tests {
                 assert!(args.tree);
                 assert!(args.json);
             }
-            other => panic!("expected modules command, got {other:?}"),
+            other => panic!("expected scope command, got {other:?}"),
         }
     }
 

@@ -33,7 +33,8 @@ fn help_lists_expected_subcommands() {
         ))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("info"))
-        .stdout(predicate::str::contains("modules"))
+        .stdout(predicate::str::contains("scope"))
+        .stdout(predicate::str::contains("\n  modules\n").not())
         .stdout(predicate::str::contains("\n  tree\n").not())
         .stdout(predicate::str::contains("signals"))
         .stdout(predicate::str::contains("at"))
@@ -78,13 +79,13 @@ fn version_flags_print_version_to_stdout() {
 
 #[test]
 fn subcommand_help_uses_extended_prd_descriptions() {
-    let mut modules_command = wavepeek_cmd();
+    let mut scope_command = wavepeek_cmd();
 
-    modules_command
-        .args(["modules", "--help"])
+    scope_command
+        .args(["scope", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("module instances by recursively"))
+        .stdout(predicate::str::contains("hierarchy scopes by recursively"))
         .stdout(predicate::str::contains("traversing the hierarchy"))
         .stdout(predicate::str::contains("bounded by --max and --max-depth"));
 
@@ -146,6 +147,22 @@ fn legacy_tree_command_is_rejected_without_alias() {
 }
 
 #[test]
+fn legacy_modules_command_is_rejected_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("modules")
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "unrecognized subcommand 'modules'",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+#[test]
 fn positional_arguments_are_rejected() {
     let mut command = wavepeek_cmd();
 
@@ -192,14 +209,14 @@ fn all_commands_reject_human_flag() {
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains("See 'wavepeek info --help'."));
 
-    let mut modules = wavepeek_cmd();
-    modules
-        .args(["modules", "--waves", "dump.vcd", "--human"])
+    let mut scope = wavepeek_cmd();
+    scope
+        .args(["scope", "--waves", "dump.vcd", "--human"])
         .assert()
         .failure()
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek modules --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
 
     let mut signals = wavepeek_cmd();
     signals

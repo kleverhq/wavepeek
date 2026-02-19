@@ -28,39 +28,15 @@ pub struct WaveformMetadata {
 pub struct ScopeEntry {
     pub path: String,
     pub depth: usize,
+    pub kind: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignalEntry {
     pub name: String,
     pub path: String,
-    pub kind: SignalKind,
+    pub kind: String,
     pub width: Option<u32>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SignalKind {
-    Wire,
-    Reg,
-    Logic,
-    Integer,
-    Real,
-    String,
-    Unknown,
-}
-
-impl SignalKind {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Wire => "wire",
-            Self::Reg => "reg",
-            Self::Logic => "logic",
-            Self::Integer => "integer",
-            Self::Real => "real",
-            Self::String => "string",
-            Self::Unknown => "unknown",
-        }
-    }
 }
 
 impl Waveform {
@@ -94,14 +70,14 @@ impl Waveform {
         })
     }
 
-    pub fn module_scopes_depth_first(&self, max_depth: usize) -> Vec<ScopeEntry> {
+    pub fn scopes_depth_first(&self, max_depth: usize) -> Vec<ScopeEntry> {
         let hierarchy = self.inner.hierarchy();
         let mut roots: Vec<ScopeRef> = hierarchy.scopes().collect();
         sort_scope_refs(hierarchy, &mut roots);
 
         let mut entries = Vec::new();
         for scope_ref in roots {
-            collect_module_scope_entries(hierarchy, scope_ref, 0, max_depth, &mut entries);
+            collect_scope_entries(hierarchy, scope_ref, 0, max_depth, &mut entries);
         }
 
         entries
@@ -122,7 +98,7 @@ impl Waveform {
                 SignalEntry {
                     name: var.name(hierarchy).to_string(),
                     path: var.full_name(hierarchy),
-                    kind: map_signal_kind(var.var_type()),
+                    kind: var_type_alias(var.var_type()).to_string(),
                     width: var.length(),
                 }
             })
@@ -137,37 +113,32 @@ impl Waveform {
     }
 }
 
-fn collect_module_scope_entries(
+fn collect_scope_entries(
     hierarchy: &wellen::Hierarchy,
     scope_ref: ScopeRef,
-    module_depth: usize,
+    depth: usize,
     max_depth: usize,
     entries: &mut Vec<ScopeEntry>,
 ) {
-    let scope = &hierarchy[scope_ref];
-    let is_module_scope = scope.scope_type() == ScopeType::Module;
-
-    let mut child_module_depth = module_depth;
-    if is_module_scope {
-        if module_depth > max_depth {
-            return;
-        }
-
-        entries.push(ScopeEntry {
-            path: scope.full_name(hierarchy),
-            depth: module_depth,
-        });
-        child_module_depth = module_depth + 1;
+    if depth > max_depth {
+        return;
     }
 
-    if child_module_depth > max_depth {
+    let scope = &hierarchy[scope_ref];
+    entries.push(ScopeEntry {
+        path: scope.full_name(hierarchy),
+        depth,
+        kind: scope_type_alias(scope.scope_type()).to_string(),
+    });
+
+    if depth == max_depth {
         return;
     }
 
     let mut children: Vec<ScopeRef> = scope.scopes(hierarchy).collect();
     sort_scope_refs(hierarchy, &mut children);
     for child in children {
-        collect_module_scope_entries(hierarchy, child, child_module_depth, max_depth, entries);
+        collect_scope_entries(hierarchy, child, depth + 1, max_depth, entries);
     }
 }
 
@@ -225,33 +196,75 @@ fn map_wellen_error(path: &Path, error: wellen::WellenError) -> WavepeekError {
     }
 }
 
-fn map_signal_kind(var_type: VarType) -> SignalKind {
+fn var_type_alias(var_type: VarType) -> &'static str {
     match var_type {
-        VarType::Wire
-        | VarType::Tri
-        | VarType::TriAnd
-        | VarType::TriOr
-        | VarType::TriReg
-        | VarType::Tri0
-        | VarType::Tri1
-        | VarType::WAnd
-        | VarType::WOr
-        | VarType::Supply0
-        | VarType::Supply1
-        | VarType::Port => SignalKind::Wire,
-        VarType::Reg => SignalKind::Reg,
-        VarType::Logic => SignalKind::Logic,
-        VarType::Integer
-        | VarType::Int
-        | VarType::ShortInt
-        | VarType::LongInt
-        | VarType::Byte
-        | VarType::Time => SignalKind::Integer,
-        VarType::Real | VarType::RealTime | VarType::RealParameter | VarType::ShortReal => {
-            SignalKind::Real
-        }
-        VarType::String => SignalKind::String,
-        _ => SignalKind::Unknown,
+        VarType::Event => "event",
+        VarType::Integer => "integer",
+        VarType::Parameter => "parameter",
+        VarType::Real => "real",
+        VarType::Reg => "reg",
+        VarType::Supply0 => "supply0",
+        VarType::Supply1 => "supply1",
+        VarType::Time => "time",
+        VarType::Tri => "tri",
+        VarType::TriAnd => "triand",
+        VarType::TriOr => "trior",
+        VarType::TriReg => "trireg",
+        VarType::Tri0 => "tri0",
+        VarType::Tri1 => "tri1",
+        VarType::WAnd => "wand",
+        VarType::Wire => "wire",
+        VarType::WOr => "wor",
+        VarType::String => "string",
+        VarType::Port => "port",
+        VarType::SparseArray => "sparse_array",
+        VarType::RealTime => "real_time",
+        VarType::RealParameter => "real_parameter",
+        VarType::Bit => "bit",
+        VarType::Logic => "logic",
+        VarType::Int => "int",
+        VarType::ShortInt => "short_int",
+        VarType::LongInt => "long_int",
+        VarType::Byte => "byte",
+        VarType::Enum => "enum",
+        VarType::ShortReal => "short_real",
+        VarType::Boolean => "boolean",
+        VarType::BitVector => "bit_vector",
+        VarType::StdLogic => "std_logic",
+        VarType::StdLogicVector => "std_logic_vector",
+        VarType::StdULogic => "std_ulogic",
+        VarType::StdULogicVector => "std_ulogic_vector",
+    }
+}
+
+fn scope_type_alias(scope_type: ScopeType) -> &'static str {
+    match scope_type {
+        ScopeType::Module => "module",
+        ScopeType::Task => "task",
+        ScopeType::Function => "function",
+        ScopeType::Begin => "begin",
+        ScopeType::Fork => "fork",
+        ScopeType::Generate => "generate",
+        ScopeType::Struct => "struct",
+        ScopeType::Union => "union",
+        ScopeType::Class => "class",
+        ScopeType::Interface => "interface",
+        ScopeType::Package => "package",
+        ScopeType::Program => "program",
+        ScopeType::VhdlArchitecture => "vhdl_architecture",
+        ScopeType::VhdlProcedure => "vhdl_procedure",
+        ScopeType::VhdlFunction => "vhdl_function",
+        ScopeType::VhdlRecord => "vhdl_record",
+        ScopeType::VhdlProcess => "vhdl_process",
+        ScopeType::VhdlBlock => "vhdl_block",
+        ScopeType::VhdlForGenerate => "vhdl_for_generate",
+        ScopeType::VhdlIfGenerate => "vhdl_if_generate",
+        ScopeType::VhdlGenerate => "vhdl_generate",
+        ScopeType::VhdlPackage => "vhdl_package",
+        ScopeType::GhwGeneric => "ghw_generic",
+        ScopeType::VhdlArray => "vhdl_array",
+        ScopeType::Unknown => "unknown",
+        _ => "unknown",
     }
 }
 
@@ -262,9 +275,9 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
-    use super::{ScopeEntry, SignalKind, Waveform};
+    use super::{ScopeEntry, Waveform};
 
-    const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0%\n#5\n1!\n1$\n#10\nb00001111 \"\n1%\n";
+    const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
 
     #[test]
     fn open_and_read_metadata_from_vcd() {
@@ -279,33 +292,41 @@ mod tests {
     }
 
     #[test]
-    fn scopes_use_deterministic_depth_first_lexicographic_order() {
+    fn scopes_use_deterministic_depth_first_lexicographic_order_with_kind() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-        let scopes = waveform.module_scopes_depth_first(5);
+        let scopes = waveform.scopes_depth_first(5);
 
         assert_eq!(
             scopes,
             vec![
                 ScopeEntry {
                     path: "top".to_string(),
-                    depth: 0
+                    depth: 0,
+                    kind: "module".to_string()
                 },
                 ScopeEntry {
                     path: "top.cpu".to_string(),
-                    depth: 1
+                    depth: 1,
+                    kind: "module".to_string()
+                },
+                ScopeEntry {
+                    path: "top.helper".to_string(),
+                    depth: 1,
+                    kind: "function".to_string()
                 },
                 ScopeEntry {
                     path: "top.mem".to_string(),
-                    depth: 1
+                    depth: 1,
+                    kind: "module".to_string()
                 },
             ]
         );
     }
 
     #[test]
-    fn signals_in_scope_are_sorted_and_use_unknown_fallback_kind() {
+    fn signals_in_scope_are_sorted_and_preserve_parser_var_type_aliases() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
@@ -316,11 +337,11 @@ mod tests {
         assert_eq!(signals.len(), 3);
         assert_eq!(signals[0].name, "cfg");
         assert_eq!(signals[0].path, "top.cfg");
-        assert_eq!(signals[0].kind, SignalKind::Unknown);
+        assert_eq!(signals[0].kind, "parameter");
         assert_eq!(signals[1].name, "clk");
-        assert_eq!(signals[1].kind, SignalKind::Wire);
+        assert_eq!(signals[1].kind, "wire");
         assert_eq!(signals[2].name, "data");
-        assert_eq!(signals[2].kind, SignalKind::Reg);
+        assert_eq!(signals[2].kind, "reg");
     }
 
     #[test]

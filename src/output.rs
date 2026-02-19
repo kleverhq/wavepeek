@@ -3,7 +3,7 @@ use serde::Serialize;
 use crate::engine::{CommandData, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Serialize)]
 pub struct OutputEnvelope<T>
@@ -61,13 +61,13 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             lines.push(format!("time_end: {}", info.time_end));
             lines.join("\n")
         }
-        CommandData::Modules(scopes) => {
-            if options.modules_tree {
-                render_modules_tree(scopes)
+        CommandData::Scope(scopes) => {
+            if options.scope_tree {
+                render_scope_tree(scopes)
             } else {
                 scopes
                     .iter()
-                    .map(|entry| format!("{} {}", entry.depth, entry.path))
+                    .map(|entry| format!("{} {} kind={}", entry.depth, entry.path, entry.kind))
                     .collect::<Vec<_>>()
                     .join("\n")
             }
@@ -93,7 +93,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
     }
 }
 
-fn render_modules_tree(scopes: &[crate::engine::modules::ModulesEntry]) -> String {
+fn render_scope_tree(scopes: &[crate::engine::scope::ScopeEntry]) -> String {
     if scopes.is_empty() {
         return String::new();
     }
@@ -103,10 +103,11 @@ fn render_modules_tree(scopes: &[crate::engine::modules::ModulesEntry]) -> Strin
 
     for (index, entry) in scopes.iter().enumerate() {
         let label = entry.path.rsplit('.').next().unwrap_or(entry.path.as_str());
-        let is_last = modules_entry_is_last_sibling(scopes, index);
+        let scope_label = format!("{label} kind={}", entry.kind);
+        let is_last = scope_entry_is_last_sibling(scopes, index);
 
         if entry.depth == 0 {
-            lines.push(label.to_string());
+            lines.push(scope_label);
         } else {
             let mut line = String::new();
 
@@ -120,7 +121,7 @@ fn render_modules_tree(scopes: &[crate::engine::modules::ModulesEntry]) -> Strin
             }
 
             line.push_str(if is_last { "└── " } else { "├── " });
-            line.push_str(label);
+            line.push_str(scope_label.as_str());
             lines.push(line);
         }
 
@@ -131,10 +132,7 @@ fn render_modules_tree(scopes: &[crate::engine::modules::ModulesEntry]) -> Strin
     lines.join("\n")
 }
 
-fn modules_entry_is_last_sibling(
-    scopes: &[crate::engine::modules::ModulesEntry],
-    index: usize,
-) -> bool {
+fn scope_entry_is_last_sibling(scopes: &[crate::engine::scope::ScopeEntry], index: usize) -> bool {
     let depth = scopes[index].depth;
     for next in scopes.iter().skip(index + 1) {
         if next.depth < depth {
@@ -194,14 +192,15 @@ mod tests {
     }
 
     #[test]
-    fn json_envelope_preserves_warnings_for_modules() {
+    fn json_envelope_preserves_warnings_for_scope() {
         let result = CommandResult {
-            command: CommandName::Modules,
+            command: CommandName::Scope,
             json: true,
             human_options: HumanRenderOptions::default(),
-            data: CommandData::Modules(vec![crate::engine::modules::ModulesEntry {
+            data: CommandData::Scope(vec![crate::engine::scope::ScopeEntry {
                 path: "top.cpu".to_string(),
                 depth: 1,
+                kind: "module".to_string(),
             }]),
             warnings: vec!["truncated to 1 entries".to_string()],
         };
@@ -209,43 +208,52 @@ mod tests {
         let json = render_json(result).expect("json serialization should succeed");
         let value: Value = serde_json::from_str(&json).expect("json should parse");
 
-        assert_eq!(value["command"], "modules");
+        assert_eq!(value["command"], "scope");
         assert_eq!(value["warnings"][0], "truncated to 1 entries");
         assert_eq!(value["data"][0]["path"], "top.cpu");
         assert_eq!(value["data"][0]["depth"], 1);
+        assert_eq!(value["data"][0]["kind"], "module");
     }
 
     #[test]
-    fn modules_tree_render_matches_linux_tree_style() {
+    fn scope_tree_render_matches_linux_tree_style() {
         let rendered = render_human(
-            &CommandData::Modules(vec![
-                crate::engine::modules::ModulesEntry {
+            &CommandData::Scope(vec![
+                crate::engine::scope::ScopeEntry {
                     path: "top".to_string(),
                     depth: 0,
+                    kind: "module".to_string(),
                 },
-                crate::engine::modules::ModulesEntry {
+                crate::engine::scope::ScopeEntry {
                     path: "top.cpu".to_string(),
                     depth: 1,
+                    kind: "module".to_string(),
                 },
-                crate::engine::modules::ModulesEntry {
+                crate::engine::scope::ScopeEntry {
                     path: "top.cpu.alu".to_string(),
                     depth: 2,
+                    kind: "function".to_string(),
                 },
-                crate::engine::modules::ModulesEntry {
+                crate::engine::scope::ScopeEntry {
                     path: "top.cpu.regs".to_string(),
                     depth: 2,
+                    kind: "module".to_string(),
                 },
-                crate::engine::modules::ModulesEntry {
+                crate::engine::scope::ScopeEntry {
                     path: "top.mem".to_string(),
                     depth: 1,
+                    kind: "module".to_string(),
                 },
             ]),
             HumanRenderOptions {
-                modules_tree: true,
+                scope_tree: true,
                 signals_abs: false,
             },
         );
 
-        assert_eq!(rendered, "top\n├── cpu\n│   ├── alu\n│   └── regs\n└── mem");
+        assert_eq!(
+            rendered,
+            "top kind=module\n├── cpu kind=module\n│   ├── alu kind=function\n│   └── regs kind=module\n└── mem kind=module"
+        );
     }
 }

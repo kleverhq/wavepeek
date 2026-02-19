@@ -36,7 +36,7 @@ pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
         .map(|entry| SignalEntry {
             name: entry.name,
             path: entry.path,
-            kind: entry.kind.as_str().to_string(),
+            kind: entry.kind,
             width: entry.width,
         })
         .collect::<Vec<_>>();
@@ -54,7 +54,7 @@ pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
         command: CommandName::Signals,
         json: args.json,
         human_options: crate::engine::HumanRenderOptions {
-            modules_tree: false,
+            scope_tree: false,
             signals_abs: args.abs,
         },
         data: CommandData::Signals(entries),

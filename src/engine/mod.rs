@@ -1,8 +1,8 @@
 pub mod at;
 pub mod changes;
 pub mod info;
-pub mod modules;
 pub mod schema;
+pub mod scope;
 pub mod signals;
 pub mod when;
 
@@ -15,7 +15,7 @@ use crate::error::WavepeekError;
 pub enum Command {
     Schema(cli::schema::SchemaArgs),
     Info(cli::info::InfoArgs),
-    Modules(cli::modules::ModulesArgs),
+    Scope(cli::scope::ScopeArgs),
     Signals(cli::signals::SignalsArgs),
     At(cli::at::AtArgs),
     Changes(cli::changes::ChangesArgs),
@@ -26,7 +26,7 @@ pub enum Command {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandName {
     Info,
-    Modules,
+    Scope,
     Signals,
 }
 
@@ -34,7 +34,7 @@ impl CommandName {
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Info => "info",
-            Self::Modules => "modules",
+            Self::Scope => "scope",
             Self::Signals => "signals",
         }
     }
@@ -42,7 +42,7 @@ impl CommandName {
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct HumanRenderOptions {
-    pub modules_tree: bool,
+    pub scope_tree: bool,
     pub signals_abs: bool,
 }
 
@@ -51,7 +51,7 @@ pub struct HumanRenderOptions {
 #[serde(untagged)]
 pub enum CommandData {
     Info(info::InfoData),
-    Modules(Vec<modules::ModulesEntry>),
+    Scope(Vec<scope::ScopeEntry>),
     Signals(Vec<signals::SignalEntry>),
 }
 
@@ -71,7 +71,7 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
     match command {
         Command::Schema(args) => schema::run(args),
         Command::Info(args) => info::run(args),
-        Command::Modules(args) => modules::run(args),
+        Command::Scope(args) => scope::run(args),
         Command::Signals(args) => signals::run(args),
         Command::At(args) => at::run(args),
         Command::Changes(args) => changes::run(args),

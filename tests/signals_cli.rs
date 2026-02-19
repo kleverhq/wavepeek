@@ -41,7 +41,7 @@ fn signals_human_mode_uses_short_names_by_default() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("cfg kind=parameter width=8"))
         .stdout(predicate::str::contains("clk kind=wire width=1"))
         .stdout(predicate::str::contains("top.cfg").not())
         .stdout(predicate::str::contains("schema_version").not())
@@ -66,7 +66,7 @@ fn signals_human_mode_supports_absolute_paths_with_abs_flag() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("top.cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("top.cfg kind=parameter width=8"))
         .stdout(predicate::str::contains("top.clk kind=wire width=1"));
 }
 
@@ -93,13 +93,13 @@ fn signals_json_shape_for_vcd_keeps_full_paths() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
     let value: Value = serde_json::from_str(&stdout).expect("signals output should be valid json");
 
-    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["schema_version"], 2);
     assert_eq!(value["command"], "signals");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([
-            {"name": "cfg", "path": "top.cfg", "kind": "unknown", "width": 8},
+            {"name": "cfg", "path": "top.cfg", "kind": "parameter", "width": 8},
             {"name": "clk", "path": "top.clk", "kind": "wire", "width": 1},
             {"name": "data", "path": "top.data", "kind": "reg", "width": 8}
         ])
@@ -132,7 +132,7 @@ fn signals_json_shape_for_fst_keeps_full_paths() {
     assert_eq!(
         value["data"],
         json!([
-            {"name": "cfg", "path": "top.cfg", "kind": "unknown", "width": 8},
+            {"name": "cfg", "path": "top.cfg", "kind": "parameter", "width": 8},
             {"name": "clk", "path": "top.clk", "kind": "wire", "width": 1},
             {"name": "data", "path": "top.data", "kind": "reg", "width": 8}
         ])
@@ -165,7 +165,7 @@ fn signals_filter_applies_to_signal_names() {
     assert_eq!(
         value["data"],
         json!([
-            {"name": "cfg", "path": "top.cfg", "kind": "unknown", "width": 8},
+            {"name": "cfg", "path": "top.cfg", "kind": "parameter", "width": 8},
             {"name": "clk", "path": "top.clk", "kind": "wire", "width": 1}
         ])
     );
@@ -282,7 +282,7 @@ fn signals_human_mode_routes_truncation_warning_to_stderr() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("cfg kind=unknown width=8"))
+        .stdout(predicate::str::contains("cfg kind=parameter width=8"))
         .stdout(predicate::str::contains("schema_version").not())
         .stdout(predicate::str::contains("warning: truncated output").not())
         .stderr(predicate::str::contains(
@@ -348,7 +348,7 @@ fn signals_external_picorv32_fixture_uses_short_names_by_default() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "BARREL_SHIFTER kind=unknown width=1",
+            "BARREL_SHIFTER kind=parameter width=1",
         ))
         .stdout(predicate::str::contains("testbench.top.uut.BARREL_SHIFTER").not());
 }

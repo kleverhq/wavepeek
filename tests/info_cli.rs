@@ -55,7 +55,7 @@ fn info_json_contract_for_vcd_fixture() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
     let value: Value = serde_json::from_str(&stdout).expect("info output should be valid json");
 
-    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["schema_version"], 2);
     assert_eq!(value["command"], "info");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(value["data"]["time_unit"], "1ns");
@@ -78,7 +78,7 @@ fn info_json_contract_for_fst_fixture() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
     let value: Value = serde_json::from_str(&stdout).expect("info output should be valid json");
 
-    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["schema_version"], 2);
     assert_eq!(value["command"], "info");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(value["data"]["time_unit"], "1ns");

@@ -24,30 +24,30 @@ fn rtl_fixture_path(filename: &str) -> PathBuf {
 }
 
 #[test]
-fn modules_human_output_is_default_for_vcd() {
+fn scope_human_output_is_default_for_vcd() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
-        .args(["modules", "--waves", fixture.as_str(), "--max", "50"])
+        .args(["scope", "--waves", fixture.as_str(), "--max", "50"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("0 top"))
-        .stdout(predicate::str::contains("1 top.cpu"))
+        .stdout(predicate::str::contains("0 top kind=module"))
+        .stdout(predicate::str::contains("1 top.cpu kind=module"))
         .stdout(predicate::str::contains("schema_version").not())
         .stderr(predicate::str::is_empty());
 }
 
 #[test]
-fn modules_json_order_is_deterministic_for_vcd() {
+fn scope_json_order_is_deterministic_for_vcd() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--max",
@@ -58,30 +58,30 @@ fn modules_json_order_is_deterministic_for_vcd() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
-    assert_eq!(value["schema_version"], 1);
-    assert_eq!(value["command"], "modules");
+    assert_eq!(value["schema_version"], 2);
+    assert_eq!(value["command"], "scope");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([
-            { "path": "top", "depth": 0 },
-            { "path": "top.cpu", "depth": 1 },
-            { "path": "top.mem", "depth": 1 }
+            { "path": "top", "depth": 0, "kind": "module" },
+            { "path": "top.cpu", "depth": 1, "kind": "module" },
+            { "path": "top.mem", "depth": 1, "kind": "module" }
         ])
     );
 }
 
 #[test]
-fn modules_json_order_is_deterministic_for_fst() {
+fn scope_json_order_is_deterministic_for_fst() {
     let fixture = fixture_path("m2_core.fst");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--max",
@@ -92,27 +92,27 @@ fn modules_json_order_is_deterministic_for_fst() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
     assert_eq!(
         value["data"],
         json!([
-            { "path": "top", "depth": 0 },
-            { "path": "top.cpu", "depth": 1 },
-            { "path": "top.mem", "depth": 1 }
+            { "path": "top", "depth": 0, "kind": "module" },
+            { "path": "top.cpu", "depth": 1, "kind": "module" },
+            { "path": "top.mem", "depth": 1, "kind": "module" }
         ])
     );
 }
 
 #[test]
-fn modules_respects_max_depth() {
+fn scope_respects_max_depth() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--max",
@@ -125,31 +125,27 @@ fn modules_respects_max_depth() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
-    assert_eq!(value["data"], json!([{ "path": "top", "depth": 0 }]));
+    assert_eq!(
+        value["data"],
+        json!([{ "path": "top", "depth": 0, "kind": "module" }])
+    );
 }
 
 #[test]
-fn modules_emits_truncation_warning_when_max_is_hit() {
+fn scope_emits_truncation_warning_when_max_is_hit() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
-        .args([
-            "modules",
-            "--waves",
-            fixture.as_str(),
-            "--max",
-            "2",
-            "--json",
-        ])
+        .args(["scope", "--waves", fixture.as_str(), "--max", "2", "--json"])
         .assert()
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
     assert_eq!(
         value["data"]
@@ -174,7 +170,7 @@ fn modules_emits_truncation_warning_when_max_is_hit() {
 }
 
 #[test]
-fn modules_invalid_regex_is_args_error() {
+fn scope_invalid_regex_is_args_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -182,7 +178,7 @@ fn modules_invalid_regex_is_args_error() {
 
     command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--filter",
@@ -193,17 +189,17 @@ fn modules_invalid_regex_is_args_error() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args: invalid regex"))
-        .stderr(predicate::str::contains("See 'wavepeek modules --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
 }
 
 #[test]
-fn modules_output_is_bit_for_bit_deterministic_across_runs() {
+fn scope_output_is_bit_for_bit_deterministic_across_runs() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let first = wavepeek_cmd()
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--max",
@@ -214,7 +210,7 @@ fn modules_output_is_bit_for_bit_deterministic_across_runs() {
         .expect("first run should execute");
     let second = wavepeek_cmd()
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--max",
@@ -231,7 +227,7 @@ fn modules_output_is_bit_for_bit_deterministic_across_runs() {
 }
 
 #[test]
-fn modules_tree_mode_renders_visual_hierarchy() {
+fn scope_tree_mode_renders_visual_hierarchy() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -239,7 +235,7 @@ fn modules_tree_mode_renders_visual_hierarchy() {
 
     command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--tree",
@@ -248,22 +244,22 @@ fn modules_tree_mode_renders_visual_hierarchy() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("top"))
-        .stdout(predicate::str::contains("├── cpu"))
-        .stdout(predicate::str::contains("└── mem"))
+        .stdout(predicate::str::contains("top kind=module"))
+        .stdout(predicate::str::contains("├── cpu kind=module"))
+        .stdout(predicate::str::contains("└── mem kind=module"))
         .stdout(predicate::str::contains("schema_version").not())
         .stderr(predicate::str::is_empty());
 }
 
 #[test]
-fn modules_json_ignores_tree_flag_without_extra_warning() {
+fn scope_json_ignores_tree_flag_without_extra_warning() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--json",
@@ -275,21 +271,80 @@ fn modules_json_ignores_tree_flag_without_extra_warning() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([
-            { "path": "top", "depth": 0 },
-            { "path": "top.cpu", "depth": 1 },
-            { "path": "top.mem", "depth": 1 }
+            { "path": "top", "depth": 0, "kind": "module" },
+            { "path": "top.cpu", "depth": 1, "kind": "module" },
+            { "path": "top.mem", "depth": 1, "kind": "module" }
         ])
     );
 }
 
 #[test]
-fn modules_external_scr1_fixture_keeps_module_hierarchy_semantics() {
+fn scope_reports_non_module_kinds_when_fixture_contains_them() {
+    let fixture = fixture_path("scope_mixed_kinds.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    let assert = command
+        .args([
+            "scope",
+            "--waves",
+            fixture.as_str(),
+            "--json",
+            "--max",
+            "50",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
+    let data = value["data"].as_array().expect("data should be array");
+
+    assert!(
+        data.iter().any(|entry| entry["kind"]
+            .as_str()
+            .is_some_and(|kind| kind == "function")),
+        "expected function scope kind is missing"
+    );
+    assert!(
+        data.iter()
+            .any(|entry| entry["kind"].as_str().is_some_and(|kind| kind == "task")),
+        "expected task scope kind is missing"
+    );
+}
+
+#[test]
+fn scope_tree_mode_is_deterministic_for_mixed_scope_kinds() {
+    let fixture = fixture_path("scope_mixed_kinds.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    let expected =
+        "top kind=module\n├── cpu kind=module\n├── helper kind=function\n└── worker kind=task\n";
+
+    command
+        .args([
+            "scope",
+            "--waves",
+            fixture.as_str(),
+            "--tree",
+            "--max",
+            "50",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::eq(expected))
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn scope_external_scr1_fixture_keeps_hierarchy_semantics() {
     let fixture = rtl_fixture_path("scr1_max_axi_coremark.fst");
     assert!(
         fixture.exists(),
@@ -301,7 +356,7 @@ fn modules_external_scr1_fixture_keeps_module_hierarchy_semantics() {
     let fixture = fixture.to_string_lossy().into_owned();
     let assert = command
         .args([
-            "modules",
+            "scope",
             "--waves",
             fixture.as_str(),
             "--json",
@@ -312,10 +367,10 @@ fn modules_external_scr1_fixture_keeps_module_hierarchy_semantics() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("modules output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
     let data = value["data"].as_array().expect("data should be array");
 
-    assert!(!data.is_empty(), "modules list should not be empty");
+    assert!(!data.is_empty(), "scope list should not be empty");
     assert!(
         data.iter().any(|entry| {
             entry["path"]
@@ -326,12 +381,16 @@ fn modules_external_scr1_fixture_keeps_module_hierarchy_semantics() {
         "expected core pipeline module path is missing"
     );
     assert!(
+        data.iter().all(|entry| entry["kind"].as_str().is_some()),
+        "all scope entries must expose scope kind"
+    );
+    assert!(
         data.iter().all(|entry| {
             entry["path"]
                 .as_str()
                 .map(|path| !path.ends_with(".clk") && !path.ends_with(".rst_n"))
                 .unwrap_or(false)
         }),
-        "module listing unexpectedly contains signal-like leaves"
+        "scope listing unexpectedly contains signal-like leaves"
     );
 }

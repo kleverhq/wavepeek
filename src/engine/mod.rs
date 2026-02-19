@@ -25,6 +25,7 @@ pub enum Command {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandName {
+    Schema,
     Info,
     Scope,
     Signal,
@@ -33,6 +34,7 @@ pub enum CommandName {
 impl CommandName {
     pub const fn as_str(self) -> &'static str {
         match self {
+            Self::Schema => "schema",
             Self::Info => "info",
             Self::Scope => "scope",
             Self::Signal => "signal",
@@ -50,6 +52,7 @@ pub struct HumanRenderOptions {
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum CommandData {
+    Schema(String),
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),
     Signal(Vec<signal::SignalEntry>),

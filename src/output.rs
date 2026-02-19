@@ -2,15 +2,15 @@ use serde::Serialize;
 
 use crate::engine::{CommandData, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
-
-pub const SCHEMA_VERSION: u32 = 2;
+use crate::schema_contract::SCHEMA_URL;
 
 #[derive(Debug, Serialize)]
 pub struct OutputEnvelope<T>
 where
     T: Serialize,
 {
-    pub schema_version: u32,
+    #[serde(rename = "$schema")]
+    pub schema: &'static str,
     pub command: String,
     pub data: T,
     pub warnings: Vec<String>,
@@ -22,7 +22,7 @@ where
 {
     pub fn with_warnings(command: impl Into<String>, data: T, warnings: Vec<String>) -> Self {
         Self {
-            schema_version: SCHEMA_VERSION,
+            schema: SCHEMA_URL,
             command: command.into(),
             data,
             warnings,
@@ -34,7 +34,7 @@ pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
     if !result.json {
         let output = render_human(&result.data, result.human_options);
         if !output.is_empty() {
-            println!("{output}");
+            write_stdout(output.as_str());
         }
         emit_human_warnings(&result.warnings);
         return Ok(());
@@ -54,6 +54,7 @@ fn render_json(result: CommandResult) -> Result<String, WavepeekError> {
 
 fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
     match data {
+        CommandData::Schema(schema) => schema.clone(),
         CommandData::Info(info) => {
             let mut lines = Vec::new();
             lines.push(format!("time_unit: {}", info.time_unit));
@@ -160,13 +161,22 @@ fn emit_human_warnings(warnings: &[String]) {
     }
 }
 
+fn write_stdout(output: &str) {
+    if output.ends_with('\n') {
+        print!("{output}");
+    } else {
+        println!("{output}");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;
 
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
+    use crate::schema_contract::SCHEMA_URL;
 
-    use super::{SCHEMA_VERSION, render_human, render_json};
+    use super::{render_human, render_json};
 
     #[test]
     fn json_envelope_has_required_shape_for_info() {
@@ -185,7 +195,8 @@ mod tests {
         let json = render_json(result).expect("json serialization should succeed");
         let value: Value = serde_json::from_str(&json).expect("json should parse");
 
-        assert_eq!(value["schema_version"], SCHEMA_VERSION);
+        assert_eq!(value["$schema"], SCHEMA_URL);
+        assert!(value.get("schema_version").is_none());
         assert_eq!(value["command"], "info");
         assert!(value["data"].is_object());
         assert!(value["warnings"].is_array());

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added dedicated devcontainer fixture provisioning under `/opt/rtl-artifacts` pinned by release version in Dockerfile.
 - Added fixture-backed regression coverage for realistic external FST artifacts alongside hand-crafted fixtures.
 - Expanded the devcontainer toolset with Surfer (with X11/Mesa runtime support).
+- Added canonical schema artifact at `schema/wavepeek.json` with deterministic `wavepeek schema` export and `make update-schema` regeneration workflow.
 
 ### Changed
 - Switched CLI contract to default human output with explicit `--json` machine contract mode.
@@ -21,10 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated CLI entry/help/version behavior: no-args now prints top-level help to stdout with exit code `0`, and both short/long help/version flags are covered by integration tests.
 - Improved `error: args:` diagnostics to preserve actionable clap context and append deterministic help hints (`wavepeek --help` or `wavepeek <cmd> --help`).
 - Removed `time_precision` from `info` output contract; metadata now exposes `time_unit`, `time_start`, and `time_end`.
-- Expanded hierarchy output to include all scope kinds with explicit `kind` metadata and bumped JSON `schema_version` to `2` for this breaking contract revision.
+- Expanded hierarchy output to include all scope kinds with explicit `kind` metadata.
 - Enforced container-only `make ci` and `make pre-commit` execution with explicit fail-fast guard when container marker is absent.
 - Reworked devcontainer image builds into explicit `base`/`ci`/`dev` Docker targets and switched GitHub Actions to `.devcontainer/devcontainer.ci.json` so CI skips dev-only tools (`opencode`, `surfer`, GUI dependencies) while keeping local development unchanged.
 - Removed extra HDL tooling from local devcontainer/bootstrap requirements.
+- **Breaking:** migrated JSON envelope metadata from `schema_version` to `$schema` with versioned URL format `https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json`.
+- Simplified `schema` command to an argument-free deterministic contract: `wavepeek schema` always prints exactly one JSON Schema document to stdout.
+- Added schema freshness enforcement to quality gates (`make check`, `make ci`, pre-commit) with explicit remediation hint via `make update-schema`.
 
 ### Fixed
 - Standardized runtime error categories and exit-code mapping: `args`/`scope`/`signal` errors exit with code `1`, while file open/parse errors exit with code `2`.

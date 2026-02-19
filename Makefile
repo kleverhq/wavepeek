@@ -2,6 +2,7 @@
 
 RTL_ARTIFACTS_DIR ?= /opt/rtl-artifacts
 REQUIRED_RTL_ARTIFACTS := picorv32_test_vcd.fst scr1_max_axi_coremark.fst
+SCHEMA_PATH := schema/wavepeek.json
 
 ## Require containerized execution
 require-container:
@@ -18,6 +19,17 @@ check-rtl-artifacts: require-container
 			exit 1; \
 		fi; \
 	done
+
+## Regenerate canonical schema artifact from runtime output
+update-schema: require-container
+	@mkdir -p schema
+	@tmp_file="$$(mktemp)"; trap 'rm -f "$$tmp_file"' EXIT; \
+		cargo run --quiet -- schema > "$$tmp_file"; \
+		mv "$$tmp_file" "$(SCHEMA_PATH)"
+
+## Validate canonical schema freshness and JSON contract URL
+check-schema: require-container
+	@python3 scripts/check_schema_contract.py "$(SCHEMA_PATH)"
 
 ## Bootstrap project env
 bootstrap: require-container
@@ -62,13 +74,13 @@ check-commit: require-container
 	cz check --commit-msg-file "$$(git rev-parse --git-path COMMIT_EDITMSG)"
 
 ## Check everything
-check: format-check lint check-build check-commit
+check: format-check lint check-schema check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint test check-build
+ci: format-check lint check-schema test check-build
 
 ## Fix everything
-fix: format lint-fix
+fix: format lint-fix update-schema
 
 ## Clean up
 clean: require-container

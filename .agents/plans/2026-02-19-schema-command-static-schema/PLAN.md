@@ -86,18 +86,18 @@
 - Single-schema contract is sufficient for all current commands in this release.
 
 ## Definition of Done
-- [ ] `D1`: `wavepeek schema` runs without flags and prints one valid JSON schema document to stdout.
-- [ ] `D2`: `wavepeek schema --json`, `wavepeek schema --human`, `wavepeek schema --waves <file>`, and positional-arg variants fail with stable `error: args:` diagnostics.
-- [ ] `D3`: `schema/wavepeek.json` exists and validates as JSON.
-- [ ] `D4`: `wavepeek schema` output matches canonical `schema/wavepeek.json` byte-for-byte.
-- [ ] `D5`: JSON envelope uses `$schema` key (serialized literally as `$schema`) and no longer includes `schema_version`.
-- [ ] `D6`: `$schema` value follows `https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json`, where `<version>` is exactly `CARGO_PKG_VERSION`.
-- [ ] `D7`: Integration tests for `info`, `scope`, `signal` (or equivalent covered commands) assert updated envelope contract.
-- [ ] `D8`: `make check` and `make ci` include schema consistency verification and pass.
-- [ ] `D9`: pre-commit executes schema consistency verification (direct hook or via `make` target path) and fails on mismatch.
-- [ ] `D10`: `.agents/PRD.md`, `CHANGELOG.md`, and `.agents/RELEASE.md` reflect new schema contract and URL publication model.
-- [ ] `D11`: root `Makefile` exposes `update-schema`, and `make fix` runs it.
-- [ ] `D12`: `check-schema` mismatch diagnostics explicitly suggest `make update-schema`.
+- [x] `D1`: `wavepeek schema` runs without flags and prints one valid JSON schema document to stdout.
+- [x] `D2`: `wavepeek schema --json`, `wavepeek schema --human`, `wavepeek schema --waves <file>`, and positional-arg variants fail with stable `error: args:` diagnostics.
+- [x] `D3`: `schema/wavepeek.json` exists and validates as JSON.
+- [x] `D4`: `wavepeek schema` output matches canonical `schema/wavepeek.json` byte-for-byte.
+- [x] `D5`: JSON envelope uses `$schema` key (serialized literally as `$schema`) and no longer includes `schema_version`.
+- [x] `D6`: `$schema` value follows `https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json`, where `<version>` is exactly `CARGO_PKG_VERSION`.
+- [x] `D7`: Integration tests for `info`, `scope`, `signal` (or equivalent covered commands) assert updated envelope contract.
+- [x] `D8`: `make check` and `make ci` include schema consistency verification and pass.
+- [x] `D9`: pre-commit executes schema consistency verification (direct hook or via `make` target path) and fails on mismatch.
+- [x] `D10`: `.agents/PRD.md`, `CHANGELOG.md`, and `.agents/RELEASE.md` reflect new schema contract and URL publication model.
+- [x] `D11`: root `Makefile` exposes `update-schema`, and `make fix` runs it.
+- [x] `D12`: `check-schema` mismatch diagnostics explicitly suggest `make update-schema`.
 
 ## Implementation Plan (Task Breakdown)
 
@@ -155,3 +155,41 @@
 2. Run `make check` and `make ci` in containerized environment.
 3. Confirm DoD checklist closure and collect command evidence in PR/release notes.
 - Outputs: Release-ready schema contract migration with verifiable gates.
+
+## Execution Notes (Living)
+
+### 2026-02-19 - Task 1 (docs/contracts) - completed
+- Updated `.agents/PRD.md` to define the new canonical contract: `wavepeek schema` is argument-free and always emits a single schema document, while JSON envelopes now use versioned `$schema` URL instead of `schema_version`.
+- Updated `CHANGELOG.md` with explicit breaking-change note for `schema_version` -> `$schema`, plus schema command simplification and gate enforcement notes.
+- Updated `.agents/RELEASE.md` to document schema publication model via tagged blob URL and to include `make update-schema` in release prep.
+- Decision: keep release-time schema publication as implicit tagged source blob (`blob/vX.Y.Z/...`) to avoid release-asset workflow coupling in this iteration.
+
+### 2026-02-19 - Task 2 (schema artifact + command) - completed
+- Added canonical schema artifact at `schema/wavepeek.json` in stable pretty-printed JSON format with trailing newline.
+- Implemented `schema` command end-to-end: removed command flags, switched engine path from `Unimplemented` to deterministic output of embedded artifact bytes.
+- Added `tests/schema_cli.rs` coverage for exact byte match with canonical artifact, JSON validity, and deterministic repeated output.
+- Extended CLI contract tests to assert stable `error: args:` failures for removed `schema --json` and positional-argument variants.
+- Decision: embed artifact with `include_str!` from `CARGO_MANIFEST_DIR` so runtime is package-safe and independent of current working directory.
+
+### 2026-02-19 - Task 3 (envelope migration to `$schema`) - completed
+- Replaced envelope metadata key from `schema_version` to literal `$schema` in `src/output.rs` serialization.
+- `$schema` URL now derives from compile-time package version and tagged blob path format (`.../blob/v<version>/schema/wavepeek.json`).
+- Updated JSON contract assertions in `tests/info_cli.rs`, `tests/modules_cli.rs`, `tests/signals_cli.rs`, and output unit tests to require `$schema` and ensure `schema_version` is absent.
+- Surprise handled: schema command output path needed newline-preserving stdout behavior to avoid accidental double newline when schema text already includes trailing newline.
+
+### 2026-02-19 - Task 4 (quality gates) - completed
+- Added root Makefile targets: `update-schema` (regenerate canonical artifact from runtime command) and `check-schema` (artifact presence, JSON validity, trailing newline, runtime/file sync, URL/version contract checks).
+- Wired `check-schema` into both `make check` and `make ci`; wired `update-schema` into `make fix`.
+- Added `schema-contract` pre-commit hook that runs `make check-schema` for direct local feedback.
+- Added helper script `scripts/check_schema_contract.py` to keep validation logic readable and deterministic, including explicit remediation hints (`run make update-schema`) for drift cases.
+
+### 2026-02-19 - Task 5 (regression sweep) - completed
+- Focused suites passed: `cargo test --test schema_cli --test cli_contract --test info_cli --test modules_cli --test signals_cli`.
+- Full quality gates passed end-to-end: `make check` and `make ci`.
+- Additional verification passed: `make check-schema` and `make update-schema`.
+- Surprise handled: initial `make update-schema` implementation used direct output redirection and could truncate the source artifact before compile-time embedding; fixed by writing to temp file then moving atomically.
+
+### 2026-02-19 - Reviewer loop - completed
+- Reviewer pass 1 found two issues: stale changelog wording about `schema_version` and overly strict URL regex; both fixed.
+- Control reviewer found one docs consistency issue (`master` vs `main` in release runbook); fixed in `.agents/RELEASE.md`.
+- Final reviewer verdict after fixes: no new substantive findings.

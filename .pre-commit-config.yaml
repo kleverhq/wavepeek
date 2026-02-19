@@ -26,6 +26,14 @@ repos:
         types: [file, rust]
         stages: [pre-commit]
 
+      - id: schema-contract
+        name: Schema contract check
+        description: Validate canonical schema freshness and URL contract
+        entry: make check-schema
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: rust-test
         name: Rust testing
         description: Run cargo tests

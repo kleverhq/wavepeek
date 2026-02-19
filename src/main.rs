@@ -3,6 +3,7 @@ mod engine;
 mod error;
 mod expr;
 mod output;
+mod schema_contract;
 mod waveform;
 
 use std::process::ExitCode;

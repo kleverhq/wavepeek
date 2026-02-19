@@ -28,10 +28,10 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     #[command(
-        about = "Export JSON schema for strict output",
-        long_about = r#"Outputs the JSON schema for wavepeek's strict JSON envelope output.
+        about = "Print canonical JSON schema contract",
+        long_about = r#"Outputs the canonical JSON schema document for wavepeek machine output contracts.
 
-Use --json to print structured JSON output."#
+This command accepts no flags and always prints one schema document to stdout."#
     )]
     Schema(schema::SchemaArgs),
     #[command(

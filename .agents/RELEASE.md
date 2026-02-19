@@ -4,8 +4,8 @@ This runbook covers both dry-run and real release modes for `wavepeek`.
 
 ## Preconditions
 
-- `master` is green in pre-merge CI.
-- Local branch is up to date with `master`.
+- `main` is green in pre-merge CI.
+- Local branch is up to date with `main`.
 - You have permission to push tags and manage repository variables.
 - For real releases: `CRATES_IO_TOKEN` exists in repository secrets.
 
@@ -25,36 +25,45 @@ crate publish and GitHub Release creation.
    - keep a fresh `## [Unreleased]` section for future changes;
    - update bottom links for `Unreleased` and the new version tag.
 3. Update `Cargo.toml` version to `X.Y.Z`.
-4. Run local checks:
+4. Regenerate canonical schema artifact:
+
+   ```bash
+   make update-schema
+   ```
+
+5. Run local checks:
 
    ```bash
    make ci
    ```
 
-5. Commit release prep:
+6. Commit release prep:
 
    ```bash
-   git add CHANGELOG.md Cargo.toml Cargo.lock
+   git add CHANGELOG.md Cargo.toml Cargo.lock schema/wavepeek.json
    git commit -m "chore(release): prepare vX.Y.Z"
    ```
 
-6. Push commit and tag:
+7. Push commit and tag:
 
    ```bash
-   git push origin master
+   git push origin main
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
 
-7. Wait for `.github/workflows/release.yml` to finish.
-8. Check workflow logs for:
+8. Wait for `.github/workflows/release.yml` to finish.
+9. Check workflow logs for:
    - tag/version validation
    - `make ci`
    - `cargo package --locked`
    - expected mode behavior (skip side effects in dry-run, execute in real mode)
-9. Verify final state:
-   - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
-   - Real release: crate published and GitHub Release created for `vX.Y.Z`.
+10. Validate schema publication endpoint for the tag (no extra asset upload required):
+    - `https://github.com/kleverhq/wavepeek/blob/vX.Y.Z/schema/wavepeek.json` resolves to the committed schema artifact.
+11. Verify final state:
+    - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
+    - Real release: crate published and GitHub Release created for `vX.Y.Z`.
+    - In both modes, schema is published implicitly via the tagged source blob URL.
 
 ## Rollback
 

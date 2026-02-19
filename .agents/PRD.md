@@ -43,7 +43,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 2. **Self-documenting I/O** — Commands read as unambiguous descriptions of what they do. Human-readable output is the default UX, while strict machine output is explicit via `--json`.
 3. **Composable commands** — Unix philosophy: do one thing well, combine via pipes. Command names are unambiguous first, short second
 4. **Deterministic output** — Same input always produces same output (no timestamps, random IDs, etc.)
-5. **Stable formats** — JSON output uses an explicit schema version (`schema_version`) when `--json` is requested. Human-readable output remains intentionally flexible and is the default for all commands.
+5. **Stable formats** — JSON output uses an explicit versioned schema URL (`$schema`) when `--json` is requested. Human-readable output remains intentionally flexible and is the default for waveform commands.
 6. **Minimal footprint** — Fast startup, low memory, no background processes
 
 ---
@@ -88,13 +88,13 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   of `--signals`), or inherently finite output (e.g., `schema`). When list output is truncated due
   to `--max`, a warning is emitted.
 - **Bounded recursion.** Recursive commands have `--max-depth` with a default of 5.
-- **Output format.** Default output is human-readable for all commands.
-  Strict machine output is enabled explicitly with `--json`.
+- **Output format.** Default output is human-readable for waveform commands.
+  Strict machine output is enabled explicitly with `--json`. The `schema` command is a special case and always emits one JSON Schema document to stdout.
 - **JSON envelope (`--json` mode).** On success, JSON output is a single object:
 
   ```json
   {
-    "schema_version": 2,
+    "$schema": "https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json",
     "command": "<command>",
     "data": {},
     "warnings": []
@@ -102,6 +102,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   ```
 
   Notes:
+  - `$schema` is always serialized literally as `$schema` and points to the canonical schema artifact for the current tool version.
   - `command` is the subcommand name and can be used to discriminate the shape of `data`.
   - `data` is an object for scalar outputs (e.g., `info`) and an array for list-like outputs.
   - `warnings` is an array of free-form strings. In human mode, warnings are printed to stderr.
@@ -118,22 +119,19 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   neither means the entire dump.
   Range boundaries are inclusive.
 
-#### 3.2.0 `schema` — JSON schema export
+#### 3.2.0 `schema` — Canonical JSON schema export
 
-Outputs the JSON schema for wavepeek's strict `--json` output envelope.
+Outputs the canonical JSON schema document for wavepeek machine output contracts.
 
 ```
-wavepeek schema [--json]
+wavepeek schema
 ```
-
-**Parameters:**
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
-- Default output: human-readable summary (e.g., schema version and available schemas).
-- `--json` prints strict JSON envelope output with `data` containing one or more JSON Schema documents.
+- Accepts no command-specific flags or positional arguments.
+- Writes exactly one JSON Schema document to stdout (no envelope wrapping).
+- Output is deterministic and byte-stable.
+- Output bytes match the canonical repository artifact at `schema/wavepeek.json`.
 
 #### 3.2.1 `info` — Dump metadata
 
@@ -473,7 +471,7 @@ wavepeek when --waves dump.vcd --clk clk --scope top.cpu --cond "(a || b) && !re
 ### 4.4 LLM Agent Integration
 - Ready-made skill definition for LLM CLI agents (OpenCode, Codex CLI, Claude Code)
 - Skill shipped in repo with setup instructions
-- Deterministic `--json` output with stable schema versioning for machine consumers
+- Deterministic `--json` output with stable `$schema` URL contracts for machine consumers
 
 ---
 
@@ -513,9 +511,10 @@ The CLI layer formats results for output.
 
 **Key architectural decisions:**
 
-- **Stable output schema.** JSON output in `--json` mode uses a versioned schema.
-  Implementation may introduce internal data structures to stabilize the output contract
-  independently of upstream dependency APIs.
+- **Stable output schema.** JSON output in `--json` mode uses a versioned `$schema` URL.
+  The canonical schema artifact is tracked at `schema/wavepeek.json`; implementation may
+  introduce internal data structures to stabilize the output contract independently of
+  upstream dependency APIs.
 
 - **Stateless execution.** Each CLI invocation opens the file, executes one command,
   and exits. No caching, no sessions, no background processes. This simplifies the
@@ -695,7 +694,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - Exact stdout output (deterministic output is a design principle)
 - Exit code
 - Stderr content for error cases
-- `--json` output validates against expected JSON structure and schema version
+- `--json` output validates against expected JSON structure and `$schema` URL contract
 - Human output is not asserted for exact formatting (no strict contract)
 - Consistency: same query on VCD and FST of the same design produces identical output
 
@@ -749,8 +748,8 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 ### M5: Agent-Ready (→ v0.5.0)
 
 - LLM agent skill definition for CLI agents
-- `schema` command to export JSON schema(s)
-- Release automation publishes schema assets per release
+- `schema` command to export one canonical JSON schema document
+- Release process treats tagged source blob (`vX.Y.Z`) as schema publication endpoint
 - Performance benchmarks
 - Post-MVP expression extensions: bit select/slice, bitwise ops, arithmetic, shift
 
@@ -770,7 +769,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 1. **Scope/path canonicalization.** What is the canonical path syntax and escaping rules for VCD escaped identifiers and unusual names across formats?
 2. **Warnings (codes vs free text).** Do we add stable warning codes for promote/suppress, or keep warnings as free-form strings only?
 3. **Value radix options.** Do we add `--radix` (hex/bin/dec/auto) and what is the default policy beyond the Verilog-literal representation?
-4. **Schema distribution.** Exact shape and naming for schema assets in releases (single schema vs per-command schemas; filenames; how clients discover them).
+4. **Schema evolution policy.** Do we keep a single canonical schema file indefinitely, or split into per-command schemas in future milestones?
 5. **Signal metadata schema.** Exact JSON fields for `signal` output (`kind`, `width`, and other metadata) and how they map across formats.
 6. **GHW support scope.** Should GHW be added after MVP, and if yes, what acceptance criteria and priority should gate its introduction?
 

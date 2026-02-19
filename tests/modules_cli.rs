@@ -8,6 +8,14 @@ fn wavepeek_cmd() -> Command {
     Command::new(env!("CARGO_BIN_EXE_wavepeek"))
 }
 
+fn expected_schema_url() -> &'static str {
+    concat!(
+        "https://github.com/kleverhq/wavepeek/blob/v",
+        env!("CARGO_PKG_VERSION"),
+        "/schema/wavepeek.json"
+    )
+}
+
 fn fixture_path(filename: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")
@@ -60,7 +68,8 @@ fn scope_json_order_is_deterministic_for_vcd() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
     let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
-    assert_eq!(value["schema_version"], 2);
+    assert_eq!(value["$schema"], expected_schema_url());
+    assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "scope");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(

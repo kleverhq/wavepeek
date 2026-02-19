@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "wavepeek JSON output envelope",
+  "description": "Canonical schema for wavepeek --json command outputs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "command",
+    "data",
+    "warnings"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "pattern": "^https://github.com/kleverhq/wavepeek/blob/v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?/schema/wavepeek\\.json$"
+    },
+    "command": {
+      "type": "string",
+      "enum": [
+        "info",
+        "scope",
+        "signal"
+      ]
+    },
+    "data": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/infoData"
+        },
+        {
+          "$ref": "#/$defs/scopeData"
+        },
+        {
+          "$ref": "#/$defs/signalData"
+        }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "info"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/infoData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "scope"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/scopeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "signal"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/signalData"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "infoData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time_unit",
+        "time_start",
+        "time_end"
+      ],
+      "properties": {
+        "time_unit": {
+          "type": "string"
+        },
+        "time_start": {
+          "type": "string"
+        },
+        "time_end": {
+          "type": "string"
+        }
+      }
+    },
+    "scopeData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "depth",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "signalData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path",
+          "kind"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}

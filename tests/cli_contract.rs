@@ -135,6 +135,34 @@ fn schema_does_not_accept_waves_flag() {
 }
 
 #[test]
+fn schema_does_not_accept_json_flag() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["schema", "--json"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--json'"))
+        .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
+}
+
+#[test]
+fn schema_rejects_positional_arguments() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["schema", "extra"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument 'extra'"))
+        .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
+}
+
+#[test]
 fn legacy_tree_command_is_rejected_without_alias() {
     let mut command = wavepeek_cmd();
 

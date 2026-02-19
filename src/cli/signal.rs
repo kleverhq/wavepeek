@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use clap::Args;
 
 #[derive(Debug, Args)]
-pub struct SignalsArgs {
+pub struct SignalArgs {
     /// Path to VCD/FST waveform file
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,

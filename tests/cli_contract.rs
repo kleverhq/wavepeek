@@ -36,9 +36,11 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("scope"))
         .stdout(predicate::str::contains("\n  modules\n").not())
         .stdout(predicate::str::contains("\n  tree\n").not())
-        .stdout(predicate::str::contains("signals"))
+        .stdout(predicate::str::contains("signal"))
+        .stdout(predicate::str::contains("\n  signals\n").not())
         .stdout(predicate::str::contains("at"))
-        .stdout(predicate::str::contains("changes"))
+        .stdout(predicate::str::contains("change"))
+        .stdout(predicate::str::contains("\n  changes\n").not())
         .stdout(predicate::str::contains("when"))
         .stdout(predicate::str::contains("\n  help\n").not());
 }
@@ -163,6 +165,38 @@ fn legacy_modules_command_is_rejected_without_alias() {
 }
 
 #[test]
+fn legacy_signals_command_is_rejected_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("signals")
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "unrecognized subcommand 'signals'",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+#[test]
+fn legacy_changes_command_is_rejected_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("changes")
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "unrecognized subcommand 'changes'",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+#[test]
 fn positional_arguments_are_rejected() {
     let mut command = wavepeek_cmd();
 
@@ -218,16 +252,14 @@ fn all_commands_reject_human_flag() {
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
 
-    let mut signals = wavepeek_cmd();
-    signals
-        .args([
-            "signals", "--waves", "dump.vcd", "--scope", "top", "--human",
-        ])
+    let mut signal = wavepeek_cmd();
+    signal
+        .args(["signal", "--waves", "dump.vcd", "--scope", "top", "--human"])
         .assert()
         .failure()
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek signals --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 
     let mut at = wavepeek_cmd();
     at.args([
@@ -246,10 +278,10 @@ fn all_commands_reject_human_flag() {
     .stderr(predicate::str::contains("unexpected argument '--human'"))
     .stderr(predicate::str::contains("See 'wavepeek at --help'."));
 
-    let mut changes = wavepeek_cmd();
-    changes
+    let mut change = wavepeek_cmd();
+    change
         .args([
-            "changes",
+            "change",
             "--waves",
             "dump.vcd",
             "--signals",
@@ -260,7 +292,7 @@ fn all_commands_reject_human_flag() {
         .failure()
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek changes --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 
     let mut when = wavepeek_cmd();
     when.args([
@@ -271,6 +303,21 @@ fn all_commands_reject_human_flag() {
     .stderr(predicate::str::starts_with("error: args:"))
     .stderr(predicate::str::contains("unexpected argument '--human'"))
     .stderr(predicate::str::contains("See 'wavepeek when --help'."));
+}
+
+#[test]
+fn change_unimplemented_error_uses_singular_command_name() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["change", "--waves", "dump.vcd", "--signals", "clk"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "error: unimplemented: `change` command execution is not implemented yet",
+        ));
 }
 
 #[test]

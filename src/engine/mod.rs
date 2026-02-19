@@ -1,9 +1,9 @@
 pub mod at;
-pub mod changes;
+pub mod change;
 pub mod info;
 pub mod schema;
 pub mod scope;
-pub mod signals;
+pub mod signal;
 pub mod when;
 
 use serde::Serialize;
@@ -16,9 +16,9 @@ pub enum Command {
     Schema(cli::schema::SchemaArgs),
     Info(cli::info::InfoArgs),
     Scope(cli::scope::ScopeArgs),
-    Signals(cli::signals::SignalsArgs),
+    Signal(cli::signal::SignalArgs),
     At(cli::at::AtArgs),
-    Changes(cli::changes::ChangesArgs),
+    Change(cli::change::ChangeArgs),
     When(cli::when::WhenArgs),
 }
 
@@ -27,7 +27,7 @@ pub enum Command {
 pub enum CommandName {
     Info,
     Scope,
-    Signals,
+    Signal,
 }
 
 impl CommandName {
@@ -35,7 +35,7 @@ impl CommandName {
         match self {
             Self::Info => "info",
             Self::Scope => "scope",
-            Self::Signals => "signals",
+            Self::Signal => "signal",
         }
     }
 }
@@ -52,7 +52,7 @@ pub struct HumanRenderOptions {
 pub enum CommandData {
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),
-    Signals(Vec<signals::SignalEntry>),
+    Signal(Vec<signal::SignalEntry>),
 }
 
 #[derive(Debug, Serialize)]
@@ -72,9 +72,9 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Schema(args) => schema::run(args),
         Command::Info(args) => info::run(args),
         Command::Scope(args) => scope::run(args),
-        Command::Signals(args) => signals::run(args),
+        Command::Signal(args) => signal::run(args),
         Command::At(args) => at::run(args),
-        Command::Changes(args) => changes::run(args),
+        Command::Change(args) => change::run(args),
         Command::When(args) => when::run(args),
     }
 }

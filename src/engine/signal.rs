@@ -1,4 +1,4 @@
-use crate::cli::signals::SignalsArgs;
+use crate::cli::signal::SignalArgs;
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
@@ -14,16 +14,16 @@ pub struct SignalEntry {
     pub width: Option<u32>,
 }
 
-pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
     if args.max == 0 {
         return Err(WavepeekError::Args(
-            "--max must be greater than 0. See 'wavepeek signals --help'.".to_string(),
+            "--max must be greater than 0. See 'wavepeek signal --help'.".to_string(),
         ));
     }
 
     let filter = Regex::new(args.filter.as_str()).map_err(|error| {
         WavepeekError::Args(format!(
-            "invalid regex '{}': {error}. See 'wavepeek signals --help'.",
+            "invalid regex '{}': {error}. See 'wavepeek signal --help'.",
             args.filter
         ))
     })?;
@@ -51,13 +51,13 @@ pub fn run(args: SignalsArgs) -> Result<CommandResult, WavepeekError> {
     }
 
     Ok(CommandResult {
-        command: CommandName::Signals,
+        command: CommandName::Signal,
         json: args.json,
         human_options: crate::engine::HumanRenderOptions {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        data: CommandData::Signals(entries),
+        data: CommandData::Signal(entries),
         warnings,
     })
 }

@@ -94,7 +94,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 
   ```json
   {
-    "schema_version": 1,
+    "schema_version": 2,
     "command": "<command>",
     "data": {},
     "warnings": []
@@ -169,12 +169,12 @@ wavepeek info --waves dump.vcd
 wavepeek info --waves dump.vcd --json
 ```
 
-#### 3.2.2 `modules` — Hierarchy exploration
+#### 3.2.2 `scope` — Hierarchy exploration
 
-Outputs a flat list of module instances, recursively traversing the hierarchy.
+Outputs a flat list of hierarchy scopes, recursively traversing the hierarchy.
 
 ```
-wavepeek modules --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [--tree] [--json]
+wavepeek scope --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [--tree] [--json]
 ```
 
 **Parameters:**
@@ -188,7 +188,8 @@ wavepeek modules --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>]
 | `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
-- Outputs flat list of instance paths with metadata
+- Outputs flat list of scope paths with metadata
+- Includes all scope kinds available in hierarchy data (not only modules)
 - Ordering: pre-order depth-first traversal; children at each scope are visited in lexicographic order
 - Default output: human-readable list mode.
 - `--tree` switches human output to visual hierarchy rendering.
@@ -197,30 +198,31 @@ wavepeek modules --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>]
 - Each item has:
   - `path`: full scope path (string)
   - `depth`: integer depth (root = 0)
+  - `kind`: parser-native scope kind alias (string)
 - If results exceed `--max`, output is truncated and a warning is emitted.
 - Legacy `tree` command name is not supported.
 
 **Examples:**
 ```bash
-# List all modules (default human output)
-wavepeek modules --waves dump.vcd
+# List all scopes (default human output)
+wavepeek scope --waves dump.vcd
 
-# Find ALU-related modules
-wavepeek modules --waves dump.vcd --filter ".*alu.*"
+# Find ALU-related scopes
+wavepeek scope --waves dump.vcd --filter ".*alu.*"
 
 # Explore 2 levels deep with visual tree rendering
-wavepeek modules --waves dump.vcd --max-depth 2 --tree
+wavepeek scope --waves dump.vcd --max-depth 2 --tree
 
-# Get all modules
-wavepeek modules --waves dump.vcd --max 1000
+# Get all scopes
+wavepeek scope --waves dump.vcd --max 1000
 ```
 
-#### 3.2.3 `signals` — Signal listing
+#### 3.2.3 `signal` — Signal listing
 
 Lists signals within a specific scope with their metadata.
 
 ```
-wavepeek signals --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--abs] [--json]
+wavepeek signal --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -242,17 +244,18 @@ wavepeek signals --waves <file> --scope <path> [--max <n>] [--filter <regex>] [-
 - `--json` returns strict JSON envelope with `data` as an array of objects.
 - Invalid regex is an `args` error.
 - If results exceed `--max`, output is truncated and a warning is emitted.
+- Legacy `signals` command name is not supported.
 
 **Examples:**
 ```bash
 # List signals in top.cpu (default human, short names)
-wavepeek signals --waves dump.vcd --scope top.cpu
+wavepeek signal --waves dump.vcd --scope top.cpu
 
 # Find clock signals
-wavepeek signals --waves dump.vcd --scope top.cpu --filter ".*clk.*"
+wavepeek signal --waves dump.vcd --scope top.cpu --filter ".*clk.*"
 
 # Human output with full paths
-wavepeek signals --waves dump.vcd --scope top.cpu --abs
+wavepeek signal --waves dump.vcd --scope top.cpu --abs
 ```
 
 #### 3.2.4 `at` — Value extraction at time point
@@ -297,13 +300,13 @@ wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk,data,val
 wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --json
 ```
 
-#### 3.2.5 `changes` — Value changes over time range
+#### 3.2.5 `change` — Value changes over time range
 
 Outputs snapshots of signal values over a time range. Supports two modes:
 unclocked (trigger on any signal change) and clocked (trigger on posedge of a clock).
 
 ```
-wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--json]
+wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--json]
 ```
 
 **Parameters:**
@@ -341,20 +344,21 @@ wavepeek changes --waves <file> [--from <time>] [--to <time>] [--scope <path>] -
 - Fail fast: error if any signal not found
 - If no changes/posedges in the time range, `data` is empty and a warning is emitted.
 - If results exceed `--max`, output is truncated and a warning is emitted.
+- Legacy `changes` command name is not supported.
 
 **Examples:**
 ```bash
 # Unclocked: track changes in time range
-wavepeek changes --waves dump.vcd --from 1us --to 2us --signals top.cpu.clk,top.cpu.data
+wavepeek change --waves dump.vcd --from 1us --to 2us --signals top.cpu.clk,top.cpu.data
 
 # Unclocked: with scope (shorter names)
-wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk,data,valid
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk,data,valid
 
 # Clocked: snapshot per clock cycle
-wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --clk clk --signals data,valid,ready
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --clk clk --signals data,valid,ready
 
 # Strict JSON envelope
-wavepeek changes --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --json
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --json
 ```
 
 #### 3.2.6 `when` — Event search
@@ -483,7 +487,7 @@ wavepeek when --waves dump.vcd --clk clk --scope top.cpu --cond "(a || b) && !re
 | **CLI framework** | `clap` (derive API) | De-facto standard for Rust CLIs. Derive API provides self-documenting argument definitions with compile-time validation. |
 | **Waveform parsing** | `wellen` | Unified interface for VCD and FST formats. Battle-tested in the [Surfer](https://surfer-project.org/) waveform viewer. Multi-threaded VCD parsing via `rayon`. Optimized for on-demand signal access (loads hierarchy first, signal data lazily). |
 | **Serialization** | `serde` + `serde_json` | Standard Rust serialization. Used for strict `--json` envelope output and JSON schema export. |
-| **Pattern matching** | `regex` | For `--filter` flag in `modules` and `signals` commands. |
+| **Pattern matching** | `regex` | For `--filter` flag in `scope` and `signal` commands. |
 | **Error handling** | `thiserror` | Typed error enums with `#[derive(Error)]`. All error variants are known at compile time. No runtime error boxing (no `anyhow`). |
 | **Build automation** | Cargo + Make | Cargo for compilation. Makefile provides shorthand targets: `make format`, `make format-check`, `make lint`, `make test`, `make check`. |
 
@@ -499,8 +503,8 @@ The CLI layer formats results for output.
    Human-readable default output for all commands, strict JSON via `--json`, errors to stderr.
    Passes typed command structs down to the engine.
 
-2. **Engine Layer** — Business logic per command: `info`, `modules`, `signals`,
-   `at`, `changes`, `when`, `schema`. Operates on waveform abstractions, returns structured
+2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
+   `at`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
    results. Contains expression evaluator (for `when`).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
@@ -533,19 +537,19 @@ src/
 ├── cli/                 # CLI layer: argument definitions and output formatting
 │   ├── mod.rs           # Top-level CLI struct, subcommand dispatch
 │   ├── info.rs          # `info` command args + output
-│   ├── modules.rs       # `modules` command args + output
-│   ├── signals.rs       # `signals` command args + output
+│   ├── scope.rs         # `scope` command args + output
+│   ├── signal.rs        # `signal` command args + output
 │   ├── at.rs            # `at` command args + output
-│   ├── changes.rs       # `changes` command args + output
+│   ├── change.rs        # `change` command args + output
 │   ├── when.rs          # `when` command args + output
 │   └── schema.rs        # `schema` command args + output
 ├── engine/              # Business logic per command
 │   ├── mod.rs           # Shared types (result structs, time parsing)
 │   ├── info.rs          # Dump metadata extraction
-│   ├── modules.rs       # Hierarchy traversal with depth/filter
-│   ├── signals.rs       # Signal listing within scope
+│   ├── scope.rs         # Hierarchy traversal with depth/filter
+│   ├── signal.rs        # Signal listing within scope
 │   ├── at.rs            # Value extraction at time point
-│   ├── changes.rs       # Value change tracking (clocked/unclocked)
+│   ├── change.rs        # Value change tracking (clocked/unclocked)
 │   ├── when.rs          # Condition evaluation over clock cycles
 │   └── schema.rs        # JSON schema export
 ├── expr/                # Expression engine (for `when` command)
@@ -578,7 +582,7 @@ src/
 | `clap` | ~4 | CLI argument parsing | With `derive` feature for declarative argument definitions. |
 | `serde` | ~1 | Serialization framework | With `derive` feature. |
 | `serde_json` | ~1 | JSON output | Default output serialization and schema export. |
-| `regex` | ~1 | Pattern matching | For `--filter` in `modules` and `signals`. |
+| `regex` | ~1 | Pattern matching | For `--filter` in `scope` and `signal`. |
 | `thiserror` | ~2 | Error type derivation | `#[derive(Error)]` for typed error enums. |
 
 **Dev dependencies:**
@@ -717,11 +721,11 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 ### M2: Core CLI (→ v0.2.0)
 
 - `info` command (§3.2.1)
-- `modules` command (§3.2.2)
-- `signals` command (§3.2.3)
+- `scope` command (§3.2.2)
+- `signal` command (§3.2.3)
 - VCD + FST format support
 - Human default output for all commands with explicit `--json` contract mode
-- `tree` command surface replaced by `modules` (no alias)
+- `tree` and `modules` command surfaces replaced by `scope` (no aliases)
 - Error handling: WavepeekError enum, exit codes, stderr format (§5.6)
 - Hand-crafted VCD test fixtures
 - Integration tests with `assert_cmd`
@@ -729,7 +733,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 ### M3: Value Extraction (→ v0.3.0)
 
 - `at` command (§3.2.4)
-- `changes` command — unclocked + clocked modes (§3.2.5)
+- `change` command — unclocked + clocked modes (§3.2.5)
 - Time parsing with mandatory units (`--from`, `--to`, `--time`)
 - Expanded container-provisioned fixtures for value-extraction scenarios
 
@@ -767,7 +771,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 2. **Warnings (codes vs free text).** Do we add stable warning codes for promote/suppress, or keep warnings as free-form strings only?
 3. **Value radix options.** Do we add `--radix` (hex/bin/dec/auto) and what is the default policy beyond the Verilog-literal representation?
 4. **Schema distribution.** Exact shape and naming for schema assets in releases (single schema vs per-command schemas; filenames; how clients discover them).
-5. **Signal metadata schema.** Exact JSON fields for `signals` output (`kind`, `width`, and other metadata) and how they map across formats.
+5. **Signal metadata schema.** Exact JSON fields for `signal` output (`kind`, `width`, and other metadata) and how they map across formats.
 6. **GHW support scope.** Should GHW be added after MVP, and if yes, what acceptance criteria and priority should gate its introduction?
 
 ---

@@ -24,14 +24,14 @@ fn rtl_fixture_path(filename: &str) -> PathBuf {
 }
 
 #[test]
-fn signals_human_mode_uses_short_names_by_default() {
+fn signal_human_mode_uses_short_names_by_default() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -49,7 +49,7 @@ fn signals_human_mode_uses_short_names_by_default() {
 }
 
 #[test]
-fn signals_human_mode_supports_absolute_paths_with_abs_flag() {
+fn signal_human_mode_supports_absolute_paths_with_abs_flag() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -57,7 +57,7 @@ fn signals_human_mode_supports_absolute_paths_with_abs_flag() {
 
     command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -71,14 +71,14 @@ fn signals_human_mode_supports_absolute_paths_with_abs_flag() {
 }
 
 #[test]
-fn signals_json_shape_for_vcd_keeps_full_paths() {
+fn signal_json_shape_for_vcd_keeps_full_paths() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -91,10 +91,10 @@ fn signals_json_shape_for_vcd_keeps_full_paths() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signals output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
 
     assert_eq!(value["schema_version"], 2);
-    assert_eq!(value["command"], "signals");
+    assert_eq!(value["command"], "signal");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
@@ -107,14 +107,14 @@ fn signals_json_shape_for_vcd_keeps_full_paths() {
 }
 
 #[test]
-fn signals_json_shape_for_fst_keeps_full_paths() {
+fn signal_json_shape_for_fst_keeps_full_paths() {
     let fixture = fixture_path("m2_core.fst");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -127,7 +127,7 @@ fn signals_json_shape_for_fst_keeps_full_paths() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signals output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
 
     assert_eq!(
         value["data"],
@@ -140,14 +140,14 @@ fn signals_json_shape_for_fst_keeps_full_paths() {
 }
 
 #[test]
-fn signals_filter_applies_to_signal_names() {
+fn signal_filter_applies_to_signal_names() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -160,7 +160,7 @@ fn signals_filter_applies_to_signal_names() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signals output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
 
     assert_eq!(
         value["data"],
@@ -172,14 +172,14 @@ fn signals_filter_applies_to_signal_names() {
 }
 
 #[test]
-fn signals_emit_truncation_warning_when_max_is_hit() {
+fn signal_emits_truncation_warning_when_max_is_hit() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -192,7 +192,7 @@ fn signals_emit_truncation_warning_when_max_is_hit() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signals output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
 
     assert_eq!(
         value["data"]
@@ -217,20 +217,14 @@ fn signals_emit_truncation_warning_when_max_is_hit() {
 }
 
 #[test]
-fn signals_scope_not_found_is_scope_error() {
+fn signal_scope_not_found_is_scope_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
 
     command
-        .args([
-            "signals",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top.nope",
-        ])
+        .args(["signal", "--waves", fixture.as_str(), "--scope", "top.nope"])
         .assert()
         .failure()
         .code(1)
@@ -239,7 +233,7 @@ fn signals_scope_not_found_is_scope_error() {
 }
 
 #[test]
-fn signals_invalid_regex_is_args_error() {
+fn signal_invalid_regex_is_args_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -247,7 +241,7 @@ fn signals_invalid_regex_is_args_error() {
 
     command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -260,11 +254,11 @@ fn signals_invalid_regex_is_args_error() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args: invalid regex"))
-        .stderr(predicate::str::contains("See 'wavepeek signals --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 }
 
 #[test]
-fn signals_human_mode_routes_truncation_warning_to_stderr() {
+fn signal_human_mode_routes_truncation_warning_to_stderr() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -272,7 +266,7 @@ fn signals_human_mode_routes_truncation_warning_to_stderr() {
 
     command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -291,13 +285,13 @@ fn signals_human_mode_routes_truncation_warning_to_stderr() {
 }
 
 #[test]
-fn signals_json_output_is_bit_for_bit_deterministic_across_runs() {
+fn signal_json_output_is_bit_for_bit_deterministic_across_runs() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let first = wavepeek_cmd()
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -308,7 +302,7 @@ fn signals_json_output_is_bit_for_bit_deterministic_across_runs() {
         .expect("first run should execute");
     let second = wavepeek_cmd()
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -325,7 +319,7 @@ fn signals_json_output_is_bit_for_bit_deterministic_across_runs() {
 }
 
 #[test]
-fn signals_external_picorv32_fixture_uses_short_names_by_default() {
+fn signal_external_picorv32_fixture_uses_short_names_by_default() {
     let fixture = rtl_fixture_path("picorv32_test_vcd.fst");
     assert!(
         fixture.exists(),
@@ -337,7 +331,7 @@ fn signals_external_picorv32_fixture_uses_short_names_by_default() {
     let fixture = fixture.to_string_lossy().into_owned();
     command
         .args([
-            "signals",
+            "signal",
             "--waves",
             fixture.as_str(),
             "--scope",

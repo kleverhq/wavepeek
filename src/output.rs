@@ -72,7 +72,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
                     .join("\n")
             }
         }
-        CommandData::Signals(signals) => signals
+        CommandData::Signal(signals) => signals
             .iter()
             .map(|entry| match entry.width {
                 Some(width) => {
@@ -146,7 +146,7 @@ fn scope_entry_is_last_sibling(scopes: &[crate::engine::scope::ScopeEntry], inde
     true
 }
 
-fn signal_display_name(entry: &crate::engine::signals::SignalEntry, abs: bool) -> &str {
+fn signal_display_name(entry: &crate::engine::signal::SignalEntry, abs: bool) -> &str {
     if abs {
         entry.path.as_str()
     } else {

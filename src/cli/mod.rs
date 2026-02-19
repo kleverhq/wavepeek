@@ -1,9 +1,9 @@
 pub mod at;
-pub mod changes;
+pub mod change;
 pub mod info;
 pub mod schema;
 pub mod scope;
-pub mod signals;
+pub mod signal;
 pub mod when;
 
 use clap::error::ErrorKind;
@@ -62,7 +62,7 @@ Listing is non-recursive, sorted by signal name, and bounded by --max.
 Use --abs to print full paths.
 Use --json for strict envelope mode."#
     )]
-    Signals(signals::SignalsArgs),
+    Signal(signal::SignalArgs),
     #[command(
         about = "Get signal values at a specific time point",
         long_about = r#"Gets signal values at a specific time point.
@@ -82,7 +82,7 @@ Supports unclocked mode (any tracked signal change) and clocked mode
 
 Use --json for strict envelope mode."#
     )]
-    Changes(changes::ChangesArgs),
+    Change(change::ChangeArgs),
     #[command(
         about = "Find cycles where a condition is true",
         long_about = r#"Finds clock cycles where a boolean expression evaluates to true.
@@ -232,9 +232,9 @@ fn into_engine_command(command: Command) -> EngineCommand {
         Command::Schema(args) => EngineCommand::Schema(args),
         Command::Info(args) => EngineCommand::Info(args),
         Command::Scope(args) => EngineCommand::Scope(args),
-        Command::Signals(args) => EngineCommand::Signals(args),
+        Command::Signal(args) => EngineCommand::Signal(args),
         Command::At(args) => EngineCommand::At(args),
-        Command::Changes(args) => EngineCommand::Changes(args),
+        Command::Change(args) => EngineCommand::Change(args),
         Command::When(args) => EngineCommand::When(args),
     }
 }
@@ -302,10 +302,10 @@ mod tests {
     }
 
     #[test]
-    fn signals_dispatch_keeps_scope_filter_and_max_args() {
+    fn signal_dispatch_keeps_scope_filter_and_max_args() {
         let cli = Cli::parse_from([
             "wavepeek",
-            "signals",
+            "signal",
             "--waves",
             "fixtures/sample.vcd",
             "--scope",
@@ -320,7 +320,7 @@ mod tests {
 
         let command = into_engine_command(cli.command);
         match command {
-            EngineCommand::Signals(args) => {
+            EngineCommand::Signal(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
                 assert_eq!(args.scope, "top.cpu");
                 assert_eq!(args.max, 7);
@@ -328,7 +328,7 @@ mod tests {
                 assert!(args.abs);
                 assert!(args.json);
             }
-            other => panic!("expected signals command, got {other:?}"),
+            other => panic!("expected signal command, got {other:?}"),
         }
     }
 

@@ -200,11 +200,11 @@
 - [x] `D25`: `signal` output `kind` exposes parser-native type aliases (for example `parameter` is no longer emitted as `unknown`) in both human and JSON modes.
 - [x] `D26`: `scope` output includes `kind` for every entry and includes non-module scope kinds when present in fixture data.
 - [x] `D27`: `scope` is canonical command in help/dispatch/output; `modules` invocation is rejected with `error: args:` and context help hint.
-- [ ] `D28`: `signal` is canonical command in help/dispatch/output; `signals` invocation is rejected with `error: args:` and context help hint.
-- [ ] `D29`: `change` is canonical command in help/dispatch/output; `changes` invocation is rejected with `error: args:` and context help hint.
+- [x] `D28`: `signal` is canonical command in help/dispatch/output; `signals` invocation is rejected with `error: args:` and context help hint.
+- [x] `D29`: `change` is canonical command in help/dispatch/output; `changes` invocation is rejected with `error: args:` and context help hint.
 - [x] `D30`: `scope --tree` remains deterministic and readable with mixed `ScopeType` entries and preserved sort order.
-- [ ] `D31`: JSON envelope reflects follow-up break: singular `command` values and incremented `schema_version`.
-- [ ] `D32`: PRD/changelog and CLI contract tests explicitly document and lock the singular command cutover and kind-fidelity contract.
+- [x] `D31`: JSON envelope reflects follow-up break: singular `command` values and incremented `schema_version`.
+- [x] `D32`: PRD/changelog and CLI contract tests explicitly document and lock the singular command cutover and kind-fidelity contract.
 
 ## Implementation Plan (Task Breakdown)
 
@@ -421,3 +421,13 @@
 - Added mixed-scope fixture `tests/fixtures/hand/scope_mixed_kinds.vcd` and regression tests for `scope --json`/`scope --tree` to lock deterministic ordering and non-module kinds (`function`, `task`).
 - Verification evidence: `cargo fmt` + `cargo test` passed locally (including `tests/modules_cli.rs` now exercising `scope` behavior).
 - Surprise/decision: external SCR1 fixture is reliable for broad hierarchy sanity checks but not guaranteed to always expose non-module scope kinds, so a dedicated hand-crafted fixture was added to make `ScopeType` coverage deterministic.
+
+### 2026-02-19 - Task 13 (signal/change singular cutover + docs)
+- Completed CLI cutover to singular command nodes and dispatch wiring: `signals` -> `signal`, `changes` -> `change` (including module/file renames in both `src/cli` and `src/engine`).
+- Updated parse-error help-hint expectations and explicit rejection coverage for removed plural commands (`signals`, `changes`) in `tests/cli_contract.rs`.
+- Updated JSON contract assertions for signal listing to expect singular envelope command value (`"command": "signal"`) while preserving list payload shape.
+- Synchronized docs with final follow-up contract:
+  - `.agents/PRD.md` now documents canonical command names `scope`/`signal`/`change`, all-scope `kind` metadata, and JSON envelope `schema_version: 2`.
+  - `CHANGELOG.md` now reflects singular command cutover, scope-kind expansion, and parser-native signal kind fidelity.
+- Verification evidence: `cargo fmt` + `cargo test` passed after singular cutover.
+- Surprise/decision: kept existing `--signals` flag name for `at`/`change` unchanged to avoid unnecessary argument-surface churn outside this milestone's command-name scope.

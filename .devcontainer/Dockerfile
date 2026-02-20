@@ -68,6 +68,15 @@ ENV LC_ALL=en_US.UTF-8
 # Ensure the devcontainer user exists
 RUN if ! id -u ubuntu >/dev/null 2>&1; then useradd -m -s /bin/bash ubuntu; fi
 
+# Ensure user config directories exist and are writable
+RUN install -d -m 0755 -o ubuntu -g ubuntu \
+    /home/ubuntu/.config \
+    /home/ubuntu/.cache \
+    /home/ubuntu/.local \
+    /home/ubuntu/.local/bin \
+    /home/ubuntu/.local/share \
+    /home/ubuntu/.local/state
+
 # Ensure /workspaces exists and is writable
 RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /workspaces
 
@@ -124,7 +133,8 @@ ENV WINIT_UNIX_BACKEND=x11
 # Install Python tooling for hooks
 ENV PRECOMMIT_VERSION=4.5.1
 ENV COMMITIZEN_VERSION=4.12.1
-RUN pipx install pre-commit==${PRECOMMIT_VERSION} commitizen==${COMMITIZEN_VERSION}
+RUN pipx install pre-commit==${PRECOMMIT_VERSION} && \
+    pipx install commitizen==${COMMITIZEN_VERSION}
 
 # Update PATH
 ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${SURFER_INSTALL}/bin:${PATH}"

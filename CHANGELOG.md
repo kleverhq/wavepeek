@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved parser-native `signal.kind` aliases across both VCD and FST inputs (for example, `parameter` is no longer collapsed to `unknown`).
 - Corrected hierarchy listing semantics on realistic FST data to emit scope entries (not signal leaves).
 - Fixed CI devcontainer workspace permissions by enabling remote UID remapping so `cargo clippy` can write target artifacts.
+- Fixed CI devcontainer baseline image to include `python3` for schema contract validation during `make ci`.
 
 ## [0.1.0] - 2026-02-08
 

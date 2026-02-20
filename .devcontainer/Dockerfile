@@ -57,6 +57,7 @@ RUN apt-get update && \
     ca-certificates curl git make libatomic1 \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
+    python3 \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
@@ -87,6 +88,7 @@ COPY --from=rtl_artifacts /opt/rtl-artifacts /opt/rtl-artifacts
 USER ubuntu
 
 # Install Rust toolchain
+ENV HOME=/home/ubuntu
 ENV RUSTUP_HOME=/home/ubuntu/.rustup
 ENV CARGO_HOME=/home/ubuntu/.cargo
 ENV RUST_VERSION=1.93.0
@@ -99,7 +101,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
 FROM base AS ci
 
 # Update PATH
-ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${PATH}"
+ENV PATH="/home/ubuntu/.local/bin:${CARGO_HOME}/bin:${PATH}"
 
 # ---- Dev Image ---------------------------------------------------------------
 FROM base AS dev
@@ -137,4 +139,4 @@ RUN pipx install pre-commit==${PRECOMMIT_VERSION} && \
     pipx install commitizen==${COMMITIZEN_VERSION}
 
 # Update PATH
-ENV PATH="${HOME}/.local/bin:${CARGO_HOME}/bin:${SURFER_INSTALL}/bin:${PATH}"
+ENV PATH="/home/ubuntu/.local/bin:${CARGO_HOME}/bin:${SURFER_INSTALL}/bin:${PATH}"

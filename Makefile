@@ -63,7 +63,7 @@ check-build: require-container
 
 ## Run tests with cargo
 test: require-container check-rtl-artifacts
-	cargo test
+	cargo test -q
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

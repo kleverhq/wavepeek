@@ -43,7 +43,7 @@ jobs:
 
       - name: Print runtime provenance
         run: |
-          echo "devcontainer_config=.devcontainer/devcontainer.ci.json"
+          echo "devcontainer_config=.devcontainer/.devcontainer.json"
           echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
           sha256sum .devcontainer/Dockerfile
 
@@ -74,7 +74,7 @@ jobs:
       - name: Run release quality gate in devcontainer baseline
         uses: devcontainers/ci@v0.3
         with:
-          configFile: .devcontainer/devcontainer.ci.json
+          configFile: .devcontainer/.devcontainer.json
           cacheFrom: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
           cacheTo: |
@@ -85,7 +85,7 @@ jobs:
       - name: Build crate package in devcontainer baseline
         uses: devcontainers/ci@v0.3
         with:
-          configFile: .devcontainer/devcontainer.ci.json
+          configFile: .devcontainer/.devcontainer.json
           cacheFrom: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
           push: never
@@ -107,7 +107,7 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         with:
-          configFile: .devcontainer/devcontainer.ci.json
+          configFile: .devcontainer/.devcontainer.json
           cacheFrom: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
           push: never

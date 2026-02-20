@@ -35,7 +35,7 @@ jobs:
 
       - name: Print runtime provenance
         run: |
-          echo "devcontainer_config=.devcontainer/devcontainer.ci.json"
+          echo "devcontainer_config=.devcontainer/.devcontainer.json"
           echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
           sha256sum .devcontainer/Dockerfile
 
@@ -43,7 +43,7 @@ jobs:
         if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         uses: devcontainers/ci@v0.3
         with:
-          configFile: .devcontainer/devcontainer.ci.json
+          configFile: .devcontainer/.devcontainer.json
           cacheFrom: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
           cacheTo: |
@@ -55,6 +55,6 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         uses: devcontainers/ci@v0.3
         with:
-          configFile: .devcontainer/devcontainer.ci.json
+          configFile: .devcontainer/.devcontainer.json
           push: never
           runCmd: make ci

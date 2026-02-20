@@ -4,7 +4,7 @@ This directory is designed so local development and CI share one foundation whil
 
 ## Why this layout exists
 - `.devcontainer/Dockerfile` uses multi-stage targets to separate heavy tool builds, a shared base layer, and final `ci`/`dev` profiles. This keeps CI and local environments aligned while preserving layer reuse and rebuild speed.
-- `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json` intentionally point to different targets in the same Dockerfile. Local sessions use `dev` (interactive + GUI tools), while automation uses `ci` (lean, predictable runtime) to avoid maintaining two drifting images.
+- `.devcontainer/devcontainer.json` and `.devcontainer/.devcontainer.json` intentionally point to different targets in the same Dockerfile. Local sessions use `dev` (interactive + GUI tools), while automation uses `ci` (lean, predictable runtime) to avoid maintaining two drifting images.
 
 ## Non-obvious decisions
 - The workspace mounts the repository parent into `/workspaces` (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.

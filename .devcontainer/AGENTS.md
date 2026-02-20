@@ -13,7 +13,7 @@ This directory is designed so local development and CI share one foundation whil
 - `postStartCommand: make bootstrap` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
-- CI disables UID remapping (`updateRemoteUserUID: false`) to keep ephemeral runner behavior more reproducible.
+- CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.
 
 ## RTL fixture provisioning
 - Large waveform fixtures are baked into the image at build time under `/opt/rtl-artifacts` by a dedicated Docker stage (`rtl_artifacts`).

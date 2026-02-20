@@ -8,5 +8,5 @@
         "WAVEPEEK_IN_CONTAINER": "1"
     },
     "remoteUser": "ubuntu",
-    "updateRemoteUserUID": false
+    "updateRemoteUserUID": true
 }

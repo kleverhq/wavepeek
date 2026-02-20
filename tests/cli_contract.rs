@@ -46,6 +46,26 @@ fn help_lists_expected_subcommands() {
 }
 
 #[test]
+fn help_lists_schema_after_waveform_commands() {
+    let mut command = wavepeek_cmd();
+
+    let assert = command.arg("--help").assert().success();
+    let output = String::from_utf8_lossy(&assert.get_output().stdout);
+
+    let schema_index = output
+        .find("\n  schema")
+        .expect("help output should list schema subcommand");
+    let when_index = output
+        .find("\n  when")
+        .expect("help output should list when subcommand");
+
+    assert!(
+        schema_index > when_index,
+        "schema should appear after waveform commands in top-level help"
+    );
+}
+
+#[test]
 fn short_help_flag_matches_long_help_behavior() {
     let mut command = wavepeek_cmd();
 

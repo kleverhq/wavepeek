@@ -28,13 +28,6 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 enum Command {
     #[command(
-        about = "Print canonical JSON schema contract",
-        long_about = r#"Outputs the canonical JSON schema document for wavepeek machine output contracts.
-
-This command accepts no flags and always prints one schema document to stdout."#
-    )]
-    Schema(schema::SchemaArgs),
-    #[command(
         about = "Show dump metadata (time unit and bounds)",
         long_about = r#"Outputs basic metadata about the waveform dump, including
 time unit and dump boundaries.
@@ -93,6 +86,13 @@ first N, or last N matches.
 Use --json for strict envelope mode."#
     )]
     When(when::WhenArgs),
+    #[command(
+        about = "Print canonical JSON schema contract",
+        long_about = r#"Outputs the canonical JSON schema document for wavepeek machine output contracts.
+
+This command accepts no flags and always prints one schema document to stdout."#
+    )]
+    Schema(schema::SchemaArgs),
 }
 
 pub fn run() -> Result<(), WavepeekError> {

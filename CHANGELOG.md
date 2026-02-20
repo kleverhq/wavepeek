@@ -29,7 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking:** migrated JSON envelope metadata from `schema_version` to `$schema` with versioned URL format `https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json`.
 - Simplified `schema` command to an argument-free deterministic contract: `wavepeek schema` always prints exactly one JSON Schema document to stdout.
 - Added schema freshness enforcement to quality gates (`make check`, `make ci`, pre-commit) with explicit remediation hint via `make update-schema`.
-- Reworked README into a concise, task-oriented format with quick start, command status, output contract, and development workflow sections.
+- Reworked README into a concise, task-oriented format with quick start, command status, agentic-flow roadmap notes, and development workflow sections.
+- Moved `schema` to the end of top-level CLI help output to keep waveform commands first.
 
 ### Fixed
 - Standardized runtime error categories and exit-code mapping: `args`/`scope`/`signal` errors exit with code `1`, while file open/parse errors exit with code `2`.

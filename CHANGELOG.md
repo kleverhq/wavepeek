@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-02-20
+
 ### Added
 - Keep a Changelog-based release notes workflow and release runbook updates.
 - Added canonical `scope` command with optional `--tree` human renderer for hierarchy inspection.
@@ -44,5 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.1.0

@@ -57,31 +57,37 @@ Use --json for strict envelope mode."#
     )]
     Signal(signal::SignalArgs),
     #[command(
-        about = "Get signal values at a specific time point",
+        about = "Get signal values at a specific time point (not implemented yet)",
         long_about = r#"Gets signal values at a specific time point.
 
 Supports full signal paths or names relative to --scope while preserving
 the order from --signals.
 
+Execution is not implemented yet.
+
 Use --json for strict envelope mode."#
     )]
     At(at::AtArgs),
     #[command(
-        about = "Get value snapshots over a time range",
+        about = "Get value snapshots over a time range (not implemented yet)",
         long_about = r#"Outputs snapshots of signal values over a time range.
 
 Supports unclocked mode (any tracked signal change) and clocked mode
 (posedge of --clk).
 
+Execution is not implemented yet.
+
 Use --json for strict envelope mode."#
     )]
     Change(change::ChangeArgs),
     #[command(
-        about = "Find cycles where a condition is true",
+        about = "Find cycles where a condition is true (not implemented yet)",
         long_about = r#"Finds clock cycles where a boolean expression evaluates to true.
 
 The condition is evaluated on each posedge of --clk and can return all,
 first N, or last N matches.
+
+Execution is not implemented yet.
 
 Use --json for strict envelope mode."#
     )]

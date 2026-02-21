@@ -124,6 +124,36 @@ fn subcommand_help_uses_extended_prd_descriptions() {
 }
 
 #[test]
+fn unimplemented_subcommands_disclose_status_in_help() {
+    let mut at_command = wavepeek_cmd();
+    at_command
+        .args(["at", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Execution is not implemented yet.",
+        ));
+
+    let mut change_command = wavepeek_cmd();
+    change_command
+        .args(["change", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Execution is not implemented yet.",
+        ));
+
+    let mut when_command = wavepeek_cmd();
+    when_command
+        .args(["when", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Execution is not implemented yet.",
+        ));
+}
+
+#[test]
 fn waveform_commands_require_waves_flag() {
     let mut command = wavepeek_cmd();
 

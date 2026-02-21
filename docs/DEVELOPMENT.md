@@ -78,9 +78,9 @@ Prefer narrowing at the `cargo test` level rather than running everything.
 - Run a single test with full module path:
   - `cargo test expr::parser::tests::parses_precedence`
 - Run one integration test file in `tests/` (file stem):
-  - `cargo test --test cli_info`
+  - `cargo test --test info_cli`
 - Run a single test inside an integration test file:
-  - `cargo test --test cli_info prints_json`
+  - `cargo test --test info_cli prints_json`
 - Show output (stdout/stderr) for a failing test:
   - `cargo test my_test_name -- --nocapture`
 - Re-run only ignored tests:

@@ -1,8 +1,8 @@
-# Product Requirements Document: wavepeek
+# Design Document
 
 ## 1. Overview
 
-### 1.1 Product Vision
+### 1.1 Vision
 wavepeek is a command-line tool for RTL waveform inspection. It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
 
 ### 1.2 Problem Statement
@@ -149,14 +149,8 @@ wavepeek info --waves <file> [--json]
 
 **Behavior:**
 - Default output: human-readable metadata summary.
+- Summary includes: time unit, start and end time of the dump
 - `--json` prints strict JSON envelope output.
-
-**Output fields:**
-| Key | Description |
-|-----|-------------|
-| `time_unit` | Time unit of the dump (e.g., `1ns`) |
-| `time_start` | Start time of the dump (normalized time value, e.g., `0ns`) |
-| `time_end` | End time of the dump (normalized time value, e.g., `10000ns`) |
 
 **Examples:**
 ```bash
@@ -697,70 +691,6 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - `--json` output validates against expected JSON structure and `$schema` URL contract
 - Human output is not asserted for exact formatting (no strict contract)
 - Consistency: same query on VCD and FST of the same design produces identical output
-
-**Quality gate execution environment:**
-
-- `make ci` and `make pre-commit` are container-only workflows.
-- Outside containerized environments these targets fail fast with a clear diagnostic.
-
----
-
-## 6. Roadmap
-
-### M1: Project Init (→ v0.1.0)
-
-- Rust project init (Cargo.toml, dependencies per §5.4, module structure per §5.3)
-- Empty module files with `todo!()` / placeholder stubs
-- CLI entry point: `clap` with subcommand skeleton, `--help` only
-- Makefile: `make format`, `make format-check`, `make lint`, `make test`, `make check`
-- Pre-commit hooks (rustfmt, clippy, cargo check, cargo test)
-- CI pipeline (GitHub Actions: format check, clippy, test, build)
-- Release pipeline (tag-triggered: build binaries, GitHub Release)
-
-### M2: Core CLI (→ v0.2.0)
-
-- `info` command (§3.2.1)
-- `scope` command (§3.2.2)
-- `signal` command (§3.2.3)
-- VCD + FST format support
-- Human default output for all commands with explicit `--json` contract mode
-- `tree` and `modules` command surfaces replaced by `scope` (no aliases)
-- Error handling: WavepeekError enum, exit codes, stderr format (§5.6)
-- Hand-crafted VCD test fixtures
-- Integration tests with `assert_cmd`
-
-### M3: Value Extraction (→ v0.3.0)
-
-- `at` command (§3.2.4)
-- `change` command — unclocked + clocked modes (§3.2.5)
-- Time parsing with mandatory units (`--from`, `--to`, `--time`)
-- Expanded container-provisioned fixtures for value-extraction scenarios
-
-### M4: Query Engine (→ v0.4.0)
-
-- `when` command (§3.2.6)
-- Expression engine: lexer, parser (Pratt/recursive descent), evaluator (§5.5)
-- MVP operators: `!`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `&&`, `||`
-- Literals: hex, binary, decimal
-- Parentheses grouping, truthy semantics
-- SystemVerilog-like 4-state evaluation with short-circuiting; unknown `x` casts to false for matching
-
-### M5: Agent-Ready (→ v0.5.0)
-
-- LLM agent skill definition for CLI agents
-- `schema` command to export one canonical JSON schema document
-- Release process treats tagged source blob (`vX.Y.Z`) as schema publication endpoint
-- Performance benchmarks
-- Post-MVP expression extensions: bit select/slice, bitwise ops, arithmetic, shift
-
-### M6: MCP Server (→ v0.6.0)
-
-- MCP server for LLM agent integration
-
-### Backlog (unmapped)
-
-- Proprietary formats (FSDB, VPD, WLF)
-- Signed comparison in expression engine
 
 ---
 

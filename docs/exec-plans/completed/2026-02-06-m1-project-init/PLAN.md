@@ -1,5 +1,11 @@
 # M1 Project Init Delivery Plan (v0.1.0)
 
+## Historical Disclaimer
+- This completed plan was created and executed under a previous repository/documentation structure.
+- It may reference legacy paths and terms (for example `.agents/...` and older command names) that are no longer current.
+- Current planning and delivery workflow uses `docs/exec-plans/active/`, canonical docs in `docs/`, and `AGENTS.md` breadcrumbs.
+- Keep this file for historical reference only; do not treat it as the current process source of truth.
+
 ## Summary
 - This plan delivers PRD M1 as three implementation tasks: (1) Rust scaffold, (2) local workflow alignment + pre-merge CI, (3) release automation + release runbook.
 - It incorporates your constraints: one pre-merge CI workflow for `master` updates, one semver-tag release workflow, manual human CI validation feedback, and a dry-run mode with zero release side effects.

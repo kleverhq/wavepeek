@@ -1,5 +1,11 @@
 # M2 Core CLI Delivery Plan (v0.2.0)
 
+## Historical Disclaimer
+- This completed plan was created and executed under a previous repository/documentation structure.
+- It may reference legacy paths and terms (for example `.agents/...` and older command names) that are no longer current.
+- Current planning and delivery workflow uses `docs/exec-plans/active/`, canonical docs in `docs/`, and `AGENTS.md` breadcrumbs.
+- Keep this file for historical reference only; do not treat it as the current process source of truth.
+
 ## Summary
 - This plan delivers PRD M2 by implementing the first production command set: `info`, `tree`, and `signals`, with deterministic default JSON output and `--human` mode.
 - The implementation is organized around shared foundations first (dispatch, output, errors, waveform adapter), then command-by-command delivery with test coverage.

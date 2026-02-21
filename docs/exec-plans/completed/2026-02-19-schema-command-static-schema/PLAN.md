@@ -1,5 +1,11 @@
 # Schema Command and Versioned JSON Schema Contract
 
+## Historical Disclaimer
+- This completed plan was created and executed under a previous repository/documentation structure.
+- It may reference legacy paths and terms (for example `.agents/...` and older command names) that are no longer current.
+- Current planning and delivery workflow uses `docs/exec-plans/active/`, canonical docs in `docs/`, and `AGENTS.md` breadcrumbs.
+- Keep this file for historical reference only; do not treat it as the current process source of truth.
+
 ## Summary
 - This plan simplifies `wavepeek schema` to a single deterministic behavior: no flags, no input file, and always one JSON Schema document written to stdout.
 - The schema source of truth moves to a tracked artifact at `schema/wavepeek.json`, and quality gates enforce that runtime output and repository schema stay in sync.

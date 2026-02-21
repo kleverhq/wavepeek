@@ -24,27 +24,33 @@ crate publish and GitHub Release creation.
    - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
    - keep a fresh `## [Unreleased]` section for future changes;
    - update bottom links for `Unreleased` and the new version tag.
-3. Update `Cargo.toml` version to `X.Y.Z`.
-4. Regenerate canonical schema artifact:
+3. Reconcile `docs/ROADMAP.md` with actual shipped scope:
+   - roadmap is planned scope; `CHANGELOG.md` is factual shipped scope;
+   - if a feature planned for a future milestone shipped in `X.Y.Z`, move it to
+     the current milestone section in roadmap;
+   - remove duplicates from future milestone sections so roadmap reflects
+     remaining work only.
+4. Update `Cargo.toml` version to `X.Y.Z`.
+5. Regenerate canonical schema artifact:
 
    ```bash
    make update-schema
    ```
 
-5. Run local checks:
+6. Run local checks:
 
    ```bash
    make ci
    ```
 
-6. Commit release prep:
+7. Commit release prep:
 
    ```bash
-   git add CHANGELOG.md Cargo.toml Cargo.lock schema/wavepeek.json
+   git add CHANGELOG.md docs/ROADMAP.md Cargo.toml Cargo.lock schema/wavepeek.json
    git commit -m "chore(release): prepare vX.Y.Z"
    ```
 
-7. Push commit and tag:
+8. Push commit and tag:
 
    ```bash
    git push origin main
@@ -52,15 +58,15 @@ crate publish and GitHub Release creation.
    git push origin vX.Y.Z
    ```
 
-8. Wait for `.github/workflows/release.yml` to finish.
-9. Check workflow logs for:
+9. Wait for `.github/workflows/release.yml` to finish.
+10. Check workflow logs for:
    - tag/version validation
    - `make ci`
    - `cargo package --locked`
    - expected mode behavior (skip side effects in dry-run, execute in real mode)
-10. Validate schema publication endpoint for the tag (no extra asset upload required):
+11. Validate schema publication endpoint for the tag (no extra asset upload required):
     - `https://github.com/kleverhq/wavepeek/blob/vX.Y.Z/schema/wavepeek.json` resolves to the committed schema artifact.
-11. Verify final state:
+12. Verify final state:
     - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
     - Real release: crate published and GitHub Release created for `vX.Y.Z`.
     - In both modes, schema is published implicitly via the tagged source blob URL.

@@ -1,5 +1,11 @@
 # M2 Post-Validation Corrective Plan (v0.2.x)
 
+## Historical Disclaimer
+- This completed plan was created and executed under a previous repository/documentation structure.
+- It may reference legacy paths and terms (for example `.agents/...` and older command names) that are no longer current.
+- Current planning and delivery workflow uses `docs/exec-plans/active/`, canonical docs in `docs/`, and `AGENTS.md` breadcrumbs.
+- Keep this file for historical reference only; do not treat it as the current process source of truth.
+
 ## Summary
 - This plan addresses the 13 post-M2 validation findings and aligns the CLI behavior with the latest product direction for human-first defaults, clearer argument errors, and stronger regression coverage.
 - The work is split into contract updates, CLI UX fixes, command-surface changes (`tree` -> `modules`), output-mode migration, and container-level fixture provisioning.

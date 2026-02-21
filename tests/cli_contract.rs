@@ -46,6 +46,25 @@ fn help_lists_expected_subcommands() {
 }
 
 #[test]
+fn top_level_help_marks_unimplemented_subcommands() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains(
+            "Get signal values at a specific time point (not implemented yet)",
+        ))
+        .stdout(predicate::str::contains(
+            "Get value snapshots over a time range (not implemented yet)",
+        ))
+        .stdout(predicate::str::contains(
+            "Find cycles where a condition is true (not implemented yet)",
+        ));
+}
+
+#[test]
 fn help_lists_schema_after_waveform_commands() {
     let mut command = wavepeek_cmd();
 

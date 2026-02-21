@@ -25,6 +25,7 @@ OpenCode is the primary agent toolchain for this repository.
 - Custom skills: `.opencode/skills/`
 - Complex features/refactors: use `exec-plan`
 - Implementation review: use `ask-review` with the `review` agent
+- Periodic repository cleanup/simplification: use `repo-gc`
 
 Operational policy:
 

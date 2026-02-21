@@ -30,6 +30,7 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - Custom OpenCode skills live in `.opencode/skills/`.
 - Complex features/refactors should use `exec-plan` skill.
 - Implementation review should use `ask-review` skill with the `review` agent.
+- Periodic repository cleanup and simplification should use `repo-gc` skill.
 
 ## Devcontainer Notes
 

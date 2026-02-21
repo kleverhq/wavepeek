@@ -11,7 +11,7 @@
         "cargo publish": "ask",
         "cargo run": "allow",
         "cargo test": "allow",
-        "cargo bench": "allow",
+        "cargo bench": "allow"
     }
   }
 }

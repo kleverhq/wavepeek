@@ -19,11 +19,11 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - [x] (2026-02-22 11:14Z) Mapped existing CLI/engine/output/schema integration points and current `at` stub behavior.
 - [x] (2026-02-22 11:14Z) Researched `wellen` APIs needed for timestamp sampling (`time_table`, `load_signals`, `get_offset`, `get_value_at`).
 - [x] (2026-02-22 11:20Z) Incorporated two independent review passes and tightened validation/TDD steps to avoid false-green checks.
-- [ ] Add failing tests that define final `at` behavior (human, JSON, errors, determinism, VCD/FST parity).
-- [ ] Implement time parsing + timestamp normalization for `at` with mandatory units and explicit bound checks.
-- [ ] Implement waveform sampling helpers and `engine::at::run` business logic.
-- [ ] Extend renderer and schema contract for `command=at` and `data=atData` shape.
-- [ ] Update command help/tests/docs/changelog entries and run validation gates.
+- [x] (2026-02-22 13:01Z) Added failing integration suite `tests/at_cli.rs` covering success, error, deterministic, duplicate-order, mixed-mode, and VCD/FST parity scenarios.
+- [x] (2026-02-22 13:16Z) Implemented strict `--time` parsing/normalization for `at` with mandatory units, inclusive bounds, and explicit args-category failures.
+- [x] (2026-02-22 13:24Z) Added waveform canonical-path sampling API and replaced `engine::at::run` stub with end-to-end value extraction.
+- [x] (2026-02-22 13:29Z) Wired `at` through command enums, human renderer, and JSON schema (`$defs.atData` + command-conditioned validation).
+- [x] (2026-02-22 13:42Z) Updated help/contracts/docs/changelog and passed `cargo test -q`, `make check`, and `make ci`.
 
 ## Surprises & Discoveries
 
@@ -33,6 +33,12 @@ This plan does not implement `change` or `when`, does not introduce radix select
   Evidence: `wellen-0.20.2/src/signals.rs` documents offset retrieval and subsequent `get_value_at(...)` usage.
 - Observation: Design text still mentions `time_precision` wording in places, while runtime metadata already uses `time_unit` and normalized strings.
   Evidence: `docs/DESIGN.md` section 3.2.4 vs `src/engine/info.rs` + existing JSON outputs.
+- Observation: `cargo clippy -D warnings` enforces `manual_div_ceil`, so helper formatting code must use `usize::div_ceil(...)` to pass repository gates.
+  Evidence: `make check` failed on first pass until `format_verilog_literal` switched from `(len + 3) / 4` to `len.div_ceil(4)`.
+- Observation: `at` scope semantics were implemented correctly but help wording was ambiguous enough to trigger reviewer confusion about full-path behavior with `--scope`.
+  Evidence: Independent review pass flagged `--scope top --signals top.clk` expectation mismatch; wording/tests were tightened to reflect short-name-only scoped mode.
+- Observation: Clap `Vec` args are optional unless explicitly marked required, even with `num_args = 1..`; this let `at` run without `--signals` until review caught it.
+  Evidence: Independent review found `wavepeek at --waves ... --time ...` succeeding with empty signal output before `required = true` was added.
 
 ## Decision Log
 
@@ -51,10 +57,22 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - Decision: Once implementation lands, `at` help text must no longer advertise "not implemented yet".
   Rationale: Help output must reflect shipped behavior and existing CLI contract tests must be updated accordingly.
   Date/Author: 2026-02-22 / OpenCode
+- Decision: `at` rejects query times that are not exactly representable in dump resolution (`time_unit`) as `error: args:`.
+  Rationale: Prevents silent rounding and keeps sampled timestamp deterministic and explicit for scripts/agents.
+  Date/Author: 2026-02-22 / OpenCode
+- Decision: `at --time` accepts integer tokens with mandatory units and rejects decimal tokens (for example `1.5ns`) as `error: args:`.
+  Rationale: Keeps parsing deterministic and aligned with current command contract/tests while avoiding floating-point ambiguities.
+  Date/Author: 2026-02-22 / OpenCode
 
 ## Outcomes & Retrospective
 
-Not started yet. This section will be updated after each completed milestone with what shipped, what remains, and lessons learned.
+Completed all four milestones in one implementation pass with TDD-first ordering preserved.
+
+What shipped: `at` now executes end-to-end for VCD and FST, including deterministic human/JSON output, input-order preservation (including duplicates), scope-aware and full-path resolution modes, fail-fast signal errors, inclusive bounds checks, and strict schema coverage (`command=at`, `data=atData`). CLI help and contract tests now treat only `change` and `when` as unimplemented.
+
+What remains: no functional `at` items remain in this plan. Future work is still tracked separately for `change` and `when`.
+
+Lessons learned: a focused waveform-layer sampling API kept engine logic concise while preserving deterministic ordering guarantees, and running full repository gates (`make check`, `make ci`) early surfaced style/lint constraints that would not appear in narrow test runs.
 
 ## Context and Orientation
 
@@ -273,3 +291,7 @@ At the end of implementation, these interfaces must exist:
 
 Revision note (2026-02-22): Initial plan created to deliver full `at` command implementation with TDD-first milestones, schema/output integration, and explicit acceptance criteria.
 Revision note (2026-02-22): Updated after independent double review to remove false-green test commands, clarify TDD staging for `cli_contract`, add glossary terms, and make parity/determinism validation fully executable.
+Revision note (2026-02-22): Updated after implementation to mark milestones complete, record final decisions/discoveries, and capture validation evidence (`cargo test -q`, `make check`, `make ci`).
+Revision note (2026-02-22): Updated after review findings to clarify integer-only `--time` grammar in design/decision log and add explicit regression coverage for decimal-token rejection.
+Revision note (2026-02-22): Clarified scoped-signal resolution wording and added regression coverage so `--scope` mode remains explicitly short-name relative.
+Revision note (2026-02-22): Added mandatory `--signals` enforcement in CLI parsing and regression test after final independent review found the missing required-flag contract.

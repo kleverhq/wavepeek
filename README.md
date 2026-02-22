@@ -53,7 +53,7 @@ Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: http
 | `info` | available | Print dump metadata (`time_unit`, `time_start`, `time_end`) |
 | `scope` | available | List hierarchy scopes (deterministic DFS, optional `--tree`) |
 | `signal` | available | List signals in a scope with metadata |
-| `at` | planned | Signal values at a specific time |
+| `at` | available | Signal values at a specific time |
 | `change` | planned | Value snapshots over a time range |
 | `when` | planned | Cycles where expression is true |
 | `schema` | available | Print canonical JSON schema used by `--json` output |

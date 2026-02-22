@@ -93,12 +93,14 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             .join("\n"),
         CommandData::At(at_data) => {
             let mut lines = Vec::with_capacity(at_data.signals.len() + 1);
-            lines.push(format!("time: {}", at_data.time));
+            lines.push(format!("@{}", at_data.time));
             for signal in &at_data.signals {
-                lines.push(format!(
-                    "{} path={} value={}",
-                    signal.name, signal.path, signal.value
-                ));
+                let display = if options.signals_abs {
+                    signal.path.as_str()
+                } else {
+                    signal.display.as_str()
+                };
+                lines.push(format!("{display} {}", signal.value));
             }
             lines.join("\n")
         }
@@ -286,12 +288,12 @@ mod tests {
                 time: "10ns".to_string(),
                 signals: vec![
                     crate::engine::at::AtSignalValue {
-                        name: "clk".to_string(),
+                        display: "clk".to_string(),
                         path: "top.clk".to_string(),
                         value: "1'h1".to_string(),
                     },
                     crate::engine::at::AtSignalValue {
-                        name: "data".to_string(),
+                        display: "data".to_string(),
                         path: "top.data".to_string(),
                         value: "8'h0f".to_string(),
                     },
@@ -300,9 +302,6 @@ mod tests {
             HumanRenderOptions::default(),
         );
 
-        assert_eq!(
-            rendered,
-            "time: 10ns\nclk path=top.clk value=1'h1\ndata path=top.data value=8'h0f"
-        );
+        assert_eq!(rendered, "@10ns\nclk 1'h1\ndata 8'h0f");
     }
 }

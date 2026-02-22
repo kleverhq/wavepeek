@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added fully functional `at` command for deterministic point-in-time signal sampling on both VCD and FST dumps, including scope-relative and full-path signal resolution.
-- Added strict `at` JSON contract in `schema/wavepeek.json` with `atData` payload (`time`, ordered `signals[{name,path,value}]`) and conditional command-to-data validation.
+- Added `at --abs` for canonical-path rendering in human mode while keeping compact default display based on requested `--signals` tokens.
+- Added strict `at` JSON contract in `schema/wavepeek.json` with compact `atData` payload (`time`, ordered `signals[{path,value}]`) and conditional command-to-data validation.
 
 ### Changed
 - Updated CLI help and contracts so `at` is no longer marked as unimplemented, while `change` and `when` remain explicitly unimplemented.
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
+- Simplified `at` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
 
 ## [0.2.0] - 2026-02-20
 

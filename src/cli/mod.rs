@@ -63,6 +63,7 @@ Use --json for strict envelope mode."#
 Supports full signal paths when --scope is omitted, or names relative
 to --scope when it is provided. Output preserves the order from --signals.
 
+Use --abs to print canonical paths in human mode.
 Use --json for strict envelope mode."#
     )]
     At(at::AtArgs),
@@ -333,6 +334,37 @@ mod tests {
                 assert!(args.json);
             }
             other => panic!("expected signal command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn at_dispatch_keeps_scope_signals_abs_and_json_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "at",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--time",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--abs",
+            "--json",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::At(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.time, "10ns");
+                assert_eq!(args.scope.as_deref(), Some("top"));
+                assert_eq!(args.signals, vec!["clk", "data"]);
+                assert!(args.abs);
+                assert!(args.json);
+            }
+            other => panic!("expected at command, got {other:?}"),
         }
     }
 

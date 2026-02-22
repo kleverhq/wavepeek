@@ -107,7 +107,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   - `data` is an object for scalar outputs (e.g., `info`) and an array for list-like outputs.
   - `warnings` is an array of free-form strings. In human mode, warnings are printed to stderr.
   - On error, stdout is empty; stderr contains `error: <category>: <message>` (see §5.6).
-- **Time format.** All time values require explicit units: `fs`, `ps`, `ns`, `us`, `ms`, `s`.
+- **Time format.** All time values require explicit units: `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`.
   The numeric part must be an integer (e.g., `2000ps`, `15ns`).
   Bare numbers without units are rejected.
 - **Time normalization.** All parsed times are converted to the dump's time unit.
@@ -255,7 +255,7 @@ wavepeek signal --waves dump.vcd --scope top.cpu --abs
 Gets signal values at a specific time point.
 
 ```
-wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--json]
+wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--abs] [--json]
 ```
 
 **Parameters:**
@@ -265,6 +265,7 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--j
 | `--time <time>` | required | Time point with units (e.g., `1337ns`, `10us`) |
 | `--scope <path>` | — | Scope for short signal names |
 | `--signals <names>` | required | Comma-separated signal names |
+| `--abs` | off | Show canonical paths in human mode |
 | `--json` | off | Strict JSON envelope output |
 
 **Modes:**
@@ -274,9 +275,11 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--j
 **Behavior:**
 - Outputs signal values at specified time
 - Default output: human-readable value summary.
+- Human mode shows compact lines: `@<time>` and `<display> <value>` per signal.
+- Human mode uses exact `--signals` tokens as display names by default; `--abs` switches display names to canonical paths.
 - `--json` outputs JSON envelope with `data` as an object:
   - `time`: normalized time string in dump `time_unit`
-  - `signals`: array of `{ name, path, value }` in the same order as `--signals`
+  - `signals`: array of `{ path, value }` in the same order as `--signals` (`path` is always canonical absolute path)
 - Values are emitted as Verilog literals: `<width>'h<digits>` (including `x`/`z`).
 - Fail fast: error if any signal not found
 
@@ -689,7 +692,7 @@ The CLI layer converts `WavepeekError` into stderr output and exit code.
 - Exit code
 - Stderr content for error cases
 - `--json` output validates against expected JSON structure and `$schema` URL contract
-- Human output is not asserted for exact formatting (no strict contract)
+- Human output is generally not asserted for exact formatting unless a command-level contract explicitly fixes it (currently `at`, including `--abs` display behavior)
 - Consistency: same query on VCD and FST of the same design produces identical output
 
 ---

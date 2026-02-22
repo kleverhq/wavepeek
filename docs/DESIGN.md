@@ -108,10 +108,10 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
   - `warnings` is an array of free-form strings. In human mode, warnings are printed to stderr.
   - On error, stdout is empty; stderr contains `error: <category>: <message>` (see §5.6).
 - **Time format.** All time values require explicit units: `fs`, `ps`, `ns`, `us`, `ms`, `s`.
-  The numeric part may be an integer or a decimal (e.g., `2000ps`, `1.5ns`).
+  The numeric part must be an integer (e.g., `2000ps`, `15ns`).
   Bare numbers without units are rejected.
-- **Time normalization.** All parsed times are converted to the dump's time precision.
-  Output timestamps are printed as normalized integer counts in `time_precision` units (e.g., `2000ps`).
+- **Time normalization.** All parsed times are converted to the dump's time unit.
+  Output timestamps are printed as normalized integer counts in dump `time_unit` units (e.g., `2000ps`).
   If a provided time cannot be represented exactly in dump precision, it is an error.
 - **Time ranges.** Commands that operate on time ranges use `--from` and `--to`.
   Both are optional: `--from` + `--to` defines a window, only `--from` means
@@ -269,13 +269,13 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--j
 
 **Modes:**
 - `--signals clk,data` (no scope) — names are full paths
-- `--scope top.cpu --signals clk,data` — names are relative to scope
+- `--scope top.cpu --signals clk,data` — names are short and resolved relative to scope
 
 **Behavior:**
 - Outputs signal values at specified time
 - Default output: human-readable value summary.
 - `--json` outputs JSON envelope with `data` as an object:
-  - `time`: normalized time string in `time_precision` units
+  - `time`: normalized time string in dump `time_unit`
   - `signals`: array of `{ name, path, value }` in the same order as `--signals`
 - Values are emitted as Verilog literals: `<width>'h<digits>` (including `x`/`z`).
 - Fail fast: error if any signal not found
@@ -324,7 +324,7 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 - Default output: human-readable snapshot list.
 - `--json` outputs JSON envelope with `data` as an array of snapshots.
 - Each snapshot:
-  - `time`: normalized time string in `time_precision` units
+  - `time`: normalized time string in dump `time_unit`
   - `signals`: array of `{ name, path, value }` in the same order as `--signals`
 - Snapshots are emitted in increasing `time` order.
 - If multiple tracked signals change at the same timestamp, a single snapshot is emitted for that timestamp,

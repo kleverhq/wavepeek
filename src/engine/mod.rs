@@ -29,6 +29,7 @@ pub enum CommandName {
     Info,
     Scope,
     Signal,
+    At,
 }
 
 impl CommandName {
@@ -38,6 +39,7 @@ impl CommandName {
             Self::Info => "info",
             Self::Scope => "scope",
             Self::Signal => "signal",
+            Self::At => "at",
         }
     }
 }
@@ -56,6 +58,7 @@ pub enum CommandData {
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),
     Signal(Vec<signal::SignalEntry>),
+    At(at::AtData),
 }
 
 #[derive(Debug, Serialize)]

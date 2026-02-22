@@ -20,7 +20,8 @@
       "enum": [
         "info",
         "scope",
-        "signal"
+        "signal",
+        "at"
       ]
     },
     "data": {
@@ -33,6 +34,9 @@
         },
         {
           "$ref": "#/$defs/signalData"
+        },
+        {
+          "$ref": "#/$defs/atData"
         }
       ]
     },
@@ -97,6 +101,25 @@
         "properties": {
           "data": {
             "$ref": "#/$defs/signalData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "at"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/atData"
           }
         }
       }
@@ -170,6 +193,42 @@
           "width": {
             "type": "integer",
             "minimum": 1
+          }
+        }
+      }
+    },
+    "atData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time",
+        "signals"
+      ],
+      "properties": {
+        "time": {
+          "type": "string"
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "path",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
           }
         }
       }

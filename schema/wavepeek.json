@@ -214,14 +214,10 @@
             "type": "object",
             "additionalProperties": false,
             "required": [
-              "name",
               "path",
               "value"
             ],
             "properties": {
-              "name": {
-                "type": "string"
-              },
               "path": {
                 "type": "string"
               },

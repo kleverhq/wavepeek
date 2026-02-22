@@ -7,7 +7,8 @@ use crate::waveform::Waveform;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AtSignalValue {
-    pub name: String,
+    #[serde(skip_serializing)]
+    pub display: String,
     pub path: String,
     pub value: String,
 }
@@ -20,7 +21,7 @@ pub struct AtData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RequestedSignal {
-    name: String,
+    display: String,
     path: String,
 }
 
@@ -114,6 +115,7 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
             "waveform metadata time_unit overflowed during conversion".to_string(),
         )
     })?;
+    ensure_non_zero_dump_tick(dump_tick_zs)?;
 
     let time_start = parse_time_token(metadata.time_start.as_str()).ok_or_else(|| {
         WavepeekError::Internal(format!(
@@ -171,7 +173,7 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
         .into_iter()
         .zip(sampled)
         .map(|(requested, sampled)| AtSignalValue {
-            name: requested.name,
+            display: requested.display,
             path: sampled.path,
             value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
         })
@@ -182,7 +184,10 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
     Ok(CommandResult {
         command: CommandName::At,
         json: args.json,
-        human_options: crate::engine::HumanRenderOptions::default(),
+        human_options: crate::engine::HumanRenderOptions {
+            scope_tree: false,
+            signals_abs: args.abs,
+        },
         data: CommandData::At(AtData {
             time: normalized_time,
             signals,
@@ -202,19 +207,19 @@ fn resolve_requested_signals(
 
     let mut resolved = Vec::with_capacity(args.signals.len());
     for token in &args.signals {
-        let name = token.trim();
-        if name.is_empty() {
+        let display = token.trim();
+        if display.is_empty() {
             return Err(WavepeekError::Args(
                 "signal names must not be empty. See 'wavepeek at --help'.".to_string(),
             ));
         }
 
         let path = match scope {
-            Some(scope) => format!("{scope}.{name}"),
-            None => name.to_string(),
+            Some(scope) => format!("{scope}.{display}"),
+            None => display.to_string(),
         };
         resolved.push(RequestedSignal {
-            name: name.to_string(),
+            display: display.to_string(),
             path,
         });
     }
@@ -235,6 +240,15 @@ fn parse_time_token(token: &str) -> Option<ParsedTime> {
 
 fn as_zeptoseconds(time: ParsedTime) -> Option<u128> {
     u128::from(time.value).checked_mul(time.unit.multiplier_in_zeptoseconds())
+}
+
+fn ensure_non_zero_dump_tick(dump_tick_zs: u128) -> Result<(), WavepeekError> {
+    if dump_tick_zs == 0 {
+        return Err(WavepeekError::Internal(
+            "waveform metadata time_unit must be non-zero".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn format_raw_timestamp(raw_time: u64, time_unit: ParsedTime) -> Result<String, WavepeekError> {
@@ -289,8 +303,8 @@ fn bits_chunk_to_hex_digit(chunk: &str) -> char {
 #[cfg(test)]
 mod tests {
     use super::{
-        ParsedTime, TimeUnit, as_zeptoseconds, bits_chunk_to_hex_digit, format_raw_timestamp,
-        format_verilog_literal, parse_time_token,
+        ParsedTime, TimeUnit, as_zeptoseconds, bits_chunk_to_hex_digit, ensure_non_zero_dump_tick,
+        format_raw_timestamp, format_verilog_literal, parse_time_token,
     };
 
     #[test]
@@ -360,5 +374,16 @@ mod tests {
         assert_eq!(bits_chunk_to_hex_digit("zz"), 'z');
         assert_eq!(bits_chunk_to_hex_digit("z1"), 'x');
         assert_eq!(bits_chunk_to_hex_digit("h"), 'x');
+    }
+
+    #[test]
+    fn dump_tick_must_be_non_zero() {
+        let error = ensure_non_zero_dump_tick(0).expect_err("zero tick must fail");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: waveform metadata time_unit must be non-zero"
+        );
+
+        ensure_non_zero_dump_tick(1).expect("non-zero tick must pass");
     }
 }

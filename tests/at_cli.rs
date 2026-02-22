@@ -44,9 +44,32 @@ fn at_human_output_with_scope_is_default() {
         ])
         .assert()
         .success()
-        .stdout(predicate::eq(
-            "time: 10ns\nclk path=top.clk value=1'h1\ndata path=top.data value=8'h0f\n",
-        ))
+        .stdout(predicate::eq("@10ns\nclk 1'h1\ndata 8'h0f\n"))
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn at_human_output_with_abs_shows_canonical_paths() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    command
+        .args([
+            "at",
+            "--waves",
+            fixture.as_str(),
+            "--time",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--abs",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::eq("@10ns\ntop.clk 1'h1\ntop.data 8'h0f\n"))
         .stderr(predicate::str::is_empty());
 }
 
@@ -100,8 +123,8 @@ fn at_json_shape_with_scope_is_stable_and_ordered() {
         json!({
             "time": "10ns",
             "signals": [
-                {"name": "clk", "path": "top.clk", "value": "1'h1"},
-                {"name": "data", "path": "top.data", "value": "8'h0f"}
+                {"path": "top.clk", "value": "1'h1"},
+                {"path": "top.data", "value": "8'h0f"}
             ]
         })
     );
@@ -133,10 +156,53 @@ fn at_without_scope_treats_signals_as_canonical_paths() {
     assert_eq!(
         value["data"]["signals"],
         json!([
-            {"name": "top.clk", "path": "top.clk", "value": "1'h1"},
-            {"name": "top.data", "path": "top.data", "value": "8'h0f"}
+            {"path": "top.clk", "value": "1'h1"},
+            {"path": "top.data", "value": "8'h0f"}
         ])
     );
+}
+
+#[test]
+fn at_json_output_is_identical_with_and_without_abs() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let without_abs = wavepeek_cmd()
+        .args([
+            "at",
+            "--waves",
+            fixture.as_str(),
+            "--time",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--json",
+        ])
+        .output()
+        .expect("run without --abs should execute");
+    let with_abs = wavepeek_cmd()
+        .args([
+            "at",
+            "--waves",
+            fixture.as_str(),
+            "--time",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--json",
+            "--abs",
+        ])
+        .output()
+        .expect("run with --abs should execute");
+
+    assert!(without_abs.status.success());
+    assert!(with_abs.status.success());
+    assert_eq!(without_abs.stdout, with_abs.stdout);
+    assert_eq!(without_abs.stderr, with_abs.stderr);
 }
 
 #[test]
@@ -298,9 +364,9 @@ fn at_preserves_duplicate_signal_order() {
     assert_eq!(
         value["data"]["signals"],
         json!([
-            {"name": "clk", "path": "top.clk", "value": "1'h1"},
-            {"name": "clk", "path": "top.clk", "value": "1'h1"},
-            {"name": "data", "path": "top.data", "value": "8'h0f"}
+            {"path": "top.clk", "value": "1'h1"},
+            {"path": "top.clk", "value": "1'h1"},
+            {"path": "top.data", "value": "8'h0f"}
         ])
     );
 }
@@ -348,8 +414,8 @@ fn at_mixed_mode_names_resolve_with_scope() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("clk path=top.clk value=1'h1"))
-        .stdout(predicate::str::contains("data path=top.data value=8'h0f"))
+        .stdout(predicate::str::contains("clk 1'h1"))
+        .stdout(predicate::str::contains("data 8'h0f"))
         .stderr(predicate::str::is_empty());
 }
 

@@ -25,9 +25,9 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - [x] (2026-02-22 13:29Z) Wired `at` through command enums, human renderer, and JSON schema (`$defs.atData` + command-conditioned validation).
 - [x] (2026-02-22 13:42Z) Updated help/contracts/docs/changelog and passed `cargo test -q`, `make check`, and `make ci`.
 - [x] (2026-02-22 19:55Z) Captured follow-up requirements to align `at` naming semantics with `signal --abs`, simplify human formatting, and drop redundant JSON `name` field.
-- [ ] (pending) Add/adjust failing tests for `at --abs`, compact human format (`@<time>` + `<display> <value>`), and JSON `{path,value}` shape.
-- [ ] (pending) Implement CLI/engine/output/schema/docs updates for the new `at` semantics and run full validation gates.
-- [ ] (pending) Complete two independent review passes and resolve any findings.
+- [x] (2026-02-22 19:59Z) Added/adjusted failing coverage in `tests/at_cli.rs` and `src/output.rs` unit tests for `at --abs`, compact human format (`@<time>` + `<display> <value>`), and JSON `{path,value}` shape.
+- [x] (2026-02-22 20:03Z) Implemented CLI/engine/output/schema/docs updates for compact `at` semantics and passed `cargo test -q`, `make check`, and `make ci`.
+- [x] (2026-02-22 20:07Z) Completed two independent review passes and resolved findings (doc contract alignment + zero `time_unit` panic guard).
 
 ## Surprises & Discoveries
 
@@ -43,6 +43,10 @@ This plan does not implement `change` or `when`, does not introduce radix select
   Evidence: Independent review pass flagged `--scope top --signals top.clk` expectation mismatch; wording/tests were tightened to reflect short-name-only scoped mode.
 - Observation: Clap `Vec` args are optional unless explicitly marked required, even with `num_args = 1..`; this let `at` run without `--signals` until review caught it.
   Evidence: Independent review found `wavepeek at --waves ... --time ...` succeeding with empty signal output before `required = true` was added.
+- Observation: `serde(skip_serializing)` is a clean way to keep human-only display tokens in engine data structures while emitting compact machine JSON without duplicate identity fields.
+  Evidence: `AtSignalValue { display, path, value }` now renders human output from `display`/`path` but serializes only `{path,value}` in `--json` mode.
+- Observation: A malformed dump metadata path could still panic despite prior validations because modulo/division used `dump_tick_zs` before an explicit zero check.
+  Evidence: Independent review flagged `% dump_tick_zs` and `/ dump_tick_zs` in `engine::at::run`; follow-up added `ensure_non_zero_dump_tick(...)` and unit coverage.
 
 ## Decision Log
 
@@ -76,16 +80,22 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - Decision: In human mode, the time header format is simplified from `time: <t>` to `@<t>`.
   Rationale: More compact output and visual consistency with time-point query semantics.
   Date/Author: 2026-02-22 / OpenCode
+- Decision: `at` must fail with `error: internal:` if waveform metadata yields zero `time_unit` after normalization, rather than risking panic on modulo/division.
+  Rationale: Preserves fail-fast/no-panic runtime guarantees for malformed metadata paths.
+  Date/Author: 2026-02-22 / OpenCode
+- Decision: Design contract unit list now explicitly includes `zs` and `as` to match runtime parser support.
+  Rationale: Removes spec/runtime drift and keeps CLI expectations unambiguous for agent/script consumers.
+  Date/Author: 2026-02-22 / OpenCode
 
 ## Outcomes & Retrospective
 
-Initial implementation milestones are complete, and this plan is now reopened for a semantics-alignment follow-up.
+Initial implementation plus follow-up semantics alignment are now complete.
 
-What shipped so far: `at` executes end-to-end for VCD and FST with deterministic sampling, strict time parsing, and schema coverage.
+What shipped: `at` now keeps deterministic sampling/time behavior and adopts compact output semantics: human mode prints `@<time>` + `<display> <value>`, `--abs` switches display to canonical paths, and JSON emits ordered `signals[{path,value}]` with canonical paths only. `--json` output is identical with/without `--abs`.
 
-What remains now: align `at` display naming with `signal --abs`, simplify human rendering to `@<time>` + `<display> <value>`, and slim JSON payload entries to canonical `{path,value}`.
+What remains: no functional `at` work remains in this plan; future scope stays with unimplemented `change` and `when`.
 
-Lessons retained for this follow-up: preserve deterministic order/duplicates, keep waveform sampling API canonical-path based, and re-run full gates after schema/output contract changes because regressions can appear outside command-local tests.
+Lessons learned: separating display semantics from canonical identity in the engine payload keeps human output flexible while preserving strict machine contracts, and full gates (`make check`, `make ci`) remain necessary after schema/output updates even when command-local tests pass.
 
 ## Context and Orientation
 
@@ -281,6 +291,8 @@ At the end of implementation, these interfaces must exist:
 
       #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
       pub struct AtSignalValue {
+          #[serde(skip_serializing)]
+          pub display: String,
           pub path: String,
           pub value: String,
       }
@@ -327,3 +339,5 @@ Revision note (2026-02-22): Updated after review findings to clarify integer-onl
 Revision note (2026-02-22): Clarified scoped-signal resolution wording and added regression coverage so `--scope` mode remains explicitly short-name relative.
 Revision note (2026-02-22): Added mandatory `--signals` enforcement in CLI parsing and regression test after final independent review found the missing required-flag contract.
 Revision note (2026-02-22): Reopened the completed plan for follow-up semantics alignment: `at` now targets `signal --abs`-style display behavior, compact human rendering (`@<time>`, `<display> <value>`), and JSON `signals[{path,value}]` payload.
+Revision note (2026-02-22): Completed the follow-up alignment implementation and validations, including `--abs` for `at`, compact human formatting, compact JSON payload, and gate evidence (`cargo test -q`, `make check`, `make ci`).
+Revision note (2026-02-22): Incorporated independent-review hardening fixes by documenting human-output test contract nuance, aligning documented time units with parser support (`zs`/`as`), and guarding zero `time_unit` metadata to prevent panic paths.

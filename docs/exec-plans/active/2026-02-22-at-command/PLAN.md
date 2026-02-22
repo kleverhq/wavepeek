@@ -6,13 +6,13 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-After this change, users can query signal values at a specific timestamp from both VCD and FST files with `wavepeek at`, in either human-readable output (default) or strict JSON envelope mode (`--json`). Today, `at` exists in CLI help but fails with `error: unimplemented`. When this plan is complete, the command will be fully usable for scripted debug flows and agent-driven workflows, including deterministic output ordering and stable error categories.
+After this change, users can query signal values at a specific timestamp from both VCD and FST files with `wavepeek at`, in either human-readable output (default) or strict JSON envelope mode (`--json`). The command is already implemented; this follow-up aligns `at` output semantics with `signal --abs` and simplifies the human format so scripts and humans see one consistent naming model.
 
-The behavior is observable by running `wavepeek at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data` and seeing concrete values instead of an unimplemented error.
+The behavior is observable by running `wavepeek at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data` and seeing compact output like `@10ns` followed by `clk 1'h1`; with `--abs`, the same command prints canonical paths (for example `top.clk 1'h1`).
 
 ## Non-Goals
 
-This plan does not implement `change` or `when`, does not introduce radix selection flags (for example `--radix`), and does not change the global output envelope model beyond adding the new `at` payload shape. This plan also does not introduce compatibility aliases for old command names.
+This plan does not implement `change` or `when`, does not introduce radix selection flags (for example `--radix`), and does not change envelope behavior outside `at.data.signals` simplification to `{path,value}`. This plan also does not introduce compatibility aliases for old command names.
 
 ## Progress
 
@@ -24,6 +24,10 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - [x] (2026-02-22 13:24Z) Added waveform canonical-path sampling API and replaced `engine::at::run` stub with end-to-end value extraction.
 - [x] (2026-02-22 13:29Z) Wired `at` through command enums, human renderer, and JSON schema (`$defs.atData` + command-conditioned validation).
 - [x] (2026-02-22 13:42Z) Updated help/contracts/docs/changelog and passed `cargo test -q`, `make check`, and `make ci`.
+- [x] (2026-02-22 19:55Z) Captured follow-up requirements to align `at` naming semantics with `signal --abs`, simplify human formatting, and drop redundant JSON `name` field.
+- [ ] (pending) Add/adjust failing tests for `at --abs`, compact human format (`@<time>` + `<display> <value>`), and JSON `{path,value}` shape.
+- [ ] (pending) Implement CLI/engine/output/schema/docs updates for the new `at` semantics and run full validation gates.
+- [ ] (pending) Complete two independent review passes and resolve any findings.
 
 ## Surprises & Discoveries
 
@@ -63,22 +67,31 @@ This plan does not implement `change` or `when`, does not introduce radix select
 - Decision: `at --time` accepts integer tokens with mandatory units and rejects decimal tokens (for example `1.5ns`) as `error: args:`.
   Rationale: Keeps parsing deterministic and aligned with current command contract/tests while avoiding floating-point ambiguities.
   Date/Author: 2026-02-22 / OpenCode
+- Decision: In human mode, `at` prints signal display names exactly as provided in `--signals`; `--abs` switches display names to canonical absolute paths.
+  Rationale: Matches `signal --abs` semantics and removes dual `name/path` ambiguity from default human output while retaining opt-in absolute-path visibility.
+  Date/Author: 2026-02-22 / OpenCode
+- Decision: In JSON mode, each `at` signal entry contains only `{ path, value }` where `path` is always canonical absolute path.
+  Rationale: JSON consumers need stable canonical identity; dropping redundant `name` keeps payload compact and avoids duplicate identity fields.
+  Date/Author: 2026-02-22 / OpenCode
+- Decision: In human mode, the time header format is simplified from `time: <t>` to `@<t>`.
+  Rationale: More compact output and visual consistency with time-point query semantics.
+  Date/Author: 2026-02-22 / OpenCode
 
 ## Outcomes & Retrospective
 
-Completed all four milestones in one implementation pass with TDD-first ordering preserved.
+Initial implementation milestones are complete, and this plan is now reopened for a semantics-alignment follow-up.
 
-What shipped: `at` now executes end-to-end for VCD and FST, including deterministic human/JSON output, input-order preservation (including duplicates), scope-aware and full-path resolution modes, fail-fast signal errors, inclusive bounds checks, and strict schema coverage (`command=at`, `data=atData`). CLI help and contract tests now treat only `change` and `when` as unimplemented.
+What shipped so far: `at` executes end-to-end for VCD and FST with deterministic sampling, strict time parsing, and schema coverage.
 
-What remains: no functional `at` items remain in this plan. Future work is still tracked separately for `change` and `when`.
+What remains now: align `at` display naming with `signal --abs`, simplify human rendering to `@<time>` + `<display> <value>`, and slim JSON payload entries to canonical `{path,value}`.
 
-Lessons learned: a focused waveform-layer sampling API kept engine logic concise while preserving deterministic ordering guarantees, and running full repository gates (`make check`, `make ci`) early surfaced style/lint constraints that would not appear in narrow test runs.
+Lessons retained for this follow-up: preserve deterministic order/duplicates, keep waveform sampling API canonical-path based, and re-run full gates after schema/output contract changes because regressions can appear outside command-local tests.
 
 ## Context and Orientation
 
 The repository is a single Rust crate. CLI parsing lives in `src/cli/`, command execution in `src/engine/`, waveform access through `src/waveform/mod.rs`, rendering in `src/output.rs`, and JSON schema contract in `schema/wavepeek.json`.
 
-Today, `at` arguments are defined in `src/cli/at.rs`, command routing is wired in `src/cli/mod.rs` and `src/engine/mod.rs`, but execution is a stub in `src/engine/at.rs` returning `WavepeekError::Unimplemented`. Because `output.rs` and `schema/wavepeek.json` currently only support `schema/info/scope/signal`, adding `at` requires extending command enums, data models, human renderer branch, and schema `command`/`data` unions.
+Today, `at` is fully implemented across `src/cli/at.rs`, `src/engine/at.rs`, `src/output.rs`, and `schema/wavepeek.json`. This follow-up keeps sampling behavior intact and updates output semantics only: compact human rendering plus compact JSON signal entries.
 
 Tests are split into command-specific integration files in `tests/` (for example `tests/info_cli.rs`, `tests/signals_cli.rs`) plus CLI surface contracts in `tests/cli_contract.rs`. New `at` tests should follow the same style: assert exit code, stdout/stderr shape, JSON structure, and deterministic repeated output.
 
@@ -101,7 +114,9 @@ No blocking open questions remain for implementation kickoff. If a non-blocking 
 
 ## Plan of Work
 
-The implementation will proceed in four milestones. Each milestone ends with executable proof (tests/commands) so a stateless contributor can continue safely from this file alone.
+Milestones 1-4 below are completed historical context from the initial `at` delivery. They remain for traceability and must not be re-executed on the current tree. Milestone 5 is the active executable follow-up.
+
+### Historical baseline (completed; context only)
 
 ### Milestone 1: Lock behavior with failing tests first (TDD entry)
 
@@ -122,7 +137,7 @@ At the end of this milestone, low-level unit tests for time conversion and value
 Replace the `src/engine/at.rs` stub with real execution logic. The command must open waveform file, parse and validate time, resolve requested signals (scope-aware), sample values in input order, and return `CommandResult` with `command="at"`, `warnings=[]` for normal success, and data payload:
 
 - `time`: normalized timestamp string in dump time unit.
-- `signals`: ordered array of `{ name, path, value }`.
+- `signals`: ordered array of `{ path, value }` (canonical path only; compact payload).
 
 Extend `src/engine/mod.rs` to include `CommandName::At` and `CommandData::At(...)`. Extend `src/output.rs` human rendering for the new payload. Extend `schema/wavepeek.json` so `command` enum includes `at`, `data.oneOf` includes `atData`, and command-conditioned validation supports `at`.
 
@@ -139,45 +154,61 @@ Update user-facing docs and release notes so they do not claim `at` is merely pl
 
 Run the relevant project gates and capture concise evidence in this plan.
 
+### Milestone 5: Align `at` output semantics with `signal --abs` and compact rendering
+
+This milestone applies the follow-up request without changing sampling behavior. Start with TDD updates in `tests/at_cli.rs` and `src/output.rs` unit tests so old formatting/payload assumptions fail first. Then add `--abs` to `at` CLI args and engine human render options, update `AtData` signal entries to drop `name`, and update human rendering to:
+
+- first line: `@<normalized-time>` (for example `@10ns`, `@30ps`);
+- each signal line: `<display> <value>` where `<display>` is either original `--signals` token (default) or canonical absolute path (`--abs`).
+
+Update JSON/schema/docs/changelog contracts so `at` `signals[]` is `{path,value}` only, with `path` always canonical absolute path.
+
+At the end of this milestone, all updated `at` tests pass with both `--scope` and non-`--scope` modes, and deterministic parity checks remain green.
+
 ### Edit Map
 
-Edit `src/engine/at.rs` to replace the stub with full command execution. Keep parsing/validation and payload assembly in this file so behavior is discoverable in one place. Add focused unit tests in the same module for time parsing and Verilog literal formatting helpers.
+Edit `src/engine/at.rs` to keep full command execution but update payload assembly for compact `at` semantics: remove JSON `name`, preserve request-order display tokens for human mode, and continue returning canonical paths for waveform sampling/JSON output. Keep focused unit tests in this module for time parsing and Verilog literal formatting helpers.
+
+Edit `src/cli/at.rs` to add `--abs` for human output path rendering parity with `signal --abs`, then wire it through `src/engine/mod.rs` `HumanRenderOptions` usage from `engine::at::run`.
 
 Edit `src/waveform/mod.rs` to add one sampling API that accepts canonical paths + raw query time, loads required `SignalRef`s, and returns sampled bits/width in request order. Keep scope/name interpretation out of waveform layer; the waveform layer should work only with canonical paths.
 
-Edit `src/engine/mod.rs` to add `At` to `CommandName` and `CommandData`, then edit `src/output.rs` to render `CommandData::At` deterministically in both human and JSON modes.
+Edit `src/output.rs` to render `CommandData::At` deterministically in compact format (`@<time>`, `<display> <value>`), honoring `signals_abs` for `at` just like `signal`.
 
-Edit `schema/wavepeek.json` to introduce `at` in `command` enum and a new `$defs.atData` object schema, then update conditional validation branches so `command=at` strictly maps to `atData`.
+Edit `schema/wavepeek.json` `$defs.atData` so each signal object requires only `path` and `value` (no `name`) while preserving existing `command=at` conditional validation.
 
 Edit `tests/cli_contract.rs` only after Milestone 3 behavior lands, removing `at` from unimplemented-help expectations.
 
-### Concrete Steps
+### Concrete Steps (Milestone 5 only)
 
-Run all commands from `/workspaces/wavepeek`.
+Run all commands from `/workspaces/feat-cmd-at`.
 
 1. Add tests first.
 
        cargo test -q --test at_cli
 
-   Expected before implementation: failure containing the current unimplemented message for `at`.
+   Expected before implementation: failures caused by old output-shape expectations (human `time:` + `path=` format and JSON `name` field), proving tests enforce the requested semantic change.
 
-2. Implement waveform/time helpers and command wiring.
+2. Implement semantic alignment and wiring.
 
-       cargo test -q waveform::
-       cargo test -q --test at_cli
-       cargo test -q --test cli_contract
+        cargo test -q at_human_render_is_deterministic_and_compact
+        cargo test -q --test at_cli
+        cargo test -q --test cli_contract
 
-   Expected during iteration: `waveform::` filter runs more than zero tests, unit/helper tests pass first, then integration tests turn green after `engine::at` + output/schema wiring.
+   Expected during iteration: targeted human-render unit test and `at` integration tests fail first, then turn green after `engine::at` + output/schema/docs wiring.
 
 3. Validate command behavior manually on fixtures.
 
-       cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data
-       cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json
-       cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json > /tmp/at-vcd-1.json
-       cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json > /tmp/at-vcd-2.json
-       cmp /tmp/at-vcd-1.json /tmp/at-vcd-2.json
-       cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.fst --time 10ns --scope top --signals clk,data --json > /tmp/at-fst.json
-       cmp /tmp/at-vcd-1.json /tmp/at-fst.json
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --abs
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json --abs > /tmp/at-vcd-abs.json
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json > /tmp/at-vcd-1.json
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.vcd --time 10ns --scope top --signals clk,data --json > /tmp/at-vcd-2.json
+        cmp /tmp/at-vcd-1.json /tmp/at-vcd-abs.json
+        cmp /tmp/at-vcd-1.json /tmp/at-vcd-2.json
+        cargo run --quiet -- at --waves tests/fixtures/hand/m2_core.fst --time 10ns --scope top --signals clk,data --json > /tmp/at-fst.json
+        cmp /tmp/at-vcd-1.json /tmp/at-fst.json
 
 4. Run broader regression suite.
 
@@ -194,9 +225,10 @@ Run all commands from `/workspaces/wavepeek`.
 
 Acceptance is behavioral and must be observable from CLI:
 
-- Success path (human mode): querying known signals at `10ns` on `tests/fixtures/hand/m2_core.vcd` exits `0`, prints one `time:` line plus one line per requested signal, and emits no stderr warnings/errors.
-- Success path (`--json`): output is valid JSON envelope with `$schema`, `command="at"`, empty `warnings`, and `data` object containing normalized `time` and ordered `signals` entries.
-- Scope behavior: with `--scope top --signals clk,data`, output `name` values are `clk` and `data`, while `path` values are `top.clk` and `top.data`.
+- Success path (human mode): querying known signals at `10ns` on `tests/fixtures/hand/m2_core.vcd` exits `0`, prints one compact time line `@10ns` plus one line per requested signal as `<display> <value>`, and emits no stderr warnings/errors.
+- Success path (`--json`): output is valid JSON envelope with `$schema`, `command="at"`, empty `warnings`, and `data` object containing normalized `time` plus ordered `signals` entries of `{path,value}`.
+- Scope behavior: with `--scope top --signals clk,data`, default human output displays `clk`/`data`; with `--abs`, those same entries display canonical `top.clk`/`top.data`.
+- JSON/`--abs` behavior: `--json` payload is identical with and without `--abs`; canonical `path` is always emitted.
 - Full-path behavior: without `--scope`, `--signals top.clk,top.data` resolves directly and preserves input order.
 - Error path: invalid time token (for example `--time 100`) returns `error: args:` with hint `See 'wavepeek at --help'.`
 - Error path: out-of-range time returns `error: args:` explaining bounds and requested value.
@@ -210,7 +242,7 @@ Acceptance is behavioral and must be observable from CLI:
 
 ### Idempotence and Recovery
 
-All edits are additive and can be re-applied safely. Re-running tests is idempotent. If schema assertions fail after payload updates, re-open `schema/wavepeek.json` and align enum/`oneOf`/`$defs` branches for `at`; then re-run `cargo test -q --test schema_cli` and `cargo test -q`. If a partially implemented state leaves `cli_contract` failing due to stale "not implemented" assertions, complete Milestone 3 wiring and update those assertions in the same change before final validation.
+All edits are additive and can be re-applied safely. Re-running tests is idempotent. If schema assertions fail after payload updates, re-open `schema/wavepeek.json` and align enum/`oneOf`/`$defs` branches for `at`; then re-run `cargo test -q --test schema_cli` and `cargo test -q`.
 
 ### Artifacts and Notes
 
@@ -222,8 +254,8 @@ Expected JSON shape example (content values depend on fixture and query):
       "data": {
         "time": "10ns",
         "signals": [
-          {"name": "clk", "path": "top.clk", "value": "1'h1"},
-          {"name": "data", "path": "top.data", "value": "8'h0f"}
+          {"path": "top.clk", "value": "1'h1"},
+          {"path": "top.data", "value": "8'h0f"}
         ]
       },
       "warnings": []
@@ -231,9 +263,9 @@ Expected JSON shape example (content values depend on fixture and query):
 
 Expected human output example:
 
-    time: 10ns
-    clk path=top.clk value=1'h1
-    data path=top.data value=8'h0f
+    @10ns
+    clk 1'h1
+    data 8'h0f
 
 Expected out-of-range error example:
 
@@ -249,7 +281,6 @@ At the end of implementation, these interfaces must exist:
 
       #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
       pub struct AtSignalValue {
-          pub name: String,
           pub path: String,
           pub value: String,
       }
@@ -295,3 +326,4 @@ Revision note (2026-02-22): Updated after implementation to mark milestones comp
 Revision note (2026-02-22): Updated after review findings to clarify integer-only `--time` grammar in design/decision log and add explicit regression coverage for decimal-token rejection.
 Revision note (2026-02-22): Clarified scoped-signal resolution wording and added regression coverage so `--scope` mode remains explicitly short-name relative.
 Revision note (2026-02-22): Added mandatory `--signals` enforcement in CLI parsing and regression test after final independent review found the missing required-flag contract.
+Revision note (2026-02-22): Reopened the completed plan for follow-up semantics alignment: `at` now targets `signal --abs`-style display behavior, compact human rendering (`@<time>`, `<display> <value>`), and JSON `signals[{path,value}]` payload.

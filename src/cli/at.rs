@@ -14,7 +14,7 @@ pub struct AtArgs {
     #[arg(long)]
     pub scope: Option<String>,
     /// Comma-separated signal names
-    #[arg(long, value_delimiter = ',', num_args = 1..)]
+    #[arg(long, value_delimiter = ',', num_args = 1.., required = true)]
     pub signals: Vec<String>,
     /// Strict JSON envelope output
     #[arg(long)]

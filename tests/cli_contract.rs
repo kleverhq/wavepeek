@@ -53,9 +53,14 @@ fn top_level_help_marks_unimplemented_subcommands() {
         .arg("--help")
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Get signal values at a specific time point (not implemented yet)",
-        ))
+        .stdout(
+            predicate::str::contains("Get signal values at a specific time point").and(
+                predicate::str::contains(
+                    "Get signal values at a specific time point (not implemented yet)",
+                )
+                .not(),
+            ),
+        )
         .stdout(predicate::str::contains(
             "Get value snapshots over a time range (not implemented yet)",
         ))
@@ -149,9 +154,7 @@ fn unimplemented_subcommands_disclose_status_in_help() {
         .args(["at", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Execution is not implemented yet.",
-        ));
+        .stdout(predicate::str::contains("Execution is not implemented yet.").not());
 
     let mut change_command = wavepeek_cmd();
     change_command

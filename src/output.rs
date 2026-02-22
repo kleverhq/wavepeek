@@ -91,6 +91,17 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
+        CommandData::At(at_data) => {
+            let mut lines = Vec::with_capacity(at_data.signals.len() + 1);
+            lines.push(format!("time: {}", at_data.time));
+            for signal in &at_data.signals {
+                lines.push(format!(
+                    "{} path={} value={}",
+                    signal.name, signal.path, signal.value
+                ));
+            }
+            lines.join("\n")
+        }
     }
 }
 
@@ -265,6 +276,33 @@ mod tests {
         assert_eq!(
             rendered,
             "top kind=module\n├── cpu kind=module\n│   ├── alu kind=function\n│   └── regs kind=module\n└── mem kind=module"
+        );
+    }
+
+    #[test]
+    fn at_human_render_is_deterministic_and_compact() {
+        let rendered = render_human(
+            &CommandData::At(crate::engine::at::AtData {
+                time: "10ns".to_string(),
+                signals: vec![
+                    crate::engine::at::AtSignalValue {
+                        name: "clk".to_string(),
+                        path: "top.clk".to_string(),
+                        value: "1'h1".to_string(),
+                    },
+                    crate::engine::at::AtSignalValue {
+                        name: "data".to_string(),
+                        path: "top.data".to_string(),
+                        value: "8'h0f".to_string(),
+                    },
+                ],
+            }),
+            HumanRenderOptions::default(),
+        );
+
+        assert_eq!(
+            rendered,
+            "time: 10ns\nclk path=top.clk value=1'h1\ndata path=top.data value=8'h0f"
         );
     }
 }

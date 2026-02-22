@@ -8,7 +8,7 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
-use wellen::{ScopeRef, ScopeType, Timescale, TimescaleUnit, VarType, simple};
+use wellen::{ScopeRef, ScopeType, SignalRef, Timescale, TimescaleUnit, VarType, simple};
 
 use crate::error::WavepeekError;
 
@@ -37,6 +37,13 @@ pub struct SignalEntry {
     pub path: String,
     pub kind: String,
     pub width: Option<u32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SampledSignal {
+    pub path: String,
+    pub width: u32,
+    pub bits: String,
 }
 
 impl Waveform {
@@ -111,6 +118,121 @@ impl Waveform {
         });
         Ok(signals)
     }
+
+    pub fn sample_signals_at_time(
+        &mut self,
+        canonical_paths: &[String],
+        query_time_raw: u64,
+    ) -> Result<Vec<SampledSignal>, WavepeekError> {
+        let time_table = self.inner.time_table();
+        let time_table_idx =
+            floor_time_table_index(time_table, query_time_raw).ok_or_else(|| {
+                WavepeekError::Internal("query time is before first dump timestamp".to_string())
+            })?;
+        let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
+            WavepeekError::Internal("time table index exceeds u32 range".to_string())
+        })?;
+
+        let hierarchy = self.inner.hierarchy();
+        let mut resolved = Vec::with_capacity(canonical_paths.len());
+        for path in canonical_paths {
+            let signal_ref = resolve_signal_ref(hierarchy, path.as_str())?;
+            resolved.push((path.clone(), signal_ref));
+        }
+
+        let signal_refs = resolved
+            .iter()
+            .map(|(_, signal_ref)| *signal_ref)
+            .collect::<Vec<_>>();
+        self.inner.load_signals(&signal_refs);
+
+        let mut sampled = Vec::with_capacity(resolved.len());
+        for (path, signal_ref) in resolved {
+            let signal = self.inner.get_signal(signal_ref).ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "signal '{path}' could not be loaded from waveform backend"
+                ))
+            })?;
+
+            let offset = signal.get_offset(time_table_idx).ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{path}' has no value at or before requested time"
+                ))
+            })?;
+            let value = signal.get_value_at(&offset, offset.elements - 1);
+
+            let bits = match value {
+                wellen::SignalValue::Event => String::new(),
+                wellen::SignalValue::Binary(_, _)
+                | wellen::SignalValue::FourValue(_, _)
+                | wellen::SignalValue::NineValue(_, _) => {
+                    value.to_bit_string().ok_or_else(|| {
+                        WavepeekError::Internal(format!(
+                            "failed to convert value for signal '{path}' to bit string"
+                        ))
+                    })?
+                }
+                wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
+                    return Err(WavepeekError::Signal(format!(
+                        "signal '{path}' has unsupported non-bit-vector encoding"
+                    )));
+                }
+            };
+
+            let width = value.bits().ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{path}' has unsupported non-bit-vector encoding"
+                ))
+            })?;
+
+            sampled.push(SampledSignal { path, width, bits });
+        }
+
+        Ok(sampled)
+    }
+}
+
+fn floor_time_table_index(time_table: &[u64], query_time_raw: u64) -> Option<usize> {
+    if time_table.is_empty() {
+        return None;
+    }
+
+    match time_table.binary_search(&query_time_raw) {
+        Ok(index) => Some(index),
+        Err(0) => None,
+        Err(index) => Some(index - 1),
+    }
+}
+
+fn resolve_signal_ref(
+    hierarchy: &wellen::Hierarchy,
+    canonical_path: &str,
+) -> Result<SignalRef, WavepeekError> {
+    if canonical_path.is_empty() {
+        return Err(WavepeekError::Signal(format!(
+            "signal '{canonical_path}' not found in dump"
+        )));
+    }
+
+    let (scope_names, signal_name) = match canonical_path.rsplit_once('.') {
+        Some((scope_path, signal_name)) if !scope_path.is_empty() && !signal_name.is_empty() => {
+            (scope_path.split('.').collect::<Vec<_>>(), signal_name)
+        }
+        Some(_) => {
+            return Err(WavepeekError::Signal(format!(
+                "signal '{canonical_path}' not found in dump"
+            )));
+        }
+        None => (Vec::new(), canonical_path),
+    };
+
+    let var_ref = hierarchy
+        .lookup_var(&scope_names, signal_name)
+        .ok_or_else(|| {
+            WavepeekError::Signal(format!("signal '{canonical_path}' not found in dump"))
+        })?;
+
+    Ok(hierarchy[var_ref].signal_ref())
 }
 
 fn collect_scope_entries(
@@ -275,7 +397,7 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
-    use super::{ScopeEntry, Waveform};
+    use super::{SampledSignal, ScopeEntry, Waveform};
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
 
@@ -377,6 +499,73 @@ mod tests {
 
         assert!(error.to_string().starts_with("error: file: cannot parse"));
         assert_eq!(error.exit_code(), 2);
+    }
+
+    #[test]
+    fn sample_signals_at_time_preserves_order_and_duplicates() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let sampled = waveform
+            .sample_signals_at_time(
+                &[
+                    "top.clk".to_string(),
+                    "top.clk".to_string(),
+                    "top.data".to_string(),
+                ],
+                10,
+            )
+            .expect("sampling should succeed");
+
+        assert_eq!(
+            sampled,
+            vec![
+                SampledSignal {
+                    path: "top.clk".to_string(),
+                    width: 1,
+                    bits: "1".to_string()
+                },
+                SampledSignal {
+                    path: "top.clk".to_string(),
+                    width: 1,
+                    bits: "1".to_string()
+                },
+                SampledSignal {
+                    path: "top.data".to_string(),
+                    width: 8,
+                    bits: "00001111".to_string()
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn sample_signals_at_time_uses_latest_change_before_timestamp() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let sampled = waveform
+            .sample_signals_at_time(&["top.data".to_string()], 7)
+            .expect("sampling should succeed");
+
+        assert_eq!(sampled[0].width, 8);
+        assert_eq!(sampled[0].bits, "00000000");
+    }
+
+    #[test]
+    fn sample_signals_at_time_returns_signal_error_for_missing_path() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let error = waveform
+            .sample_signals_at_time(&["top.nope".to_string()], 10)
+            .expect_err("missing signal should fail");
+
+        assert_eq!(
+            error.to_string(),
+            "error: signal: signal 'top.nope' not found in dump"
+        );
+        assert_eq!(error.exit_code(), 1);
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

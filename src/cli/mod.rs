@@ -57,13 +57,11 @@ Use --json for strict envelope mode."#
     )]
     Signal(signal::SignalArgs),
     #[command(
-        about = "Get signal values at a specific time point (not implemented yet)",
+        about = "Get signal values at a specific time point",
         long_about = r#"Gets signal values at a specific time point.
 
-Supports full signal paths or names relative to --scope while preserving
-the order from --signals.
-
-Execution is not implemented yet.
+Supports full signal paths when --scope is omitted, or names relative
+to --scope when it is provided. Output preserves the order from --signals.
 
 Use --json for strict envelope mode."#
     )]

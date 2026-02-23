@@ -1,4 +1,4 @@
-# Implement `change` Command End-to-End
+# Implement `change` Command End-to-End (Aligned with `at` Contracts)
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,13 +6,15 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-This work turns `wavepeek change` from a documented stub into a working command that returns value snapshots over time. After completion, users and agents can ask, in one command, how selected signals evolve in a time window, either on any tracked transition or sampled at a clock posedge cadence.
+This work turns `wavepeek change` from a documented stub into a working command that returns deterministic value snapshots over time. After completion, users and agents can ask, in one command, how selected signals evolve in a time window, either on any tracked transition or sampled at a clock posedge cadence.
 
-The change is visible immediately from CLI behavior. `wavepeek change ...` must stop returning `error: unimplemented` and instead return deterministic human output by default and strict JSON output under `--json`, with stable warnings for truncation and empty matches.
+This revision also aligns `change` output semantics with shipped `at` behavior: no duplicate identity fields in JSON, canonical path identity in JSON, default human rendering that mirrors user input tokens, and `--abs` for canonical human display. Time uses compact `@<time>` only in human output; JSON keeps plain normalized time.
 
 ## Non-Goals
 
-This plan does not implement `at` or `when`, does not add new flags beyond the existing `change` surface, does not add alias compatibility, and does not redesign generic output policy outside what is needed for `change` data rendering.
+This plan does not implement `when`, does not introduce compatibility aliases, does not change JSON envelope behavior outside `change` payload shape, and does not redesign command contracts that are already shipped for `info`/`scope`/`signal`/`at`.
+
+This plan does not add timestamp prefixes to JSON payloads. `@` is human-only by design.
 
 ## Progress
 
@@ -20,55 +22,63 @@ This plan does not implement `at` or `when`, does not add new flags beyond the e
 - [x] (2026-02-22 14:41Z) Revised plan after review feedback: made command contract self-contained, added exact expected outputs/errors, and added milestone-level proof criteria.
 - [x] (2026-02-22 14:52Z) Revised plan after independent control review: fixed canonical command invocation guidance and expanded JSON envelope acceptance checks.
 - [x] (2026-02-22 16:02Z) Revised plan after final control findings: aligned milestone sequencing for help contract, added missing human/error acceptance cases, and added explicit exit-code verification steps.
-- [ ] Add failing tests that define `change` behavior (JSON contract, warnings, clocked/unclocked semantics, args errors).
-- [ ] Implement waveform-layer primitives for time windowing, signal resolution, and value sampling needed by `change`.
-- [ ] Implement engine-layer `change` execution and integrate output rendering for human and JSON modes.
-- [ ] Update schema/docs/collateral and run full validation (`make test`, targeted deterministic checks, `make check`).
+- [x] (2026-02-23 20:16Z) Rebased plan contract on already-shipped `at` behavior: added `--abs` for `change`, removed JSON `name/path` duplication, made `@` human-only, and switched implementation strategy from new parsing logic to shared/refactored `at` helpers.
+- [ ] Add failing tests that define `change` behavior under the aligned contract (JSON shape, human `@` lines, `--abs`, warning parity, clocked/unclocked semantics, args errors).
+- [ ] Extract shared time/value formatting logic from `at` into reusable engine helpers, then update `at` to use those helpers without behavior changes.
+- [ ] Implement waveform-side `change` primitives (resolution, trigger timestamps, posedge filtering, value snapshotting) and integrate engine/output wiring.
+- [ ] Update schema/docs/changelog/collateral and run full validation (`make test`, deterministic checks, `make check`).
 
 ## Surprises & Discoveries
-
-- Observation: During initial repository scan (before this plan file existed), `docs/exec-plans/active/` was absent and had to be created for this plan.
-  Evidence: early filesystem read showed only `docs/exec-plans/AGENTS.md` and `docs/exec-plans/completed/`.
 
 - Observation: `change` is fully wired in CLI parsing and dispatch but intentionally fails in engine.
   Evidence: `src/engine/change.rs` currently returns `WavepeekError::Unimplemented("`change` command execution is not implemented yet")`.
 
-- Observation: No reusable time parser exists yet for command inputs (`--from`, `--to`, `--time` style), so `change` must introduce one in waveform/engine code now.
-  Evidence: no `parse_time` helper exists in `src/engine/` or `src/waveform/`; only metadata normalization exists for dump internals.
+- Observation: `at` now contains working, tested helpers for time parsing/conversion and Verilog literal formatting that can be reused.
+  Evidence: `src/engine/at.rs` implements `parse_time_token`, cross-unit conversion via zeptoseconds, exact alignment checks, `format_raw_timestamp`, and `format_verilog_literal` with unit tests.
+
+- Observation: current JSON schema includes `at` but not `change`; `change` contract additions must extend command enum/conditional branches.
+  Evidence: `schema/wavepeek.json` command enum is `["info", "scope", "signal", "at"]`.
+
+- Observation: top-level/help contracts still mark `change` as unimplemented.
+  Evidence: `tests/cli_contract.rs` expects unimplemented markers for `change` and `when`.
 
 ## Decision Log
 
-- Decision: Use TDD by writing `tests/change_cli.rs` first and intentionally observing red tests before implementing command logic.
-  Rationale: `change` has dense semantics (windowing, dedup, posedge filtering, warnings). Contract-first tests prevent silent behavioral drift.
+- Decision: Keep TDD-first flow by writing `tests/change_cli.rs` before runtime implementation.
+  Rationale: `change` has dense semantics (windowing, trigger rules, warnings, rendering mode differences). Contract tests prevent drift.
   Date/Author: 2026-02-22 / OpenCode
 
 - Decision: Keep `change` on the existing envelope pipeline (`CommandResult` -> `output::write`) instead of command-specific serialization.
   Rationale: Existing commands already enforce deterministic JSON envelope behavior and warning routing.
   Date/Author: 2026-02-22 / OpenCode
 
-- Decision: Freeze expected warning/error strings in tests where behavior must be parseable (`--max` validation, invalid time syntax, empty result, truncation).
-  Rationale: This command is aimed at machine consumers; exact strings materially affect automation reliability.
+- Decision: Make `cargo run --quiet -- ...` the canonical execution form for acceptance examples.
+  Rationale: Stateless execution should not rely on globally installed binaries.
   Date/Author: 2026-02-22 / OpenCode
 
-- Decision: Make `cargo run --quiet -- ...` the canonical execution form for all acceptance examples so the plan works from a fresh checkout without global install assumptions.
-  Rationale: Stateless novice execution must not depend on whether `wavepeek` binary is pre-installed in PATH.
-  Date/Author: 2026-02-22 / OpenCode
+- Decision: Align `change` naming semantics with shipped `at` semantics.
+  Rationale: One consistent display-identity model lowers user/agent confusion: default human shows requested tokens, `--abs` shows canonical paths, JSON always carries canonical identity.
+  Date/Author: 2026-02-23 / OpenCode
 
-- Decision: Move `change` help-text contract update to Milestone 1 so `cli_contract` can be green immediately after test-contract setup.
-  Rationale: Keeping help text in Milestone 4 while expecting early `cli_contract` alignment created an avoidable sequencing contradiction.
-  Date/Author: 2026-02-22 / OpenCode
+- Decision: Use `@` prefix only in human output, not in JSON.
+  Rationale: Human output benefits from compact visual marker; JSON should stay plain normalized time for machine stability and consistency with existing payload style.
+  Date/Author: 2026-02-23 / OpenCode
+
+- Decision: Refactor and share `at` time/value helpers instead of duplicating parsing/formatting logic in `change`.
+  Rationale: Reuse reduces bugs, keeps contracts synchronized across commands, and simplifies future maintenance.
+  Date/Author: 2026-02-23 / OpenCode
 
 ## Outcomes & Retrospective
 
-Implementation has not started yet. At completion this section must state what became user-visible, what trade-offs were made in waveform sampling APIs, and any residual risks around time normalization and parser edge cases.
+Implementation has not started yet. At completion this section must state what became user-visible, what shared helper APIs were introduced, how `at` compatibility was preserved during refactor, and any residual risks around time normalization or trigger edge cases.
 
 ## Context and Orientation
 
-The repository is a single Rust crate with clear layers. `src/cli/` defines clap args and help text, `src/engine/` performs command logic, `src/waveform/mod.rs` is the parser adapter over `wellen`, and `src/output.rs` renders human/JSON outputs. Errors are normalized by `src/error.rs` and top-level CLI parse behavior is centralized in `src/cli/mod.rs`.
+The repository is a single Rust crate with clear layers. `src/cli/` defines clap args and help text, `src/engine/` performs command logic, `src/waveform/mod.rs` is the parser adapter over `wellen`, and `src/output.rs` renders human/JSON outputs. Errors are normalized by `src/error.rs` and top-level parse behavior is centralized in `src/cli/mod.rs`.
 
-`change` already has argument shape in `src/cli/change.rs` and dispatch in `src/engine/mod.rs`, but command execution is a stub in `src/engine/change.rs`. JSON schema is stored in `schema/wavepeek.json`; `make update-schema` regenerates it from runtime output and `make check-schema` verifies no drift.
+`change` argument shape exists in `src/cli/change.rs`, dispatch exists in `src/engine/mod.rs`, and execution is still a stub in `src/engine/change.rs`. `at` is already implemented end-to-end in `src/cli/at.rs`, `src/engine/at.rs`, `src/waveform/mod.rs`, `src/output.rs`, `schema/wavepeek.json`, and `tests/at_cli.rs`; that implementation is now the contract template for naming and shared time/value semantics.
 
-Relevant files for this plan are `src/engine/change.rs`, `src/engine/mod.rs`, `src/waveform/mod.rs`, `src/output.rs`, `src/cli/mod.rs`, `tests/change_cli.rs` (new), `tests/cli_contract.rs`, `tests/fixtures/hand/change_edge_cases.vcd` (new), `schema/wavepeek.json`, `README.md`, and `CHANGELOG.md`.
+Primary files for this plan are `src/engine/change.rs`, `src/engine/mod.rs`, `src/engine/at.rs`, `src/waveform/mod.rs`, `src/output.rs`, `src/cli/change.rs`, `src/cli/mod.rs`, `tests/change_cli.rs` (new), `tests/cli_contract.rs`, `tests/fixtures/hand/change_edge_cases.vcd` (new), `schema/wavepeek.json`, `README.md`, `docs/DESIGN.md`, and `CHANGELOG.md`.
 
 ## Normative `change` Contract (Authoritative in This Plan)
 
@@ -76,118 +86,106 @@ This section is the execution contract. Implementers must follow this section ev
 
 Command surface is:
 
-    wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--json]
+    wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--abs] [--json]
 
-`--waves` and `--signals` are required. `--max` defaults to `50` and must be greater than `0`; `--max 0` is an `args` error. `--signals` accepts comma-separated names and preserves user order in output rows.
+`--waves` and `--signals` are required. `--signals` is a comma-separated list and output order must match user order exactly (including duplicates). `--max` defaults to `50` and must be greater than `0`; `--max 0` is an `args` error.
 
-Name resolution rules are strict. Without `--scope`, each `--signals` entry and optional `--clk` entry must be a full path (example `top.cpu.valid`). With `--scope top.cpu`, short names are resolved relative to that scope (example `valid` -> `top.cpu.valid`). Mixed input is allowed: full paths remain full paths, short names resolve relative to scope.
+Name resolution matches `at`:
 
-Time strings require explicit units (`fs`, `ps`, `ns`, `us`, `ms`, `s`). Bare numbers are rejected as `args` errors. Parsed times must convert exactly into dump precision; non-exact conversion is `args` error. `--from` and `--to` define an inclusive candidate window. Missing `--from` means dump start, missing `--to` means dump end, both missing means full dump. If both are present and `from > to`, return `args` error.
+- Without `--scope`, each `--signals` token and optional `--clk` token is interpreted as a canonical full path.
+- With `--scope <path>`, each `--signals` token and optional `--clk` token is interpreted as a short name relative to that scope.
 
-Unclocked mode is used when `--clk` is absent. A snapshot is emitted for each timestamp in the inclusive window where at least one tracked signal changed. If several tracked signals change at the same timestamp, emit one snapshot for that timestamp after applying all changes at that timestamp.
+`--scope` mode does not accept canonical full-path tokens in `--signals`/`--clk`; those must fail as `error: signal:` lookup failures under scoped resolution, consistent with `at` behavior.
 
-Clocked mode is used when `--clk` is present. A snapshot is emitted only at timestamps where the clock signal has a clean posedge transition `0 -> 1`. Any transition involving `x` or `z` is not a posedge. Clocked mode forbids including the clock in `--signals`; if present, return `args` error. Clock itself is never emitted in snapshot signal arrays unless user explicitly tracks it in unclocked mode.
+Time strings require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer numeric parts. Bare numbers are rejected as `args` errors. Parsed times must convert exactly into dump precision; non-exact conversion is an `args` error with fragment `cannot be represented exactly in dump precision`. `--from` and `--to` define an inclusive candidate window. Missing `--from` means dump start, missing `--to` means dump end, both missing means full dump. If both are present and `from > to`, return `args` error.
 
-Each snapshot row contains normalized timestamp plus all requested signals in user order. Signal values are formatted as Verilog literals `<width>'h<digits>` using lowercase hex digits, including `x` and `z` where applicable.
+Unclocked mode is used when `--clk` is absent. Emit one snapshot per timestamp in the inclusive window where at least one tracked signal changed. If multiple tracked signals change at the same timestamp, emit exactly one snapshot after applying all changes at that timestamp.
 
-Successful output in `--json` mode is one envelope object with `command: "change"`, `data` as an array of snapshots, and `warnings` as an array of strings. In human mode, stdout format is exact and deterministic: one line per snapshot using `<time> <requested_name_1>=<value_1> <requested_name_2>=<value_2> ...` with names shown exactly as provided in `--signals` and in that same order. In human mode, warnings go to stderr as `warning: <text>`, and warning text must match JSON warning text byte-for-byte.
+Clocked mode is used when `--clk` is present. Emit snapshots only at timestamps where the clock signal has a clean posedge `0 -> 1`. Transitions involving `x` or `z` are not posedges. Clocked mode forbids including the clock in `--signals`; if present, return `args` error `--clk must not be included in --signals`.
 
-If there are no trigger timestamps in window, return success with empty `data` and one warning exactly `no signal changes found in selected time range`. If snapshots exceed `--max`, truncate to first `--max` snapshots in time order and add warning exactly `truncated output to <n> entries (use --max to increase limit)`.
+Values are formatted as Verilog literals `<width>'h<digits>` with lowercase hex digits and support for `x`/`z`.
 
-Runtime lookup failures for unknown scope/signal use existing categories (`error: scope:` or `error: signal:`) and non-zero exit. Parse/validation failures use `error: args:`.
+JSON mode (`--json`) returns one envelope object with `command: "change"`, `data` as an array of snapshots, and `warnings` as an array of strings. Each snapshot object has:
 
-For non-exact time conversion, the canonical error message fragment is `cannot be represented exactly in dump precision` under `error: args:`.
+- `time`: normalized plain time string (for example `5ns`, no `@`)
+- `signals`: ordered array of objects `{ "path": <canonical path>, "value": <literal> }`
+
+Human mode defaults to one line per snapshot:
+
+    @<time> <display_1>=<value_1> <display_2>=<value_2> ...
+
+`<display_i>` uses exact tokens passed in `--signals` by default. With `--abs`, `<display_i>` switches to canonical full paths. `--abs` does not alter JSON payload content.
+
+Warnings must match byte-for-byte between JSON warning strings and human stderr warning text after `warning: ` prefixing.
+
+If there are no trigger timestamps in range, return success with empty `data` and one warning exactly `no signal changes found in selected time range`.
+
+If snapshots exceed `--max`, truncate to first `--max` snapshots in time order and add warning exactly `truncated output to <n> entries (use --max to increase limit)`.
+
+Runtime lookup failures for unknown scope/signal use existing categories (`error: scope:` or `error: signal:`) and non-zero exit. Parse/validation failures use `error: args:`. Success exits with code `0`; errors exit with code `1`.
 
 ## Open Questions
 
-There are no open design questions blocking implementation. Resolved ambiguities in this plan are: initial timestamp behavior is tested via explicit ranges that avoid relying on implicit pre-time-zero state, mixed full and scoped signal naming is allowed, and warning strings are fixed as exact literals above.
+No blocking open questions remain. This revision resolves prior ambiguity by fixing: `--abs` semantics for `change`, human-only `@` prefixes, JSON canonical identity fields (`path` only), and `at`-style scoped signal resolution.
 
 ## Plan of Work
 
-Milestone 1 defines behavior with failing tests and aligns help contract early. Add `tests/change_cli.rs`, update `tests/cli_contract.rs` so `change` is no longer marked unimplemented, and update `src/cli/mod.rs` help text for `change` accordingly. Milestone 1 is done when `cargo test --test change_cli` fails due to missing implementation rather than malformed tests, while `cargo test --test cli_contract` is green with `change` implemented-in-help and `at`/`when` still unimplemented-in-help.
+Milestone 1 defines and locks the aligned contract with failing tests. Add `tests/change_cli.rs` and update `tests/cli_contract.rs` + `src/cli/mod.rs` help wording so `change` is no longer marked unimplemented in help. This milestone is complete when `cargo test --test change_cli` fails because runtime behavior is not yet implemented (without unrelated contract/help regressions) and `cargo test --test cli_contract` is green with `change` marked implemented while `when` remains unimplemented.
 
-Milestone 2 builds waveform-side sampling primitives. Implement resolution, time parsing, timestamp iteration, and value sampling helpers in `src/waveform/mod.rs`, and add unit tests for edge behavior (same timestamp dedup inputs, clean posedge discrimination, exact unit conversion). Milestone 2 is done when waveform unit tests for these helpers pass and expose stable APIs consumed by engine code.
+Milestone 2 extracts shared helper logic from `at` and adds waveform-side `change` primitives. Move time parsing/conversion/normalization and Verilog literal formatting into shared engine helpers consumed by both `at` and `change`; keep `at` behavior unchanged and covered by existing tests. In parallel, add/change waveform APIs for resolved signal lookup, trigger timestamp enumeration, posedge filtering, and snapshot sampling.
 
-Milestone 3 implements engine execution and rendering integration. Replace `src/engine/change.rs` stub, extend `src/engine/mod.rs` enums with `change` data variants, and add `change` branch in `src/output.rs` human renderer. Milestone 3 is done when `cargo test --test change_cli` passes and command output matches exact JSON, human stdout, and error/warning examples in this plan.
+Milestone 3 replaces `change` runtime stub and wires output rendering. Implement `src/engine/change.rs`, extend `src/engine/mod.rs` with `CommandName::Change` and `CommandData::Change`, add human renderer branch in `src/output.rs`, and thread `--abs` from CLI args into `HumanRenderOptions`.
 
-Milestone 4 updates schema and collateral. Extend `schema/wavepeek.json`, switch README command status to available, and add changelog entry. Milestone 4 is done when `make update-schema` followed by `make check-schema` succeeds and no doc/test mismatch remains.
+Milestone 4 updates schema and collateral. Extend `schema/wavepeek.json` with `change` command/data definitions and conditionals, update `docs/DESIGN.md` + `README.md` command status, and add changelog notes.
 
-## Concrete Steps
+Milestone 5 runs full validation and deterministic checks, then records evidence.
 
-Run all commands from `/workspaces/wavepeek`.
+### Concrete Steps
 
-Use `cargo run --quiet -- ...` as the canonical way to execute CLI examples in this plan. If you prefer running the built binary directly, ensure behavior and output are byte-identical.
+Run all commands from `/workspaces/feat-cmd-change`.
 
-1. Create failing contract tests first.
-
-   Create `tests/change_cli.rs` with exact assertions from the examples in this plan, including exact human stdout lines and stderr warnings. Update `tests/cli_contract.rs` help assertions so only `at` and `when` remain unimplemented, and update `src/cli/mod.rs` help text for `change` in the same step.
-
-   Run:
+1. Add contract tests first (`tests/change_cli.rs`) and update help contracts.
 
        cargo test --test change_cli
        cargo test --test cli_contract
 
-   Expected now: `change_cli` fails due to unimplemented runtime path; `cli_contract` is green after help-text and assertion updates.
+   Expected now: `change_cli` fails because `change` runtime behavior is still missing (not because of malformed test/help assumptions); `cli_contract` is green with updated help expectations.
 
-2. Add waveform primitives and unit tests.
+2. Extract shared helpers from `at` and add waveform `change` primitives + unit tests.
 
-   Implement helper types/functions in `src/waveform/mod.rs` and add `tests/fixtures/hand/change_edge_cases.vcd` for same-timestamp and x/z clock transitions. Add focused unit tests in `src/waveform/mod.rs` for exact time parsing and posedge filtering.
-
-   Run:
-
+       cargo test --test at_cli
        cargo test waveform::tests
 
-   Expected now: waveform helper tests pass; integration tests still fail until engine wiring is complete.
+   Expected now: `at_cli` remains green after refactor; waveform helper tests are green.
 
 3. Implement engine `change` and output wiring.
 
-   Replace stub in `src/engine/change.rs`, extend `CommandName` and `CommandData` in `src/engine/mod.rs`, and add human rendering branch in `src/output.rs`.
-
-   Run:
-
        cargo test --test change_cli
        cargo test --test cli_contract
 
-   Expected now: both suites pass with exact JSON payload, exact human stdout line format, and exact warning/error text assertions.
+   Expected now: both suites pass with exact JSON shape, exact human `@` rendering, `--abs` behavior, and exact warning/error text.
 
-4. Sync schema and docs.
-
-   Update `schema/wavepeek.json`, `README.md`, and `CHANGELOG.md`.
-
-   Run:
+4. Sync schema/docs/changelog.
 
        make update-schema
        make check-schema
 
-   Expected now: no schema drift and command enum in schema includes `change`.
+   Expected now: no schema drift; `command` enum includes `change` and conditionals validate `change` payload.
 
 5. Run full quality gates.
-
-   Run:
 
        make test
        make check
 
-   Expected now: all tests, format, lint, schema contract, and build checks pass.
+   Expected now: tests, format, lint, schema checks, and build checks pass.
 
 ## Validation and Acceptance
 
-The implementation is accepted only when command behavior matches the exact examples below.
+Acceptance is behavioral and requires exact outputs for commands below.
 
-Example A, unclocked snapshots in a bounded range:
+Example A, unclocked JSON snapshots:
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data --json
-
-Expected top-level JSON envelope keys are exactly `$schema`, `command`, `data`, and `warnings`. `schema_version` must be absent. `command` must be exactly `change`.
-
-Expected envelope shape:
-
-    {
-      "$schema": "https://github.com/kleverhq/wavepeek/blob/v<crate-version>/schema/wavepeek.json",
-      "command": "change",
-      "data": <exact data array below>,
-      "warnings": []
-    }
 
 Expected `data` exactly:
 
@@ -195,80 +193,118 @@ Expected `data` exactly:
       {
         "time": "5ns",
         "signals": [
-          {"name": "top.clk", "path": "top.clk", "value": "1'h1"},
-          {"name": "top.data", "path": "top.data", "value": "8'h00"}
+          {"path": "top.clk", "value": "1'h1"},
+          {"path": "top.data", "value": "8'h00"}
         ]
       },
       {
         "time": "10ns",
         "signals": [
-          {"name": "top.clk", "path": "top.clk", "value": "1'h1"},
-          {"name": "top.data", "path": "top.data", "value": "8'h0f"}
+          {"path": "top.clk", "value": "1'h1"},
+          {"path": "top.data", "value": "8'h0f"}
         ]
       }
     ]
 
-and `warnings` is `[]`.
+with `warnings` exactly `[]`.
 
-Example B, clocked snapshots:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 0ns --to 10ns --scope top --clk clk --signals data --json
-
-Expected `data` exactly one row at `5ns` with signal `{ "name": "data", "path": "top.data", "value": "8'h00" }` and `warnings` `[]`.
-
-Example C, empty window warning:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 6ns --to 9ns --signals top.clk,top.data --json
-
-Expected `data` exactly `[]` and `warnings` exactly `["no signal changes found in selected time range"]`.
-
-Example D, truncation warning:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data --max 1 --json
-
-Expected `data` length `1` and `warnings` exactly `["truncated output to 1 entries (use --max to increase limit)"]`.
-
-Example E, human-mode stdout shape and order:
+Example B, unclocked human default (`@` prefix + requested tokens):
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data
 
 Expected stdout exactly:
 
-    5ns top.clk=1'h1 top.data=8'h00
-    10ns top.clk=1'h1 top.data=8'h0f
+    @5ns top.clk=1'h1 top.data=8'h00
+    @10ns top.clk=1'h1 top.data=8'h0f
 
-and expected stderr exactly empty.
+and stderr exactly empty.
 
-Example F, human-mode warning routing:
+Example C, scoped human default uses short requested tokens:
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 6ns --to 9ns --signals top.clk,top.data
-
-Expected stdout exactly empty and expected stderr exactly:
-
-    warning: no signal changes found in selected time range
-
-Example G, mixed scope-relative and absolute signal names in human mode:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --scope top --signals data,top.clk
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --scope top --signals data,clk
 
 Expected stdout exactly:
 
-    5ns data=8'h00 top.clk=1'h1
-    10ns data=8'h0f top.clk=1'h1
+    @5ns data=8'h00 clk=1'h1
+    @10ns data=8'h0f clk=1'h1
 
-Example H, human-mode truncation warning parity with JSON warning text:
+Example D, scoped human `--abs` uses canonical paths:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --scope top --signals data,clk --abs
+
+Expected stdout exactly:
+
+    @5ns top.data=8'h00 top.clk=1'h1
+    @10ns top.data=8'h0f top.clk=1'h1
+
+Example E, clocked JSON snapshots:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 0ns --to 10ns --scope top --clk clk --signals data --json
+
+Expected `data` exactly one row at `5ns`:
+
+    [
+      {
+        "time": "5ns",
+        "signals": [
+          {"path": "top.data", "value": "8'h00"}
+        ]
+      }
+    ]
+
+with `warnings` exactly `[]`.
+
+Example F, empty window warning:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 6ns --to 9ns --signals top.clk,top.data --json
+
+Expected `data` exactly `[]` and `warnings` exactly `["no signal changes found in selected time range"]`.
+
+Example G, truncation warning:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data --max 1 --json
+
+Expected `data` length `1` and `warnings` exactly `["truncated output to 1 entries (use --max to increase limit)"]`.
+
+Example H, human-mode warning routing and parity with JSON warning text:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 6ns --to 9ns --signals top.clk,top.data
+
+Expected stdout exactly empty and stderr exactly:
+
+    warning: no signal changes found in selected time range
+
+and warning text (after removing `warning: `) must match JSON warning text byte-for-byte.
+
+Example I, human-mode truncation warning parity:
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data --max 1
 
 Expected stdout exactly:
 
-    5ns top.clk=1'h1 top.data=8'h00
+    @5ns top.clk=1'h1 top.data=8'h00
 
 Expected stderr exactly:
 
     warning: truncated output to 1 entries (use --max to increase limit)
 
-Error acceptance checks (exact prefix and category):
+and warning text (after removing `warning: `) must match JSON warning text byte-for-byte.
+
+Example J, JSON payload parity with and without `--abs`:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --scope top --signals data,clk --json > /tmp/change_json_default.json
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --scope top --signals data,clk --json --abs > /tmp/change_json_abs.json
+    cmp /tmp/change_json_default.json /tmp/change_json_abs.json
+
+Expected: `cmp` exits `0`.
+
+Example K, clocked mode excludes x/z transitions from posedge detection:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --clk clk --signals data --json
+
+Expected behavior: `data` contains rows only for clean `0->1` clock transitions and contains no rows for `x->1` or `z->1` transitions.
+
+Error acceptance checks:
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --signals top.clk --max 0
 
@@ -294,66 +330,65 @@ must fail with stderr starting `error: signal:`.
 
 must fail with stderr starting `error: scope:`.
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1.5ns --signals top.clk
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --scope top --signals top.clk
+
+must fail with stderr starting `error: signal:` (scoped mode expects short names only).
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 15ps --signals top.clk
 
 must fail with stderr starting `error: args:` and include `cannot be represented exactly in dump precision`.
 
-All success examples above must exit with code `0`. All error examples above must exit with code `1`.
-
-Exit-code verification pattern for novice execution:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 1ns --to 10ns --signals top.clk,top.data --json >/tmp/change_ok.json 2>/tmp/change_ok.err; echo $?
-
-Expected printed code is `0`.
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --signals top.clk --max 0 >/tmp/change_err.out 2>/tmp/change_err.err; echo $?
-
-Expected printed code is `1`.
-
-Help acceptance:
-
-    cargo run --quiet -- --help
-
-must no longer contain `change` marked as not implemented, while `at` and `when` remain marked as not implemented.
+All success examples must exit `0`. All error examples must exit `1`.
 
 ## Idempotence and Recovery
 
-All steps are safe to repeat. Tests, schema regeneration, and formatting/lint/build checks are idempotent when run from a clean checkout.
+All steps are safe to repeat. Tests, schema regeneration, and checks are idempotent from a clean checkout.
 
-If schema checks fail after command implementation, regenerate schema (`make update-schema`) and re-run `make check-schema`. If mismatch persists, compare runtime `wavepeek schema` output against `schema/wavepeek.json` to isolate whether drift is intentional contract evolution or accidental serialization change.
+If schema checks fail after command implementation, run `make update-schema` and then `make check-schema`. If mismatch persists, compare runtime `wavepeek schema` output to `schema/wavepeek.json` to separate intentional contract changes from accidental serialization drift.
 
-If implementation is partially complete and failing, recover in this order: compile green with stubs, then re-enable unclocked snapshots, then clocked snapshots, then warning/error exact-string assertions, then collateral updates.
+If implementation is partially complete and failing, recover in this order: keep compile green, keep `at` tests green after helper extraction, re-enable unclocked snapshots, then clocked snapshots, then exact warning/error strings, then collateral updates.
 
 ## Artifacts and Notes
 
-Primary files to modify are:
+Primary files to modify:
 
+    src/cli/change.rs
+    src/cli/mod.rs
     src/engine/change.rs
+    src/engine/at.rs
     src/engine/mod.rs
     src/waveform/mod.rs
     src/output.rs
-    src/cli/mod.rs
     tests/change_cli.rs
     tests/cli_contract.rs
     tests/fixtures/hand/change_edge_cases.vcd
     schema/wavepeek.json
+    docs/DESIGN.md
     README.md
     CHANGELOG.md
 
-Boundary behavior that must be explicitly tested includes `--from == --to`, omitted bounds (full-dump default window), default `--max = 50`, mixed absolute and scope-relative signal names, and deterministic row order when multiple signals update at the same timestamp.
+Boundary behavior that must be explicitly tested includes `--from == --to`, omitted bounds, default `--max = 50`, duplicate signal tokens preserving order, scoped short-name mode parity with `at`, and deterministic row order when multiple tracked signals change at one timestamp.
 
 ## Interfaces and Dependencies
 
 No new dependencies are required.
 
-In `src/engine/change.rs`, add serializable result types and use them directly in `CommandData`:
+Add `--abs` to `src/cli/change.rs` mirroring `at`:
 
+    #[arg(long)]
+    pub abs: bool,
+
+In `src/engine/change.rs`, define payload types aligned with `at` identity model:
+
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
     pub struct ChangeSignalValue {
-        pub name: String,
+        #[serde(skip_serializing)]
+        pub display: String,
         pub path: String,
         pub value: String,
     }
 
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
     pub struct ChangeSnapshot {
         pub time: String,
         pub signals: Vec<ChangeSignalValue>,
@@ -364,10 +399,18 @@ In `src/engine/mod.rs`, extend enums with exact names:
     CommandName::Change
     CommandData::Change(Vec<crate::engine::change::ChangeSnapshot>)
 
-In `src/waveform/mod.rs`, add helper interfaces with fixed names so engine code stays parser-agnostic:
+In `src/output.rs`, add deterministic human rendering for `CommandData::Change`:
+
+    @<time> <display_or_path_1>=<value_1> <display_or_path_2>=<value_2> ...
+
+where `display_or_path` uses requested tokens by default and canonical paths when `signals_abs` is true.
+
+Extract shared time/literal helpers from `src/engine/at.rs` into reusable engine-level helpers (module naming is implementation choice, but helper behavior must remain byte-compatible with current `at` tests), then make both `at` and `change` consume them.
+
+In `src/waveform/mod.rs`, add/extend parser-agnostic helper APIs for `change` execution:
 
     pub struct ResolvedSignal {
-        pub requested_name: String,
+        pub display: String,
         pub path: String,
         pub width: u32,
     }
@@ -383,3 +426,4 @@ In `src/waveform/mod.rs`, add helper interfaces with fixed names so engine code 
 These names and responsibilities are part of this plan contract to reduce implementation ambiguity.
 
 Revision Note: 2026-02-22 / OpenCode - Revised after final independent review: resolved milestone sequencing for help contract, added human truncation + `error: scope:` acceptance cases, and added explicit exit-code verification procedure.
+Revision Note: 2026-02-23 / OpenCode - Updated plan after shipped `at` implementation to align `change` contract with `at` naming semantics (`--abs`, canonical JSON identity, no `name/path` duplication), make `@` time prefix human-only, and switch implementation strategy to shared-helper refactoring instead of duplicating time/value logic.

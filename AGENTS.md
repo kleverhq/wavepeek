@@ -32,6 +32,12 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - Implementation review should use `ask-review` skill with the `review` agent.
 - Periodic repository cleanup and simplification should use `repo-gc` skill.
 
+## Critical Tool Safety Rule
+
+- Treat all `.fst` files as binary files, not text.
+- NEVER call the `Read` tool on `.fst` files under any circumstances.
+- If information from a `.fst` file is needed, use a non-`Read` workflow and ask the user for guidance when required.
+
 ## Devcontainer Notes
 
 For non-obvious container decisions, fixture provisioning, and environment

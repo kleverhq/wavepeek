@@ -297,11 +297,10 @@ wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --json
 
 #### 3.2.5 `change` — Value changes over time range
 
-Outputs snapshots of signal values over a time range. Supports two modes:
-unclocked (trigger on any signal change) and clocked (trigger on posedge of a clock).
+Outputs delta snapshots of signal values over a time range using one event-trigger model.
 
 ```
-wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--clk <name>] [--max <n>] [--json]
+wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--when <event_expr>] [--max <n>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -310,50 +309,55 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 | `--waves <file>` | required | Path to VCD/FST file |
 | `--from <time>` | start of dump | Start time with units (e.g., `1us`) |
 | `--to <time>` | end of dump | End time with units (e.g., `2us`) |
-| `--scope <path>` | — | Scope for short signal/clock names |
+| `--scope <path>` | — | Scope for short signal/trigger names |
 | `--signals <names>` | required | Comma-separated signal names |
-| `--clk <name>` | — | Clock signal for posedge-triggered snapshots |
+| `--when <event_expr>` | `*` | Event expression (`*`, named, edge, union) |
 | `--max <n>` | 50 | Maximum number of snapshot rows |
+| `--abs` | off | Canonical paths in human output |
 | `--json` | off | Strict JSON envelope output |
 
-**Modes:**
-- **Unclocked** (no `--clk`): row appears when any of `--signals` changes
-- **Clocked** (`--clk` provided): row appears on each posedge (clean `0 -> 1` transition) of the clock signal.
-  Transitions involving `x`/`z` do not count as posedge. Clock itself is excluded from output.
-- `--signals` and `--clk` follow same scope convention: short name with `--scope`, full path without
+**Supported `--when` forms:**
+- Non-edge: `*` (any change in resolved `--signals`) and `<name>` (any change of that signal)
+- Edge: `posedge <name>`, `negedge <name>`, `edge <name>`
+- Union: `event or event`, `event, event` (exact synonyms)
+- Optional staged clause: `event iff logical_expr`
+
+Current delivery parses `iff` and preserves its binding (`iff` applies to the immediately preceding event term),
+but runtime evaluation of `logical_expr` is intentionally deferred and returns
+`error: args: iff logical expressions are not implemented yet`.
 
 **Behavior:**
-- Each row shows current value of all signals (snapshot)
+- Name resolution follows `at`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
+- Scoped mode rejects canonical full-path tokens for both `--signals` and `--when` names.
+- Time tokens require explicit units and exact alignment to dump precision.
+- `--from` defines a baseline checkpoint: values are sampled/initialized at `--from` (or dump start when omitted), and no row is emitted at that exact timestamp.
+- Candidate timestamps come from `--when` inside inclusive `[--from, --to]`; rows can only be emitted for timestamps strictly greater than the baseline checkpoint.
+- Each emitted row is delta-only: emit only when sampled `--signals` changed relative to the last known sampled state strictly before that timestamp.
+- If an event fires but sampled `--signals` did not change, no row is emitted.
+- Per-signal baseline initialization is lazy: missing prior sampled state is initialized at the timestamp and excluded from delta decision for that timestamp.
+- Edge detection uses previous value strictly before timestamp and SystemVerilog-style classification on LSB only, with nine-state values (`h/u/w/l/-`) normalized to `x`.
 - Default output: human-readable snapshot list.
-- `--json` outputs JSON envelope with `data` as an array of snapshots.
-- Each snapshot:
-  - `time`: normalized time string in dump `time_unit`
-  - `signals`: array of `{ name, path, value }` in the same order as `--signals`
-- Snapshots are emitted in increasing `time` order.
-- If multiple tracked signals change at the same timestamp, a single snapshot is emitted for that timestamp,
-  using the final values at that timestamp (after applying all changes at that time).
-- `--from`/`--to` define an inclusive window of candidate timestamps; snapshots are emitted only when the
-  trigger occurs in the window (no synthetic snapshots at boundaries).
-- Values are emitted as Verilog literals: `<width>'h<digits>` (including `x`/`z`).
-- In clocked mode, `--clk` must not be included in `--signals`.
-- Fail fast: error if any signal not found
-- If no changes/posedges in the time range, `data` is empty and a warning is emitted.
+- Human rows are one line per snapshot: `@<time> <display_1>=<value_1> <display_2>=<value_2> ...`.
+  `--abs` switches `<display_i>` from requested token to canonical path.
+- JSON rows are `{ "time": <normalized>, "signals": [{"path": ..., "value": ...}, ...] }`.
+- Values are Verilog literals: `<width>'h<digits>` with lowercase hex and `x`/`z` support.
+- If no rows are emitted, `data` is empty and warning is exactly `no signal changes found in selected time range`.
 - If results exceed `--max`, output is truncated and a warning is emitted.
 - Legacy `changes` command name is not supported.
 
 **Examples:**
 ```bash
-# Unclocked: track changes in time range
+# Default trigger (`*`): any sampled signal change
 wavepeek change --waves dump.vcd --from 1us --to 2us --signals top.cpu.clk,top.cpu.data
 
-# Unclocked: with scope (shorter names)
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk,data,valid
+# Named non-edge trigger with scope-relative names
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals data,valid --when "data"
 
-# Clocked: snapshot per clock cycle
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --clk clk --signals data,valid,ready
+# Union trigger with comma/or synonyms
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk1 --when "posedge clk1, posedge clk2"
 
 # Strict JSON envelope
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --json
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --when "edge clk" --json
 ```
 
 #### 3.2.6 `when` — Event search
@@ -545,7 +549,7 @@ src/
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
 │   ├── at.rs            # Value extraction at time point
-│   ├── change.rs        # Value change tracking (clocked/unclocked)
+│   ├── change.rs        # Value change tracking (`--when` event triggers)
 │   ├── when.rs          # Condition evaluation over clock cycles
 │   └── schema.rs        # JSON schema export
 ├── expr/                # Expression engine (for `when` command)

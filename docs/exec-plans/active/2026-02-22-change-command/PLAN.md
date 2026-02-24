@@ -40,10 +40,12 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 - [x] (2026-02-24 02:07Z) Locked start-boundary semantics: `--from` is baseline-only (always sample/init at `--from`) and snapshot emission begins strictly after that timestamp.
 - [x] (2026-02-24 02:19Z) Added omitted-`--from` and `--to == --from` acceptance coverage for baseline-only start semantics, and made collateral milestone explicitly require DESIGN doc boundary update.
 - [x] (2026-02-24 02:26Z) Hardened omitted-`--from` acceptance by switching boundary proof to non-edge `*` trigger, avoiding false positives caused by edge previous-state requirements at dump start.
-- [ ] Add failing contract tests for `--when` semantics (`*`, named non-edge, edge forms, `or`/`,` composition, default behavior, warnings/errors, JSON/human parity).
-- [ ] Introduce reusable event-expression parser/types and shared edge-detection helpers that can be reused by future `when` work and by `change` now.
-- [ ] Implement `change` runtime on top of resolved event expressions and remove `--clk` from CLI/engine wiring.
-- [ ] Update schema/docs/changelog/collateral and run full validation (`make test`, deterministic checks, `make check`).
+- [x] (2026-02-24 03:28Z) Added failing contract coverage for `change --when` in `tests/change_cli.rs`, updated `cli_contract` help assertions, and switched CLI surface/help text from `--clk` to `--when`/`--abs`.
+- [x] (2026-02-24 03:49Z) Implemented reusable event-expression parsing/types (`EventExpr`/`EventTerm`/`EventKind`) plus waveform helpers for SV2023 edge classification, nine-state normalization, LSB-only edge detection, and delta-baseline update semantics.
+- [x] (2026-02-24 04:07Z) Implemented end-to-end `change` runtime and rendering: default `--when "*"`, scoped resolution parity, union dedup, baseline-only `--from`, zero-delta suppression, warning parity, and `--abs` human-label behavior.
+- [x] (2026-02-24 04:26Z) Synced collateral (`schema`, `DESIGN`, `README`, `CHANGELOG`), regenerated/validated schema checks, and passed full gates (`make test`, `make check`).
+- [x] (2026-02-24 04:49Z) Completed review pass #1, fixed eager event-signal validation for empty in-range windows, and added integration coverage for scoped/unscoped variants.
+- [x] (2026-02-24 05:03Z) Completed fresh independent review pass #2, fixed scoped canonical-token ambiguity hardening and `--max` short-circuit truncation path, and re-ran full quality gates.
 
 ## Surprises & Discoveries
 
@@ -58,6 +60,15 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 
 - Observation: current product docs still describe `change` with `--clk` and `when` with mandatory `--clk`.
   Evidence: `docs/DESIGN.md` sections 3.2.5 and 3.2.6 still model clocked/unclocked behavior with explicit clock arguments.
+
+- Observation: `change` delta semantics require sampled-state advancement at every dump timestamp, not only at event-hit timestamps, to satisfy "strictly before t" comparisons.
+  Evidence: initial implementation failed `change_negedge_wiring_is_end_to_end` (`10ns` row missing) until sampled baselines were updated on non-trigger timestamps (`5ns` baseline update enabled `1->0` delta at `10ns`).
+
+- Observation: `cargo test expr::tests` only matches tests under `expr::tests::*` and does not match `expr::parser::tests::*` names.
+  Evidence: milestone command initially ran zero tests until expression acceptance tests were mirrored in `src/expr/mod.rs` under `expr::tests::*`.
+
+- Observation: `make update-schema` is artifact-sync only (`wavepeek schema` emits `include_str!`), so command/data contract expansion still requires editing `schema/wavepeek.json` in source.
+  Evidence: first `make update-schema` produced no changes until `schema/wavepeek.json` was updated with `change` definitions.
 
 ## Decision Log
 
@@ -101,9 +112,23 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
   Rationale: Provides deterministic parser behavior before full logical-expression parsing/validation is implemented.
   Date/Author: 2026-02-24 / OpenCode
 
+- Decision: Delta baseline state for sampled `--signals` is advanced on every in-window dump timestamp (after baseline), not only on event-hit timestamps.
+  Rationale: Contract requires comparison against last known sampled state strictly before candidate timestamp; this must reflect non-trigger timestamps too.
+  Date/Author: 2026-02-24 / OpenCode
+
+- Decision: Keep scoped full-path rejection behavior by reusing existing scope-relative path composition (`<scope>.<token>`) for both `--signals` and event names.
+  Rationale: Preserves established `at` semantics and keeps failure category as `error: signal:` without bespoke path-mode branches.
+  Date/Author: 2026-02-24 / OpenCode
+
 ## Outcomes & Retrospective
 
-Implementation has not started yet. At completion this section must summarize user-visible behavior of `--when`, what reusable event-expression interfaces were introduced for future `when` work, what `iff` behavior is shipped vs deferred, and residual risks (especially around edge transition classification and scoped-name resolution inside event expressions).
+`change` is now fully implemented and no longer a runtime stub. Users can query delta snapshots with one unified trigger surface: omitted `--when` defaults to `*`, explicit named non-edge triggers are supported, edge triggers (`posedge`/`negedge`/`edge`) follow SV2023 classification with nine-state normalization, and `or`/comma unions are equivalent with same-timestamp deduplication.
+
+Reusable event-expression infrastructure was added under `src/expr/` (`EventKind`, `EventTerm`, `EventExpr`, parser segmentation/binding rules), so future `when` work can consume shared parsing/types. `iff` is intentionally staged: parser binding/capture is shipped now; runtime intentionally fails fast with `error: args: iff logical expressions are not implemented yet`.
+
+`change` output and contract alignment are complete: JSON payload uses canonical paths only, human output uses `@<time> <display>=<value> ...`, `--abs` affects only human labels, warnings are parity-stable between JSON/human, and empty/truncation behavior is deterministic. Baseline semantics were locked and verified (`--from` checkpoint is baseline-only; omitted `--from` behaves the same at dump start).
+
+Residual risk is concentrated in deferred `iff logical_expr` evaluation and any future expansion of expression syntax/precedence. Current parser intentionally stores raw `iff` text with temporary separator-depth rules; full logical parsing/evaluation must preserve current binding behavior and error-category guarantees.
 
 ## Context and Orientation
 
@@ -550,6 +575,7 @@ Primary files to modify:
     tests/fixtures/hand/change_edge_cases.vcd
     tests/fixtures/hand/change_from_boundary.vcd
     tests/fixtures/hand/change_many_events.vcd
+    tests/fixtures/hand/change_scope_ambiguous.vcd
     schema/wavepeek.json
     docs/DESIGN.md
     README.md
@@ -605,3 +631,5 @@ Revision Note: 2026-02-24 / OpenCode - Finalized two ambiguity fixes: explicit p
 Revision Note: 2026-02-24 / OpenCode - Added explicit start-boundary behavior: `--from` is always baseline initialization and never produces a snapshot row; emission begins only after `--from`.
 Revision Note: 2026-02-24 / OpenCode - Added missing acceptance coverage for omitted `--from` and `--to == --from` baseline behavior, and explicitly required matching DESIGN-doc boundary updates to avoid contract drift.
 Revision Note: 2026-02-24 / OpenCode - Refined omitted-`--from` baseline proof to use non-edge `*` trigger so the check validates baseline suppression directly rather than relying on edge previous-state availability at dump start.
+Revision Note: 2026-02-24 / OpenCode - Completed end-to-end implementation: added `change --when` runtime/parser/waveform infrastructure, contract fixtures/tests, output/schema/docs/changelog updates, and full quality-gate evidence (`make test`, `make check`).
+Revision Note: 2026-02-24 / OpenCode - Closed both mandatory review passes by hardening scoped canonical-token rejection, making unknown `--when` names fail even on empty timestamp windows, and short-circuiting `--max` truncation processing.

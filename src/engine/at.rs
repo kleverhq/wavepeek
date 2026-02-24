@@ -26,13 +26,13 @@ struct RequestedSignal {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ParsedTime {
-    value: u64,
-    unit: TimeUnit,
+pub(crate) struct ParsedTime {
+    pub(crate) value: u64,
+    pub(crate) unit: TimeUnit,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum TimeUnit {
+pub(crate) enum TimeUnit {
     Zs,
     As,
     Fs,
@@ -227,7 +227,7 @@ fn resolve_requested_signals(
     Ok(resolved)
 }
 
-fn parse_time_token(token: &str) -> Option<ParsedTime> {
+pub(crate) fn parse_time_token(token: &str) -> Option<ParsedTime> {
     let split_at = token.find(|ch: char| !ch.is_ascii_digit())?;
     if split_at == 0 || split_at >= token.len() {
         return None;
@@ -238,11 +238,11 @@ fn parse_time_token(token: &str) -> Option<ParsedTime> {
     Some(ParsedTime { value, unit })
 }
 
-fn as_zeptoseconds(time: ParsedTime) -> Option<u128> {
+pub(crate) fn as_zeptoseconds(time: ParsedTime) -> Option<u128> {
     u128::from(time.value).checked_mul(time.unit.multiplier_in_zeptoseconds())
 }
 
-fn ensure_non_zero_dump_tick(dump_tick_zs: u128) -> Result<(), WavepeekError> {
+pub(crate) fn ensure_non_zero_dump_tick(dump_tick_zs: u128) -> Result<(), WavepeekError> {
     if dump_tick_zs == 0 {
         return Err(WavepeekError::Internal(
             "waveform metadata time_unit must be non-zero".to_string(),
@@ -251,14 +251,17 @@ fn ensure_non_zero_dump_tick(dump_tick_zs: u128) -> Result<(), WavepeekError> {
     Ok(())
 }
 
-fn format_raw_timestamp(raw_time: u64, time_unit: ParsedTime) -> Result<String, WavepeekError> {
+pub(crate) fn format_raw_timestamp(
+    raw_time: u64,
+    time_unit: ParsedTime,
+) -> Result<String, WavepeekError> {
     let normalized = raw_time.checked_mul(time_unit.value).ok_or_else(|| {
         WavepeekError::Internal("normalized time overflow while formatting timestamp".to_string())
     })?;
     Ok(format!("{normalized}{}", time_unit.unit.suffix()))
 }
 
-fn format_verilog_literal(width: u32, bits: &str) -> String {
+pub(crate) fn format_verilog_literal(width: u32, bits: &str) -> String {
     if width == 0 {
         return "0'h0".to_string();
     }

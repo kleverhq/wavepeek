@@ -21,7 +21,8 @@
         "info",
         "scope",
         "signal",
-        "at"
+        "at",
+        "change"
       ]
     },
     "data": {
@@ -37,6 +38,9 @@
         },
         {
           "$ref": "#/$defs/atData"
+        },
+        {
+          "$ref": "#/$defs/changeData"
         }
       ]
     },
@@ -120,6 +124,25 @@
         "properties": {
           "data": {
             "$ref": "#/$defs/atData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "change"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/changeData"
           }
         }
       }
@@ -223,6 +246,41 @@
               },
               "value": {
                 "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "changeData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "time",
+          "signals"
+        ],
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "value"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
               }
             }
           }

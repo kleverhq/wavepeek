@@ -104,6 +104,23 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             }
             lines.join("\n")
         }
+        CommandData::Change(snapshots) => snapshots
+            .iter()
+            .map(|snapshot| {
+                let mut parts = Vec::with_capacity(snapshot.signals.len() + 1);
+                parts.push(format!("@{}", snapshot.time));
+                for signal in &snapshot.signals {
+                    let display = if options.signals_abs {
+                        signal.path.as_str()
+                    } else {
+                        signal.display.as_str()
+                    };
+                    parts.push(format!("{display}={}", signal.value));
+                }
+                parts.join(" ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
     }
 }
 
@@ -303,5 +320,29 @@ mod tests {
         );
 
         assert_eq!(rendered, "@10ns\nclk 1'h1\ndata 8'h0f");
+    }
+
+    #[test]
+    fn change_human_render_is_single_line_per_snapshot() {
+        let rendered = render_human(
+            &CommandData::Change(vec![crate::engine::change::ChangeSnapshot {
+                time: "5ns".to_string(),
+                signals: vec![
+                    crate::engine::change::ChangeSignalValue {
+                        display: "clk".to_string(),
+                        path: "top.clk".to_string(),
+                        value: "1'h1".to_string(),
+                    },
+                    crate::engine::change::ChangeSignalValue {
+                        display: "data".to_string(),
+                        path: "top.data".to_string(),
+                        value: "8'h00".to_string(),
+                    },
+                ],
+            }]),
+            HumanRenderOptions::default(),
+        );
+
+        assert_eq!(rendered, "@5ns clk=1'h1 data=8'h00");
     }
 }

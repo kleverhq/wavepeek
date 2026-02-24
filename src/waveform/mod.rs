@@ -46,6 +46,13 @@ pub struct SampledSignal {
     pub bits: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SampledSignalState {
+    pub path: String,
+    pub width: u32,
+    pub bits: Option<String>,
+}
+
 impl Waveform {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
         if !path.exists() {
@@ -190,6 +197,79 @@ impl Waveform {
 
         Ok(sampled)
     }
+
+    pub fn timestamps_raw(&self) -> Vec<u64> {
+        self.inner.time_table().to_vec()
+    }
+
+    pub fn sample_signals_at_time_optional(
+        &mut self,
+        canonical_paths: &[String],
+        query_time_raw: u64,
+    ) -> Result<Vec<SampledSignalState>, WavepeekError> {
+        let time_table = self.inner.time_table();
+        let time_table_idx =
+            floor_time_table_index(time_table, query_time_raw).ok_or_else(|| {
+                WavepeekError::Internal("query time is before first dump timestamp".to_string())
+            })?;
+        let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
+            WavepeekError::Internal("time table index exceeds u32 range".to_string())
+        })?;
+
+        let hierarchy = self.inner.hierarchy();
+        let mut resolved = Vec::with_capacity(canonical_paths.len());
+        for path in canonical_paths {
+            let (signal_ref, width) = resolve_signal_ref_with_width(hierarchy, path.as_str())?;
+            resolved.push((path.clone(), signal_ref, width));
+        }
+
+        let signal_refs = resolved
+            .iter()
+            .map(|(_, signal_ref, _)| *signal_ref)
+            .collect::<Vec<_>>();
+        self.inner.load_signals(&signal_refs);
+
+        let mut sampled = Vec::with_capacity(resolved.len());
+        for (path, signal_ref, width) in resolved {
+            let signal = self.inner.get_signal(signal_ref).ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "signal '{path}' could not be loaded from waveform backend"
+                ))
+            })?;
+
+            let Some(offset) = signal.get_offset(time_table_idx) else {
+                sampled.push(SampledSignalState {
+                    path,
+                    width,
+                    bits: None,
+                });
+                continue;
+            };
+
+            let value = signal.get_value_at(&offset, offset.elements - 1);
+            let bits = match value {
+                wellen::SignalValue::Event => Some(String::new()),
+                wellen::SignalValue::Binary(_, _)
+                | wellen::SignalValue::FourValue(_, _)
+                | wellen::SignalValue::NineValue(_, _) => {
+                    Some(value.to_bit_string().ok_or_else(|| {
+                        WavepeekError::Internal(format!(
+                            "failed to convert value for signal '{path}' to bit string"
+                        ))
+                    })?)
+                }
+                wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
+                    return Err(WavepeekError::Signal(format!(
+                        "signal '{path}' has unsupported non-bit-vector encoding"
+                    )));
+                }
+            };
+
+            sampled.push(SampledSignalState { path, width, bits });
+        }
+
+        Ok(sampled)
+    }
 }
 
 fn floor_time_table_index(time_table: &[u64], query_time_raw: u64) -> Option<usize> {
@@ -208,6 +288,14 @@ fn resolve_signal_ref(
     hierarchy: &wellen::Hierarchy,
     canonical_path: &str,
 ) -> Result<SignalRef, WavepeekError> {
+    let (signal_ref, _) = resolve_signal_ref_with_width(hierarchy, canonical_path)?;
+    Ok(signal_ref)
+}
+
+fn resolve_signal_ref_with_width(
+    hierarchy: &wellen::Hierarchy,
+    canonical_path: &str,
+) -> Result<(SignalRef, u32), WavepeekError> {
     if canonical_path.is_empty() {
         return Err(WavepeekError::Signal(format!(
             "signal '{canonical_path}' not found in dump"
@@ -232,7 +320,14 @@ fn resolve_signal_ref(
             WavepeekError::Signal(format!("signal '{canonical_path}' not found in dump"))
         })?;
 
-    Ok(hierarchy[var_ref].signal_ref())
+    let var = &hierarchy[var_ref];
+    let width = var.length().ok_or_else(|| {
+        WavepeekError::Signal(format!(
+            "signal '{canonical_path}' has unsupported non-bit-vector encoding"
+        ))
+    })?;
+
+    Ok((var.signal_ref(), width))
 }
 
 fn collect_scope_entries(
@@ -390,6 +485,80 @@ fn scope_type_alias(scope_type: ScopeType) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct EdgeClassification {
+    pub posedge: bool,
+    pub negedge: bool,
+}
+
+impl EdgeClassification {
+    pub(crate) fn edge(self) -> bool {
+        self.posedge || self.negedge
+    }
+}
+
+pub(crate) fn classify_edge(previous_bits: &str, current_bits: &str) -> EdgeClassification {
+    let Some(previous_lsb) = previous_bits.chars().last() else {
+        return EdgeClassification {
+            posedge: false,
+            negedge: false,
+        };
+    };
+    let Some(current_lsb) = current_bits.chars().last() else {
+        return EdgeClassification {
+            posedge: false,
+            negedge: false,
+        };
+    };
+
+    let previous = normalize_to_four_state(previous_lsb);
+    let current = normalize_to_four_state(current_lsb);
+
+    let posedge = matches!(
+        (previous, current),
+        ('0', '1' | 'x' | 'z') | ('x' | 'z', '1')
+    );
+    let negedge = matches!(
+        (previous, current),
+        ('1', '0' | 'x' | 'z') | ('x' | 'z', '0')
+    );
+
+    EdgeClassification { posedge, negedge }
+}
+
+pub(crate) fn should_emit_delta_and_update_baseline(
+    previous_values: &mut [Option<String>],
+    current_values: &[Option<String>],
+) -> bool {
+    let mut changed = false;
+
+    for (previous, current) in previous_values.iter().zip(current_values) {
+        if let (Some(previous), Some(current)) = (previous.as_ref(), current.as_ref())
+            && previous != current
+        {
+            changed = true;
+        }
+    }
+
+    for (previous, current) in previous_values.iter_mut().zip(current_values) {
+        if let Some(current) = current {
+            *previous = Some(current.clone());
+        }
+    }
+
+    changed
+}
+
+fn normalize_to_four_state(bit: char) -> char {
+    match bit.to_ascii_lowercase() {
+        '0' => '0',
+        '1' => '1',
+        'z' => 'z',
+        'x' | 'h' | 'u' | 'w' | 'l' | '-' => 'x',
+        _ => 'x',
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::Write;
@@ -397,7 +566,9 @@ mod tests {
 
     use tempfile::NamedTempFile;
 
-    use super::{SampledSignal, ScopeEntry, Waveform};
+    use super::{
+        SampledSignal, ScopeEntry, Waveform, classify_edge, should_emit_delta_and_update_baseline,
+    };
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
 
@@ -566,6 +737,66 @@ mod tests {
             "error: signal: signal 'top.nope' not found in dump"
         );
         assert_eq!(error.exit_code(), 1);
+    }
+
+    #[test]
+    fn edge_classification_sv2023_matrix() {
+        for (previous, current) in [("0", "1"), ("0", "x"), ("0", "z"), ("x", "1"), ("z", "1")] {
+            let edge = classify_edge(previous, current);
+            assert!(edge.posedge, "expected posedge for {previous}->{current}");
+        }
+
+        for (previous, current) in [("1", "0"), ("1", "x"), ("1", "z"), ("x", "0"), ("z", "0")] {
+            let edge = classify_edge(previous, current);
+            assert!(edge.negedge, "expected negedge for {previous}->{current}");
+        }
+
+        for previous in ["0", "1", "x", "z"] {
+            for current in ["0", "1", "x", "z"] {
+                let edge = classify_edge(previous, current);
+                assert_eq!(edge.edge(), edge.posedge || edge.negedge);
+            }
+        }
+    }
+
+    #[test]
+    fn edge_classification_ninestate_maps_to_x() {
+        assert!(classify_edge("h", "1").posedge);
+        assert!(classify_edge("1", "l").negedge);
+        assert!(classify_edge("u", "0").negedge);
+        assert!(classify_edge("0", "w").posedge);
+        assert!(classify_edge("-", "1").posedge);
+    }
+
+    #[test]
+    fn edge_detection_uses_lsb_only() {
+        let msb_only = classify_edge("0001", "1001");
+        assert!(!msb_only.edge());
+
+        let lsb_flip = classify_edge("1000", "1001");
+        assert!(lsb_flip.posedge);
+    }
+
+    #[test]
+    fn delta_filter_initializes_without_prior_state() {
+        let mut previous = vec![None];
+        let current = vec![Some("1".to_string())];
+
+        let emitted = should_emit_delta_and_update_baseline(&mut previous, &current);
+
+        assert!(!emitted);
+        assert_eq!(previous, vec![Some("1".to_string())]);
+    }
+
+    #[test]
+    fn delta_filter_mixed_prior_state_emits_on_comparable_change() {
+        let mut previous = vec![Some("0".to_string()), None];
+        let current = vec![Some("1".to_string()), Some("1".to_string())];
+
+        let emitted = should_emit_delta_and_update_baseline(&mut previous, &current);
+
+        assert!(emitted);
+        assert_eq!(previous, vec![Some("1".to_string()), Some("1".to_string())]);
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

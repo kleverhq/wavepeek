@@ -23,11 +23,12 @@ This plan does not add third-party Python dependencies (no `pytest`, no templati
 - [x] (2026-02-24 15:20Z) Explored repository conventions, script locations, and existing perf-plan context.
 - [x] (2026-02-24 15:27Z) Authored this execution plan with explicit requirements, assumptions, and validation strategy.
 - [x] (2026-02-24 15:36Z) Ran pre-implementation review and tightened CLI/report/compare contracts.
-- [ ] Implement benchmark runner with `run`, `list`, `report`, and `compare` commands.
-- [ ] Add Python unit tests first (TDD), then implement to green.
-- [ ] Run validation commands and update docs/changelog collateral.
-- [ ] Run mandatory review pass #1 (implementation), apply fixes, and commit.
-- [ ] Run mandatory fresh review pass #2 (implementation), apply fixes if needed, and commit.
+- [x] (2026-02-24 20:49Z) Added failing Python unit tests first (TDD), then implemented `scripts/cli_e2e_bench.py` to green.
+- [x] (2026-02-24 20:53Z) Implemented benchmark runner with `run`, `list`, `report`, and `compare` commands and dataclass-backed matrix.
+- [x] (2026-02-24 20:54Z) Updated collateral (`docs/DEVELOPMENT.md`, `CHANGELOG.md`) and completed validation (unit tests + smoke flow).
+- [x] (2026-02-24 21:02Z) Completed implementation review pass #1; fixed threshold validation, compare-dir validation, run-dir collision risk, and revised artifact completeness checks.
+- [x] (2026-02-24 21:10Z) Completed fresh implementation review pass #2; added `run` input validation (`--runs`, `--warmup`) and transparent warning for revised tests missing golden counterpart.
+- [x] (2026-02-24 21:16Z) Applied post-pass2 semantics fix for `--require-equal-field` with revised-only tests and received final clean reviewer verdict.
 
 ## Surprises & Discoveries
 
@@ -36,6 +37,18 @@ This plan does not add third-party Python dependencies (no `pytest`, no templati
 
 - Observation: an active perf plan already exists for `change`, but this task is orthogonal and should avoid touching it.
   Evidence: `docs/exec-plans/active/2026-02-24-change-performance-stateless/PLAN.md` is present and explicitly scoped to engine optimization.
+
+- Observation: with `hyperfine --runs 1`, field `stddev` can be `null` in exported JSON.
+  Evidence: smoke run with one sample produced a parse error until report parser accepted nullable `stddev` and normalized it to `0.0`.
+
+- Observation: run/report compare baseline path typos were silently ignored before explicit directory checks.
+  Evidence: review pass #1 flagged that nonexistent compare dirs produced empty-delta reports instead of a clear error.
+
+- Observation: reviewer suggested strict golden/revised parity, but product requirement explicitly allows test-count differences.
+  Evidence: user requirement states comparison is performed for revised tests and may proceed when test counts differ.
+
+- Observation: `--require-equal-field` checks need counterpart-aware gating to avoid converting allowed revised-only tests into false failures.
+  Evidence: second review pass identified mismatch between warning-only missing-golden handling and unconditional field checks; fixed by enforcing field equality only when golden counterpart exists.
 
 ## Decision Log
 
@@ -55,9 +68,17 @@ This plan does not add third-party Python dependencies (no `pytest`, no templati
   Rationale: user explicitly requested dummy command execution for harness debugging and also requested release binary existence/build check for future-ready runs.
   Date/Author: 2026-02-24 / OpenCode
 
+- Decision: enforce strict compare/report CLI validation for threshold and compare-dir arguments.
+  Rationale: avoids silent misconfiguration in CI and local runs, improving trust in regression gates.
+  Date/Author: 2026-02-24 / OpenCode
+
+- Decision: keep revised-centric compare semantics (as required), but emit warning when revised tests have no golden counterpart.
+  Rationale: preserves requested flexibility while making skipped baselines explicit and auditable.
+  Date/Author: 2026-02-24 / OpenCode
+
 ## Outcomes & Retrospective
 
-Implementation outcome is pending. Expected completion outcome is a runnable benchmark harness that can populate run artifacts and enforce regression thresholds from CLI.
+Outcome: runnable benchmark harness is implemented with deterministic matrix generation, paired JSON artifacts, Markdown reporting (with optional compare deltas), release-binary preflight, and regression compare checks with optional `data`/`warning` equality enforcement. Two independent review passes are complete and findings are addressed.
 
 ## Context and Orientation
 
@@ -205,3 +226,6 @@ External dependencies are only command-line tools already expected in environmen
 
 Revision Note: 2026-02-24 / OpenCode - Initial plan created for a standalone hyperfine-backed CLI E2E benchmark harness with TDD-first implementation and mandatory double review workflow.
 Revision Note: 2026-02-24 / OpenCode - Incorporated pre-implementation review feedback: fixed CLI signatures, deterministic README table contract, explicit matrix coverage, dummy-mode wavepeek JSON contract, and release-binary preflight acceptance.
+Revision Note: 2026-02-24 / OpenCode - Implemented harness and tests with TDD flow; documented nullable `stddev` discovery from low-sample hyperfine output and reflected completed validation/collateral updates.
+Revision Note: 2026-02-24 / OpenCode - Closed both mandatory implementation review passes; added stricter run-argument validation and explicit warnings for revised tests without golden counterparts while preserving revised-centric compare semantics.
+Revision Note: 2026-02-24 / OpenCode - Applied final compare semantics fix after pass #2 and revalidated with a fresh clean reviewer pass.

@@ -71,6 +71,23 @@ Direct Cargo equivalents (useful when iterating):
 - `cargo build` / `cargo build --release`
 - `cargo run -- <args>`
 
+## CLI E2E Benchmark Harness
+
+For reproducible CLI performance runs, use `scripts/cli_e2e_bench.py` (Python stdlib only, powered by `hyperfine`).
+
+- List benchmark test catalog:
+  - `python3 scripts/cli_e2e_bench.py list`
+- Run benchmark matrix (or filtered subset) and generate run-local report:
+  - `python3 scripts/cli_e2e_bench.py run --filter '^info_'`
+- Regenerate report from existing run artifacts:
+  - `python3 scripts/cli_e2e_bench.py report --run-dir bench-runs/<run-id>`
+- Compare revised run against golden run with regression threshold:
+  - `python3 scripts/cli_e2e_bench.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5`
+
+`run` always checks for release binary at `target/release/wavepeek`; if missing, it runs `cargo build --release` before benchmarking.
+
+Current harness mode intentionally benchmarks a placeholder command (`echo "dummy args"`) while persisting full artifact structure (`*.wavepeek.json`, `*.hyperfine.json`, `README.md`) for pipeline/debug iteration.
+
 ### Run A Single Test (Rust)
 
 Prefer narrowing at the `cargo test` level rather than running everything.

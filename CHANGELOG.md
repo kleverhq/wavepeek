@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added strict `at` JSON contract in `schema/wavepeek.json` with compact `atData` payload (`time`, ordered `signals[{path,value}]`) and conditional command-to-data validation.
 - Added fully functional `change` command with unified `--when` event expressions (`*`, named, `posedge`/`negedge`/`edge`, `or`/`,` unions), deterministic delta snapshots, and staged `iff` parsing with explicit deferred-runtime error.
 - Added new change-focused fixtures and integration coverage for baseline checkpoint semantics, union deduplication, warning parity, duplicate signal ordering, and default `--max=50` truncation behavior.
+- Added a new hyperfine-backed CLI E2E benchmark harness (`scripts/cli_e2e_bench.py`) with `run`/`list`/`report`/`compare` modes, dataclass-driven test matrix, per-test JSON artifacts, and Markdown run reports.
 
 ### Changed
 - Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--when`/`--abs` behavior; `when` remains explicitly unimplemented.

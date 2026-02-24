@@ -1,0 +1,15 @@
+$date
+  2026-02-24
+$end
+$version
+  wavepeek change from-boundary fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! sig $end
+$upscope $end
+$enddefinitions $end
+#0
+1!
+#5
+0!

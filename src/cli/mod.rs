@@ -68,14 +68,15 @@ Use --json for strict envelope mode."#
     )]
     At(at::AtArgs),
     #[command(
-        about = "Get value snapshots over a time range (not implemented yet)",
+        about = "Get value snapshots over a time range",
         long_about = r#"Outputs snapshots of signal values over a time range.
 
-Supports unclocked mode (any tracked signal change) and clocked mode
-(posedge of --clk).
+Uses one event-trigger expression model via --when for wildcard, named,
+edge, and union trigger forms. When omitted, --when defaults to *.
 
-Execution is not implemented yet.
+Rows are emitted only when sampled --signals values changed.
 
+Use --abs to print canonical paths in human mode.
 Use --json for strict envelope mode."#
     )]
     Change(change::ChangeArgs),
@@ -365,6 +366,46 @@ mod tests {
                 assert!(args.json);
             }
             other => panic!("expected at command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn change_dispatch_keeps_when_abs_and_limits() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "change",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--from",
+            "1ns",
+            "--to",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--when",
+            "posedge clk",
+            "--max",
+            "12",
+            "--abs",
+            "--json",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::Change(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.from.as_deref(), Some("1ns"));
+                assert_eq!(args.to.as_deref(), Some("10ns"));
+                assert_eq!(args.scope.as_deref(), Some("top"));
+                assert_eq!(args.signals, vec!["clk", "data"]);
+                assert_eq!(args.when.as_deref(), Some("posedge clk"));
+                assert_eq!(args.max, 12);
+                assert!(args.abs);
+                assert!(args.json);
+            }
+            other => panic!("expected change command, got {other:?}"),
         }
     }
 

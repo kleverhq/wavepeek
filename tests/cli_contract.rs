@@ -62,8 +62,12 @@ fn top_level_help_marks_unimplemented_subcommands() {
             ),
         )
         .stdout(predicate::str::contains(
-            "Get value snapshots over a time range (not implemented yet)",
+            "Get value snapshots over a time range",
         ))
+        .stdout(
+            predicate::str::contains("Get value snapshots over a time range (not implemented yet)")
+                .not(),
+        )
         .stdout(predicate::str::contains(
             "Find cycles where a condition is true (not implemented yet)",
         ));
@@ -161,9 +165,7 @@ fn unimplemented_subcommands_disclose_status_in_help() {
         .args(["change", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Execution is not implemented yet.",
-        ));
+        .stdout(predicate::str::contains("Execution is not implemented yet.").not());
 
     let mut when_command = wavepeek_cmd();
     when_command
@@ -173,6 +175,18 @@ fn unimplemented_subcommands_disclose_status_in_help() {
         .stdout(predicate::str::contains(
             "Execution is not implemented yet.",
         ));
+}
+
+#[test]
+fn change_help_documents_when_trigger_and_does_not_expose_clk() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["change", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--when"))
+        .stdout(predicate::str::contains("--clk").not());
 }
 
 #[test]
@@ -403,21 +417,6 @@ fn all_commands_reject_human_flag() {
     .stderr(predicate::str::starts_with("error: args:"))
     .stderr(predicate::str::contains("unexpected argument '--human'"))
     .stderr(predicate::str::contains("See 'wavepeek when --help'."));
-}
-
-#[test]
-fn change_unimplemented_error_uses_singular_command_name() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .args(["change", "--waves", "dump.vcd", "--signals", "clk"])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains(
-            "error: unimplemented: `change` command execution is not implemented yet",
-        ));
 }
 
 #[test]

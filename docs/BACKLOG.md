@@ -42,3 +42,15 @@
 - Equivalent `iff`-binding tests currently exist in two modules (`src/expr/mod.rs` and `src/expr/parser.rs`).
 - This duplication appeared during the `change --when` rollout and increases maintenance drift risk.
 - Close when one source of truth remains for these parser tests (remove duplicates), and coverage is confirmed by `cargo test expr::parser` plus the standard CI gate (`make ci`).
+
+### `expr/lexer.rs` scaffolding is currently unused
+
+- `src/expr/lexer.rs` exports tokenization types/helpers, but current parser/runtime paths do not consume them.
+- This leaves an unowned partial implementation in the expression layer and increases drift risk while `when`/evaluator work is still deferred.
+- Close when either (a) parser/evaluator use lexer as the single tokenization path with focused tests, or (b) lexer scaffolding is removed and expression parsing remains covered by existing tests.
+
+### Duplicated time parsing/alignment logic in `at` and `change`
+
+- Time token parsing, dump-precision alignment checks, and related `error: args:` behavior are implemented in parallel in `src/engine/at.rs` and `src/engine/change.rs`.
+- Duplicate validation logic increases contract drift risk for bounds handling and precision errors.
+- Close when both commands use a shared time-validation utility (or one canonical path) with regression tests covering parity of accepted/rejected tokens and error fragments.

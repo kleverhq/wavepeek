@@ -362,6 +362,9 @@ wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals c
 
 #### 3.2.6 `when` — Event search
 
+Status: planned, not implemented in the current release. Current runtime behavior is
+`error: unimplemented: when command execution is not implemented yet`.
+
 Finds clock cycles where a boolean expression evaluates to true.
 Expression is evaluated on every posedge of the specified clock.
 

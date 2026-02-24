@@ -55,8 +55,10 @@ Common commands:
   - `make pre-commit`
 - Validate commit message (commit-msg hook runs this):
   - `make check-commit`
-- One-shot quality gate:
-  - `make check` (format-check + clippy + cargo check + commit msg check)
+- One-shot local gate:
+  - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
+- Test-inclusive CI-parity gate:
+  - `make ci` (format-check + clippy + check-schema + cargo test + cargo check)
 - Cleanup:
   - `make clean`
 

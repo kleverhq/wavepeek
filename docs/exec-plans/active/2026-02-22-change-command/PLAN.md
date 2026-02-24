@@ -37,6 +37,9 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 - [x] (2026-02-24 01:34Z) Clarified delta semantics explicitly: candidate event timestamps without sampled signal deltas must not emit snapshots; updated normative rules and acceptance examples accordingly.
 - [x] (2026-02-24 01:42Z) Added explicit JSON/human warning-parity acceptance for the zero-delta path (event fired but no sampled `--signals` change).
 - [x] (2026-02-24 01:53Z) Removed two remaining ambiguities: defined per-signal baseline initialization rules for delta filtering (including mixed-prior cases) and specified temporary parenthesis-depth rule for deferred `iff` capture; added acceptance hooks for both.
+- [x] (2026-02-24 02:07Z) Locked start-boundary semantics: `--from` is baseline-only (always sample/init at `--from`) and snapshot emission begins strictly after that timestamp.
+- [x] (2026-02-24 02:19Z) Added omitted-`--from` and `--to == --from` acceptance coverage for baseline-only start semantics, and made collateral milestone explicitly require DESIGN doc boundary update.
+- [x] (2026-02-24 02:26Z) Hardened omitted-`--from` acceptance by switching boundary proof to non-edge `*` trigger, avoiding false positives caused by edge previous-state requirements at dump start.
 - [ ] Add failing contract tests for `--when` semantics (`*`, named non-edge, edge forms, `or`/`,` composition, default behavior, warnings/errors, JSON/human parity).
 - [ ] Introduce reusable event-expression parser/types and shared edge-detection helpers that can be reused by future `when` work and by `change` now.
 - [ ] Implement `change` runtime on top of resolved event expressions and remove `--clk` from CLI/engine wiring.
@@ -88,6 +91,10 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 
 - Decision: Delta baseline initialization is per sampled signal; emit when any comparable sampled signal changed, otherwise initialize missing baselines without forcing emission.
   Rationale: Preserves strict delta semantics while avoiding loss of real changes in mixed-prior scenarios.
+  Date/Author: 2026-02-24 / OpenCode
+
+- Decision: The exact `--from` timestamp is baseline-only and never emitted as a `change` row.
+  Rationale: `change` reports deltas after the selected start checkpoint; this avoids boundary artifacts and matches operator expectation for range start behavior.
   Date/Author: 2026-02-24 / OpenCode
 
 - Decision: For deferred `iff` support, `logical_expr_raw` capture uses separator detection at parenthesis depth `0`.
@@ -158,6 +165,8 @@ Event trigger semantics:
 - A timestamp is selected when any event term in the union fires.
 - If multiple event terms fire at one timestamp, evaluate that timestamp once.
 - Snapshot values are always sampled for `--signals`, not for all event-referenced names.
+- `--from` is a baseline-initialization checkpoint: sample all `--signals` at `--from` (or dump start when `--from` is omitted), initialize delta tracking state, and never emit a row at that timestamp.
+- Output emission eligibility is only for timestamps strictly greater than the baseline checkpoint.
 - `change` emits a row only when at least one sampled `--signals` value changed relative to the last known sampled state strictly before that timestamp.
 - If an event fires but sampled `--signals` values did not change at that timestamp, no row is emitted.
 - Delta comparison is per sampled signal:
@@ -208,7 +217,7 @@ Milestone 2 introduces reusable event-expression infrastructure. Add parser/type
 
 Milestone 3 implements `change` runtime and output wiring using resolved event expressions. Remove `--clk` handling, apply default `--when "*"`, evaluate non-edge and edge triggers, deduplicate timestamps, suppress rows where sampled `--signals` did not change, and keep existing output/warning/parity guarantees.
 
-Milestone 4 updates collateral: schema, design docs, README, changelog. The docs must explain the new unified trigger model and explicit temporary `iff` limitation.
+Milestone 4 updates collateral: schema, design docs, README, changelog. The docs must explain the new unified trigger model, explicit temporary `iff` limitation, and `--from` baseline-only emission rule (including omitted-`--from` behavior at dump start).
 
 Milestone 5 executes full quality gates and records deterministic evidence.
 
@@ -330,22 +339,25 @@ Example D4, mixed prior availability still emits on comparable deltas:
 
 Expected assertion: if at least one sampled signal has prior baseline and changes at the candidate timestamp, a row is emitted even when another sampled signal initializes baseline at that same timestamp.
 
-Example E, edge behavior at `--from` boundary uses predecessor before window:
+Example E0, omitted `--from` still applies dump-start baseline checkpoint:
+
+Contract fixture requirement: add `tests/fixtures/hand/change_from_boundary.vcd` where sampled signal `top.sig` changes at dump start (`0ns`) and changes again at `5ns`.
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_from_boundary.vcd --to 5ns --scope top --signals sig --when "*" --json
+
+Expected `data[*].time` exactly: `["5ns"]` and `warnings` exactly `[]` (no row at `0ns`).
+
+Example E, baseline checkpoint suppresses emission at exact `--from` timestamp:
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 5ns --to 10ns --scope top --signals clk --when "posedge clk" --json
 
-Expected `data` exactly one row at `5ns`:
+Expected `data` exactly `[]` and `warnings` exactly `["no signal changes found in selected time range"]`.
 
-    [
-      {
-        "time": "5ns",
-        "signals": [
-          {"path": "top.clk", "value": "1'h1"}
-        ]
-      }
-    ]
+Example E2, `--to == --from` never emits baseline timestamp row:
 
-and `warnings` exactly `[]`.
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 5ns --to 5ns --scope top --signals clk --when "posedge clk" --json
+
+Expected `data` exactly `[]` and `warnings` exactly `["no signal changes found in selected time range"]`.
 
 Example F, event union with comma and `or` synonym parity:
 
@@ -536,6 +548,7 @@ Primary files to modify:
     tests/change_cli.rs
     tests/cli_contract.rs
     tests/fixtures/hand/change_edge_cases.vcd
+    tests/fixtures/hand/change_from_boundary.vcd
     tests/fixtures/hand/change_many_events.vcd
     schema/wavepeek.json
     docs/DESIGN.md
@@ -589,3 +602,6 @@ Revision Note: 2026-02-24 / OpenCode - Added explicit `iff` binding/segmentation
 Revision Note: 2026-02-24 / OpenCode - Clarified that `change` is delta-oriented under `--when`: event timestamps are candidate points only, and rows are emitted strictly when sampled `--signals` values change; updated normative text and acceptance examples to enforce zero-delta suppression.
 Revision Note: 2026-02-24 / OpenCode - Added a dedicated acceptance parity check for the zero-delta path to ensure JSON/human warning behavior is identical even when events fire but no sampled changes are emitted.
 Revision Note: 2026-02-24 / OpenCode - Finalized two ambiguity fixes: explicit per-signal baseline-initialization and mixed-prior delta rules, plus deterministic deferred-`iff` capture with parenthesis-depth `0` separators and dedicated parser/engine acceptance hooks.
+Revision Note: 2026-02-24 / OpenCode - Added explicit start-boundary behavior: `--from` is always baseline initialization and never produces a snapshot row; emission begins only after `--from`.
+Revision Note: 2026-02-24 / OpenCode - Added missing acceptance coverage for omitted `--from` and `--to == --from` baseline behavior, and explicitly required matching DESIGN-doc boundary updates to avoid contract drift.
+Revision Note: 2026-02-24 / OpenCode - Refined omitted-`--from` baseline proof to use non-edge `*` trigger so the check validates baseline suppression directly rather than relying on edge previous-state availability at dump start.

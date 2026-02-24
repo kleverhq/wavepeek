@@ -12,6 +12,8 @@ The new contract follows the SV2023 event-control meaning of `@(event_expr)` for
 
 This revision also keeps previously aligned `at`-style output guarantees for `change`: canonical path identity in JSON, `@<time>` in human output only, and `--abs` for canonical human display without changing JSON.
 
+`change` remains a delta-oriented command: event timestamps are only candidates, and rows are emitted only when sampled `--signals` values actually changed.
+
 ## Non-Goals
 
 This plan does not implement the standalone `when` command execution. It prepares reusable event-expression infrastructure so future `when` work (and its planned rename) can consume the same parser/types/evaluation hooks.
@@ -32,6 +34,9 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 - [x] (2026-02-24 00:38Z) Closed second review gap set: added executable warning/parity checks, explicit `--abs` JSON-parity check, and overlap dedup proof requirement for union-trigger timestamps.
 - [x] (2026-02-24 00:49Z) Fixed acceptance command robustness (shell quoting), pinned overlap timestamp contract at `30ns`, and added explicit human `--abs` assertion.
 - [x] (2026-02-24 01:08Z) Added parser-binding contract for `iff` with union separators, CLI acceptance for `negedge`/`edge`, and executable acceptance checks for duplicate signal order plus default `--max=50` behavior.
+- [x] (2026-02-24 01:34Z) Clarified delta semantics explicitly: candidate event timestamps without sampled signal deltas must not emit snapshots; updated normative rules and acceptance examples accordingly.
+- [x] (2026-02-24 01:42Z) Added explicit JSON/human warning-parity acceptance for the zero-delta path (event fired but no sampled `--signals` change).
+- [x] (2026-02-24 01:53Z) Removed two remaining ambiguities: defined per-signal baseline initialization rules for delta filtering (including mixed-prior cases) and specified temporary parenthesis-depth rule for deferred `iff` capture; added acceptance hooks for both.
 - [ ] Add failing contract tests for `--when` semantics (`*`, named non-edge, edge forms, `or`/`,` composition, default behavior, warnings/errors, JSON/human parity).
 - [ ] Introduce reusable event-expression parser/types and shared edge-detection helpers that can be reused by future `when` work and by `change` now.
 - [ ] Implement `change` runtime on top of resolved event expressions and remove `--clk` from CLI/engine wiring.
@@ -76,6 +81,18 @@ This plan intentionally defers full `logical_expr` execution inside `iff` clause
 - Decision: Keep `change` on the existing envelope pipeline (`CommandResult` -> `output::write`) and keep `@` in human output only.
   Rationale: Preserves deterministic output behavior already used by shipped commands.
   Date/Author: 2026-02-23 / OpenCode
+
+- Decision: `change` snapshots are delta-only, even in edge-driven `--when` scenarios.
+  Rationale: Command intent is change tracking; event expressions provide candidate sampling points, not unconditional sampling rows.
+  Date/Author: 2026-02-24 / OpenCode
+
+- Decision: Delta baseline initialization is per sampled signal; emit when any comparable sampled signal changed, otherwise initialize missing baselines without forcing emission.
+  Rationale: Preserves strict delta semantics while avoiding loss of real changes in mixed-prior scenarios.
+  Date/Author: 2026-02-24 / OpenCode
+
+- Decision: For deferred `iff` support, `logical_expr_raw` capture uses separator detection at parenthesis depth `0`.
+  Rationale: Provides deterministic parser behavior before full logical-expression parsing/validation is implemented.
+  Date/Author: 2026-02-24 / OpenCode
 
 ## Outcomes & Retrospective
 
@@ -130,7 +147,7 @@ Binding and segmentation rules in this slice:
 - `event_expr := event_term ((or | ,) event_term)*`
 - `event_term := basic_event [iff logical_expr_raw]`
 - `iff` attaches only to the immediately preceding `basic_event`.
-- `or` and `,` split event terms. For deferred `iff` support, `logical_expr_raw` capture stops at the next top-level `or` or `,` separator.
+- `or` and `,` split event terms. For deferred `iff` support, `logical_expr_raw` capture stops at the next separator token at parenthesis depth `0` (temporary parser rule for this slice).
 - Example parse shape: `negedge clk iff rstn or bar` is two terms: `(negedge clk iff rstn)` OR `(bar)`.
 
 For this delivery slice, full evaluation of `logical_expr` is deferred. The parser and internal model for `iff` must be implemented and reusable; runtime must fail fast with `error: args:` and message fragment `iff logical expressions are not implemented yet` when an `iff` clause is encountered. Parsing behavior is explicit in this slice: recognize `iff` and capture trailing clause text, but do not syntax-validate `logical_expr` yet. This behavior is temporary and explicitly tracked.
@@ -139,8 +156,14 @@ Event trigger semantics:
 
 - Compute candidate timestamps in the inclusive `--from`/`--to` window.
 - A timestamp is selected when any event term in the union fires.
-- If multiple event terms fire at one timestamp, emit exactly one snapshot after applying all changes at that timestamp.
+- If multiple event terms fire at one timestamp, evaluate that timestamp once.
 - Snapshot values are always sampled for `--signals`, not for all event-referenced names.
+- `change` emits a row only when at least one sampled `--signals` value changed relative to the last known sampled state strictly before that timestamp.
+- If an event fires but sampled `--signals` values did not change at that timestamp, no row is emitted.
+- Delta comparison is per sampled signal:
+  - if a sampled signal has prior state, compare and include it in delta decision;
+  - if a sampled signal lacks prior state at that timestamp, initialize its baseline there and exclude it from delta decision for that timestamp.
+- Emit a row when at least one comparable sampled signal changed. If no sampled signal is comparable at that timestamp, emit no row.
 - Edge classification at timestamp `t` must use the previous known value strictly before `t` (even when that value is before `--from`). If no previous value exists for the signal, that sample does not produce an edge event.
 
 Edge classification follows SV2023 table semantics after per-sample normalization to four-state domain:
@@ -167,7 +190,7 @@ Human mode defaults to one line per snapshot:
 
 Warnings must match byte-for-byte between JSON warning strings and human stderr warning text after `warning: ` prefixing.
 
-If there are no trigger timestamps in range, return success with empty `data` and one warning exactly `no signal changes found in selected time range`.
+If no rows are emitted in range (because there are no trigger timestamps or because all candidate timestamps preserve sampled `--signals` values), return success with empty `data` and one warning exactly `no signal changes found in selected time range`.
 
 If snapshots exceed `--max`, truncate to first `--max` snapshots in time order and add warning exactly `truncated output to <n> entries (use --max to increase limit)`.
 
@@ -183,7 +206,7 @@ Milestone 1 locks the updated contract with failing tests first (TDD). Add `test
 
 Milestone 2 introduces reusable event-expression infrastructure. Add parser/types for event terms, union composition (`or` and comma), edge kinds, and `iff` attachment model. Resolve signal references under `scope` rules and add edge-classification helpers in waveform-side logic, including nine-state-to-`x` mapping and LSB extraction. This milestone is complete when parser/unit tests are green and waveform transition helpers are green.
 
-Milestone 3 implements `change` runtime and output wiring using resolved event expressions. Remove `--clk` handling, apply default `--when "*"`, evaluate non-edge and edge triggers, deduplicate timestamps, and keep existing output/warning/parity guarantees.
+Milestone 3 implements `change` runtime and output wiring using resolved event expressions. Remove `--clk` handling, apply default `--when "*"`, evaluate non-edge and edge triggers, deduplicate timestamps, suppress rows where sampled `--signals` did not change, and keep existing output/warning/parity guarantees.
 
 Milestone 4 updates collateral: schema, design docs, README, changelog. The docs must explain the new unified trigger model and explicit temporary `iff` limitation.
 
@@ -281,9 +304,35 @@ Expected `data` exactly one row at `10ns`:
       }
     ]
 
-Example D, old clocked behavior via edge event:
+Example D, event fires but unchanged sampled signal must not emit a row:
 
     cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 0ns --to 10ns --scope top --signals data --when "posedge clk" --json
+
+Expected `data` exactly `[]` and `warnings` exactly `["no signal changes found in selected time range"]`.
+
+Example D2, zero-delta path warning parity between JSON and human:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 0ns --to 10ns --scope top --signals data --when "posedge clk" --json > /tmp/change_zero_delta.json
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 0ns --to 10ns --scope top --signals data --when "posedge clk" > /tmp/change_zero_delta.out 2> /tmp/change_zero_delta.err
+    python -c 'import json; d=json.load(open("/tmp/change_zero_delta.json")); assert d["data"] == []; assert d["warnings"] == ["no signal changes found in selected time range"]; assert open("/tmp/change_zero_delta.out").read() == ""; assert open("/tmp/change_zero_delta.err").read().strip() == "warning: no signal changes found in selected time range"'
+
+Expected behavior: assertion passes and warning text matches byte-for-byte after removing `warning: ` prefix.
+
+Example D3, missing-prior-baseline initialization is parser/waveform-locked:
+
+    cargo test waveform::tests::delta_filter_initializes_without_prior_state
+
+Expected assertion: when the first candidate timestamp has no comparable sampled baseline (all sampled signals uninitialized), engine initializes baseline and emits no row at that timestamp.
+
+Example D4, mixed prior availability still emits on comparable deltas:
+
+    cargo test waveform::tests::delta_filter_mixed_prior_state_emits_on_comparable_change
+
+Expected assertion: if at least one sampled signal has prior baseline and changes at the candidate timestamp, a row is emitted even when another sampled signal initializes baseline at that same timestamp.
+
+Example E, edge behavior at `--from` boundary uses predecessor before window:
+
+    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 5ns --to 10ns --scope top --signals clk --when "posedge clk" --json
 
 Expected `data` exactly one row at `5ns`:
 
@@ -291,28 +340,24 @@ Expected `data` exactly one row at `5ns`:
       {
         "time": "5ns",
         "signals": [
-          {"path": "top.data", "value": "8'h00"}
+          {"path": "top.clk", "value": "1'h1"}
         ]
       }
     ]
 
-Example E, edge behavior at `--from` boundary uses predecessor before window:
-
-    cargo run --quiet -- change --waves tests/fixtures/hand/m2_core.vcd --from 5ns --to 10ns --scope top --signals data --when "posedge clk" --json
-
-Expected behavior: includes the `5ns` row (same as Example D), proving edge classification at `t=5ns` can use predecessor value before `--from`.
+and `warnings` exactly `[]`.
 
 Example F, event union with comma and `or` synonym parity:
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals data --when "posedge clk1, posedge clk2" --json > /tmp/change_when_union_comma.json
-    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals data --when "posedge clk1 or posedge clk2" --json > /tmp/change_when_union_or.json
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals clk1 --when "posedge clk1, posedge clk2" --json > /tmp/change_when_union_comma.json
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals clk1 --when "posedge clk1 or posedge clk2" --json > /tmp/change_when_union_or.json
     cmp /tmp/change_when_union_comma.json /tmp/change_when_union_or.json
 
 Expected behavior: `cmp` exits `0`, proving comma and `or` are exact synonyms.
 
 `tests/fixtures/hand/change_edge_cases.vcd` must include an overlap at `30ns` where both `posedge clk1` and `posedge clk2` occur (contract fixture requirement). For that timestamp, union-trigger output must still contain exactly one snapshot row.
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals data --when "posedge clk1, posedge clk2" --json > /tmp/change_when_union_overlap.json
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals clk1 --when "posedge clk1, posedge clk2" --json > /tmp/change_when_union_overlap.json
     python -c 'import json; d=json.load(open("/tmp/change_when_union_overlap.json")); times=[r["time"] for r in d["data"]]; assert times.count("30ns") == 1, times'
 
 Expected behavior: Python assertion passes, proving deduplication when multiple event terms fire at one timestamp.
@@ -325,21 +370,27 @@ Contract fixture requirement for CLI edge-form integration: `tests/fixtures/hand
 
 Example F2, CLI `negedge` wiring end-to-end:
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals data --when "negedge clk" --json
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals clk --when "negedge clk" --json
 
-Expected `data[*].time` exactly: `["10ns", "20ns", "25ns"]`.
+Expected `data[*].time` exactly: `["10ns", "20ns", "25ns"]` and `warnings` exactly `[]`.
 
 Example F3, CLI `edge` wiring end-to-end:
 
-    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals data --when "edge clk" --json
+    cargo run --quiet -- change --waves tests/fixtures/hand/change_edge_cases.vcd --from 0ns --to 30ns --scope top --signals clk --when "edge clk" --json
 
-Expected `data[*].time` exactly: `["5ns", "10ns", "15ns", "20ns", "25ns", "30ns"]`.
+Expected `data[*].time` exactly: `["5ns", "10ns", "15ns", "20ns", "25ns", "30ns"]` and `warnings` exactly `[]`.
 
 Example F4, `iff` + union segmentation is parser-locked:
 
     cargo test expr::tests::event_expr_iff_binding_with_union
 
 Expected assertion: parsing `negedge clk iff rstn or bar` yields two terms exactly: `(negedge clk, iff_expr="rstn")` and `(any-change bar, iff_expr=None)`.
+
+Example F5, deferred `iff` capture with parenthesized separators is parser-locked:
+
+    cargo test expr::tests::event_expr_iff_capture_parenthesized_or
+
+Expected assertion: parsing `posedge clk iff (a or b) or bar` yields two terms exactly: `(posedge clk, iff_expr="(a or b)")` and `(any-change bar, iff_expr=None)`.
 
 Example G, SV2023 edge-semantics matrix is locked by unit tests:
 
@@ -491,7 +542,7 @@ Primary files to modify:
     README.md
     CHANGELOG.md
 
-Boundary behavior that must be explicitly tested includes `--from == --to`, omitted bounds, default `--max = 50`, duplicate signal tokens preserving order, scoped short-name mode parity with `at`, deterministic deduplication when multiple event terms fire at one timestamp, and nine-state-to-`x` normalization for edge classification.
+Boundary behavior that must be explicitly tested includes `--from == --to`, omitted bounds, default `--max = 50`, duplicate signal tokens preserving order, scoped short-name mode parity with `at`, deterministic deduplication when multiple event terms fire at one timestamp, suppression of event timestamps with zero sampled deltas, and nine-state-to-`x` normalization for edge classification.
 
 ## Interfaces and Dependencies
 
@@ -535,3 +586,6 @@ Revision Note: 2026-02-24 / OpenCode - Incorporated reviewer findings by removin
 Revision Note: 2026-02-24 / OpenCode - Added missing executable acceptance coverage for warning parity, `--abs` JSON invariance, and same-timestamp deduplication when union event terms fire together.
 Revision Note: 2026-02-24 / OpenCode - Hardened acceptance command reliability (shell-safe quoting), pinned overlap timestamp to `30ns` for deterministic dedup checks, and added explicit human-label verification for `--abs`.
 Revision Note: 2026-02-24 / OpenCode - Added explicit `iff` binding/segmentation grammar for deferred logical clauses, plus CLI-level `negedge`/`edge` acceptance and executable checks for duplicate signal-order retention and implicit `--max=50` truncation behavior.
+Revision Note: 2026-02-24 / OpenCode - Clarified that `change` is delta-oriented under `--when`: event timestamps are candidate points only, and rows are emitted strictly when sampled `--signals` values change; updated normative text and acceptance examples to enforce zero-delta suppression.
+Revision Note: 2026-02-24 / OpenCode - Added a dedicated acceptance parity check for the zero-delta path to ensure JSON/human warning behavior is identical even when events fire but no sampled changes are emitted.
+Revision Note: 2026-02-24 / OpenCode - Finalized two ambiguity fixes: explicit per-signal baseline-initialization and mixed-prior delta rules, plus deterministic deferred-`iff` capture with parenthesis-depth `0` separators and dedicated parser/engine acceptance hooks.

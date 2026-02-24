@@ -58,6 +58,7 @@ RUN apt-get update && \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
     python3 \
+    hyperfine \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \

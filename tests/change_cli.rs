@@ -1,28 +1,9 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use serde_json::{Value, json};
-use std::path::PathBuf;
-use std::process::Command;
 
-fn wavepeek_cmd() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_wavepeek"))
-}
-
-fn expected_schema_url() -> &'static str {
-    concat!(
-        "https://github.com/kleverhq/wavepeek/blob/v",
-        env!("CARGO_PKG_VERSION"),
-        "/schema/wavepeek.json"
-    )
-}
-
-fn fixture_path(filename: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("hand")
-        .join(filename)
-}
+mod common;
+use common::{expected_schema_url, fixture_path, wavepeek_cmd};
 
 fn parse_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("stdout should be valid json")

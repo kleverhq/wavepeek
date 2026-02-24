@@ -1,10 +1,8 @@
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
-use std::process::Command;
 
-fn wavepeek_cmd() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_wavepeek"))
-}
+mod common;
+use common::wavepeek_cmd;
 
 #[test]
 fn no_args_prints_top_level_help_and_exits_zero() {

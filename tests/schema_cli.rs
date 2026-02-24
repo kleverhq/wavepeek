@@ -2,11 +2,9 @@ use assert_cmd::prelude::*;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
 
-fn wavepeek_cmd() -> Command {
-    Command::new(env!("CARGO_BIN_EXE_wavepeek"))
-}
+mod common;
+use common::wavepeek_cmd;
 
 fn canonical_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))

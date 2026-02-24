@@ -19,7 +19,8 @@ For docs-local navigation, read `docs/AGENTS.md`.
 
 - This repository is container-first. Run `make` targets inside devcontainer/CI image.
 - Standard quality gate: `make ci`.
-- Local full gate before handoff: `make check`.
+- Local pre-handoff gate: `make check` (format/lint/schema/build + commit-msg check).
+- Test-inclusive gate: `make ci` (same checks + `cargo test`).
 - Do not bypass hooks unless the user explicitly requests it.
 
 ## Agent-Assisted Coding

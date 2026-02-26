@@ -17,6 +17,36 @@
 - Add this as a foundational CLI design principle in project docs: CLI help must provide sufficient standalone guidance; external docs are for depth, not required basics.
 - Close when all shipped commands pass a help-quality contract check and the principle is documented in the CLI design principles section.
 
+### Rename `at` command to `value` and `--time` to `--at`
+
+- Current naming emphasizes the coordinate (`at`) more than the user intent (read signal values at a point); `value` is clearer and aligns command name with output semantics.
+- Rename CLI surface from `wavepeek at` to `wavepeek value`, and rename `--time <time>` to `--at <time>`.
+- Keep output/JSON behavior equivalent to current `at` semantics (point-in-time sampling, deterministic ordering, same literal formatting), except for command/flag naming.
+- Define migration behavior explicitly (compat alias vs hard break) and document it in help/release notes.
+- Close when CLI/help/docs/schema/tests/changelog are updated and migration behavior is covered by integration tests.
+
+### Replace `when` with `property` and SVA-like event/eval wording
+
+- `when` is generic; `property` communicates assertion-like intent and reads closer to natural language for waveform checks.
+- Target command shape: `wavepeek property --when "<event_expr>" --eval "<logical_expr>"`.
+- `--when` stays event-driven and defaults to `*` (any change among signals referenced by `--eval`) to avoid per-time-unit output spam.
+- Scope/name resolution and time-window behavior should stay deterministic and reuse current event/expression infrastructure where possible.
+- Close when `property` runs end-to-end with stable human/JSON contracts and `when` docs/runtime status are fully migrated.
+
+### Add `property --capture` modes for match/transition reporting
+
+- Add `--capture=match|switch|assert|deassert` to control report granularity.
+- Semantics: `match` emits each event where `--eval` is true; `switch` emits state transitions (`assert` on `0->1`, `deassert` on `1->0`); `assert` emits only `0->1`; `deassert` emits only `1->0`.
+- Default `--capture=switch` as the best signal/noise tradeoff for CI and terminal usage.
+- Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
+- Close when all capture modes have deterministic contracts, CLI tests, and JSON representation parity with human semantics.
+
+### Post-MVP: temporal property language extensions
+
+- Track follow-up evolution toward richer assertion/cover-like checks (temporal operators, implication, multi-event relations).
+- Keep MVP scope explicit: event trigger + boolean eval + capture modes only.
+- Close when a separate design contract defines syntax/semantics and phased rollout milestones.
+
 ## Tech Debt
 
 ### `change --when`: deferred `iff logical_expr` execution
@@ -31,11 +61,11 @@
 - The current splitter tolerates unmatched closing parentheses via `saturating_sub`, which is acceptable for staged parsing but weak for strict validation.
 - Close when parser explicitly rejects currently-ambiguous malformed cases (at minimum: unmatched `(` / `)`, empty `iff` clause, and broken nested `or`/`,` segmentation) with deterministic `error: args:` and targeted tests.
 
-### Expression evaluator and `when` runtime remain unimplemented
+### Expression evaluator and `property` runtime path remain unimplemented
 
 - Reusable expression/event types were expanded for `change`, but `src/expr/eval.rs` and `src/engine/when.rs` still return `Unimplemented`.
-- This keeps logical-expression semantics fragmented and delays reuse of the new event infrastructure in the standalone `when` flow.
-- Close when `wavepeek when` runs end-to-end on the shared evaluator path with CLI/integration tests.
+- This keeps logical-expression semantics fragmented and blocks end-to-end delivery of the planned `property` command semantics.
+- Close when the property runtime path (implemented in the canonical engine module, with `when` migration handled) runs end-to-end on the shared evaluator path with CLI/integration tests.
 
 ### Duplicated event-expression tests (`expr/mod.rs` and `expr/parser.rs`)
 
@@ -46,7 +76,7 @@
 ### `expr/lexer.rs` scaffolding is currently unused
 
 - `src/expr/lexer.rs` exports tokenization types/helpers, but current parser/runtime paths do not consume them.
-- This leaves an unowned partial implementation in the expression layer and increases drift risk while `when`/evaluator work is still deferred.
+- This leaves an unowned partial implementation in the expression layer and increases drift risk while `property`/evaluator work is still deferred.
 - Close when either (a) parser/evaluator use lexer as the single tokenization path with focused tests, or (b) lexer scaffolding is removed and expression parsing remains covered by existing tests.
 
 ### Duplicated time parsing/alignment logic in `at` and `change`

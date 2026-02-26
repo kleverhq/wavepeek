@@ -41,6 +41,25 @@
 - Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
 - Close when all capture modes have deterministic contracts, CLI tests, and JSON representation parity with human semantics.
 
+### Add recursive signal listing (`signal --recursive`, `--max-depth`)
+
+- Extend `wavepeek signal` with `--recursive` to traverse nested scopes under the selected `--scope`.
+- Add `--max-depth <n>` to bound recursion depth in recursive mode, with deterministic traversal and ordering.
+- Keep default behavior unchanged: without `--recursive`, `signal` remains non-recursive.
+- In human mode, show paths relative to `--scope` when recursive; keep `--abs` for canonical absolute paths.
+- Keep JSON output contract stable (`path` remains canonical absolute path).
+- Preserve bounded output behavior with `--max` truncation warnings and integration coverage for recursive/non-recursive parity.
+
+### Add explicit `unlimited` values for limit flags (`--max`, `--max-depth`)
+
+- Introduce `unlimited` as a literal limit value to request unbounded output without relying on magic large numbers.
+- Scope includes `--max` across applicable commands (`scope`, `signal`, `change`, `when`) and `--max-depth` for recursive traversal commands.
+- Keep `--max 0` invalid (`error: args`) to avoid ambiguous semantics.
+- Preserve existing `--max-depth 0` behavior (depth limited to current/root level only).
+- Allow independent combinations such as `--max unlimited --max-depth 3` and `--max 100 --max-depth unlimited`.
+- Require explicit warning parity in human stderr and JSON `warnings` whenever any limit flag is set to `unlimited`.
+- Close when behavior, CLI help/docs/contracts, and integration tests are aligned across affected commands.
+
 ### Post-MVP: temporal property language extensions
 
 - Track follow-up evolution toward richer assertion/cover-like checks (temporal operators, implication, multi-event relations).

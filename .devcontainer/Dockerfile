@@ -46,7 +46,19 @@ RUN mkdir -p ${RTL_ARTIFACTS_DIR} && \
     curl -fsSL -o ${RTL_ARTIFACTS_DIR}/picorv32_test_vcd.fst \
       https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/picorv32_test_vcd.fst && \
     curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_coremark.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_coremark.fst
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_coremark.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/picorv32_test_ez_vcd.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/picorv32_test_ez_vcd.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_isr_sample.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_isr_sample.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_riscv_compliance.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_riscv_compliance.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_DualRocketConfig_dhrystone.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_DualRocketConfig_dhrystone.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_ClusteredRocketConfig_dhrystone.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_ClusteredRocketConfig_dhrystone.fst && \
+    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_ClusteredRocketConfig_mt-memcpy.fst \
+      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_ClusteredRocketConfig_mt-memcpy.fst
 
 # ---- Base Image --------------------------------------------------------------
 FROM ubuntu:24.04 AS base

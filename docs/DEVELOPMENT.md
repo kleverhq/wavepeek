@@ -73,20 +73,24 @@ Direct Cargo equivalents (useful when iterating):
 
 ## CLI E2E Benchmark Harness
 
-For reproducible CLI performance runs, use `scripts/cli_e2e_bench.py` (Python stdlib only, powered by `hyperfine`).
+For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib only, powered by `hyperfine`).
 
 - List benchmark test catalog:
-  - `python3 scripts/cli_e2e_bench.py list`
+  - `python3 bench/e2e/perf.py list`
 - Run benchmark matrix (or filtered subset) and generate run-local report:
-  - `python3 scripts/cli_e2e_bench.py run --filter '^info_'`
+  - `python3 bench/e2e/perf.py run --filter '^info_'`
 - Regenerate report from existing run artifacts:
-  - `python3 scripts/cli_e2e_bench.py report --run-dir bench-runs/<run-id>`
+  - `python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>`
 - Compare revised run against golden run with regression threshold:
-  - `python3 scripts/cli_e2e_bench.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5`
+  - `python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5`
 
-`run` always checks for release binary at `target/release/wavepeek`; if missing, it runs `cargo build --release` before benchmarking.
+Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. Per-test `runs`/`warmup` values are configured there.
 
-Current harness mode intentionally benchmarks a placeholder command (`echo "dummy args"`) while persisting full artifact structure (`*.wavepeek.json`, `*.hyperfine.json`, `README.md`) for pipeline/debug iteration.
+Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
+
+`run --compare` and `report --compare` annotate deltas in `README.md` and add `🟢`/`🔴` markers when absolute delta is at least 3%.
+
+Current harness mode runs real `info` commands and dummy `echo` commands for `at`/`change`, writing one hyperfine JSON file per test (`<test_name>.json`) plus run-local `README.md`.
 
 ### Run A Single Test (Rust)
 

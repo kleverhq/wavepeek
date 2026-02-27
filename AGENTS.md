@@ -15,6 +15,19 @@ then follow links to deeper docs.
 
 For docs-local navigation, read `docs/AGENTS.md`.
 
+## Breadcrumb Policy (`AGENTS.md` Network)
+
+- Treat each `AGENTS.md` as a local map, not a full manual.
+- Keep this root file short; canonical policy and product details live in `docs/`.
+- When creating a new durable directory with tracked files or directory-specific workflow rules, add a local `AGENTS.md` in the same change.
+- Each local `AGENTS.md` should link:
+  - back to the nearest parent map (or root `AGENTS.md`),
+  - sideways to canonical source-of-truth docs/files for that area,
+  - forward to child directories that also define `AGENTS.md`.
+- Keep breadcrumbs concise and non-duplicative; prefer cross-links over copied guidance.
+- Update breadcrumb cross-links whenever directories are added, moved, or repurposed.
+- Skip one-off/generated/vendor-style leaf directories unless a local map materially improves navigation.
+
 ## Core Workflow
 
 - This repository is container-first. Run `make` targets inside devcontainer/CI image.

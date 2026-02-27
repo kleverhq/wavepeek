@@ -90,7 +90,7 @@ Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 
 `run --compare` and `report --compare` annotate deltas in `README.md` and add `🟢`/`🔴` markers when absolute delta is at least 3%.
 
-Current harness mode runs real `info` commands and dummy `echo` commands for `at`/`change`, writing one hyperfine JSON file per test (`<test_name>.json`) plus run-local `README.md`.
+Current harness mode runs real wavepeek commands for `info`, `at`, and `change`, writing one hyperfine JSON file per test (`<test_name>.json`) plus run-local `README.md`.
 
 ### Run A Single Test (Rust)
 

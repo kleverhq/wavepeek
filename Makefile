@@ -67,7 +67,7 @@ test: require-container check-rtl-artifacts
 
 ## Run benchmark harness unit tests
 test-bench-e2e: require-container
-	python3 -m unittest bench/e2e/test_perf.py
+	python3 -m unittest discover -s bench/e2e -p "test_*.py"
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

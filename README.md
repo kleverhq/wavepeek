@@ -30,6 +30,7 @@ Run:
 wavepeek info --waves ./dump.fst
 wavepeek scope --waves ./dump.fst --tree
 wavepeek signal --waves ./dump.fst --scope top.cpu --filter '.*clk.*'
+wavepeek signal --waves ./dump.fst --scope top --recursive --max-depth 2
 ```
 
 By default, commands print human-readable output. Add `--json` for strict machine output:

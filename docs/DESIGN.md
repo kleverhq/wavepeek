@@ -214,7 +214,7 @@ wavepeek scope --waves dump.vcd --max 1000
 Lists signals within a specific scope with their metadata.
 
 ```
-wavepeek signal --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--abs] [--json]
+wavepeek signal --waves <file> --scope <path> [--recursive] [--max-depth <n>] [--max <n>] [--filter <regex>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -222,19 +222,25 @@ wavepeek signal --waves <file> --scope <path> [--max <n>] [--filter <regex>] [--
 |-----------|---------|-------------|
 | `--waves <file>` | required | Path to VCD/FST file |
 | `--scope <path>` | required | Exact scope path (e.g., `top.cpu`) |
+| `--recursive` | off | Include nested child scopes under `--scope` |
+| `--max-depth <n>` | 5 (when recursive) | Maximum recursion depth below `--scope` (requires `--recursive`) |
 | `--max <n>` | 50 | Maximum number of entries in output |
 | `--filter <regex>` | `.*` | Filter by signal name (regex) |
 | `--abs` | off | Show full signal paths in human mode |
 | `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
-- Lists signals directly in the specified scope (non-recursive)
-- Human mode defaults to short signal names (without scope prefix); `--abs` shows full paths.
+- Without `--recursive`, lists only signals directly in the specified scope.
+- With `--recursive`, traverses child scopes depth-first in deterministic lexicographic scope order.
+- `--max-depth` is valid only with `--recursive`; depth `0` means only the selected scope.
+- Human mode defaults to short signal names in non-recursive mode.
+- Human mode in recursive mode prints paths relative to `--scope` (for example, `cpu.valid`); `--abs` always shows canonical full paths.
 - Output fields (JSON): `name`, `path`, `kind`, `width` (`path` stays full/canonical in JSON mode)
-- Sorted alphabetically by name
+- Signal ordering is deterministic: per visited scope sort by `(name, path)`.
 - Default output: human-readable listing.
 - `--json` returns strict JSON envelope with `data` as an array of objects.
 - Invalid regex is an `args` error.
+- `--max-depth` without `--recursive` is an `args` error.
 - If results exceed `--max`, output is truncated and a warning is emitted.
 - Legacy `signals` command name is not supported.
 
@@ -248,6 +254,9 @@ wavepeek signal --waves dump.vcd --scope top.cpu --filter ".*clk.*"
 
 # Human output with full paths
 wavepeek signal --waves dump.vcd --scope top.cpu --abs
+
+# Recursively list nested signals under top (relative display paths in human mode)
+wavepeek signal --waves dump.vcd --scope top --recursive --max-depth 2
 ```
 
 #### 3.2.4 `at` — Value extraction at time point

@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added fully functional `change` command with unified `--when` event expressions (`*`, named, `posedge`/`negedge`/`edge`, `or`/`,` unions), deterministic delta snapshots, and staged `iff` parsing with explicit deferred-runtime error.
 - Added new change-focused fixtures and integration coverage for baseline checkpoint semantics, union deduplication, warning parity, duplicate signal ordering, and default `--max=50` truncation behavior.
 - Added a new hyperfine-backed CLI E2E benchmark harness (`bench/e2e/perf.py`) with `run`/`list`/`report`/`compare` modes, a flat explicit test catalog (`bench/e2e/tests.json`), per-test JSON artifacts, and Markdown run reports.
+- Added recursive signal listing via `wavepeek signal --recursive` with optional `--max-depth`, deterministic depth-first traversal, depth-0 parity with non-recursive mode, and relative-path human rendering scoped to `--scope`.
+- Added recursive `signal` benchmark catalog coverage for SCR1 (`all`, `filter valid`, `max-depth 2`) in `bench/e2e/tests.json`.
 
 ### Changed
 - Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--when`/`--abs` behavior; `when` remains explicitly unimplemented.

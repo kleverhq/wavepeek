@@ -193,6 +193,8 @@ Minimal expected shape of functional artifact:
       "warnings": [...]
     }
 
+`data` can be either object or array depending on command shape.
+
 ## Interfaces and Dependencies
 
 No new third-party dependencies are required.

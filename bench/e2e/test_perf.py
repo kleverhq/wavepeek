@@ -106,6 +106,25 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertIsNone(error)
         self.assertEqual(payload, {"data": {"time_unit": "ps"}, "warnings": []})
 
+    def test_load_wavepeek_artifact_for_compare_rejects_scalar_data(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": "oops", "warnings": []}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("field `data` must be object or list", error)
+
     def test_load_wavepeek_artifact_for_compare_invalid_warnings_type(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)

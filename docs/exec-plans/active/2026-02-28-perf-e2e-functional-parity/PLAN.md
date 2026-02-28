@@ -25,12 +25,12 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 - [x] (2026-02-28 12:20Z) Mapped current benchmark structure and confirmed that executable harness is in `bench/e2e`, while breadcrumb docs are still in `perf/`.
 - [x] (2026-02-28 12:20Z) Captured baseline behavior of `bench/e2e/perf.py`: `run` writes `<test>.json` timing artifacts and `compare` checks only mean regression.
 - [x] (2026-02-28 12:20Z) Drafted this ExecPlan with functional parity scope (`data` + `warnings`) and artifact naming migration.
-- [ ] Add benchmark-local breadcrumbs (`bench/AGENTS.md`, `bench/e2e/AGENTS.md`) and retire `perf/` breadcrumb files.
+- [x] (2026-02-28 12:46Z) Added benchmark-local breadcrumbs (`bench/AGENTS.md`, `bench/e2e/AGENTS.md`) and retired `perf/` breadcrumb files.
 - [x] (2026-02-28 12:34Z) Captured user clarifications: `run` stays non-blocking, old-run compatibility is not required, and compare must tolerate tests present only on one side.
-- [ ] Extend harness data model and IO to write/read `<test>.hyperfine.json` and `<test>.wavepeek.json` without legacy compatibility requirements.
-- [ ] Implement functional parity capture in `run` and comparison in both `run --compare` report path and `compare` command exit semantics.
-- [ ] Build and record the list of warning-only `change` benchmark tests and store it in this plan's notes.
-- [ ] Update docs and baseline artifacts usage notes, then run validation gates.
+- [x] (2026-02-28 12:49Z) Extended harness artifact model and IO to split timing and functional outputs into `<test>.hyperfine.json` and `<test>.wavepeek.json` with explicit suffix parsing.
+- [x] (2026-02-28 12:50Z) Implemented functional capture in `run`, functional marker column in `run --compare`/`report --compare`, strict functional checks in `compare`, and new `list-warning-only-change` subcommand.
+- [x] (2026-02-28 13:00Z) Built warning-only `change` inventory via `list-warning-only-change --filter '^change_'` and recorded concrete list in `Artifacts and Notes`.
+- [x] (2026-02-28 13:03Z) Updated benchmark docs and passed validation gates (`make check`, `make ci`).
 
 ## Surprises & Discoveries
 
@@ -42,6 +42,9 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 
 - Observation: Existing perf test catalog does not encode expected functional outcomes for warning-only `change` cases.
   Evidence: `bench/e2e/tests.json` entries currently contain `name/category/runs/warmup/command/meta` only.
+
+- Observation: `REPO_ROOT` computation in the moved harness still pointed at `/workspaces` (old `perf/e2e` depth) instead of repository root.
+  Evidence: `bench/e2e/perf.py` used `SCRIPT_DIR.parents[2]`; for `bench/e2e`, repo root is `SCRIPT_DIR.parents[1]`.
 
 ## Decision Log
 
@@ -73,7 +76,11 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 
 Planning outcome: scope is now explicit across repository structure, artifact format, functional diff semantics, and reporting behavior.
 
-Implementation outcome is pending. Expected end state is a benchmark harness that reports performance deltas and functional parity in one workflow, with blocking compare semantics for functional drift.
+Implementation outcome: benchmark harness now emits dual artifacts per test (`.hyperfine.json`, `.wavepeek.json`), reports functional parity status in compare reports, and enforces functional parity in blocking `compare` for matched tests.
+
+Validation outcome: targeted smoke (`run`, `run --compare`, `compare`) succeeded with release binary, warning-only inventory command produced deterministic list (`total=27`), and repository gates `make check` + `make ci` passed.
+
+Retrospective: adding lightweight Python unit tests for the new artifact/functional helpers reduced risk in compare error handling and made suffix-specific parsing behavior explicit.
 
 ## Context and Orientation
 
@@ -191,7 +198,35 @@ Expected run-artifact shape after implementation:
 
 Warning-only `change` benchmark tests (populate during Milestone 5):
 
-    TBD
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_100_pos_50_window_2000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_100_pos_50_window_4000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_100_pos_50_window_8000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_10_pos_50_window_2000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_10_pos_50_window_4000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_10_pos_50_window_8000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_1_pos_50_window_2000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_1_pos_50_window_4000_trigger_signal
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_1_pos_50_window_8000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_100_pos_50_window_2000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_100_pos_50_window_4000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_100_pos_50_window_8000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_10_pos_50_window_2000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_10_pos_50_window_4000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_10_pos_50_window_8000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_1_pos_50_window_2000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_1_pos_50_window_4000_trigger_signal
+    change_chipyard_dualrocketconfig_dhrystone_signals_1_pos_50_window_8000_trigger_signal
+    change_picorv32_signals_100_pos_50_window_2000_trigger_signal
+    change_picorv32_signals_100_pos_50_window_4000_trigger_signal
+    change_picorv32_signals_100_pos_50_window_8000_trigger_signal
+    change_picorv32_signals_10_pos_50_window_2000_trigger_signal
+    change_picorv32_signals_10_pos_50_window_4000_trigger_signal
+    change_picorv32_signals_10_pos_50_window_8000_trigger_signal
+    change_picorv32_signals_1_pos_50_window_2000_trigger_signal
+    change_picorv32_signals_1_pos_50_window_4000_trigger_signal
+    change_picorv32_signals_1_pos_50_window_8000_trigger_signal
+
+    total=27
 
 Minimal expected shape of functional artifact:
 
@@ -219,3 +254,4 @@ No new third-party dependencies are required.
 Revision Note: 2026-02-28 / OpenCode - Initial plan drafted to relocate benchmark breadcrumbs from `perf/` to `bench/`, add dual artifact export (`.hyperfine.json` + `.wavepeek.json`), enforce functional parity checks on `data`/`warnings`, and add warning-only `change` test inventory workflow.
 Revision Note: 2026-02-28 / OpenCode - Incorporated review-pass fixes: deterministic `--json` capture rule, explicit artifact name parsing rules, strict compare behavior for missing/invalid functional artifacts on matched tests, and expanded negative-path acceptance criteria.
 Revision Note: 2026-02-28 / OpenCode - Applied user clarifications: keep `run` non-blocking, drop legacy run compatibility (fresh baseline regeneration), and make compare tolerant to unmatched tests by warning instead of failing.
+Revision Note: 2026-02-28 / OpenCode - Implemented all milestones end-to-end: moved benchmark breadcrumbs to `bench/`, split artifact IO into `.hyperfine.json`/`.wavepeek.json`, added functional capture + strict compare semantics, introduced `list-warning-only-change`, documented warning-only inventory (`total=27`), corrected repo root resolution after harness move, and validated with smoke runs plus `make check`/`make ci`.

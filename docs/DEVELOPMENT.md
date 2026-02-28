@@ -83,14 +83,22 @@ For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib on
   - `python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>`
 - Compare revised run against golden run with regression threshold:
   - `python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5`
+- List `change` scenarios that produce warnings-only JSON output:
+  - `python3 bench/e2e/perf.py list-warning-only-change --filter '^change_'`
 
 Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. Per-test `runs`/`warmup` values are configured there.
 
 Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 
-`run --compare` and `report --compare` annotate deltas in `README.md` and add `🟢`/`🔴` markers when absolute delta is at least 3%.
+Each benchmark run writes two per-test artifacts plus a run-level report:
 
-Current harness mode runs real wavepeek commands for `info`, `at`, and `change`, writing one hyperfine JSON file per test (`<test_name>.json`) plus run-local `README.md`.
+- `<test_name>.hyperfine.json` for timing metrics.
+- `<test_name>.wavepeek.json` for functional payload (`data` + `warnings`).
+- `README.md` with grouped metrics and compare status.
+
+`run --compare` and `report --compare` annotate timing deltas in `README.md`, add `🟢`/`🔴` markers when absolute delta is at least 3%, and include a functional parity marker (`✅` match, `⚠️` mismatch, `?` missing counterpart).
+
+`compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data`/`warnings` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Tests present only on one side are reported as warnings and do not fail compare.
 
 ### Run A Single Test (Rust)
 

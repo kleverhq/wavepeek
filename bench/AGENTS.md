@@ -14,4 +14,4 @@ repeatable performance scenarios.
 
 ## Child Maps
 
-- CLI end-to-end performance scenarios: `perf/e2e/AGENTS.md`
+- CLI end-to-end performance scenarios: `bench/e2e/AGENTS.md`

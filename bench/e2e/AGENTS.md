@@ -5,7 +5,7 @@ harness code.
 
 ## Parent Maps
 
-- Performance map: `perf/AGENTS.md`
+- Performance map: `bench/AGENTS.md`
 - Repository map: `AGENTS.md`
 
 ## Source of Truth

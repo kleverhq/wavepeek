@@ -16,6 +16,7 @@ Keep the repository coherent as agent throughput increases. This skill defines a
 - Do not add feature scope that is unrelated to cleanup.
 - Do not change semantics unless the user explicitly asks.
 - Do not run destructive cleanup (mass deletions, history rewrite) without strong proof and clear user intent.
+- Do not touch archived (e.g. `docs/exec-plans/completed`) or generated (e.g. `bench/e2e/runs`) files
 
 ## Golden principles
 1. Preserve behavior first.

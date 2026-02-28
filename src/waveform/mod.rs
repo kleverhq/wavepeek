@@ -680,6 +680,30 @@ mod tests {
     }
 
     #[test]
+    fn scopes_depth_first_none_includes_all_nested_depths() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let bounded = waveform.scopes_depth_first(Some(1));
+        let unbounded = waveform.scopes_depth_first(None);
+
+        let bounded_paths = bounded
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        let unbounded_paths = unbounded
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+
+        assert_eq!(bounded_paths, vec!["top", "top.cpu", "top.mem"]);
+        assert_eq!(
+            unbounded_paths,
+            vec!["top", "top.cpu", "top.cpu.core", "top.mem"]
+        );
+    }
+
+    #[test]
     fn signals_in_scope_are_sorted_and_preserve_parser_var_type_aliases() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
@@ -749,6 +773,42 @@ mod tests {
         );
         assert_eq!(
             depth_2_paths,
+            vec![
+                "top.clk",
+                "top.cpu.valid",
+                "top.cpu.core.execute",
+                "top.mem.ready"
+            ]
+        );
+    }
+
+    #[test]
+    fn recursive_signals_in_scope_none_depth_includes_all_nested_levels() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let bounded = waveform
+            .signals_in_scope_recursive("top", Some(1))
+            .expect("bounded lookup should succeed");
+        let unbounded = waveform
+            .signals_in_scope_recursive("top", None)
+            .expect("unbounded lookup should succeed");
+
+        let bounded_paths = bounded
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        let unbounded_paths = unbounded
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            bounded_paths,
+            vec!["top.clk", "top.cpu.valid", "top.mem.ready"]
+        );
+        assert_eq!(
+            unbounded_paths,
             vec![
                 "top.clk",
                 "top.cpu.valid",

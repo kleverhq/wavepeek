@@ -255,6 +255,68 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
 }
 
 #[test]
+fn change_unlimited_warning_precedes_empty_result_warning_in_json_and_human_modes() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "9ns",
+            "--to",
+            "9ns",
+            "--signals",
+            "top.clk,top.data",
+            "--max",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("json change run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "9ns",
+            "--to",
+            "9ns",
+            "--signals",
+            "top.clk,top.data",
+            "--max",
+            "unlimited",
+        ])
+        .output()
+        .expect("human change run should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+
+    let value = parse_json(&json_output.stdout);
+    assert_eq!(value["data"], json!([]));
+    assert_eq!(
+        value["warnings"],
+        json!([
+            "limit disabled: --max=unlimited",
+            "no signal changes found in selected time range"
+        ])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr)
+            .lines()
+            .collect::<Vec<_>>(),
+        vec![
+            "warning: limit disabled: --max=unlimited",
+            "warning: no signal changes found in selected time range"
+        ]
+    );
+}
+
+#[test]
 fn change_omitted_from_uses_dump_start_baseline_checkpoint() {
     let fixture = fixture_path("change_from_boundary.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

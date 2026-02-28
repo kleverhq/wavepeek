@@ -35,8 +35,8 @@ This plan does not introduce a strict performance regression gate for the new `s
 - [x] (2026-02-28 11:33Z) Implemented Milestone 3: added deterministic recursive waveform traversal API with bounded depth and DFS scope ordering.
 - [x] (2026-02-28 11:35Z) Implemented Milestone 4: updated signal help/docs/readme and aligned contract text with new flags.
 - [x] (2026-02-28 11:44Z) Added recursive `signal` E2E perf scenarios to `bench/e2e/tests.json` and captured SCR1 baseline run under `bench/e2e/runs/signal-recursive-baseline`.
-- [ ] Complete review pass #1 findings and commit fixes.
-- [ ] Complete fresh independent review pass #2 and close residual findings.
+- [x] (2026-02-28 11:49Z) Completed review pass #1 via `review` subagent; no substantive findings (only optional test-gap suggestions).
+- [x] (2026-02-28 11:49Z) Completed fresh independent review pass #2 via new `review` session; no substantive findings.
 - [x] (2026-02-28 11:49Z) Ran final quality gates (`make check`, `make ci`) and updated `CHANGELOG.md` (`Unreleased -> Added`) for recursive `signal` flags.
 
 ## Surprises & Discoveries
@@ -94,7 +94,7 @@ This plan does not introduce a strict performance regression gate for the new `s
 
 Planning outcome: requirements from backlog were converted into explicit acceptance criteria, non-critical ambiguities were resolved into concrete defaults, and implementation is split into testable milestones.
 
-Implementation outcome is pending. Expected end state is a backward-compatible `signal` command that supports recursive listing with depth control and stable output contracts in both human and JSON modes.
+Implementation outcome: completed. `signal` now supports deterministic recursive listing with `--recursive` and optional `--max-depth`, preserves non-recursive defaults, keeps JSON shape stable, and includes benchmark catalog coverage plus a recorded SCR1 baseline run.
 
 ## Context and Orientation
 

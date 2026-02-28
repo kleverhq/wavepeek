@@ -42,7 +42,7 @@ class PerfHelpersTest(unittest.TestCase):
                 {"data": [1], "warnings": ["w2"]},
                 baseline,
             ),
-            ["warnings"],
+            [],
         )
 
     def test_load_wavepeek_artifact_for_compare_missing(self) -> None:
@@ -89,12 +89,12 @@ class PerfHelpersTest(unittest.TestCase):
         assert error is not None
         self.assertIn("missing key `warnings`", error)
 
-    def test_load_wavepeek_artifact_for_compare_invalid_data_type(self) -> None:
+    def test_load_wavepeek_artifact_for_compare_accepts_object_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)
             artifact = temp_path / "sample.wavepeek.json"
             artifact.write_text(
-                json.dumps({"data": "not-a-list", "warnings": []}),
+                json.dumps({"data": {"time_unit": "ps"}, "warnings": []}),
                 encoding="utf-8",
             )
             payload, error = perf.load_wavepeek_artifact_for_compare(
@@ -103,10 +103,8 @@ class PerfHelpersTest(unittest.TestCase):
                 "revised",
             )
 
-        self.assertIsNone(payload)
-        self.assertIsNotNone(error)
-        assert error is not None
-        self.assertIn("field `data` must be list", error)
+        self.assertIsNone(error)
+        self.assertEqual(payload, {"data": {"time_unit": "ps"}, "warnings": []})
 
     def test_load_wavepeek_artifact_for_compare_invalid_warnings_type(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -149,6 +147,46 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertIsNone(error)
         self.assertEqual(payload, {"data": [{"id": 1}], "warnings": ["w"]})
+
+    def test_report_functional_status_missing_counterpart(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": [1], "warnings": []}},
+                {},
+            ),
+            perf.FUNCTIONAL_MISSING_MARKER,
+        )
+
+    def test_report_functional_status_data_mismatch(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": [1], "warnings": ["a"]}},
+                {"t": {"data": [2], "warnings": ["b"]}},
+            ),
+            f"{perf.FUNCTIONAL_MISMATCH_MARKER}D",
+        )
+
+    def test_report_functional_status_empty_data_match(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": [], "warnings": ["a"]}},
+                {"t": {"data": [], "warnings": ["b"]}},
+            ),
+            f"{perf.FUNCTIONAL_MATCH_MARKER}E",
+        )
+
+    def test_report_functional_status_nonempty_data_match(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": [{"id": 1}], "warnings": ["a"]}},
+                {"t": {"data": [{"id": 1}], "warnings": ["b"]}},
+            ),
+            perf.FUNCTIONAL_MATCH_MARKER,
+        )
 
 
 if __name__ == "__main__":

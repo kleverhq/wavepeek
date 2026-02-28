@@ -245,8 +245,6 @@ def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
         raise ValueError(f"{source} missing key `data`")
     if "warnings" not in payload:
         raise ValueError(f"{source} missing key `warnings`")
-    if not isinstance(payload["data"], list):
-        raise ValueError(f"{source} field `data` must be list")
     if not isinstance(payload["warnings"], list):
         raise ValueError(f"{source} field `warnings` must be list")
     return {"data": payload["data"], "warnings": payload["warnings"]}
@@ -414,12 +412,15 @@ def format_meta(meta: dict[str, Any]) -> str:
 
 
 def functional_diff_fields(revised_payload: dict[str, Any], golden_payload: dict[str, Any]) -> list[str]:
-    fields: list[str] = []
     if revised_payload.get("data") != golden_payload.get("data"):
-        fields.append("data")
-    if revised_payload.get("warnings") != golden_payload.get("warnings"):
-        fields.append("warnings")
-    return fields
+        return ["data"]
+    return []
+
+
+def is_empty_data(value: Any) -> bool:
+    if isinstance(value, list) or isinstance(value, dict):
+        return len(value) == 0
+    return False
 
 
 def report_functional_status(
@@ -431,8 +432,10 @@ def report_functional_status(
     compare_payload = compare_functional.get(test_name)
     if revised_payload is None or compare_payload is None:
         return FUNCTIONAL_MISSING_MARKER
-    if functional_diff_fields(revised_payload, compare_payload):
-        return FUNCTIONAL_MISMATCH_MARKER
+    if revised_payload.get("data") != compare_payload.get("data"):
+        return f"{FUNCTIONAL_MISMATCH_MARKER}D"
+    if is_empty_data(revised_payload.get("data")):
+        return f"{FUNCTIONAL_MATCH_MARKER}E"
     return FUNCTIONAL_MATCH_MARKER
 
 
@@ -459,7 +462,7 @@ def render_report(
                 f"- Compare baseline: `{compare_dir}`",
                 "- Delta formula: `((golden - revised) / golden) * 100`",
                 f"- Emoji threshold: abs(delta) >= {EMOJI_THRESHOLD_PCT:.2f}% (`🟢` faster, `🔴` slower)",
-                "- Functional status: `✅` match, `⚠️` mismatch, `?` missing counterpart",
+                "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `?` missing counterpart",
             ]
         )
     lines.append("")
@@ -552,12 +555,6 @@ def preview_command(test: dict[str, Any]) -> str:
     return shlex.join(parts)
 
 
-def is_warning_only_change(payload: dict[str, Any]) -> bool:
-    data = payload.get("data")
-    warnings = payload.get("warnings")
-    return isinstance(data, list) and not data and isinstance(warnings, list) and bool(warnings)
-
-
 def cmd_list(args: argparse.Namespace) -> int:
     tests = select_tests(load_tests(), args.filter)
     for test in tests:
@@ -565,30 +562,6 @@ def cmd_list(args: argparse.Namespace) -> int:
             f"{test['name']}\t{test['category']}\truns={test['runs']}\twarmup={test['warmup']}\t{preview_command(test)}"
         )
     print(f"total={len(tests)}")
-    return 0
-
-
-def cmd_list_warning_only_change(args: argparse.Namespace) -> int:
-    tests = load_tests()
-    selected = select_tests(tests, args.filter)
-    selected_change = [test for test in selected if str(test.get("category")) == "change"]
-    if not selected_change:
-        fail("error: list-warning-only-change: no change tests matched the provided filter")
-
-    wavepeek_bin = resolve_wavepeek_bin()
-    warning_only: list[str] = []
-    for index, test in enumerate(selected_change, start=1):
-        print(
-            f"[{index}/{len(selected_change)}] {test['name']}",
-            file=sys.stderr,
-        )
-        payload = run_functional_capture(test, wavepeek_bin, "list-warning-only-change")
-        if is_warning_only_change(payload):
-            warning_only.append(str(test["name"]))
-
-    for test_name in sorted(warning_only):
-        print(test_name)
-    print(f"total={len(warning_only)}")
     return 0
 
 
@@ -738,16 +711,6 @@ def build_parser() -> argparse.ArgumentParser:
     list_parser = subparsers.add_parser("list", help="list available benchmark tests")
     list_parser.add_argument("--filter", default=None, help="regex filter by test name")
 
-    list_warning_only_change_parser = subparsers.add_parser(
-        "list-warning-only-change",
-        help="list change tests with empty data and non-empty warnings",
-    )
-    list_warning_only_change_parser.add_argument(
-        "--filter",
-        default="^change_",
-        help="regex filter by test name",
-    )
-
     run_parser = subparsers.add_parser("run", help="run selected benchmarks")
     run_parser.add_argument("--filter", default=None, help="regex filter by test name")
     run_parser.add_argument("--run-dir", default=None, help="existing/new run directory")
@@ -781,8 +744,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "list":
         return cmd_list(args)
-    if args.command == "list-warning-only-change":
-        return cmd_list_warning_only_change(args)
     if args.command == "run":
         return cmd_run(args)
     if args.command == "report":

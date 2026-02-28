@@ -166,15 +166,15 @@ wavepeek info --waves dump.vcd --json
 Outputs a flat list of hierarchy scopes, recursively traversing the hierarchy.
 
 ```
-wavepeek scope --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [--tree] [--json]
+wavepeek scope --waves <file> [--max <n|unlimited>] [--max-depth <n|unlimited>] [--filter <regex>] [--tree] [--json]
 ```
 
 **Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--waves <file>` | required | Path to VCD/FST file |
-| `--max <n>` | 50 | Maximum number of entries in output |
-| `--max-depth <n>` | 5 | Maximum traversal depth |
+| `--max <n\|unlimited>` | 50 | Maximum number of entries in output; `unlimited` disables truncation |
+| `--max-depth <n\|unlimited>` | 5 | Maximum traversal depth; `unlimited` disables depth truncation |
 | `--filter <regex>` | `.*` | Filter by full path (regex) |
 | `--tree` | off | Render hierarchy as an indented tree in human mode |
 | `--json` | off | Strict JSON envelope output |
@@ -187,6 +187,10 @@ wavepeek scope --waves <file> [--max <n>] [--max-depth <n>] [--filter <regex>] [
 - `--tree` switches human output to visual hierarchy rendering.
 - `--json` returns strict JSON envelope with a flat `data` array.
 - Invalid regex is an `args` error.
+- `--max 0` is an `args` error.
+- `--max unlimited` disables count truncation and emits warning `limit disabled: --max=unlimited`.
+- `--max-depth unlimited` disables depth truncation and emits warning `limit disabled: --max-depth=unlimited`.
+- If both limits are `unlimited`, warnings are emitted in deterministic order: `--max` then `--max-depth`.
 - Each item has:
   - `path`: full scope path (string)
   - `depth`: integer depth (root = 0)
@@ -207,6 +211,9 @@ wavepeek scope --waves dump.vcd --max-depth 2 --tree
 
 # Get all scopes
 wavepeek scope --waves dump.vcd --max 1000
+
+# Disable both count and depth limits explicitly
+wavepeek scope --waves dump.vcd --max unlimited --max-depth unlimited
 ```
 
 #### 3.2.3 `signal` — Signal listing
@@ -214,7 +221,7 @@ wavepeek scope --waves dump.vcd --max 1000
 Lists signals within a specific scope with their metadata.
 
 ```
-wavepeek signal --waves <file> --scope <path> [--recursive] [--max-depth <n>] [--max <n>] [--filter <regex>] [--abs] [--json]
+wavepeek signal --waves <file> --scope <path> [--recursive] [--max-depth <n|unlimited>] [--max <n|unlimited>] [--filter <regex>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -223,8 +230,8 @@ wavepeek signal --waves <file> --scope <path> [--recursive] [--max-depth <n>] [-
 | `--waves <file>` | required | Path to VCD/FST file |
 | `--scope <path>` | required | Exact scope path (e.g., `top.cpu`) |
 | `--recursive` | off | Include nested child scopes under `--scope` |
-| `--max-depth <n>` | 5 (when recursive) | Maximum recursion depth below `--scope` (requires `--recursive`) |
-| `--max <n>` | 50 | Maximum number of entries in output |
+| `--max-depth <n\|unlimited>` | 5 (when recursive) | Maximum recursion depth below `--scope` (requires `--recursive`); `unlimited` disables depth truncation |
+| `--max <n\|unlimited>` | 50 | Maximum number of entries in output; `unlimited` disables truncation |
 | `--filter <regex>` | `.*` | Filter by signal name (regex) |
 | `--abs` | off | Show full signal paths in human mode |
 | `--json` | off | Strict JSON envelope output |
@@ -241,6 +248,10 @@ wavepeek signal --waves <file> --scope <path> [--recursive] [--max-depth <n>] [-
 - `--json` returns strict JSON envelope with `data` as an array of objects.
 - Invalid regex is an `args` error.
 - `--max-depth` without `--recursive` is an `args` error.
+- `--max 0` is an `args` error.
+- `--max unlimited` disables count truncation and emits warning `limit disabled: --max=unlimited`.
+- `--max-depth unlimited` (with `--recursive`) disables depth truncation and emits warning `limit disabled: --max-depth=unlimited`.
+- If unlimited-limit warnings and legacy truncation warnings both apply, unlimited warnings are emitted first.
 - If results exceed `--max`, output is truncated and a warning is emitted.
 - Legacy `signals` command name is not supported.
 
@@ -257,6 +268,9 @@ wavepeek signal --waves dump.vcd --scope top.cpu --abs
 
 # Recursively list nested signals under top (relative display paths in human mode)
 wavepeek signal --waves dump.vcd --scope top --recursive --max-depth 2
+
+# Disable recursion-depth limit while keeping count bound
+wavepeek signal --waves dump.vcd --scope top --recursive --max 100 --max-depth unlimited
 ```
 
 #### 3.2.4 `at` — Value extraction at time point
@@ -309,7 +323,7 @@ wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --json
 Outputs delta snapshots of signal values over a time range using one event-trigger model.
 
 ```
-wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--when <event_expr>] [--max <n>] [--abs] [--json]
+wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--when <event_expr>] [--max <n|unlimited>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -321,7 +335,7 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 | `--scope <path>` | — | Scope for short signal/trigger names |
 | `--signals <names>` | required | Comma-separated signal names |
 | `--when <event_expr>` | `*` | Event expression (`*`, named, edge, union) |
-| `--max <n>` | 50 | Maximum number of snapshot rows |
+| `--max <n\|unlimited>` | 50 | Maximum number of snapshot rows; `unlimited` disables truncation |
 | `--abs` | off | Canonical paths in human output |
 | `--json` | off | Strict JSON envelope output |
 
@@ -351,6 +365,9 @@ but runtime evaluation of `logical_expr` is intentionally deferred and returns
 - JSON rows are `{ "time": <normalized>, "signals": [{"path": ..., "value": ...}, ...] }`.
 - Values are Verilog literals: `<width>'h<digits>` with lowercase hex and `x`/`z` support.
 - If no rows are emitted, `data` is empty and warning is exactly `no signal changes found in selected time range`.
+- `--max 0` is an `args` error.
+- `--max unlimited` disables row truncation and emits warning `limit disabled: --max=unlimited`.
+- If `--max unlimited` is used together with any existing warning (for example empty-result warning), the unlimited warning is emitted first.
 - If results exceed `--max`, output is truncated and a warning is emitted.
 - Legacy `changes` command name is not supported.
 
@@ -367,6 +384,9 @@ wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals c
 
 # Strict JSON envelope
 wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --when "edge clk" --json
+
+# Disable row truncation explicitly
+wavepeek change --waves dump.vcd --signals top.sig --max unlimited
 ```
 
 #### 3.2.6 `when` — Event search
@@ -378,7 +398,7 @@ Finds clock cycles where a boolean expression evaluates to true.
 Expression is evaluated on every posedge of the specified clock.
 
 ```
-wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope <path>] --cond <expr> [--first [<n>]] [--last [<n>]] [--max <n>] [--json]
+wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope <path>] --cond <expr> [--first [<n>]] [--last [<n>]] [--max <n|unlimited>] [--json]
 ```
 
 **Parameters:**
@@ -392,7 +412,7 @@ wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope
 | `--cond <expr>` | required | Boolean expression in expression language |
 | `--first [<n>]` | 1 if flag present | Return first N matches |
 | `--last [<n>]` | 1 if flag present | Return last N matches |
-| `--max <n>` | 50 | Maximum matches (when neither --first nor --last) |
+| `--max <n\|unlimited>` | 50 | Maximum matches (when neither --first nor --last); `unlimited` disables truncation |
 | `--json` | off | Strict JSON envelope output |
 
 **Behavior:**
@@ -407,6 +427,7 @@ wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope
 - **`--last`:** return last N matches (default N=1 if no value given)
 - `--first` and `--last` are mutually exclusive — error if both specified
 - `--max` is not allowed together with `--first` or `--last`
+- `--max unlimited` is accepted by CLI parsing; runtime remains unimplemented.
 - Fail fast: error if any signal in expression not found
 - If no matches, `data` is empty and a warning is emitted.
 - If matches exceed `--max` (when neither `--first` nor `--last` is used), output is truncated and a warning is emitted.

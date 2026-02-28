@@ -20,10 +20,13 @@ This plan does not redesign command names, output schema shape, or unrelated com
 - [x] (2026-02-28 11:25Z) Initial ExecPlan drafted with explicit warning text, shared limit-type strategy, and TDD-first rollout.
 - [x] (2026-02-28 11:40Z) Review pass #1 findings incorporated: full help/contract coverage across affected commands, explicit warning ordering, and novice-oriented term definitions.
 - [x] (2026-02-28 11:48Z) Independent review pass #2 findings incorporated: added mandatory dual-unlimited warning-order test case.
-- [ ] Add failing integration tests for `unlimited` across `scope`, `signal`, and `change`, plus help/contract checks.
-- [ ] Implement shared CLI limit parsing and wire it through all affected arg structs.
-- [ ] Implement runtime behavior for bounded vs unlimited limits and preserve existing error categories.
-- [ ] Update docs and changelog, run full quality gates, and close backlog entry.
+- [x] (2026-02-28 12:35Z) Added failing TDD integration/contract tests for `scope`, `signal`, `change`, and `when` (`--max unlimited` parse path) and observed pre-implementation failures.
+- [x] (2026-02-28 13:15Z) Implemented shared CLI `LimitArg` parsing, wired all affected arg structs, and added CLI dispatch unit coverage for unlimited literals.
+- [x] (2026-02-28 13:45Z) Implemented runtime bounded/unlimited behavior in `scope`/`signal`/`change`, optional depth bounds in waveform traversal APIs, and deterministic unlimited warning ordering before legacy warnings.
+- [x] (2026-02-28 14:05Z) Updated `docs/DESIGN.md`, `CHANGELOG.md`, and `docs/BACKLOG.md` for delivered unlimited-limit contracts and backlog closure.
+- [x] (2026-02-28 14:20Z) Ran full repository quality gates successfully: `make check` and `make ci`.
+- [ ] Run mandatory review pass #1 (`review` agent), resolve findings, and commit fixes if needed.
+- [ ] Run mandatory independent review pass #2 (fresh `review` agent), resolve findings, and confirm clean state.
 
 ## Surprises & Discoveries
 
@@ -32,6 +35,9 @@ This plan does not redesign command names, output schema shape, or unrelated com
 
 - Observation: `--max 0` validation exists for `scope`, `signal`, and `change`, but there is no explicit integration test for `scope --max 0` and `signal --max 0` yet.
   Evidence: existing checks in `src/engine/scope.rs` and `src/engine/signal.rs`; missing matching test cases in `tests/scope_cli.rs` and `tests/signal_cli.rs`.
+
+- Observation: preserving warning ordering across commands required injecting unlimited warnings before pre-existing warning branches (notably in `change`, where empty-result warning previously came first).
+  Evidence: `tests/scope_cli.rs` and `tests/signal_cli.rs` now assert unlimited-warning precedence with truncation warnings; `tests/change_cli.rs` asserts unlimited warning parity with existing warning flows.
 
 ## Decision Log
 
@@ -47,17 +53,21 @@ This plan does not redesign command names, output schema shape, or unrelated com
   Rationale: These strings are short, deterministic, and clearly explain which limit changed behavior.
   Date/Author: 2026-02-28 / OpenCode
 
+- Decision: Represent unlimited depth in waveform traversal APIs as `Option<usize>` (`None` = unlimited).
+  Rationale: This preserves existing bounded semantics (including depth `0`) while minimizing branching across scope/signal engines and keeping deterministic traversal order unchanged.
+  Date/Author: 2026-02-28 / OpenCode
+
 ## Outcomes & Retrospective
 
-Plan-authoring outcome: implementation scope is fully mapped and broken into atomic, testable steps with clear acceptance behavior and warning text contracts.
+Plan-authoring outcome: implementation scope was fully mapped and broken into atomic, testable steps with clear acceptance behavior and warning text contracts.
 
-Implementation outcome is pending.
+Implementation outcome: CLI parsing, runtime behavior, tests, and docs/backlog/changelog collateral are updated for explicit `unlimited` limits across affected commands. Full quality gates pass (`make check`, `make ci`). Review-cycle outcomes are pending and tracked in `Progress`.
 
 ## Context and Orientation
 
-The CLI entrypoint is `src/cli/mod.rs`, which dispatches subcommands into engine modules. Limit flags are currently typed as `usize` (or `Option<usize>`) in command-specific arg structs: `src/cli/scope.rs`, `src/cli/signal.rs`, `src/cli/change.rs`, and `src/cli/when.rs`. Runtime validation for `--max > 0` exists in `src/engine/scope.rs`, `src/engine/signal.rs`, and `src/engine/change.rs`.
+The CLI entrypoint is `src/cli/mod.rs`, which dispatches subcommands into engine modules. Limit flags are now typed via shared `src/cli/limits.rs::LimitArg` in command-specific arg structs: `src/cli/scope.rs`, `src/cli/signal.rs`, `src/cli/change.rs`, and `src/cli/when.rs`. Runtime validation for `--max > 0` remains in `src/engine/scope.rs`, `src/engine/signal.rs`, and `src/engine/change.rs`.
 
-Depth-bounded traversal is implemented in `src/waveform/mod.rs` by recursive helpers that stop when `depth == max_depth`. This is why `--max-depth 0` currently returns only root/current-scope level and must stay unchanged. `signal` additionally enforces that `--max-depth` is valid only together with `--recursive`.
+Depth-bounded traversal is implemented in `src/waveform/mod.rs` by recursive helpers that now accept `Option<usize>` bounds and stop when `depth == max_depth` for bounded runs. This is why `--max-depth 0` continues to return only root/current-scope level. `signal` additionally enforces that `--max-depth` is valid only together with `--recursive`.
 
 Terminology used in this plan is defined here for a new contributor. TDD means "test-driven development": add or update tests first so they fail, then change code until they pass. clap is the Rust command-line parser library used by this repository in `src/cli/*`. Deterministic DFS means deterministic depth-first search order: parents before children, with sibling ordering stable across runs.
 
@@ -217,3 +227,5 @@ Waveform traversal helpers should accept optional depth bounds:
 Do not add new third-party crates. Use existing `clap`, engine error types, and warning pipeline.
 
 Plan revision note: initial plan created for backlog item `Add explicit unlimited values for limit flags (--max, --max-depth)`; then revised after two review passes to cover `change`/`when` help-contract parity, define deterministic ordering against legacy warnings, add novice term definitions, and require an explicit dual-unlimited warning-order test.
+
+Plan revision note (implementation update): marked milestones 1-4 complete with timestamps, recorded waveform/API representation decision (`Option<usize>` for unlimited depth), captured warning-ordering implementation discovery, and logged successful `make check`/`make ci` execution before mandatory double-review passes.

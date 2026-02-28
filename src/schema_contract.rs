@@ -1,5 +1,5 @@
 pub const SCHEMA_URL: &str = concat!(
-    "https://github.com/kleverhq/wavepeek/blob/v",
+    "https://raw.githubusercontent.com/kleverhq/wavepeek/v",
     env!("CARGO_PKG_VERSION"),
     "/schema/wavepeek.json"
 );

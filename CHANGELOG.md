@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--when`/`--abs` behavior; `when` remains explicitly unimplemented.
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
 - Simplified `at` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
+- Updated JSON envelope `$schema` URLs from GitHub blob pages to `raw.githubusercontent.com` so schema links resolve as directly consumable raw JSON.
 
 ## [0.2.0] - 2026-02-20
 

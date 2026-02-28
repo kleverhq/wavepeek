@@ -65,11 +65,11 @@ crate publish and GitHub Release creation.
    - `cargo package --locked`
    - expected mode behavior (skip side effects in dry-run, execute in real mode)
 11. Validate schema publication endpoint for the tag (no extra asset upload required):
-    - `https://github.com/kleverhq/wavepeek/blob/vX.Y.Z/schema/wavepeek.json` resolves to the committed schema artifact.
+    - `https://raw.githubusercontent.com/kleverhq/wavepeek/vX.Y.Z/schema/wavepeek.json` resolves to the committed schema artifact.
 12. Verify final state:
     - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
     - Real release: crate published and GitHub Release created for `vX.Y.Z`.
-    - In both modes, schema is published implicitly via the tagged source blob URL.
+    - In both modes, schema is published implicitly via the tagged source raw URL.
 
 ## Rollback
 

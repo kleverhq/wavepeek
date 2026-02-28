@@ -13,7 +13,7 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "pattern": "^https://github.com/kleverhq/wavepeek/blob/v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?/schema/wavepeek\\.json$"
+      "pattern": "^https://raw\\.githubusercontent\\.com/kleverhq/wavepeek/v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?/schema/wavepeek\\.json$"
     },
     "command": {
       "type": "string",

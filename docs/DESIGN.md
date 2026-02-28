@@ -94,7 +94,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 
   ```json
   {
-    "$schema": "https://github.com/kleverhq/wavepeek/blob/v<version>/schema/wavepeek.json",
+    "$schema": "https://raw.githubusercontent.com/kleverhq/wavepeek/v<version>/schema/wavepeek.json",
     "command": "<command>",
     "data": {},
     "warnings": []

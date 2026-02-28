@@ -52,10 +52,10 @@ def main() -> None:
     cargo_toml = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))
     version = cargo_toml["package"]["version"]
     expected_schema_url = (
-        f"https://github.com/kleverhq/wavepeek/blob/v{version}/schema/wavepeek.json"
+        f"https://raw.githubusercontent.com/kleverhq/wavepeek/v{version}/schema/wavepeek.json"
     )
     url_pattern = re.compile(
-        r"^https://github.com/kleverhq/wavepeek/blob/v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/schema/wavepeek\.json$"
+        r"^https://raw\.githubusercontent\.com/kleverhq/wavepeek/v[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?/schema/wavepeek\.json$"
     )
 
     info_json_stdout = subprocess.run(

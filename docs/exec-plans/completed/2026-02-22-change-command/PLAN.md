@@ -248,7 +248,7 @@ Milestone 5 executes full quality gates and records deterministic evidence.
 
 ### Concrete Steps
 
-Run all commands from `/workspaces/feat-cmd-change`.
+Run all commands from `/workspaces/wavepeek`.
 
 1. Add/adjust contract tests first and update help text contracts.
 

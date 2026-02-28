@@ -33,7 +33,7 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 ### Value Extraction (→ v0.3.0)
 
 - `at` command (§3.2.4)
-- `change` command — unclocked + clocked modes (§3.2.5)
+- `change` command — unified `--when` trigger model (default `*`, edge/signal expressions) (§3.2.5)
 - Time parsing with mandatory units (`--from`, `--to`, `--time`)
 - Expanded container-provisioned fixtures for value-extraction scenarios
 

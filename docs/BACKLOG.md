@@ -34,15 +34,6 @@
 - Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
 - Close when all capture modes have deterministic contracts, CLI tests, and JSON representation parity with human semantics.
 
-### Add recursive signal listing (`signal --recursive`, `--max-depth`)
-
-- Extend `wavepeek signal` with `--recursive` to traverse nested scopes under the selected `--scope`.
-- Add `--max-depth <n>` to bound recursion depth in recursive mode, with deterministic traversal and ordering.
-- Keep default behavior unchanged: without `--recursive`, `signal` remains non-recursive.
-- In human mode, show paths relative to `--scope` when recursive; keep `--abs` for canonical absolute paths.
-- Keep JSON output contract stable (`path` remains canonical absolute path).
-- Preserve bounded output behavior with `--max` truncation warnings and integration coverage for recursive/non-recursive parity.
-
 ### Add explicit `unlimited` values for limit flags (`--max`, `--max-depth`)
 
 - Introduce `unlimited` as a literal limit value to request unbounded output without relying on magic large numbers.

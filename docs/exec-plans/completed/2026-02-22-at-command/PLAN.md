@@ -191,7 +191,7 @@ Edit `tests/cli_contract.rs` only after Milestone 3 behavior lands, removing `at
 
 ### Concrete Steps (Milestone 5 only)
 
-Run all commands from `/workspaces/feat-cmd-at`.
+Run all commands from `/workspaces/wavepeek`.
 
 1. Add tests first.
 

@@ -138,7 +138,7 @@ Milestone 5 adds E2E performance coverage for recursive `signal` in the existing
 
 ### Concrete Steps
 
-Run all commands from `/workspaces/feat-signal-recursive`.
+Run all commands from `/workspaces/wavepeek`.
 
 1. Add or update tests first (expected to fail before implementation).
 

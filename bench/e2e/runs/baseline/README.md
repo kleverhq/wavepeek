@@ -1,7 +1,7 @@
 # CLI E2E Bench Run: baseline
 
 - Generated at (UTC): 2026-02-27T19:56:44Z
-- Run directory: `/workspaces/feat-perf-harness-2/bench/e2e/runs/baseline`
+- Run directory: `/workspaces/wavepeek/bench/e2e/runs/baseline`
 - Hyperfine JSON files: 132
 
 ## at

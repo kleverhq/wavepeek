@@ -150,6 +150,19 @@ fn subcommand_help_uses_extended_prd_descriptions() {
 }
 
 #[test]
+fn signal_help_documents_recursive_and_max_depth_flags() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(["signal", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--recursive"))
+        .stdout(predicate::str::contains("--max-depth"))
+        .stdout(predicate::str::contains("--max-depth requires --recursive"));
+}
+
+#[test]
 fn unimplemented_subcommands_disclose_status_in_help() {
     let mut at_command = wavepeek_cmd();
     at_command

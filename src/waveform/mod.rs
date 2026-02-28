@@ -107,23 +107,27 @@ impl Waveform {
         let scope = &hierarchy[scope_ref];
         let mut signals = scope
             .vars(hierarchy)
-            .map(|var_ref| {
-                let var = &hierarchy[var_ref];
-                SignalEntry {
-                    name: var.name(hierarchy).to_string(),
-                    path: var.full_name(hierarchy),
-                    kind: var_type_alias(var.var_type()).to_string(),
-                    width: var.length(),
-                }
-            })
+            .map(|var_ref| signal_entry_from_var_ref(hierarchy, var_ref))
             .collect::<Vec<_>>();
 
-        signals.sort_by(|lhs, rhs| {
-            lhs.name
-                .cmp(&rhs.name)
-                .then_with(|| lhs.path.cmp(&rhs.path))
-        });
+        sort_signal_entries(&mut signals);
         Ok(signals)
+    }
+
+    pub fn signals_in_scope_recursive(
+        &self,
+        scope_path: &str,
+        max_depth: usize,
+    ) -> Result<Vec<SignalEntry>, WavepeekError> {
+        let hierarchy = self.inner.hierarchy();
+        let names: Vec<&str> = scope_path.split('.').collect();
+        let scope_ref = hierarchy.lookup_scope(&names).ok_or_else(|| {
+            WavepeekError::Scope(format!("scope '{scope_path}' not found in dump"))
+        })?;
+
+        let mut entries = Vec::new();
+        collect_scope_signals(hierarchy, scope_ref, 0, max_depth, &mut entries);
+        Ok(entries)
     }
 
     pub fn sample_signals_at_time(
@@ -359,6 +363,57 @@ fn collect_scope_entries(
     }
 }
 
+fn collect_scope_signals(
+    hierarchy: &wellen::Hierarchy,
+    scope_ref: ScopeRef,
+    depth: usize,
+    max_depth: usize,
+    entries: &mut Vec<SignalEntry>,
+) {
+    if depth > max_depth {
+        return;
+    }
+
+    let scope = &hierarchy[scope_ref];
+    let mut signals = scope
+        .vars(hierarchy)
+        .map(|var_ref| signal_entry_from_var_ref(hierarchy, var_ref))
+        .collect::<Vec<_>>();
+    sort_signal_entries(&mut signals);
+    entries.extend(signals);
+
+    if depth == max_depth {
+        return;
+    }
+
+    let mut children: Vec<ScopeRef> = scope.scopes(hierarchy).collect();
+    sort_scope_refs(hierarchy, &mut children);
+    for child in children {
+        collect_scope_signals(hierarchy, child, depth + 1, max_depth, entries);
+    }
+}
+
+fn signal_entry_from_var_ref(
+    hierarchy: &wellen::Hierarchy,
+    var_ref: wellen::VarRef,
+) -> SignalEntry {
+    let var = &hierarchy[var_ref];
+    SignalEntry {
+        name: var.name(hierarchy).to_string(),
+        path: var.full_name(hierarchy),
+        kind: var_type_alias(var.var_type()).to_string(),
+        width: var.length(),
+    }
+}
+
+fn sort_signal_entries(signals: &mut [SignalEntry]) {
+    signals.sort_by(|lhs, rhs| {
+        lhs.name
+            .cmp(&rhs.name)
+            .then_with(|| lhs.path.cmp(&rhs.path))
+    });
+}
+
 fn sort_scope_refs(hierarchy: &wellen::Hierarchy, scopes: &mut [ScopeRef]) {
     scopes.sort_by(|lhs, rhs| {
         let lhs_scope = &hierarchy[*lhs];
@@ -572,6 +627,8 @@ mod tests {
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
 
+    const RECURSIVE_TEST_VCD: &str = "$date\n  2026-02-28\n$end\n$version\n  wavepeek-recursive-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$scope module cpu $end\n$var wire 1 \" valid $end\n$scope module core $end\n$var wire 1 # execute $end\n$upscope $end\n$upscope $end\n$scope module mem $end\n$var wire 1 $ ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n0#\n0$\n#5\n1!\n1\"\n1#\n1$\n";
+
     #[test]
     fn open_and_read_metadata_from_vcd() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
@@ -651,6 +708,78 @@ mod tests {
             "error: scope: scope 'top.nope' not found in dump"
         );
         assert_eq!(error.exit_code(), 1);
+    }
+
+    #[test]
+    fn recursive_signals_in_scope_respect_depth_boundaries() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let depth_0 = waveform
+            .signals_in_scope_recursive("top", 0)
+            .expect("depth-0 lookup should succeed");
+        let depth_1 = waveform
+            .signals_in_scope_recursive("top", 1)
+            .expect("depth-1 lookup should succeed");
+        let depth_2 = waveform
+            .signals_in_scope_recursive("top", 2)
+            .expect("depth-2 lookup should succeed");
+
+        let depth_0_paths = depth_0
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        let depth_1_paths = depth_1
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        let depth_2_paths = depth_2
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+
+        assert_eq!(depth_0_paths, vec!["top.clk"]);
+        assert_eq!(
+            depth_1_paths,
+            vec!["top.clk", "top.cpu.valid", "top.mem.ready"]
+        );
+        assert_eq!(
+            depth_2_paths,
+            vec![
+                "top.clk",
+                "top.cpu.valid",
+                "top.cpu.core.execute",
+                "top.mem.ready"
+            ]
+        );
+    }
+
+    #[test]
+    fn recursive_signals_in_scope_are_deterministic_depth_first() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let first = waveform
+            .signals_in_scope_recursive("top", 2)
+            .expect("first recursive lookup should succeed");
+        let second = waveform
+            .signals_in_scope_recursive("top", 2)
+            .expect("second recursive lookup should succeed");
+
+        assert_eq!(first, second);
+        let ordered_paths = first
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<Vec<_>>();
+        assert_eq!(
+            ordered_paths,
+            vec![
+                "top.clk",
+                "top.cpu.valid",
+                "top.cpu.core.execute",
+                "top.mem.ready"
+            ]
+        );
     }
 
     #[test]

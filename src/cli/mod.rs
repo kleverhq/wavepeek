@@ -50,9 +50,12 @@ strict envelope mode."#
         about = "List signals in scope with metadata",
         long_about = r#"Lists signals within a specific scope with signal metadata.
 
-Listing is non-recursive, sorted by signal name, and bounded by --max.
+Default listing is non-recursive and bounded by --max.
 
-Use --abs to print full paths.
+Use --recursive to include nested child scopes.
+Use --max-depth to limit child-scope recursion depth (depth 0 includes only --scope); --max-depth requires --recursive.
+
+Use --abs to print canonical full paths.
 Use --json for strict envelope mode."#
     )]
     Signal(signal::SignalArgs),
@@ -308,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn signal_dispatch_keeps_scope_filter_and_max_args() {
+    fn signal_dispatch_keeps_recursive_and_max_depth_args() {
         let cli = Cli::parse_from([
             "wavepeek",
             "signal",
@@ -316,6 +319,9 @@ mod tests {
             "fixtures/sample.vcd",
             "--scope",
             "top.cpu",
+            "--recursive",
+            "--max-depth",
+            "3",
             "--max",
             "7",
             "--filter",
@@ -329,6 +335,8 @@ mod tests {
             EngineCommand::Signal(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
                 assert_eq!(args.scope, "top.cpu");
+                assert!(args.recursive);
+                assert_eq!(args.max_depth, Some(3));
                 assert_eq!(args.max, 7);
                 assert_eq!(args.filter, ".*clk.*");
                 assert!(args.abs);

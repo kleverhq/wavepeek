@@ -181,7 +181,7 @@ fn signal_display_name(entry: &crate::engine::signal::SignalEntry, abs: bool) ->
     if abs {
         entry.path.as_str()
     } else {
-        entry.name.as_str()
+        entry.display.as_str()
     }
 }
 

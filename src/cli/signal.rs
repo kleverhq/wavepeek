@@ -16,6 +16,12 @@ pub struct SignalArgs {
     /// Regex filter for signal name
     #[arg(long, default_value = ".*")]
     pub filter: String,
+    /// Recursively include nested child scopes
+    #[arg(long)]
+    pub recursive: bool,
+    /// Maximum recursion depth below --scope (requires --recursive)
+    #[arg(long)]
+    pub max_depth: Option<usize>,
     /// Show absolute signal paths
     #[arg(long)]
     pub abs: bool,

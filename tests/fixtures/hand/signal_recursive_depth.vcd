@@ -1,0 +1,33 @@
+$date
+  2026-02-28
+$end
+$version
+  wavepeek recursive signal fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var wire 1 " reset_n $end
+$scope module cpu $end
+$var wire 1 # valid $end
+$scope module core $end
+$var wire 1 $ execute $end
+$upscope $end
+$upscope $end
+$scope module mem $end
+$var wire 1 % ready $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+1"
+0#
+0$
+0%
+#5
+1!
+1#
+1$
+#10
+1%

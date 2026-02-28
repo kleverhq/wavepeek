@@ -34,17 +34,6 @@
 - Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
 - Close when all capture modes have deterministic contracts, CLI tests, and JSON representation parity with human semantics.
 
-### [Done] Add explicit `unlimited` values for limit flags (`--max`, `--max-depth`)
-
-- Status: completed in current `Unreleased` cycle (2026-02-28).
-- Introduce `unlimited` as a literal limit value to request unbounded output without relying on magic large numbers.
-- Scope includes `--max` across applicable commands (`scope`, `signal`, `change`, `when`) and `--max-depth` for recursive traversal commands.
-- Keep `--max 0` invalid (`error: args`) to avoid ambiguous semantics.
-- Preserve existing `--max-depth 0` behavior (depth limited to current/root level only).
-- Allow independent combinations such as `--max unlimited --max-depth 3` and `--max 100 --max-depth unlimited`.
-- Require explicit warning parity in human stderr and JSON `warnings` whenever any limit flag is set to `unlimited`.
-- Close when behavior, CLI help/docs/contracts, and integration tests are aligned across affected commands.
-
 ### Post-MVP: temporal property language extensions
 
 - Track follow-up evolution toward richer assertion/cover-like checks (temporal operators, implication, multi-event relations).

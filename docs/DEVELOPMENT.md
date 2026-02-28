@@ -80,6 +80,8 @@ For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib on
   - `python3 bench/e2e/perf.py list`
 - Run benchmark matrix (or filtered subset) and generate run-local report:
   - `python3 bench/e2e/perf.py run --filter '^info_'`
+- Resume an existing run directory and execute only missing tests:
+  - `python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/<run-id> --missing-only`
 - Regenerate report from existing run artifacts:
   - `python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>`
 - Compare revised run against golden run with regression threshold:
@@ -88,6 +90,8 @@ For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib on
 Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. Per-test `runs`/`warmup` values are configured there.
 
 Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
+
+`run` prints the resolved run directory at startup so resume/retry flows are explicit in logs.
 
 Each benchmark run writes two per-test artifacts plus a run-level report:
 

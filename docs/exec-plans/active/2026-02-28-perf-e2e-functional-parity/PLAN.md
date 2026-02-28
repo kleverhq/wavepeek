@@ -31,6 +31,7 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 - [x] (2026-02-28 12:50Z) Implemented functional capture in `run`, functional marker column in `run --compare`/`report --compare`, and strict functional checks in `compare`.
 - [x] (2026-02-28 13:03Z) Updated benchmark docs and passed validation gates (`make check`, `make ci`).
 - [x] (2026-02-28 13:28Z) Applied updated product rule: removed warning-only inventory subcommand, compare parity by `data` only, keep emoji markers with `E`/`D` status suffixes, and stop forcing `data` to list type.
+- [x] (2026-02-28 19:45Z) Added `run --missing-only` resume mode: after name filtering, run executes only tests without complete artifacts in target run directory and prints skip messages plus resolved run path.
 
 ## Surprises & Discoveries
 
@@ -81,6 +82,8 @@ Implementation outcome: benchmark harness now emits dual artifacts per test (`.h
 Validation outcome: targeted smoke (`run`, `run --compare`, `compare`) succeeded with release binary, and repository gates `make check` + `make ci` passed.
 
 Retrospective: adding lightweight Python unit tests for artifact and functional helpers reduced risk in compare error handling and kept marker semantics (`✅`, `✅E`, `⚠️D`, `?`) explicit.
+
+Retrospective update: resumable execution with `--missing-only` removes friction for interrupted long runs and avoids unnecessary re-execution when artifacts already exist.
 
 ## Context and Orientation
 
@@ -216,3 +219,4 @@ Revision Note: 2026-02-28 / OpenCode - Incorporated review-pass fixes: determini
 Revision Note: 2026-02-28 / OpenCode - Applied user clarifications: keep `run` non-blocking, drop legacy run compatibility (fresh baseline regeneration), and make compare tolerant to unmatched tests by warning instead of failing.
 Revision Note: 2026-02-28 / OpenCode - Implemented milestones end-to-end: moved benchmark breadcrumbs to `bench/`, split artifact IO into `.hyperfine.json`/`.wavepeek.json`, added functional capture + strict compare semantics, corrected repo root resolution after harness move, and validated with smoke runs plus `make check`/`make ci`.
 Revision Note: 2026-02-28 / OpenCode - Updated scope per product decision: removed warning-only inventory subcommand from harness/docs, changed parity checks to compare `data` only (ignore `warnings`), kept emoji-based functional markers with `E`/`D` suffixes, and fixed payload validation to allow command-shaped `data` (object or array).
+Revision Note: 2026-02-28 / OpenCode - Added resumable benchmark execution mode `run --missing-only`, which skips tests with existing `<test>.hyperfine.json` and `<test>.wavepeek.json` artifacts, prints skip diagnostics, and always prints resolved run directory for retry visibility.

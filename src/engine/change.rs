@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
@@ -12,7 +12,7 @@ use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions}
 use crate::error::WavepeekError;
 use crate::expr::{EventKind, EventTerm, parse_event_expr};
 use crate::waveform::{
-    EdgeClassification, SampledSignalState, Waveform, classify_edge,
+    EdgeClassification, ResolvedSignal, SampledSignalState, Waveform, classify_edge,
     should_emit_delta_and_update_baseline,
 };
 
@@ -55,23 +55,29 @@ struct ResolvedEventTerm {
 
 #[derive(Default)]
 struct SampleCache {
-    entries: HashMap<(String, u64), SampledSignalState>,
+    entries: HashMap<(wellen::SignalRef, u64), SampledSignalState>,
+    requested_batches: HashMap<u64, Vec<SampledSignalState>>,
 }
 
 impl SampleCache {
     fn sample(
         &mut self,
         waveform: &mut Waveform,
+        resolved_by_path: &HashMap<String, ResolvedSignal>,
         path: &str,
         raw_time: u64,
     ) -> Result<SampledSignalState, WavepeekError> {
-        let key = (path.to_string(), raw_time);
+        let resolved = resolved_by_path.get(path).ok_or_else(|| {
+            WavepeekError::Internal(format!("internal resolved signal is missing for '{path}'"))
+        })?;
+
+        let key = (resolved.signal_ref, raw_time);
         if let Some(existing) = self.entries.get(&key) {
             return Ok(existing.clone());
         }
 
         let sampled = waveform
-            .sample_signals_at_time_optional(&[path.to_string()], raw_time)?
+            .sample_resolved_optional(std::slice::from_ref(resolved), raw_time)?
             .pop()
             .ok_or_else(|| {
                 WavepeekError::Internal(
@@ -80,6 +86,27 @@ impl SampleCache {
             })?;
 
         self.entries.insert(key, sampled.clone());
+        Ok(sampled)
+    }
+
+    fn sample_requested_batch(
+        &mut self,
+        waveform: &mut Waveform,
+        resolved: &[ResolvedSignal],
+        raw_time: u64,
+    ) -> Result<Vec<SampledSignalState>, WavepeekError> {
+        if let Some(existing) = self.requested_batches.get(&raw_time) {
+            return Ok(existing.clone());
+        }
+
+        let sampled = waveform.sample_resolved_optional(resolved, raw_time)?;
+        for (resolved_signal, sampled_signal) in resolved.iter().zip(sampled.iter()) {
+            self.entries.insert(
+                (resolved_signal.signal_ref, raw_time),
+                sampled_signal.clone(),
+            );
+        }
+        self.requested_batches.insert(raw_time, sampled.clone());
         Ok(sampled)
     }
 }
@@ -178,38 +205,96 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     }
 
     let baseline_raw = from_raw;
-    let timestamps = waveform.timestamps_raw();
+    let requested_paths_owned = requested_signals
+        .iter()
+        .map(|signal| signal.path.clone())
+        .collect::<Vec<_>>();
     let requested_paths = requested_signals
         .iter()
         .map(|signal| signal.path.as_str())
         .collect::<Vec<_>>();
+    let requested_resolved = waveform.resolve_signals(&requested_paths_owned)?;
+
+    let mut resolved_by_path = HashMap::new();
+    for signal in &requested_resolved {
+        resolved_by_path.insert(signal.path.clone(), signal.clone());
+    }
+
+    let unresolved_event_paths = event_signal_paths
+        .iter()
+        .filter(|path| !resolved_by_path.contains_key(path.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    if !unresolved_event_paths.is_empty() {
+        let extra_resolved = waveform.resolve_signals(unresolved_event_paths.as_slice())?;
+        for signal in extra_resolved {
+            resolved_by_path.insert(signal.path.clone(), signal);
+        }
+    }
+
+    let mut candidate_resolved = Vec::new();
+    if resolved_event_terms
+        .iter()
+        .any(|term| matches!(term.event, ResolvedEventKind::AnyTracked))
+    {
+        candidate_resolved.extend(requested_resolved.iter().cloned());
+    }
+    for path in &event_signal_paths {
+        if let Some(signal) = resolved_by_path.get(path.as_str()) {
+            candidate_resolved.push(signal.clone());
+        }
+    }
+    let mut seen = HashSet::new();
+    candidate_resolved.retain(|signal| seen.insert(signal.signal_ref));
+
+    let candidate_times = waveform.collect_change_times(&candidate_resolved, from_raw, to_raw)?;
+    let candidate_schedule =
+        build_candidate_schedule(waveform.timestamps_raw_slice(), &candidate_times)?;
+    let requested_index_by_path =
+        requested_resolved
+            .iter()
+            .enumerate()
+            .fold(HashMap::new(), |mut acc, (index, signal)| {
+                acc.entry(signal.path.clone()).or_insert(index);
+                acc
+            });
 
     let mut sample_cache = SampleCache::default();
-
-    let mut previous_sampled_values = requested_paths
-        .iter()
-        .map(|path| {
-            sample_cache
-                .sample(&mut waveform, path, baseline_raw)
-                .map(|sample| sample.bits)
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
+    sample_cache.sample_requested_batch(&mut waveform, &requested_resolved, baseline_raw)?;
     for path in &event_signal_paths {
-        sample_cache.sample(&mut waveform, path.as_str(), baseline_raw)?;
+        sample_cache.sample(
+            &mut waveform,
+            &resolved_by_path,
+            path.as_str(),
+            baseline_raw,
+        )?;
     }
 
     let mut snapshots = Vec::new();
     let mut truncated = false;
-    for (index, timestamp) in timestamps.iter().enumerate() {
-        if *timestamp < from_raw || *timestamp > to_raw {
-            continue;
-        }
-
-        let previous_timestamp = if index == 0 {
-            None
+    for (timestamp, previous_timestamp) in candidate_schedule {
+        let current_samples =
+            sample_cache.sample_requested_batch(&mut waveform, &requested_resolved, timestamp)?;
+        let previous_samples = if let Some(previous) = previous_timestamp {
+            sample_cache.sample_requested_batch(&mut waveform, &requested_resolved, previous)?
         } else {
-            Some(timestamps[index - 1])
+            requested_resolved
+                .iter()
+                .map(|signal| SampledSignalState {
+                    path: signal.path.clone(),
+                    width: signal.width,
+                    bits: None,
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let event_eval = EventEvaluation {
+            resolved_by_path: &resolved_by_path,
+            requested_index_by_path: &requested_index_by_path,
+            current_requested: current_samples.as_slice(),
+            previous_requested: previous_samples.as_slice(),
+            previous_timestamp,
+            timestamp,
         };
 
         let event_fired = resolved_event_terms.iter().try_fold(false, |fired, term| {
@@ -222,26 +307,25 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
                 &mut sample_cache,
                 term,
                 requested_paths.as_slice(),
-                previous_timestamp,
-                *timestamp,
+                &event_eval,
             )
         })?;
 
-        if *timestamp <= baseline_raw {
+        if timestamp <= baseline_raw {
             continue;
         }
 
-        let current_samples = requested_paths
+        let mut previous_values = previous_samples
             .iter()
-            .map(|path| sample_cache.sample(&mut waveform, path, *timestamp))
-            .collect::<Result<Vec<_>, _>>()?;
+            .map(|sample| sample.bits.clone())
+            .collect::<Vec<_>>();
         let current_values = current_samples
             .iter()
             .map(|sample| sample.bits.clone())
             .collect::<Vec<_>>();
 
         let should_emit =
-            should_emit_delta_and_update_baseline(&mut previous_sampled_values, &current_values);
+            should_emit_delta_and_update_baseline(&mut previous_values, &current_values);
         if !event_fired || !should_emit {
             continue;
         }
@@ -272,7 +356,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             .collect::<Result<Vec<_>, WavepeekError>>()?;
 
         snapshots.push(ChangeSnapshot {
-            time: format_raw_timestamp(*timestamp, dump_tick)?,
+            time: format_raw_timestamp(timestamp, dump_tick)?,
             signals,
         });
     }
@@ -408,102 +492,123 @@ fn resolve_token_to_path(token: &str, scope: Option<&str>) -> Result<String, Wav
     }
 }
 
+fn build_candidate_schedule(
+    timestamps: &[u64],
+    candidate_times: &[u64],
+) -> Result<Vec<(u64, Option<u64>)>, WavepeekError> {
+    candidate_times
+        .iter()
+        .map(|timestamp| {
+            let index = timestamps.binary_search(timestamp).map_err(|_| {
+                WavepeekError::Internal(format!(
+                    "candidate timestamp '{timestamp}' is missing from waveform time table"
+                ))
+            })?;
+            let previous = if index == 0 {
+                None
+            } else {
+                Some(timestamps[index - 1])
+            };
+            Ok((*timestamp, previous))
+        })
+        .collect()
+}
+
+struct EventEvaluation<'a> {
+    resolved_by_path: &'a HashMap<String, ResolvedSignal>,
+    requested_index_by_path: &'a HashMap<String, usize>,
+    current_requested: &'a [SampledSignalState],
+    previous_requested: &'a [SampledSignalState],
+    previous_timestamp: Option<u64>,
+    timestamp: u64,
+}
+
 fn evaluate_event_term(
     waveform: &mut Waveform,
     cache: &mut SampleCache,
     term: &ResolvedEventTerm,
     tracked_paths: &[&str],
-    previous_timestamp: Option<u64>,
-    timestamp: u64,
+    eval: &EventEvaluation<'_>,
 ) -> Result<bool, WavepeekError> {
     match &term.event {
         ResolvedEventKind::AnyTracked => {
             for path in tracked_paths {
-                if signal_changed(waveform, cache, path, previous_timestamp, timestamp)? {
+                let Some(&index) = eval.requested_index_by_path.get(*path) else {
+                    return Err(WavepeekError::Internal(format!(
+                        "tracked signal '{path}' is missing from requested sample map"
+                    )));
+                };
+                if eval.current_requested[index].bits != eval.previous_requested[index].bits {
                     return Ok(true);
                 }
             }
             Ok(false)
         }
-        ResolvedEventKind::AnyChange(path) => signal_changed(
-            waveform,
-            cache,
-            path.as_str(),
-            previous_timestamp,
-            timestamp,
-        ),
+        ResolvedEventKind::AnyChange(path) => {
+            let (previous_bits, current_bits) =
+                sample_event_bits(waveform, cache, path.as_str(), eval)?;
+            Ok(current_bits != previous_bits)
+        }
         ResolvedEventKind::Posedge(path) => {
-            let edge = signal_edge(
-                waveform,
-                cache,
-                path.as_str(),
-                previous_timestamp,
-                timestamp,
-            )?;
+            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
             Ok(edge.posedge)
         }
         ResolvedEventKind::Negedge(path) => {
-            let edge = signal_edge(
-                waveform,
-                cache,
-                path.as_str(),
-                previous_timestamp,
-                timestamp,
-            )?;
+            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
             Ok(edge.negedge)
         }
         ResolvedEventKind::Edge(path) => {
-            let edge = signal_edge(
-                waveform,
-                cache,
-                path.as_str(),
-                previous_timestamp,
-                timestamp,
-            )?;
+            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
             Ok(edge.edge())
         }
     }
 }
 
-fn signal_changed(
+fn sample_event_bits(
     waveform: &mut Waveform,
     cache: &mut SampleCache,
     path: &str,
-    previous_timestamp: Option<u64>,
-    timestamp: u64,
-) -> Result<bool, WavepeekError> {
-    let current = cache.sample(waveform, path, timestamp)?;
-    let previous = previous_timestamp
-        .map(|previous_timestamp| cache.sample(waveform, path, previous_timestamp))
+    eval: &EventEvaluation<'_>,
+) -> Result<(Option<String>, Option<String>), WavepeekError> {
+    if let Some(&index) = eval.requested_index_by_path.get(path) {
+        return Ok((
+            eval.previous_requested[index].bits.clone(),
+            eval.current_requested[index].bits.clone(),
+        ));
+    }
+
+    let current = cache.sample(waveform, eval.resolved_by_path, path, eval.timestamp)?;
+    let previous = eval
+        .previous_timestamp
+        .map(|previous_timestamp| {
+            cache.sample(waveform, eval.resolved_by_path, path, previous_timestamp)
+        })
         .transpose()?;
 
-    let previous_bits = previous.and_then(|sample| sample.bits);
-    Ok(current.bits != previous_bits)
+    Ok((previous.and_then(|sample| sample.bits), current.bits))
 }
 
 fn signal_edge(
     waveform: &mut Waveform,
     cache: &mut SampleCache,
     path: &str,
-    previous_timestamp: Option<u64>,
-    timestamp: u64,
+    eval: &EventEvaluation<'_>,
 ) -> Result<EdgeClassification, WavepeekError> {
-    let Some(previous_timestamp) = previous_timestamp else {
+    let Some(_) = eval.previous_timestamp else {
         return Ok(EdgeClassification {
             posedge: false,
             negedge: false,
         });
     };
 
-    let previous = cache.sample(waveform, path, previous_timestamp)?;
-    let current = cache.sample(waveform, path, timestamp)?;
-    let Some(previous_bits) = previous.bits else {
+    let (previous_bits, current_bits) = sample_event_bits(waveform, cache, path, eval)?;
+    let Some(previous_bits) = previous_bits else {
         return Ok(EdgeClassification {
             posedge: false,
             negedge: false,
         });
     };
-    let Some(current_bits) = current.bits else {
+    let Some(current_bits) = current_bits else {
         return Ok(EdgeClassification {
             posedge: false,
             negedge: false,

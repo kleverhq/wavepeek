@@ -6,7 +6,11 @@
 //! - No additional escaping or normalization pass is applied.
 
 use std::cmp::Ordering;
+use std::collections::BTreeSet;
+use std::collections::HashSet;
+use std::io::BufReader;
 use std::path::Path;
+use std::path::PathBuf;
 
 use wellen::{ScopeRef, ScopeType, SignalRef, Timescale, TimescaleUnit, VarType, simple};
 
@@ -15,6 +19,9 @@ use crate::error::WavepeekError;
 #[derive(Debug)]
 pub struct Waveform {
     inner: simple::Waveform,
+    source_path: PathBuf,
+    file_format: wellen::FileFormat,
+    loaded_signals: HashSet<SignalRef>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,6 +60,13 @@ pub struct SampledSignalState {
     pub bits: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedSignal {
+    pub path: String,
+    pub signal_ref: SignalRef,
+    pub width: u32,
+}
+
 impl Waveform {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
         if !path.exists() {
@@ -62,8 +76,20 @@ impl Waveform {
             )));
         }
 
+        let source_path = path.to_path_buf();
+        let file = std::fs::File::open(path).map_err(|error| {
+            WavepeekError::File(format!("cannot open '{}': {error}", path.display()))
+        })?;
+        let mut reader = BufReader::new(file);
+        let file_format = wellen::viewers::detect_file_format(&mut reader);
+
         let inner = simple::read(path).map_err(|error| map_wellen_error(path, error))?;
-        Ok(Self { inner })
+        Ok(Self {
+            inner,
+            source_path,
+            file_format,
+            loaded_signals: HashSet::new(),
+        })
     }
 
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
@@ -135,80 +161,51 @@ impl Waveform {
         canonical_paths: &[String],
         query_time_raw: u64,
     ) -> Result<Vec<SampledSignal>, WavepeekError> {
-        let time_table = self.inner.time_table();
-        let time_table_idx =
-            floor_time_table_index(time_table, query_time_raw).ok_or_else(|| {
-                WavepeekError::Internal("query time is before first dump timestamp".to_string())
-            })?;
-        let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
-            WavepeekError::Internal("time table index exceeds u32 range".to_string())
-        })?;
-
-        let hierarchy = self.inner.hierarchy();
-        let mut resolved = Vec::with_capacity(canonical_paths.len());
-        for path in canonical_paths {
-            let signal_ref = resolve_signal_ref(hierarchy, path.as_str())?;
-            resolved.push((path.clone(), signal_ref));
-        }
-
-        let signal_refs = resolved
-            .iter()
-            .map(|(_, signal_ref)| *signal_ref)
-            .collect::<Vec<_>>();
-        self.inner.load_signals(&signal_refs);
-
-        let mut sampled = Vec::with_capacity(resolved.len());
-        for (path, signal_ref) in resolved {
-            let signal = self.inner.get_signal(signal_ref).ok_or_else(|| {
-                WavepeekError::Internal(format!(
-                    "signal '{path}' could not be loaded from waveform backend"
-                ))
-            })?;
-
-            let offset = signal.get_offset(time_table_idx).ok_or_else(|| {
-                WavepeekError::Signal(format!(
-                    "signal '{path}' has no value at or before requested time"
-                ))
-            })?;
-            let value = signal.get_value_at(&offset, offset.elements - 1);
-
-            let bits = match value {
-                wellen::SignalValue::Event => String::new(),
-                wellen::SignalValue::Binary(_, _)
-                | wellen::SignalValue::FourValue(_, _)
-                | wellen::SignalValue::NineValue(_, _) => {
-                    value.to_bit_string().ok_or_else(|| {
-                        WavepeekError::Internal(format!(
-                            "failed to convert value for signal '{path}' to bit string"
-                        ))
-                    })?
-                }
-                wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
-                    return Err(WavepeekError::Signal(format!(
-                        "signal '{path}' has unsupported non-bit-vector encoding"
-                    )));
-                }
-            };
-
-            let width = value.bits().ok_or_else(|| {
-                WavepeekError::Signal(format!(
-                    "signal '{path}' has unsupported non-bit-vector encoding"
-                ))
-            })?;
-
-            sampled.push(SampledSignal { path, width, bits });
-        }
-
-        Ok(sampled)
+        let resolved = self.resolve_signals(canonical_paths)?;
+        let sampled = self.sample_resolved_optional(&resolved, query_time_raw)?;
+        sampled
+            .into_iter()
+            .map(|entry| {
+                let bits = entry.bits.ok_or_else(|| {
+                    WavepeekError::Signal(format!(
+                        "signal '{}' has no value at or before requested time",
+                        entry.path
+                    ))
+                })?;
+                Ok(SampledSignal {
+                    path: entry.path,
+                    width: entry.width,
+                    bits,
+                })
+            })
+            .collect()
     }
 
-    pub fn timestamps_raw(&self) -> Vec<u64> {
-        self.inner.time_table().to_vec()
+    pub fn timestamps_raw_slice(&self) -> &[u64] {
+        self.inner.time_table()
     }
 
-    pub fn sample_signals_at_time_optional(
-        &mut self,
+    pub fn resolve_signals(
+        &self,
         canonical_paths: &[String],
+    ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
+        let hierarchy = self.inner.hierarchy();
+        canonical_paths
+            .iter()
+            .map(|path| {
+                let (signal_ref, width) = resolve_signal_ref_with_width(hierarchy, path.as_str())?;
+                Ok(ResolvedSignal {
+                    path: path.clone(),
+                    signal_ref,
+                    width,
+                })
+            })
+            .collect()
+    }
+
+    pub fn sample_resolved_optional(
+        &mut self,
+        resolved: &[ResolvedSignal],
         query_time_raw: u64,
     ) -> Result<Vec<SampledSignalState>, WavepeekError> {
         let time_table = self.inner.time_table();
@@ -220,37 +217,31 @@ impl Waveform {
             WavepeekError::Internal("time table index exceeds u32 range".to_string())
         })?;
 
-        let hierarchy = self.inner.hierarchy();
-        let mut resolved = Vec::with_capacity(canonical_paths.len());
-        for path in canonical_paths {
-            let (signal_ref, width) = resolve_signal_ref_with_width(hierarchy, path.as_str())?;
-            resolved.push((path.clone(), signal_ref, width));
-        }
-
         let signal_refs = resolved
             .iter()
-            .map(|(_, signal_ref, _)| *signal_ref)
+            .map(|signal| signal.signal_ref)
             .collect::<Vec<_>>();
-        self.inner.load_signals(&signal_refs);
+        self.ensure_signals_loaded(&signal_refs);
 
         let mut sampled = Vec::with_capacity(resolved.len());
-        for (path, signal_ref, width) in resolved {
-            let signal = self.inner.get_signal(signal_ref).ok_or_else(|| {
+        for signal in resolved {
+            let loaded = self.inner.get_signal(signal.signal_ref).ok_or_else(|| {
                 WavepeekError::Internal(format!(
-                    "signal '{path}' could not be loaded from waveform backend"
+                    "signal '{}' could not be loaded from waveform backend",
+                    signal.path
                 ))
             })?;
 
-            let Some(offset) = signal.get_offset(time_table_idx) else {
+            let Some(offset) = loaded.get_offset(time_table_idx) else {
                 sampled.push(SampledSignalState {
-                    path,
-                    width,
+                    path: signal.path.clone(),
+                    width: signal.width,
                     bits: None,
                 });
                 continue;
             };
 
-            let value = signal.get_value_at(&offset, offset.elements - 1);
+            let value = loaded.get_value_at(&offset, offset.elements - 1);
             let bits = match value {
                 wellen::SignalValue::Event => Some(String::new()),
                 wellen::SignalValue::Binary(_, _)
@@ -258,21 +249,153 @@ impl Waveform {
                 | wellen::SignalValue::NineValue(_, _) => {
                     Some(value.to_bit_string().ok_or_else(|| {
                         WavepeekError::Internal(format!(
-                            "failed to convert value for signal '{path}' to bit string"
+                            "failed to convert value for signal '{}' to bit string",
+                            signal.path
                         ))
                     })?)
                 }
                 wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
                     return Err(WavepeekError::Signal(format!(
-                        "signal '{path}' has unsupported non-bit-vector encoding"
+                        "signal '{}' has unsupported non-bit-vector encoding",
+                        signal.path
                     )));
                 }
             };
 
-            sampled.push(SampledSignalState { path, width, bits });
+            sampled.push(SampledSignalState {
+                path: signal.path.clone(),
+                width: signal.width,
+                bits,
+            });
         }
 
         Ok(sampled)
+    }
+
+    pub fn collect_change_times(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if resolved.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let (start_idx, end_idx_exclusive) = {
+            let time_table = self.inner.time_table();
+            let Some(window) = time_window_indices(time_table, from_raw, to_raw) else {
+                return Ok(Vec::new());
+            };
+            window
+        };
+
+        let window_len = end_idx_exclusive.saturating_sub(start_idx);
+        let estimated_random_work = window_len.saturating_mul(resolved.len());
+        let stream_threshold = streaming_threshold_work();
+        if self.file_format == wellen::FileFormat::Fst
+            && estimated_random_work > stream_threshold
+            && let Ok(times) = self.collect_change_times_streaming(resolved, from_raw, to_raw)
+        {
+            return Ok(times);
+        }
+
+        let signal_refs = resolved
+            .iter()
+            .map(|signal| signal.signal_ref)
+            .collect::<Vec<_>>();
+        self.ensure_signals_loaded(&signal_refs);
+        let time_table = self.inner.time_table();
+
+        let mut changed = BTreeSet::new();
+        for signal in resolved {
+            let loaded = self.inner.get_signal(signal.signal_ref).ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "signal '{}' could not be loaded from waveform backend",
+                    signal.path
+                ))
+            })?;
+
+            let mut previous_offset = if start_idx == 0 {
+                None
+            } else {
+                let prev_idx = u32::try_from(start_idx - 1).map_err(|_| {
+                    WavepeekError::Internal("time table index exceeds u32 range".to_string())
+                })?;
+                loaded.get_offset(prev_idx)
+            };
+
+            for (idx, timestamp) in time_table
+                .iter()
+                .enumerate()
+                .take(end_idx_exclusive)
+                .skip(start_idx)
+            {
+                let current_idx = u32::try_from(idx).map_err(|_| {
+                    WavepeekError::Internal("time table index exceeds u32 range".to_string())
+                })?;
+                let current_offset = loaded.get_offset(current_idx);
+                if current_offset != previous_offset {
+                    changed.insert(*timestamp);
+                }
+                previous_offset = current_offset;
+            }
+        }
+
+        Ok(changed.into_iter().collect())
+    }
+
+    fn collect_change_times_streaming(
+        &self,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        let mut streaming = wellen::stream::read_from_file(
+            self.source_path.as_path(),
+            &wellen::LoadOptions::default(),
+        )
+        .map_err(|error| map_wellen_error(self.source_path.as_path(), error))?;
+
+        let signal_refs = resolved
+            .iter()
+            .map(|signal| {
+                resolve_signal_ref_with_width(streaming.hierarchy(), signal.path.as_str())
+                    .map(|(signal_ref, _)| signal_ref)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let filter = wellen::stream::Filter {
+            start: from_raw,
+            end: Some(to_raw),
+            signals: Some(signal_refs.as_slice()),
+        };
+
+        let mut changed = BTreeSet::new();
+        streaming
+            .stream(&filter, |time, _signal_ref, _value| {
+                changed.insert(time);
+            })
+            .map_err(|error| map_wellen_error(self.source_path.as_path(), error))?;
+
+        Ok(changed.into_iter().collect())
+    }
+
+    fn ensure_signals_loaded(&mut self, signal_refs: &[SignalRef]) {
+        if signal_refs.is_empty() {
+            return;
+        }
+
+        let to_load = signal_refs
+            .iter()
+            .copied()
+            .filter(|signal_ref| !self.loaded_signals.contains(signal_ref))
+            .collect::<Vec<_>>();
+        if to_load.is_empty() {
+            return;
+        }
+
+        self.inner.load_signals(&to_load);
+        self.loaded_signals.extend(to_load);
     }
 }
 
@@ -288,12 +411,32 @@ fn floor_time_table_index(time_table: &[u64], query_time_raw: u64) -> Option<usi
     }
 }
 
-fn resolve_signal_ref(
-    hierarchy: &wellen::Hierarchy,
-    canonical_path: &str,
-) -> Result<SignalRef, WavepeekError> {
-    let (signal_ref, _) = resolve_signal_ref_with_width(hierarchy, canonical_path)?;
-    Ok(signal_ref)
+fn time_window_indices(time_table: &[u64], from_raw: u64, to_raw: u64) -> Option<(usize, usize)> {
+    if time_table.is_empty() || from_raw > to_raw {
+        return None;
+    }
+
+    let start_idx = match time_table.binary_search(&from_raw) {
+        Ok(index) | Err(index) => index,
+    };
+    let end_idx_exclusive = match time_table.binary_search(&to_raw) {
+        Ok(index) => index.saturating_add(1),
+        Err(index) => index,
+    };
+
+    if start_idx >= end_idx_exclusive {
+        return None;
+    }
+
+    Some((start_idx, end_idx_exclusive))
+}
+
+fn streaming_threshold_work() -> usize {
+    const DEFAULT_THRESHOLD: usize = 20_000;
+    std::env::var("WAVEPEEK_CHANGE_STREAM_THRESHOLD")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .unwrap_or(DEFAULT_THRESHOLD)
 }
 
 fn resolve_signal_ref_with_width(

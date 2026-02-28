@@ -1281,7 +1281,63 @@
       }
     },
     {
+<<<<<<< HEAD
       "name": "change_scr1_signals_100_window_2000_trigger_any",
+=======
+      "name": "change_scr1_coremark_imem_axi_2sig_to_1000ps",
+      "category": "change",
+      "runs": 9,
+      "warmup": 2,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "1000ps",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "--signals",
+        "araddr,arvalid",
+        "--max",
+        "1000"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "signal_count": 2,
+        "window_to": "1000ps"
+      }
+    },
+    {
+      "name": "change_scr1_coremark_imem_axi_1sig_to_1000ps",
+      "category": "change",
+      "runs": 9,
+      "warmup": 2,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "1000ps",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "--signals",
+        "araddr",
+        "--max",
+        "1000"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "signal_count": 1,
+        "window_to": "1000ps"
+      }
+    },
+    {
+      "name": "change_scr1_signals_100_pos_50_window_2000_trigger_any",
+>>>>>>> 910b526 (perf(e2e): add dedicated coremark change baseline)
       "category": "change",
       "runs": 6,
       "warmup": 1,

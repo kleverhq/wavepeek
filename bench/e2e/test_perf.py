@@ -197,6 +197,16 @@ class PerfHelpersTest(unittest.TestCase):
             f"{perf.FUNCTIONAL_MATCH_MARKER}E",
         )
 
+    def test_report_functional_status_empty_object_data_match(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": {}, "warnings": ["a"]}},
+                {"t": {"data": {}, "warnings": ["b"]}},
+            ),
+            f"{perf.FUNCTIONAL_MATCH_MARKER}E",
+        )
+
     def test_report_functional_status_nonempty_data_match(self) -> None:
         self.assertEqual(
             perf.report_functional_status(

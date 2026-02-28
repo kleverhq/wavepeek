@@ -24,7 +24,7 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 
 - [x] (2026-02-28 12:20Z) Mapped current benchmark structure and confirmed that executable harness is in `bench/e2e`, while breadcrumb docs are still in `perf/`.
 - [x] (2026-02-28 12:20Z) Captured baseline behavior of `bench/e2e/perf.py`: `run` writes `<test>.json` timing artifacts and `compare` checks only mean regression.
-- [x] (2026-02-28 12:20Z) Drafted this ExecPlan with functional parity scope (`data` + `warnings`) and artifact naming migration.
+- [x] (2026-02-28 12:20Z) Drafted this ExecPlan with dual-artifact functional parity scope and artifact naming migration.
 - [x] (2026-02-28 12:46Z) Added benchmark-local breadcrumbs (`bench/AGENTS.md`, `bench/e2e/AGENTS.md`) and retired `perf/` breadcrumb files.
 - [x] (2026-02-28 12:34Z) Captured user clarifications: `run` stays non-blocking, old-run compatibility is not required, and compare must tolerate tests present only on one side.
 - [x] (2026-02-28 12:49Z) Extended harness artifact model and IO to split timing and functional outputs into `<test>.hyperfine.json` and `<test>.wavepeek.json` with explicit suffix parsing.
@@ -214,5 +214,5 @@ No new third-party dependencies are required.
 Revision Note: 2026-02-28 / OpenCode - Initial plan drafted to relocate benchmark breadcrumbs from `perf/` to `bench/`, add dual artifact export (`.hyperfine.json` + `.wavepeek.json`), enforce functional parity checks on `data`/`warnings`, and add warning-only `change` test inventory workflow.
 Revision Note: 2026-02-28 / OpenCode - Incorporated review-pass fixes: deterministic `--json` capture rule, explicit artifact name parsing rules, strict compare behavior for missing/invalid functional artifacts on matched tests, and expanded negative-path acceptance criteria.
 Revision Note: 2026-02-28 / OpenCode - Applied user clarifications: keep `run` non-blocking, drop legacy run compatibility (fresh baseline regeneration), and make compare tolerant to unmatched tests by warning instead of failing.
-Revision Note: 2026-02-28 / OpenCode - Implemented all milestones end-to-end: moved benchmark breadcrumbs to `bench/`, split artifact IO into `.hyperfine.json`/`.wavepeek.json`, added functional capture + strict compare semantics, documented warning-only inventory (`total=27`), corrected repo root resolution after harness move, and validated with smoke runs plus `make check`/`make ci`.
+Revision Note: 2026-02-28 / OpenCode - Implemented milestones end-to-end: moved benchmark breadcrumbs to `bench/`, split artifact IO into `.hyperfine.json`/`.wavepeek.json`, added functional capture + strict compare semantics, corrected repo root resolution after harness move, and validated with smoke runs plus `make check`/`make ci`.
 Revision Note: 2026-02-28 / OpenCode - Updated scope per product decision: removed warning-only inventory subcommand from harness/docs, changed parity checks to compare `data` only (ignore `warnings`), kept emoji-based functional markers with `E`/`D` suffixes, and fixed payload validation to allow command-shaped `data` (object or array).

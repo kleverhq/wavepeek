@@ -91,6 +91,8 @@ For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib on
 
 Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. Per-test `runs`/`warmup` values are configured there.
 
+For focused optimization campaigns, keep dedicated run directories under `bench/e2e/runs/` (for example, `change-stateless-golden`, `change-stateless-m2`, `change-stateless-m3`, `change-stateless-m4`, `change-stateless-final-matrix`) and compare against either the campaign golden run or shared `bench/e2e/runs/baseline` as appropriate.
+
 Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 
 `run` prints the resolved run directory at startup so resume/retry flows are explicit in logs.

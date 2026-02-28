@@ -356,10 +356,13 @@ but runtime evaluation of `logical_expr` is intentionally deferred and returns
 - Time tokens require explicit units and exact alignment to dump precision.
 - `--from` defines a baseline checkpoint: values are sampled/initialized at `--from` (or dump start when omitted), and no row is emitted at that exact timestamp.
 - Candidate timestamps come from `--when` inside inclusive `[--from, --to]`; rows can only be emitted for timestamps strictly greater than the baseline checkpoint.
+- Candidate evaluation is internally reduced to event-relevant timestamps (tracked/event signal change points) instead of scanning every dump timestamp, while preserving observable behavior.
 - Each emitted row is delta-only: emit only when sampled `--signals` changed relative to the last known sampled state strictly before that timestamp.
+- Delta comparison always uses sampled state strictly before the candidate timestamp in the underlying dump order (not merely before the previous emitted candidate).
 - If an event fires but sampled `--signals` did not change, no row is emitted.
 - Per-signal baseline initialization is lazy: missing prior sampled state is initialized at the timestamp and excluded from delta decision for that timestamp.
 - Edge detection uses previous value strictly before timestamp and SystemVerilog-style classification on LSB only, with nine-state values (`h/u/w/l/-`) normalized to `x`.
+- For FST dumps, implementation may route candidate-time discovery through `wellen::stream` filter pushdown (`start`, `end`, `signals`) for heavy windows while preserving stateless single-process execution and fallback behavior.
 - Default output: human-readable snapshot list.
 - Human rows are one line per snapshot: `@<time> <display_1>=<value_1> <display_2>=<value_2> ...`.
   `--abs` switches `<display_i>` from requested token to canonical path.

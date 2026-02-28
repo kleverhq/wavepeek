@@ -16,26 +16,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a new hyperfine-backed CLI E2E benchmark harness (`bench/e2e/perf.py`) with `run`/`list`/`report`/`compare` modes, a flat explicit test catalog (`bench/e2e/tests.json`), per-test JSON artifacts, and Markdown run reports.
 - Added recursive signal listing via `wavepeek signal --recursive` with optional `--max-depth`, deterministic depth-first traversal, depth-0 parity with non-recursive mode, and relative-path human rendering scoped to `--scope`.
 - Added recursive `signal` benchmark catalog coverage for SCR1 (`all`, `filter valid`, `max-depth 2`) in `bench/e2e/tests.json`.
-<<<<<<< HEAD
 - Added explicit `unlimited` literal support for `--max` (`scope`, `signal`, `change`, `when` parsing) and `--max-depth` (`scope`, recursive `signal`) with deterministic warning parity in human stderr and JSON envelopes.
 - Added CLI help contract integration coverage for top-level/subcommand parity (`-h == --help`), no-args parity with `--help`, and per-command self-descriptive guidance markers.
-=======
-- Added dedicated coremark `change` perf catalog entries (`change_scr1_coremark_imem_axi_1sig_to_1000ps`, `change_scr1_coremark_imem_axi_2sig_to_1000ps`) plus archived optimization campaign runs under `bench/e2e/runs/change-stateless-*`.
 - Added `tests/change_opt_equivalence.rs` and `tests/change_vcd_fst_parity.rs` to lock optimization invariants (strict previous-timestamp delta semantics) and VCD/FST parity for `change`.
->>>>>>> 58f0d9b (docs(change): record perf campaign outcomes)
 
 ### Changed
 - Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--when`/`--abs` behavior; `when` remains explicitly unimplemented.
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
 - Simplified `at` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
 - Updated JSON envelope `$schema` URLs from GitHub blob pages to `raw.githubusercontent.com` so schema links resolve as directly consumable raw JSON.
-<<<<<<< HEAD
 - Unified help ergonomics so `-h` and `--help` both render detailed help across all shipped commands; `wavepeek` with no args now follows the same render path as `wavepeek --help` and is byte-identical.
 - Expanded command help text to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes without requiring `docs/DESIGN.md` for day-to-day usage.
-=======
 - Accelerated `change` stateless execution by switching to resolved-handle sampling, persistent signal-load caching, timestamp-slice iteration, and candidate-timestamp reduction with strict pre-candidate baseline semantics.
 - Added an FST streaming-capable candidate-time path (`wellen::stream` filter pushdown with fallback heuristic) while preserving existing `change` contract behavior and output parity.
->>>>>>> 58f0d9b (docs(change): record perf campaign outcomes)
 
 ## [0.2.0] - 2026-02-20
 

@@ -84,7 +84,7 @@ impl Waveform {
         })
     }
 
-    pub fn scopes_depth_first(&self, max_depth: usize) -> Vec<ScopeEntry> {
+    pub fn scopes_depth_first(&self, max_depth: Option<usize>) -> Vec<ScopeEntry> {
         let hierarchy = self.inner.hierarchy();
         let mut roots: Vec<ScopeRef> = hierarchy.scopes().collect();
         sort_scope_refs(hierarchy, &mut roots);
@@ -117,7 +117,7 @@ impl Waveform {
     pub fn signals_in_scope_recursive(
         &self,
         scope_path: &str,
-        max_depth: usize,
+        max_depth: Option<usize>,
     ) -> Result<Vec<SignalEntry>, WavepeekError> {
         let hierarchy = self.inner.hierarchy();
         let names: Vec<&str> = scope_path.split('.').collect();
@@ -338,10 +338,12 @@ fn collect_scope_entries(
     hierarchy: &wellen::Hierarchy,
     scope_ref: ScopeRef,
     depth: usize,
-    max_depth: usize,
+    max_depth: Option<usize>,
     entries: &mut Vec<ScopeEntry>,
 ) {
-    if depth > max_depth {
+    if let Some(max_depth) = max_depth
+        && depth > max_depth
+    {
         return;
     }
 
@@ -352,7 +354,7 @@ fn collect_scope_entries(
         kind: scope_type_alias(scope.scope_type()).to_string(),
     });
 
-    if depth == max_depth {
+    if max_depth == Some(depth) {
         return;
     }
 
@@ -367,10 +369,12 @@ fn collect_scope_signals(
     hierarchy: &wellen::Hierarchy,
     scope_ref: ScopeRef,
     depth: usize,
-    max_depth: usize,
+    max_depth: Option<usize>,
     entries: &mut Vec<SignalEntry>,
 ) {
-    if depth > max_depth {
+    if let Some(max_depth) = max_depth
+        && depth > max_depth
+    {
         return;
     }
 
@@ -382,7 +386,7 @@ fn collect_scope_signals(
     sort_signal_entries(&mut signals);
     entries.extend(signals);
 
-    if depth == max_depth {
+    if max_depth == Some(depth) {
         return;
     }
 
@@ -646,7 +650,7 @@ mod tests {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-        let scopes = waveform.scopes_depth_first(5);
+        let scopes = waveform.scopes_depth_first(Some(5));
 
         assert_eq!(
             scopes,
@@ -716,13 +720,13 @@ mod tests {
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
         let depth_0 = waveform
-            .signals_in_scope_recursive("top", 0)
+            .signals_in_scope_recursive("top", Some(0))
             .expect("depth-0 lookup should succeed");
         let depth_1 = waveform
-            .signals_in_scope_recursive("top", 1)
+            .signals_in_scope_recursive("top", Some(1))
             .expect("depth-1 lookup should succeed");
         let depth_2 = waveform
-            .signals_in_scope_recursive("top", 2)
+            .signals_in_scope_recursive("top", Some(2))
             .expect("depth-2 lookup should succeed");
 
         let depth_0_paths = depth_0
@@ -760,10 +764,10 @@ mod tests {
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
         let first = waveform
-            .signals_in_scope_recursive("top", 2)
+            .signals_in_scope_recursive("top", Some(2))
             .expect("first recursive lookup should succeed");
         let second = waveform
-            .signals_in_scope_recursive("top", 2)
+            .signals_in_scope_recursive("top", Some(2))
             .expect("second recursive lookup should succeed");
 
         assert_eq!(first, second);

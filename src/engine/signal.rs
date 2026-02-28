@@ -1,3 +1,4 @@
+use crate::cli::limits::LimitArg;
 use crate::cli::signal::SignalArgs;
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
@@ -30,7 +31,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         json,
     } = args;
 
-    if max == 0 {
+    if max == LimitArg::Numeric(0) {
         return Err(WavepeekError::Args(
             "--max must be greater than 0. See 'wavepeek signal --help'.".to_string(),
         ));
@@ -49,7 +50,19 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         ))
     })?;
 
-    let effective_max_depth = max_depth.unwrap_or(DEFAULT_RECURSIVE_MAX_DEPTH);
+    let mut warnings = Vec::new();
+    if max.is_unlimited() {
+        warnings.push("limit disabled: --max=unlimited".to_string());
+    }
+    if max_depth == Some(LimitArg::Unlimited) {
+        warnings.push("limit disabled: --max-depth=unlimited".to_string());
+    }
+
+    let effective_max_depth = match max_depth {
+        Some(LimitArg::Numeric(value)) => Some(value),
+        Some(LimitArg::Unlimited) => None,
+        None => Some(DEFAULT_RECURSIVE_MAX_DEPTH),
+    };
     let scope_prefix = format!("{scope}.");
 
     let waveform = Waveform::open(waves.as_path())?;
@@ -75,12 +88,13 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         })
         .collect::<Vec<_>>();
 
-    let mut warnings = Vec::new();
-    if entries.len() > max {
-        entries.truncate(max);
+    if let Some(max_entries) = max.numeric()
+        && entries.len() > max_entries
+    {
+        entries.truncate(max_entries);
         warnings.push(format!(
             "truncated output to {} entries (use --max to increase limit)",
-            max
+            max_entries
         ));
     }
 

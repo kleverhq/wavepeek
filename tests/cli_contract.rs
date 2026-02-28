@@ -163,6 +163,66 @@ fn signal_help_documents_recursive_and_max_depth_flags() {
 }
 
 #[test]
+fn help_documents_unlimited_limit_literals_for_all_affected_commands() {
+    wavepeek_cmd()
+        .args(["scope", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--max"))
+        .stdout(predicate::str::contains("--max-depth"))
+        .stdout(predicate::str::contains("unlimited"));
+
+    wavepeek_cmd()
+        .args(["signal", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--max"))
+        .stdout(predicate::str::contains("--max-depth"))
+        .stdout(predicate::str::contains("unlimited"));
+
+    wavepeek_cmd()
+        .args(["change", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--max"))
+        .stdout(predicate::str::contains("unlimited"));
+
+    wavepeek_cmd()
+        .args(["when", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--max"))
+        .stdout(predicate::str::contains("unlimited"));
+}
+
+#[test]
+fn when_accepts_unlimited_max_in_cli_then_fails_as_unimplemented() {
+    let fixture = common::fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "when",
+            "--waves",
+            fixture.as_str(),
+            "--clk",
+            "top.clk",
+            "--cond",
+            "1",
+            "--max",
+            "unlimited",
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: unimplemented:"))
+        .stderr(predicate::str::contains("error: args:").not())
+        .stderr(predicate::str::contains(
+            "`when` command execution is not implemented yet",
+        ));
+}
+
+#[test]
 fn unimplemented_subcommands_disclose_status_in_help() {
     let mut at_command = wavepeek_cmd();
     at_command

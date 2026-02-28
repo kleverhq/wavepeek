@@ -1,6 +1,7 @@
 pub mod at;
 pub mod change;
 pub mod info;
+pub mod limits;
 pub mod schema;
 pub mod scope;
 pub mod signal;
@@ -41,6 +42,7 @@ Requires --waves <file>. Use --json for strict envelope mode."#
 traversing the hierarchy.
 
 Traversal is deterministic and output is bounded by --max and --max-depth.
+Use --max unlimited or --max-depth unlimited to disable those limits explicitly.
 
 Use --tree for visual hierarchy rendering. Use --json for
 strict envelope mode."#
@@ -51,9 +53,11 @@ strict envelope mode."#
         long_about = r#"Lists signals within a specific scope with signal metadata.
 
 Default listing is non-recursive and bounded by --max.
+Use --max unlimited to disable row truncation.
 
 Use --recursive to include nested child scopes.
 Use --max-depth to limit child-scope recursion depth (depth 0 includes only --scope); --max-depth requires --recursive.
+Use --max-depth unlimited to disable recursion-depth truncation.
 
 Use --abs to print canonical full paths.
 Use --json for strict envelope mode."#
@@ -78,6 +82,7 @@ Uses one event-trigger expression model via --when for wildcard, named,
 edge, and union trigger forms. When omitted, --when defaults to *.
 
 Rows are emitted only when sampled --signals values changed.
+Use --max unlimited to disable row truncation.
 
 Use --abs to print canonical paths in human mode.
 Use --json for strict envelope mode."#
@@ -89,6 +94,7 @@ Use --json for strict envelope mode."#
 
 The condition is evaluated on each posedge of --clk and can return all,
 first N, or last N matches.
+Use --max unlimited to disable match-count truncation when no qualifier is used.
 
 Execution is not implemented yet.
 
@@ -254,6 +260,8 @@ mod tests {
 
     use clap::Parser;
 
+    use crate::cli::limits::LimitArg;
+
     use super::{
         Cli, EngineCommand, clap_error_detail, help_hint_for_rendered_clap_error,
         into_engine_command, normalize_clap_error,
@@ -300,11 +308,35 @@ mod tests {
         match command {
             EngineCommand::Scope(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
-                assert_eq!(args.max, 12);
-                assert_eq!(args.max_depth, 3);
+                assert_eq!(args.max, LimitArg::Numeric(12));
+                assert_eq!(args.max_depth, LimitArg::Numeric(3));
                 assert_eq!(args.filter, "^top\\..*");
                 assert!(args.tree);
                 assert!(args.json);
+            }
+            other => panic!("expected scope command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn scope_dispatch_accepts_unlimited_limit_literals() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "scope",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--max",
+            "unlimited",
+            "--max-depth",
+            "unlimited",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::Scope(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.max, LimitArg::Unlimited);
+                assert_eq!(args.max_depth, LimitArg::Unlimited);
             }
             other => panic!("expected scope command, got {other:?}"),
         }
@@ -336,8 +368,8 @@ mod tests {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
                 assert_eq!(args.scope, "top.cpu");
                 assert!(args.recursive);
-                assert_eq!(args.max_depth, Some(3));
-                assert_eq!(args.max, 7);
+                assert_eq!(args.max_depth, Some(LimitArg::Numeric(3)));
+                assert_eq!(args.max, LimitArg::Numeric(7));
                 assert_eq!(args.filter, ".*clk.*");
                 assert!(args.abs);
                 assert!(args.json);
@@ -409,11 +441,37 @@ mod tests {
                 assert_eq!(args.scope.as_deref(), Some("top"));
                 assert_eq!(args.signals, vec!["clk", "data"]);
                 assert_eq!(args.when.as_deref(), Some("posedge clk"));
-                assert_eq!(args.max, 12);
+                assert_eq!(args.max, LimitArg::Numeric(12));
                 assert!(args.abs);
                 assert!(args.json);
             }
             other => panic!("expected change command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn when_dispatch_parses_unlimited_max_literal() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "when",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--clk",
+            "top.clk",
+            "--cond",
+            "1",
+            "--max",
+            "unlimited",
+        ]);
+
+        let command = into_engine_command(cli.command);
+        match command {
+            EngineCommand::When(args) => {
+                assert_eq!(args.max, Some(LimitArg::Unlimited));
+                assert_eq!(args.clk, "top.clk");
+                assert_eq!(args.cond, "1");
+            }
+            other => panic!("expected when command, got {other:?}"),
         }
     }
 

@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::cli::limits::LimitArg;
+
 #[derive(Debug, Args)]
 pub struct ChangeArgs {
     /// Path to VCD/FST waveform file
@@ -22,9 +24,9 @@ pub struct ChangeArgs {
     /// Event trigger expression (defaults to *)
     #[arg(long)]
     pub when: Option<String>,
-    /// Maximum number of snapshot rows
-    #[arg(long, default_value_t = 50)]
-    pub max: usize,
+    /// Maximum number of snapshot rows (`unlimited` disables this limit)
+    #[arg(long, default_value = "50")]
+    pub max: LimitArg,
     /// Print canonical paths in human output
     #[arg(long)]
     pub abs: bool,

@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::cli::limits::LimitArg;
+
 #[derive(Debug, Args)]
 pub struct SignalArgs {
     /// Path to VCD/FST waveform file
@@ -10,18 +12,18 @@ pub struct SignalArgs {
     /// Exact scope path (for example, top.cpu)
     #[arg(long)]
     pub scope: String,
-    /// Maximum number of entries in output
-    #[arg(long, default_value_t = 50)]
-    pub max: usize,
+    /// Maximum number of entries in output (`unlimited` disables this limit)
+    #[arg(long, default_value = "50")]
+    pub max: LimitArg,
     /// Regex filter for signal name
     #[arg(long, default_value = ".*")]
     pub filter: String,
     /// Recursively include nested child scopes
     #[arg(long)]
     pub recursive: bool,
-    /// Maximum recursion depth below --scope (requires --recursive)
+    /// Maximum recursion depth below --scope (requires --recursive, `unlimited` disables this limit)
     #[arg(long)]
-    pub max_depth: Option<usize>,
+    pub max_depth: Option<LimitArg>,
     /// Show absolute signal paths
     #[arg(long)]
     pub abs: bool,

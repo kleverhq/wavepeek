@@ -200,6 +200,58 @@ fn signal_emits_truncation_warning_when_max_is_hit() {
 }
 
 #[test]
+fn signal_unlimited_max_emits_warning_in_json_and_human_modes() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--max",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("json run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--max",
+            "unlimited",
+        ])
+        .output()
+        .expect("human run should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+
+    let value: Value = serde_json::from_slice(&json_output.stdout).expect("json should parse");
+    assert_eq!(
+        value["warnings"],
+        json!(["limit disabled: --max=unlimited"])
+    );
+    assert_eq!(
+        value["data"]
+            .as_array()
+            .expect("data should be array")
+            .len(),
+        3
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning: limit disabled: --max=unlimited"
+    );
+}
+
+#[test]
 fn signal_scope_not_found_is_scope_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
@@ -494,6 +546,148 @@ fn signal_max_depth_requires_recursive_flag() {
             "error: args: --max-depth requires --recursive",
         ))
         .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
+}
+
+#[test]
+fn signal_rejects_zero_max_with_args_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--max",
+            "0",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: --max must be greater than 0.",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
+}
+
+#[test]
+fn signal_recursive_unlimited_max_depth_emits_warning() {
+    let fixture = fixture_path("signal_recursive_depth.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--recursive",
+            "--max-depth",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("recursive run should execute");
+
+    assert!(output.status.success());
+
+    let value: Value = serde_json::from_slice(&output.stdout).expect("json should parse");
+    let paths = value["data"]
+        .as_array()
+        .expect("data should be array")
+        .iter()
+        .map(|entry| {
+            entry["path"]
+                .as_str()
+                .expect("path should be string")
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+
+    assert!(paths.contains(&"top.cpu.core.execute".to_string()));
+    assert_eq!(
+        value["warnings"],
+        json!(["limit disabled: --max-depth=unlimited"])
+    );
+}
+
+#[test]
+fn signal_unlimited_and_bounded_mix_preserves_warning_order() {
+    let fixture = fixture_path("signal_recursive_depth.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let unlimited_max_output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--recursive",
+            "--max",
+            "unlimited",
+            "--max-depth",
+            "1",
+            "--json",
+        ])
+        .output()
+        .expect("unlimited max run should execute");
+    let unlimited_depth_output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--recursive",
+            "--max",
+            "2",
+            "--max-depth",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("unlimited depth run should execute");
+
+    assert!(unlimited_max_output.status.success());
+    assert!(unlimited_depth_output.status.success());
+
+    let unlimited_max_json: Value =
+        serde_json::from_slice(&unlimited_max_output.stdout).expect("json should parse");
+    let unlimited_depth_json: Value =
+        serde_json::from_slice(&unlimited_depth_output.stdout).expect("json should parse");
+
+    let unlimited_max_paths = unlimited_max_json["data"]
+        .as_array()
+        .expect("data should be array")
+        .iter()
+        .map(|entry| {
+            entry["path"]
+                .as_str()
+                .expect("path should be string")
+                .to_string()
+        })
+        .collect::<Vec<_>>();
+
+    assert!(
+        !unlimited_max_paths.contains(&"top.cpu.core.execute".to_string()),
+        "depth-1 bound should still hide grandchild scopes"
+    );
+    assert_eq!(
+        unlimited_max_json["warnings"],
+        json!(["limit disabled: --max=unlimited"])
+    );
+    assert_eq!(
+        unlimited_depth_json["warnings"],
+        json!([
+            "limit disabled: --max-depth=unlimited",
+            "truncated output to 2 entries (use --max to increase limit)"
+        ])
+    );
 }
 
 #[test]

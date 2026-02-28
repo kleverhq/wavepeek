@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::cli::change::ChangeArgs;
+use crate::cli::limits::LimitArg;
 use crate::engine::at::{
     ParsedTime, as_zeptoseconds, ensure_non_zero_dump_tick, format_raw_timestamp,
     format_verilog_literal, parse_time_token,
@@ -84,10 +85,19 @@ impl SampleCache {
 }
 
 pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
-    if args.max == 0 {
-        return Err(WavepeekError::Args(
-            "--max must be greater than 0.".to_string(),
-        ));
+    let max_entries = match &args.max {
+        LimitArg::Numeric(0) => {
+            return Err(WavepeekError::Args(
+                "--max must be greater than 0.".to_string(),
+            ));
+        }
+        LimitArg::Numeric(value) => Some(*value),
+        LimitArg::Unlimited => None,
+    };
+
+    let mut warnings = Vec::new();
+    if args.max.is_unlimited() {
+        warnings.push("limit disabled: --max=unlimited".to_string());
     }
 
     let mut waveform = Waveform::open(args.waves.as_path())?;
@@ -236,7 +246,9 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             continue;
         }
 
-        if snapshots.len() == args.max {
+        if let Some(limit) = max_entries
+            && snapshots.len() == limit
+        {
             truncated = true;
             break;
         }
@@ -265,15 +277,16 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         });
     }
 
-    let mut warnings = Vec::new();
     if snapshots.is_empty() {
         warnings.push(EMPTY_WARNING.to_string());
     }
 
-    if truncated {
+    if let Some(max_entries) = max_entries
+        && truncated
+    {
         warnings.push(format!(
             "truncated output to {} entries (use --max to increase limit)",
-            args.max
+            max_entries
         ));
     }
 

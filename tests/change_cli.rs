@@ -849,6 +849,90 @@ fn change_default_max_is_50_with_truncation_warning() {
 }
 
 #[test]
+fn change_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() {
+    let fixture = fixture_path("change_many_events.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.sig",
+            "--max",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("json run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.sig",
+            "--max",
+            "unlimited",
+        ])
+        .output()
+        .expect("human run should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+
+    let value = parse_json(&json_output.stdout);
+    assert!(
+        value["data"]
+            .as_array()
+            .expect("data should be array")
+            .len()
+            > 50
+    );
+    assert_eq!(
+        value["warnings"],
+        json!(["limit disabled: --max=unlimited"])
+    );
+
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning: limit disabled: --max=unlimited"
+    );
+    assert!(
+        String::from_utf8_lossy(&human_output.stdout)
+            .lines()
+            .count()
+            > 50,
+        "human output should include more than the default 50 rows"
+    );
+}
+
+#[test]
+fn change_rejects_zero_max_with_args_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--max",
+            "0",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: --max must be greater than 0.",
+        ));
+}
+
+#[test]
 fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

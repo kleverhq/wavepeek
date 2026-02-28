@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::Args;
 
+use crate::cli::limits::LimitArg;
+
 #[derive(Debug, Args)]
 pub struct WhenArgs {
     /// Path to VCD/FST waveform file
@@ -40,9 +42,9 @@ pub struct WhenArgs {
         conflicts_with_all = ["first", "max"]
     )]
     pub last: Option<usize>,
-    /// Maximum number of matches when no qualifier is used
+    /// Maximum number of matches when no qualifier is used (`unlimited` disables this limit)
     #[arg(long, value_name = "N", conflicts_with_all = ["first", "last"])]
-    pub max: Option<usize>,
+    pub max: Option<LimitArg>,
     /// Strict JSON envelope output
     #[arg(long)]
     pub json: bool,

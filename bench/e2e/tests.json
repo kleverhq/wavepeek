@@ -473,6 +473,85 @@
       }
     },
     {
+      "name": "signal_scr1_top_recursive_all_json",
+      "category": "signal",
+      "runs": 10,
+      "warmup": 2,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--scope",
+        "TOP",
+        "--recursive",
+        "--max",
+        "200000",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "scope": "TOP",
+        "filter": ".*",
+        "recursive": true,
+        "max_depth": "default"
+      }
+    },
+    {
+      "name": "signal_scr1_top_recursive_filter_valid_json",
+      "category": "signal",
+      "runs": 10,
+      "warmup": 2,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--scope",
+        "TOP",
+        "--recursive",
+        "--filter",
+        "(?i).*valid.*",
+        "--max",
+        "200000",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "scope": "TOP",
+        "filter": "(?i).*valid.*",
+        "recursive": true,
+        "max_depth": "default"
+      }
+    },
+    {
+      "name": "signal_scr1_top_recursive_depth2_json",
+      "category": "signal",
+      "runs": 10,
+      "warmup": 2,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--scope",
+        "TOP",
+        "--recursive",
+        "--max-depth",
+        "2",
+        "--max",
+        "200000",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "scope": "TOP",
+        "filter": ".*",
+        "recursive": true,
+        "max_depth": 2
+      }
+    },
+    {
       "name": "change_picorv32_signals_100_pos_50_window_2000_trigger_any",
       "category": "change",
       "runs": 6,

@@ -30,14 +30,14 @@ This plan does not introduce a strict performance regression gate for the new `s
 - [x] (2026-02-28 09:34Z) Traced implementation flow across CLI parser, engine runtime, waveform adapter, output renderer, and current tests.
 - [x] (2026-02-28 09:47Z) Resolved non-critical ambiguities for depth semantics, ordering policy, and `--max-depth` validation behavior.
 - [x] (2026-02-28 10:05Z) Drafted this executable implementation plan with TDD-first milestones and validation protocol.
-- [ ] Implement Milestone 1 (tests-first contract capture for recursive/non-recursive behavior).
-- [ ] Implement Milestone 2 (CLI and engine behavior changes for `--recursive` and `--max-depth`).
-- [ ] Implement Milestone 3 (waveform traversal API for deterministic recursive signal collection).
-- [ ] Implement Milestone 4 (docs/help updates and contract collateral alignment).
-- [ ] Add `signal` recursive E2E perf scenarios to `bench/e2e/tests.json` and capture a baseline run on SCR1 fixture.
+- [x] (2026-02-28 11:24Z) Implemented Milestone 1 with tests-first recursive contracts, deep fixture, and exact test-name coverage.
+- [x] (2026-02-28 11:31Z) Implemented Milestone 2: added `signal --recursive` / `--max-depth` args, validation, and engine dispatch behavior.
+- [x] (2026-02-28 11:33Z) Implemented Milestone 3: added deterministic recursive waveform traversal API with bounded depth and DFS scope ordering.
+- [x] (2026-02-28 11:35Z) Implemented Milestone 4: updated signal help/docs/readme and aligned contract text with new flags.
+- [x] (2026-02-28 11:44Z) Added recursive `signal` E2E perf scenarios to `bench/e2e/tests.json` and captured SCR1 baseline run under `bench/e2e/runs/signal-recursive-baseline`.
 - [ ] Complete review pass #1 findings and commit fixes.
 - [ ] Complete fresh independent review pass #2 and close residual findings.
-- [ ] Run final quality gates (`make check`, `make ci`) and update `CHANGELOG.md` (`Unreleased -> Added`) for the new CLI flags.
+- [x] (2026-02-28 11:49Z) Ran final quality gates (`make check`, `make ci`) and updated `CHANGELOG.md` (`Unreleased -> Added`) for recursive `signal` flags.
 
 ## Surprises & Discoveries
 

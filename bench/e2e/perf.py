@@ -16,13 +16,18 @@ from typing import Any, NoReturn
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parents[2]
+REPO_ROOT = SCRIPT_DIR.parents[1]
 TESTS_PATH = SCRIPT_DIR / "tests.json"
 DEFAULT_RUNS_DIR = SCRIPT_DIR / "runs"
 README_NAME = "README.md"
 WAVEPEEK_BIN_ENV = "WAVEPEEK_BIN"
 EMOJI_THRESHOLD_PCT = 3.0
 METRICS = ("mean", "stddev", "median", "min", "max")
+HYPERFINE_SUFFIX = ".hyperfine.json"
+WAVEPEEK_SUFFIX = ".wavepeek.json"
+FUNCTIONAL_MATCH_MARKER = "✅"
+FUNCTIONAL_MISMATCH_MARKER = "⚠️"
+FUNCTIONAL_MISSING_MARKER = "?"
 
 
 def fail(message: str) -> NoReturn:
@@ -185,10 +190,33 @@ def resolve_test_command(test: dict[str, Any], wavepeek_bin: str) -> list[str]:
     return command_tokens
 
 
+def build_functional_command(command_args: list[str]) -> list[str]:
+    if "--json" in command_args:
+        return list(command_args)
+    return [*command_args, "--json"]
+
+
+def artifact_test_name(path: pathlib.Path, suffix: str) -> str:
+    if not path.name.endswith(suffix):
+        fail(f"error: report: artifact has unexpected suffix in {path}")
+    test_name = path.name[: -len(suffix)]
+    if not test_name:
+        fail(f"error: report: artifact has empty test name: {path}")
+    return test_name
+
+
+def hyperfine_result_path(run_dir: pathlib.Path, test_name: str) -> pathlib.Path:
+    return run_dir / f"{test_name}{HYPERFINE_SUFFIX}"
+
+
+def wavepeek_result_path(run_dir: pathlib.Path, test_name: str) -> pathlib.Path:
+    return run_dir / f"{test_name}{WAVEPEEK_SUFFIX}"
+
+
 def run_test(test: dict[str, Any], run_dir: pathlib.Path, wavepeek_bin: str) -> None:
     command_args = resolve_test_command(test, wavepeek_bin)
     benchmark_command = shlex.join(command_args)
-    output_path = run_dir / f"{test['name']}.json"
+    output_path = hyperfine_result_path(run_dir, str(test["name"]))
 
     hyperfine_cmd = [
         "hyperfine",
@@ -210,21 +238,69 @@ def run_test(test: dict[str, Any], run_dir: pathlib.Path, wavepeek_bin: str) -> 
         fail(f"error: run: hyperfine failed for `{test['name']}`")
 
 
-def parse_result_file(path: pathlib.Path) -> dict[str, Any] | None:
+def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ValueError(f"{source} must be object")
+    if "data" not in payload:
+        raise ValueError(f"{source} missing key `data`")
+    if "warnings" not in payload:
+        raise ValueError(f"{source} missing key `warnings`")
+    return {"data": payload["data"], "warnings": payload["warnings"]}
+
+
+def run_functional_capture(test: dict[str, Any], wavepeek_bin: str, caller: str) -> dict[str, Any]:
+    command_args = build_functional_command(resolve_test_command(test, wavepeek_bin))
+    result = subprocess.run(
+        command_args,
+        check=False,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        details = result.stderr.strip()
+        suffix = f": {details}" if details else ""
+        fail(
+            f"error: {caller}: functional capture failed for `{test['name']}` "
+            f"(exit {result.returncode}){suffix}"
+        )
+
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as error:
+        fail(f"error: {caller}: invalid JSON output for `{test['name']}`: {error}")
+
+    try:
+        return validate_functional_payload(payload, f"functional output for `{test['name']}`")
+    except ValueError as error:
+        fail(f"error: {caller}: {error}")
+    raise AssertionError("unreachable")
+
+
+def write_wavepeek_artifact(run_dir: pathlib.Path, test_name: str, payload: dict[str, Any]) -> None:
+    output_path = wavepeek_result_path(run_dir, test_name)
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def parse_hyperfine_result_file(path: pathlib.Path) -> dict[str, Any]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
         fail(f"error: report: invalid JSON in {path}: {error}")
 
     if not isinstance(payload, dict):
-        return None
+        fail(f"error: report: expected object in {path}")
+
     results = payload.get("results")
     if not isinstance(results, list) or not results or not isinstance(results[0], dict):
-        return None
+        fail(f"error: report: missing `results[0]` object in {path}")
     first = dict(results[0])
 
     row: dict[str, Any] = {
-        "test_name": path.stem,
+        "test_name": artifact_test_name(path, HYPERFINE_SUFFIX),
         "command": str(first.get("command", "")),
     }
     for metric in METRICS:
@@ -241,13 +317,56 @@ def parse_result_file(path: pathlib.Path) -> dict[str, Any] | None:
     return row
 
 
-def load_results(run_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
+def parse_wavepeek_result_file(path: pathlib.Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        fail(f"error: report: invalid JSON in {path}: {error}")
+
+    try:
+        return validate_functional_payload(payload, f"functional artifact `{path}`")
+    except ValueError as error:
+        fail(f"error: report: {error}")
+    raise AssertionError("unreachable")
+
+
+def load_hyperfine_results(run_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
     result_map: dict[str, dict[str, Any]] = {}
-    for path in sorted(run_dir.glob("*.json")):
-        parsed = parse_result_file(path)
-        if parsed is not None:
-            result_map[str(parsed["test_name"])] = parsed
+    for path in sorted(run_dir.glob(f"*{HYPERFINE_SUFFIX}")):
+        parsed = parse_hyperfine_result_file(path)
+        result_map[str(parsed["test_name"])] = parsed
     return result_map
+
+
+def load_wavepeek_results(run_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
+    result_map: dict[str, dict[str, Any]] = {}
+    for path in sorted(run_dir.glob(f"*{WAVEPEEK_SUFFIX}")):
+        test_name = artifact_test_name(path, WAVEPEEK_SUFFIX)
+        result_map[test_name] = parse_wavepeek_result_file(path)
+    return result_map
+
+
+def load_wavepeek_artifact_for_compare(
+    run_dir: pathlib.Path,
+    test_name: str,
+    label: str,
+) -> tuple[dict[str, Any] | None, str | None]:
+    path = wavepeek_result_path(run_dir, test_name)
+    if not path.exists() or not path.is_file():
+        return None, f"{label}: missing artifact `{path}`"
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        return None, f"{label}: invalid JSON in `{path}`: {error}"
+    except OSError as error:
+        return None, f"{label}: failed to read `{path}`: {error}"
+
+    try:
+        normalized = validate_functional_payload(payload, f"{label} artifact `{path}`")
+    except ValueError as error:
+        return None, str(error)
+    return normalized, None
 
 
 def delta_pct(revised: float, golden: float) -> float | None:
@@ -290,12 +409,37 @@ def format_meta(meta: dict[str, Any]) -> str:
     return " ".join(pairs)
 
 
+def functional_diff_fields(revised_payload: dict[str, Any], golden_payload: dict[str, Any]) -> list[str]:
+    fields: list[str] = []
+    if revised_payload.get("data") != golden_payload.get("data"):
+        fields.append("data")
+    if revised_payload.get("warnings") != golden_payload.get("warnings"):
+        fields.append("warnings")
+    return fields
+
+
+def report_functional_status(
+    test_name: str,
+    revised_functional: dict[str, dict[str, Any]],
+    compare_functional: dict[str, dict[str, Any]],
+) -> str:
+    revised_payload = revised_functional.get(test_name)
+    compare_payload = compare_functional.get(test_name)
+    if revised_payload is None or compare_payload is None:
+        return FUNCTIONAL_MISSING_MARKER
+    if functional_diff_fields(revised_payload, compare_payload):
+        return FUNCTIONAL_MISMATCH_MARKER
+    return FUNCTIONAL_MATCH_MARKER
+
+
 def render_report(
     run_dir: pathlib.Path,
     results: dict[str, dict[str, Any]],
     tests_by_name: dict[str, dict[str, Any]],
     compare_results: dict[str, dict[str, Any]],
     compare_dir: pathlib.Path | None,
+    functional_results: dict[str, dict[str, Any]],
+    compare_functional_results: dict[str, dict[str, Any]],
 ) -> str:
     lines = [
         f"# CLI E2E Bench Run: {run_dir.name}",
@@ -303,6 +447,7 @@ def render_report(
         f"- Generated at (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
         f"- Run directory: `{run_dir}`",
         f"- Hyperfine JSON files: {len(results)}",
+        f"- Wavepeek JSON files: {len(functional_results)}",
     ]
     if compare_dir is not None:
         lines.extend(
@@ -310,6 +455,7 @@ def render_report(
                 f"- Compare baseline: `{compare_dir}`",
                 "- Delta formula: `((golden - revised) / golden) * 100`",
                 f"- Emoji threshold: abs(delta) >= {EMOJI_THRESHOLD_PCT:.2f}% (`🟢` faster, `🔴` slower)",
+                "- Functional status: `✅` match, `⚠️` mismatch, `?` missing counterpart",
             ]
         )
     lines.append("")
@@ -326,14 +472,21 @@ def render_report(
         grouped.setdefault(category, []).append(row)
 
     for category in sorted(grouped):
-        lines.extend(
-            [
-                f"## {category}",
-                "",
-                "| test | mean_s | meta |",
-                "| --- | --- | --- |",
-            ]
-        )
+        lines.extend([f"## {category}", ""])
+        if compare_dir is not None:
+            lines.extend(
+                [
+                    "| test | mean_s | functional | meta |",
+                    "| --- | --- | --- | --- |",
+                ]
+            )
+        else:
+            lines.extend(
+                [
+                    "| test | mean_s | meta |",
+                    "| --- | --- | --- |",
+                ]
+            )
 
         for row in sorted(
             grouped[category],
@@ -345,8 +498,15 @@ def render_report(
             line = [
                 escape_md(test_name),
                 escape_md(format_metric(float(row["mean"]), baseline, "mean")),
-                escape_md(format_meta(dict(test.get("meta", {})) if test is not None else {})),
             ]
+            if compare_dir is not None:
+                status = report_functional_status(
+                    test_name,
+                    functional_results,
+                    compare_functional_results,
+                )
+                line.append(escape_md(status))
+            line.append(escape_md(format_meta(dict(test.get("meta", {})) if test is not None else {})))
             lines.append("| " + " | ".join(line) + " |")
         lines.append("")
 
@@ -358,9 +518,21 @@ def write_report(
     tests_by_name: dict[str, dict[str, Any]],
     compare_dir: pathlib.Path | None,
 ) -> pathlib.Path:
-    results = load_results(run_dir)
-    compare_results = load_results(compare_dir) if compare_dir is not None else {}
-    markdown = render_report(run_dir, results, tests_by_name, compare_results, compare_dir)
+    results = load_hyperfine_results(run_dir)
+    compare_results = load_hyperfine_results(compare_dir) if compare_dir is not None else {}
+    functional_results = load_wavepeek_results(run_dir)
+    compare_functional_results = (
+        load_wavepeek_results(compare_dir) if compare_dir is not None else {}
+    )
+    markdown = render_report(
+        run_dir,
+        results,
+        tests_by_name,
+        compare_results,
+        compare_dir,
+        functional_results,
+        compare_functional_results,
+    )
     report_path = run_dir / README_NAME
     report_path.write_text(markdown, encoding="utf-8")
     return report_path
@@ -376,6 +548,12 @@ def preview_command(test: dict[str, Any]) -> str:
     return shlex.join(parts)
 
 
+def is_warning_only_change(payload: dict[str, Any]) -> bool:
+    data = payload.get("data")
+    warnings = payload.get("warnings")
+    return isinstance(data, list) and not data and isinstance(warnings, list) and bool(warnings)
+
+
 def cmd_list(args: argparse.Namespace) -> int:
     tests = select_tests(load_tests(), args.filter)
     for test in tests:
@@ -383,6 +561,30 @@ def cmd_list(args: argparse.Namespace) -> int:
             f"{test['name']}\t{test['category']}\truns={test['runs']}\twarmup={test['warmup']}\t{preview_command(test)}"
         )
     print(f"total={len(tests)}")
+    return 0
+
+
+def cmd_list_warning_only_change(args: argparse.Namespace) -> int:
+    tests = load_tests()
+    selected = select_tests(tests, args.filter)
+    selected_change = [test for test in selected if str(test.get("category")) == "change"]
+    if not selected_change:
+        fail("error: list-warning-only-change: no change tests matched the provided filter")
+
+    wavepeek_bin = resolve_wavepeek_bin()
+    warning_only: list[str] = []
+    for index, test in enumerate(selected_change, start=1):
+        print(
+            f"[{index}/{len(selected_change)}] {test['name']}",
+            file=sys.stderr,
+        )
+        payload = run_functional_capture(test, wavepeek_bin, "list-warning-only-change")
+        if is_warning_only_change(payload):
+            warning_only.append(str(test["name"]))
+
+    for test_name in sorted(warning_only):
+        print(test_name)
+    print(f"total={len(warning_only)}")
     return 0
 
 
@@ -403,6 +605,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     for index, test in enumerate(selected, start=1):
         print(f"[{index}/{len(selected)}] {test['name']} (runs={test['runs']}, warmup={test['warmup']})")
         run_test(test, run_dir, wavepeek_bin)
+        functional_payload = run_functional_capture(test, wavepeek_bin, "run")
+        write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
 
     tests_by_name = {str(test["name"]): test for test in tests}
     report_path = write_report(run_dir, tests_by_name, compare_dir)
@@ -436,42 +640,87 @@ def cmd_compare(args: argparse.Namespace) -> int:
     if threshold < 0:
         fail("error: compare: --max-negative-delta-pct must be non-negative")
 
-    revised = load_results(revised_dir)
-    golden = load_results(golden_dir)
+    revised = load_hyperfine_results(revised_dir)
+    golden = load_hyperfine_results(golden_dir)
     if not revised:
         fail(f"error: compare: no hyperfine JSON files found in {revised_dir}")
 
-    missing: list[str] = []
-    failures: list[str] = []
+    revised_names = set(revised)
+    golden_names = set(golden)
+    matched = sorted(revised_names & golden_names)
+    revised_only = sorted(revised_names - golden_names)
+    golden_only = sorted(golden_names - revised_names)
 
-    for test_name in sorted(revised):
+    timing_failures: list[str] = []
+    functional_mismatches: list[str] = []
+    functional_artifact_errors: list[str] = []
+
+    for test_name in matched:
         revised_row = revised[test_name]
-        golden_row = golden.get(test_name)
-        if golden_row is None:
-            missing.append(test_name)
-            continue
+        golden_row = golden[test_name]
 
         delta = delta_pct(float(revised_row["mean"]), float(golden_row["mean"]))
         if delta is not None and delta < -threshold:
-            failures.append(
+            timing_failures.append(
                 f"{test_name}: mean revised={float(revised_row['mean']):.6f}s, "
                 f"golden={float(golden_row['mean']):.6f}s, delta={delta:+.2f}%"
             )
 
-    if missing:
+        revised_payload, revised_error = load_wavepeek_artifact_for_compare(
+            revised_dir,
+            test_name,
+            "revised",
+        )
+        golden_payload, golden_error = load_wavepeek_artifact_for_compare(
+            golden_dir,
+            test_name,
+            "golden",
+        )
+
+        if revised_error is not None:
+            functional_artifact_errors.append(f"{test_name}: {revised_error}")
+        if golden_error is not None:
+            functional_artifact_errors.append(f"{test_name}: {golden_error}")
+        if revised_payload is None or golden_payload is None:
+            continue
+
+        diff_fields = functional_diff_fields(revised_payload, golden_payload)
+        if diff_fields:
+            functional_mismatches.append(
+                f"{test_name}: mismatched fields {', '.join(diff_fields)}"
+            )
+
+    if revised_only:
         print(
-            "warning: compare: no golden counterpart for tests: " + ", ".join(missing),
+            "warning: compare: tests only in revised run: " + ", ".join(revised_only),
+            file=sys.stderr,
+        )
+    if golden_only:
+        print(
+            "warning: compare: tests only in golden run: " + ", ".join(golden_only),
             file=sys.stderr,
         )
 
-    if failures:
+    if timing_failures:
         print(
             "error: compare: mean regression exceeds allowed negative delta "
             f"({threshold:.2f}%):",
             file=sys.stderr,
         )
-        for issue in failures:
+        for issue in timing_failures:
             print(f"  - {issue}", file=sys.stderr)
+
+    if functional_mismatches:
+        print("error: compare: functional mismatch detected:", file=sys.stderr)
+        for issue in functional_mismatches:
+            print(f"  - {issue}", file=sys.stderr)
+
+    if functional_artifact_errors:
+        print("error: compare: functional artifact errors detected:", file=sys.stderr)
+        for issue in functional_artifact_errors:
+            print(f"  - {issue}", file=sys.stderr)
+
+    if timing_failures or functional_mismatches or functional_artifact_errors:
         return 1
 
     print("info: compare: all checks passed")
@@ -484,6 +733,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = subparsers.add_parser("list", help="list available benchmark tests")
     list_parser.add_argument("--filter", default=None, help="regex filter by test name")
+
+    list_warning_only_change_parser = subparsers.add_parser(
+        "list-warning-only-change",
+        help="list change tests with empty data and non-empty warnings",
+    )
+    list_warning_only_change_parser.add_argument(
+        "--filter",
+        default="^change_",
+        help="regex filter by test name",
+    )
 
     run_parser = subparsers.add_parser("run", help="run selected benchmarks")
     run_parser.add_argument("--filter", default=None, help="regex filter by test name")
@@ -518,6 +777,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "list":
         return cmd_list(args)
+    if args.command == "list-warning-only-change":
+        return cmd_list_warning_only_change(args)
     if args.command == "run":
         return cmd_run(args)
     if args.command == "report":

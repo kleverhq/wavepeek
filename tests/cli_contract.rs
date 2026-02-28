@@ -191,6 +191,7 @@ fn help_documents_unlimited_limit_literals_for_all_affected_commands() {
         .args(["when", "--help"])
         .assert()
         .success()
+        .stdout(predicate::str::contains("--max <LIMIT>"))
         .stdout(predicate::str::contains("--max"))
         .stdout(predicate::str::contains("unlimited"));
 }

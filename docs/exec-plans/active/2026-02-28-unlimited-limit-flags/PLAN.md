@@ -25,8 +25,8 @@ This plan does not redesign command names, output schema shape, or unrelated com
 - [x] (2026-02-28 13:45Z) Implemented runtime bounded/unlimited behavior in `scope`/`signal`/`change`, optional depth bounds in waveform traversal APIs, and deterministic unlimited warning ordering before legacy warnings.
 - [x] (2026-02-28 14:05Z) Updated `docs/DESIGN.md`, `CHANGELOG.md`, and `docs/BACKLOG.md` for delivered unlimited-limit contracts and backlog closure.
 - [x] (2026-02-28 14:20Z) Ran full repository quality gates successfully: `make check` and `make ci`.
-- [ ] Run mandatory review pass #1 (`review` agent), resolve findings, and commit fixes if needed.
-- [ ] Run mandatory independent review pass #2 (fresh `review` agent), resolve findings, and confirm clean state.
+- [x] (2026-02-28 14:40Z) Completed mandatory review pass #1 (`review` agent): no substantive defects, plus optional coverage suggestions implemented in follow-up test commit `6be1cda`.
+- [x] (2026-02-28 14:55Z) Completed mandatory independent review pass #2 (fresh `review` agent): fixed low-severity `when --help` placeholder mismatch (`--max <LIMIT>`), no remaining substantive findings.
 
 ## Surprises & Discoveries
 
@@ -38,6 +38,9 @@ This plan does not redesign command names, output schema shape, or unrelated com
 
 - Observation: preserving warning ordering across commands required injecting unlimited warnings before pre-existing warning branches (notably in `change`, where empty-result warning previously came first).
   Evidence: `tests/scope_cli.rs` and `tests/signal_cli.rs` now assert unlimited-warning precedence with truncation warnings; `tests/change_cli.rs` asserts unlimited warning parity with existing warning flows.
+
+- Observation: clap `value_name` placeholders can drift from parser capabilities when argument types evolve; `when --help` still showed `--max <N>` until explicitly updated.
+  Evidence: second review pass flagged help/contract mismatch; fixed in `src/cli/when.rs` by switching to `value_name = "LIMIT"` and covered in `tests/cli_contract.rs`.
 
 ## Decision Log
 
@@ -61,7 +64,7 @@ This plan does not redesign command names, output schema shape, or unrelated com
 
 Plan-authoring outcome: implementation scope was fully mapped and broken into atomic, testable steps with clear acceptance behavior and warning text contracts.
 
-Implementation outcome: CLI parsing, runtime behavior, tests, and docs/backlog/changelog collateral are updated for explicit `unlimited` limits across affected commands. Full quality gates pass (`make check`, `make ci`). Review-cycle outcomes are pending and tracked in `Progress`.
+Implementation outcome: CLI parsing, runtime behavior, tests, and docs/backlog/changelog collateral are updated for explicit `unlimited` limits across affected commands. Full quality gates pass (`make check`, `make ci`). Both mandatory review passes completed with no substantive remaining findings.
 
 ## Context and Orientation
 
@@ -229,3 +232,5 @@ Do not add new third-party crates. Use existing `clap`, engine error types, and 
 Plan revision note: initial plan created for backlog item `Add explicit unlimited values for limit flags (--max, --max-depth)`; then revised after two review passes to cover `change`/`when` help-contract parity, define deterministic ordering against legacy warnings, add novice term definitions, and require an explicit dual-unlimited warning-order test.
 
 Plan revision note (implementation update): marked milestones 1-4 complete with timestamps, recorded waveform/API representation decision (`Option<usize>` for unlimited depth), captured warning-ordering implementation discovery, and logged successful `make check`/`make ci` execution before mandatory double-review passes.
+
+Plan revision note (review completion update): recorded both completed review passes, documented and fixed the `when --help` limit placeholder mismatch, and updated implementation outcome status to fully complete.

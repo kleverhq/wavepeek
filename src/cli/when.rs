@@ -43,7 +43,7 @@ pub struct WhenArgs {
     )]
     pub last: Option<usize>,
     /// Maximum number of matches when no qualifier is used (`unlimited` disables this limit)
-    #[arg(long, value_name = "N", conflicts_with_all = ["first", "last"])]
+    #[arg(long, value_name = "LIMIT", conflicts_with_all = ["first", "last"])]
     pub max: Option<LimitArg>,
     /// Strict JSON envelope output
     #[arg(long)]

@@ -16,6 +16,37 @@ SPEC.loader.exec_module(perf)
 
 
 class PerfHelpersTest(unittest.TestCase):
+    def test_test_has_complete_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            test_name = "sample"
+            run_dir.joinpath(f"{test_name}.hyperfine.json").write_text("{}", encoding="utf-8")
+            self.assertFalse(perf.test_has_complete_artifacts(run_dir, test_name))
+
+            run_dir.joinpath(f"{test_name}.wavepeek.json").write_text("{}", encoding="utf-8")
+            self.assertTrue(perf.test_has_complete_artifacts(run_dir, test_name))
+
+    def test_partition_missing_only_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            selected = [
+                {"name": "done"},
+                {"name": "pending"},
+            ]
+            run_dir.joinpath("done.hyperfine.json").write_text("{}", encoding="utf-8")
+            run_dir.joinpath("done.wavepeek.json").write_text("{}", encoding="utf-8")
+            runnable, skipped = perf.partition_missing_only_tests(selected, run_dir)
+
+        self.assertEqual([str(test["name"]) for test in runnable], ["pending"])
+        self.assertEqual(skipped, ["done"])
+
+    def test_run_parser_missing_only_flag(self) -> None:
+        parser = perf.build_parser()
+        default_args = parser.parse_args(["run"])
+        self.assertFalse(default_args.missing_only)
+        missing_only_args = parser.parse_args(["run", "--missing-only"])
+        self.assertTrue(missing_only_args.missing_only)
+
     def test_build_functional_command_appends_json_once(self) -> None:
         command = ["wavepeek", "info", "--waves", "/tmp/a.fst"]
         self.assertEqual(

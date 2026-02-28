@@ -213,6 +213,27 @@ def wavepeek_result_path(run_dir: pathlib.Path, test_name: str) -> pathlib.Path:
     return run_dir / f"{test_name}{WAVEPEEK_SUFFIX}"
 
 
+def test_has_complete_artifacts(run_dir: pathlib.Path, test_name: str) -> bool:
+    return hyperfine_result_path(run_dir, test_name).is_file() and wavepeek_result_path(
+        run_dir, test_name
+    ).is_file()
+
+
+def partition_missing_only_tests(
+    selected: list[dict[str, Any]],
+    run_dir: pathlib.Path,
+) -> tuple[list[dict[str, Any]], list[str]]:
+    runnable: list[dict[str, Any]] = []
+    skipped: list[str] = []
+    for test in selected:
+        test_name = str(test["name"])
+        if test_has_complete_artifacts(run_dir, test_name):
+            skipped.append(test_name)
+        else:
+            runnable.append(test)
+    return runnable, skipped
+
+
 def run_test(test: dict[str, Any], run_dir: pathlib.Path, wavepeek_bin: str) -> None:
     command_args = resolve_test_command(test, wavepeek_bin)
     benchmark_command = shlex.join(command_args)
@@ -573,19 +594,34 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not selected:
         fail("error: run: no tests matched the provided filter")
 
-    ensure_hyperfine()
-    wavepeek_bin = resolve_wavepeek_bin()
-
     compare_dir = normalize_path(args.compare) if args.compare else None
     if compare_dir is not None:
         ensure_existing_dir(compare_dir, "run")
 
     run_dir = resolve_run_dir(args.run_dir, args.out_dir)
-    for index, test in enumerate(selected, start=1):
-        print(f"[{index}/{len(selected)}] {test['name']} (runs={test['runs']}, warmup={test['warmup']})")
-        run_test(test, run_dir, wavepeek_bin)
-        functional_payload = run_functional_capture(test, wavepeek_bin, "run")
-        write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
+    print(f"info: run directory: {run_dir}")
+
+    selected_to_run = selected
+    if args.missing_only:
+        selected_to_run, skipped = partition_missing_only_tests(selected, run_dir)
+        for test_name in skipped:
+            print(
+                f"info: skip `{test_name}` (missing-only: artifacts already exist)"
+            )
+
+    if selected_to_run:
+        ensure_hyperfine()
+        wavepeek_bin = resolve_wavepeek_bin()
+        for index, test in enumerate(selected_to_run, start=1):
+            print(
+                f"[{index}/{len(selected_to_run)}] {test['name']} "
+                f"(runs={test['runs']}, warmup={test['warmup']})"
+            )
+            run_test(test, run_dir, wavepeek_bin)
+            functional_payload = run_functional_capture(test, wavepeek_bin, "run")
+            write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
+    else:
+        print("info: no tests to run after --missing-only filter")
 
     tests_by_name = {str(test["name"]): test for test in tests}
     report_path = write_report(run_dir, tests_by_name, compare_dir)
@@ -722,6 +758,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="parent for timestamped run directories",
     )
     run_parser.add_argument("--compare", default=None, help="baseline run directory for README deltas")
+    run_parser.add_argument(
+        "--missing-only",
+        action="store_true",
+        help="run only tests missing artifacts in run directory",
+    )
 
     report_parser = subparsers.add_parser("report", help="generate/update README.md for a run")
     report_parser.add_argument("--run-dir", required=True, help="run directory")

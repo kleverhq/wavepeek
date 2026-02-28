@@ -65,6 +65,10 @@ check-build: require-container
 test: require-container check-rtl-artifacts
 	cargo test -q
 
+## Run benchmark harness unit tests
+test-bench-e2e: require-container
+	python3 -m unittest bench/e2e/test_perf.py
+
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts
 	pre-commit run --all-files
@@ -77,7 +81,7 @@ check-commit: require-container
 check: format-check lint check-schema check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema test check-build
+ci: format-check lint check-schema test test-bench-e2e check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

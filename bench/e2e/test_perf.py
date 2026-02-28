@@ -89,6 +89,44 @@ class PerfHelpersTest(unittest.TestCase):
         assert error is not None
         self.assertIn("missing key `warnings`", error)
 
+    def test_load_wavepeek_artifact_for_compare_invalid_data_type(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": "not-a-list", "warnings": []}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("field `data` must be list", error)
+
+    def test_load_wavepeek_artifact_for_compare_invalid_warnings_type(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": [], "warnings": "not-a-list"}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "golden",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("field `warnings` must be list", error)
+
     def test_load_wavepeek_artifact_for_compare_valid_payload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)

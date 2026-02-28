@@ -245,6 +245,10 @@ def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
         raise ValueError(f"{source} missing key `data`")
     if "warnings" not in payload:
         raise ValueError(f"{source} missing key `warnings`")
+    if not isinstance(payload["data"], list):
+        raise ValueError(f"{source} field `data` must be list")
+    if not isinstance(payload["warnings"], list):
+        raise ValueError(f"{source} field `warnings` must be list")
     return {"data": payload["data"], "warnings": payload["warnings"]}
 
 

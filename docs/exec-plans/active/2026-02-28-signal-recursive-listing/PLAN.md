@@ -22,6 +22,8 @@ This plan does not redesign the `scope` command traversal contracts.
 
 This plan does not include performance optimization work beyond preserving existing bounded behavior and deterministic ordering.
 
+This plan does not introduce a strict performance regression gate for the new `signal` recursive scenarios in CI on day one; benchmark entries are added for observability and trend tracking.
+
 ## Progress
 
 - [x] (2026-02-28 09:20Z) Mapped backlog requirements and current `signal` contract in `docs/BACKLOG.md` and `docs/DESIGN.md`.
@@ -32,6 +34,7 @@ This plan does not include performance optimization work beyond preserving exist
 - [ ] Implement Milestone 2 (CLI and engine behavior changes for `--recursive` and `--max-depth`).
 - [ ] Implement Milestone 3 (waveform traversal API for deterministic recursive signal collection).
 - [ ] Implement Milestone 4 (docs/help updates and contract collateral alignment).
+- [ ] Add `signal` recursive E2E perf scenarios to `bench/e2e/tests.json` and capture a baseline run on SCR1 fixture.
 - [ ] Complete review pass #1 findings and commit fixes.
 - [ ] Complete fresh independent review pass #2 and close residual findings.
 - [ ] Run final quality gates (`make check`, `make ci`) and update `CHANGELOG.md` (`Unreleased -> Added`) for the new CLI flags.
@@ -49,6 +52,9 @@ This plan does not include performance optimization work beyond preserving exist
 
 - Observation: `scope` command semantics already treat `--max-depth 0` as "current/root level only", giving a strong precedent for recursive depth semantics in `signal`.
   Evidence: `tests/scope_cli.rs` test `scope_respects_max_depth` expects only depth `0` entries.
+
+- Observation: current E2E perf catalog has no `signal` category scenarios yet, so post-feature traversal cost changes would be invisible in benchmark reports.
+  Evidence: `bench/e2e/tests.json` includes `info`/`at`/`change` categories and no `signal_*` entries.
 
 ## Decision Log
 
@@ -78,6 +84,10 @@ This plan does not include performance optimization work beyond preserving exist
 
 - Decision: Keep `--filter` semantics unchanged in recursive mode: regex applies to signal `name` only, not to relative display path.
   Rationale: Preserves established behavior and avoids hidden contract break for existing users.
+  Date/Author: 2026-02-28 / OpenCode
+
+- Decision: Add three SCR1-focused E2E perf tests for recursive `signal` listing: full recursive list from top scope, recursive list filtered by `valid`, and depth-limited recursive list.
+  Rationale: Gives immediate coverage for the new command shape and captures the main cost dimensions (full traversal, regex filtering, and depth pruning) with one stable fixture family.
   Date/Author: 2026-02-28 / OpenCode
 
 ## Outcomes & Retrospective
@@ -122,7 +132,9 @@ Milestone 2 extends CLI argument parsing and engine orchestration. This includes
 
 Milestone 3 introduces waveform-layer recursive signal collection under a selected scope with deterministic ordering and depth limits. This milestone keeps non-recursive behavior untouched and explicitly verifies recursive/non-recursive parity at depth `0`.
 
-Milestone 4 updates help and docs to keep shipped contracts aligned (`src/cli/mod.rs`, `docs/DESIGN.md`, and user-facing examples where needed), then runs full project gates and review protocol.
+Milestone 4 updates help and docs to keep shipped contracts aligned (`src/cli/mod.rs`, `docs/DESIGN.md`, and user-facing examples where needed).
+
+Milestone 5 adds E2E performance coverage for recursive `signal` in the existing benchmark harness (`bench/e2e/perf.py` and `bench/e2e/tests.json`), captures a baseline run on SCR1, and then runs full project gates and review protocol.
 
 ### Concrete Steps
 
@@ -215,16 +227,101 @@ Run all commands from `/workspaces/feat-signal-recursive`.
    - `docs/DESIGN.md` section `3.2.3 signal` must include new flags and behavior bullets.
    - `README.md` quick-start/examples must include one recursive usage example because a new public flag is introduced.
 
-6. Run focused and full validation:
+6. Run focused functional validation:
 
        cargo test --test signal_cli
        cargo test waveform::tests::signals_in_scope_are_sorted_and_preserve_parser_var_type_aliases
        cargo test waveform::tests::missing_scope_returns_scope_category_error
        cargo test --test cli_contract
+
+7. Add recursive `signal` E2E perf scenarios to `bench/e2e/tests.json`.
+
+   Add these entries:
+
+        {
+          "name": "signal_scr1_top_recursive_all_json",
+          "category": "signal",
+          "runs": 10,
+          "warmup": 2,
+          "command": [
+            "{wavepeek_bin}",
+            "signal",
+            "--waves", "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "--scope", "TOP",
+            "--recursive",
+            "--max", "200000",
+            "--json"
+          ],
+          "meta": {
+            "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "scope": "TOP",
+            "filter": ".*",
+            "recursive": true,
+            "max_depth": "default"
+          }
+        }
+
+        {
+          "name": "signal_scr1_top_recursive_filter_valid_json",
+          "category": "signal",
+          "runs": 10,
+          "warmup": 2,
+          "command": [
+            "{wavepeek_bin}",
+            "signal",
+            "--waves", "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "--scope", "TOP",
+            "--recursive",
+            "--filter", "(?i).*valid.*",
+            "--max", "200000",
+            "--json"
+          ],
+          "meta": {
+            "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "scope": "TOP",
+            "filter": "(?i).*valid.*",
+            "recursive": true,
+            "max_depth": "default"
+          }
+        }
+
+        {
+          "name": "signal_scr1_top_recursive_depth2_json",
+          "category": "signal",
+          "runs": 10,
+          "warmup": 2,
+          "command": [
+            "{wavepeek_bin}",
+            "signal",
+            "--waves", "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "--scope", "TOP",
+            "--recursive",
+            "--max-depth", "2",
+            "--max", "200000",
+            "--json"
+          ],
+          "meta": {
+            "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+            "scope": "TOP",
+            "filter": ".*",
+            "recursive": true,
+            "max_depth": 2
+          }
+        }
+
+8. Validate benchmark catalog and capture baseline perf run for new tests.
+
+       python3 bench/e2e/perf.py list --filter '^signal_scr1_top_recursive_'
+       cargo build --release
+       WAVEPEEK_BIN=./target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/signal-recursive-baseline --filter '^signal_scr1_top_recursive_'
+       python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/signal-recursive-baseline
+
+9. Run full quality validation and review protocol.
+
        make check
        make ci
 
-7. Run review protocol:
+10. Run review protocol:
 
    - Load `ask-review` skill and run review pass #1 via `review` subagent.
    - Provide in prompt: scope summary, changed files, test commands executed, test results, and known decisions from this plan.
@@ -245,6 +342,7 @@ Acceptance is behavior-based and must be observable from CLI output and tests:
 - JSON output in recursive mode keeps canonical absolute `path` values and existing envelope shape.
 - `--max` truncation behavior and warning channel routing stay unchanged.
 - `--max-depth` without `--recursive` is rejected as `error: args:` with help hint.
+- E2E perf harness includes recursive `signal` scenarios so future regressions are observable in benchmark reports.
 
 Reference CLI checks (expected fragments):
 
@@ -274,6 +372,7 @@ Suggested integration assertions to include in `tests/signal_cli.rs`:
 - recursive `--filter` is validated against `name` semantics (not relative display path) by a dedicated assertion.
 - recursive output determinism is verified end-to-end (`run1.stdout == run2.stdout`, same for `stderr`).
 - `wavepeek signal --help` explicitly documents `--recursive` and `--max-depth`, including the requirement relation.
+- `bench/e2e/perf.py list --filter '^signal_scr1_top_recursive_'` returns exactly the three added benchmark names.
 
 ### Idempotence and Recovery
 
@@ -304,6 +403,7 @@ Files expected to change during implementation:
     docs/DESIGN.md
     README.md
     CHANGELOG.md
+    bench/e2e/tests.json
 
 The deep fixture is mandatory for this plan and should stay minimal (small hierarchy, explicit nested scopes, deterministic signal names).
 
@@ -341,3 +441,4 @@ Behavioral invariants to preserve:
 Revision Note: 2026-02-28 / OpenCode - Initial ExecPlan for backlog task "Add recursive signal listing (`signal --recursive`, `--max-depth`)" with explicit depth semantics, deterministic ordering policy, TDD-first milestones, and mandatory dual-review execution protocol.
 Revision Note: 2026-02-28 / OpenCode - Incorporated review pass #1 findings by making deep-fixture depth validation mandatory, replacing ambiguous test filters with exact test commands, adding concrete expected CLI output fragments, formalizing review execution criteria, and removing subjective backlog-update wording.
 Revision Note: 2026-02-28 / OpenCode - Incorporated independent review pass #2 finding by hardening exact-test commands with explicit test targets, adding a mandatory `running 1 test` check against empty-filter false positives, introducing a shared default-depth constant to avoid contract drift, and adding explicit tests for recursive filter semantics, recursive determinism, and signal help coverage.
+Revision Note: 2026-02-28 / OpenCode - Added Milestone 5 benchmark coverage with three SCR1 recursive-signal E2E perf scenarios (`all`, `filter valid`, `max-depth 2`) plus catalog validation and baseline run capture commands.

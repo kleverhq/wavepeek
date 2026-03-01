@@ -83,6 +83,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 - **No positional arguments.** All arguments are named flags for self-documenting commands.
   All commands that operate on a waveform dump require `--waves <file>`. Commands that do not
   read a dump (e.g., `schema`) do not accept `--waves`.
+- **Standalone help contract.** Help text is a first-class CLI contract. `wavepeek` (no args), `wavepeek -h`, and `wavepeek --help` are byte-identical top-level entry points, and each shipped subcommand makes `-h` byte-identical to `--help` while documenting command semantics, defaults/requiredness, boundary rules, error-category guidance, and output shape.
 - **Bounded output.** All commands have bounded output by default (to avoid flooding LLM context).
   Boundedness is achieved via one or more of: `--max`, `--first`/`--last`, input size (e.g., number
   of `--signals`), or inherently finite output (e.g., `schema`). When list output is truncated due

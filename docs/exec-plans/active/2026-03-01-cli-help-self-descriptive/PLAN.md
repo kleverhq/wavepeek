@@ -29,11 +29,11 @@ This plan does not introduce command aliases or rename command surfaces.
 - [x] (2026-03-01 11:34Z) Drafted this execution plan with TDD-first milestones and explicit contract checks.
 - [x] (2026-03-01 11:37Z) Incorporated review pass #1 feedback: embedded explicit per-command help contract, specified clap wiring strategy, and expanded command-by-command validation/closure mapping.
 - [x] (2026-03-01 11:40Z) Incorporated independent review pass #2 feedback: locked one canonical clap implementation path, clarified no-args parity policy, and normalized error-guidance contract text.
-- [ ] Add failing tests that encode the new help-quality contract and `-h == --help` parity for every shipped command.
-- [ ] Implement CLI help-flag behavior so `-h` and `--help` both emit detailed help.
-- [ ] Expand command help text and flag docs to include semantics/defaults/boundaries/error categories/output shape notes, reusing normative wording from `docs/DESIGN.md`.
-- [ ] Document the standalone-help design principle in the CLI design principles section and align product docs.
-- [ ] Run full validation (`make ci` plus targeted help-contract assertions) and update backlog/changelog collateral.
+- [x] (2026-03-01 13:07Z) Added new integration tests encoding no-args/top-level/subcommand help parity and command-level self-descriptive help markers (TDD-first: tests initially failed on legacy short-help behavior).
+- [x] (2026-03-01 13:19Z) Implemented centralized clap builder wiring in `src/cli/mod.rs` so `-h` and `--help` both use long-help rendering and no-args invocation routes through synthetic `--help` parsing for byte-identical top-level output.
+- [x] (2026-03-01 13:29Z) Expanded command `long_about` and flag docs across CLI modules to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes for all shipped commands.
+- [x] (2026-03-01 13:34Z) Documented standalone-help principle in `docs/DEVELOPMENT.md` and `docs/DESIGN.md`; marked backlog item as completed and recorded unreleased changelog entries.
+- [x] (2026-03-01 13:41Z) Ran targeted contract tests and full `cargo test` suite; all checks passed locally.
 
 ## Surprises & Discoveries
 
@@ -45,6 +45,12 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Observation: The project already has a natural home for the required design principle in `docs/DEVELOPMENT.md` under `CLI Design Constraints`.
   Evidence: `docs/DEVELOPMENT.md` section at line 201 defines cross-cutting CLI principles but currently lacks a standalone-help requirement.
+
+- Observation: clap's `disable_help_flag` is a by-value builder API, so recursive mutation requires command ownership handoff rather than in-place field mutation.
+  Evidence: compile error `E0507` when calling `command.disable_help_flag(true)` via `&mut clap::Command`; resolved by `std::mem::take(command)` + `mut_subcommands(...)` recursive rebuild path.
+
+- Observation: custom global help arg without explicit `.help(...)` text renders a blank `-h, --help` description line.
+  Evidence: `cargo run --quiet -- change --help` initially showed an empty help description row; adding `.help("Print help")` restored expected output clarity.
 
 ## Decision Log
 
@@ -60,11 +66,21 @@ This plan does not introduce command aliases or rename command surfaces.
   Rationale: The repository already uses integration tests as CLI contract gates via `cargo test` and `make ci`; this keeps quality checks in the existing CI path.
   Date/Author: 2026-03-01 / OpenCode
 
+- Decision: Keep the recursive helper signature `fn disable_default_help_flags_recursively(command: &mut clap::Command)` and implement it via ownership round-trip (`std::mem::take` + `mut_subcommands`) to satisfy clap's by-value builder API.
+  Rationale: This preserves the canonical function surface captured in this plan while using a compile-safe implementation that applies uniformly to every command node.
+  Date/Author: 2026-03-01 / OpenCode
+
+- Decision: Prefer deterministic fragment assertions for help-quality tests instead of full-output snapshots.
+  Rationale: Fragment checks enforce the required contract categories while minimizing brittleness from clap line-wrap formatting changes.
+  Date/Author: 2026-03-01 / OpenCode
+
 ## Outcomes & Retrospective
 
-Plan-authoring outcome: implementation work is decomposed into test-first milestones with explicit acceptance for help content quality and `-h/--help` parity.
+Implementation outcome: all shipped commands now provide uniform detailed help for both `-h` and `--help`, and top-level no-args output is byte-identical to explicit `--help`.
 
-Implementation outcome is pending. The expected end state is that CLI help becomes a standalone source for operational command usage, with design docs used for depth rather than basic command comprehension.
+The CLI help contract is now enforced by dedicated integration tests that cover parity and command-level self-descriptive markers. Documentation collateral (`docs/DEVELOPMENT.md`, `docs/DESIGN.md`, `docs/BACKLOG.md`, `CHANGELOG.md`) has been aligned so standalone help is treated as a core CLI design principle.
+
+Retrospective: centralizing clap help wiring in one builder path removed divergent render paths and made parity properties easier to guarantee. Fragment-based help assertions provided stable quality checks while still capturing behavior-rich requirements.
 
 ## Context and Orientation
 
@@ -275,3 +291,4 @@ Use this builder in parse path and in synthetic no-args `--help` path so all hel
 Revision Note: 2026-03-01 / OpenCode - Initial ExecPlan created for backlog issue `CLI help should be self-descriptive`, incorporating requirement to keep `-h` and `--help` both available while making their output identical and self-descriptive.
 Revision Note: 2026-03-01 / OpenCode - Incorporated review-pass #1 feedback by embedding per-command help contract requirements directly in this plan, specifying the clap help-flag wiring strategy, expanding per-command human verification steps, and adding a backlog-closure mapping.
 Revision Note: 2026-03-01 / OpenCode - Incorporated independent review-pass #2 feedback by selecting a single builder-based clap wiring path, requiring `wavepeek` no-args parity with `--help`, and standardizing error-guidance expectations in help contracts.
+Revision Note: 2026-03-01 / OpenCode - Completed implementation milestones, recorded clap builder implementation details discovered during coding, and updated outcomes with final validation/documentation closure evidence.

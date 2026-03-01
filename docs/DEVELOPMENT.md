@@ -203,6 +203,7 @@ Wavepeek is "LLM-first" and expects output stability:
 - No positional arguments; all args are named flags.
 - The waveform file flag is always `--waves`.
 - Default output is human-readable; `--json` enables strict JSON envelope output with a stable `$schema` contract.
+- CLI help must be standalone and uniform: `wavepeek`, `wavepeek -h`, and `wavepeek --help` must print the same top-level contract, and every shipped subcommand must make `-h` byte-identical to `--help` while documenting semantics, defaults/requiredness, boundary rules, error categories, and output shape.
 - Time values require explicit units; reject bare numbers.
 
 ### Testing Expectations

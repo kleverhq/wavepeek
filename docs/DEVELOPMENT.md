@@ -82,6 +82,8 @@ For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib on
   - `python3 bench/e2e/perf.py run --filter '^info_'`
 - Resume an existing run directory and execute only missing tests:
   - `python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/<run-id> --missing-only`
+- Override wavepeek timeout cap (default is 300 seconds per invocation):
+  - `python3 bench/e2e/perf.py run --wavepeek-timeout-seconds 600`
 - Regenerate report from existing run artifacts:
   - `python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>`
 - Compare revised run against golden run with regression threshold:
@@ -96,12 +98,12 @@ Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 Each benchmark run writes two per-test artifacts plus a run-level report:
 
 - `<test_name>.hyperfine.json` for timing metrics.
-- `<test_name>.wavepeek.json` for functional payload (`data` + `warnings`).
+- `<test_name>.wavepeek.json` for functional payload (`data` + `warnings`), or `{}` when functional capture hit timeout cap.
 - `README.md` with grouped metrics and compare status.
 
-`run --compare` and `report --compare` annotate timing deltas in `README.md`, add `🟢`/`🔴` markers when absolute delta is at least 3%, and include a functional parity marker (`✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `?` missing counterpart).
+`run --compare` and `report --compare` annotate timing deltas in `README.md`, add `🟢`/`🔴` markers when absolute delta is at least 3%, and include a functional parity marker (`✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart).
 
-`compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
+`compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals and are reported as warnings. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
 
 ### Run A Single Test (Rust)
 

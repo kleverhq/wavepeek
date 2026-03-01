@@ -6,22 +6,22 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Args)]
 pub struct WhenArgs {
-    /// Path to VCD/FST waveform file
+    /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
-    /// Clock signal for posedge sampling
+    /// Clock signal for posedge sampling (`--clk` is required)
     #[arg(long)]
     pub clk: String,
-    /// Start of time range (inclusive)
+    /// Start of inclusive time range (explicit units required)
     #[arg(long)]
     pub from: Option<String>,
-    /// End of time range (inclusive)
+    /// End of inclusive time range (explicit units required)
     #[arg(long)]
     pub to: Option<String>,
     /// Scope for short signal and clock names
     #[arg(long)]
     pub scope: Option<String>,
-    /// Boolean expression in the expression language
+    /// Boolean expression in the expression language (`--cond` is required)
     #[arg(long)]
     pub cond: String,
     /// Return first N matches (or 1 when value omitted)
@@ -42,10 +42,10 @@ pub struct WhenArgs {
         conflicts_with_all = ["first", "max"]
     )]
     pub last: Option<usize>,
-    /// Maximum number of matches when no qualifier is used (`unlimited` disables this limit)
+    /// Maximum number of matches when no qualifier is used (`unlimited` is accepted by parsing)
     #[arg(long, value_name = "LIMIT", conflicts_with_all = ["first", "last"])]
     pub max: Option<LimitArg>,
-    /// Strict JSON envelope output
+    /// Strict JSON envelope output (runtime remains unimplemented)
     #[arg(long)]
     pub json: bool,
 }

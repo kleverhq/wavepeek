@@ -8,7 +8,7 @@ pub mod signal;
 pub mod when;
 
 use clap::error::ErrorKind;
-use clap::{CommandFactory, Parser, Subcommand};
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
@@ -30,97 +30,163 @@ pub struct Cli {
 enum Command {
     #[command(
         about = "Show dump metadata (time unit and bounds)",
-        long_about = r#"Outputs basic metadata about the waveform dump, including
-time unit and dump boundaries.
+        long_about = r#"Reports dump metadata (`time_unit`, `time_start`, `time_end`).
 
-Requires --waves <file>. Use --json for strict envelope mode."#
+Contract:
+- --waves <FILE> is required.
+- Default output is human-readable metadata; `--json` switches to strict envelope output.
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek info --help'.`.
+- JSON mode returns one object envelope with metadata fields in `data`.
+
+Use this command to confirm dump bounds before running scoped/time-based queries."#
     )]
     Info(info::InfoArgs),
     #[command(
         about = "List hierarchy scopes (deterministic DFS)",
-        long_about = r#"Outputs a flat list of hierarchy scopes by recursively
-traversing the hierarchy.
+        long_about = r#"Provides deterministic hierarchy traversal over scope paths.
 
-Traversal is deterministic and output is bounded by --max and --max-depth.
-Use --max unlimited or --max-depth unlimited to disable those limits explicitly.
+Contract:
+- `--waves <FILE>` is required.
+- Defaults: --max=50, --max-depth=5, --filter=.*.
+- Boundary rules: --max must be greater than 0; --max-depth bounds traversal depth.
+- `--max unlimited` and `--max-depth unlimited` disable limits explicitly.
+- Human output is list mode by default; `--tree` renders hierarchy; `--json` returns a JSON data array.
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek scope --help'.`.
 
-Use --tree for visual hierarchy rendering. Use --json for
-strict envelope mode."#
+Use this command to explore hierarchy shape before narrowing to signal-level queries."#
     )]
     Scope(scope::ScopeArgs),
     #[command(
         about = "List signals in scope with metadata",
-        long_about = r#"Lists signals within a specific scope with signal metadata.
+        long_about = r#"Provides scope-local signal listing with deterministic ordering.
 
-Default listing is non-recursive and bounded by --max.
-Use --max unlimited to disable row truncation.
+Contract:
+- `--waves <FILE>` is required.
+- --scope is required and identifies the anchor scope.
+- Default mode is non-recursive with `--max=50` and `--filter=.*`.
+- `--recursive` enables child traversal; `--max-depth requires --recursive`.
+- `--max unlimited` and `--max-depth unlimited` disable limits explicitly.
+- Human output uses short/relative names by default; `--abs` shows canonical paths.
+- `--json` returns a JSON array of canonical signal objects (`name`, `path`, `kind`, `width`).
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek signal --help'.`.
 
-Use --recursive to include nested child scopes.
-Use --max-depth to limit child-scope recursion depth (depth 0 includes only --scope); --max-depth requires --recursive.
-Use --max-depth unlimited to disable recursion-depth truncation.
-
-Use --abs to print canonical full paths.
-Use --json for strict envelope mode."#
+Use this command after `scope` to inspect available signals in a target scope."#
     )]
     Signal(signal::SignalArgs),
     #[command(
         about = "Get signal values at a specific time point",
-        long_about = r#"Gets signal values at a specific time point.
+        long_about = r#"Provides point-in-time sampling for selected signals.
 
-Supports full signal paths when --scope is omitted, or names relative
-to --scope when it is provided. Output preserves the order from --signals.
+Contract:
+- `--waves <FILE>`, `--time <TIME_WITH_UNIT>`, and `--signals` are required.
+- --time requires explicit units aligned to dump precision.
+- Name resolution: without `--scope`, `--signals` entries are canonical paths; with `--scope`, names are scope-relative.
+- Output preserves --signals order.
+- Human output prints `@<time>` and one `<display> <value>` line per signal; `--abs` switches to canonical display paths.
+- `--json` returns a JSON object with `time` and ordered `signals` entries (`{path,value}`).
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek at --help'.`.
 
-Use --abs to print canonical paths in human mode.
-Use --json for strict envelope mode."#
+Use this command for deterministic spot checks at a specific timestamp."#
     )]
     At(at::AtArgs),
     #[command(
         about = "Get value snapshots over a time range",
-        long_about = r#"Outputs snapshots of signal values over a time range.
+        long_about = r#"Provides range-based delta snapshots for selected signals.
 
-Uses one event-trigger expression model via --when for wildcard, named,
-edge, and union trigger forms. When omitted, --when defaults to *.
+Contract:
+- `--waves <FILE>` and `--signals` are required.
+- Optional range is inclusive (`--from`/`--to`) with baseline initialization at range start.
+- Default trigger is --when=* (--when defaults to *).
+- Default row cap is `--max=50`; `--max unlimited` disables truncation.
+- Rows are emitted only when sampled signal values changed at candidate timestamps.
+- Human output prints `@<time> name=value` rows; `--abs` switches to canonical paths.
+- `--json` returns JSON rows with `time` plus ordered `signals[{path,value}]`.
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek change --help'.`.
 
-Rows are emitted only when sampled --signals values changed.
-Use --max unlimited to disable row truncation.
-
-Use --abs to print canonical paths in human mode.
-Use --json for strict envelope mode."#
+Use this command to inspect value transitions over bounded time windows."#
     )]
     Change(change::ChangeArgs),
     #[command(
         about = "Find cycles where a condition is true (not implemented yet)",
-        long_about = r#"Finds clock cycles where a boolean expression evaluates to true.
+        long_about = r#"Find cycles where a condition is true.
 
-The condition is evaluated on each posedge of --clk and can return all,
-first N, or last N matches.
-Use --max unlimited to disable match-count truncation when no qualifier is used.
+Contract:
+- Command intent: evaluate `--cond` on each posedge of `--clk` and report matching timestamps.
+- `--waves <FILE>`, `--clk`, and `--cond` are required.
+- Qualifiers: --first, --last, --max (mutually constrained as documented by flags).
+- --max unlimited is accepted by parsing when no qualifier is used.
+- Default output mode is human-readable; `--json` would use envelope mode.
+- Execution is not implemented yet.
+- Errors use `error: <category>: <message>`.
+- Argument mistakes use `error: args:` and append `See 'wavepeek when --help'.`.
 
-Execution is not implemented yet.
-
-Use --json for strict envelope mode."#
+Use this help as the parse/contract reference until runtime execution is implemented."#
     )]
     When(when::WhenArgs),
     #[command(
         about = "Print canonical JSON schema contract",
-        long_about = r#"Outputs the canonical JSON schema document for wavepeek machine output contracts.
+        long_about = r#"Prints the canonical JSON schema document for wavepeek machine output contracts.
 
-This command accepts no flags and always prints one schema document to stdout."#
+Contract:
+- This command accepts no command-specific flags or positional arguments.
+- It prints exactly one schema document to stdout.
+- It does not use waveform --json envelope wrapping.
+- Errors still use `error: <category>: <message>`.
+- For usage constraints, See 'wavepeek schema --help'.
+
+Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
     )]
     Schema(schema::SchemaArgs),
 }
 
 pub fn run() -> Result<(), WavepeekError> {
-    if std::env::args_os().len() == 1 {
-        return print_top_level_help();
-    }
+    let argv: Vec<_> = std::env::args_os().collect();
+    let parse_argv = if argv.len() == 1 {
+        vec![argv[0].clone(), "--help".into()]
+    } else {
+        argv
+    };
 
-    let cli = match Cli::try_parse() {
+    let matches = match build_cli_command().try_get_matches_from(parse_argv) {
+        Ok(matches) => matches,
+        Err(error) => return handle_parse_error(error),
+    };
+
+    let cli = match Cli::from_arg_matches(&matches) {
         Ok(cli) => cli,
         Err(error) => return handle_parse_error(error),
     };
 
     dispatch(cli.command)
+}
+
+fn disable_default_help_flags_recursively(command: &mut clap::Command) {
+    *command = std::mem::take(command)
+        .disable_help_flag(true)
+        .mut_subcommands(|subcommand| {
+            let mut subcommand = subcommand;
+            disable_default_help_flags_recursively(&mut subcommand);
+            subcommand
+        });
+}
+
+fn build_cli_command() -> clap::Command {
+    let mut command = Cli::command();
+    disable_default_help_flags_recursively(&mut command);
+
+    command.arg(
+        clap::Arg::new("help")
+            .short('h')
+            .long("help")
+            .global(true)
+            .help("Print help")
+            .action(ArgAction::HelpLong),
+    )
 }
 
 fn handle_parse_error(error: clap::Error) -> Result<(), WavepeekError> {
@@ -138,15 +204,6 @@ fn normalize_clap_error(error: &clap::Error) -> String {
     let hint = help_hint_for_rendered_clap_error(rendered.as_str());
 
     format!("{detail} {hint}")
-}
-
-fn print_top_level_help() -> Result<(), WavepeekError> {
-    let mut command = Cli::command();
-    command.print_help().map_err(|io_error| {
-        WavepeekError::Internal(format!("failed to print top-level help: {io_error}"))
-    })?;
-    println!();
-    Ok(())
 }
 
 fn clap_error_detail(rendered: &str) -> String {

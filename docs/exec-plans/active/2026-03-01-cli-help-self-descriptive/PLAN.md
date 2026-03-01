@@ -38,6 +38,7 @@ This plan does not introduce command aliases or rename command surfaces.
 - [x] (2026-03-01 14:09Z) Completed mandatory review pass #1 (`review` subagent); no substantive issues reported.
 - [x] (2026-03-01 14:13Z) Completed independent review pass #2 (`review` subagent); addressed one medium coverage finding by adding a guard test that keeps shipped-command help contract coverage synchronized with top-level command surface.
 - [x] (2026-03-01 14:18Z) Re-ran `cargo test --test cli_contract`, `make check`, and `make ci` after review-driven fix; all checks stayed green.
+- [x] (2026-03-01 14:31Z) Re-ran an additional fresh review after pass #2 fix; hardened the new command-surface parser against wrapped help-description lines and revalidated with `cargo test --test cli_contract`, `make check`, and `make ci`.
 
 ## Surprises & Discoveries
 
@@ -58,6 +59,9 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Observation: static shipped-command lists in tests can drift silently as new subcommands are added.
   Evidence: independent review pass #2 flagged that parity checks iterated a hard-coded list; mitigated by adding a guard test that asserts `SHIPPED_COMMANDS` matches names listed in top-level `--help`.
+
+- Observation: parsing top-level help command names by "first token on each non-empty line" is brittle because clap may wrap long command descriptions.
+  Evidence: fresh post-fix review reported false-positive risk from wrapped continuation lines; mitigated by parsing only command rows with exact command-column indentation and stopping at `Options:` section.
 
 ## Decision Log
 
@@ -83,6 +87,10 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Decision: Retain explicit `SHIPPED_COMMANDS` test targeting, but add a synchronization guard against top-level help command discovery.
   Rationale: Keeping explicit command intent in tests preserves readability, while the guard test prevents silent drift when command surface changes.
+  Date/Author: 2026-03-01 / OpenCode
+
+- Decision: Keep the guard parser intentionally minimal but robust by filtering to exact command-entry indentation and ignoring wrapped continuation rows.
+  Rationale: This avoids clap wrapping noise while keeping the test implementation simple and deterministic.
   Date/Author: 2026-03-01 / OpenCode
 
 ## Outcomes & Retrospective
@@ -304,3 +312,4 @@ Revision Note: 2026-03-01 / OpenCode - Incorporated review-pass #1 feedback by e
 Revision Note: 2026-03-01 / OpenCode - Incorporated independent review-pass #2 feedback by selecting a single builder-based clap wiring path, requiring `wavepeek` no-args parity with `--help`, and standardizing error-guidance expectations in help contracts.
 Revision Note: 2026-03-01 / OpenCode - Completed implementation milestones, recorded clap builder implementation details discovered during coding, and updated outcomes with final validation/documentation closure evidence.
 Revision Note: 2026-03-01 / OpenCode - Added post-review progress/results (both review passes), documented reviewer-driven test hardening for command-surface drift, and refreshed retrospective accordingly.
+Revision Note: 2026-03-01 / OpenCode - Applied fresh post-fix review hardening for wrapped help-line parsing in the shipped-command guard test and recorded final re-validation evidence.

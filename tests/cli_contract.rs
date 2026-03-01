@@ -23,8 +23,7 @@ fn successful_stdout_text(args: &[&str]) -> String {
     String::from_utf8(successful_stdout(args)).expect("stdout should be UTF-8")
 }
 
-fn top_level_help_command_names() -> Vec<String> {
-    let help = successful_stdout_text(&["--help"]);
+fn command_names_from_top_level_help(help: &str) -> Vec<String> {
     let mut names = Vec::new();
     let mut in_commands = false;
 
@@ -38,12 +37,21 @@ fn top_level_help_command_names() -> Vec<String> {
             continue;
         }
 
-        if line.trim().is_empty() {
+        if line.trim() == "Options:" {
             break;
+        }
+
+        if line.trim().is_empty() {
+            continue;
         }
 
         let trimmed = line.trim_start();
         if trimmed.is_empty() {
+            continue;
+        }
+
+        let leading_spaces = line.len() - trimmed.len();
+        if leading_spaces != 2 {
             continue;
         }
 
@@ -53,6 +61,11 @@ fn top_level_help_command_names() -> Vec<String> {
     }
 
     names
+}
+
+fn top_level_help_command_names() -> Vec<String> {
+    let help = successful_stdout_text(&["--help"]);
+    command_names_from_top_level_help(&help)
 }
 
 #[test]
@@ -200,6 +213,16 @@ fn shipped_commands_list_matches_top_level_help_surface() {
     assert_eq!(
         actual, expected,
         "top-level help command list changed; update SHIPPED_COMMANDS and help contract tests"
+    );
+}
+
+#[test]
+fn command_name_parser_ignores_wrapped_description_lines() {
+    let help = "Usage: wavepeek <COMMAND>\n\nCommands:\n  info     Show dump metadata (time unit and bounds)\n           wrapped continuation text\n  scope    List hierarchy scopes (deterministic DFS)\n\nOptions:\n  -h, --help  Print help\n";
+
+    assert_eq!(
+        command_names_from_top_level_help(help),
+        vec!["info", "scope"]
     );
 }
 

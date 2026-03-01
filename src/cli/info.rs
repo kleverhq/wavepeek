@@ -7,7 +7,7 @@ pub struct InfoArgs {
     /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
-    /// Strict JSON envelope output (`data` is an object with `time_unit`, `time_start`, `time_end`)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

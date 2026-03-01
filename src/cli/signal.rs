@@ -27,7 +27,7 @@ pub struct SignalArgs {
     /// Show canonical signal paths in human output
     #[arg(long)]
     pub abs: bool,
-    /// Strict JSON envelope output (`data` is an array of canonical signal objects)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

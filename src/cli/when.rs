@@ -45,7 +45,7 @@ pub struct WhenArgs {
     /// Maximum number of matches when no qualifier is used (`unlimited` is accepted by parsing)
     #[arg(long, value_name = "LIMIT", conflicts_with_all = ["first", "last"])]
     pub max: Option<LimitArg>,
-    /// Strict JSON envelope output (runtime remains unimplemented)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`; runtime remains unimplemented)
     #[arg(long)]
     pub json: bool,
 }

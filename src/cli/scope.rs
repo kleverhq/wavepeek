@@ -21,7 +21,7 @@ pub struct ScopeArgs {
     /// Render hierarchy as an indented tree in human output
     #[arg(long)]
     pub tree: bool,
-    /// Strict JSON envelope output (`data` is a flat scope array)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

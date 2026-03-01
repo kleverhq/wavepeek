@@ -30,30 +30,28 @@ pub struct Cli {
 enum Command {
     #[command(
         about = "Show dump metadata (time unit and bounds)",
-        long_about = r#"Reports dump metadata (`time_unit`, `time_start`, `time_end`).
+        long_about = r#"Reports dump metadata for the selected waveform dump.
 
-Contract:
-- --waves <FILE> is required.
-- Default output is human-readable metadata; `--json` switches to strict envelope output.
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek info --help'.`.
-- JSON mode returns one object envelope with metadata fields in `data`.
+Behavior:
+- Prints `time_unit`, `time_start`, and `time_end`.
+- Human-readable output is the default terminal mode.
+- `--json` uses the machine contract defined by `wavepeek schema`.
+- Errors follow `error: <category>: <message>`.
 
-Use this command to confirm dump bounds before running scoped/time-based queries."#
+Use this command first to confirm dump bounds before time-window queries."#
     )]
     Info(info::InfoArgs),
     #[command(
         about = "List hierarchy scopes (deterministic DFS)",
         long_about = r#"Provides deterministic hierarchy traversal over scope paths.
 
-Contract:
-- `--waves <FILE>` is required.
-- Defaults: --max=50, --max-depth=5, --filter=.*.
-- Boundary rules: --max must be greater than 0; --max-depth bounds traversal depth.
-- `--max unlimited` and `--max-depth unlimited` disable limits explicitly.
-- Human output is list mode by default; `--tree` renders hierarchy; `--json` returns a JSON data array.
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek scope --help'.`.
+Behavior:
+- Traversal order is stable: pre-order depth-first, with lexicographic child ordering.
+- Includes parser-native scope kinds from hierarchy data (not only modules).
+- `--tree` switches human output from flat list to visual hierarchy rendering.
+- Invalid regex values are reported as `error: args: ...`.
+- Truncation and disabled-limit conditions emit warnings.
+- `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to explore hierarchy shape before narrowing to signal-level queries."#
     )]
@@ -62,16 +60,14 @@ Use this command to explore hierarchy shape before narrowing to signal-level que
         about = "List signals in scope with metadata",
         long_about = r#"Provides scope-local signal listing with deterministic ordering.
 
-Contract:
-- `--waves <FILE>` is required.
-- --scope is required and identifies the anchor scope.
-- Default mode is non-recursive with `--max=50` and `--filter=.*`.
-- `--recursive` enables child traversal; `--max-depth requires --recursive`.
-- `--max unlimited` and `--max-depth unlimited` disable limits explicitly.
-- Human output uses short/relative names by default; `--abs` shows canonical paths.
-- `--json` returns a JSON array of canonical signal objects (`name`, `path`, `kind`, `width`).
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek signal --help'.`.
+Behavior:
+- Default mode lists only direct signals in the selected scope.
+- Recursive mode walks child scopes depth-first in stable lexicographic order.
+- Human output uses short names in non-recursive mode and scope-relative display in recursive mode; `--abs` always shows canonical paths.
+- `--max-depth` applies only in recursive mode.
+- Invalid regex values are reported as `error: args: ...`.
+- Truncation and disabled-limit conditions emit warnings.
+- `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command after `scope` to inspect available signals in a target scope."#
     )]
@@ -80,15 +76,13 @@ Use this command after `scope` to inspect available signals in a target scope."#
         about = "Get signal values at a specific time point",
         long_about = r#"Provides point-in-time sampling for selected signals.
 
-Contract:
-- `--waves <FILE>`, `--time <TIME_WITH_UNIT>`, and `--signals` are required.
-- --time requires explicit units aligned to dump precision.
-- Name resolution: without `--scope`, `--signals` entries are canonical paths; with `--scope`, names are scope-relative.
-- Output preserves --signals order.
-- Human output prints `@<time>` and one `<display> <value>` line per signal; `--abs` switches to canonical display paths.
-- `--json` returns a JSON object with `time` and ordered `signals` entries (`{path,value}`).
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek at --help'.`.
+Behavior:
+- Supports canonical names without `--scope` and scope-relative names with `--scope`.
+- Output preserves the input order from `--signals`.
+- Time tokens must include explicit units and align to dump precision.
+- Values are emitted as Verilog literals (`<width>'h<digits>` with `x`/`z` support).
+- Fails fast if any requested signal cannot be resolved.
+- `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command for deterministic spot checks at a specific timestamp."#
     )]
@@ -97,16 +91,13 @@ Use this command for deterministic spot checks at a specific timestamp."#
         about = "Get value snapshots over a time range",
         long_about = r#"Provides range-based delta snapshots for selected signals.
 
-Contract:
-- `--waves <FILE>` and `--signals` are required.
-- Optional range is inclusive (`--from`/`--to`) with baseline initialization at range start.
-- Default trigger is --when=* (--when defaults to *).
-- Default row cap is `--max=50`; `--max unlimited` disables truncation.
-- Rows are emitted only when sampled signal values changed at candidate timestamps.
-- Human output prints `@<time> name=value` rows; `--abs` switches to canonical paths.
-- `--json` returns JSON rows with `time` plus ordered `signals[{path,value}]`.
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek change --help'.`.
+Behavior:
+- Range boundaries are inclusive; baseline state is initialized at range start.
+- Candidate timestamps come from `--when` triggers; omitted `--when` behaves as wildcard (`*`).
+- Rows are emitted only when sampled signal values changed from prior sampled state.
+- If no rows are emitted, output includes warning `no signal changes found in selected time range`.
+- `iff` clauses are parsed but runtime evaluation is deferred and reported as `error: args: iff logical expressions are not implemented yet`.
+- `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to inspect value transitions over bounded time windows."#
     )]
@@ -115,15 +106,13 @@ Use this command to inspect value transitions over bounded time windows."#
         about = "Find cycles where a condition is true (not implemented yet)",
         long_about = r#"Find cycles where a condition is true.
 
-Contract:
-- Command intent: evaluate `--cond` on each posedge of `--clk` and report matching timestamps.
-- `--waves <FILE>`, `--clk`, and `--cond` are required.
-- Qualifiers: --first, --last, --max (mutually constrained as documented by flags).
-- --max unlimited is accepted by parsing when no qualifier is used.
-- Default output mode is human-readable; `--json` would use envelope mode.
+Behavior:
+- Intended semantics: evaluate `--cond` on each posedge of `--clk` and report matching timestamps.
+- Qualifiers select all matches, first N, or last N using `--max`, `--first`, and `--last`.
+- `--max unlimited` is accepted by CLI parsing when no qualifier is used.
 - Execution is not implemented yet.
-- Errors use `error: <category>: <message>`.
-- Argument mistakes use `error: args:` and append `See 'wavepeek when --help'.`.
+- `--json` uses the machine contract defined by `wavepeek schema`.
+- Errors follow `error: <category>: <message>`.
 
 Use this help as the parse/contract reference until runtime execution is implemented."#
     )]
@@ -132,12 +121,12 @@ Use this help as the parse/contract reference until runtime execution is impleme
         about = "Print canonical JSON schema contract",
         long_about = r#"Prints the canonical JSON schema document for wavepeek machine output contracts.
 
-Contract:
-- This command accepts no command-specific flags or positional arguments.
-- It prints exactly one schema document to stdout.
-- It does not use waveform --json envelope wrapping.
-- Errors still use `error: <category>: <message>`.
-- For usage constraints, See 'wavepeek schema --help'.
+Behavior:
+- Accepts no command-specific flags or positional arguments.
+- Prints exactly one deterministic schema document to stdout.
+- Output bytes match `schema/wavepeek.json` in this repository.
+- This is the source of truth for all `--json` command outputs.
+- Errors follow `error: <category>: <message>`.
 
 Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
     )]

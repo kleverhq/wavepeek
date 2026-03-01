@@ -39,6 +39,10 @@ This plan does not introduce command aliases or rename command surfaces.
 - [x] (2026-03-01 14:13Z) Completed independent review pass #2 (`review` subagent); addressed one medium coverage finding by adding a guard test that keeps shipped-command help contract coverage synchronized with top-level command surface.
 - [x] (2026-03-01 14:18Z) Re-ran `cargo test --test cli_contract`, `make check`, and `make ci` after review-driven fix; all checks stayed green.
 - [x] (2026-03-01 14:31Z) Re-ran an additional fresh review after pass #2 fix; hardened the new command-surface parser against wrapped help-description lines and revalidated with `cargo test --test cli_contract`, `make check`, and `make ci`.
+- [x] (2026-03-01 15:02Z) Applied follow-up wording pass per product feedback: removed inline JSON envelope field descriptions from command help, removed verbose per-command `error: args` hint sentences, and removed duplicated flag-default details already covered by argument docs.
+- [x] (2026-03-01 15:07Z) Reworked command `Behavior` blocks to pull more non-duplicative semantics from `docs/DESIGN.md` (ordering guarantees, mode semantics, warnings, and deferred-runtime notes) while referring JSON contract readers to `wavepeek schema`.
+- [x] (2026-03-01 15:14Z) Updated help-contract integration tests to assert the refined wording policy and reran `cargo test --test cli_contract`, `cargo test -q`, `make check`, and `make ci` successfully.
+- [x] (2026-03-01 15:21Z) Removed inline JSON-envelope field details from waveform command `--json` argument help text (`src/cli/*.rs`) and added a negative guard test that fails if non-`schema` command help reintroduces inline envelope-field or parse-hint boilerplate.
 
 ## Surprises & Discoveries
 
@@ -62,6 +66,12 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Observation: parsing top-level help command names by "first token on each non-empty line" is brittle because clap may wrap long command descriptions.
   Evidence: fresh post-fix review reported false-positive risk from wrapped continuation lines; mitigated by parsing only command rows with exact command-column indentation and stopping at `Options:` section.
+
+- Observation: detailed per-command repeats of defaults and parse-hint boilerplate made help text noisy and harder to scan, even though the same facts were already present in argument-level docs and normalized error output.
+  Evidence: follow-up product feedback requested removing duplicated defaults/requiredness and `error: args` hint boilerplate from command bodies, while keeping behavior-rich semantics.
+
+- Observation: even after long-about cleanup, inline JSON envelope field details still leaked through `--json` argument doc comments.
+  Evidence: new negative policy test failed on `info --help` until `--json` argument docs were updated to schema references.
 
 ## Decision Log
 
@@ -93,36 +103,44 @@ This plan does not introduce command aliases or rename command surfaces.
   Rationale: This avoids clap wrapping noise while keeping the test implementation simple and deterministic.
   Date/Author: 2026-03-01 / OpenCode
 
+- Decision: Standardize command help body style around non-duplicative `Behavior` bullets: include semantics and runtime behavior from `docs/DESIGN.md`, avoid restating argument-table defaults/requiredness, and refer all JSON-shape specifics to `wavepeek schema`.
+  Rationale: This keeps help self-descriptive for day-to-day use without repeating lower-level argument details or embedding schema field lists in every command.
+  Date/Author: 2026-03-01 / OpenCode
+
+- Decision: Add explicit negative style-policy assertions in integration tests for non-`schema` commands (no inline envelope field names, no repetitive `See 'wavepeek ... --help'.` boilerplate in long help).
+  Rationale: Positive marker checks alone can miss style regressions; negative guards keep the new wording policy stable over future edits.
+  Date/Author: 2026-03-01 / OpenCode
+
 ## Outcomes & Retrospective
 
 Implementation outcome: all shipped commands now provide uniform detailed help for both `-h` and `--help`, and top-level no-args output is byte-identical to explicit `--help`.
 
 The CLI help contract is now enforced by dedicated integration tests that cover parity and command-level self-descriptive markers. Documentation collateral (`docs/DEVELOPMENT.md`, `docs/DESIGN.md`, `docs/BACKLOG.md`, `CHANGELOG.md`) has been aligned so standalone help is treated as a core CLI design principle.
 
-Retrospective: centralizing clap help wiring in one builder path removed divergent render paths and made parity properties easier to guarantee. Fragment-based help assertions provided stable quality checks while still capturing behavior-rich requirements. Independent reviewer feedback improved long-term reliability by adding explicit test coverage against command-surface drift.
+Retrospective: centralizing clap help wiring in one builder path removed divergent render paths and made parity properties easier to guarantee. Fragment-based help assertions provided stable quality checks while still capturing behavior-rich requirements. Independent reviewer feedback improved long-term reliability by adding explicit test coverage against command-surface drift, and follow-up product feedback refined help style toward behavior-first guidance with schema references instead of duplicated argument/envelope details.
 
 ## Context and Orientation
 
 `wavepeek` CLI parsing and help text are centered in `src/cli/mod.rs`. Top-level command descriptions (`about` and `long_about`) live directly on the `Command` enum variants there. Flag-level help text is mostly sourced from doc comments in per-command args files: `src/cli/info.rs`, `src/cli/scope.rs`, `src/cli/signal.rs`, `src/cli/at.rs`, `src/cli/change.rs`, and `src/cli/when.rs`.
 
-Help rendering currently follows clap defaults: `-h` gives a compact summary and `--help` gives long-form text for subcommands. Parse errors and hints are normalized in `src/cli/mod.rs` (`normalize_clap_error`, `help_hint_for_rendered_clap_error`) and should stay stable.
+Help rendering is now unified through one clap builder path in `src/cli/mod.rs`, so `-h` and `--help` both render detailed help for top-level and shipped subcommands, and no-args invocation routes through the same render path as explicit `--help`. Parse errors and hints are normalized in `src/cli/mod.rs` (`normalize_clap_error`, `help_hint_for_rendered_clap_error`) and should stay stable.
 
-Current contract tests are in `tests/cli_contract.rs`. They already check selected help fragments and error hints; this plan extends them into a formal help-quality contract check for each shipped command. "Help-quality contract" in this plan means: a deterministic test rubric asserting that each command help includes (1) what the command does, (2) defaults or explicit requiredness, (3) boundary/range or mode rules, (4) error-category guidance where applicable (`error: args:` style and help hints), and (5) output-shape guidance (human default and/or JSON envelope notes).
+Current contract tests are in `tests/cli_contract.rs`. They now include deterministic parity checks and a formal help-quality rubric for each shipped command. "Help-quality contract" in this plan means: each command help must include (1) command intent, (2) behavior semantics that matter at runtime (ordering, mode differences, warning/error cases, or implementation status), and (3) guidance that `--json` uses the schema contract exposed by `wavepeek schema`, without repeating JSON field-level envelope details in every command.
 
 The required self-descriptive help contract for this plan is embedded here so implementation does not depend on external documents:
 
-Normalized error-guidance rule for help text in this milestone:
+Normalized help-content rule for this milestone:
 
-- For waveform commands (`info`, `scope`, `signal`, `at`, `change`, `when`), help text must include one deterministic guidance sentence: errors use `error: <category>: <message>` and argument mistakes are `error: args:` with `See 'wavepeek <cmd> --help'.`.
-- For `schema`, help text must keep the same global error-shape statement but note that it accepts no waveform flags and should direct users to `wavepeek schema --help` for usage constraints.
-
-- `info`: help states it reports dump metadata (`time_unit`, `time_start`, `time_end`), requires `--waves <FILE>`, states default human mode plus `--json` envelope mode, and mentions that missing required args are `error: args:` with a command help hint.
-- `scope`: help states deterministic hierarchy traversal, includes defaults (`--max=50`, `--max-depth=5`, `--filter=.*`), boundary rules (`--max > 0`, `unlimited` behavior and warnings), and output notes for human list/tree plus JSON array shape.
-- `signal`: help states scope-local signal listing semantics, includes required `--scope`, recursion default off, `--max-depth requires --recursive`, `unlimited` behavior, and output notes (human short/relative/canonical display versus JSON canonical fields).
-- `at`: help states point-in-time sampling semantics, requires explicit-unit `--time` and `--signals`, explains scope-relative versus canonical-name resolution, preserves `--signals` order, and explains human lines versus JSON object payload (`time`, ordered `signals[{path,value}]`).
-- `change`: help states range-based delta snapshots, default trigger `--when=*`, default `--max=50`, inclusive range semantics with baseline behavior, boundary rules for explicit time units and `unlimited`, warning behavior for no rows/truncation, and output notes for human rows versus JSON rows.
-- `when`: help states command intent and qualifier semantics (`--first`, `--last`, `--max`) while clearly disclosing current runtime status as unimplemented and preserving parse contract details (`--max unlimited` parse acceptance).
-- `schema`: help states it prints exactly one canonical JSON schema document, accepts no command-specific flags/positionals, and does not use waveform `--json` envelope wrapping.
+- For waveform commands (`info`, `scope`, `signal`, `at`, `change`, `when`), include behavior-oriented semantics and runtime notes; keep JSON guidance at the level of "contract is defined by `wavepeek schema`" rather than listing envelope field payloads.
+- Do not restate defaults/requiredness already shown in argument help text unless a behavior cannot be understood without it.
+- Keep global error-shape guidance (`error: <category>: <message>`) where useful, but avoid repetitive per-command parse-hint boilerplate.
+- `info`: report metadata semantics and role as dump-bounds primer.
+- `scope`: include deterministic traversal ordering, scope-kind coverage, tree/list mode behavior, and warning/error behavior for regex/limits.
+- `signal`: include direct-vs-recursive semantics, deterministic recursive ordering, display-mode behavior (`--abs`), and regex/limit behavior notes.
+- `at`: include name-resolution rules, ordering guarantees, time-alignment semantics, literal formatting, and fail-fast behavior.
+- `change`: include inclusive range/baseline semantics, trigger sourcing, delta-row emission rules, empty-result warning behavior, and deferred `iff` runtime note.
+- `when`: include intended evaluation semantics, qualifier behavior, parse-accepted `--max unlimited`, and explicit unimplemented runtime status.
+- `schema`: include deterministic single-document semantics and source-of-truth status for all `--json` outputs.
 
 This contract reuses wording intent from `docs/DESIGN.md` for alignment, but the implementation should be executable from this plan alone.
 
@@ -136,7 +154,7 @@ Milestone 1 locks expected behavior through failing tests before code changes (T
 
 Milestone 2 updates clap integration so help flags are ergonomically uniform. Keep both `-h` and `--help` available, but wire both to long-form help output. Implement this through one canonical builder path in `src/cli/mod.rs`: construct a command from `Cli::command()`, disable default help flags on every command node (root and all subcommands), add one global help arg (`-h` and `--help`) with `clap::ArgAction::HelpLong`, parse argv through this builder, and then construct `Cli` from matches for dispatch. Do not use mixed derive-plus-builder alternatives in this milestone. Preserve no-args behavior by routing no-args invocation through the same parser/render path as `--help` (synthetic `--help` argv), so byte-parity is guaranteed by construction. Keep version flag behavior unchanged.
 
-Milestone 3 upgrades help content itself. Rework command `long_about` text and option-level docs to include semantics, defaults, boundary rules, error-category notes, and output-shape notes using adapted normative language from `docs/DESIGN.md`. Ensure wording is concise but complete for novice usage without external docs.
+Milestone 3 upgrades help content itself. Rework command `long_about` text and option-level docs to include semantics, boundary/range and mode behavior, warning/error notes, and schema-reference guidance using adapted normative language from `docs/DESIGN.md`. Keep wording concise and avoid duplicating defaults/requiredness that are already explicit in argument help text.
 
 Milestone 4 aligns project documentation and closes the backlog acceptance loop. Add the standalone-help principle to the CLI design principles section in `docs/DEVELOPMENT.md` (and `docs/DESIGN.md` general conventions where appropriate), then update backlog/changelog entries to reflect completion once tests pass.
 
@@ -313,3 +331,5 @@ Revision Note: 2026-03-01 / OpenCode - Incorporated independent review-pass #2 f
 Revision Note: 2026-03-01 / OpenCode - Completed implementation milestones, recorded clap builder implementation details discovered during coding, and updated outcomes with final validation/documentation closure evidence.
 Revision Note: 2026-03-01 / OpenCode - Added post-review progress/results (both review passes), documented reviewer-driven test hardening for command-surface drift, and refreshed retrospective accordingly.
 Revision Note: 2026-03-01 / OpenCode - Applied fresh post-fix review hardening for wrapped help-line parsing in the shipped-command guard test and recorded final re-validation evidence.
+Revision Note: 2026-03-01 / OpenCode - Applied follow-up product feedback to shift command help text to behavior-first wording: removed duplicated argument defaults, removed per-command parse-hint boilerplate, and replaced inline JSON-envelope details with references to `wavepeek schema`.
+Revision Note: 2026-03-01 / OpenCode - Extended follow-up with arg-level `--json` doc cleanup and negative integration guards to prevent reintroduction of inline envelope and parse-hint boilerplate text.

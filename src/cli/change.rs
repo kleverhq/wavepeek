@@ -30,7 +30,7 @@ pub struct ChangeArgs {
     /// Print canonical paths in human output
     #[arg(long)]
     pub abs: bool,
-    /// Strict JSON envelope output (`data` is an array of snapshot rows)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

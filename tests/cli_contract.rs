@@ -227,69 +227,97 @@ fn command_name_parser_ignores_wrapped_description_lines() {
 }
 
 #[test]
+fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() {
+    for command_name in ["info", "scope", "signal", "at", "change", "when"] {
+        let long_help = successful_stdout_text(&[command_name, "--help"]);
+
+        assert!(
+            long_help.contains("wavepeek schema"),
+            "help for {command_name} should refer readers to wavepeek schema for JSON contract details"
+        );
+        assert!(
+            !long_help.contains("$schema"),
+            "help for {command_name} should not inline JSON envelope fields"
+        );
+        assert!(
+            !long_help.contains("`data`"),
+            "help for {command_name} should not inline JSON envelope field names"
+        );
+        assert!(
+            !long_help.contains("`warnings`"),
+            "help for {command_name} should not inline JSON envelope field names"
+        );
+        assert!(
+            !long_help.contains("See 'wavepeek "),
+            "help for {command_name} should not include repetitive parse-hint boilerplate"
+        );
+    }
+}
+
+#[test]
 fn subcommand_short_help_includes_long_help_contract_markers() {
-    let command_markers = [
+    let command_markers: [(&str, &[&str]); 7] = [
         (
             "info",
-            [
+            &[
                 "Reports dump metadata",
                 "time_unit",
-                "error: args:",
-                "See 'wavepeek info --help'.",
+                "wavepeek schema",
+                "error: <category>: <message>",
             ],
         ),
         (
             "scope",
-            [
+            &[
                 "deterministic hierarchy traversal",
-                "--max-depth",
-                "error: args:",
-                "See 'wavepeek scope --help'.",
+                "pre-order depth-first",
+                "Invalid regex values are reported as",
+                "wavepeek schema",
             ],
         ),
         (
             "signal",
-            [
+            &[
                 "scope-local signal listing",
-                "--max-depth requires --recursive",
-                "error: args:",
-                "See 'wavepeek signal --help'.",
+                "depth-first in stable lexicographic order",
+                "applies only in recursive mode",
+                "wavepeek schema",
             ],
         ),
         (
             "at",
-            [
+            &[
                 "point-in-time sampling",
-                "--time",
-                "error: args:",
-                "See 'wavepeek at --help'.",
+                "input order from `--signals`",
+                "Verilog literals",
+                "wavepeek schema",
             ],
         ),
         (
             "change",
-            [
+            &[
                 "range-based delta snapshots",
-                "--when defaults to *",
-                "error: args:",
-                "See 'wavepeek change --help'.",
+                "Range boundaries are inclusive",
+                "no signal changes found in selected time range",
+                "wavepeek schema",
             ],
         ),
         (
             "when",
-            [
-                "Command intent",
+            &[
+                "Intended semantics",
                 "Execution is not implemented yet",
-                "error: args:",
-                "See 'wavepeek when --help'.",
+                "--max unlimited",
+                "wavepeek schema",
             ],
         ),
         (
             "schema",
-            [
+            &[
                 "canonical JSON schema document",
-                "accepts no command-specific flags",
+                "schema/wavepeek.json",
+                "source of truth for all `--json` command outputs",
                 "error: <category>: <message>",
-                "See 'wavepeek schema --help'.",
             ],
         ),
     ];
@@ -307,75 +335,77 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
 
 #[test]
 fn shipped_commands_help_is_self_descriptive() {
-    let command_contracts = [
+    let command_contracts: [(&str, &[&str]); 7] = [
         (
             "info",
-            [
+            &[
                 "Reports dump metadata",
-                "--waves <FILE> is required",
-                "Default output is human-readable",
-                "error: args:",
+                "Human-readable output is the default terminal mode",
                 "time_unit",
+                "time_start",
+                "wavepeek schema",
             ],
         ),
         (
             "scope",
-            [
+            &[
                 "deterministic hierarchy traversal",
-                "Defaults: --max=50, --max-depth=5, --filter=.*",
-                "--max must be greater than 0",
-                "error: args:",
-                "JSON data array",
+                "pre-order depth-first",
+                "lexicographic child ordering",
+                "Invalid regex values are reported as",
+                "wavepeek schema",
             ],
         ),
         (
             "signal",
-            [
+            &[
                 "scope-local signal listing",
-                "--scope is required",
-                "--max-depth requires --recursive",
-                "error: args:",
-                "JSON array of canonical signal objects",
+                "Default mode lists only direct signals",
+                "depth-first in stable lexicographic order",
+                "applies only in recursive mode",
+                "wavepeek schema",
             ],
         ),
         (
             "at",
-            [
+            &[
                 "point-in-time sampling",
-                "--time requires explicit units",
-                "Output preserves --signals order",
-                "error: args:",
-                "JSON object with `time` and ordered `signals`",
+                "input order from `--signals`",
+                "align to dump precision",
+                "Verilog literals",
+                "wavepeek schema",
             ],
         ),
         (
             "change",
-            [
+            &[
                 "range-based delta snapshots",
-                "Default trigger is --when=*",
-                "inclusive",
-                "error: args:",
-                "JSON rows",
+                "Range boundaries are inclusive",
+                "omitted `--when` behaves as wildcard",
+                "no signal changes found in selected time range",
+                "iff logical expressions are not implemented yet",
+                "wavepeek schema",
             ],
         ),
         (
             "when",
-            [
+            &[
                 "Find cycles where a condition is true",
-                "Qualifiers: --first, --last, --max",
+                "Qualifiers select all matches, first N, or last N",
                 "--max unlimited",
                 "Execution is not implemented yet",
-                "error: args:",
+                "wavepeek schema",
             ],
         ),
         (
             "schema",
-            [
+            &[
                 "canonical JSON schema document",
-                "accepts no command-specific flags or positional arguments",
-                "prints exactly one schema document",
+                "Accepts no command-specific flags or positional arguments",
+                "Prints exactly one deterministic schema document",
+                "schema/wavepeek.json",
+                "source of truth for all `--json` command outputs",
                 "error: <category>: <message>",
-                "does not use waveform --json envelope wrapping",
             ],
         ),
     ];
@@ -423,10 +453,10 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         .stdout(predicate::str::contains(
             "deterministic hierarchy traversal",
         ))
+        .stdout(predicate::str::contains("pre-order depth-first"))
         .stdout(predicate::str::contains(
-            "Defaults: --max=50, --max-depth=5, --filter=.*",
-        ))
-        .stdout(predicate::str::contains("JSON data array"));
+            "Invalid regex values are reported as",
+        ));
 
     let mut when_command = wavepeek_cmd();
 
@@ -434,9 +464,9 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         .args(["when", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Command intent"))
+        .stdout(predicate::str::contains("Intended semantics"))
         .stdout(predicate::str::contains(
-            "Qualifiers: --first, --last, --max",
+            "Qualifiers select all matches, first N, or last N",
         ));
 }
 
@@ -450,7 +480,7 @@ fn signal_help_documents_recursive_and_max_depth_flags() {
         .success()
         .stdout(predicate::str::contains("--recursive"))
         .stdout(predicate::str::contains("--max-depth"))
-        .stdout(predicate::str::contains("--max-depth requires --recursive"));
+        .stdout(predicate::str::contains("requires --recursive"));
 }
 
 #[test]

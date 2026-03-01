@@ -19,7 +19,7 @@ pub struct AtArgs {
     /// Show canonical signal paths in human output
     #[arg(long)]
     pub abs: bool,
-    /// Strict JSON envelope output (`data` object has `time` and ordered `signals[{path,value}]`)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

@@ -32,6 +32,7 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 - [x] (2026-02-28 13:03Z) Updated benchmark docs and passed validation gates (`make check`, `make ci`).
 - [x] (2026-02-28 13:28Z) Applied updated product rule: removed warning-only inventory subcommand, compare parity by `data` only, keep emoji markers with `E`/`D` status suffixes, and stop forcing `data` to list type.
 - [x] (2026-02-28 19:45Z) Added `run --missing-only` resume mode: after name filtering, run executes only tests without complete artifacts in target run directory and prints skip messages plus resolved run path.
+- [x] (2026-03-01 00:00Z) Refactored `change_*` benchmark matrix in `bench/e2e/tests.json`: removed legacy `_pos_50` name suffix, moved `change_chipyard_*` and `change_picorv32_*` windows to microsecond ranges, updated trigger/signal rules, and set heavy-test execution policy to `runs=1` with `warmup=0`.
 
 ## Surprises & Discoveries
 
@@ -46,6 +47,9 @@ This plan does not add a new benchmark framework. The canonical harness remains 
 
 - Observation: functional payload `data` is command-shaped by schema (`object` for scalar commands, `array` for list-like commands), so list-only validation in harness caused false failures.
   Evidence: `schema/wavepeek.json` defines `data` via `oneOf`; `info` resolves to object payload.
+
+- Observation: updated user constraints for heavy `change_*` scenarios included conflicting run-count targets (`runs=3` in one step and `runs=1` in the final step).
+  Evidence: execution request specified both values in separate numbered items; final item also explicitly covered both `change_chipyard_*` and `change_picorv32_*` and requested no warmup.
 
 ## Decision Log
 
@@ -73,6 +77,10 @@ This plan does not add a new benchmark framework. The canonical harness remains 
   Rationale: Functional gate must stay strict for matched tests while remaining tolerant to newly added or removed benchmark tests.
   Date/Author: 2026-02-28 / OpenCode
 
+- Decision: For the heavy `change_chipyard_*` and `change_picorv32_*` matrix refresh, apply `runs=1` and `warmup=0` despite earlier mention of `runs=3`.
+  Rationale: The final user instruction superseded earlier wording, explicitly scoped both families, and aligned with the stated near-term performance constraint.
+  Date/Author: 2026-03-01 / OpenCode
+
 ## Outcomes & Retrospective
 
 Planning outcome: scope is now explicit across repository structure, artifact format, functional diff semantics, and reporting behavior.
@@ -84,6 +92,8 @@ Validation outcome: targeted smoke (`run`, `run --compare`, `compare`) succeeded
 Retrospective: adding lightweight Python unit tests for artifact and functional helpers reduced risk in compare error handling and kept marker semantics (`✅`, `✅E`, `⚠️D`, `?`) explicit.
 
 Retrospective update: resumable execution with `--missing-only` removes friction for interrupted long runs and avoids unnecessary re-execution when artifacts already exist.
+
+Retrospective update: benchmark scenario naming and window metadata for `change_*` are now de-legacyfied (`_pos_50` removed), and heavy chipyard/picorv32 scenarios are temporarily tuned for practicality (`runs=1`, `warmup=0`) with follow-up calibration tracked in backlog.
 
 ## Context and Orientation
 
@@ -220,3 +230,4 @@ Revision Note: 2026-02-28 / OpenCode - Applied user clarifications: keep `run` n
 Revision Note: 2026-02-28 / OpenCode - Implemented milestones end-to-end: moved benchmark breadcrumbs to `bench/`, split artifact IO into `.hyperfine.json`/`.wavepeek.json`, added functional capture + strict compare semantics, corrected repo root resolution after harness move, and validated with smoke runs plus `make check`/`make ci`.
 Revision Note: 2026-02-28 / OpenCode - Updated scope per product decision: removed warning-only inventory subcommand from harness/docs, changed parity checks to compare `data` only (ignore `warnings`), kept emoji-based functional markers with `E`/`D` suffixes, and fixed payload validation to allow command-shaped `data` (object or array).
 Revision Note: 2026-02-28 / OpenCode - Added resumable benchmark execution mode `run --missing-only`, which skips tests with existing `<test>.hyperfine.json` and `<test>.wavepeek.json` artifacts, prints skip diagnostics, and always prints resolved run directory for retry visibility.
+Revision Note: 2026-03-01 / OpenCode - Updated `bench/e2e/tests.json` `change_*` scenarios per benchmark parity refresh: removed `_pos_50` from names, switched chipyard/picorv32 windows to `2/8/32us` ranges (ps-aligned `window_size`), changed trigger-signal selectors and single-signal cases, and reduced heavy suites to `runs=1` with `warmup=0`; added backlog follow-up to revisit calibration after perf fixes.

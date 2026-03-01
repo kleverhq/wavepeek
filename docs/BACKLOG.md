@@ -84,3 +84,9 @@
 - Investigation indicates the slowdown is in `at` sampling path (`src/engine/at.rs` -> `src/waveform/mod.rs`), where one-point queries still trigger full signal-history loading/decoding for selected signals; runtime is dominated by signal activity profile, not just file size.
 - Signal-name duplication used to reach large `--signals` counts is currently allowed by contract and is not the primary contributor to this slowdown.
 - Close when a dedicated `at` performance plan is implemented, semantics remain unchanged, and bench evidence shows expected speedup on this case.
+
+### Revisit `change_*` benchmark `runs`/`warmup` after perf fixes
+
+- Current `change_chipyard_*` and `change_picorv32_*` scenarios are intentionally configured as heavy runs (`runs=1`, `warmup=0`) to keep execution time manageable while perf anomalies are unresolved.
+- This is a temporary benchmark-shaping decision, not a long-term measurement policy.
+- Close when change-command performance issues are addressed and benchmark calibration is re-tuned to restore statistically stable run counts and appropriate warmup settings.

@@ -28,6 +28,8 @@ WAVEPEEK_SUFFIX = ".wavepeek.json"
 FUNCTIONAL_MATCH_MARKER = "✅"
 FUNCTIONAL_MISMATCH_MARKER = "⚠️"
 FUNCTIONAL_MISSING_MARKER = "?"
+FUNCTIONAL_TIMEOUT_MARKER = "⏱T"
+DEFAULT_WAVEPEEK_TIMEOUT_SECONDS = 300
 
 
 def fail(message: str) -> NoReturn:
@@ -196,6 +198,29 @@ def build_functional_command(command_args: list[str]) -> list[str]:
     return [*command_args, "--json"]
 
 
+def build_timed_benchmark_command(
+    command_args: list[str],
+    timeout_seconds: int,
+    test_name: str,
+) -> str:
+    wrapper = SCRIPT_DIR / "wavepeek_timeout_wrapper.py"
+    wrapper_args = [
+        sys.executable,
+        str(wrapper),
+        "--timeout-seconds",
+        str(timeout_seconds),
+        "--label",
+        test_name,
+        "--",
+        *command_args,
+    ]
+    return shlex.join(wrapper_args)
+
+
+def is_timeout_functional_payload(payload: Any) -> bool:
+    return isinstance(payload, dict) and len(payload) == 0
+
+
 def artifact_test_name(path: pathlib.Path, suffix: str) -> str:
     if not path.name.endswith(suffix):
         fail(f"error: report: artifact has unexpected suffix in {path}")
@@ -234,9 +259,18 @@ def partition_missing_only_tests(
     return runnable, skipped
 
 
-def run_test(test: dict[str, Any], run_dir: pathlib.Path, wavepeek_bin: str) -> None:
+def run_test(
+    test: dict[str, Any],
+    run_dir: pathlib.Path,
+    wavepeek_bin: str,
+    timeout_seconds: int,
+) -> None:
     command_args = resolve_test_command(test, wavepeek_bin)
-    benchmark_command = shlex.join(command_args)
+    benchmark_command = build_timed_benchmark_command(
+        command_args,
+        timeout_seconds,
+        str(test["name"]),
+    )
     output_path = hyperfine_result_path(run_dir, str(test["name"]))
 
     hyperfine_cmd = [
@@ -273,7 +307,12 @@ def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
     return {"data": payload["data"], "warnings": payload["warnings"]}
 
 
-def run_functional_capture(test: dict[str, Any], wavepeek_bin: str, caller: str) -> dict[str, Any]:
+def run_functional_capture(
+    test: dict[str, Any],
+    wavepeek_bin: str,
+    caller: str,
+    timeout_seconds: int,
+) -> dict[str, Any]:
     command_args = build_functional_command(resolve_test_command(test, wavepeek_bin))
     result = subprocess.run(
         command_args,
@@ -281,6 +320,7 @@ def run_functional_capture(test: dict[str, Any], wavepeek_bin: str, caller: str)
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        timeout=timeout_seconds,
     )
     if result.returncode != 0:
         details = result.stderr.strip()
@@ -308,6 +348,11 @@ def write_wavepeek_artifact(run_dir: pathlib.Path, test_name: str, payload: dict
         json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+
+
+def write_wavepeek_timeout_artifact(run_dir: pathlib.Path, test_name: str) -> None:
+    output_path = wavepeek_result_path(run_dir, test_name)
+    output_path.write_text("{}\n", encoding="utf-8")
 
 
 def parse_hyperfine_result_file(path: pathlib.Path) -> dict[str, Any]:
@@ -348,6 +393,9 @@ def parse_wavepeek_result_file(path: pathlib.Path) -> dict[str, Any]:
     except json.JSONDecodeError as error:
         fail(f"error: report: invalid JSON in {path}: {error}")
 
+    if is_timeout_functional_payload(payload):
+        return {}
+
     try:
         return validate_functional_payload(payload, f"functional artifact `{path}`")
     except ValueError as error:
@@ -386,6 +434,9 @@ def load_wavepeek_artifact_for_compare(
         return None, f"{label}: invalid JSON in `{path}`: {error}"
     except OSError as error:
         return None, f"{label}: failed to read `{path}`: {error}"
+
+    if is_timeout_functional_payload(payload):
+        return {}, None
 
     try:
         normalized = validate_functional_payload(payload, f"{label} artifact `{path}`")
@@ -435,6 +486,10 @@ def format_meta(meta: dict[str, Any]) -> str:
 
 
 def functional_diff_fields(revised_payload: dict[str, Any], golden_payload: dict[str, Any]) -> list[str]:
+    if is_timeout_functional_payload(revised_payload) or is_timeout_functional_payload(
+        golden_payload
+    ):
+        return []
     if revised_payload.get("data") != golden_payload.get("data"):
         return ["data"]
     return []
@@ -455,6 +510,10 @@ def report_functional_status(
     compare_payload = compare_functional.get(test_name)
     if revised_payload is None or compare_payload is None:
         return FUNCTIONAL_MISSING_MARKER
+    if is_timeout_functional_payload(revised_payload) or is_timeout_functional_payload(
+        compare_payload
+    ):
+        return FUNCTIONAL_TIMEOUT_MARKER
     if revised_payload.get("data") != compare_payload.get("data"):
         return f"{FUNCTIONAL_MISMATCH_MARKER}D"
     if is_empty_data(revised_payload.get("data")):
@@ -485,7 +544,7 @@ def render_report(
                 f"- Compare baseline: `{compare_dir}`",
                 "- Delta formula: `((golden - revised) / golden) * 100`",
                 f"- Emoji threshold: abs(delta) >= {EMOJI_THRESHOLD_PCT:.2f}% (`🟢` faster, `🔴` slower)",
-                "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `?` missing counterpart",
+                "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart",
             ]
         )
     lines.append("")
@@ -594,6 +653,10 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not selected:
         fail("error: run: no tests matched the provided filter")
 
+    timeout_seconds = int(args.wavepeek_timeout_seconds)
+    if timeout_seconds < 1:
+        fail("error: run: --wavepeek-timeout-seconds must be >= 1")
+
     compare_dir = normalize_path(args.compare) if args.compare else None
     if compare_dir is not None:
         ensure_existing_dir(compare_dir, "run")
@@ -617,8 +680,21 @@ def cmd_run(args: argparse.Namespace) -> int:
                 f"[{index}/{len(selected_to_run)}] {test['name']} "
                 f"(runs={test['runs']}, warmup={test['warmup']})"
             )
-            run_test(test, run_dir, wavepeek_bin)
-            functional_payload = run_functional_capture(test, wavepeek_bin, "run")
+            run_test(test, run_dir, wavepeek_bin, timeout_seconds)
+            try:
+                functional_payload = run_functional_capture(
+                    test,
+                    wavepeek_bin,
+                    "run",
+                    timeout_seconds,
+                )
+            except subprocess.TimeoutExpired:
+                print(
+                    f"warning: run: functional capture timed out for `{test['name']}` "
+                    f"after {timeout_seconds}s; writing empty wavepeek artifact"
+                )
+                write_wavepeek_timeout_artifact(run_dir, str(test["name"]))
+                continue
             write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
     else:
         print("info: no tests to run after --missing-only filter")
@@ -669,6 +745,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     timing_failures: list[str] = []
     functional_mismatches: list[str] = []
     functional_artifact_errors: list[str] = []
+    functional_timeout_warnings: list[str] = []
 
     for test_name in matched:
         revised_row = revised[test_name]
@@ -699,6 +776,18 @@ def cmd_compare(args: argparse.Namespace) -> int:
         if revised_payload is None or golden_payload is None:
             continue
 
+        revised_timed_out = is_timeout_functional_payload(revised_payload)
+        golden_timed_out = is_timeout_functional_payload(golden_payload)
+        if revised_timed_out or golden_timed_out:
+            timeout_sides: list[str] = []
+            if revised_timed_out:
+                timeout_sides.append("revised")
+            if golden_timed_out:
+                timeout_sides.append("golden")
+            functional_timeout_warnings.append(
+                f"{test_name}: timeout artifact on {', '.join(timeout_sides)}"
+            )
+
         diff_fields = functional_diff_fields(revised_payload, golden_payload)
         if diff_fields:
             functional_mismatches.append(
@@ -715,6 +804,10 @@ def cmd_compare(args: argparse.Namespace) -> int:
             "warning: compare: tests only in golden run: " + ", ".join(golden_only),
             file=sys.stderr,
         )
+    if functional_timeout_warnings:
+        print("warning: compare: timeout functional artifacts detected:", file=sys.stderr)
+        for issue in functional_timeout_warnings:
+            print(f"  - {issue}", file=sys.stderr)
 
     if timing_failures:
         print(
@@ -762,6 +855,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--missing-only",
         action="store_true",
         help="run only tests missing artifacts in run directory",
+    )
+    run_parser.add_argument(
+        "--wavepeek-timeout-seconds",
+        type=int,
+        default=DEFAULT_WAVEPEEK_TIMEOUT_SECONDS,
+        help="max seconds per wavepeek invocation before timeout cap",
     )
 
     report_parser = subparsers.add_parser("report", help="generate/update README.md for a run")

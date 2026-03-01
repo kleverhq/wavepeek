@@ -1,8 +1,10 @@
+import argparse
 import importlib.util
 import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 
 SPEC = importlib.util.spec_from_file_location(
@@ -16,6 +18,26 @@ SPEC.loader.exec_module(perf)
 
 
 class PerfHelpersTest(unittest.TestCase):
+    @staticmethod
+    def _write_hyperfine_artifact(path: pathlib.Path, mean: float) -> None:
+        path.write_text(
+            json.dumps(
+                {
+                    "results": [
+                        {
+                            "command": "wavepeek change --json",
+                            "mean": mean,
+                            "stddev": 0.0,
+                            "median": mean,
+                            "min": mean,
+                            "max": mean,
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
     def test_test_has_complete_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = pathlib.Path(temp_dir)
@@ -47,6 +69,16 @@ class PerfHelpersTest(unittest.TestCase):
         missing_only_args = parser.parse_args(["run", "--missing-only"])
         self.assertTrue(missing_only_args.missing_only)
 
+    def test_run_parser_wavepeek_timeout_seconds_flag(self) -> None:
+        parser = perf.build_parser()
+        default_args = parser.parse_args(["run"])
+        self.assertEqual(default_args.wavepeek_timeout_seconds, 300)
+
+        override_args = parser.parse_args(
+            ["run", "--wavepeek-timeout-seconds", "42"]
+        )
+        self.assertEqual(override_args.wavepeek_timeout_seconds, 42)
+
     def test_build_functional_command_appends_json_once(self) -> None:
         command = ["wavepeek", "info", "--waves", "/tmp/a.fst"]
         self.assertEqual(
@@ -57,6 +89,22 @@ class PerfHelpersTest(unittest.TestCase):
             perf.build_functional_command(["wavepeek", "info", "--json"]),
             ["wavepeek", "info", "--json"],
         )
+
+    def test_run_functional_capture_passes_timeout_to_subprocess(self) -> None:
+        test = {
+            "name": "sample",
+            "command": ["{wavepeek_bin}", "change", "--waves", "/tmp/a.fst"],
+        }
+        with mock.patch.object(perf.subprocess, "run") as run_mock:
+            run_mock.return_value = mock.Mock(
+                returncode=0,
+                stdout=json.dumps({"data": [], "warnings": []}),
+                stderr="",
+            )
+            perf.run_functional_capture(test, "wavepeek", "run", 123)
+
+        self.assertEqual(run_mock.call_count, 1)
+        self.assertEqual(run_mock.call_args.kwargs["timeout"], 123)
 
     def test_functional_diff_fields(self) -> None:
         baseline = {"data": [1], "warnings": ["w1"]}
@@ -75,6 +123,8 @@ class PerfHelpersTest(unittest.TestCase):
             ),
             [],
         )
+        self.assertEqual(perf.functional_diff_fields({}, baseline), [])
+        self.assertEqual(perf.functional_diff_fields(baseline, {}), [])
 
     def test_load_wavepeek_artifact_for_compare_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -103,6 +153,27 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertIsNotNone(error)
         assert error is not None
         self.assertIn("golden: invalid JSON", error)
+
+    def test_parse_wavepeek_result_file_accepts_timeout_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text("{}\n", encoding="utf-8")
+            payload = perf.parse_wavepeek_result_file(artifact)
+        self.assertEqual(payload, {})
+
+    def test_load_wavepeek_artifact_for_compare_accepts_timeout_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text("{}\n", encoding="utf-8")
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+        self.assertEqual(payload, {})
+        self.assertIsNone(error)
 
     def test_load_wavepeek_artifact_for_compare_missing_keys(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -247,6 +318,42 @@ class PerfHelpersTest(unittest.TestCase):
             ),
             perf.FUNCTIONAL_MATCH_MARKER,
         )
+
+    def test_report_functional_status_timeout_artifact(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {}},
+                {"t": {"data": [{"id": 1}], "warnings": []}},
+            ),
+            perf.FUNCTIONAL_TIMEOUT_MARKER,
+        )
+
+    def test_cmd_compare_timeout_artifact_is_non_blocking(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 1.0)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
+
+            (revised / "sample.wavepeek.json").write_text("{}\n", encoding="utf-8")
+            (golden / "sample.wavepeek.json").write_text(
+                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                encoding="utf-8",
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=5.0,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
 
 
 if __name__ == "__main__":

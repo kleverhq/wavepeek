@@ -19,6 +19,19 @@ use crate::output;
     name = "wavepeek",
     version,
     about = "wavepeek is a command-line tool for RTL waveform inspection.\nIt provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.",
+    long_about = r#"wavepeek is a command-line tool for RTL waveform inspection.
+It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
+
+General conventions:
+- No positional command arguments: after choosing a subcommand, inputs are named flags.
+- Waveform commands require `--waves <FILE>`; `schema` is the exception and accepts no waveform input flags.
+- Output is bounded by default (for example with `--max`, `--first`/`--last`, or finite command shape) and recursive traversals are depth-bounded.
+- Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
+- Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
+- Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
+- Errors follow `error: <category>: <message>`.
+
+Use `wavepeek <command> --help` (or `-h`) for detailed command behavior and examples."#,
     disable_help_subcommand = true
 )]
 pub struct Cli {
@@ -36,7 +49,6 @@ Behavior:
 - Prints `time_unit`, `time_start`, and `time_end`.
 - Human-readable output is the default terminal mode.
 - `--json` uses the machine contract defined by `wavepeek schema`.
-- Errors follow `error: <category>: <message>`.
 
 Use this command first to confirm dump bounds before time-window queries."#
     )]
@@ -49,7 +61,6 @@ Behavior:
 - Traversal order is stable: pre-order depth-first, with lexicographic child ordering.
 - Includes parser-native scope kinds from hierarchy data (not only modules).
 - `--tree` switches human output from flat list to visual hierarchy rendering.
-- Invalid regex values are reported as `error: args: ...`.
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
@@ -65,7 +76,6 @@ Behavior:
 - Recursive mode walks child scopes depth-first in stable lexicographic order.
 - Human output uses short names in non-recursive mode and scope-relative display in recursive mode; `--abs` always shows canonical paths.
 - `--max-depth` applies only in recursive mode.
-- Invalid regex values are reported as `error: args: ...`.
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
@@ -95,8 +105,8 @@ Behavior:
 - Range boundaries are inclusive; baseline state is initialized at range start.
 - Candidate timestamps come from `--when` triggers; omitted `--when` behaves as wildcard (`*`).
 - Rows are emitted only when sampled signal values changed from prior sampled state.
-- If no rows are emitted, output includes warning `no signal changes found in selected time range`.
-- `iff` clauses are parsed but runtime evaluation is deferred and reported as `error: args: iff logical expressions are not implemented yet`.
+- Empty-result and truncation conditions may emit warnings.
+- `iff` clauses are parsed, but logical-condition execution for `iff` is deferred in the current release.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to inspect value transitions over bounded time windows."#
@@ -112,7 +122,6 @@ Behavior:
 - `--max unlimited` is accepted by CLI parsing when no qualifier is used.
 - Execution is not implemented yet.
 - `--json` uses the machine contract defined by `wavepeek schema`.
-- Errors follow `error: <category>: <message>`.
 
 Use this help as the parse/contract reference until runtime execution is implemented."#
     )]
@@ -124,9 +133,8 @@ Use this help as the parse/contract reference until runtime execution is impleme
 Behavior:
 - Accepts no command-specific flags or positional arguments.
 - Prints exactly one deterministic schema document to stdout.
-- Output bytes match `schema/wavepeek.json` in this repository.
+- Output bytes match the canonical artifact `schema/wavepeek.json`.
 - This is the source of truth for all `--json` command outputs.
-- Errors follow `error: <category>: <message>`.
 
 Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
     )]

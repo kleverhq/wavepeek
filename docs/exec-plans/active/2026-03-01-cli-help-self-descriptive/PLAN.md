@@ -43,6 +43,11 @@ This plan does not introduce command aliases or rename command surfaces.
 - [x] (2026-03-01 15:07Z) Reworked command `Behavior` blocks to pull more non-duplicative semantics from `docs/DESIGN.md` (ordering guarantees, mode semantics, warnings, and deferred-runtime notes) while referring JSON contract readers to `wavepeek schema`.
 - [x] (2026-03-01 15:14Z) Updated help-contract integration tests to assert the refined wording policy and reran `cargo test --test cli_contract`, `cargo test -q`, `make check`, and `make ci` successfully.
 - [x] (2026-03-01 15:21Z) Removed inline JSON-envelope field details from waveform command `--json` argument help text (`src/cli/*.rs`) and added a negative guard test that fails if non-`schema` command help reintroduces inline envelope-field or parse-hint boilerplate.
+- [x] (2026-03-01 15:42Z) Applied second product-feedback pass: moved error-shape guidance from subcommands to top-level help conventions, removed command lines that inlined concrete warning/error text, and expanded top-level help with General conventions (`No positional arguments`, bounded output/recursion, output format, time format/normalization/ranges).
+- [x] (2026-03-01 15:47Z) Re-aligned help-contract tests to the new policy (including new top-level conventions assertions) and reran `cargo test --test cli_contract`, `cargo test -q`, `make check`, and `make ci` successfully.
+- [x] (2026-03-01 15:55Z) Incorporated post-change review clarification: reworded top-level "No positional ..." guidance to avoid conflict with positional subcommand selection and kept convention semantics scoped to command arguments.
+- [x] (2026-03-01 16:04Z) Addressed second-pass review finding by removing remaining literal `error: args:` text from option docs and adding a negative guard test to prevent inlining concrete warning/error message bodies in waveform command help.
+- [x] (2026-03-01 16:11Z) Broadened negative style guard coverage to reject generic literal error/warning prefixes (`error: `, `warning: `) and concrete warning literals in waveform command help, then revalidated full test and quality gates.
 
 ## Surprises & Discoveries
 
@@ -72,6 +77,18 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Observation: even after long-about cleanup, inline JSON envelope field details still leaked through `--json` argument doc comments.
   Evidence: new negative policy test failed on `info --help` until `--json` argument docs were updated to schema references.
+
+- Observation: repeating canonical error-shape lines in every subcommand made help noisier without adding unique per-command value.
+  Evidence: product follow-up requested centralizing error-shape guidance at top-level help and keeping subcommands focused on behavior semantics.
+
+- Observation: top-level phrase "No positional arguments" can be misread as contradicting `Usage: wavepeek <COMMAND>` unless explicitly scoped.
+  Evidence: review flagged ambiguity after the second feedback pass; wording was narrowed to "No positional command arguments".
+
+- Observation: policy regressions can still leak via argument doc comments even after command-body long-help cleanup.
+  Evidence: independent review flagged residual literal `error: args:` snippets in option docs (`scope`, `signal`, `at`), fixed in a dedicated cleanup pass with a new negative guard test.
+
+- Observation: narrow denylist tests can miss future literal-message regressions that use different concrete strings.
+  Evidence: second independent review requested widening policy-level guards beyond one specific parser prefix and one warning text body; guard assertions were expanded accordingly.
 
 ## Decision Log
 
@@ -109,6 +126,10 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Decision: Add explicit negative style-policy assertions in integration tests for non-`schema` commands (no inline envelope field names, no repetitive `See 'wavepeek ... --help'.` boilerplate in long help).
   Rationale: Positive marker checks alone can miss style regressions; negative guards keep the new wording policy stable over future edits.
+  Date/Author: 2026-03-01 / OpenCode
+
+- Decision: Keep literal warning/error message strings out of command help bodies unless they are stable user-facing contracts that cannot be described semantically.
+  Rationale: Semantic wording is less brittle across implementation and copy edits while still giving users actionable command behavior context.
   Date/Author: 2026-03-01 / OpenCode
 
 ## Outcomes & Retrospective
@@ -333,3 +354,7 @@ Revision Note: 2026-03-01 / OpenCode - Added post-review progress/results (both 
 Revision Note: 2026-03-01 / OpenCode - Applied fresh post-fix review hardening for wrapped help-line parsing in the shipped-command guard test and recorded final re-validation evidence.
 Revision Note: 2026-03-01 / OpenCode - Applied follow-up product feedback to shift command help text to behavior-first wording: removed duplicated argument defaults, removed per-command parse-hint boilerplate, and replaced inline JSON-envelope details with references to `wavepeek schema`.
 Revision Note: 2026-03-01 / OpenCode - Extended follow-up with arg-level `--json` doc cleanup and negative integration guards to prevent reintroduction of inline envelope and parse-hint boilerplate text.
+Revision Note: 2026-03-01 / OpenCode - Applied second feedback pass to centralize global error-shape guidance at top-level help, remove inlined warning/error literals from subcommands, and encode General conventions from `docs/DESIGN.md` directly in top-level help text and tests.
+Revision Note: 2026-03-01 / OpenCode - Clarified top-level positional-argument wording so it remains consistent with positional subcommand selection while preserving the named-flag contract for command inputs.
+Revision Note: 2026-03-01 / OpenCode - Removed leftover literal parser-error wording from argument docs and added explicit negative tests to keep literal warning/error message bodies out of waveform command help.
+Revision Note: 2026-03-01 / OpenCode - Expanded negative style-policy guard assertions to cover generic literal error/warning prefixes and additional concrete warning literals, reducing future wording-regression blind spots.

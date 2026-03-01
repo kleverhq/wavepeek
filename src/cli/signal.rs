@@ -15,7 +15,7 @@ pub struct SignalArgs {
     /// Maximum number of entries (default: 50, `unlimited` disables truncation, value must be > 0)
     #[arg(long, default_value = "50")]
     pub max: LimitArg,
-    /// Regex filter for signal name (default: `.*`; invalid regex is `error: args:`)
+    /// Regex filter for signal name (default: `.*`; invalid regex is rejected as an argument error)
     #[arg(long, default_value = ".*")]
     pub filter: String,
     /// Recursively include nested child scopes

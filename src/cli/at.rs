@@ -7,7 +7,7 @@ pub struct AtArgs {
     /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
-    /// Time point with explicit units (for example, 1337ns); bare numbers are `error: args:`
+    /// Time point with explicit units (for example, 1337ns); bare numbers are rejected as argument errors
     #[arg(long)]
     pub time: String,
     /// Scope for short signal names (without --scope, names in --signals must be canonical paths)

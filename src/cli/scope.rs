@@ -15,7 +15,7 @@ pub struct ScopeArgs {
     /// Maximum traversal depth (default: 5, `unlimited` disables depth truncation)
     #[arg(long, default_value = "5")]
     pub max_depth: LimitArg,
-    /// Regex filter for full scope path (default: `.*`; invalid regex is `error: args:`)
+    /// Regex filter for full scope path (default: `.*`; invalid regex is rejected as an argument error)
     #[arg(long, default_value = ".*")]
     pub filter: String,
     /// Render hierarchy as an indented tree in human output

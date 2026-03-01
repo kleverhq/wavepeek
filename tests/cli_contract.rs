@@ -108,6 +108,29 @@ fn help_lists_expected_subcommands() {
 }
 
 #[test]
+fn top_level_help_documents_general_conventions() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("General conventions:"))
+        .stdout(predicate::str::contains("No positional command arguments"))
+        .stdout(predicate::str::contains("Output is bounded by default"))
+        .stdout(predicate::str::contains("Default output is human-readable"))
+        .stdout(predicate::str::contains(
+            "Time values require explicit units",
+        ))
+        .stdout(predicate::str::contains(
+            "time-window flags (`--from`, `--to`) use inclusive boundaries",
+        ))
+        .stdout(predicate::str::contains(
+            "Errors follow `error: <category>: <message>`",
+        ));
+}
+
+#[test]
 fn top_level_help_marks_unimplemented_subcommands() {
     let mut command = wavepeek_cmd();
 
@@ -255,23 +278,42 @@ fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() 
 }
 
 #[test]
+fn waveform_help_avoids_literal_error_or_warning_message_bodies() {
+    for command_name in ["info", "scope", "signal", "at", "change", "when"] {
+        let long_help = successful_stdout_text(&[command_name, "--help"]);
+
+        assert!(
+            !long_help.contains("error: "),
+            "help for {command_name} should avoid inlining literal runtime/parser error prefixes"
+        );
+        assert!(
+            !long_help.contains("warning: "),
+            "help for {command_name} should avoid inlining literal warning-message prefixes"
+        );
+        assert!(
+            !long_help.contains("no signal changes found in selected time range"),
+            "help for {command_name} should avoid inlining concrete warning message bodies"
+        );
+        assert!(
+            !long_help.contains("limit disabled:"),
+            "help for {command_name} should avoid inlining concrete warning message bodies"
+        );
+    }
+}
+
+#[test]
 fn subcommand_short_help_includes_long_help_contract_markers() {
     let command_markers: [(&str, &[&str]); 7] = [
         (
             "info",
-            &[
-                "Reports dump metadata",
-                "time_unit",
-                "wavepeek schema",
-                "error: <category>: <message>",
-            ],
+            &["Reports dump metadata", "time_unit", "wavepeek schema"],
         ),
         (
             "scope",
             &[
                 "deterministic hierarchy traversal",
                 "pre-order depth-first",
-                "Invalid regex values are reported as",
+                "Truncation and disabled-limit conditions emit warnings",
                 "wavepeek schema",
             ],
         ),
@@ -298,7 +340,7 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
             &[
                 "range-based delta snapshots",
                 "Range boundaries are inclusive",
-                "no signal changes found in selected time range",
+                "Empty-result and truncation conditions may emit warnings",
                 "wavepeek schema",
             ],
         ),
@@ -317,7 +359,6 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
                 "canonical JSON schema document",
                 "schema/wavepeek.json",
                 "source of truth for all `--json` command outputs",
-                "error: <category>: <message>",
             ],
         ),
     ];
@@ -352,7 +393,7 @@ fn shipped_commands_help_is_self_descriptive() {
                 "deterministic hierarchy traversal",
                 "pre-order depth-first",
                 "lexicographic child ordering",
-                "Invalid regex values are reported as",
+                "Truncation and disabled-limit conditions emit warnings",
                 "wavepeek schema",
             ],
         ),
@@ -382,8 +423,8 @@ fn shipped_commands_help_is_self_descriptive() {
                 "range-based delta snapshots",
                 "Range boundaries are inclusive",
                 "omitted `--when` behaves as wildcard",
-                "no signal changes found in selected time range",
-                "iff logical expressions are not implemented yet",
+                "Empty-result and truncation conditions may emit warnings",
+                "logical-condition execution for `iff` is deferred",
                 "wavepeek schema",
             ],
         ),
@@ -405,7 +446,6 @@ fn shipped_commands_help_is_self_descriptive() {
                 "Prints exactly one deterministic schema document",
                 "schema/wavepeek.json",
                 "source of truth for all `--json` command outputs",
-                "error: <category>: <message>",
             ],
         ),
     ];
@@ -455,7 +495,7 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         ))
         .stdout(predicate::str::contains("pre-order depth-first"))
         .stdout(predicate::str::contains(
-            "Invalid regex values are reported as",
+            "Truncation and disabled-limit conditions emit warnings",
         ));
 
     let mut when_command = wavepeek_cmd();

@@ -34,6 +34,10 @@ This plan does not introduce command aliases or rename command surfaces.
 - [x] (2026-03-01 13:29Z) Expanded command `long_about` and flag docs across CLI modules to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes for all shipped commands.
 - [x] (2026-03-01 13:34Z) Documented standalone-help principle in `docs/DEVELOPMENT.md` and `docs/DESIGN.md`; marked backlog item as completed and recorded unreleased changelog entries.
 - [x] (2026-03-01 13:41Z) Ran targeted contract tests and full `cargo test` suite; all checks passed locally.
+- [x] (2026-03-01 14:02Z) Ran repository quality gates `make check` and `make ci`; both completed successfully.
+- [x] (2026-03-01 14:09Z) Completed mandatory review pass #1 (`review` subagent); no substantive issues reported.
+- [x] (2026-03-01 14:13Z) Completed independent review pass #2 (`review` subagent); addressed one medium coverage finding by adding a guard test that keeps shipped-command help contract coverage synchronized with top-level command surface.
+- [x] (2026-03-01 14:18Z) Re-ran `cargo test --test cli_contract`, `make check`, and `make ci` after review-driven fix; all checks stayed green.
 
 ## Surprises & Discoveries
 
@@ -51,6 +55,9 @@ This plan does not introduce command aliases or rename command surfaces.
 
 - Observation: custom global help arg without explicit `.help(...)` text renders a blank `-h, --help` description line.
   Evidence: `cargo run --quiet -- change --help` initially showed an empty help description row; adding `.help("Print help")` restored expected output clarity.
+
+- Observation: static shipped-command lists in tests can drift silently as new subcommands are added.
+  Evidence: independent review pass #2 flagged that parity checks iterated a hard-coded list; mitigated by adding a guard test that asserts `SHIPPED_COMMANDS` matches names listed in top-level `--help`.
 
 ## Decision Log
 
@@ -74,13 +81,17 @@ This plan does not introduce command aliases or rename command surfaces.
   Rationale: Fragment checks enforce the required contract categories while minimizing brittleness from clap line-wrap formatting changes.
   Date/Author: 2026-03-01 / OpenCode
 
+- Decision: Retain explicit `SHIPPED_COMMANDS` test targeting, but add a synchronization guard against top-level help command discovery.
+  Rationale: Keeping explicit command intent in tests preserves readability, while the guard test prevents silent drift when command surface changes.
+  Date/Author: 2026-03-01 / OpenCode
+
 ## Outcomes & Retrospective
 
 Implementation outcome: all shipped commands now provide uniform detailed help for both `-h` and `--help`, and top-level no-args output is byte-identical to explicit `--help`.
 
 The CLI help contract is now enforced by dedicated integration tests that cover parity and command-level self-descriptive markers. Documentation collateral (`docs/DEVELOPMENT.md`, `docs/DESIGN.md`, `docs/BACKLOG.md`, `CHANGELOG.md`) has been aligned so standalone help is treated as a core CLI design principle.
 
-Retrospective: centralizing clap help wiring in one builder path removed divergent render paths and made parity properties easier to guarantee. Fragment-based help assertions provided stable quality checks while still capturing behavior-rich requirements.
+Retrospective: centralizing clap help wiring in one builder path removed divergent render paths and made parity properties easier to guarantee. Fragment-based help assertions provided stable quality checks while still capturing behavior-rich requirements. Independent reviewer feedback improved long-term reliability by adding explicit test coverage against command-surface drift.
 
 ## Context and Orientation
 
@@ -292,3 +303,4 @@ Revision Note: 2026-03-01 / OpenCode - Initial ExecPlan created for backlog issu
 Revision Note: 2026-03-01 / OpenCode - Incorporated review-pass #1 feedback by embedding per-command help contract requirements directly in this plan, specifying the clap help-flag wiring strategy, expanding per-command human verification steps, and adding a backlog-closure mapping.
 Revision Note: 2026-03-01 / OpenCode - Incorporated independent review-pass #2 feedback by selecting a single builder-based clap wiring path, requiring `wavepeek` no-args parity with `--help`, and standardizing error-guidance expectations in help contracts.
 Revision Note: 2026-03-01 / OpenCode - Completed implementation milestones, recorded clap builder implementation details discovered during coding, and updated outcomes with final validation/documentation closure evidence.
+Revision Note: 2026-03-01 / OpenCode - Added post-review progress/results (both review passes), documented reviewer-driven test hardening for command-surface drift, and refreshed retrospective accordingly.

@@ -23,6 +23,38 @@ fn successful_stdout_text(args: &[&str]) -> String {
     String::from_utf8(successful_stdout(args)).expect("stdout should be UTF-8")
 }
 
+fn top_level_help_command_names() -> Vec<String> {
+    let help = successful_stdout_text(&["--help"]);
+    let mut names = Vec::new();
+    let mut in_commands = false;
+
+    for line in help.lines() {
+        if line.trim() == "Commands:" {
+            in_commands = true;
+            continue;
+        }
+
+        if !in_commands {
+            continue;
+        }
+
+        if line.trim().is_empty() {
+            break;
+        }
+
+        let trimmed = line.trim_start();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        if let Some(name) = trimmed.split_whitespace().next() {
+            names.push(name.to_string());
+        }
+    }
+
+    names
+}
+
 #[test]
 fn no_args_prints_top_level_help_and_exits_zero() {
     let mut command = wavepeek_cmd();
@@ -155,6 +187,20 @@ fn short_and_long_help_are_identical_for_shipped_commands() {
             "wavepeek {command_name} -h output must match wavepeek {command_name} --help"
         );
     }
+}
+
+#[test]
+fn shipped_commands_list_matches_top_level_help_surface() {
+    let expected: Vec<String> = SHIPPED_COMMANDS
+        .iter()
+        .map(|command_name| command_name.to_string())
+        .collect();
+    let actual = top_level_help_command_names();
+
+    assert_eq!(
+        actual, expected,
+        "top-level help command list changed; update SHIPPED_COMMANDS and help contract tests"
+    );
 }
 
 #[test]

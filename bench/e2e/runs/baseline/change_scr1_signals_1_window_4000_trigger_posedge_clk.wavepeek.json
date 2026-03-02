@@ -1,0 +1,457 @@
+{
+  "data": [
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938102ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938112ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938122ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938132ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938142ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938152ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938162ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938172ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938182ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938192ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938202ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938212ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938222ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938232ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938242ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938252ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938262ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938272ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938282ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938292ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938302ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938312ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938322ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938332ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938342ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938352ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938362ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938372ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938382ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938392ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938402ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938412ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938422ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938432ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938442ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938452ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938462ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938472ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938482ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938492ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938502ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938512ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938522ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938532ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938542ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938552ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938562ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938572ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938582ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "938592ps"
+    }
+  ],
+  "warnings": [
+    "truncated output to 50 entries (use --max to increase limit)"
+  ]
+}

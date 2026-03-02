@@ -1,0 +1,48 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "testbench.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.trace_file",
+        "value": "32'h80000003"
+      },
+      {
+        "path": "testbench.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.count_cycle",
+        "value": "16'hbeb9"
+      },
+      {
+        "path": "testbench.top.cycle_counter",
+        "value": "32'h0003beb9"
+      },
+      {
+        "path": "testbench.top.firmware_file",
+        "value": "1024'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006669726d776172652f6669726d776172652e686578"
+      }
+    ],
+    "time": "2455330000ps"
+  },
+  "warnings": []
+}

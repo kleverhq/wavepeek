@@ -1,0 +1,12 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "TOP.clk",
+        "value": "1'h1"
+      }
+    ],
+    "time": "940092ps"
+  },
+  "warnings": []
+}

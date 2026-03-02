@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "command": "change_picorv32_signals_100_window_32000000_trigger_any",
+      "mean": 23.801695625,
+      "stddev": null,
+      "median": 23.801695625,
+      "user": 23.493496,
+      "system": 0.330707,
+      "min": 23.801695625,
+      "max": 23.801695625,
+      "times": [
+        23.801695625
+      ],
+      "exit_codes": [
+        0
+      ]
+    }
+  ]
+}

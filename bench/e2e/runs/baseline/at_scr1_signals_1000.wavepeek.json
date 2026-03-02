@@ -1,0 +1,4008 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "TOP.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_MTVEC_BASE",
+        "value": "32'h000001c0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_RST_VECTOR",
+        "value": "32'h00000200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLE",
+        "value": "12'hc00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLEH",
+        "value": "12'hc80"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE",
+        "value": "12'h7b0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN",
+        "value": "12'h004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
+        "value": "7'h64"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK",
+        "value": "7'h60"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+        "value": "12'hc02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRETH",
+        "value": "12'hc82"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_BASE",
+        "value": "12'hbf0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CICSR",
+        "value": "12'hbf1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CISV",
+        "value": "12'hbf0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_EOI",
+        "value": "12'hbf4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ICSR",
+        "value": "12'hbf7"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IDX",
+        "value": "12'hbf6"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IPR",
+        "value": "12'hbf2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ISVR",
+        "value": "12'hbf3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_SOI",
+        "value": "12'hbf5"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MARCHID",
+        "value": "12'hf12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCAUSE",
+        "value": "12'h342"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCOUNTEN",
+        "value": "12'h7e0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLE",
+        "value": "12'hb00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLEH",
+        "value": "12'hb80"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MEPC",
+        "value": "12'h341"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHARTID",
+        "value": "12'hf14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTERH_MASK",
+        "value": "7'h5c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTER_MASK",
+        "value": "7'h58"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMEVENT_MASK",
+        "value": "7'h19"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIE",
+        "value": "12'h304"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIMPID",
+        "value": "12'hf13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRET",
+        "value": "12'hb02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRETH",
+        "value": "12'hb82"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIP",
+        "value": "12'h344"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MISA",
+        "value": "12'h301"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MSCRATCH",
+        "value": "12'h340"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MSTATUS",
+        "value": "12'h300"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MTVAL",
+        "value": "12'h343"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MTVEC",
+        "value": "12'h305"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MVENDORID",
+        "value": "12'hf11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MBASE",
+        "value": "12'h7a0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MSPAN",
+        "value": "12'h008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA1",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA2",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TINFO",
+        "value": "3'h4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TSELECT",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_W",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA1",
+        "value": "12'h7a1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA2",
+        "value": "12'h7a2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TINFO",
+        "value": "12'h7a4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TSELECT",
+        "value": "12'h7a0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TIME",
+        "value": "12'hc01"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TIMEH",
+        "value": "12'hc81"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_WIDTH",
+        "value": "32'h0000000c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_CMD_ALL_NUM_E",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_CMD_WIDTH_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_COUNTERS_WIDTH",
+        "value": "32'h00000040"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MARCHID",
+        "value": "32'h00000008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_CY_OFFSET",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_IR_OFFSET",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_OFFSET",
+        "value": "32'h0000000b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_OFFSET",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_OFFSET",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIMPID",
+        "value": "32'h22011200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MEIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MSIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MTIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MISA",
+        "value": "32'h40001104"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_OFFSET",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_OFFSET",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_RST_VAL",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP_OFFSET",
+        "value": "32'h0000000b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RO_BITS",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RST_VAL",
+        "value": "26'h0000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_VAL_BITS",
+        "value": "32'h0000001a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_WR_RST_VAL",
+        "value": "26'h0000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_ZERO_BITS",
+        "value": "32'h00000006"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_DIRECT",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_VECTORED",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MVENDORID",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_OP_ALL_NUM_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_OP_WIDTH_E",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTAUTO",
+        "value": "7'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS",
+        "value": "7'h16"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_BUSY",
+        "value": "5'h0c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_HI",
+        "value": "5'h0a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_LO",
+        "value": "5'h08"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_WDTH",
+        "value": "5'h02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_HI",
+        "value": "5'h03"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_HI",
+        "value": "5'h1c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_LO",
+        "value": "5'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_HI",
+        "value": "5'h07"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_LO",
+        "value": "5'h04"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDB",
+        "value": "5'h0b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDC_HI",
+        "value": "5'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDC_LO",
+        "value": "5'h0d"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDD_HI",
+        "value": "5'h1f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDD_LO",
+        "value": "5'h1d"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND",
+        "value": "7'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMPOSTINC",
+        "value": "5'h13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_HI",
+        "value": "5'h16"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_LO",
+        "value": "5'h14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMVIRTUAL",
+        "value": "5'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_HI",
+        "value": "5'h0d"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_HI",
+        "value": "5'h12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_LO",
+        "value": "5'h11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_WRITE",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_POSTEXEC",
+        "value": "5'h12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_REGNO_HI",
+        "value": "5'h0f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_REGNO_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_RESERVEDA",
+        "value": "5'h13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_RESERVEDB",
+        "value": "5'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_HI",
+        "value": "5'h16"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_LO",
+        "value": "5'h14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_WDTH",
+        "value": "5'h02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_TRANSFER",
+        "value": "5'h11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_WRITE",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_HI",
+        "value": "5'h1f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_LO",
+        "value": "5'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_WDTH",
+        "value": "5'h07"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DATA0",
+        "value": "7'h04"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DATA1",
+        "value": "7'h05"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL",
+        "value": "7'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_ACKHAVERESET",
+        "value": "5'h1c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_DMACTIVE",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HALTREQ",
+        "value": "5'h1f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTRESET",
+        "value": "5'h1d"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELHI_HI",
+        "value": "5'h0f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELHI_LO",
+        "value": "5'h06"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELLO_HI",
+        "value": "5'h19"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELLO_LO",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HASEL",
+        "value": "5'h1a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_NDMRESET",
+        "value": "5'h01"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDA_HI",
+        "value": "5'h05"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDA_LO",
+        "value": "5'h02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDB",
+        "value": "5'h1b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESUMEREQ",
+        "value": "5'h1e"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_ADDR_WIDTH",
+        "value": "6'h07"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_CH_ID_WIDTH",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_DATA_WIDTH",
+        "value": "6'h20"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_DR_DMI_ACCESS_WIDTH",
+        "value": "6'h29"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_DR_DTMCS_WIDTH",
+        "value": "6'h20"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMI_OP_WIDTH",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS",
+        "value": "7'h11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLHALTED",
+        "value": "5'h09"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLHAVERESET",
+        "value": "5'h13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLNONEXISTENT",
+        "value": "5'h0f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLRESUMEACK",
+        "value": "5'h11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLRUNNING",
+        "value": "5'h0b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLUNAVAIL",
+        "value": "5'h0d"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYHALTED",
+        "value": "5'h08"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYHAVERESET",
+        "value": "5'h12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYNONEXISTENT",
+        "value": "5'h0e"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYRESUMEACK",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYRUNNING",
+        "value": "5'h0a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYUNAVAIL",
+        "value": "5'h0c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_AUTHBUSY",
+        "value": "5'h06"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_AUTHENTICATED",
+        "value": "5'h07"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_DEVTREEVALID",
+        "value": "5'h04"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_IMPEBREAK",
+        "value": "5'h16"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDA",
+        "value": "5'h05"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDB_HI",
+        "value": "5'h15"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDB_LO",
+        "value": "5'h14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDC_HI",
+        "value": "5'h1f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDC_LO",
+        "value": "5'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_VERSION_HI",
+        "value": "5'h03"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_DMSTATUS_VERSION_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HALTSUM0",
+        "value": "7'h40"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO",
+        "value": "7'h12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAACCESS",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAADDR_HI",
+        "value": "5'h0b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAADDR_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATASIZE_HI",
+        "value": "5'h0f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATASIZE_LO",
+        "value": "5'h0c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_NSCRATCH_HI",
+        "value": "5'h17"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_NSCRATCH_LO",
+        "value": "5'h14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDA_HI",
+        "value": "5'h13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDA_LO",
+        "value": "5'h11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDB_HI",
+        "value": "5'h1f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDB_LO",
+        "value": "5'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF0",
+        "value": "7'h20"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF1",
+        "value": "7'h21"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF2",
+        "value": "7'h22"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF3",
+        "value": "7'h23"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF4",
+        "value": "7'h24"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_PROGBUF5",
+        "value": "7'h25"
+      },
+      {
+        "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_EXTERNAL",
+        "value": "4'hb"
+      },
+      {
+        "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_SOFTWARE",
+        "value": "4'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_TIMER",
+        "value": "4'h7"
+      },
+      {
+        "path": "TOP.$unit.SCR1_EXC_CODE_RESET",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_EXC_CODE_WIDTH_E",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_GPR_FIELD_WIDTH",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_CORE_INSTR_WIDTH",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DATA_REG_WIDTH",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DCSR",
+        "value": "12'h7b0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DPC",
+        "value": "12'h7b1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DSCRATCH0",
+        "value": "12'h7b2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DSCRATCH1",
+        "value": "12'h7b3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DCSR",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DPC",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DSCRATCH0",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DSCRATCH1",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_ADDR_SPAN",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_ADDR_WIDTH",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_DCSR_XDEBUGVER",
+        "value": "4'h4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_PBUF_ADDR_SPAN",
+        "value": "32'h00000008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_HDU_PBUF_ADDR_WIDTH",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IALU_CMD_ALL_NUM_E",
+        "value": "32'h00000017"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IALU_CMD_WIDTH_E",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IALU_OP_ALL_NUM_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IALU_OP_WIDTH_E",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_CICSR",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_CISV",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_EOI",
+        "value": "3'h4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR",
+        "value": "3'h7"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_IE",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_IM",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_INV",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_IP",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_IS",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_LN_LSB",
+        "value": "32'h0000000c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_LN_MSB",
+        "value": "32'h00000010"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_PRV_LSB",
+        "value": "32'h00000008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ICSR_PRV_MSB",
+        "value": "32'h00000009"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_IDX",
+        "value": "3'h6"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_IPR",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_ISVR",
+        "value": "3'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_PRV_M",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IPIC_SOI",
+        "value": "3'h5"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_IDX_WIDTH",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_LINES_NUM",
+        "value": "32'h00000010"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_LINES_WIDTH",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_VECT_NUM",
+        "value": "32'h00000010"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_VECT_WIDTH",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_IRQ_VOID_VECT_NUM",
+        "value": "5'h10"
+      },
+      {
+        "path": "TOP.$unit.SCR1_LSU_CMD_ALL_NUM_E",
+        "value": "32'h00000009"
+      },
+      {
+        "path": "TOP.$unit.SCR1_LSU_CMD_WIDTH_E",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_MISA_MXL_32",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_MTVEC_BASE_WR_BITS",
+        "value": "32'h0000001a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_RD_WB_ALL_NUM_E",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_RD_WB_WIDTH_E",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_RST_VECTOR",
+        "value": "32'h00000200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_ADDR_WIDTH",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_DATA_WIDTH",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_OP_WIDTH",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SIM_EXIT_ADDR",
+        "value": "32'h000000f8"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SIM_EXT_IRQ_ADDR",
+        "value": "32'hf0000100"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SIM_PRINT_ADDR",
+        "value": "32'hf0000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SIM_SOFT_IRQ_ADDR",
+        "value": "32'hf0000200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SUM2_OP_ALL_NUM_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_SUM2_OP_WIDTH_E",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_BLD_ID_VALUE",
+        "value": "32'h22011200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_DR_BLD_ID_WIDTH",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_DR_BYPASS_WIDTH",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_DR_IDCODE_WIDTH",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_INSTRUCTION_WIDTH",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TAP_STATE_WIDTH",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TCM_ADDR_MASK",
+        "value": "32'hffff0000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TCM_ADDR_PATTERN",
+        "value": "32'h00480000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ADDR_W",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ALLTRIG_NUM",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_DATA_W",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_ACTION_HI",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_ACTION_LO",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_COUNT_HI",
+        "value": "32'h00000017"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_COUNT_LO",
+        "value": "32'h0000000a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_DMODE",
+        "value": "32'h0000001b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_HIT",
+        "value": "32'h00000018"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_M",
+        "value": "32'h00000009"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDA",
+        "value": "32'h00000008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDA_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_HI",
+        "value": "32'h0000001a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_LO",
+        "value": "32'h00000019"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_VAL",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_S",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_TYPE_VAL",
+        "value": "4'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_ICOUNT_U",
+        "value": "32'h00000006"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_ACTION_HI",
+        "value": "32'h00000011"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_ACTION_LO",
+        "value": "32'h0000000c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_CHAIN",
+        "value": "32'h0000000b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_EXECUTE",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_HIT",
+        "value": "32'h00000014"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_LOAD",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_M",
+        "value": "32'h00000006"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_HI",
+        "value": "32'h0000001a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_LO",
+        "value": "32'h00000015"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_VAL",
+        "value": "6'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_MATCH_HI",
+        "value": "32'h0000000a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_MATCH_LO",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDA",
+        "value": "32'h00000005"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDA_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDB_HI",
+        "value": "32'h00000014"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDB_LO",
+        "value": "32'h00000015"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_S",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_SELECT",
+        "value": "32'h00000013"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_SELECT_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_STORE",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_TIMING",
+        "value": "32'h00000012"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_TIMING_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_TYPE_VAL",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MCONTROL_U",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_MTRIG_NUM",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_TDATA1_DMODE",
+        "value": "32'h0000001b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_TDATA1_DMODE_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_TDATA1_TYPE_HI",
+        "value": "32'h0000001f"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_TDATA1_TYPE_LO",
+        "value": "32'h0000001c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TDU_TRIG_NUM",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TIMER_ADDR_MASK",
+        "value": "32'hffffffe0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_TIMER_ADDR_PATTERN",
+        "value": "32'h00490000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.ADDR_START",
+        "value": "32'h00000200"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_DEFAULT",
+        "value": "32'h000001c0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_VECTOR",
+        "value": "32'h00000240"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.ARCH",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.COMPLIANCE",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.SCR1_MEM_SIZE",
+        "value": "32'h00100000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.TIMEOUT",
+        "value": "32'h001e8480"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.dmem_req_ack_stall",
+        "value": "32'hffffffff"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.f_info",
+        "value": "32'h8000002c"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.f_results",
+        "value": "32'h8000002b"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.fuse_mhartid",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__i",
+        "value": "32'hfffffff8"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__j",
+        "value": "32'hffffffff"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__res",
+        "value": "256'h636f6d706c69616e63655f492d43535252432d30312e656c6600000000000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__i",
+        "value": "32'h00000018"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__j",
+        "value": "32'hffffffff"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__pattern_arch",
+        "value": "23'h726368"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__pattern_compliance",
+        "value": "80'h636f6d706c69616e6365"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__res",
+        "value": "256'h492d43535252432d303100000000000000000000000000000000000000000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__pattern_arch",
+        "value": "23'h726368"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__pattern_compliance",
+        "value": "80'h636f6d706c69616e6365"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__res",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.imem_req_ack_stall",
+        "value": "32'hffffffff"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arcache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_aruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awaddr",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awburst",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awcache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_buser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rdata",
+        "value": "32'h00000065"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_ruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wstrb",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_araddr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arcache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arsize",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_aruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_arvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awaddr",
+        "value": "32'h0000031c"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awburst",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awcache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awsize",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_bid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_bresp",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_buser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rdata",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_ruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_rvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.io_axi_imem_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.irq_lines",
+        "value": "16'h0000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.remove_trailing_whitespaces__Vstatic__i",
+        "value": "32'h000000b0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.rst_cnt",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.rst_init",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.rtc_clk",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.soft_irq",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tck",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tdi",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tdo_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.test_file",
+        "value": "256'h000000000000636f6d706c69616e63655f492d4353525243492d30312e686578"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.test_running",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tests_passed",
+        "value": "32'h0000002d"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tests_total",
+        "value": "32'h0000002d"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.tms",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.trst_n",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.watchdogs_cnt",
+        "value": "32'h0000016f"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.N_IF",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.SIZE",
+        "value": "32'h00100000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_ADR",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_DATA",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_ID",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arready",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arvalid",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awready",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awvalid",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bready",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bvalid",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.irq_lines",
+        "value": "16'h0000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.irq_lines_reg",
+        "value": "16'h0000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rlast",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rready",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rvalid",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.soft_irq",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.soft_irq_reg",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.test_file",
+        "value": "256'h000000000000636f6d706c69616e63655f492d4353525243492d30312e686578"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.test_file_init",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wlast",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wready",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wvalid",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.araddr.[0]",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.araddr.[1]",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arburst.[0]",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arburst.[1]",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arid.[0]",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arid.[1]",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arlen.[0]",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arlen.[1]",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arsize.[0]",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.arsize.[1]",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr.[0]",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr.[1]",
+        "value": "32'h0000031c"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr_hold.[0]",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr_hold.[1]",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awid.[0]",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awid.[1]",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awlen.[0]",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awlen.[1]",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize.[0]",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize.[1]",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize_hold.[0]",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize_hold.[1]",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bid.[0]",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bid.[1]",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bresp.[0]",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.bresp.[1]",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rdata.[0]",
+        "value": "32'h00000065"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rdata.[1]",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rid.[0]",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rid.[1]",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rresp.[0]",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.rresp.[1]",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wdata.[0]",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wdata.[1]",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wstrb.[0]",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_memory_tb.wstrb.[1]",
+        "value": "4'hf"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.SCR1_CLUSTER_TOP_RST_SYNC_STAGES_NUM",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_idle",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_width",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_idle",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_rdata",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_req",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_resp",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_reinit",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.axi_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_width",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_rdata",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_req",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_imem_resp",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.core_rst_n_local",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.cpu_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.cpu_rst_n_sync",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.fuse_idcode",
+        "value": "32'hdeb11001"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.fuse_mhartid",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_araddr",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arcache",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_aruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awaddr",
+        "value": "32'h00000660"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awcache",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_buser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rdata",
+        "value": "32'h00000065"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_ruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wstrb",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_araddr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arcache",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arsize",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_aruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awaddr",
+        "value": "32'h0000031c"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awburst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awcache",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awid",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awlen",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awlock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awqos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awregion",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awsize",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bresp",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_buser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rdata",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rid",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rresp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_ruser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wlast",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wuser",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.irq_lines",
+        "value": "16'h0000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.pwrup_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.pwrup_rst_n_sync",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.rst_n_sync",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.rtc_clk",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.soft_irq",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.sys_rdc_qlfy_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.sys_rst_n_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tapc_trst_n",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tck",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_width",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tdi",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tdo_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.test_mode",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.test_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_addr",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_cmd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_req_ack",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_width",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_irq",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.timer_val",
+        "value": "64'h0000000000000166"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.tms",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.trst_n",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.SCR1_CORE_TOP_RST_SYNC_STAGES_NUM",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dm_rdc_qlfy",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dmem_addr_o",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dmem_cmd_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dmem_req_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dmem_wdata_o",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2dmem_width_o",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2hdu_rdc_qlfy",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2imem_addr_o",
+        "value": "32'h00000308"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2imem_cmd_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core2imem_req_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_fuse_mhartid_i",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_irq_lines_i",
+        "value": "16'h0000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_irq_mtimer_i",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_irq_soft_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_mtimer_val_i",
+        "value": "64'h0000000000000166"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_rdc_qlfy_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_rst_n_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_rst_n_status_sync",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.core_rst_status",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.cpu_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.cpu_rst_n_sync",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_active",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_cmd",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_cmd_rcode",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_cmd_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_cmd_resp",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_cmd_resp_qlfy",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_fail",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_req_qlfy",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_resp",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_dreg_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_event",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_event_qlfy",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_pbuf_addr",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_pbuf_addr_qlfy",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_pbuf_instr",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_pc_sample",
+        "value": "32'h00000318"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_pc_sample_qlfy",
+        "value": "32'h00000318"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmem2core_rdata_i",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmem2core_req_ack_i",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmem2core_resp_i",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_addr",
+        "value": "7'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_rdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_resp",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dmi_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.hart_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.hdu2dm_rdc_qlfy",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.hdu_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.imem2core_rdata_i",
+        "value": "32'h2c4f8f93"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.imem2core_req_ack_i",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.imem2core_resp_i",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.ndm_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.pwrup_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.pwrup_rst_n_sync",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.rst_n_sync",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.sys_rdc_qlfy_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.sys_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.sys_rst_n_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.sys_rst_status",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_ch_tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_capture",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_capture_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_id",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_id_tapout",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_sel",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_sel_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_shift",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_shift_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_tdi",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_tdi_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_tdo_tapin",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_update",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_dmi_ch_update_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_fuse_idcode_i",
+        "value": "32'hdeb11001"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_scu_ch_sel",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_scu_ch_sel_tapout",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_scu_ch_tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_tck",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_tdi",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_tdo",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_tdo_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_tms",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.tapc_trst_n",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.test_mode",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.test_rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status.dbg_state",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status.ebreak",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status.except",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status_qlfy.dbg_state",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status_qlfy.ebreak",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status_qlfy.except",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_DATACOUNT",
+        "value": "4'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_PROGBUFSIZE",
+        "value": "5'h06"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_RESERVEDA",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_RESERVEDB",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_RESERVEDC",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABSTRACTCS_RESERVEDD",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTMEM",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTREG",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTREG_CSR",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTREG_FPU",
+        "value": "7'h01"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTREG_INT",
+        "value": "7'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_CMD_HARTREG_INTFPU",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ABS_EXEC_EBREAK",
+        "value": "32'h00100073"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_HARTRESET",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_HARTSELHI",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_HARTSELLO",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_HASEL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_RESERVEDA",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMCONTROL_RESERVEDB",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_ALLANYNONEXIST",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_ALLANYUNAVAIL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_ALLUNAVAIL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_ANYUNAVAIL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_AUTHBUSY",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_AUTHENTICATED",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_DEVTREEVALID",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_IMPEBREAK",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_RESERVEDA",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_RESERVEDB",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_RESERVEDC",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.DMSTATUS_VERSION",
+        "value": "2'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_DATAACCESS",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_DATAADDR",
+        "value": "12'h7b2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_DATASIZE",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_NSCRATCH",
+        "value": "4'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_RESERVEDA",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.HARTINFO_RESERVEDB",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_CSRRS",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_CSRRW",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_LBU",
+        "value": "3'h4"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_LHU",
+        "value": "3'h5"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_LW",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_SB",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_SH",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_FUNCT3_SW",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_OP_LOAD",
+        "value": "7'h03"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_OP_STORE",
+        "value": "7'h23"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.SCR1_OP_SYSTEM",
+        "value": "7'h73"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_autoexec_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_autoexec_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_csr_access_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_csr_ro",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_csr_ro_access_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_csr_rw_access_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_execprogbuf",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_execprogbuf_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_hartmem_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_hartreg_vd",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_mem_access_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_memsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_memsize_vd",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_memvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_memwr",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_mprf_access_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_mprf_access_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_postexec_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_postexec_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_reg_access_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regacs",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regfile",
+        "value": "7'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regno",
+        "value": "12'h000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regno_ff",
+        "value": "12'h000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regsize",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regsize_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regtype",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regvalid",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_regwr",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_size_ff",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_size_next",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_type",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_wr_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_cmd_wr_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_command_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_command_next",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_data0_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_data0_next",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_data1_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_data1_next",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_acc_busy_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_acc_busy_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_acc_busy_upd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_exc_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_exc_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_err_exc_upd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_exec_instr_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_exec_instr_next",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_exec_req_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_exec_req_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_csr_ro",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_err",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_exec",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_ff",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_idle",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_next",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_fsm_use_addr",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_instr_mem_funct3",
+        "value": "3'h4"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_instr_rd",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_instr_rs1",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_instr_rs2",
+        "value": "5'h05"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf0_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf1_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf2_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf3_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf4_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_progbuf5_ff",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_reg_access_csr",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abs_reg_access_mprf",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abstractcs_busy",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abstractcs_cmderr_ff",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abstractcs_cmderr_next",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abstractcs_ro_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.abstractcs_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.autoexec_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.clk_en_abs",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.clk_en_dm",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.clk_en_dm_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.cmd_resp_ok",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.command_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.data0_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.data0_xreg_save",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.data1_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_exec",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_exec_halt",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_ff",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_halt_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_idle",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_next",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_fsm_resume_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_req",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_resp",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dhi_resp_exc",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2dmi_rdata_o",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2dmi_resp_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_active_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_cmd_o",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_cmd_req_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_dreg_fail_o",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_dreg_rdata_o",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_dreg_resp_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dm2pipe_pbuf_instr_o",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_ackhavereset_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_ackhavereset_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_dmactive_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_dmactive_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_haltreq_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_haltreq_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_ndmreset_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_ndmreset_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_resumereq_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_resumereq_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmcontrol_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi2dm_addr_i",
+        "value": "7'h00"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi2dm_req_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi2dm_wdata_i",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi2dm_wr_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_abstractauto",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_abstractcs",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_any",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_command",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_data0",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_data1",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_dmcontrol",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf0",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf1",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf2",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf3",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf4",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_req_progbuf5",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmi_rpt_command",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_halted_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_halted_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_havereset_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_havereset_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_resumeack_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dmstatus_allany_resumeack_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.dreg_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.halt_req_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_cmd_ff",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_cmd_next",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_cmd_req_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_cmd_req_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_pbuf_ebreak_ff",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_pbuf_ebreak_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_rst_n_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_rst_unexp",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_state_dhalt",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_state_drun",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_state_reset",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.hart_state_run",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.havereset_skip_pwrup_ff",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.havereset_skip_pwrup_next",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.ndm_rst_n_o",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_cmd_rcode_i",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_cmd_resp_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_dreg_req_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_dreg_wdata_i",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_dreg_wr_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_hart_event_i",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_pbuf_addr_i",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_pc_sample_i",
+        "value": "32'h00000318"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf0_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf1_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf2_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf3_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf4_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.progbuf5_wr_req",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.resume_req_vd",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.rst_n",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.soc2dm_fuse_mhartid_i",
+        "value": "32'h00000000"
+      }
+    ],
+    "time": "940092ps"
+  },
+  "warnings": []
+}

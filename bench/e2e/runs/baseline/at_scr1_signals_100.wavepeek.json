@@ -1,0 +1,408 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "TOP.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_MTVEC_BASE",
+        "value": "32'h000001c0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_RST_VECTOR",
+        "value": "32'h00000200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLE",
+        "value": "12'hc00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLEH",
+        "value": "12'hc80"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE",
+        "value": "12'h7b0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN",
+        "value": "12'h004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
+        "value": "7'h64"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK",
+        "value": "7'h60"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+        "value": "12'hc02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRETH",
+        "value": "12'hc82"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_BASE",
+        "value": "12'hbf0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CICSR",
+        "value": "12'hbf1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CISV",
+        "value": "12'hbf0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_EOI",
+        "value": "12'hbf4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ICSR",
+        "value": "12'hbf7"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IDX",
+        "value": "12'hbf6"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IPR",
+        "value": "12'hbf2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ISVR",
+        "value": "12'hbf3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_SOI",
+        "value": "12'hbf5"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MARCHID",
+        "value": "12'hf12"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCAUSE",
+        "value": "12'h342"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCOUNTEN",
+        "value": "12'h7e0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLE",
+        "value": "12'hb00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLEH",
+        "value": "12'hb80"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MEPC",
+        "value": "12'h341"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHARTID",
+        "value": "12'hf14"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTERH_MASK",
+        "value": "7'h5c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTER_MASK",
+        "value": "7'h58"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMEVENT_MASK",
+        "value": "7'h19"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIE",
+        "value": "12'h304"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIMPID",
+        "value": "12'hf13"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRET",
+        "value": "12'hb02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRETH",
+        "value": "12'hb82"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MIP",
+        "value": "12'h344"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MISA",
+        "value": "12'h301"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MSCRATCH",
+        "value": "12'h340"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MSTATUS",
+        "value": "12'h300"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MTVAL",
+        "value": "12'h343"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MTVEC",
+        "value": "12'h305"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_MVENDORID",
+        "value": "12'hf11"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MBASE",
+        "value": "12'h7a0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MSPAN",
+        "value": "12'h008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA1",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA2",
+        "value": "3'h2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TINFO",
+        "value": "3'h4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TSELECT",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_W",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA1",
+        "value": "12'h7a1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA2",
+        "value": "12'h7a2"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TINFO",
+        "value": "12'h7a4"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TSELECT",
+        "value": "12'h7a0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TIME",
+        "value": "12'hc01"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_TIMEH",
+        "value": "12'hc81"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_WIDTH",
+        "value": "32'h0000000c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_CMD_ALL_NUM_E",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_CMD_WIDTH_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_COUNTERS_WIDTH",
+        "value": "32'h00000040"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MARCHID",
+        "value": "32'h00000008"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_CY_OFFSET",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_IR_OFFSET",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_OFFSET",
+        "value": "32'h0000000b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_OFFSET",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_OFFSET",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIMPID",
+        "value": "32'h22011200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MEIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MSIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MIP_MTIP_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MISA",
+        "value": "32'h40001104"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_OFFSET",
+        "value": "32'h00000003"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_RST_VAL",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_OFFSET",
+        "value": "32'h00000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_RST_VAL",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP",
+        "value": "2'h3"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP_OFFSET",
+        "value": "32'h0000000b"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RO_BITS",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RST_VAL",
+        "value": "26'h0000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_VAL_BITS",
+        "value": "32'h0000001a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_WR_RST_VAL",
+        "value": "26'h0000007"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_ZERO_BITS",
+        "value": "32'h00000006"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_DIRECT",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_VECTORED",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_MVENDORID",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_OP_ALL_NUM_E",
+        "value": "32'h00000002"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_OP_WIDTH_E",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTAUTO",
+        "value": "7'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS",
+        "value": "7'h16"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_BUSY",
+        "value": "5'h0c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_HI",
+        "value": "5'h0a"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_LO",
+        "value": "5'h08"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_WDTH",
+        "value": "5'h02"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_HI",
+        "value": "5'h03"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_LO",
+        "value": "5'h00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_HI",
+        "value": "5'h1c"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_LO",
+        "value": "5'h18"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_HI",
+        "value": "5'h07"
+      },
+      {
+        "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_LO",
+        "value": "5'h04"
+      }
+    ],
+    "time": "940092ps"
+  },
+  "warnings": []
+}

@@ -1,0 +1,48 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "TOP.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_MTVEC_BASE",
+        "value": "32'h000001c0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_ARCH_RST_VECTOR",
+        "value": "32'h00000200"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLE",
+        "value": "12'hc00"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLEH",
+        "value": "12'hc80"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE",
+        "value": "12'h7b0"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN",
+        "value": "12'h004"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
+        "value": "7'h64"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK",
+        "value": "7'h60"
+      },
+      {
+        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+        "value": "12'hc02"
+      }
+    ],
+    "time": "940092ps"
+  },
+  "warnings": []
+}

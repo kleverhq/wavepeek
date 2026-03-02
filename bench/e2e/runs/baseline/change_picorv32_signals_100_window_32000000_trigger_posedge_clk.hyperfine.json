@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "command": "change_picorv32_signals_100_window_32000000_trigger_posedge_clk",
+      "mean": 46.858942805,
+      "stddev": null,
+      "median": 46.858942805,
+      "user": 46.33341,
+      "system": 0.561457,
+      "min": 46.858942805,
+      "max": 46.858942805,
+      "times": [
+        46.858942805
+      ],
+      "exit_codes": [
+        0
+      ]
+    }
+  ]
+}

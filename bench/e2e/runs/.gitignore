@@ -1,3 +1,4 @@
 *
 !.gitignore
-!baseline
+!baseline/
+!baseline/**

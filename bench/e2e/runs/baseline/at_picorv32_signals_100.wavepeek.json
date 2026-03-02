@@ -1,0 +1,408 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "testbench.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.trace_file",
+        "value": "32'h80000003"
+      },
+      {
+        "path": "testbench.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.count_cycle",
+        "value": "16'hbeb9"
+      },
+      {
+        "path": "testbench.top.cycle_counter",
+        "value": "32'h0003beb9"
+      },
+      {
+        "path": "testbench.top.firmware_file",
+        "value": "1024'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006669726d776172652f6669726d776172652e686578"
+      },
+      {
+        "path": "testbench.top.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.async_axi_transaction",
+        "value": "5'h1f"
+      },
+      {
+        "path": "testbench.top.mem.axi_test",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.delay_axi_transaction",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.mem.fast_axi_transaction",
+        "value": "3'h7"
+      },
+      {
+        "path": "testbench.top.mem.fast_raddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_waddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_rinsn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr",
+        "value": "32'h10000000"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.verbose",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.xorshift64_state",
+        "value": "64'h0139408dcbbf7a44"
+      },
+      {
+        "path": "testbench.top.uut.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs1",
+        "value": "32'h05ba2940"
+      }
+    ],
+    "time": "2455330000ps"
+  },
+  "warnings": []
+}

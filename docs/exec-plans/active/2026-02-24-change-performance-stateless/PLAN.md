@@ -38,6 +38,10 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - [x] (2026-02-28 13:11Z) Completed Milestone 5 hardening: `make ci` and `make check` passed, dedicated/final perf artifacts were archived, and broad `^change_` matrix compare against `bench/e2e/runs/baseline` passed (`--max-negative-delta-pct 5`) after rerunning a noisy outlier case.
 - [x] (2026-03-02 07:23Z) Improved perf-report readability in `bench/e2e/perf.py`: Markdown report cells and compare failures now include speed factor in `x` form (for example `2.00x faster` / `1.50x slower`) alongside percentage deltas.
 - [x] (2026-03-02 00:00Z) Recalibrated `change_picorv32_*` and `change_chipyard_*` benchmark cases from `runs=1, warmup=0` to `runs=5, warmup=1` now that perf anomalies are resolved; closed corresponding backlog entry.
+- [ ] Implement Milestone 6 fused single-pass loop with incremental decoding and offset-based delta detection.
+- [ ] Validate Milestone 6 correctness: `change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity` tests green.
+- [ ] Capture Milestone 6 perf evidence and run broad matrix regression.
+- [ ] Full quality gate (`make ci`, `make check`) for Milestone 6.
 
 ## Surprises & Discoveries
 
@@ -73,6 +77,12 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 
 - Observation: Percent-only deltas in perf reports are less intuitive for quick human interpretation than ratio-style speedup/slowdown.
   Evidence: `bench/e2e/perf.py` now renders both `%` and explicit `x` factor in report tables and compare failure strings.
+
+- Observation: Baseline benchmark data shows that all `change` tests exceeding 3 seconds share one profile: `signal_count=100` with `trigger=*`. Window size has near-zero effect on runtime (scr1 100sig: 2ns=5.63s, 4ns=5.57s, 8ns=5.58s). The bottleneck is the per-candidate main loop doing O(C × S) sample operations, where C ≈ W because 100 diverse signals make almost every timestamp a candidate.
+  Evidence: `bench/e2e/runs/baseline/README.md` — compare same-file same-signal-count rows across window sizes and trigger types. Subtracting `at`-equivalent file+load cost (scr1: ~0.06s, chipyard_dual: ~0.50s, picorv32: ~0.44s) leaves 3.5-5.5s of pure main-loop work.
+
+- Observation: Switching from `trigger=*` to a specific signal trigger collapses runtime dramatically even with the same 100 requested signals (chipyard_dual 100sig: trigger=* 4.42s vs trigger=signal 0.24s), confirming that the cost is in candidate density times per-candidate sampling, not in signal loading or candidate collection.
+  Evidence: `bench/e2e/runs/baseline/README.md` rows for chipyard_dualrocketconfig 100sig comparing trigger types.
 
 ## Decision Log
 
@@ -112,6 +122,14 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
   Rationale: Full-stream setup overhead can dominate small-window queries; thresholded dispatch preserves low-latency fast cases while retaining a stream-capable path for heavier scans.
   Date/Author: 2026-02-28 / OpenCode
 
+- Decision: Add Milestone 6 to fuse candidate collection, schedule building, and the main iteration loop into a single sequential pass through the time-table window, with incremental signal decoding and offset-based delta detection.
+  Rationale: Baseline data shows the dominant remaining cost for high-signal-count queries (100 signals, trigger=*) is the per-candidate main loop performing O(C × S) decode and comparison operations. The current multi-pass architecture (collect candidates → build schedule → iterate candidates with full batch sampling) re-reads the same signal offsets multiple times and decodes all S signals at every candidate even when only 1-3 changed. Fusing these passes and decoding only changed signals eliminates redundant work and intermediate allocations, with estimated 10-20x improvement for the slow 100-signal cases.
+  Date/Author: 2026-03-02 / OpenCode
+
+- Decision: Do not pursue parallel candidate collection (rayon) for this milestone.
+  Rationale: The bottleneck for slow tests is the main loop (O(C × S) per-candidate work), not candidate collection. With A typically 2-100 and candidate scan being cheap relative to the main loop, thread dispatch overhead would likely exceed the benefit.
+  Date/Author: 2026-03-02 / OpenCode
+
 ## Outcomes & Retrospective
 
 Plan-authoring outcome: bottlenecks were identified with reproducible evidence, implementation was split into independently verifiable milestones, and the measurement path stayed aligned with repository reality (`bench/e2e/perf.py` + committed run artifacts).
@@ -119,6 +137,8 @@ Plan-authoring outcome: bottlenecks were identified with reproducible evidence, 
 Implementation outcome: complete. The dedicated coremark KPI improved from `1.919s` mean (golden) to approximately `0.033-0.034s` in committed milestone run artifacts (`change-stateless-m2/m3/m4`), i.e. roughly `56-57x` speedup, with parity tests and fallback behavior preserved.
 
 Hardening outcome: `make ci` and `make check` passed, dedicated plan run directories were captured (`change-stateless-golden/m2/m3/m4/final-matrix`), and broad `^change_` compare against shared baseline passed at `--max-negative-delta-pct 5` after rerunning one noisy benchmark outlier.
+
+Milestone 6 reopens implementation. The outcomes above reflect Milestones 1-5. Milestone 6 targets the remaining bottleneck: high-signal-count queries (100 signals, trigger=*) where per-candidate O(C × S) sampling dominates. This is in progress.
 
 ## Context and Orientation
 
@@ -155,6 +175,18 @@ Milestone 3 introduces candidate-timestamp reduction so sparse queries stop eval
 Milestone 4 adds an FST-specific streaming fast path with `wellen::stream` filter pushdown (`start`, `end`, signals), while preserving fallback for unsupported formats/cases. Execution remains stateless per invocation.
 
 Milestone 5 hardens and closes out: full quality gate, perf evidence archive, and collateral updates (`docs/*`, changelog, backlog notes as needed).
+
+Milestone 6 fuses candidate collection, predecessor resolution, and the main iteration loop into a single sequential pass through the time-table window.
+
+In the current architecture, three separate passes touch the same data: `collect_change_times` scans the window once per candidate signal comparing offsets to find change points, `build_candidate_schedule` binary-searches the time table per candidate to locate predecessors, and the main loop re-reads offsets and decodes values for every signal at every candidate timestamp.
+
+Milestone 6 replaces all three with one time-major loop that walks the window once, tracks rolling offsets for candidate signals, detects candidates inline, carries forward the predecessor for free, and performs incremental signal decoding — only calling `get_value_at` for signals whose offset actually changed at that timestamp. Delta detection uses a two-stage gate: offset comparison as a fast-reject filter, followed by value-level confirmation for signals whose offset changed. Value strings are allocated only for rows that pass both the trigger check and the delta check and will be emitted (bounded by `--max`, default 50).
+
+For edge-based triggers (`posedge`/`negedge`/`edge`), the trigger signal's bit string is decoded at candidate timestamps where its offset changed, but other signals are not decoded unless the row passes all filters.
+
+The FST streaming candidate-collection fast path is preserved as an alternative when it is cheaper (large windows on FST files above the streaming threshold); in that case only the schedule-building and main-loop fusion applies, using the streaming candidate set as input.
+
+Existing correctness tests (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`) must remain green. New equivalence tests should cover the fused path against the pre-fusion path using an environment variable to force-disable the fused loop.
 
 ### Concrete Steps
 
@@ -265,6 +297,154 @@ Run all commands from `/workspaces/wavepeek`.
         WAVEPEEK_BIN=./target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/change-stateless-final-matrix --filter '^change_' --compare bench/e2e/runs/baseline
         python3 bench/e2e/perf.py compare --revised bench/e2e/runs/change-stateless-final-matrix --golden bench/e2e/runs/baseline --max-negative-delta-pct 5
 
+8. Implement Milestone 6 fused single-pass loop in `src/engine/change.rs` and `src/waveform/mod.rs`.
+
+   In `src/waveform/mod.rs`, add low-level access methods that expose offset comparison and value decoding without going through the full `sample_resolved_optional` path:
+
+        pub fn signal_offset_at_index(
+            &self,
+            signal_ref: SignalRef,
+            time_table_idx: u32,
+        ) -> Option<SignalOffsetData>
+
+        pub fn decode_signal_at_index(
+            &self,
+            resolved: &ResolvedSignal,
+            time_table_idx: u32,
+        ) -> Result<SampledSignalState, WavepeekError>
+
+   Both methods take `&self` because they only read from already-loaded signal data. Precondition: the caller must call `ensure_signals_loaded` for all relevant signal refs before invoking these methods. If the signal is not loaded, `signal_offset_at_index` returns `None` and `decode_signal_at_index` returns an error. The fused loop calls `ensure_signals_loaded` once for the union of all candidate, requested, and event signal refs before the loop begins. After that, only `&self` methods are called. Obtain `timestamps_raw_slice()` after the last `&mut self` call to avoid borrow conflicts.
+
+   `signal_offset_at_index` wraps `self.inner.get_signal(signal_ref)?.get_offset(time_table_idx)` and extracts only the data-position fields (`start`, `elements`) into a `SignalOffsetData` newtype. It does NOT use the full wellen offset for comparison because metadata fields like `time_match` and `next_index` vary even when the data position is identical. `None` means no recorded value at or before this index. An offset change is necessary but not sufficient for a value change — see delta-detection invariant below. `decode_signal_at_index` performs the full `get_offset` + `get_value_at` + bit-string conversion for one signal at one time index.
+
+   In `src/engine/change.rs`, replace the current `collect_change_times` → `build_candidate_schedule` → main loop sequence with a fused loop. All signal loading must happen before the loop: call `ensure_signals_loaded` for the union of all candidate, requested, and event signal refs. After that point, only `&self` methods are called on the waveform. Obtain `timestamps_raw_slice()` after the last `&mut self` call.
+
+   The fused loop structure:
+
+        // Pre-loop setup
+        waveform.ensure_signals_loaded(union of all signal refs)
+        let time_table = waveform.timestamps_raw_slice()
+        let (start_idx, end_idx) = time_window_indices(time_table, from_raw, to_raw)
+
+        // Rolling state — updated at EVERY time-table entry, not just candidates.
+        // This is the key invariant: rolling state always reflects the latest
+        // offset/value at the previous time-table entry when we evaluate a candidate.
+
+        // Per candidate signal: rolling offset for candidate detection
+        let mut cand_offset: Vec<Option<SignalOffsetData>>  // len = A (candidate signals)
+        // Per requested signal: rolling offset + decoded value for delta detection
+        let mut req_offset: Vec<Option<SignalOffsetData>>   // len = S (requested signals)
+        let mut req_value: Vec<Option<String>>              // len = S
+        // Per edge-trigger signal: rolling offset + decoded bits for edge classification
+        let mut trigger_offset: Option<SignalOffsetData>
+        let mut trigger_value: Option<String>
+
+        // Initialize rolling state at start_idx - 1 (or None if start_idx == 0)
+        // by querying offsets/values at that index.
+
+        for idx in start_idx..end_idx:
+            let timestamp = time_table[idx]
+
+            // A. Update ALL rolling state unconditionally.
+            //    This must happen at every time-table entry, not just candidates.
+            //    Save previous req_value snapshot for delta comparison before updating.
+            let prev_req_value = req_value.clone()  // snapshot before this step's updates
+
+            let any_cand_changed = false
+            for i in 0..A:
+                let offset = waveform.signal_offset_at_index(cand_refs[i], idx as u32)
+                if offset != cand_offset[i]:
+                    any_cand_changed = true
+                    cand_offset[i] = offset
+
+            for i in 0..S:
+                let offset = waveform.signal_offset_at_index(req_refs[i], idx as u32)
+                if offset != req_offset[i]:
+                    req_offset[i] = offset
+                    req_value[i] = decode(req_refs[i], idx)  // incremental: decode only on change
+                // else: req_value[i] carries forward unchanged
+
+            // Update edge-trigger signal rolling state similarly
+            let trig_offset_new = waveform.signal_offset_at_index(trigger_ref, idx)
+            if trig_offset_new != trigger_offset:
+                trigger_offset = trig_offset_new
+                trigger_value = decode(trigger_ref, idx)
+
+            // B. Candidate gate: skip if no candidate signal changed
+            if !any_cand_changed: continue
+
+            // C. Post-baseline filter
+            if timestamp <= baseline_raw: continue
+
+            // D. Trigger evaluation
+            //    For AnyTracked: since candidate signals == requested signals when
+            //       trigger is *, Phase B's any_cand_changed already answers this.
+            //       The trigger fires (conservative: offset-change is a superset of
+            //       value-change; Phase E catches false positives).
+            //    For AnyChange(path): check if that signal's rolling offset changed
+            //       at this idx (compare current vs previous offset for that signal).
+            //    For Posedge/Negedge/Edge: use trigger_value (already decoded above
+            //       when offset changed) and previous trigger_value for LSB edge
+            //       classification.
+
+            if !trigger_fired: continue
+
+            // E. Delta detection — two-stage gate using rolling state
+            //    Stage A (fast-reject): check if any req_offset[i] differs from
+            //       what it was at the previous time-table entry. Since rolling state
+            //       is updated at every entry, this is equivalent to comparing current
+            //       vs prev_req_value via the offset proxy. If no req offset changed
+            //       at this idx, skip.
+            //    Stage B (value-level confirmation): compare req_value[i] (current,
+            //       already decoded in phase A for changed signals) against
+            //       prev_req_value[i] (snapshot from before phase A updates). Only if
+            //       at least one decoded value actually differs should the row pass.
+            //    This preserves the DESIGN.md contract: delta uses the state
+            //       "strictly before the candidate timestamp in the underlying dump
+            //       order" because prev_req_value is the rolling value from all
+            //       prior time-table entries.
+
+            if !delta_confirmed: continue
+
+            // F. Emit snapshot
+            //    Build output from req_value (already fully up to date).
+            //    No additional decodes needed — values were decoded incrementally
+            //    in phase A.
+            //    Check --max limit; break if reached.
+
+   The key invariants that must be preserved:
+
+   - Rolling state (`req_offset`, `req_value`, `trigger_value`) is updated at every time-table entry in the window, not just at candidate timestamps. This ensures that when a candidate is evaluated, `prev_req_value` reflects the signal state at the time-table entry immediately before the candidate — matching the `docs/DESIGN.md` section 3.2.5 contract: "Delta comparison always uses sampled state strictly before the candidate timestamp in the underlying dump order (not merely before the previous emitted candidate)."
+   - Delta detection must confirm at the value level, not just offset level. An offset change is necessary but not sufficient for value change — wellen may record a new offset for the same signal value (e.g., VCD re-stating the same state). The two-stage gate in phase E handles this: offset fast-reject followed by value-level confirmation.
+   - Edge classification needs actual bit-string values. The trigger signal's bits are decoded incrementally (only when its offset changes) in phase A, and the previous bits are available from the pre-update snapshot.
+   - When `AnyTracked` is the trigger, the candidate signal set equals the requested signal set (see `change.rs` lines 236-241). Phase B's `any_cand_changed` therefore already answers the trigger question for Phase D. Phase E still gates on actual value delta.
+   - When the FST streaming path is used for candidate collection (large windows above the streaming threshold), the fused loop receives candidate timestamps from the stream result rather than scanning the full window. In this case, phase A still runs for each candidate to update rolling state, but Phase B is skipped (the candidate list is pre-computed). The implementer must also update rolling state for non-candidate timestamps between consecutive stream candidates to maintain the rolling-state invariant. This can be done by scanning the time-table slice between consecutive stream candidates and updating offsets (without triggering phases C-F).
+
+   Testing strategy for the fused path:
+
+   - Add an environment variable `WAVEPEEK_CHANGE_DISABLE_FUSED=1` that forces the engine to use the pre-fusion code path (Milestones 2-4). This lets `tests/change_opt_equivalence.rs` run both modes on the same input and assert byte-identical output.
+   - Add unit tests in `src/waveform/mod.rs::tests` for `signal_offset_at_index` and `decode_signal_at_index`: verify offset equality/inequality semantics, verify decode produces the same result as `sample_resolved_optional`, verify behavior when the signal has no value at the queried index.
+   - Add edge-case tests in `tests/change_opt_equivalence.rs`: empty window (from == to), window starting at first dump timestamp (no predecessor for baseline), all candidates at or before baseline, `--max 1` causing early termination, and a VCD fixture where wellen re-records the same value at a new offset (to exercise the two-stage delta gate). Note: craft the VCD with explicit redundant value dumps (e.g., `#5\nb0000 "` then `#10\nb0000 "`). Verify that wellen's VCD parser actually produces distinct offsets for these entries; if the parser coalesces redundant dumps, document this and treat the test as best-effort.
+   - Add equivalence tests for all trigger types: `negedge`, `edge`, union triggers, and named non-edge triggers (`--when <signal>` where the trigger signal differs from requested signals).
+   - Add a test that exercises the FST streaming + fused loop hybrid path (force streaming via `WAVEPEEK_CHANGE_STREAM_THRESHOLD=0` and verify output matches the non-streaming fused path).
+
+   Validate:
+
+        cargo test --test change_cli
+        cargo test --test change_opt_equivalence
+        cargo test --test change_vcd_fst_parity
+        cargo build --release
+        WAVEPEEK_BIN=./target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/change-stateless-m6 --filter '^change_'
+        python3 bench/e2e/perf.py compare --revised bench/e2e/runs/change-stateless-m6 --golden bench/e2e/runs/baseline --max-negative-delta-pct 5
+
+9. Run full quality gate and capture final Milestone 6 evidence.
+
+        make ci
+        make check
+        cargo build --release
+        WAVEPEEK_BIN=./target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/change-stateless-m6-matrix --filter '^change_' --compare bench/e2e/runs/baseline
+        python3 bench/e2e/perf.py compare --revised bench/e2e/runs/change-stateless-m6-matrix --golden bench/e2e/runs/baseline --max-negative-delta-pct 5
+
 ### Validation and Acceptance
 
 Functional acceptance is unchanged from current `change` contract. After each milestone: CLI contract tests stay green, edge classification tests stay green, warning parity remains unchanged, and scoped resolution error categories remain unchanged.
@@ -311,6 +491,14 @@ Minimum targets for the dedicated coremark benchmark:
 - Milestone 3: `>=3.0x`
 - Milestone 4: `>=5.0x`
 
+Milestone 6 acceptance is measured against the broad `^change_` baseline matrix, not the dedicated coremark benchmark. The coremark tests (2 signals, sparse changes) are already fast and are not expected to improve further. The target workload is the high-signal-count tests (`signal_count=100, trigger=*`) that currently take 4-6 seconds. Milestone 6 targets for these tests:
+
+- `change_scr1_signals_100_*_trigger_any` tests (currently ~5.6s): target `<=1.0s` mean, i.e. `>=5x` speedup versus baseline.
+- `change_chipyard_dualrocketconfig_dhrystone_signals_100_*_trigger_any` tests (currently ~4.4s): target `<=1.5s` mean, i.e. `>=3x` speedup versus baseline (file-open cost for 76M FST is ~0.5s floor).
+- `change_picorv32_signals_100_*_trigger_any` tests (currently ~4.25s): target `<=1.0s` mean, i.e. `>=4x` speedup versus baseline.
+
+These per-family targets are aspirational. If actual profiling reveals a lower ceiling (e.g., offset-change-but-same-value decodes are more frequent than expected), targets may be adjusted. The hard acceptance gate is: no regressions on any existing `change` test, i.e. `python3 bench/e2e/perf.py compare --max-negative-delta-pct 5` must pass against the shared baseline.
+
 Secondary acceptance:
 
 - `python3 bench/e2e/perf.py compare` must show no regressions for matching tests in the evaluated set (`--max-negative-delta-pct 0` for dedicated coremark run; `5` for broader matrix sweep against shared baseline).
@@ -328,6 +516,8 @@ If stream fast path diverges on edge cases, keep dispatch fallback to Milestone-
 
 If performance noise obscures conclusions, rerun the same run command and compare medians/means across repeated revised directories; do not accept/reject on one outlier sample.
 
+If the fused loop introduces correctness divergence, the pre-fusion code path (Milestones 2-4) remains intact in git history and can be restored by reverting Milestone 6 commits. Equivalence tests in `tests/change_opt_equivalence.rs` serve as the regression gate.
+
 ### Artifacts and Notes
 
 Artifacts produced by this plan should be tracked under dedicated directories:
@@ -337,6 +527,8 @@ Artifacts produced by this plan should be tracked under dedicated directories:
 - `bench/e2e/runs/change-stateless-m3/`
 - `bench/e2e/runs/change-stateless-m4/`
 - `bench/e2e/runs/change-stateless-final-matrix/`
+- `bench/e2e/runs/change-stateless-m6/` (Milestone 6 broad matrix)
+- `bench/e2e/runs/change-stateless-m6-matrix/` (Milestone 6 final evidence)
 
 Files expected to change during implementation:
 
@@ -383,6 +575,50 @@ Required API additions in `src/waveform/mod.rs`:
         to_raw: u64,
     ) -> Result<Vec<u64>, WavepeekError>
 
+Required API additions in `src/waveform/mod.rs` for Milestone 6:
+
+    /// Opaque signal offset for change detection. Must be a newtype struct
+    /// wrapping only the data-position fields from wellen's offset type
+    /// (the `start` and `elements` fields of wellen::SignalChangeData),
+    /// NOT the full struct. The full wellen offset includes metadata fields
+    /// like `time_match` and `next_index` that vary across time indices even
+    /// when the underlying signal data is identical — using raw PartialEq on
+    /// the full struct would cause false "change" detections. The newtype
+    /// must implement custom PartialEq comparing only data-position fields.
+    /// An offset change is necessary but not sufficient for a value change —
+    /// the caller must decode and compare values when offsets differ to
+    /// confirm an actual value change. None means no recorded value at or
+    /// before this index; None == None is considered "no change."
+    #[derive(Debug, Clone, Copy)]
+    pub struct SignalOffsetData { start: usize, elements: u16 }
+    // impl PartialEq: compare start and elements only
+
+    /// Loads signal data for the given refs if not already loaded.
+    /// Currently private; must be made pub for Milestone 6 so the engine
+    /// can pre-load all signals before entering the fused loop.
+    pub fn ensure_signals_loaded(&mut self, signal_refs: &[SignalRef])
+
+    /// Returns the signal offset at a given time-table index without decoding
+    /// the value. Used for cheap change detection in the fused loop.
+    /// Precondition: ensure_signals_loaded must have been called for this
+    /// signal_ref before invoking this method. Returns None if the signal
+    /// is not loaded or has no value at or before time_table_idx.
+    pub fn signal_offset_at_index(
+        &self,
+        signal_ref: SignalRef,
+        time_table_idx: u32,
+    ) -> Option<SignalOffsetData>
+
+    /// Decodes one signal's value at a given time-table index into a
+    /// SampledSignalState. Used for value emission and edge classification.
+    /// Precondition: ensure_signals_loaded must have been called for this
+    /// signal's signal_ref before invoking this method.
+    pub fn decode_signal_at_index(
+        &self,
+        resolved: &ResolvedSignal,
+        time_table_idx: u32,
+    ) -> Result<SampledSignalState, WavepeekError>
+
 Required engine invariants in `src/engine/change.rs` for Milestone 3:
 
     - candidate iterator may skip non-candidate timestamps for trigger checks
@@ -408,3 +644,4 @@ Revision Note: 2026-02-27 / OpenCode - Incorporated plan QA fixes so perf measur
 Revision Note: 2026-02-27 / OpenCode - Incorporated independent review fix for Milestone 4 validation robustness by requiring a dedicated parity integration test target (`tests/change_vcd_fst_parity.rs`) instead of filter-based test selection.
 Revision Note: 2026-02-28 / OpenCode - Completed end-to-end implementation: delivered Milestones 1-5, added dedicated equivalence/parity tests, archived golden+milestone perf runs, validated quality gates, and reconciled plan narrative with committed artifacts (current milestone run dirs all report approximately `56-57x` KPI speedup after final-code reruns).
 Revision Note: 2026-03-02 / OpenCode - Improved perf-harness readability by augmenting percent deltas with explicit `x` speed factors in both Markdown reports (`run --compare` / `report --compare`) and `compare` regression diagnostics.
+Revision Note: 2026-03-02 / OpenCode - Added Milestone 6: fused single-pass loop with incremental decoding and offset-based delta detection. Motivated by baseline analysis showing all >3s change tests share the profile (signal_count=100, trigger=*) where per-candidate O(C × S) sampling dominates. The fused approach replaces three separate passes with one time-major scan, decodes only changed signals per timestamp, and defers value materialization to emitted rows. Parallel candidate collection (rayon) was explicitly rejected as targeting the wrong bottleneck.

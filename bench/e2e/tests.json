@@ -552,10 +552,10 @@
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_2000000_trigger_any",
+      "name": "change_picorv32_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -573,16 +573,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_2000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -600,16 +600,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_2000000_trigger_signal",
+      "name": "change_picorv32_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -627,97 +627,97 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
-        "signal_count": 100,
-        "trigger": "testbench.top.mem_axi_arvalid"
-      }
-    },
-    {
-      "name": "change_picorv32_signals_100_window_8000000_trigger_any",
-      "category": "change",
-      "runs": 1,
-      "warmup": 0,
-      "command": [
-        "{wavepeek_bin}",
-        "change",
-        "--waves",
-        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "--signals",
-        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
-        "--from",
-        "2450000000ps",
-        "--to",
-        "2458000000ps",
-        "--when",
-        "*"
-      ],
-      "meta": {
-        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "size": "13M",
-        "window_size": 8000000,
-        "signal_count": 100,
-        "trigger": "*"
-      }
-    },
-    {
-      "name": "change_picorv32_signals_100_window_8000000_trigger_posedge_clk",
-      "category": "change",
-      "runs": 1,
-      "warmup": 0,
-      "command": [
-        "{wavepeek_bin}",
-        "change",
-        "--waves",
-        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "--signals",
-        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
-        "--from",
-        "2450000000ps",
-        "--to",
-        "2458000000ps",
-        "--when",
-        "posedge testbench.clk"
-      ],
-      "meta": {
-        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "size": "13M",
-        "window_size": 8000000,
-        "signal_count": 100,
-        "trigger": "posedge testbench.clk"
-      }
-    },
-    {
-      "name": "change_picorv32_signals_100_window_8000000_trigger_signal",
-      "category": "change",
-      "runs": 1,
-      "warmup": 0,
-      "command": [
-        "{wavepeek_bin}",
-        "change",
-        "--waves",
-        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "--signals",
-        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
-        "--from",
-        "2450000000ps",
-        "--to",
-        "2458000000ps",
-        "--when",
-        "testbench.top.mem_axi_arvalid"
-      ],
-      "meta": {
-        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
-        "size": "13M",
-        "window_size": 8000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_32000000_trigger_any",
+      "name": "change_picorv32_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "--signals",
+        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
+        "--from",
+        "2450000000ps",
+        "--to",
+        "2458000000ps",
+        "--when",
+        "*"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "size": "13M",
+        "window_size": "8us",
+        "signal_count": 100,
+        "trigger": "*"
+      }
+    },
+    {
+      "name": "change_picorv32_signals_100_window_8us_trigger_posedge_clk",
+      "category": "change",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "--signals",
+        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
+        "--from",
+        "2450000000ps",
+        "--to",
+        "2458000000ps",
+        "--when",
+        "posedge testbench.clk"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "size": "13M",
+        "window_size": "8us",
+        "signal_count": 100,
+        "trigger": "posedge testbench.clk"
+      }
+    },
+    {
+      "name": "change_picorv32_signals_100_window_8us_trigger_signal",
+      "category": "change",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "--signals",
+        "testbench.clk,testbench.top.mem_axi_araddr,testbench.top.mem_axi_arprot,testbench.top.mem_axi_arready,testbench.top.mem_axi_arvalid,testbench.top.mem_axi_awaddr,testbench.top.mem_axi_awprot,testbench.top.mem_axi_awready,testbench.top.mem_axi_awvalid,testbench.top.mem_axi_bready,testbench.top.mem_axi_bvalid,testbench.top.mem_axi_rdata,testbench.top.mem_axi_rready,testbench.top.mem_axi_rvalid,testbench.top.mem_axi_wdata,testbench.top.mem_axi_wready,testbench.top.mem_axi_wstrb,testbench.top.mem_axi_wvalid,testbench.top.mem.mem_axi_araddr,testbench.top.mem.mem_axi_arprot,testbench.top.mem.mem_axi_arready,testbench.top.mem.mem_axi_arvalid,testbench.top.mem.mem_axi_awaddr,testbench.top.mem.mem_axi_awprot,testbench.top.mem.mem_axi_awready,testbench.top.mem.mem_axi_awvalid,testbench.top.mem.mem_axi_bready,testbench.top.mem.mem_axi_bvalid,testbench.top.mem.mem_axi_rdata,testbench.top.mem.mem_axi_rready,testbench.top.mem.mem_axi_rvalid,testbench.top.mem.mem_axi_wdata,testbench.top.mem.mem_axi_wready,testbench.top.mem.mem_axi_wstrb,testbench.top.mem.mem_axi_wvalid,testbench.top.uut.mem_axi_araddr,testbench.top.uut.mem_axi_arprot,testbench.top.uut.mem_axi_arready,testbench.top.uut.mem_axi_arvalid,testbench.top.uut.mem_axi_awaddr,testbench.top.uut.mem_axi_awprot,testbench.top.uut.mem_axi_awready,testbench.top.uut.mem_axi_awvalid,testbench.top.uut.mem_axi_bready,testbench.top.uut.mem_axi_bvalid,testbench.top.uut.mem_axi_rdata,testbench.top.uut.mem_axi_rready,testbench.top.uut.mem_axi_rvalid,testbench.top.uut.mem_axi_wdata,testbench.top.uut.mem_axi_wready,testbench.top.uut.mem_axi_wstrb,testbench.top.uut.mem_axi_wvalid,testbench.top.uut.axi_adapter.ack_arvalid,testbench.top.uut.axi_adapter.ack_awvalid,testbench.top.uut.axi_adapter.ack_wvalid,testbench.top.uut.axi_adapter.mem_axi_araddr,testbench.top.uut.axi_adapter.mem_axi_arprot,testbench.top.uut.axi_adapter.mem_axi_arready,testbench.top.uut.axi_adapter.mem_axi_arvalid,testbench.top.uut.axi_adapter.mem_axi_awaddr,testbench.top.uut.axi_adapter.mem_axi_awprot,testbench.top.uut.axi_adapter.mem_axi_awready,testbench.top.uut.axi_adapter.mem_axi_awvalid,testbench.top.uut.axi_adapter.mem_axi_bready,testbench.top.uut.axi_adapter.mem_axi_bvalid,testbench.top.uut.axi_adapter.mem_axi_rdata,testbench.top.uut.axi_adapter.mem_axi_rready,testbench.top.uut.axi_adapter.mem_axi_rvalid,testbench.top.uut.axi_adapter.mem_axi_wdata,testbench.top.uut.axi_adapter.mem_axi_wready,testbench.top.uut.axi_adapter.mem_axi_wstrb,testbench.top.uut.axi_adapter.mem_axi_wvalid,testbench.top.uut.axi_adapter.mem_rdata,testbench.top.uut.axi_adapter.mem_wdata,testbench.top.uut.axi_adapter.mem_wstrb,testbench.top.mem.async_axi_transaction,testbench.top.mem.axi_test,testbench.top.mem.delay_axi_transaction,testbench.top.mem.fast_axi_transaction,testbench.top.uut.axi_adapter.clk,testbench.top.uut.axi_adapter.mem_addr,testbench.top.uut.axi_adapter.mem_instr,testbench.top.uut.axi_adapter.mem_ready,testbench.top.uut.axi_adapter.mem_valid,testbench.top.uut.axi_adapter.resetn,testbench.top.uut.axi_adapter.xfer_done,testbench.resetn,testbench.trace_data,testbench.trace_file,testbench.trace_valid,testbench.trap,testbench.top.clk,testbench.top.count_cycle,testbench.top.cycle_counter,testbench.top.firmware_file",
+        "--from",
+        "2450000000ps",
+        "--to",
+        "2458000000ps",
+        "--when",
+        "testbench.top.mem_axi_arvalid"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
+        "size": "13M",
+        "window_size": "8us",
+        "signal_count": 100,
+        "trigger": "testbench.top.mem_axi_arvalid"
+      }
+    },
+    {
+      "name": "change_picorv32_signals_100_window_32us_trigger_any",
+      "category": "change",
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -735,16 +735,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_32000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -762,16 +762,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_100_window_32000000_trigger_signal",
+      "name": "change_picorv32_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -789,16 +789,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_2000000_trigger_any",
+      "name": "change_picorv32_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -816,16 +816,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_2000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -843,16 +843,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_2000000_trigger_signal",
+      "name": "change_picorv32_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -870,16 +870,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_8000000_trigger_any",
+      "name": "change_picorv32_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -897,16 +897,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_8000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -924,16 +924,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_8000000_trigger_signal",
+      "name": "change_picorv32_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -951,16 +951,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_32000000_trigger_any",
+      "name": "change_picorv32_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -978,16 +978,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_32000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1005,16 +1005,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_10_window_32000000_trigger_signal",
+      "name": "change_picorv32_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1032,16 +1032,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_2000000_trigger_any",
+      "name": "change_picorv32_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1059,16 +1059,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_2000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1086,16 +1086,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_2000000_trigger_signal",
+      "name": "change_picorv32_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1113,16 +1113,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_8000000_trigger_any",
+      "name": "change_picorv32_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1140,16 +1140,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_8000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1167,16 +1167,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_8000000_trigger_signal",
+      "name": "change_picorv32_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1194,16 +1194,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_32000000_trigger_any",
+      "name": "change_picorv32_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1221,16 +1221,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_32000000_trigger_posedge_clk",
+      "name": "change_picorv32_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1248,16 +1248,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "posedge testbench.clk"
       }
     },
     {
-      "name": "change_picorv32_signals_1_window_32000000_trigger_signal",
+      "name": "change_picorv32_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1275,7 +1275,7 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
         "size": "13M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "testbench.top.mem_axi_arvalid"
       }
@@ -1333,7 +1333,7 @@
       }
     },
     {
-      "name": "change_scr1_signals_100_pos_50_window_2000_trigger_any",
+      "name": "change_scr1_signals_100_pos_50_window_2ns_trigger_any",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1354,13 +1354,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_2000_trigger_posedge_clk",
+      "name": "change_scr1_signals_100_window_2ns_trigger_posedge_clk",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1381,13 +1381,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 100,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_2000_trigger_signal",
+      "name": "change_scr1_signals_100_window_2ns_trigger_signal",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1408,13 +1408,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 100,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_4000_trigger_any",
+      "name": "change_scr1_signals_100_window_4ns_trigger_any",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1435,13 +1435,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_4000_trigger_posedge_clk",
+      "name": "change_scr1_signals_100_window_4ns_trigger_posedge_clk",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1462,13 +1462,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 100,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_4000_trigger_signal",
+      "name": "change_scr1_signals_100_window_4ns_trigger_signal",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1489,13 +1489,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 100,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_8000_trigger_any",
+      "name": "change_scr1_signals_100_window_8ns_trigger_any",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1516,13 +1516,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_8000_trigger_posedge_clk",
+      "name": "change_scr1_signals_100_window_8ns_trigger_posedge_clk",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1543,13 +1543,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 100,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_100_window_8000_trigger_signal",
+      "name": "change_scr1_signals_100_window_8ns_trigger_signal",
       "category": "change",
       "runs": 6,
       "warmup": 1,
@@ -1570,13 +1570,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 100,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_2000_trigger_any",
+      "name": "change_scr1_signals_10_window_2ns_trigger_any",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1597,13 +1597,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_2000_trigger_posedge_clk",
+      "name": "change_scr1_signals_10_window_2ns_trigger_posedge_clk",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1624,13 +1624,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 10,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_2000_trigger_signal",
+      "name": "change_scr1_signals_10_window_2ns_trigger_signal",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1651,13 +1651,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 10,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_4000_trigger_any",
+      "name": "change_scr1_signals_10_window_4ns_trigger_any",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1678,13 +1678,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_4000_trigger_posedge_clk",
+      "name": "change_scr1_signals_10_window_4ns_trigger_posedge_clk",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1705,13 +1705,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 10,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_4000_trigger_signal",
+      "name": "change_scr1_signals_10_window_4ns_trigger_signal",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1732,13 +1732,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 10,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_8000_trigger_any",
+      "name": "change_scr1_signals_10_window_8ns_trigger_any",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1759,13 +1759,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_8000_trigger_posedge_clk",
+      "name": "change_scr1_signals_10_window_8ns_trigger_posedge_clk",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1786,13 +1786,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 10,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_10_window_8000_trigger_signal",
+      "name": "change_scr1_signals_10_window_8ns_trigger_signal",
       "category": "change",
       "runs": 9,
       "warmup": 1,
@@ -1813,13 +1813,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 10,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_2000_trigger_any",
+      "name": "change_scr1_signals_1_window_2ns_trigger_any",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1840,13 +1840,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_2000_trigger_posedge_clk",
+      "name": "change_scr1_signals_1_window_2ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1867,13 +1867,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 1,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_2000_trigger_signal",
+      "name": "change_scr1_signals_1_window_2ns_trigger_signal",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1894,13 +1894,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 2000,
+        "window_size": "2ns",
         "signal_count": 1,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_4000_trigger_any",
+      "name": "change_scr1_signals_1_window_4ns_trigger_any",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1921,13 +1921,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_4000_trigger_posedge_clk",
+      "name": "change_scr1_signals_1_window_4ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1948,13 +1948,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 1,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_4000_trigger_signal",
+      "name": "change_scr1_signals_1_window_4ns_trigger_signal",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -1975,13 +1975,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 4000,
+        "window_size": "4ns",
         "signal_count": 1,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_8000_trigger_any",
+      "name": "change_scr1_signals_1_window_8ns_trigger_any",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -2002,13 +2002,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_8000_trigger_posedge_clk",
+      "name": "change_scr1_signals_1_window_8ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -2029,13 +2029,13 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 1,
         "trigger": "posedge TOP.clk"
       }
     },
     {
-      "name": "change_scr1_signals_1_window_8000_trigger_signal",
+      "name": "change_scr1_signals_1_window_8ns_trigger_signal",
       "category": "change",
       "runs": 12,
       "warmup": 1,
@@ -2056,16 +2056,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "size": "3.5M",
-        "window_size": 8000,
+        "window_size": "8ns",
         "signal_count": 1,
         "trigger": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2083,16 +2083,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2110,16 +2110,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2137,16 +2137,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2164,16 +2164,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2191,16 +2191,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2218,16 +2218,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2245,16 +2245,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2272,16 +2272,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2299,16 +2299,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2326,16 +2326,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2353,16 +2353,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2380,16 +2380,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2407,16 +2407,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2434,16 +2434,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2461,16 +2461,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2488,16 +2488,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2515,16 +2515,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2542,16 +2542,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2569,16 +2569,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2596,16 +2596,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2623,16 +2623,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2650,16 +2650,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2677,16 +2677,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2704,16 +2704,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_any",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2731,16 +2731,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2758,16 +2758,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_signal",
+      "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2785,16 +2785,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
         "size": "76M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2812,16 +2812,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2839,16 +2839,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2866,16 +2866,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2893,16 +2893,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2920,16 +2920,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2947,16 +2947,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2974,16 +2974,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3001,16 +3001,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3028,16 +3028,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 100,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3055,16 +3055,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3082,16 +3082,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3109,16 +3109,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3136,16 +3136,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3163,16 +3163,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3190,16 +3190,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3217,16 +3217,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3244,16 +3244,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3271,16 +3271,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 10,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3298,16 +3298,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3325,16 +3325,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3352,16 +3352,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 2000000,
+        "window_size": "2us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3379,16 +3379,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3406,16 +3406,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3433,16 +3433,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 8000000,
+        "window_size": "8us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_any",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3460,16 +3460,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "*"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_posedge_clk",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3487,16 +3487,16 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "posedge TOP.TestDriver.clock"
       }
     },
     {
-      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_signal",
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 5,
+      "warmup": 1,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3514,7 +3514,7 @@
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
         "size": "165M",
-        "window_size": 32000000,
+        "window_size": "32us",
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }

@@ -37,6 +37,7 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - [x] (2026-02-28 12:24Z) Implemented Milestone 4 FST streaming-capable fast-path integration (`wellen::stream` filter pushdown with random-access fallback heuristic) and added `tests/change_vcd_fst_parity.rs` (including forced-stream vs forced-random parity coverage).
 - [x] (2026-02-28 13:11Z) Completed Milestone 5 hardening: `make ci` and `make check` passed, dedicated/final perf artifacts were archived, and broad `^change_` matrix compare against `bench/e2e/runs/baseline` passed (`--max-negative-delta-pct 5`) after rerunning a noisy outlier case.
 - [x] (2026-03-02 07:23Z) Improved perf-report readability in `bench/e2e/perf.py`: Markdown report cells and compare failures now include speed factor in `x` form (for example `2.00x faster` / `1.50x slower`) alongside percentage deltas.
+- [x] (2026-03-02 00:00Z) Recalibrated `change_picorv32_*` and `change_chipyard_*` benchmark cases from `runs=1, warmup=0` to `runs=5, warmup=1` now that perf anomalies are resolved; closed corresponding backlog entry.
 
 ## Surprises & Discoveries
 

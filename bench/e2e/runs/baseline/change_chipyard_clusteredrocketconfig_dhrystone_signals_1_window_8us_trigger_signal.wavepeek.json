@@ -1,0 +1,59 @@
+{
+  "data": [
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h800049c0"
+        }
+      ],
+      "time": "801285000ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h00000000"
+        }
+      ],
+      "time": "801287000ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h80004a00"
+        }
+      ],
+      "time": "804615000ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h00000000"
+        }
+      ],
+      "time": "804617000ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h80004a40"
+        }
+      ],
+      "time": "807945000ps"
+    },
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+          "value": "32'h00000000"
+        }
+      ],
+      "time": "807947000ps"
+    }
+  ],
+  "warnings": []
+}

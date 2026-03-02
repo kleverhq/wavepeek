@@ -2,17 +2,6 @@
 
 ## Issues
 
-### CLI help should be self-descriptive (completed 2026-03-01)
-
-- Status: closed in `Unreleased` after enforcing help parity (`-h == --help` for top-level and all shipped subcommands) and a reusable self-descriptive help contract test.
-- Verification anchors: `tests/cli_contract.rs` tests `no_args_help_matches_long_help_output`, `top_level_short_and_long_help_are_identical`, `short_and_long_help_are_identical_for_shipped_commands`, `subcommand_short_help_includes_long_help_contract_markers`, `shipped_commands_help_is_self_descriptive`.
-
-- Command help quality is inconsistent; users still need `docs/DESIGN.md` for critical behavior details.
-- Improve `--help`/`--long-help` so each command is usable without external docs: include semantics, defaults, boundary rules, error categories, and output shape notes.
-- Reuse and adapt normative wording from `docs/DESIGN.md` to keep CLI help and design contract aligned.
-- Add this as a foundational CLI design principle in project docs: CLI help must provide sufficient standalone guidance; external docs are for depth, not required basics.
-- Close when all shipped commands pass a help-quality contract check and the principle is documented in the CLI design principles section.
-
 ### Rename `at` command to `value` and `--time` to `--at`
 
 - Current naming emphasizes the coordinate (`at`) more than the user intent (read signal values at a point); `value` is clearer and aligns command name with output semantics.

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 import json
+import math
 import os
 import pathlib
 import re
@@ -451,21 +452,43 @@ def delta_pct(revised: float, golden: float) -> float | None:
     return ((golden - revised) / golden) * 100.0
 
 
+def speed_factor(revised: float, golden: float) -> tuple[float, str]:
+    if revised == golden:
+        return 1.0, "same"
+    if revised < golden:
+        if revised == 0:
+            return float("inf"), "faster"
+        return golden / revised, "faster"
+    if golden == 0:
+        return float("inf"), "slower"
+    return revised / golden, "slower"
+
+
+def format_speed_factor(revised: float, golden: float) -> str:
+    factor, direction = speed_factor(revised, golden)
+    factor_text = "infx" if math.isinf(factor) else f"{factor:.2f}x"
+    if direction == "same":
+        return factor_text
+    return f"{factor_text} {direction}"
+
+
 def format_metric(value: float, baseline: dict[str, Any] | None, metric: str) -> str:
     base = f"{value:.6f}"
     if baseline is None:
         return base
 
-    delta = delta_pct(value, float(baseline[metric]))
+    baseline_value = float(baseline[metric])
+    delta = delta_pct(value, baseline_value)
+    speed = format_speed_factor(value, baseline_value)
     if delta is None:
-        return f"{base} (n/a)"
+        return f"{base} (n/a, {speed})"
 
     emoji = ""
     if delta >= EMOJI_THRESHOLD_PCT:
         emoji = " 🟢"
     elif delta <= -EMOJI_THRESHOLD_PCT:
         emoji = " 🔴"
-    return f"{base} ({delta:+.2f}%){emoji}"
+    return f"{base} ({delta:+.2f}%, {speed}){emoji}"
 
 
 def escape_md(value: Any) -> str:
@@ -543,6 +566,7 @@ def render_report(
             [
                 f"- Compare baseline: `{compare_dir}`",
                 "- Delta formula: `((golden - revised) / golden) * 100`",
+                "- Speed factor: `golden/revised` when faster, `revised/golden` when slower",
                 f"- Emoji threshold: abs(delta) >= {EMOJI_THRESHOLD_PCT:.2f}% (`🟢` faster, `🔴` slower)",
                 "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart",
             ]
@@ -753,9 +777,14 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
         delta = delta_pct(float(revised_row["mean"]), float(golden_row["mean"]))
         if delta is not None and delta < -threshold:
+            speed = format_speed_factor(
+                float(revised_row["mean"]),
+                float(golden_row["mean"]),
+            )
             timing_failures.append(
                 f"{test_name}: mean revised={float(revised_row['mean']):.6f}s, "
-                f"golden={float(golden_row['mean']):.6f}s, delta={delta:+.2f}%"
+                f"golden={float(golden_row['mean']):.6f}s, "
+                f"delta={delta:+.2f}%, speed={speed}"
             )
 
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(

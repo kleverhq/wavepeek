@@ -1,5 +1,6 @@
 import argparse
 import importlib.util
+import io
 import json
 import pathlib
 import tempfile
@@ -328,6 +329,49 @@ class PerfHelpersTest(unittest.TestCase):
             ),
             perf.FUNCTIONAL_TIMEOUT_MARKER,
         )
+
+    def test_format_metric_includes_speed_factor_when_faster(self) -> None:
+        rendered = perf.format_metric(1.0, {"mean": 2.0}, "mean")
+        self.assertEqual(rendered, "1.000000 (+50.00%, 2.00x faster) 🟢")
+
+    def test_format_metric_includes_speed_factor_when_slower(self) -> None:
+        rendered = perf.format_metric(3.0, {"mean": 2.0}, "mean")
+        self.assertEqual(rendered, "3.000000 (-50.00%, 1.50x slower) 🔴")
+
+    def test_format_metric_includes_speed_factor_when_equal(self) -> None:
+        rendered = perf.format_metric(2.0, {"mean": 2.0}, "mean")
+        self.assertEqual(rendered, "2.000000 (+0.00%, 1.00x)")
+
+    def test_cmd_compare_reports_speed_factor_on_regression(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 2.0)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
+            (revised / "sample.wavepeek.json").write_text(
+                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                encoding="utf-8",
+            )
+            (golden / "sample.wavepeek.json").write_text(
+                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                encoding="utf-8",
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("speed=2.00x slower", stderr.getvalue())
 
     def test_cmd_compare_timeout_artifact_is_non_blocking(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

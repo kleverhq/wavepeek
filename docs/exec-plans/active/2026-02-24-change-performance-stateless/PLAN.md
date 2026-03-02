@@ -36,6 +36,7 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - [x] (2026-02-28 12:07Z) Implemented Milestone 3 candidate-timestamp reduction with strict previous-global-timestamp delta invariant and added `tests/change_opt_equivalence.rs`.
 - [x] (2026-02-28 12:24Z) Implemented Milestone 4 FST streaming-capable fast-path integration (`wellen::stream` filter pushdown with random-access fallback heuristic) and added `tests/change_vcd_fst_parity.rs` (including forced-stream vs forced-random parity coverage).
 - [x] (2026-02-28 13:11Z) Completed Milestone 5 hardening: `make ci` and `make check` passed, dedicated/final perf artifacts were archived, and broad `^change_` matrix compare against `bench/e2e/runs/baseline` passed (`--max-negative-delta-pct 5`) after rerunning a noisy outlier case.
+- [x] (2026-03-02 07:23Z) Improved perf-report readability in `bench/e2e/perf.py`: Markdown report cells and compare failures now include speed factor in `x` form (for example `2.00x faster` / `1.50x slower`) alongside percentage deltas.
 
 ## Surprises & Discoveries
 
@@ -68,6 +69,9 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 
 - Observation: Broad matrix variance includes occasional outlier regressions around the acceptance threshold; reruns can normalize to stable pass values.
   Evidence: in `change-stateless-final-matrix`, `change_scr1_signals_100_pos_50_window_2000_trigger_any` initially compared around `-10.51%`, then passed after rerun in the same run directory (`~6.147s` revised vs `~6.065s` golden).
+
+- Observation: Percent-only deltas in perf reports are less intuitive for quick human interpretation than ratio-style speedup/slowdown.
+  Evidence: `bench/e2e/perf.py` now renders both `%` and explicit `x` factor in report tables and compare failure strings.
 
 ## Decision Log
 
@@ -402,3 +406,4 @@ Revision Note: 2026-02-27 / OpenCode - Reconciled plan with current repository p
 Revision Note: 2026-02-27 / OpenCode - Incorporated plan QA fixes so perf measurements cannot use stale binaries: added `cargo build --release` before each perf capture, added `hyperfine --version` preflight, and made the no-fallback fixture assumption explicit.
 Revision Note: 2026-02-27 / OpenCode - Incorporated independent review fix for Milestone 4 validation robustness by requiring a dedicated parity integration test target (`tests/change_vcd_fst_parity.rs`) instead of filter-based test selection.
 Revision Note: 2026-02-28 / OpenCode - Completed end-to-end implementation: delivered Milestones 1-5, added dedicated equivalence/parity tests, archived golden+milestone perf runs, validated quality gates, and reconciled plan narrative with committed artifacts (current milestone run dirs all report approximately `56-57x` KPI speedup after final-code reruns).
+Revision Note: 2026-03-02 / OpenCode - Improved perf-harness readability by augmenting percent deltas with explicit `x` speed factors in both Markdown reports (`run --compare` / `report --compare`) and `compare` regression diagnostics.

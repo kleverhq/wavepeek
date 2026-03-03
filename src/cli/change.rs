@@ -1,8 +1,26 @@
 use std::path::PathBuf;
 
-use clap::Args;
+use clap::{Args, ValueEnum};
 
 use crate::cli::limits::LimitArg;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
+#[value(rename_all = "kebab-case")]
+pub enum InternalChangeEngineMode {
+    #[default]
+    Auto,
+    PreFusion,
+    Fused,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
+#[value(rename_all = "kebab-case")]
+pub enum InternalChangeCandidateMode {
+    #[default]
+    Auto,
+    Random,
+    Stream,
+}
 
 #[derive(Debug, Args)]
 pub struct ChangeArgs {
@@ -33,4 +51,18 @@ pub struct ChangeArgs {
     /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
+    #[arg(
+        long = "internal-change-engine",
+        value_enum,
+        default_value_t = InternalChangeEngineMode::Auto,
+        hide = true
+    )]
+    pub internal_change_engine: InternalChangeEngineMode,
+    #[arg(
+        long = "internal-change-candidates",
+        value_enum,
+        default_value_t = InternalChangeCandidateMode::Auto,
+        hide = true
+    )]
+    pub internal_change_candidates: InternalChangeCandidateMode,
 }

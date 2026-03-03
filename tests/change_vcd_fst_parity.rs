@@ -17,17 +17,23 @@ fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
     serde_json::from_slice(&output.stdout).expect("stdout should be valid json")
 }
 
-fn run_change_json_with_stream_threshold(
+fn run_change_json_with_internal_modes(
     waves: &str,
     extra_args: &[&str],
-    threshold: &str,
+    engine_mode: &str,
+    candidate_mode: &str,
 ) -> Value {
     let mut args = vec!["change", "--waves", waves];
+    args.extend_from_slice(&[
+        "--internal-change-engine",
+        engine_mode,
+        "--internal-change-candidates",
+        candidate_mode,
+    ]);
     args.extend_from_slice(extra_args);
     args.push("--json");
 
     let output = wavepeek_cmd()
-        .env("WAVEPEEK_CHANGE_STREAM_THRESHOLD", threshold)
         .args(args)
         .output()
         .expect("change should execute");
@@ -113,9 +119,33 @@ fn change_fst_stream_candidate_path_matches_random_access_path() {
     ];
 
     let random_access =
-        run_change_json_with_stream_threshold(fst_fixture.as_str(), &args, "999999999");
-    let forced_stream = run_change_json_with_stream_threshold(fst_fixture.as_str(), &args, "0");
+        run_change_json_with_internal_modes(fst_fixture.as_str(), &args, "pre-fusion", "random");
+    let forced_stream =
+        run_change_json_with_internal_modes(fst_fixture.as_str(), &args, "pre-fusion", "stream");
 
     assert_eq!(random_access["data"], forced_stream["data"]);
     assert_eq!(random_access["warnings"], forced_stream["warnings"]);
+}
+
+#[test]
+fn change_fst_fused_stream_candidate_path_matches_fused_random_access_path() {
+    let fst_fixture = fixture_path("m2_core.fst");
+    let fst_fixture = fst_fixture.to_string_lossy().into_owned();
+
+    let args = [
+        "--from",
+        "1ns",
+        "--to",
+        "10ns",
+        "--signals",
+        "top.clk,top.data",
+    ];
+
+    let fused_random =
+        run_change_json_with_internal_modes(fst_fixture.as_str(), &args, "fused", "random");
+    let fused_stream =
+        run_change_json_with_internal_modes(fst_fixture.as_str(), &args, "fused", "stream");
+
+    assert_eq!(fused_random["data"], fused_stream["data"]);
+    assert_eq!(fused_random["warnings"], fused_stream["warnings"]);
 }

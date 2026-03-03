@@ -16,6 +16,8 @@ use wellen::{ScopeRef, ScopeType, SignalRef, Timescale, TimescaleUnit, VarType, 
 
 use crate::error::WavepeekError;
 
+const STREAM_THRESHOLD_WORK: usize = 20_000;
+
 #[derive(Debug)]
 pub struct Waveform {
     inner: simple::Waveform,
@@ -66,6 +68,33 @@ pub struct ResolvedSignal {
     pub signal_ref: SignalRef,
     pub width: u32,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ChangeCandidateCollectionMode {
+    Auto,
+    Random,
+    Stream,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct SignalOffsetData {
+    start: usize,
+    elements: u16,
+}
+
+impl SignalOffsetData {
+    fn new(start: usize, elements: u16) -> Self {
+        Self { start, elements }
+    }
+}
+
+impl PartialEq for SignalOffsetData {
+    fn eq(&self, other: &Self) -> bool {
+        self.start == other.start && self.elements == other.elements
+    }
+}
+
+impl Eq for SignalOffsetData {}
 
 impl Waveform {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
@@ -225,58 +254,73 @@ impl Waveform {
 
         let mut sampled = Vec::with_capacity(resolved.len());
         for signal in resolved {
-            let loaded = self.inner.get_signal(signal.signal_ref).ok_or_else(|| {
-                WavepeekError::Internal(format!(
-                    "signal '{}' could not be loaded from waveform backend",
-                    signal.path
-                ))
-            })?;
-
-            let Some(offset) = loaded.get_offset(time_table_idx) else {
-                sampled.push(SampledSignalState {
-                    path: signal.path.clone(),
-                    width: signal.width,
-                    bits: None,
-                });
-                continue;
-            };
-
-            let value = loaded.get_value_at(&offset, offset.elements - 1);
-            let bits = match value {
-                wellen::SignalValue::Event => Some(String::new()),
-                wellen::SignalValue::Binary(_, _)
-                | wellen::SignalValue::FourValue(_, _)
-                | wellen::SignalValue::NineValue(_, _) => {
-                    Some(value.to_bit_string().ok_or_else(|| {
-                        WavepeekError::Internal(format!(
-                            "failed to convert value for signal '{}' to bit string",
-                            signal.path
-                        ))
-                    })?)
-                }
-                wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
-                    return Err(WavepeekError::Signal(format!(
-                        "signal '{}' has unsupported non-bit-vector encoding",
-                        signal.path
-                    )));
-                }
-            };
-
-            sampled.push(SampledSignalState {
-                path: signal.path.clone(),
-                width: signal.width,
-                bits,
-            });
+            sampled.push(self.decode_signal_at_index(signal, time_table_idx)?);
         }
 
         Ok(sampled)
     }
 
+    pub fn signal_offset_at_index(
+        &self,
+        signal_ref: SignalRef,
+        time_table_idx: u32,
+    ) -> Option<SignalOffsetData> {
+        let loaded = self.inner.get_signal(signal_ref)?;
+        loaded
+            .get_offset(time_table_idx)
+            .map(|offset| SignalOffsetData::new(offset.start, offset.elements))
+    }
+
+    pub fn decode_signal_at_index(
+        &self,
+        resolved: &ResolvedSignal,
+        time_table_idx: u32,
+    ) -> Result<SampledSignalState, WavepeekError> {
+        let loaded = self.inner.get_signal(resolved.signal_ref).ok_or_else(|| {
+            WavepeekError::Internal(format!(
+                "signal '{}' could not be loaded from waveform backend",
+                resolved.path
+            ))
+        })?;
+
+        let Some(offset) = loaded.get_offset(time_table_idx) else {
+            return Ok(SampledSignalState {
+                path: resolved.path.clone(),
+                width: resolved.width,
+                bits: None,
+            });
+        };
+
+        let value = loaded.get_value_at(&offset, offset.elements - 1);
+        let bits = decode_signal_bits(value, resolved.path.as_str())?;
+        Ok(SampledSignalState {
+            path: resolved.path.clone(),
+            width: resolved.width,
+            bits,
+        })
+    }
+
+    #[allow(dead_code)]
     pub fn collect_change_times(
         &mut self,
         resolved: &[ResolvedSignal],
         from_raw: u64,
         to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        self.collect_change_times_with_mode(
+            resolved,
+            from_raw,
+            to_raw,
+            ChangeCandidateCollectionMode::Auto,
+        )
+    }
+
+    pub fn collect_change_times_with_mode(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+        mode: ChangeCandidateCollectionMode,
     ) -> Result<Vec<u64>, WavepeekError> {
         if resolved.is_empty() {
             return Ok(Vec::new());
@@ -290,14 +334,17 @@ impl Waveform {
             window
         };
 
-        let window_len = end_idx_exclusive.saturating_sub(start_idx);
-        let estimated_random_work = window_len.saturating_mul(resolved.len());
-        let stream_threshold = streaming_threshold_work();
-        if self.file_format == wellen::FileFormat::Fst
-            && estimated_random_work > stream_threshold
-            && let Ok(times) = self.collect_change_times_streaming(resolved, from_raw, to_raw)
-        {
-            return Ok(times);
+        if self.should_use_streaming_candidate_collection(resolved.len(), from_raw, to_raw, mode) {
+            match self.collect_change_times_streaming(resolved, from_raw, to_raw) {
+                Ok(times) => return Ok(times),
+                Err(_) if mode == ChangeCandidateCollectionMode::Auto => {}
+                Err(error) => return Err(error),
+            }
+        } else if mode == ChangeCandidateCollectionMode::Stream {
+            return Err(WavepeekError::Internal(
+                "forced stream candidate collection requires FST input and a non-empty time window"
+                    .to_string(),
+            ));
         }
 
         let signal_refs = resolved
@@ -345,6 +392,39 @@ impl Waveform {
         Ok(changed.into_iter().collect())
     }
 
+    pub fn should_use_streaming_candidate_collection(
+        &self,
+        signal_count: usize,
+        from_raw: u64,
+        to_raw: u64,
+        mode: ChangeCandidateCollectionMode,
+    ) -> bool {
+        match mode {
+            ChangeCandidateCollectionMode::Random => false,
+            ChangeCandidateCollectionMode::Stream => {
+                if self.file_format != wellen::FileFormat::Fst {
+                    return false;
+                }
+                let time_table = self.inner.time_table();
+                time_window_indices(time_table, from_raw, to_raw).is_some()
+            }
+            ChangeCandidateCollectionMode::Auto => {
+                if self.file_format != wellen::FileFormat::Fst {
+                    return false;
+                }
+                let time_table = self.inner.time_table();
+                let Some((start_idx, end_idx_exclusive)) =
+                    time_window_indices(time_table, from_raw, to_raw)
+                else {
+                    return false;
+                };
+                let window_len = end_idx_exclusive.saturating_sub(start_idx);
+                let estimated_random_work = window_len.saturating_mul(signal_count);
+                estimated_random_work > STREAM_THRESHOLD_WORK
+            }
+        }
+    }
+
     fn collect_change_times_streaming(
         &self,
         resolved: &[ResolvedSignal],
@@ -380,7 +460,7 @@ impl Waveform {
         Ok(changed.into_iter().collect())
     }
 
-    fn ensure_signals_loaded(&mut self, signal_refs: &[SignalRef]) {
+    pub fn ensure_signals_loaded(&mut self, signal_refs: &[SignalRef]) {
         if signal_refs.is_empty() {
             return;
         }
@@ -431,12 +511,30 @@ fn time_window_indices(time_table: &[u64], from_raw: u64, to_raw: u64) -> Option
     Some((start_idx, end_idx_exclusive))
 }
 
-fn streaming_threshold_work() -> usize {
-    const DEFAULT_THRESHOLD: usize = 20_000;
-    std::env::var("WAVEPEEK_CHANGE_STREAM_THRESHOLD")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .unwrap_or(DEFAULT_THRESHOLD)
+fn decode_signal_bits(
+    value: wellen::SignalValue,
+    signal_path: &str,
+) -> Result<Option<String>, WavepeekError> {
+    match value {
+        wellen::SignalValue::Event => Ok(Some(String::new())),
+        wellen::SignalValue::Binary(_, _)
+        | wellen::SignalValue::FourValue(_, _)
+        | wellen::SignalValue::NineValue(_, _) => {
+            let bits = value.to_bit_string().ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "failed to convert value for signal '{}' to bit string",
+                    signal_path
+                ))
+            })?;
+            Ok(Some(bits))
+        }
+        wellen::SignalValue::String(_) | wellen::SignalValue::Real(_) => {
+            Err(WavepeekError::Signal(format!(
+                "signal '{}' has unsupported non-bit-vector encoding",
+                signal_path
+            )))
+        }
+    }
 }
 
 fn resolve_signal_ref_with_width(
@@ -776,6 +874,8 @@ mod tests {
 
     const RECURSIVE_TEST_VCD: &str = "$date\n  2026-02-28\n$end\n$version\n  wavepeek-recursive-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$scope module cpu $end\n$var wire 1 \" valid $end\n$scope module core $end\n$var wire 1 # execute $end\n$upscope $end\n$upscope $end\n$scope module mem $end\n$var wire 1 $ ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n0#\n0$\n#5\n1!\n1\"\n1#\n1$\n";
 
+    const DELAYED_VALUE_VCD: &str = "$date\n  2026-03-03\n$end\n$version\n  wavepeek-delayed-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\n1!\n";
+
     #[test]
     fn open_and_read_metadata_from_vcd() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
@@ -1073,6 +1173,110 @@ mod tests {
             "error: signal: signal 'top.nope' not found in dump"
         );
         assert_eq!(error.exit_code(), 1);
+    }
+
+    #[test]
+    fn signal_offset_at_index_compares_data_position_only() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.data".to_string()])
+            .expect("signal should resolve");
+        waveform.ensure_signals_loaded(&[resolved[0].signal_ref]);
+
+        let offset_at_0 = waveform
+            .signal_offset_at_index(resolved[0].signal_ref, 0)
+            .expect("offset at #0 should exist");
+        let offset_at_5 = waveform
+            .signal_offset_at_index(resolved[0].signal_ref, 1)
+            .expect("offset at #5 should exist");
+        let offset_at_10 = waveform
+            .signal_offset_at_index(resolved[0].signal_ref, 2)
+            .expect("offset at #10 should exist");
+
+        assert_eq!(offset_at_0, offset_at_5);
+        assert_ne!(offset_at_5, offset_at_10);
+    }
+
+    #[test]
+    fn signal_offset_at_index_returns_none_when_signal_is_not_loaded() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.data".to_string()])
+            .expect("signal should resolve");
+
+        assert_eq!(
+            waveform.signal_offset_at_index(resolved[0].signal_ref, 0),
+            None
+        );
+    }
+
+    #[test]
+    fn decode_signal_at_index_matches_sample_resolved_optional() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.clk".to_string(), "top.data".to_string()])
+            .expect("signals should resolve");
+        let signal_refs = resolved
+            .iter()
+            .map(|signal| signal.signal_ref)
+            .collect::<Vec<_>>();
+        waveform.ensure_signals_loaded(&signal_refs);
+
+        let at_10 = waveform
+            .sample_resolved_optional(&resolved, 10)
+            .expect("batch sampling should succeed");
+        let decoded = resolved
+            .iter()
+            .map(|signal| waveform.decode_signal_at_index(signal, 2))
+            .collect::<Result<Vec<_>, _>>()
+            .expect("point decode should succeed");
+
+        assert_eq!(decoded, at_10);
+    }
+
+    #[test]
+    fn decode_signal_at_index_returns_none_when_no_prior_value_exists() {
+        let fixture = write_fixture(DELAYED_VALUE_VCD, "delayed.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.delayed".to_string()])
+            .expect("signal should resolve");
+        waveform.ensure_signals_loaded(&[resolved[0].signal_ref]);
+
+        let sample_before_first_value = waveform
+            .decode_signal_at_index(&resolved[0], 0)
+            .expect("decode should succeed");
+        let sample_after_first_value = waveform
+            .decode_signal_at_index(&resolved[0], 1)
+            .expect("decode should succeed");
+
+        assert_eq!(sample_before_first_value.bits, None);
+        assert_eq!(sample_after_first_value.bits.as_deref(), Some("1"));
+    }
+
+    #[test]
+    fn decode_signal_at_index_requires_loaded_signal_data() {
+        let fixture = write_fixture(TEST_VCD, "sample.vcd");
+
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.data".to_string()])
+            .expect("signal should resolve");
+
+        let error = waveform
+            .decode_signal_at_index(&resolved[0], 0)
+            .expect_err("decode must fail before load");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: signal 'top.data' could not be loaded from waveform backend"
+        );
     }
 
     #[test]

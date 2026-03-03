@@ -19,10 +19,11 @@ This plan does not change command-line flags, output formatting, warning text, J
 - [x] (2026-03-03 21:25Z) Drafted this standalone implementation plan with concrete commands, acceptance gates, and rollback/retry instructions using `bench/e2e/runs/dev-baseline` as the baseline.
 - [x] (2026-03-03 21:39Z) Refined plan for execution clarity after review: fixed TDD step ordering, added explicit target improvement thresholds, and defined dispatch terminology for novice implementers.
 - [x] (2026-03-03 21:51Z) Clarified dispatcher strategy after user review: route by expected work and trigger shape, not by blunt threshold lowering; added explicit low-work canary expectations.
-- [ ] Implement auto-dispatch heuristic changes in `src/engine/change.rs` and add/adjust unit tests in the same module.
-- [ ] Add integration-level guard coverage in `tests/change_opt_equivalence.rs` for the new auto routing decisions and forced-mode parity.
-- [ ] Run correctness gates (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`, plus project gates) and capture benchmark evidence vs `bench/e2e/runs/dev-baseline`.
-- [ ] Publish outcomes, decide whether to keep this plan active or move to completed, and record final retrospective.
+- [x] (2026-03-03 19:10Z) Implemented auto-dispatch heuristic updates in `src/engine/change.rs` with explicit work-estimate helpers and expanded `auto_engine_mode_*` unit tests (including red/green TDD evidence).
+- [x] (2026-03-03 19:31Z) Added integration-level auto/forced parity guards in `tests/change_opt_equivalence.rs` for dense and sparse AnyTracked/edge profiles, asserting `data` + `warnings` equality.
+- [x] (2026-03-03 19:52Z) Ran correctness gates: `cargo test auto_engine_mode`, `cargo test --test change_opt_equivalence`, `cargo test --test change_cli`, `cargo test --test change_vcd_fst_parity`, `make check`, and `make ci`.
+- [x] (2026-03-03 20:03Z) Captured benchmark evidence in `bench/e2e/runs/change-dispatcher-tail-final` and `bench/e2e/runs/change-dispatcher-matrix-final`; focused compare passes after outlier reruns, broad `^change_` compare still fails (see discoveries), so plan remains active.
+- [x] (2026-03-03 20:04Z) Re-ran focused target metrics to confirm named closure rows are still >30% improved and low-work canaries remain within guardrails.
 
 ## Surprises & Discoveries
 
@@ -37,6 +38,15 @@ This plan does not change command-line flags, output formatting, warning text, J
 
 - Observation: The baseline directory rename (`dev-eval` -> `dev-baseline`) preserved files, but `README.md` still shows old run metadata strings.
   Evidence: `bench/e2e/runs/dev-baseline/README.md` header still names run `dev-eval` and prints old run directory text.
+
+- Observation: For clustered/dense edge-trigger tails, forced `fused` is consistently faster than forced `edge-fast`, while preserving output parity.
+  Evidence: local hyperfine checks on chipyard clustered/dualrocket `signals_10 window_32us trigger_posedge_clk` show `fused` around `0.15-0.17s` vs `edge-fast-force` around `0.22-0.23s` and `auto/pre-fusion` around `0.56-0.94s` before rerouting.
+
+- Observation: Broad benchmark stability is noisy and bimodal on several rows (especially clustered chipyard and some scr1 short-window rows), which can swing compare outcomes by more than the `5%` gate.
+  Evidence: repeated reruns of the same row alternate between low `~0.24s` and high `~0.29s` clusters in hyperfine artifacts under identical commands.
+
+- Observation: Broad `^change_` compare currently remains red even after focused wins and targeted reruns.
+  Evidence: latest failing set includes (among others) `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_any`, `change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_signal`, and `change_scr1_coremark_imem_axi_1sig_to_1000ps` with negative deltas beyond `-5%`.
 
 ## Decision Log
 
@@ -56,11 +66,19 @@ This plan does not change command-line flags, output formatting, warning text, J
   Rationale: A lower global signal-count threshold can help some tail cases but harms low-work windows; expected-work gates preserve wins while avoiding unnecessary engine-switch overhead.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Route edge-only auto workloads to `fused` for medium/high estimated work, and reserve auto `edge-fast` only for ultra-high estimated edge work.
+  Rationale: Measurement showed `fused` outperforming `edge-fast` on the key clustered/dualrocket edge tails while preserving parity; keeping an ultra-high `edge-fast` branch avoids dead-path drift and retains coverage for extreme edge workloads.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning only. The problem is sufficiently isolated and testable, and this plan now provides an end-to-end implementation path that can be executed by a stateless contributor without prior context.
+Current status: implementation complete for dispatcher + tests + focused evidence, but plan is intentionally kept active because broad `^change_` compare still reports regressions beyond the `5%` gate.
 
-Completion target for retrospective updates: `auto` routing no longer leaves dense `signal_count=10` workloads on the slow path, correctness tests remain green, and benchmark evidence against `dev-baseline` shows material tail reduction without new broad regressions.
+What worked: correctness parity stayed intact across unit/integration/project gates, and focused tail targets materially improved (named closure rows exceed `30%` by large margins in current artifacts).
+
+What did not close: broad matrix compare remains unstable/regressive in this environment; several rows drift above the allowed negative delta even after reruns, so closure criteria are not met yet.
+
+Next iteration scope: tune/validate broad-distribution stability without sacrificing focused tail wins, then rerun broad compare until `info: compare: all checks passed` is reproducible.
 
 ## Context and Orientation
 
@@ -92,7 +110,7 @@ Milestone 1 tightens dispatcher unit behavior with test-first changes in `src/en
 Routing target matrix for this plan (required behavior for new unit tests):
 
 - AnyTracked-only terms with high estimated work must route to `fused`.
-- Edge-only terms with high estimated work must route to `edge-fast` (with existing runtime fallback inside `run_edge_fast` preserved).
+- Edge-only terms with medium/high estimated work should route to `fused`; only ultra-high estimated edge work should route to `edge-fast` (runtime fallback inside `run_edge_fast` remains preserved).
 - Low estimated work (including tiny windows and sparse candidate ranges) must stay on `pre-fusion` to avoid engine-switch overhead.
 
 Use one explicit helper in dispatcher code for the work estimate so tests can target it predictably; avoid scattering magic constants across multiple branches.
@@ -271,3 +289,4 @@ Implementation must keep these interfaces and invariants intact:
 Revision Note: 2026-03-03 / OpenCode - Created a standalone active ExecPlan focused on finishing `change` auto-dispatch tuning using `bench/e2e/runs/dev-baseline` as the starting baseline per user request.
 Revision Note: 2026-03-03 / OpenCode - Updated plan after review with corrected red/green test ordering, explicit quantitative closure gates for named tail targets, and additional plain-language definitions for dispatch terms.
 Revision Note: 2026-03-03 / OpenCode - Clarified that dispatcher work is workload-aware routing (not simple threshold lowering), and added explicit low-work canary checks to preserve the purpose of safety gates.
+Revision Note: 2026-03-03 / OpenCode - Implemented dispatcher/test milestones, recorded focused benchmark wins and broad-compare instability, and updated routing guidance to reflect measured edge-only behavior (`fused` default, `edge-fast` for ultra-high work only).

@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "command": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_posedge_clk",
+      "mean": 17.686952577,
+      "stddev": null,
+      "median": 17.686952577,
+      "user": 17.146903,
+      "system": 0.514975,
+      "min": 17.686952577,
+      "max": 17.686952577,
+      "times": [
+        17.686952577
+      ],
+      "exit_codes": [
+        0
+      ]
+    }
+  ]
+}

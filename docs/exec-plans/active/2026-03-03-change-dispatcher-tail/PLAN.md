@@ -6,7 +6,7 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-Users already get sub-second `wavepeek change` runtime in the current `dev-baseline` campaign, but the remaining slow tail is concentrated in a small, repeatable set of auto-dispatch choices. After this plan is implemented, those tail cases should use a better internal engine automatically, without changing CLI behavior or output contract. The result should be visible in the benchmark report: the top slow `change` rows in `bench/e2e/runs/dev-baseline/README.md` should drop materially, while correctness and parity tests remain unchanged.
+Users already get sub-second `wavepeek change` runtime in the current `dev-baseline` campaign, but the remaining slow tail is concentrated in a small, repeatable set of auto-dispatch choices. After this plan is implemented, those tail cases should use a better internal engine automatically, without changing CLI behavior or output contract. This is not a "lower one constant" change; dispatcher routing should be based on expected work (trigger shape plus estimated candidate work), while keeping safety gates for tiny workloads where switching engines adds overhead. The result should be visible in the benchmark report: the top slow `change` rows in `bench/e2e/runs/dev-baseline/README.md` should drop materially, while correctness and parity tests remain unchanged.
 
 ## Non-Goals
 
@@ -18,6 +18,7 @@ This plan does not change command-line flags, output formatting, warning text, J
 - [x] (2026-03-03 21:11Z) Reproduced dispatcher-mode evidence with direct mode forcing (`auto`, `pre-fusion`, `edge-fast`, `fused`) on representative tail tests; confirmed large gaps are dispatch-driven, not contract-driven.
 - [x] (2026-03-03 21:25Z) Drafted this standalone implementation plan with concrete commands, acceptance gates, and rollback/retry instructions using `bench/e2e/runs/dev-baseline` as the baseline.
 - [x] (2026-03-03 21:39Z) Refined plan for execution clarity after review: fixed TDD step ordering, added explicit target improvement thresholds, and defined dispatch terminology for novice implementers.
+- [x] (2026-03-03 21:51Z) Clarified dispatcher strategy after user review: route by expected work and trigger shape, not by blunt threshold lowering; added explicit low-work canary expectations.
 - [ ] Implement auto-dispatch heuristic changes in `src/engine/change.rs` and add/adjust unit tests in the same module.
 - [ ] Add integration-level guard coverage in `tests/change_opt_equivalence.rs` for the new auto routing decisions and forced-mode parity.
 - [ ] Run correctness gates (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`, plus project gates) and capture benchmark evidence vs `bench/e2e/runs/dev-baseline`.
@@ -51,6 +52,10 @@ This plan does not change command-line flags, output formatting, warning text, J
   Rationale: Focused checks prove the target win, while broad checks prevent accidental regressions outside the target set.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Replace "single count cutoff" thinking with workload-aware dispatch guidance.
+  Rationale: A lower global signal-count threshold can help some tail cases but harms low-work windows; expected-work gates preserve wins while avoiding unnecessary engine-switch overhead.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
 Current status: planning only. The problem is sufficiently isolated and testable, and this plan now provides an end-to-end implementation path that can be executed by a stateless contributor without prior context.
@@ -82,7 +87,15 @@ No product-level open questions are blocking implementation. The remaining choic
 
 ## Plan of Work
 
-Milestone 1 tightens dispatcher unit behavior with test-first changes in `src/engine/change.rs`. First, add failing unit tests that encode the desired auto-routing behavior for representative trigger shapes and signal-count bands, including edge-only terms and AnyTracked-only terms below the old `32` threshold. Then update `select_engine_mode(...)` and any small helper predicates so auto mode can route more workloads to engines that are already proven faster. Keep all explicit forced modes unchanged.
+Milestone 1 tightens dispatcher unit behavior with test-first changes in `src/engine/change.rs`. First, add failing unit tests that encode the desired auto-routing behavior for representative trigger shapes and signal-count bands, including edge-only terms and AnyTracked-only terms below the old `32` threshold. Then update `select_engine_mode(...)` and any small helper predicates so auto mode routes by workload estimate (for example candidate-count-informed work) and trigger shape, not by one global signal-count cutoff. Keep all explicit forced modes unchanged.
+
+Routing target matrix for this plan (required behavior for new unit tests):
+
+- AnyTracked-only terms with high estimated work must route to `fused`.
+- Edge-only terms with high estimated work must route to `edge-fast` (with existing runtime fallback inside `run_edge_fast` preserved).
+- Low estimated work (including tiny windows and sparse candidate ranges) must stay on `pre-fusion` to avoid engine-switch overhead.
+
+Use one explicit helper in dispatcher code for the work estimate so tests can target it predictably; avoid scattering magic constants across multiple branches.
 
 Milestone 2 extends integration parity checks in `tests/change_opt_equivalence.rs` so the new auto routes are covered by behavior tests, not only unit tests. Add cases that exercise auto mode against forced-mode outputs on dense and sparse fixtures for both edge and non-edge trigger shapes. These tests must assert equality of both `data` and `warnings` and should reuse the helper pattern already present in this file.
 
@@ -100,12 +113,13 @@ Run all commands from `/workspaces/perf-change`.
 
    - `auto_engine_mode_uses_fused_for_mid_any_tracked_only`
    - `auto_engine_mode_uses_edge_fast_for_mid_edge_only_terms`
+   - `auto_engine_mode_keeps_prefusion_for_low_work_any_tracked_only`
 
    Then run:
 
        cargo test auto_engine_mode
 
-   Expected before dispatcher edits: at least one newly added test fails because current auto mode still routes those cases to `pre-fusion`.
+   Expected before dispatcher edits: at least one newly added high-work routing test fails because current auto mode still routes those cases to `pre-fusion`.
 
 2. Implement dispatcher updates in `src/engine/change.rs` and re-run unit tests.
 
@@ -163,6 +177,28 @@ Run all commands from `/workspaces/perf-change`.
            print(f'{t}: improvement_pct={delta:.2f}')
        PY
 
+10. Verify low-work canary rows remain stable (no broad "over-dispatch" side effect).
+
+       python3 - <<'PY'
+       import json
+       from pathlib import Path
+
+       base = Path('bench/e2e/runs/dev-baseline')
+       rev = Path('bench/e2e/runs/change-dispatcher-matrix-final')
+       canaries = [
+           'change_scr1_signals_1_window_2ns_trigger_any',
+           'change_scr1_signals_1_window_4ns_trigger_any',
+           'change_scr1_signals_10_window_2ns_trigger_any',
+       ]
+       for t in canaries:
+           b = json.loads((base / f'{t}.hyperfine.json').read_text())['results'][0]['mean']
+           r = json.loads((rev / f'{t}.hyperfine.json').read_text())['results'][0]['mean']
+           delta = ((float(b) - float(r)) / float(b)) * 100.0
+           print(f'{t}: improvement_pct={delta:.2f}')
+           if delta < -5.0:
+               raise SystemExit(f'canary regression exceeds 5% for {t}: {delta:.2f}%')
+       PY
+
 ### Validation and Acceptance
 
 Correctness acceptance is satisfied only when these all hold together: unit tests in `src/engine/change.rs` for auto-dispatch pass, `tests/change_opt_equivalence.rs` passes with added auto-route coverage, and both `tests/change_cli.rs` and `tests/change_vcd_fst_parity.rs` remain green without output drift.
@@ -176,12 +212,17 @@ Performance acceptance is satisfied only when both focused and broad evidence pa
   - `change_picorv32_signals_10_window_32us_trigger_any`
 - Focused compare command must pass `--max-negative-delta-pct 5`.
 - Broad `^change_` compare command must also pass `--max-negative-delta-pct 5`.
+- Low-work canary expectation: these rows should not regress by more than `5%` against `dev-baseline`:
+  - `change_scr1_signals_1_window_2ns_trigger_any`
+  - `change_scr1_signals_1_window_4ns_trigger_any`
+  - `change_scr1_signals_10_window_2ns_trigger_any`
 
 Expected pass signature for both compare commands:
 
     info: compare: all checks passed
 
 TDD acceptance is satisfied only when the newly added `auto_engine_mode_*` tests fail before dispatcher edits and pass after dispatcher edits in the same branch history.
+TDD acceptance must include at least one low-work routing test that asserts auto mode remains `pre-fusion` for an AnyTracked low-work profile.
 
 If focused wins are present but broad compare fails, do not close the plan. Keep the safest dispatcher changes, record failing rows in `Surprises & Discoveries`, and iterate thresholds in a follow-up milestone within this same plan.
 
@@ -229,3 +270,4 @@ Implementation must keep these interfaces and invariants intact:
 
 Revision Note: 2026-03-03 / OpenCode - Created a standalone active ExecPlan focused on finishing `change` auto-dispatch tuning using `bench/e2e/runs/dev-baseline` as the starting baseline per user request.
 Revision Note: 2026-03-03 / OpenCode - Updated plan after review with corrected red/green test ordering, explicit quantitative closure gates for named tail targets, and additional plain-language definitions for dispatch terms.
+Revision Note: 2026-03-03 / OpenCode - Clarified that dispatcher work is workload-aware routing (not simple threshold lowering), and added explicit low-work canary checks to preserve the purpose of safety gates.

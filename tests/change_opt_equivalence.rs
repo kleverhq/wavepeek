@@ -32,6 +32,15 @@ fn run_change_json_with_edge_modes(waves: &str, extra_args: &[&str]) -> Value {
     edge_fast
 }
 
+fn assert_auto_matches_forced_mode(waves: &str, forced_engine: &str, extra_args: &[&str]) -> Value {
+    let auto = run_change_json_with_mode(waves, "auto", "random", extra_args);
+    let forced = run_change_json_with_mode(waves, forced_engine, "random", extra_args);
+
+    assert_eq!(auto["data"], forced["data"]);
+    assert_eq!(auto["warnings"], forced["warnings"]);
+    auto
+}
+
 fn run_change_json_with_mode(
     waves: &str,
     engine_mode: &str,
@@ -529,6 +538,156 @@ fn change_dense_edge_max_one_truncation_matches_all_modes() {
         value["warnings"],
         json!(["truncated output to 1 entries (use --max to increase limit)"])
     );
+}
+
+#[test]
+fn change_auto_dense_any_tracked_profile_matches_fused_output() {
+    let fixture = write_generated_dispatch_fixture(false, 20, 800, "change-auto-dense-any.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let signals = (0..20)
+        .map(|idx| format!("top.sig{idx}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let args = [
+        "--from",
+        "0ns",
+        "--to",
+        "800ns",
+        "--signals",
+        signals.as_str(),
+        "--when",
+        "*",
+    ];
+
+    let value = assert_auto_matches_forced_mode(fixture.as_str(), "fused", &args);
+    assert!(value["data"].is_array());
+    assert!(value["warnings"].is_array());
+}
+
+#[test]
+fn change_auto_dense_edge_profile_matches_edge_fast_output() {
+    let fixture = write_generated_dispatch_fixture(true, 20, 100000, "change-auto-dense-edge.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let signals = (0..20)
+        .map(|idx| format!("top.sig{idx}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let args = [
+        "--from",
+        "0ns",
+        "--to",
+        "100000ns",
+        "--signals",
+        signals.as_str(),
+        "--when",
+        "posedge top.clk",
+    ];
+
+    let value = assert_auto_matches_forced_mode(fixture.as_str(), "edge-fast", &args);
+    assert!(value["data"].is_array());
+    assert!(value["warnings"].is_array());
+}
+
+#[test]
+fn change_auto_sparse_any_tracked_profile_matches_prefusion_output() {
+    let fixture = write_generated_dispatch_fixture(false, 10, 8, "change-auto-sparse-any.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let signals = (0..10)
+        .map(|idx| format!("top.sig{idx}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let args = [
+        "--from",
+        "0ns",
+        "--to",
+        "8ns",
+        "--signals",
+        signals.as_str(),
+        "--when",
+        "*",
+    ];
+
+    let value = assert_auto_matches_forced_mode(fixture.as_str(), "pre-fusion", &args);
+    assert!(value["data"].is_array());
+    assert!(value["warnings"].is_array());
+}
+
+#[test]
+fn change_auto_sparse_edge_profile_matches_prefusion_output() {
+    let fixture = write_generated_dispatch_fixture(true, 10, 8, "change-auto-sparse-edge.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let signals = (0..10)
+        .map(|idx| format!("top.sig{idx}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let args = [
+        "--from",
+        "0ns",
+        "--to",
+        "8ns",
+        "--signals",
+        signals.as_str(),
+        "--when",
+        "posedge top.clk",
+    ];
+
+    let value = assert_auto_matches_forced_mode(fixture.as_str(), "pre-fusion", &args);
+    assert!(value["data"].is_array());
+    assert!(value["warnings"].is_array());
+}
+
+fn write_generated_dispatch_fixture(
+    with_clock: bool,
+    signal_count: usize,
+    end_time: usize,
+    filename: &str,
+) -> NamedTempFile {
+    let mut contents = String::new();
+    contents.push_str("$date\n  today\n$end\n$version\n  wavepeek-auto-dispatch\n$end\n");
+    contents.push_str("$timescale 1ns $end\n$scope module top $end\n");
+
+    if with_clock {
+        contents.push_str("$var wire 1 ! clk $end\n");
+    }
+
+    let mut ids = Vec::with_capacity(signal_count);
+    for index in 0..signal_count {
+        let base = if with_clock { b'"' } else { b'!' };
+        let id = char::from(base.saturating_add(index as u8));
+        ids.push(id);
+        contents.push_str(format!("$var wire 1 {id} sig{index} $end\n").as_str());
+    }
+
+    contents.push_str("$upscope $end\n$enddefinitions $end\n#0\n");
+    if with_clock {
+        contents.push_str("0!\n");
+    }
+    for id in &ids {
+        contents.push_str(format!("0{id}\n").as_str());
+    }
+
+    for time in 1..=end_time {
+        contents.push_str(format!("#{time}\n").as_str());
+        if with_clock {
+            let clk = if time % 2 == 0 { '0' } else { '1' };
+            contents.push_str(format!("{clk}!\n").as_str());
+        }
+
+        let signal_index = time % signal_count;
+        let id = ids[signal_index];
+        let value = if (time / signal_count).is_multiple_of(2) {
+            '1'
+        } else {
+            '0'
+        };
+        contents.push_str(format!("{value}{id}\n").as_str());
+    }
+
+    write_fixture(contents.as_str(), filename)
 }
 
 fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

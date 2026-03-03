@@ -18,6 +18,17 @@ use crate::waveform::{
 
 const EMPTY_WARNING: &str = "no signal changes found in selected time range";
 const EDGE_FAST_MIN_WORK: usize = 1_000_000;
+const AUTO_FUSED_MIN_ESTIMATED_WORK: usize = 100_000;
+const AUTO_EDGE_ONLY_MIN_ESTIMATED_WORK: usize = 500_000;
+const AUTO_EDGE_FAST_MIN_ESTIMATED_WORK: usize = 2_000_000;
+const AUTO_FUSED_WIDE_SIGNAL_CUTOFF: usize = 32;
+const AUTO_EDGE_ONLY_MIN_REQUESTED_SIGNALS: usize = 10;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct AutoDispatchWorkEstimate {
+    fused_work: usize,
+    edge_work: usize,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ChangeSignalValue {
@@ -301,10 +312,20 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             });
 
     let candidate_mode = map_candidate_mode(args.internal_change_candidates);
+    let window_timestamp_count =
+        time_window_indices(waveform.timestamps_raw_slice(), from_raw, to_raw)
+            .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
+            .unwrap_or(0);
+    let estimated_work = estimate_auto_dispatch_work(
+        window_timestamp_count,
+        candidate_resolved.len(),
+        requested_resolved.len(),
+    );
     let engine_mode = select_engine_mode(
         args.internal_change_engine,
         resolved_event_terms.as_slice(),
         requested_resolved.len(),
+        estimated_work,
     );
 
     let run_output = match engine_mode {
@@ -401,6 +422,7 @@ fn select_engine_mode(
     mode: InternalChangeEngineMode,
     resolved_event_terms: &[ResolvedEventTerm],
     requested_signal_count: usize,
+    estimated_work: AutoDispatchWorkEstimate,
 ) -> ChangeEngineMode {
     match mode {
         InternalChangeEngineMode::PreFusion => ChangeEngineMode::PreFusion,
@@ -413,14 +435,39 @@ fn select_engine_mode(
                     .all(|term| matches!(term.event, ResolvedEventKind::AnyTracked));
             let edge_only = is_edge_only_terms(resolved_event_terms);
 
-            if requested_signal_count >= 32 && any_tracked_only {
+            let route_fused_for_any_tracked = any_tracked_only
+                && requested_signal_count > 0
+                && (requested_signal_count >= AUTO_FUSED_WIDE_SIGNAL_CUTOFF
+                    || estimated_work.fused_work >= AUTO_FUSED_MIN_ESTIMATED_WORK);
+            let route_edge_fast_for_edge_only = edge_only
+                && requested_signal_count >= AUTO_EDGE_ONLY_MIN_REQUESTED_SIGNALS
+                && estimated_work.edge_work >= AUTO_EDGE_FAST_MIN_ESTIMATED_WORK;
+            let route_fused_for_edge_only = edge_only
+                && requested_signal_count >= AUTO_EDGE_ONLY_MIN_REQUESTED_SIGNALS
+                && estimated_work.edge_work >= AUTO_EDGE_ONLY_MIN_ESTIMATED_WORK
+                && estimated_work.edge_work < AUTO_EDGE_FAST_MIN_ESTIMATED_WORK;
+
+            if route_fused_for_any_tracked || route_fused_for_edge_only {
                 ChangeEngineMode::Fused
-            } else if requested_signal_count >= 32 && edge_only {
+            } else if route_edge_fast_for_edge_only {
                 ChangeEngineMode::EdgeFast
             } else {
                 ChangeEngineMode::PreFusion
             }
         }
+    }
+}
+
+fn estimate_auto_dispatch_work(
+    window_timestamp_count: usize,
+    candidate_signal_count: usize,
+    requested_signal_count: usize,
+) -> AutoDispatchWorkEstimate {
+    AutoDispatchWorkEstimate {
+        fused_work: window_timestamp_count
+            .saturating_mul(candidate_signal_count)
+            .saturating_mul(requested_signal_count),
+        edge_work: window_timestamp_count.saturating_mul(requested_signal_count),
     }
 }
 
@@ -1487,7 +1534,10 @@ fn parse_bound_time(
 
 #[cfg(test)]
 mod tests {
-    use super::{ChangeEngineMode, ResolvedEventKind, ResolvedEventTerm, select_engine_mode};
+    use super::{
+        AutoDispatchWorkEstimate, ChangeEngineMode, ResolvedEventKind, ResolvedEventTerm,
+        select_engine_mode,
+    };
     use crate::cli::change::InternalChangeEngineMode;
 
     fn term(event: ResolvedEventKind) -> ResolvedEventTerm {
@@ -1497,29 +1547,91 @@ mod tests {
         }
     }
 
+    fn select_auto_mode_for_profile(
+        terms: &[ResolvedEventTerm],
+        requested_signal_count: usize,
+        fused_work: usize,
+        edge_work: usize,
+    ) -> ChangeEngineMode {
+        select_engine_mode(
+            InternalChangeEngineMode::Auto,
+            terms,
+            requested_signal_count,
+            AutoDispatchWorkEstimate {
+                fused_work,
+                edge_work,
+            },
+        )
+    }
+
     #[test]
     fn auto_engine_mode_uses_fused_for_wide_any_tracked_only() {
         let terms = vec![term(ResolvedEventKind::AnyTracked)];
 
-        let selected = select_engine_mode(InternalChangeEngineMode::Auto, terms.as_slice(), 64);
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 64, 500_000, 0);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
-    fn auto_engine_mode_uses_edge_fast_for_wide_selective_edge_events() {
+    fn auto_engine_mode_uses_fused_for_mid_any_tracked_only() {
+        let terms = vec![term(ResolvedEventKind::AnyTracked)];
+
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 250_000, 0);
+
+        assert_eq!(selected, ChangeEngineMode::Fused);
+    }
+
+    #[test]
+    fn auto_engine_mode_uses_fused_for_wide_selective_edge_events() {
         let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
 
-        let selected = select_engine_mode(InternalChangeEngineMode::Auto, terms.as_slice(), 128);
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 128, 0, 1_500_000);
+
+        assert_eq!(selected, ChangeEngineMode::Fused);
+    }
+
+    #[test]
+    fn auto_engine_mode_uses_edge_fast_for_ultra_wide_selective_edge_events() {
+        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
+
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 128, 0, 2_500_000);
 
         assert_eq!(selected, ChangeEngineMode::EdgeFast);
+    }
+
+    #[test]
+    fn auto_engine_mode_uses_fused_for_mid_edge_only_terms() {
+        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
+
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 0, 1_500_000);
+
+        assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
     fn auto_engine_mode_keeps_prefusion_for_narrow_selective_edge_events() {
         let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
 
-        let selected = select_engine_mode(InternalChangeEngineMode::Auto, terms.as_slice(), 16);
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 16, 2_000, 2_000);
+
+        assert_eq!(selected, ChangeEngineMode::PreFusion);
+    }
+
+    #[test]
+    fn auto_engine_mode_keeps_prefusion_for_low_signal_count_edge_only_terms() {
+        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
+
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 1, 0, 2_000_000);
+
+        assert_eq!(selected, ChangeEngineMode::PreFusion);
+    }
+
+    #[test]
+    fn auto_engine_mode_keeps_prefusion_for_low_work_any_tracked_only() {
+        let terms = vec![term(ResolvedEventKind::AnyTracked)];
+
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::PreFusion);
     }
@@ -1528,7 +1640,7 @@ mod tests {
     fn auto_engine_mode_keeps_prefusion_below_fused_threshold() {
         let terms = vec![term(ResolvedEventKind::AnyTracked)];
 
-        let selected = select_engine_mode(InternalChangeEngineMode::Auto, terms.as_slice(), 31);
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 31, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::PreFusion);
     }
@@ -1537,7 +1649,7 @@ mod tests {
     fn auto_engine_mode_uses_fused_at_threshold_for_any_tracked() {
         let terms = vec![term(ResolvedEventKind::AnyTracked)];
 
-        let selected = select_engine_mode(InternalChangeEngineMode::Auto, terms.as_slice(), 32);
+        let selected = select_auto_mode_for_profile(terms.as_slice(), 32, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }

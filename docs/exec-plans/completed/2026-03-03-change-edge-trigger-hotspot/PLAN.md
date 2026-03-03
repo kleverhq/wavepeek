@@ -30,7 +30,7 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - [x] (2026-03-03 18:01Z) Implemented `edge-fast` internal mode in `src/cli/change.rs` + `src/engine/change.rs` with edge-first event gating, offset-first requested delta prefilter, strict predecessor semantics, and lazy decode/materialization.
 - [x] (2026-03-03 18:07Z) Kept waveform interface unchanged (no helper additions required); validated existing offset/decode invariants via targeted waveform unit tests.
 - [x] (2026-03-03 18:20Z) Passed correctness and quality gates: `change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`, waveform unit checks, `make ci`, and `make check`.
-- [ ] (2026-03-03 19:06Z) Captured final perf evidence (`change-edge-hotspot-final`, `change-edge-hotspot-matrix`) but acceptance closure remains open: plan-local guard passes, primary 32us chipyard targets improved strongly, while broad `^change_` regression compare still reports >5% negative deltas and the picorv32 primary target remains below required speedup floor.
+- [x] (2026-03-03 20:02Z) Captured final perf evidence (`change-edge-hotspot-final`, `change-edge-hotspot-matrix`) and closed plan by explicit product decision: correctness goals are met and primary chipyard hotspots improved materially, while known residual perf gaps (broad `^change_` guard noise and picorv32 target miss) are documented for follow-up.
 
 ## Surprises & Discoveries
 
@@ -71,13 +71,17 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
   Rationale: Dense 32us chipyard windows benefit significantly, while lower-work windows can regress; a single work-based gate stays scale-invariant across waveform timescales and limits collateral slowdown risk.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Close this plan and move it to completed despite unmet strict perf closure gates.
+  Rationale: User explicitly accepted current state; implementation is contract-safe, heavily improves targeted chipyard hotspots, and residual perf risk is documented for a future iteration.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
 Initial state: this plan starts after Milestone 6 foundation is merged. Current behavior is excellent for dense `trigger=*`, acceptable for many sparse workloads, and still slow for dense edge-trigger windows in chipyard datasets.
 
 Completion criteria for this retrospective: dense edge-trigger benchmarks show material speedup, broad regression gate remains green, and all contract tests remain unchanged.
 
-Current retrospective status (2026-03-03): correctness and contract parity goals are met, and dense chipyard 32us edge-trigger hotspots are substantially faster. Plan closure criteria are not yet met because the broad `^change_` baseline compare still reports >5% negative deltas and one primary target (`picorv32` 32us posedge) remains below the required minimum speedup floor.
+Current retrospective status (2026-03-03): correctness and contract parity goals are met, and dense chipyard 32us edge-trigger hotspots are substantially faster. The plan is now closed by explicit user decision with documented residual gaps: broad `^change_` baseline compare still reports >5% negatives in parts of the matrix and `picorv32` 32us posedge remains below the target speedup floor.
 
 ## Context and Orientation
 
@@ -262,3 +266,4 @@ Required invariants to keep in code:
 Revision Note: 2026-03-03 / OpenCode - Initial focused ExecPlan created to address the remaining dense edge-trigger hotspot after completing and archiving the broader stateless `change` performance plan.
 Revision Note: 2026-03-03 / OpenCode - Tightened acceptance policy to deterministic closure gates (2/3 primary targets plus minimum floor on the remaining target) and explicit "do not close plan" behavior when the gate is missed.
 Revision Note: 2026-03-03 / OpenCode - Recorded implementation progress/results for `edge-fast` mode, added perf evidence from golden/final/matrix runs, and documented that closure gates remain open pending another tuning iteration.
+Revision Note: 2026-03-03 / OpenCode - Closed plan by user request and prepared move from `active/` to `completed/` with residual perf gaps explicitly preserved in retrospective notes.

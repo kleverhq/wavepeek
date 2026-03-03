@@ -11,6 +11,7 @@ pub enum InternalChangeEngineMode {
     Auto,
     PreFusion,
     Fused,
+    EdgeFast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
@@ -65,4 +66,6 @@ pub struct ChangeArgs {
         hide = true
     )]
     pub internal_change_candidates: InternalChangeCandidateMode,
+    #[arg(long = "internal-change-edge-fast-force", hide = true)]
+    pub internal_change_edge_fast_force: bool,
 }

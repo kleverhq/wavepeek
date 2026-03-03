@@ -38,6 +38,7 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - [x] (2026-02-28 13:11Z) Completed Milestone 5 hardening: `make ci` and `make check` passed, dedicated/final perf artifacts were archived, and broad `^change_` matrix compare against `bench/e2e/runs/baseline` passed (`--max-negative-delta-pct 5`) after rerunning a noisy outlier case.
 - [x] (2026-03-02 07:23Z) Improved perf-report readability in `bench/e2e/perf.py`: Markdown report cells and compare failures now include speed factor in `x` form (for example `2.00x faster` / `1.50x slower`) alongside percentage deltas.
 - [x] (2026-03-02 00:00Z) Recalibrated `change_picorv32_*` and `change_chipyard_*` benchmark cases from `runs=1, warmup=0` to `runs=5, warmup=1` now that perf anomalies are resolved; closed corresponding backlog entry.
+- [x] (2026-03-03 10:12Z) Milestone-6 plan QA pass: corrected repository paths and benchmark-doc references, aligned stale observations with current code reality, and removed env-var-based runtime toggle proposals for `src/**`.
 - [ ] Implement Milestone 6 fused single-pass loop with incremental decoding and offset-based delta detection.
 - [ ] Validate Milestone 6 correctness: `change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity` tests green.
 - [ ] Capture Milestone 6 perf evidence and run broad matrix regression.
@@ -54,26 +55,26 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - Observation: Startup/body-load cost exists but is not dominant for medium windows.
   Evidence: `change --max 1` and short-window run are both around `5s`, while full `--to=1000ps` is around `37.5s`.
 
-- Observation: Current adapter resolves paths and samples with repeated allocation-heavy work per sample.
-  Evidence: `src/engine/change.rs` uses cache keys like `HashMap<(String, u64), ...>` and probes via single-signal calls; `src/waveform/mod.rs` repeatedly resolves hierarchy on sampling calls.
+- Observation: The remaining hot path is repeated per-candidate sampling work, not name resolution.
+  Evidence: `src/engine/change.rs` now keys cache entries by `(SignalRef, raw_time)` and batches requested sampling, but still executes multi-pass candidate collection/scheduling plus per-candidate decode work.
 
-- Observation: `change` currently clones the full time table into a `Vec<u64>` before filtering.
-  Evidence: `src/waveform/mod.rs` `timestamps_raw()` uses `self.inner.time_table().to_vec()` and `src/engine/change.rs` filters that clone.
+- Observation: Time-table cloning is no longer the bottleneck.
+  Evidence: `src/waveform/mod.rs` exposes `timestamps_raw_slice()` returning `&[u64]`; runtime is now dominated by repeated scans and decode/comparison passes.
 
 - Observation: Repository perf infrastructure already exists and is production-shaped.
   Evidence: executable harness in `bench/e2e/perf.py`, explicit matrix in `bench/e2e/tests.json`, committed baseline artifacts in `bench/e2e/runs/baseline/`.
 
-- Observation: `perf/` currently provides navigation docs, while runnable harness code is in `bench/e2e/`.
-  Evidence: `perf/AGENTS.md` and `perf/e2e/AGENTS.md` are breadcrumb docs; benchmark runner and test catalog live under `bench/e2e/`.
+- Observation: Performance navigation docs live under `bench/`, and runnable harness code is in `bench/e2e/`.
+  Evidence: `bench/AGENTS.md` and `bench/e2e/AGENTS.md` are breadcrumb docs; benchmark runner and test catalog live under `bench/e2e/`.
 
-- Observation: Existing `change` perf matrix does not yet include the exact coremark query from this plan purpose (`scr1_max_axi_coremark.fst` with `i_imem_axi` scope and `araddr,arvalid`).
-  Evidence: `bench/e2e/tests.json` currently references coremark only for `info`, while `change` cases target other fixtures.
+- Observation: Dedicated coremark `change` cases are now present, but they are no longer representative of the remaining Milestone-6 bottleneck.
+  Evidence: `bench/e2e/tests.json` includes `change_scr1_coremark_imem_axi_{1sig,2sig}_to_1000ps`; baseline means are already sub-0.1s, while slow cases are `signal_count=100, trigger=*` families.
 
 - Observation: The largest practical runtime win came from avoiding repeated `load_signals` calls for the same refs, not from micro-tuning expression checks.
   Evidence: after introducing persistent loaded-signal tracking in `src/waveform/mod.rs`, the coremark KPI dropped from `~0.846s` to `~0.033s` mean on warm runs.
 
 - Observation: Broad matrix variance includes occasional outlier regressions around the acceptance threshold; reruns can normalize to stable pass values.
-  Evidence: in `change-stateless-final-matrix`, `change_scr1_signals_100_pos_50_window_2000_trigger_any` initially compared around `-10.51%`, then passed after rerun in the same run directory (`~6.147s` revised vs `~6.065s` golden).
+  Evidence: in historical `change-stateless-final-matrix` runs (directory not currently committed), `change_scr1_signals_100_pos_50_window_2000_trigger_any` initially compared around `-10.51%`, then passed after rerun in the same run directory (`~6.147s` revised vs `~6.065s` golden).
 
 - Observation: Percent-only deltas in perf reports are less intuitive for quick human interpretation than ratio-style speedup/slowdown.
   Evidence: `bench/e2e/perf.py` now renders both `%` and explicit `x` factor in report tables and compare failure strings.
@@ -83,6 +84,12 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 
 - Observation: Switching from `trigger=*` to a specific signal trigger collapses runtime dramatically even with the same 100 requested signals (chipyard_dual 100sig: trigger=* 4.42s vs trigger=signal 0.24s), confirming that the cost is in candidate density times per-candidate sampling, not in signal loading or candidate collection.
   Evidence: `bench/e2e/runs/baseline/README.md` rows for chipyard_dualrocketconfig 100sig comparing trigger types.
+
+- Observation: Existing exploratory `change-stateless-m6` artifacts show large wins on target `trigger=*` workloads but meaningful regressions on non-target workloads.
+  Evidence: `bench/e2e/runs/change-stateless-m6/README.md` contains ~9x-28x gains for `signal_count=100, trigger=*` tests and multiple >5% regressions on edge/named-trigger and low-signal tests.
+
+- Observation: `src` currently reads `WAVEPEEK_CHANGE_STREAM_THRESHOLD`, which is outside documented CLI contracts and should not be expanded.
+  Evidence: `src/waveform/mod.rs` `streaming_threshold_work()` reads `std::env::var("WAVEPEEK_CHANGE_STREAM_THRESHOLD")`.
 
 ## Decision Log
 
@@ -130,15 +137,25 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
   Rationale: The bottleneck for slow tests is the main loop (O(C × S) per-candidate work), not candidate collection. With A typically 2-100 and candidate scan being cheap relative to the main loop, thread dispatch overhead would likely exceed the benefit.
   Date/Author: 2026-03-02 / OpenCode
 
+- Decision: Do not add or rely on runtime environment variables in `src/**` for Milestone 6 control flow.
+  Rationale: Env-var toggles in `src` are not part of the command contract and create hidden runtime behavior. For test/perf forcing, use explicit internal controls (hidden CLI args or test-only wiring), not `std::env::var` in engine/waveform paths.
+  Date/Author: 2026-03-03 / OpenCode
+
+- Decision: Keep fused-loop acceleration selective; preserve/dispatch to pre-fusion path for workloads where fused path regresses beyond tolerance.
+  Rationale: Existing exploratory M6 results prove large upside on `trigger=*` dense workloads, but also show >5% regressions elsewhere. Hybrid dispatch is required to satisfy broad matrix acceptance.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
 Plan-authoring outcome: bottlenecks were identified with reproducible evidence, implementation was split into independently verifiable milestones, and the measurement path stayed aligned with repository reality (`bench/e2e/perf.py` + committed run artifacts).
 
-Implementation outcome: complete. The dedicated coremark KPI improved from `1.919s` mean (golden) to approximately `0.033-0.034s` in committed milestone run artifacts (`change-stateless-m2/m3/m4`), i.e. roughly `56-57x` speedup, with parity tests and fallback behavior preserved.
+Implementation outcome: complete for Milestones 1-5. In historical milestone captures (M2/M3/M4 campaign runs), the dedicated coremark KPI improved from `1.919s` mean (golden) to approximately `0.033-0.034s`, i.e. roughly `56-57x` speedup, with parity tests and fallback behavior preserved.
 
-Hardening outcome: `make ci` and `make check` passed, dedicated plan run directories were captured (`change-stateless-golden/m2/m3/m4/final-matrix`), and broad `^change_` compare against shared baseline passed at `--max-negative-delta-pct 5` after rerunning one noisy benchmark outlier.
+Hardening outcome: `make ci` and `make check` passed in the Milestone-5 implementation cycle, dedicated plan run directories were captured (`change-stateless-golden/m2/m3/m4/final-matrix`; historical local artifacts, not all committed in current tree), and broad `^change_` compare against shared baseline passed at `--max-negative-delta-pct 5` after rerunning one noisy benchmark outlier.
 
 Milestone 6 reopens implementation. The outcomes above reflect Milestones 1-5. Milestone 6 targets the remaining bottleneck: high-signal-count queries (100 signals, trigger=*) where per-candidate O(C × S) sampling dominates. This is in progress.
+
+Repository-state note: in the current branch head, Milestone-6 code is not merged yet; the latest commit updates this plan only. Exploratory M6 benchmark artifacts exist under `bench/e2e/runs/change-stateless-m6/` and should be treated as directional evidence, not release acceptance evidence.
 
 ## Context and Orientation
 
@@ -146,7 +163,7 @@ Milestone 6 reopens implementation. The outcomes above reflect Milestones 1-5. M
 
 `src/cli/change.rs` (argument parsing) -> `src/engine/mod.rs` (dispatch) -> `src/engine/change.rs` (`run`) -> `src/waveform/mod.rs` (sampling and metadata) -> `src/output.rs` (human/JSON serialization).
 
-The critical hot loop is in `src/engine/change.rs`: iterate timestamps in range, evaluate trigger terms per timestamp, and sample requested signals through `SampleCache::sample`. Sampling currently performs repeated path and allocation-heavy work when probing many times.
+The critical hot loop is in `src/engine/change.rs`: iterate timestamps in range, evaluate trigger terms per timestamp, and sample requested signals. Runtime now skews toward repeated offset/decode work across multiple passes of the same window.
 
 Waveform adapter behavior in `src/waveform/mod.rs` is currently random-access (`wellen::simple::read`) with full table materialization for timestamp access patterns. For FST, `wellen::stream` supports time-range and signal filtering while streaming value changes; this can provide an in-process stateless fast path.
 
@@ -158,7 +175,7 @@ Performance measurement source of truth for this repository is:
 - `bench/e2e/tests.json` (explicit benchmark catalog)
 - `bench/e2e/runs/` (run artifacts and reports)
 
-`perf/AGENTS.md` and `perf/e2e/AGENTS.md` are navigation maps. Executable harness code currently lives in `bench/e2e/`.
+`bench/AGENTS.md` and `bench/e2e/AGENTS.md` are navigation maps. Executable harness code currently lives in `bench/e2e/`.
 
 ## Open Questions
 
@@ -186,11 +203,13 @@ For edge-based triggers (`posedge`/`negedge`/`edge`), the trigger signal's bit s
 
 The FST streaming candidate-collection fast path is preserved as an alternative when it is cheaper (large windows on FST files above the streaming threshold); in that case only the schedule-building and main-loop fusion applies, using the streaming candidate set as input.
 
-Existing correctness tests (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`) must remain green. New equivalence tests should cover the fused path against the pre-fusion path using an environment variable to force-disable the fused loop.
+Existing correctness tests (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`) must remain green. New equivalence tests should cover fused and pre-fusion behavior using explicit internal controls, without runtime env-var reads in `src/**`.
+
+Milestone 6 explicitly includes removing `std::env::var("WAVEPEEK_CHANGE_STREAM_THRESHOLD")` from `src/waveform/mod.rs`. Stream-threshold tuning must be wired through explicit non-env controls (auto defaults plus internal test/perf forcing), not process environment reads in `src/**`.
 
 ### Concrete Steps
 
-Run all commands from `/workspaces/wavepeek`.
+Run all commands from `/workspaces/perf-change`.
 
 0. Verify baseline environment and harness availability.
 
@@ -422,17 +441,18 @@ Run all commands from `/workspaces/wavepeek`.
 
    Testing strategy for the fused path:
 
-   - Add an environment variable `WAVEPEEK_CHANGE_DISABLE_FUSED=1` that forces the engine to use the pre-fusion code path (Milestones 2-4). This lets `tests/change_opt_equivalence.rs` run both modes on the same input and assert byte-identical output.
+   - Add an explicit internal mode selector (non-env) so tests can force `pre_fusion` vs `fused` execution. Acceptable implementations: hidden CLI option (for integration tests) or test-only engine entrypoint. Default remains auto-select; no new runtime env-var reads in `src/**`.
    - Add unit tests in `src/waveform/mod.rs::tests` for `signal_offset_at_index` and `decode_signal_at_index`: verify offset equality/inequality semantics, verify decode produces the same result as `sample_resolved_optional`, verify behavior when the signal has no value at the queried index.
    - Add edge-case tests in `tests/change_opt_equivalence.rs`: empty window (from == to), window starting at first dump timestamp (no predecessor for baseline), all candidates at or before baseline, `--max 1` causing early termination, and a VCD fixture where wellen re-records the same value at a new offset (to exercise the two-stage delta gate). Note: craft the VCD with explicit redundant value dumps (e.g., `#5\nb0000 "` then `#10\nb0000 "`). Verify that wellen's VCD parser actually produces distinct offsets for these entries; if the parser coalesces redundant dumps, document this and treat the test as best-effort.
    - Add equivalence tests for all trigger types: `negedge`, `edge`, union triggers, and named non-edge triggers (`--when <signal>` where the trigger signal differs from requested signals).
-   - Add a test that exercises the FST streaming + fused loop hybrid path (force streaming via `WAVEPEEK_CHANGE_STREAM_THRESHOLD=0` and verify output matches the non-streaming fused path).
+   - Add a test that exercises the FST streaming + fused loop hybrid path by forcing stream/random dispatch through the same explicit internal controls (non-env) and verify output parity.
 
-   Validate:
+    Validate:
 
         cargo test --test change_cli
         cargo test --test change_opt_equivalence
         cargo test --test change_vcd_fst_parity
+        ! rg 'WAVEPEEK_CHANGE_' src
         cargo build --release
         WAVEPEEK_BIN=./target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/change-stateless-m6 --filter '^change_'
         python3 bench/e2e/perf.py compare --revised bench/e2e/runs/change-stateless-m6 --golden bench/e2e/runs/baseline --max-negative-delta-pct 5
@@ -451,7 +471,7 @@ Functional acceptance is unchanged from current `change` contract. After each mi
 
 Milestone 4 must include a dedicated integration test file `tests/change_vcd_fst_parity.rs` that asserts equivalent `change` behavior on matching VCD/FST fixtures; this prevents false-green filtered test invocations.
 
-Performance acceptance for this plan uses hyperfine metrics exported by `bench/e2e/perf.py`. The primary KPI test is `change_scr1_coremark_imem_axi_2sig_to_1000ps`; the one-signal test is secondary guardrail and scaling evidence.
+Performance acceptance for this plan uses hyperfine metrics exported by `bench/e2e/perf.py`. For Milestones 1-4, the primary KPI is `change_scr1_coremark_imem_axi_2sig_to_1000ps` (with one-signal as guardrail). For Milestone 6, primary KPI shifts to broad `signal_count=100, trigger=*` families.
 
 Speedup definition:
 
@@ -497,12 +517,17 @@ Milestone 6 acceptance is measured against the broad `^change_` baseline matrix,
 - `change_chipyard_dualrocketconfig_dhrystone_signals_100_*_trigger_any` tests (currently ~4.4s): target `<=1.5s` mean, i.e. `>=3x` speedup versus baseline (file-open cost for 76M FST is ~0.5s floor).
 - `change_picorv32_signals_100_*_trigger_any` tests (currently ~4.25s): target `<=1.0s` mean, i.e. `>=4x` speedup versus baseline.
 
-These per-family targets are aspirational. If actual profiling reveals a lower ceiling (e.g., offset-change-but-same-value decodes are more frequent than expected), targets may be adjusted. The hard acceptance gate is: no regressions on any existing `change` test, i.e. `python3 bench/e2e/perf.py compare --max-negative-delta-pct 5` must pass against the shared baseline.
+These per-family targets are aspirational. If actual profiling reveals a lower ceiling (e.g., offset-change-but-same-value decodes are more frequent than expected), targets may be adjusted.
+
+Milestone-6 minimum required acceptance gates are both of the following:
+
+- Regression gate: no regression worse than 5% on any existing `change` benchmark in the compared set, i.e. `python3 bench/e2e/perf.py compare --max-negative-delta-pct 5` must pass against the shared baseline.
+- Target-workload gate: family-level mean speedup versus baseline must be at least `3.0x` for each `signal_count=100, trigger=*` family (`scr1`, `chipyard_dualrocketconfig_dhrystone`, `picorv32`).
 
 Secondary acceptance:
 
 - `python3 bench/e2e/perf.py compare` must show no regressions for matching tests in the evaluated set (`--max-negative-delta-pct 0` for dedicated coremark run; `5` for broader matrix sweep against shared baseline).
-- Final release-candidate expectation on target hardware/profile remains approximately `6-15s` for the 2-signal coremark query, with common outcomes near `8-12s`.
+- Coremark guardrail expectation in the current baseline profile is approximately `0.07-0.10s` mean for 1-2 signal cases; Milestone 6 should not materially regress these tests.
 
 ### Idempotence and Recovery
 
@@ -520,7 +545,7 @@ If the fused loop introduces correctness divergence, the pre-fusion code path (M
 
 ### Artifacts and Notes
 
-Artifacts produced by this plan should be tracked under dedicated directories:
+Artifacts produced by this plan should be tracked under dedicated directories. Current repository state includes `bench/e2e/runs/baseline/` and exploratory `bench/e2e/runs/change-stateless-m6/`; additional milestone directories below are expected outputs when rerun:
 
 - `bench/e2e/runs/change-stateless-golden/` (baseline for this plan)
 - `bench/e2e/runs/change-stateless-m2/`
@@ -552,8 +577,9 @@ Benchmark dependency policy for this plan:
 
 - Use existing `hyperfine` + `bench/e2e/perf.py` stack.
 - Do not introduce Criterion/Cargo bench harness for this workstream.
+- Do not use runtime env vars in `src/**` for change-engine behavior control.
 
-Required API additions in `src/waveform/mod.rs`:
+Required baseline APIs in `src/waveform/mod.rs` (already present; keep behavior/API compatibility):
 
     pub struct ResolvedSignal {
         pub path: String,
@@ -639,9 +665,10 @@ Engine contract to preserve in `src/engine/change.rs`:
 
 Revision Note: 2026-02-24 / OpenCode - Initial performance-focused ExecPlan drafted for `change` command under strict stateless constraints, including measured baseline evidence, phased optimization milestones, and explicit speedup targets.
 Revision Note: 2026-02-24 / OpenCode - Incorporated review-pass findings: pinned candidate-time delta invariant requirements, replaced open rollout questions with explicit decisions, and documented a fallback benchmark fixture workflow in that revision (historical; superseded by the 2026-02-27 no-fallback policy).
-Revision Note: 2026-02-27 / OpenCode - Reconciled plan with current repository perf infrastructure: migrated execution and acceptance steps to `bench/e2e/perf.py` + `bench/e2e/tests.json`, removed stale Criterion/`cargo bench` assumptions, added dedicated coremark benchmark entries for this plan, and updated concrete steps to be directly executable from `/workspaces/wavepeek`.
+Revision Note: 2026-02-27 / OpenCode - Reconciled plan with current repository perf infrastructure: migrated execution and acceptance steps to `bench/e2e/perf.py` + `bench/e2e/tests.json`, removed stale Criterion/`cargo bench` assumptions, added dedicated coremark benchmark entries for this plan, and updated concrete steps to be directly executable from `/workspaces/perf-change`.
 Revision Note: 2026-02-27 / OpenCode - Incorporated plan QA fixes so perf measurements cannot use stale binaries: added `cargo build --release` before each perf capture, added `hyperfine --version` preflight, and made the no-fallback fixture assumption explicit.
 Revision Note: 2026-02-27 / OpenCode - Incorporated independent review fix for Milestone 4 validation robustness by requiring a dedicated parity integration test target (`tests/change_vcd_fst_parity.rs`) instead of filter-based test selection.
 Revision Note: 2026-02-28 / OpenCode - Completed end-to-end implementation: delivered Milestones 1-5, added dedicated equivalence/parity tests, archived golden+milestone perf runs, validated quality gates, and reconciled plan narrative with committed artifacts (current milestone run dirs all report approximately `56-57x` KPI speedup after final-code reruns).
 Revision Note: 2026-03-02 / OpenCode - Improved perf-harness readability by augmenting percent deltas with explicit `x` speed factors in both Markdown reports (`run --compare` / `report --compare`) and `compare` regression diagnostics.
 Revision Note: 2026-03-02 / OpenCode - Added Milestone 6: fused single-pass loop with incremental decoding and offset-based delta detection. Motivated by baseline analysis showing all >3s change tests share the profile (signal_count=100, trigger=*) where per-candidate O(C × S) sampling dominates. The fused approach replaces three separate passes with one time-major scan, decodes only changed signals per timestamp, and defers value materialization to emitted rows. Parallel candidate collection (rayon) was explicitly rejected as targeting the wrong bottleneck.
+Revision Note: 2026-03-03 / OpenCode - QA-aligned Milestone 6 plan with current repository reality: corrected stale path/doc references, replaced env-var-based fused-path forcing with explicit non-env internal controls, clarified exploratory-vs-acceptance benchmark artifacts, and updated acceptance guardrails to current baseline timings.

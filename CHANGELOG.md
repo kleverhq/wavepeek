@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded command help text to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes without requiring `docs/DESIGN.md` for day-to-day usage.
 - Accelerated `change` stateless execution by switching to resolved-handle sampling, persistent signal-load caching, timestamp-slice iteration, and candidate-timestamp reduction with strict pre-candidate baseline semantics.
 - Added an FST streaming-capable candidate-time path (`wellen::stream` filter pushdown with fallback heuristic) while preserving existing `change` contract behavior and output parity.
+- Added an internal dense edge-trigger `edge-fast` execution path for `change` (`--internal-change-engine edge-fast`) with edge-first event gating, offset-first delta prefiltering, and auto-fallback heuristics to preserve non-target behavior.
 
 ## [0.2.0] - 2026-02-20
 

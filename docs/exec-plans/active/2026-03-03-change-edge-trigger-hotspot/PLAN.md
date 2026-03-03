@@ -25,12 +25,12 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - [x] (2026-03-03 16:08Z) Archived previous stateless-performance plan under `docs/exec-plans/completed/2026-02-24-change-performance-stateless/PLAN.md` and split remaining dense edge-trigger latency into a dedicated active plan.
 - [x] (2026-03-03 16:14Z) Collected current-state hotspot evidence: `trigger=*` workloads are much faster, while dense `trigger_posedge_clk` windows remain the long-tail bottleneck.
 - [x] (2026-03-03 16:21Z) Drafted implementation strategy centered on event-first gating, offset-first delta filtering, and decode deferral for dense edge-trigger workloads.
-- [ ] Capture a dedicated edge-hotspot golden run (`change_.*trigger_posedge_clk`) from current HEAD for this plan.
-- [ ] Add failing/guard tests for dense edge-trigger equivalence and corner-case semantics before implementation (TDD stage).
-- [ ] Implement edge-hotspot fast path in `src/engine/change.rs` with strict predecessor semantics and lazy decode.
-- [ ] Add/update waveform helpers only as needed for index/offset-based evaluation without semantic drift.
-- [ ] Validate correctness (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`, new tests) and run `make ci` + `make check`.
-- [ ] Capture final perf evidence and satisfy acceptance gates (target edge speedups + broad regression guard).
+- [x] (2026-03-03 17:06Z) Captured dedicated edge-hotspot golden run under `bench/e2e/runs/change-edge-hotspot-golden` and generated plan-local report.
+- [x] (2026-03-03 17:14Z) Added failing TDD guard tests in `tests/change_opt_equivalence.rs` for dense edge parity, no-delta edge firing, union dedup, and dense-window truncation; tests failed before `edge-fast` wiring existed.
+- [x] (2026-03-03 18:01Z) Implemented `edge-fast` internal mode in `src/cli/change.rs` + `src/engine/change.rs` with edge-first event gating, offset-first requested delta prefilter, strict predecessor semantics, and lazy decode/materialization.
+- [x] (2026-03-03 18:07Z) Kept waveform interface unchanged (no helper additions required); validated existing offset/decode invariants via targeted waveform unit tests.
+- [x] (2026-03-03 18:20Z) Passed correctness and quality gates: `change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`, waveform unit checks, `make ci`, and `make check`.
+- [ ] (2026-03-03 19:06Z) Captured final perf evidence (`change-edge-hotspot-final`, `change-edge-hotspot-matrix`) but acceptance closure remains open: plan-local guard passes, primary 32us chipyard targets improved strongly, while broad `^change_` regression compare still reports >5% negative deltas and the picorv32 primary target remains below required speedup floor.
 
 ## Surprises & Discoveries
 
@@ -42,6 +42,12 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 
 - Observation: Bench evidence from campaign runs and user report (`bench/e2e/runs/eval-m6`) agrees on shape: `change_.*trigger_any` improved dramatically, but dense `change_.*trigger_posedge_clk` remains the latency tail for large chipyard windows.
   Evidence: repository run artifacts under `bench/e2e/runs/change-stateless-m6*` plus user summary in this task thread.
+
+- Observation: For dense chipyard `signals_100` + `window_32us` posedge workloads, the new edge path is materially faster (multi-x speedups), but the same approach is not universally beneficial across all waveform families/windows.
+  Evidence: `bench/e2e/runs/change-edge-hotspot-final` speedups vs baseline are ~8.5x (`clusteredrocket` 32us) and ~14.7x (`dualrocket` 32us), while `picorv32` 32us remains ~0.98x.
+
+- Observation: The edge-fast path needs dispatch hardening to avoid medium-window noise/regressions; runtime gates on estimated work reduced many regressions, but plan-local and broad compares still show intermittent outlier-driven failures on short SCR1/low-signal windows.
+  Evidence: repeated reruns of `change-edge-hotspot-final` vs golden alternate between pass/fail depending on outliers, and `change-edge-hotspot-matrix` vs baseline continues to report >5% negatives for multiple non-target cases.
 
 ## Decision Log
 
@@ -57,11 +63,21 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
   Rationale: The optimization changes execution order in hot loops; failing parity tests are the safest guard against subtle semantic drift.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Add dedicated hidden internal engine mode `edge-fast` (`--internal-change-engine edge-fast`) and keep it contract-equivalent to existing modes via forced-mode parity tests.
+  Rationale: A named mode provides deterministic test forcing and low-risk rollout while preserving existing pre-fusion/fused paths for non-target workloads.
+  Date/Author: 2026-03-03 / OpenCode
+
+- Decision: Gate edge-fast runtime activation by minimum estimated edge-work (`candidate_count * requested_signal_count`) with automatic fallback to pre-fusion when work is below threshold.
+  Rationale: Dense 32us chipyard windows benefit significantly, while lower-work windows can regress; a single work-based gate stays scale-invariant across waveform timescales and limits collateral slowdown risk.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
 Initial state: this plan starts after Milestone 6 foundation is merged. Current behavior is excellent for dense `trigger=*`, acceptable for many sparse workloads, and still slow for dense edge-trigger windows in chipyard datasets.
 
 Completion criteria for this retrospective: dense edge-trigger benchmarks show material speedup, broad regression gate remains green, and all contract tests remain unchanged.
+
+Current retrospective status (2026-03-03): correctness and contract parity goals are met, and dense chipyard 32us edge-trigger hotspots are substantially faster. Plan closure criteria are not yet met because the broad `^change_` baseline compare still reports >5% negative deltas and one primary target (`picorv32` 32us posedge) remains below the required minimum speedup floor.
 
 ## Context and Orientation
 
@@ -245,3 +261,4 @@ Required invariants to keep in code:
 
 Revision Note: 2026-03-03 / OpenCode - Initial focused ExecPlan created to address the remaining dense edge-trigger hotspot after completing and archiving the broader stateless `change` performance plan.
 Revision Note: 2026-03-03 / OpenCode - Tightened acceptance policy to deterministic closure gates (2/3 primary targets plus minimum floor on the remaining target) and explicit "do not close plan" behavior when the gate is missed.
+Revision Note: 2026-03-03 / OpenCode - Recorded implementation progress/results for `edge-fast` mode, added perf evidence from golden/final/matrix runs, and documented that closure gates remain open pending another tuning iteration.

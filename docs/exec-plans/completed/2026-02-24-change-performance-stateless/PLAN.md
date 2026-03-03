@@ -39,10 +39,10 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 - [x] (2026-03-02 07:23Z) Improved perf-report readability in `bench/e2e/perf.py`: Markdown report cells and compare failures now include speed factor in `x` form (for example `2.00x faster` / `1.50x slower`) alongside percentage deltas.
 - [x] (2026-03-02 00:00Z) Recalibrated `change_picorv32_*` and `change_chipyard_*` benchmark cases from `runs=1, warmup=0` to `runs=5, warmup=1` now that perf anomalies are resolved; closed corresponding backlog entry.
 - [x] (2026-03-03 10:12Z) Milestone-6 plan QA pass: corrected repository paths and benchmark-doc references, aligned stale observations with current code reality, and removed env-var-based runtime toggle proposals for `src/**`.
-- [ ] Implement Milestone 6 fused single-pass loop with incremental decoding and offset-based delta detection.
-- [ ] Validate Milestone 6 correctness: `change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity` tests green.
-- [ ] Capture Milestone 6 perf evidence and run broad matrix regression.
-- [ ] Full quality gate (`make ci`, `make check`) for Milestone 6.
+- [x] (2026-03-03 15:02Z) Implemented Milestone 6 fused single-pass loop with incremental decoding and offset-based delta detection in `src/engine/change.rs` and `src/waveform/mod.rs`, including explicit internal forcing controls in CLI for test parity.
+- [x] (2026-03-03 15:19Z) Validated Milestone 6 correctness (`change_cli`, `change_opt_equivalence`, `change_vcd_fst_parity`) and full quality gates (`make ci`, `make check`).
+- [x] (2026-03-03 15:54Z) Captured Milestone 6 broad matrix perf evidence (`bench/e2e/runs/change-stateless-m6*`), confirmed major gains on `signal_count=100, trigger=*`, and documented residual edge-trigger hotspot behavior.
+- [x] (2026-03-03 16:08Z) Closed this plan and split remaining work into a dedicated follow-up exec plan focused on dense edge-trigger (`posedge clk`) hotspots.
 
 ## Surprises & Discoveries
 
@@ -90,6 +90,9 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
 
 - Observation: `src` currently reads `WAVEPEEK_CHANGE_STREAM_THRESHOLD`, which is outside documented CLI contracts and should not be expanded.
   Evidence: `src/waveform/mod.rs` `streaming_threshold_work()` reads `std::env::var("WAVEPEEK_CHANGE_STREAM_THRESHOLD")`.
+
+- Observation: Milestone-6 fused path delivers very large wins for dense `trigger=*` workloads, while dense edge-trigger workloads (especially `posedge clk` over long windows) remain the dominant long-tail latency.
+  Evidence: campaign runs under `bench/e2e/runs/change-stateless-m6*` and user run `bench/e2e/runs/eval-m6` both show `change_.*trigger_any` moving by large factors while `change_.*trigger_posedge_clk` remains comparatively high on chipyard 32us windows.
 
 ## Decision Log
 
@@ -145,6 +148,10 @@ This plan does not add a second benchmark framework (`cargo bench`/Criterion). E
   Rationale: Existing exploratory M6 results prove large upside on `trigger=*` dense workloads, but also show >5% regressions elsewhere. Hybrid dispatch is required to satisfy broad matrix acceptance.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Conclude this plan after Milestone-6 delivery and move remaining edge-trigger optimization into a dedicated follow-up plan.
+  Rationale: The original objective (stateless fused-loop foundation and major `trigger=*` acceleration) is complete; remaining bottleneck requires a different strategy centered on dense edge-trigger execution and should be tracked independently to keep scope and acceptance criteria clear.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
 Plan-authoring outcome: bottlenecks were identified with reproducible evidence, implementation was split into independently verifiable milestones, and the measurement path stayed aligned with repository reality (`bench/e2e/perf.py` + committed run artifacts).
@@ -153,9 +160,11 @@ Implementation outcome: complete for Milestones 1-5. In historical milestone cap
 
 Hardening outcome: `make ci` and `make check` passed in the Milestone-5 implementation cycle, dedicated plan run directories were captured (`change-stateless-golden/m2/m3/m4/final-matrix`; historical local artifacts, not all committed in current tree), and broad `^change_` compare against shared baseline passed at `--max-negative-delta-pct 5` after rerunning one noisy benchmark outlier.
 
-Milestone 6 reopens implementation. The outcomes above reflect Milestones 1-5. Milestone 6 targets the remaining bottleneck: high-signal-count queries (100 signals, trigger=*) where per-candidate O(C × S) sampling dominates. This is in progress.
+Milestone 6 is now implemented and merged in this branch. The fused single-pass foundation, incremental decode path, low-level waveform APIs, and non-env internal forcing controls are complete and covered by parity tests.
 
-Repository-state note: in the current branch head, Milestone-6 code is not merged yet; the latest commit updates this plan only. Exploratory M6 benchmark artifacts exist under `bench/e2e/runs/change-stateless-m6/` and should be treated as directional evidence, not release acceptance evidence.
+Final performance state for this plan: target `signal_count=100, trigger=*` families improved substantially (large multi-x gains), but dense edge-trigger workloads (notably `trigger=posedge clk` on long chipyard windows) remain the principal long-tail latency and are intentionally moved to a new dedicated follow-up plan.
+
+Repository-state note: this plan is complete and archived. Historical milestone and exploratory artifacts remain under `bench/e2e/runs/change-stateless-*`; follow-up optimization work proceeds under a separate active plan.
 
 ## Context and Orientation
 
@@ -672,3 +681,4 @@ Revision Note: 2026-02-28 / OpenCode - Completed end-to-end implementation: deli
 Revision Note: 2026-03-02 / OpenCode - Improved perf-harness readability by augmenting percent deltas with explicit `x` speed factors in both Markdown reports (`run --compare` / `report --compare`) and `compare` regression diagnostics.
 Revision Note: 2026-03-02 / OpenCode - Added Milestone 6: fused single-pass loop with incremental decoding and offset-based delta detection. Motivated by baseline analysis showing all >3s change tests share the profile (signal_count=100, trigger=*) where per-candidate O(C × S) sampling dominates. The fused approach replaces three separate passes with one time-major scan, decodes only changed signals per timestamp, and defers value materialization to emitted rows. Parallel candidate collection (rayon) was explicitly rejected as targeting the wrong bottleneck.
 Revision Note: 2026-03-03 / OpenCode - QA-aligned Milestone 6 plan with current repository reality: corrected stale path/doc references, replaced env-var-based fused-path forcing with explicit non-env internal controls, clarified exploratory-vs-acceptance benchmark artifacts, and updated acceptance guardrails to current baseline timings.
+Revision Note: 2026-03-03 / OpenCode - Marked Milestone 6 implementation complete, captured final state (large `trigger=*` gains, remaining dense edge-trigger hotspot), and archived this plan in `docs/exec-plans/completed/` with explicit handoff to a new focused active plan.

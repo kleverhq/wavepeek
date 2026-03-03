@@ -14,7 +14,7 @@ User-visible outcome: from repository root, a user can list tests, run a filtere
 
 This plan does not optimize engine internals for `at`/`change`; it only provides measurement infrastructure and baseline evidence.
 
-This plan does not replace the separate `change` performance optimization plan in `docs/exec-plans/active/2026-02-24-change-performance-stateless/PLAN.md`.
+This plan does not replace the separate `change` performance optimization plan in `docs/exec-plans/completed/2026-02-24-change-performance-stateless/PLAN.md`.
 
 This plan does not add third-party Python dependencies.
 

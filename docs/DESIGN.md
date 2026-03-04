@@ -541,7 +541,8 @@ The CLI layer formats results for output.
 
 2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
    `at`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
-   results. Contains expression evaluator (for `when`).
+   results. Contains expression evaluator (for `when`) and the `change` multi-engine dispatcher
+   described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
    format detection (VCD/FST), hierarchy traversal, and signal value queries.
@@ -586,7 +587,7 @@ src/
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
 │   ├── at.rs            # Value extraction at time point
-│   ├── change.rs        # Value change tracking (`--when` event triggers)
+│   ├── change.rs        # Value change tracking (`--when` event triggers, see 5.7)
 │   ├── when.rs          # Condition evaluation over clock cycles
 │   └── schema.rs        # JSON schema export
 ├── expr/                # Expression engine (for `when` command)
@@ -705,7 +706,41 @@ A single `WavepeekError` enum in `src/error.rs` with variants covering all failu
 modes. Each variant maps to an exit code and a formatted message.
 The CLI layer converts `WavepeekError` into stderr output and exit code.
 
-### 5.7 Testing Strategy
+### 5.7 Change Command Execution Architecture
+
+The `change` command uses a multi-engine execution model that keeps one user
+contract while allowing different internal execution strategies for different
+workloads.
+
+Execution engines:
+
+- **Pre-fusion engine** — Conservative baseline path used for narrow or low-work
+  windows. It prioritizes predictable behavior and low fixed overhead.
+- **Fused engine** — Optimized for broad candidate sets and any-tracked windows.
+  It reduces repeated per-signal work by combining more work in shared passes.
+- **Edge-fast engine** — Specialized path for dense edge-trigger workloads. It
+  applies edge-first gating and lightweight prefiltering before full delta
+  materialization.
+
+Dispatcher heuristics:
+
+- Default mode routes requests automatically from simple workload estimates
+  (window size, candidate density, requested signal count, and trigger shape).
+- Edge-only trigger profiles can be routed to fused or edge-fast depending on
+  estimated work, while sparse profiles remain on pre-fusion.
+- This policy is intentionally internal and may evolve without changing user
+  payload semantics.
+
+Why this complexity exists:
+
+- A single engine could not deliver consistent low latency for both tiny and
+  large-window scenarios.
+- The dispatcher keeps externally visible behavior contract-equivalent while
+  choosing faster internals for high-work inputs.
+- The design target is stable output parity with practical latency improvements
+  on large dumps/windows where optimized paths materially reduce runtime.
+
+### 5.8 Testing Strategy
 
 **Levels:**
 

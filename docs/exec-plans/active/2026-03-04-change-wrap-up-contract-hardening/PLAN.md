@@ -22,11 +22,12 @@ This plan does not change `change` output schema, event semantics, warning texts
 - [x] (2026-03-04 06:12Z) Ran review pass #1 on this plan and tightened commit/review/TDD evidence requirements based on findings.
 - [x] (2026-03-04 06:12Z) Ran independent review pass #2 on this plan and resolved remaining executability/documentation-trail gaps.
 - [x] (2026-03-04 06:18Z) Incorporated user clarification to remove dual-mode ambiguity: debug contract is now `DEBUG=1` only, with explicit DEVELOPMENT.md update requirements.
-- [ ] Implement CLI/internal-override hardening (rename to `--perf-*`, add debug gate, add/refresh argument docs, preserve hidden status in help).
-- [ ] Update tests and contracts for new flag names and debug-gated usage behavior.
-- [ ] Update architecture/changelog collateral and run quality gates.
-- [ ] Complete review pass #1, fix findings, commit fixes.
-- [ ] Complete independent review pass #2, fix findings if any, commit fixes, and close plan.
+- [x] (2026-03-04 06:31Z) Implemented CLI/internal-override hardening: renamed hidden flags to `--perf-*`, added centralized `DEBUG=1` gate, and kept hidden help behavior unchanged.
+- [x] (2026-03-04 06:33Z) Updated tests/contracts for new flag names and debug-gated behavior, including explicit-default gating and legacy-flag rejection coverage.
+- [x] (2026-03-04 06:34Z) Updated architecture/development/changelog collateral and passed `make check` after targeted test reruns.
+- [x] (2026-03-04 06:34Z) Completed review pass #1, addressed suggested test-coverage gaps, and re-ran targeted validation.
+- [x] (2026-03-04 06:35Z) Completed independent review pass #2 with fresh context; no remaining severity-tagged findings.
+- [x] (2026-03-04 06:36Z) Passed final verification gate `make ci` and captured closure artifacts in this plan.
 
 ## Surprises & Discoveries
 
@@ -59,7 +60,7 @@ This plan does not change `change` output schema, event semantics, warning texts
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started yet.
+Current status: complete. All planned implementation, collateral updates, two-pass review, and `make ci` validation succeeded.
 
 Expected completion outcome: internal tuning surface becomes intentionally unstable/private-by-default while preserving current optimized behavior and parity guarantees.
 
@@ -239,6 +240,26 @@ Before closure, include two short command excerpts here:
 - TDD red-phase: one failing assertion from step 1 before implementation.
 - TDD green-phase: passing output after implementation for the same test target.
 - Review evidence: short excerpts from pass #1 and pass #2 outputs showing final clean status (or showing fixes were applied and re-reviewed).
+
+Recorded excerpts:
+
+- TDD red-phase (`cargo test --test change_cli change_perf_overrides_require_debug_mode -- --exact`, before implementation):
+
+      test change_perf_overrides_require_debug_mode ... FAILED
+      Unexpected stderr, failed var.contains(--perf-*)
+      var: error: args: unexpected argument '--perf-engine' found See 'wavepeek change --help'.
+
+- TDD green-phase (`cargo test --test change_cli change_perf_overrides_require_debug_mode -- --exact`, after implementation):
+
+      running 1 test
+      test change_perf_overrides_require_debug_mode ... ok
+      test result: ok. 1 passed; 0 failed
+
+- Review evidence:
+
+  - Pass #1 initial output: `No significant implementation defects found ...` with test-gap recommendations for explicit-default and per-flag gate assertions.
+  - Pass #1 follow-up output after fixes: `No findings.`
+  - Independent pass #2 output: `No severity-tagged findings in the reviewed scope`.
 
 ### Interfaces and Dependencies
 

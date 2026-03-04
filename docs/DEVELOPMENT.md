@@ -33,6 +33,15 @@ Operational policy:
 - Do not store separate process documentation under `.opencode/`; keep only
   runnable agent/skill assets there.
 
+## Debug Mode
+
+Debug mode is a repository-wide internal contract enabled only with `DEBUG=1`.
+
+- `DEBUG=1` is intended for maintainers and CI diagnostics, not normal user flows.
+- In debug mode, hidden internal controls may become available across commands.
+- Hidden controls remain unstable implementation details and are not part of the
+  public CLI contract, even when they are enabled.
+
 ## Build / Lint / Test
 
 Use the `Makefile` targets when possible (they match CI and pre-commit hooks).

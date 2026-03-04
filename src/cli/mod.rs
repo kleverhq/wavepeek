@@ -8,6 +8,7 @@ pub mod signal;
 pub mod when;
 
 use clap::error::ErrorKind;
+use clap::parser::ValueSource;
 use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
@@ -154,12 +155,39 @@ pub fn run() -> Result<(), WavepeekError> {
         Err(error) => return handle_parse_error(error),
     };
 
+    if change_perf_overrides_requested(&matches) && !is_debug_mode_enabled() {
+        return Err(WavepeekError::Args(
+            "internal performance overrides (--perf-*) require DEBUG=1. Set DEBUG=1 only for local diagnostics or CI debugging."
+                .to_string(),
+        ));
+    }
+
     let cli = match Cli::from_arg_matches(&matches) {
         Ok(cli) => cli,
         Err(error) => return handle_parse_error(error),
     };
 
     dispatch(cli.command)
+}
+
+fn is_debug_mode_enabled() -> bool {
+    std::env::var("DEBUG")
+        .map(|value| value == "1")
+        .unwrap_or(false)
+}
+
+fn change_perf_overrides_requested(matches: &clap::ArgMatches) -> bool {
+    let Some(("change", change_matches)) = matches.subcommand() else {
+        return false;
+    };
+
+    is_command_line_override(change_matches, "perf_engine")
+        || is_command_line_override(change_matches, "perf_candidates")
+        || is_command_line_override(change_matches, "perf_edge_fast_force")
+}
+
+fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {
+    matches!(matches.value_source(arg), Some(ValueSource::CommandLine))
 }
 
 fn disable_default_help_flags_recursively(command: &mut clap::Command) {

@@ -995,6 +995,151 @@ fn change_rejects_zero_max_with_args_error() {
 }
 
 #[test]
+fn change_perf_overrides_require_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--perf-engine",
+            "fused",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("--perf-*"))
+        .stderr(predicate::str::contains("DEBUG=1"));
+}
+
+#[test]
+fn change_explicit_perf_auto_still_requires_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--perf-engine",
+            "auto",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("DEBUG=1"));
+}
+
+#[test]
+fn change_perf_candidate_override_requires_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--perf-candidates",
+            "stream",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("DEBUG=1"));
+}
+
+#[test]
+fn change_perf_edge_fast_force_requires_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--perf-edge-fast-force",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("DEBUG=1"));
+}
+
+#[test]
+fn change_perf_overrides_succeed_with_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--perf-engine",
+            "fused",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn change_rejects_legacy_internal_change_flags() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    for legacy_args in [
+        vec!["--internal-change-engine", "fused"],
+        vec!["--internal-change-candidates", "stream"],
+        vec!["--internal-change-edge-fast-force"],
+    ] {
+        wavepeek_cmd()
+            .args([
+                "change",
+                "--waves",
+                fixture.as_str(),
+                "--signals",
+                "top.clk",
+            ])
+            .args(legacy_args)
+            .assert()
+            .failure()
+            .code(1)
+            .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::starts_with("error: args:"));
+    }
+}
+
+#[test]
 fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

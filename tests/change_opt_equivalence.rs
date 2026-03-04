@@ -51,18 +51,19 @@ fn run_change_json_with_mode(
         "change",
         "--waves",
         waves,
-        "--internal-change-engine",
+        "--perf-engine",
         engine_mode,
-        "--internal-change-candidates",
+        "--perf-candidates",
         candidate_mode,
     ];
     if engine_mode == "edge-fast" {
-        args.push("--internal-change-edge-fast-force");
+        args.push("--perf-edge-fast-force");
     }
     args.extend_from_slice(extra_args);
     args.push("--json");
 
     let output = wavepeek_cmd()
+        .env("DEBUG", "1")
         .args(args)
         .output()
         .expect("change should execute");

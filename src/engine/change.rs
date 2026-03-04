@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
-use crate::cli::change::{ChangeArgs, InternalChangeCandidateMode, InternalChangeEngineMode};
+use crate::cli::change::{ChangeArgs, PerfChangeCandidateMode, PerfChangeEngineMode};
 use crate::cli::limits::LimitArg;
 use crate::engine::at::{
     ParsedTime, as_zeptoseconds, ensure_non_zero_dump_tick, format_raw_timestamp,
@@ -311,7 +311,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
                 acc
             });
 
-    let candidate_mode = map_candidate_mode(args.internal_change_candidates);
+    let candidate_mode = map_candidate_mode(args.perf_candidates);
     let window_timestamp_count =
         time_window_indices(waveform.timestamps_raw_slice(), from_raw, to_raw)
             .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
@@ -322,7 +322,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         requested_resolved.len(),
     );
     let engine_mode = select_engine_mode(
-        args.internal_change_engine,
+        args.perf_engine,
         resolved_event_terms.as_slice(),
         requested_resolved.len(),
         estimated_work,
@@ -378,7 +378,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             dump_tick,
             max_entries,
             candidate_mode,
-            args.internal_change_edge_fast_force,
+            args.perf_edge_fast_force,
         )?,
     };
 
@@ -410,25 +410,25 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     })
 }
 
-fn map_candidate_mode(mode: InternalChangeCandidateMode) -> ChangeCandidateCollectionMode {
+fn map_candidate_mode(mode: PerfChangeCandidateMode) -> ChangeCandidateCollectionMode {
     match mode {
-        InternalChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
-        InternalChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
-        InternalChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
+        PerfChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
+        PerfChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
+        PerfChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
     }
 }
 
 fn select_engine_mode(
-    mode: InternalChangeEngineMode,
+    mode: PerfChangeEngineMode,
     resolved_event_terms: &[ResolvedEventTerm],
     requested_signal_count: usize,
     estimated_work: AutoDispatchWorkEstimate,
 ) -> ChangeEngineMode {
     match mode {
-        InternalChangeEngineMode::PreFusion => ChangeEngineMode::PreFusion,
-        InternalChangeEngineMode::Fused => ChangeEngineMode::Fused,
-        InternalChangeEngineMode::EdgeFast => ChangeEngineMode::EdgeFast,
-        InternalChangeEngineMode::Auto => {
+        PerfChangeEngineMode::PreFusion => ChangeEngineMode::PreFusion,
+        PerfChangeEngineMode::Fused => ChangeEngineMode::Fused,
+        PerfChangeEngineMode::EdgeFast => ChangeEngineMode::EdgeFast,
+        PerfChangeEngineMode::Auto => {
             let any_tracked_only = !resolved_event_terms.is_empty()
                 && resolved_event_terms
                     .iter()
@@ -1538,7 +1538,7 @@ mod tests {
         AutoDispatchWorkEstimate, ChangeEngineMode, ResolvedEventKind, ResolvedEventTerm,
         select_engine_mode,
     };
-    use crate::cli::change::InternalChangeEngineMode;
+    use crate::cli::change::PerfChangeEngineMode;
 
     fn term(event: ResolvedEventKind) -> ResolvedEventTerm {
         ResolvedEventTerm {
@@ -1554,7 +1554,7 @@ mod tests {
         edge_work: usize,
     ) -> ChangeEngineMode {
         select_engine_mode(
-            InternalChangeEngineMode::Auto,
+            PerfChangeEngineMode::Auto,
             terms,
             requested_signal_count,
             AutoDispatchWorkEstimate {

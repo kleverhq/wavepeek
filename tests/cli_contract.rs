@@ -619,7 +619,10 @@ fn change_help_documents_when_trigger_and_does_not_expose_clk() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--when"))
-        .stdout(predicate::str::contains("--clk").not());
+        .stdout(predicate::str::contains("--clk").not())
+        .stdout(predicate::str::contains("--perf-engine").not())
+        .stdout(predicate::str::contains("--perf-candidates").not())
+        .stdout(predicate::str::contains("--perf-edge-fast-force").not());
 }
 
 #[test]

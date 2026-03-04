@@ -6,7 +6,7 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
-pub enum InternalChangeEngineMode {
+pub enum PerfChangeEngineMode {
     #[default]
     Auto,
     PreFusion,
@@ -16,7 +16,7 @@ pub enum InternalChangeEngineMode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
-pub enum InternalChangeCandidateMode {
+pub enum PerfChangeCandidateMode {
     #[default]
     Auto,
     Random,
@@ -52,20 +52,23 @@ pub struct ChangeArgs {
     /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
+    /// Unstable internal performance control (requires DEBUG=1).
     #[arg(
-        long = "internal-change-engine",
+        long = "perf-engine",
         value_enum,
-        default_value_t = InternalChangeEngineMode::Auto,
+        default_value_t = PerfChangeEngineMode::Auto,
         hide = true
     )]
-    pub internal_change_engine: InternalChangeEngineMode,
+    pub perf_engine: PerfChangeEngineMode,
+    /// Unstable internal performance control (requires DEBUG=1).
     #[arg(
-        long = "internal-change-candidates",
+        long = "perf-candidates",
         value_enum,
-        default_value_t = InternalChangeCandidateMode::Auto,
+        default_value_t = PerfChangeCandidateMode::Auto,
         hide = true
     )]
-    pub internal_change_candidates: InternalChangeCandidateMode,
-    #[arg(long = "internal-change-edge-fast-force", hide = true)]
-    pub internal_change_edge_fast_force: bool,
+    pub perf_candidates: PerfChangeCandidateMode,
+    /// Unstable internal performance control (requires DEBUG=1).
+    #[arg(long = "perf-edge-fast-force", hide = true)]
+    pub perf_edge_fast_force: bool,
 }

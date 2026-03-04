@@ -258,14 +258,17 @@ impl Waveform {
             floor_time_table_index(time_table, query_time_raw).ok_or_else(|| {
                 WavepeekError::Internal("query time is before first dump timestamp".to_string())
             })?;
+        let first_timestamp_raw = time_table.first().copied().unwrap_or(0);
 
         if should_use_streaming_point_sampling(
             self.file_format,
             resolved.len(),
             query_time_raw,
             time_table_idx,
-        ) {
-            return self.sample_resolved_optional_streaming(resolved, query_time_raw);
+            first_timestamp_raw,
+        ) && let Ok(sampled) = self.sample_resolved_optional_streaming(resolved, query_time_raw)
+        {
+            return Ok(sampled);
         }
 
         let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
@@ -615,6 +618,7 @@ fn should_use_streaming_point_sampling(
     signal_count: usize,
     query_time_raw: u64,
     time_table_idx: usize,
+    first_timestamp_raw: u64,
 ) -> bool {
     if file_format != wellen::FileFormat::Fst
         || !(STREAM_POINT_MIN_SIGNALS..=STREAM_POINT_MAX_SIGNALS).contains(&signal_count)
@@ -629,7 +633,8 @@ fn should_use_streaming_point_sampling(
         return false;
     }
 
-    let average_timestamp_delta = query_time_raw / step_count;
+    let elapsed_raw = query_time_raw.saturating_sub(first_timestamp_raw);
+    let average_timestamp_delta = elapsed_raw / step_count;
     average_timestamp_delta >= STREAM_POINT_MIN_AVERAGE_TIMESTAMP_DELTA
 }
 
@@ -1344,31 +1349,43 @@ mod tests {
             wellen::FileFormat::Fst,
             super::STREAM_POINT_MIN_SIGNALS,
             1_000_000,
-            500
+            500,
+            0
         ));
         assert!(!super::should_use_streaming_point_sampling(
             wellen::FileFormat::Fst,
             super::STREAM_POINT_MIN_SIGNALS - 1,
             1_000_000,
-            500
+            500,
+            0
         ));
         assert!(!super::should_use_streaming_point_sampling(
             wellen::FileFormat::Fst,
             super::STREAM_POINT_MAX_SIGNALS + 1,
             1_000_000,
-            500
+            500,
+            0
         ));
         assert!(!super::should_use_streaming_point_sampling(
             wellen::FileFormat::Fst,
             super::STREAM_POINT_MIN_SIGNALS,
             10_000,
-            500
+            500,
+            0
+        ));
+        assert!(!super::should_use_streaming_point_sampling(
+            wellen::FileFormat::Fst,
+            super::STREAM_POINT_MIN_SIGNALS,
+            1_000_000,
+            500,
+            999_500
         ));
         assert!(!super::should_use_streaming_point_sampling(
             wellen::FileFormat::Vcd,
             super::STREAM_POINT_MIN_SIGNALS,
             1_000_000,
-            500
+            500,
+            0
         ));
     }
 

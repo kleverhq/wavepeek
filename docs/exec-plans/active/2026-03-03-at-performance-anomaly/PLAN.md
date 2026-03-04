@@ -36,13 +36,14 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - [x] (2026-03-04 10:30Z) Drafted this executable implementation plan with explicit milestones, acceptance gates, and rollback strategy.
 - [x] (2026-03-04 10:34Z) Completed review pass #1 on the plan and incorporated fixes: made duplication a tested hypothesis (not assumed root cause), fixed acceptance command paths, and replaced pseudo-command review steps with explicit workflow instructions.
 - [x] (2026-03-04 10:37Z) Completed independent review pass #2 on the plan after follow-up fixes (matrix compare gate + plan-file commit staging); no new substantive findings.
-- [ ] Execute Milestone 1 baseline capture (`at-anomaly-golden`) and hotspot accounting artifacts.
-- [ ] Execute Milestone 2 TDD red-phase tests for duplicate-preserving projection and deduplicated loading behavior.
-- [ ] Execute Milestone 3 implementation in `src/waveform/mod.rs` and `src/engine/at.rs` with parity-preserving reconstruction.
-- [ ] Execute Milestone 4 pivot only if needed (second-pass optimization based on measured dominant residual cost).
-- [ ] Execute Milestone 5 validation (`at` correctness suites, `make check`, `make ci`) and benchmark closure (`at-anomaly-final`, `at-anomaly-matrix`).
-- [ ] Complete mandatory review pass #1, apply fixes, and commit.
-- [ ] Complete mandatory independent review pass #2 (fresh context), apply fixes if any, and re-check.
+- [x] (2026-03-04 12:05Z) Executed Milestone 1 baseline capture (`at-anomaly-golden`, `at-anomaly-golden-hot`) and attribution probe artifacts.
+- [x] (2026-03-04 12:20Z) Executed Milestone 2 TDD red/green for duplicate-preserving projection (`duplicate_projection_deduplicates_paths_and_tracks_requested_order` failed before implementation, then passed).
+- [x] (2026-03-04 12:40Z) Executed Milestone 3 implementation in `src/waveform/mod.rs`: duplicate-aware projection/reconstruction and per-call load dedup in `ensure_signals_loaded`.
+- [x] (2026-03-04 13:30Z) Executed Milestone 4 pivot: added FST-only streaming point-sampling path with guarded heuristic after attribution showed duplicates were not dominant.
+- [x] (2026-03-04 14:15Z) Executed Milestone 5 validation (`at` correctness suites, `make check`, `make ci`) and benchmark runs (`at-anomaly-final`, `at-anomaly-matrix`).
+- [x] (2026-03-04 15:05Z) Completed Milestone 6 collateral update (`CHANGELOG.md`) and recorded hard-gate miss rationale + required follow-up milestone in this plan.
+- [x] (2026-03-04 15:15Z) Completed mandatory review pass #1; fixed fallback + heuristic findings and committed follow-up patch.
+- [x] (2026-03-04 15:25Z) Completed mandatory independent review pass #2 from fresh context; no substantive findings.
 
 ## Surprises & Discoveries
 
@@ -58,6 +59,15 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - Observation: `ensure_signals_loaded` currently filters against previously loaded global state only, so duplicate signal refs inside one call can still enter `to_load` repeatedly.
   Evidence: `src/waveform/mod.rs` `ensure_signals_loaded` builds `to_load` from input refs before extending `loaded_signals`.
 
+- Observation: Attribution probe disproved duplicate-token dominance for the anomaly case.
+  Evidence: `at_picorv32_signals_1000_raw` vs `..._unique419` means in `bench/e2e/runs/at-anomaly-golden-hot/*.hyperfine.json` were both ~`2.03-2.05s` (delta far below 30% pivot threshold).
+
+- Observation: Runtime is overwhelmingly dominated by signal-load work in `sample_resolved_optional`, while decode/format are negligible.
+  Evidence: instrumented stage timings during implementation showed `load ~2.01s`, `decode ~0.0003s` for `resolved=419` at the anomaly query point.
+
+- Observation: FST streaming point sampling helps the anomaly case but does not meet the hard gate.
+  Evidence: final run `at_picorv32_signals_1000` improved to `1.793837s` (`speedup_x=1.177`), still slower than baseline `change` tail (`0.591289s`).
+
 ## Decision Log
 
 - Decision: Keep optimization contract-preserving and treat duplicate ordering as a hard invariant.
@@ -72,13 +82,25 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
   Rationale: We need to satisfy the user expectation that `at` should not be slower than equivalent heavy `change` rows while preventing collateral regressions.
   Date/Author: 2026-03-04 / OpenCode
 
+- Decision: Keep duplicate-preserving projection and per-call load dedup as mandatory parity-safe baseline optimization even after attribution showed limited payoff.
+  Rationale: These changes remove known redundant work, are covered by explicit tests, and preserve external `at` contract semantics.
+  Date/Author: 2026-03-04 / OpenCode
+
+- Decision: Add a guarded FST streaming point-sampling path only for mid-size unique-signal queries with sparse timestamp stride characteristics.
+  Rationale: Unconditional stream path regressed chipyard `signals_1000`; guarded heuristic preserved matrix guard while improving the anomaly row.
+  Date/Author: 2026-03-04 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation and validation complete for Milestones 1-5; hard performance gate is not met.
 
-Expected completion outcome: `at` hotspot latency is materially reduced with no CLI/schema drift, and benchmark evidence explains both achieved gains and any residual gap.
+Delivered outcome: contract-preserving internal optimizations landed (`duplicate_preserving_projection`, per-call load dedup, guarded FST stream point-sampling path) with passing correctness gates and matrix regression guard.
 
-If closure misses the hard perf gate, this section must document which internal cost component remains dominant (resolve, load, decode, or allocation) and define the exact follow-up milestone needed.
+Measured closure status: `at_picorv32_signals_1000` improved from `2.111695s` to `1.793837s` (`speedup_x=1.177`), which does not satisfy hard target (`>=3.5x`) or cross-command sanity (`faster=False` against baseline change tail).
+
+Dominant residual cost: signal loading/materialization in `sample_resolved_optional` remains the hotspot.
+
+Required follow-up milestone (plan remains open): design and implement a dedicated point-sampling backend for FST that can obtain value-at-or-before-time without full history materialization for all selected signals.
 
 ## Context and Orientation
 
@@ -347,6 +369,21 @@ Before closure, include short excerpts here for:
 - Perf closure output (`speedup_x=...` and `faster=True/False`).
 - Review pass #1/#2 clean status (or fixed findings + rerun evidence).
 
+Collected excerpts:
+
+- TDD red-phase failure line:
+  `test waveform::tests::duplicate_projection_deduplicates_paths_and_tracks_requested_order ... FAILED`
+
+- TDD green-phase pass line:
+  `test waveform::tests::duplicate_projection_deduplicates_paths_and_tracks_requested_order ... ok`
+
+- Perf closure output:
+  `at_picorv32_signals_1000: baseline=2.111695s revised=1.793837s speedup_x=1.177`
+  `comparison_vs_change_tail: revised_at=1.793837s baseline_change_tail=0.591289s faster=False`
+
+- Review pass #1/#2 status:
+  pass #1 clean after fix commit (`8fc1f94`), pass #2 clean from fresh reviewer context.
+
 ### Interfaces and Dependencies
 
 No new runtime dependencies are allowed.
@@ -363,3 +400,7 @@ Revision Note (2026-03-04): Initial plan authored to close backlog item `at` hig
 Revision Note (2026-03-04): Updated after review pass #1 to align with backlog root-cause wording, add mandatory attribution+pivot logic, fix acceptance command paths, and make review instructions executable without pseudo-shell commands.
 
 Revision Note (2026-03-04): Updated after independent review pass #2 to add explicit matrix fail/pass compare command and require staging this plan file in implementation commits when changed.
+
+Revision Note (2026-03-04): Updated after implementation Milestones 1-5 with TDD evidence, attribution/pivot results, benchmark outcomes, and explicit open follow-up because hard performance gate remains unmet.
+
+Revision Note (2026-03-04): Updated after implementation review pass #1 fix cycle and independent pass #2 clean result.

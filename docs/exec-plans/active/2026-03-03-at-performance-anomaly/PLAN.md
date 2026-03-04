@@ -44,6 +44,9 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - [x] (2026-03-04 15:05Z) Completed Milestone 6 collateral update (`CHANGELOG.md`) and recorded hard-gate miss rationale + required follow-up milestone in this plan.
 - [x] (2026-03-04 15:15Z) Completed mandatory review pass #1; fixed fallback + heuristic findings and committed follow-up patch.
 - [x] (2026-03-04 15:25Z) Completed mandatory independent review pass #2 from fresh context; no substantive findings.
+- [x] (2026-03-04 16:20Z) Simplified implementation per user direction: removed `at` streaming point-sampling path and threshold heuristics, kept duplicate-preserving projection + per-call ref dedup.
+- [x] (2026-03-04 16:35Z) Re-ran validation after simplification (`make check`, `make ci`, targeted `at`/`change` suites); all gates passed.
+- [x] (2026-03-04 16:45Z) Re-ran mandatory review cycle for simplification: pass #1 clean, independent pass #2 flagged change-path loader regression risk, fixed by restoring unconditional FST multi-threaded load in shared loader path, then re-check clean.
 
 ## Surprises & Discoveries
 
@@ -65,8 +68,8 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
 - Observation: Runtime is overwhelmingly dominated by signal-load work in `sample_resolved_optional`, while decode/format are negligible.
   Evidence: instrumented stage timings during implementation showed `load ~2.01s`, `decode ~0.0003s` for `resolved=419` at the anomaly query point.
 
-- Observation: FST streaming point sampling helps the anomaly case but does not meet the hard gate.
-  Evidence: final run `at_picorv32_signals_1000` improved to `1.793837s` (`speedup_x=1.177`), still slower than baseline `change` tail (`0.591289s`).
+- Observation: After removing streaming/heuristic branches for simplicity, anomaly performance returns close to baseline and still misses closure targets.
+  Evidence: `bench/e2e/runs/at-anomaly-simplified-mt/README.md` reports `at_picorv32_signals_1000 = 2.094s` (`speedup_x=1.008` vs baseline `2.111695s`), with `faster=False` against baseline change tail (`0.591289s`).
 
 ## Decision Log
 
@@ -90,13 +93,17 @@ This plan does not replace the benchmark harness. `bench/e2e/perf.py` remains th
   Rationale: Unconditional stream path regressed chipyard `signals_1000`; guarded heuristic preserved matrix guard while improving the anomaly row.
   Date/Author: 2026-03-04 / OpenCode
 
+- Decision: Roll back `at` streaming point-sampling and threshold heuristics to reduce complexity/entropy, while retaining low-risk duplicate-preserving projection and per-call dedup.
+  Rationale: User requested simplification; measured ROI of heuristic path was insufficient for added complexity and did not close hard gate.
+  Date/Author: 2026-03-04 / OpenCode
+
 ## Outcomes & Retrospective
 
 Current status: implementation and validation complete for Milestones 1-5; hard performance gate is not met.
 
-Delivered outcome: contract-preserving internal optimizations landed (`duplicate_preserving_projection`, per-call load dedup, guarded FST stream point-sampling path) with passing correctness gates and matrix regression guard.
+Delivered outcome: contract-preserving simplification landed with `at` now using the straightforward random-access sampling path plus duplicate-preserving projection/per-call dedup; experimental streaming heuristics were removed.
 
-Measured closure status: `at_picorv32_signals_1000` improved from `2.111695s` to `1.793837s` (`speedup_x=1.177`), which does not satisfy hard target (`>=3.5x`) or cross-command sanity (`faster=False` against baseline change tail).
+Measured closure status: `at_picorv32_signals_1000` is `2.094s` in simplified run (`speedup_x=1.008` from baseline `2.111695s`), which does not satisfy hard target (`>=3.5x`) or cross-command sanity (`faster=False` against baseline change tail).
 
 Dominant residual cost: signal loading/materialization in `sample_resolved_optional` remains the hotspot.
 
@@ -378,11 +385,11 @@ Collected excerpts:
   `test waveform::tests::duplicate_projection_deduplicates_paths_and_tracks_requested_order ... ok`
 
 - Perf closure output:
-  `at_picorv32_signals_1000: baseline=2.111695s revised=1.793837s speedup_x=1.177`
-  `comparison_vs_change_tail: revised_at=1.793837s baseline_change_tail=0.591289s faster=False`
+  `at_picorv32_signals_1000: baseline=2.111695s revised=2.094000s speedup_x=1.008`
+  `comparison_vs_change_tail: revised_at=2.094000s baseline_change_tail=0.591289s faster=False`
 
 - Review pass #1/#2 status:
-  pass #1 clean after fix commit (`8fc1f94`), pass #2 clean from fresh reviewer context.
+  original implementation pass #1/#2 clean after fixes (`8fc1f94`, `e1b086a`); simplification cycle pass #1 clean, pass #2 raised one shared-loader regression risk, fixed, then fresh re-check clean.
 
 ### Interfaces and Dependencies
 
@@ -404,3 +411,5 @@ Revision Note (2026-03-04): Updated after independent review pass #2 to add expl
 Revision Note (2026-03-04): Updated after implementation Milestones 1-5 with TDD evidence, attribution/pivot results, benchmark outcomes, and explicit open follow-up because hard performance gate remains unmet.
 
 Revision Note (2026-03-04): Updated after implementation review pass #1 fix cycle and independent pass #2 clean result.
+
+Revision Note (2026-03-04): Updated after user-directed simplification rollback of `at` streaming/heuristic branches, including re-validation and a fresh two-pass review cycle.

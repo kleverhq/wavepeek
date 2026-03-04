@@ -22,8 +22,9 @@ This plan does not change command-line flags, output formatting, warning text, J
 - [x] (2026-03-03 19:10Z) Implemented auto-dispatch heuristic updates in `src/engine/change.rs` with explicit work-estimate helpers and expanded `auto_engine_mode_*` unit tests (including red/green TDD evidence).
 - [x] (2026-03-03 19:31Z) Added integration-level auto/forced parity guards in `tests/change_opt_equivalence.rs` for dense and sparse AnyTracked/edge profiles, asserting `data` + `warnings` equality.
 - [x] (2026-03-03 19:52Z) Ran correctness gates: `cargo test auto_engine_mode`, `cargo test --test change_opt_equivalence`, `cargo test --test change_cli`, `cargo test --test change_vcd_fst_parity`, `make check`, and `make ci`.
-- [x] (2026-03-03 20:03Z) Captured benchmark evidence in `bench/e2e/runs/change-dispatcher-tail-final` and `bench/e2e/runs/change-dispatcher-matrix-final`; focused compare passes after outlier reruns, broad `^change_` compare still fails (see discoveries), so plan remains active.
+- [x] (2026-03-03 20:03Z) Captured benchmark evidence in `bench/e2e/runs/change-dispatcher-tail-final` and `bench/e2e/runs/change-dispatcher-matrix-final`; focused compare passes after outlier reruns, while broad `^change_` compare remains noisy/regressive on some rows (see discoveries).
 - [x] (2026-03-03 20:04Z) Re-ran focused target metrics to confirm named closure rows are still >30% improved and low-work canaries remain within guardrails.
+- [x] (2026-03-03 20:05Z) User accepted current performance/correctness trade-off and requested plan closure; moving this plan to `docs/exec-plans/completed/` with residual broad-compare risk documented.
 
 ## Surprises & Discoveries
 
@@ -70,15 +71,19 @@ This plan does not change command-line flags, output formatting, warning text, J
   Rationale: Measurement showed `fused` outperforming `edge-fast` on the key clustered/dualrocket edge tails while preserving parity; keeping an ultra-high `edge-fast` branch avoids dead-path drift and retains coverage for extreme edge workloads.
   Date/Author: 2026-03-03 / OpenCode
 
+- Decision: Close this plan as completed based on user acceptance despite remaining broad `^change_` compare instability.
+  Rationale: Core objective (material tail reduction with contract parity) is met and validated; residual broad regressions are explicitly recorded as known risk for follow-up work rather than blocking closure.
+  Date/Author: 2026-03-03 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: implementation complete for dispatcher + tests + focused evidence, but plan is intentionally kept active because broad `^change_` compare still reports regressions beyond the `5%` gate.
+Current status: completed and user-accepted. Dispatcher updates, parity guards, correctness gates, and focused benchmark objectives are all delivered.
 
 What worked: correctness parity stayed intact across unit/integration/project gates, and focused tail targets materially improved (named closure rows exceed `30%` by large margins in current artifacts).
 
-What did not close: broad matrix compare remains unstable/regressive in this environment; several rows drift above the allowed negative delta even after reruns, so closure criteria are not met yet.
+What did not fully close technically: broad matrix compare remains unstable/regressive in this environment; several rows drift above the allowed negative delta even after reruns.
 
-Next iteration scope: tune/validate broad-distribution stability without sacrificing focused tail wins, then rerun broad compare until `info: compare: all checks passed` is reproducible.
+Follow-up scope (outside this completed plan): tune/validate broad-distribution stability without sacrificing focused tail wins, then rerun broad compare until `info: compare: all checks passed` is reproducible.
 
 ## Context and Orientation
 
@@ -290,3 +295,4 @@ Revision Note: 2026-03-03 / OpenCode - Created a standalone active ExecPlan focu
 Revision Note: 2026-03-03 / OpenCode - Updated plan after review with corrected red/green test ordering, explicit quantitative closure gates for named tail targets, and additional plain-language definitions for dispatch terms.
 Revision Note: 2026-03-03 / OpenCode - Clarified that dispatcher work is workload-aware routing (not simple threshold lowering), and added explicit low-work canary checks to preserve the purpose of safety gates.
 Revision Note: 2026-03-03 / OpenCode - Implemented dispatcher/test milestones, recorded focused benchmark wins and broad-compare instability, and updated routing guidance to reflect measured edge-only behavior (`fused` default, `edge-fast` for ultra-high work only).
+Revision Note: 2026-03-03 / OpenCode - Marked plan complete per user acceptance and documented remaining broad-compare instability as explicit follow-up risk.

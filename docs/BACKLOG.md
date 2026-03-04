@@ -60,12 +60,6 @@
 - This keeps logical-expression semantics fragmented and blocks end-to-end delivery of the planned `property` command semantics.
 - Close when the property runtime path (implemented in the canonical engine module, with `when` migration handled) runs end-to-end on the shared evaluator path with CLI/integration tests.
 
-### Duplicated event-expression tests (`expr/mod.rs` and `expr/parser.rs`)
-
-- Equivalent `iff`-binding tests currently exist in two modules (`src/expr/mod.rs` and `src/expr/parser.rs`).
-- This duplication appeared during the `change --when` rollout and increases maintenance drift risk.
-- Close when one source of truth remains for these parser tests (remove duplicates), and coverage is confirmed by `cargo test expr::parser` plus the standard CI gate (`make ci`).
-
 ### `expr/lexer.rs` scaffolding is currently unused
 
 - `src/expr/lexer.rs` exports tokenization types/helpers, but current parser/runtime paths do not consume them.
@@ -84,4 +78,3 @@
 - Investigation indicates the slowdown is in `at` sampling path (`src/engine/at.rs` -> `src/waveform/mod.rs`), where one-point queries still trigger full signal-history loading/decoding for selected signals; runtime is dominated by signal activity profile, not just file size.
 - Signal-name duplication used to reach large `--signals` counts is currently allowed by contract and is not the primary contributor to this slowdown.
 - Close when a dedicated `at` performance plan is implemented, semantics remain unchanged, and bench evidence shows expected speedup on this case.
-

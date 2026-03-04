@@ -44,31 +44,3 @@ pub struct EventExpr {
 pub fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
     parser::parse_event_expr(source)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::{EventKind, parse_event_expr};
-
-    #[test]
-    fn event_expr_iff_binding_with_union() {
-        let expr =
-            parse_event_expr("negedge clk iff rstn or bar").expect("event expression should parse");
-
-        assert_eq!(expr.terms.len(), 2);
-        assert!(matches!(expr.terms[0].event, EventKind::Negedge(_)));
-        assert_eq!(expr.terms[0].iff_expr.as_deref(), Some("rstn"));
-        assert!(matches!(expr.terms[1].event, EventKind::AnyChange(_)));
-        assert!(expr.terms[1].iff_expr.is_none());
-    }
-
-    #[test]
-    fn event_expr_iff_capture_parenthesized_or() {
-        let expr = parse_event_expr("posedge clk iff (a or b) or bar")
-            .expect("event expression should parse");
-
-        assert_eq!(expr.terms.len(), 2);
-        assert!(matches!(expr.terms[0].event, EventKind::Posedge(_)));
-        assert_eq!(expr.terms[0].iff_expr.as_deref(), Some("(a or b)"));
-        assert!(matches!(expr.terms[1].event, EventKind::AnyChange(_)));
-    }
-}

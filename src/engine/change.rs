@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
-use crate::cli::change::{ChangeArgs, PerfChangeCandidateMode, PerfChangeEngineMode};
+use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
 use crate::engine::at::{
     ParsedTime, as_zeptoseconds, ensure_non_zero_dump_tick, format_raw_timestamp,
@@ -67,7 +67,7 @@ struct ResolvedEventTerm {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChangeEngineMode {
-    PreFusion,
+    Baseline,
     Fused,
     EdgeFast,
 }
@@ -311,7 +311,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
                 acc
             });
 
-    let candidate_mode = map_candidate_mode(args.perf_candidates);
+    let candidate_mode = map_candidate_mode(args.tune_candidates);
     let window_timestamp_count =
         time_window_indices(waveform.timestamps_raw_slice(), from_raw, to_raw)
             .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
@@ -322,14 +322,14 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         requested_resolved.len(),
     );
     let engine_mode = select_engine_mode(
-        args.perf_engine,
+        args.tune_engine,
         resolved_event_terms.as_slice(),
         requested_resolved.len(),
         estimated_work,
     );
 
     let run_output = match engine_mode {
-        ChangeEngineMode::PreFusion => run_prefusion(
+        ChangeEngineMode::Baseline => run_baseline(
             &mut waveform,
             requested_signals.as_slice(),
             requested_resolved.as_slice(),
@@ -378,7 +378,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             dump_tick,
             max_entries,
             candidate_mode,
-            args.perf_edge_fast_force,
+            args.tune_edge_fast_force,
         )?,
     };
 
@@ -410,25 +410,25 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     })
 }
 
-fn map_candidate_mode(mode: PerfChangeCandidateMode) -> ChangeCandidateCollectionMode {
+fn map_candidate_mode(mode: TuneChangeCandidateMode) -> ChangeCandidateCollectionMode {
     match mode {
-        PerfChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
-        PerfChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
-        PerfChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
+        TuneChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
+        TuneChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
+        TuneChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
     }
 }
 
 fn select_engine_mode(
-    mode: PerfChangeEngineMode,
+    mode: TuneChangeEngineMode,
     resolved_event_terms: &[ResolvedEventTerm],
     requested_signal_count: usize,
     estimated_work: AutoDispatchWorkEstimate,
 ) -> ChangeEngineMode {
     match mode {
-        PerfChangeEngineMode::PreFusion => ChangeEngineMode::PreFusion,
-        PerfChangeEngineMode::Fused => ChangeEngineMode::Fused,
-        PerfChangeEngineMode::EdgeFast => ChangeEngineMode::EdgeFast,
-        PerfChangeEngineMode::Auto => {
+        TuneChangeEngineMode::Baseline => ChangeEngineMode::Baseline,
+        TuneChangeEngineMode::Fused => ChangeEngineMode::Fused,
+        TuneChangeEngineMode::EdgeFast => ChangeEngineMode::EdgeFast,
+        TuneChangeEngineMode::Auto => {
             let any_tracked_only = !resolved_event_terms.is_empty()
                 && resolved_event_terms
                     .iter()
@@ -452,7 +452,7 @@ fn select_engine_mode(
             } else if route_edge_fast_for_edge_only {
                 ChangeEngineMode::EdgeFast
             } else {
-                ChangeEngineMode::PreFusion
+                ChangeEngineMode::Baseline
             }
         }
     }
@@ -484,7 +484,7 @@ fn is_edge_only_terms(terms: &[ResolvedEventTerm]) -> bool {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn run_prefusion(
+fn run_baseline(
     waveform: &mut Waveform,
     requested_signals: &[RequestedSignal],
     requested_resolved: &[ResolvedSignal],
@@ -622,7 +622,7 @@ fn run_edge_fast(
     force_edge_fast: bool,
 ) -> Result<ChangeRunOutput, WavepeekError> {
     if !is_edge_only_terms(resolved_event_terms) {
-        return run_prefusion(
+        return run_baseline(
             waveform,
             requested_signals,
             requested_resolved,
@@ -654,7 +654,7 @@ fn run_edge_fast(
             .saturating_mul(requested_resolved.len())
             < EDGE_FAST_MIN_WORK
     {
-        return run_prefusion(
+        return run_baseline(
             waveform,
             requested_signals,
             requested_resolved,
@@ -1538,7 +1538,7 @@ mod tests {
         AutoDispatchWorkEstimate, ChangeEngineMode, ResolvedEventKind, ResolvedEventTerm,
         select_engine_mode,
     };
-    use crate::cli::change::PerfChangeEngineMode;
+    use crate::cli::change::TuneChangeEngineMode;
 
     fn term(event: ResolvedEventKind) -> ResolvedEventTerm {
         ResolvedEventTerm {
@@ -1554,7 +1554,7 @@ mod tests {
         edge_work: usize,
     ) -> ChangeEngineMode {
         select_engine_mode(
-            PerfChangeEngineMode::Auto,
+            TuneChangeEngineMode::Auto,
             terms,
             requested_signal_count,
             AutoDispatchWorkEstimate {
@@ -1610,39 +1610,39 @@ mod tests {
     }
 
     #[test]
-    fn auto_engine_mode_keeps_prefusion_for_narrow_selective_edge_events() {
+    fn auto_engine_mode_keeps_baseline_for_narrow_selective_edge_events() {
         let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
 
         let selected = select_auto_mode_for_profile(terms.as_slice(), 16, 2_000, 2_000);
 
-        assert_eq!(selected, ChangeEngineMode::PreFusion);
+        assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
-    fn auto_engine_mode_keeps_prefusion_for_low_signal_count_edge_only_terms() {
+    fn auto_engine_mode_keeps_baseline_for_low_signal_count_edge_only_terms() {
         let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
 
         let selected = select_auto_mode_for_profile(terms.as_slice(), 1, 0, 2_000_000);
 
-        assert_eq!(selected, ChangeEngineMode::PreFusion);
+        assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
-    fn auto_engine_mode_keeps_prefusion_for_low_work_any_tracked_only() {
+    fn auto_engine_mode_keeps_baseline_for_low_work_any_tracked_only() {
         let terms = vec![term(ResolvedEventKind::AnyTracked)];
 
         let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 2_000, 2_000);
 
-        assert_eq!(selected, ChangeEngineMode::PreFusion);
+        assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
-    fn auto_engine_mode_keeps_prefusion_below_fused_threshold() {
+    fn auto_engine_mode_keeps_baseline_below_fused_threshold() {
         let terms = vec![term(ResolvedEventKind::AnyTracked)];
 
         let selected = select_auto_mode_for_profile(terms.as_slice(), 31, 2_000, 2_000);
 
-        assert_eq!(selected, ChangeEngineMode::PreFusion);
+        assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]

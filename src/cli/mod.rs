@@ -155,9 +155,9 @@ pub fn run() -> Result<(), WavepeekError> {
         Err(error) => return handle_parse_error(error),
     };
 
-    if change_perf_overrides_requested(&matches) && !is_debug_mode_enabled() {
+    if change_tune_overrides_requested(&matches) && !is_debug_mode_enabled() {
         return Err(WavepeekError::Args(
-            "internal performance overrides (--perf-*) require DEBUG=1. Set DEBUG=1 only for local diagnostics or CI debugging."
+            "internal tuning overrides (--tune-*) require DEBUG=1. Set DEBUG=1 only for local diagnostics or CI debugging."
                 .to_string(),
         ));
     }
@@ -176,14 +176,14 @@ fn is_debug_mode_enabled() -> bool {
         .unwrap_or(false)
 }
 
-fn change_perf_overrides_requested(matches: &clap::ArgMatches) -> bool {
+fn change_tune_overrides_requested(matches: &clap::ArgMatches) -> bool {
     let Some(("change", change_matches)) = matches.subcommand() else {
         return false;
     };
 
-    is_command_line_override(change_matches, "perf_engine")
-        || is_command_line_override(change_matches, "perf_candidates")
-        || is_command_line_override(change_matches, "perf_edge_fast_force")
+    is_command_line_override(change_matches, "tune_engine")
+        || is_command_line_override(change_matches, "tune_candidates")
+        || is_command_line_override(change_matches, "tune_edge_fast_force")
 }
 
 fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {

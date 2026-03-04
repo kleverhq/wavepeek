@@ -995,7 +995,7 @@ fn change_rejects_zero_max_with_args_error() {
 }
 
 #[test]
-fn change_perf_overrides_require_debug_mode() {
+fn change_tune_overrides_require_debug_mode() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1007,7 +1007,7 @@ fn change_perf_overrides_require_debug_mode() {
             fixture.as_str(),
             "--signals",
             "top.clk",
-            "--perf-engine",
+            "--tune-engine",
             "fused",
         ])
         .assert()
@@ -1015,12 +1015,12 @@ fn change_perf_overrides_require_debug_mode() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("--perf-*"))
+        .stderr(predicate::str::contains("--tune-*"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
 
 #[test]
-fn change_explicit_perf_auto_still_requires_debug_mode() {
+fn change_explicit_tune_auto_still_requires_debug_mode() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1032,7 +1032,7 @@ fn change_explicit_perf_auto_still_requires_debug_mode() {
             fixture.as_str(),
             "--signals",
             "top.clk",
-            "--perf-engine",
+            "--tune-engine",
             "auto",
         ])
         .assert()
@@ -1044,7 +1044,7 @@ fn change_explicit_perf_auto_still_requires_debug_mode() {
 }
 
 #[test]
-fn change_perf_candidate_override_requires_debug_mode() {
+fn change_tune_candidate_override_requires_debug_mode() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1056,7 +1056,7 @@ fn change_perf_candidate_override_requires_debug_mode() {
             fixture.as_str(),
             "--signals",
             "top.clk",
-            "--perf-candidates",
+            "--tune-candidates",
             "stream",
         ])
         .assert()
@@ -1068,7 +1068,7 @@ fn change_perf_candidate_override_requires_debug_mode() {
 }
 
 #[test]
-fn change_perf_edge_fast_force_requires_debug_mode() {
+fn change_explicit_tune_candidates_auto_still_requires_debug_mode() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1080,7 +1080,8 @@ fn change_perf_edge_fast_force_requires_debug_mode() {
             fixture.as_str(),
             "--signals",
             "top.clk",
-            "--perf-edge-fast-force",
+            "--tune-candidates",
+            "auto",
         ])
         .assert()
         .failure()
@@ -1091,7 +1092,30 @@ fn change_perf_edge_fast_force_requires_debug_mode() {
 }
 
 #[test]
-fn change_perf_overrides_succeed_with_debug_mode() {
+fn change_tune_edge_fast_force_requires_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--tune-edge-fast-force",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("DEBUG=1"));
+}
+
+#[test]
+fn change_rejects_legacy_pre_fusion_engine_label() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1103,7 +1127,32 @@ fn change_perf_overrides_succeed_with_debug_mode() {
             fixture.as_str(),
             "--signals",
             "top.clk",
-            "--perf-engine",
+            "--tune-engine",
+            "pre-fusion",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("invalid value 'pre-fusion'"))
+        .stderr(predicate::str::contains("baseline"));
+}
+
+#[test]
+fn change_tune_overrides_succeed_with_debug_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--tune-engine",
             "fused",
             "--json",
         ])
@@ -1113,7 +1162,7 @@ fn change_perf_overrides_succeed_with_debug_mode() {
 }
 
 #[test]
-fn change_rejects_legacy_internal_change_flags() {
+fn change_rejects_legacy_internal_and_perf_change_flags() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1121,6 +1170,9 @@ fn change_rejects_legacy_internal_change_flags() {
         vec!["--internal-change-engine", "fused"],
         vec!["--internal-change-candidates", "stream"],
         vec!["--internal-change-edge-fast-force"],
+        vec!["--perf-engine", "fused"],
+        vec!["--perf-candidates", "stream"],
+        vec!["--perf-edge-fast-force"],
     ] {
         wavepeek_cmd()
             .args([

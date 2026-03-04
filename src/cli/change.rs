@@ -6,17 +6,17 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
-pub enum PerfChangeEngineMode {
+pub enum TuneChangeEngineMode {
     #[default]
     Auto,
-    PreFusion,
+    Baseline,
     Fused,
     EdgeFast,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
-pub enum PerfChangeCandidateMode {
+pub enum TuneChangeCandidateMode {
     #[default]
     Auto,
     Random,
@@ -54,21 +54,21 @@ pub struct ChangeArgs {
     pub json: bool,
     /// Unstable internal performance control (requires DEBUG=1).
     #[arg(
-        long = "perf-engine",
+        long = "tune-engine",
         value_enum,
-        default_value_t = PerfChangeEngineMode::Auto,
+        default_value_t = TuneChangeEngineMode::Auto,
         hide = true
     )]
-    pub perf_engine: PerfChangeEngineMode,
+    pub tune_engine: TuneChangeEngineMode,
     /// Unstable internal performance control (requires DEBUG=1).
     #[arg(
-        long = "perf-candidates",
+        long = "tune-candidates",
         value_enum,
-        default_value_t = PerfChangeCandidateMode::Auto,
+        default_value_t = TuneChangeCandidateMode::Auto,
         hide = true
     )]
-    pub perf_candidates: PerfChangeCandidateMode,
+    pub tune_candidates: TuneChangeCandidateMode,
     /// Unstable internal performance control (requires DEBUG=1).
-    #[arg(long = "perf-edge-fast-force", hide = true)]
-    pub perf_edge_fast_force: bool,
+    #[arg(long = "tune-edge-fast-force", hide = true)]
+    pub tune_edge_fast_force: bool,
 }

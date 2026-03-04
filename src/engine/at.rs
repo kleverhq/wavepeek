@@ -1,9 +1,12 @@
 use serde::Serialize;
 
 use crate::cli::at::AtArgs;
+use crate::engine::time::{
+    TimeValidationError, format_raw_timestamp, parse_dump_time_context, validate_time_token_to_raw,
+};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
-use crate::waveform::Waveform;
+use crate::waveform::{Waveform, WaveformMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AtSignalValue {
@@ -25,143 +28,15 @@ struct RequestedSignal {
     path: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct ParsedTime {
-    pub(crate) value: u64,
-    pub(crate) unit: TimeUnit,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TimeUnit {
-    Zs,
-    As,
-    Fs,
-    Ps,
-    Ns,
-    Us,
-    Ms,
-    S,
-}
-
-impl TimeUnit {
-    fn suffix(self) -> &'static str {
-        match self {
-            Self::Zs => "zs",
-            Self::As => "as",
-            Self::Fs => "fs",
-            Self::Ps => "ps",
-            Self::Ns => "ns",
-            Self::Us => "us",
-            Self::Ms => "ms",
-            Self::S => "s",
-        }
-    }
-
-    fn multiplier_in_zeptoseconds(self) -> u128 {
-        match self {
-            Self::Zs => 1,
-            Self::As => 1_000,
-            Self::Fs => 1_000_000,
-            Self::Ps => 1_000_000_000,
-            Self::Ns => 1_000_000_000_000,
-            Self::Us => 1_000_000_000_000_000,
-            Self::Ms => 1_000_000_000_000_000_000,
-            Self::S => 1_000_000_000_000_000_000_000,
-        }
-    }
-
-    fn parse(token: &str) -> Option<Self> {
-        match token {
-            "zs" => Some(Self::Zs),
-            "as" => Some(Self::As),
-            "fs" => Some(Self::Fs),
-            "ps" => Some(Self::Ps),
-            "ns" => Some(Self::Ns),
-            "us" => Some(Self::Us),
-            "ms" => Some(Self::Ms),
-            "s" => Some(Self::S),
-            _ => None,
-        }
-    }
-}
-
 pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
     let mut waveform = Waveform::open(args.waves.as_path())?;
     let metadata = waveform.metadata()?;
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
 
-    let query_time = parse_time_token(args.time.as_str()).ok_or_else(|| {
-        WavepeekError::Args(format!(
-            "invalid time token '{}': expected <integer><unit> (for example 10ns). See 'wavepeek at --help'.",
-            args.time
-        ))
-    })?;
-    let query_time_zs = as_zeptoseconds(query_time).ok_or_else(|| {
-        WavepeekError::Args(format!(
-            "time '{}' is too large to process safely. See 'wavepeek at --help'.",
-            args.time
-        ))
-    })?;
-
-    let dump_tick = parse_time_token(metadata.time_unit.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_unit '{}': expected <integer><unit>",
-            metadata.time_unit
-        ))
-    })?;
-    let dump_tick_zs = as_zeptoseconds(dump_tick).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_unit overflowed during conversion".to_string(),
-        )
-    })?;
-    ensure_non_zero_dump_tick(dump_tick_zs)?;
-
-    let time_start = parse_time_token(metadata.time_start.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_start '{}': expected <integer><unit>",
-            metadata.time_start
-        ))
-    })?;
-    let time_start_zs = as_zeptoseconds(time_start).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_start overflowed during conversion".to_string(),
-        )
-    })?;
-
-    let time_end = parse_time_token(metadata.time_end.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_end '{}': expected <integer><unit>",
-            metadata.time_end
-        ))
-    })?;
-    let time_end_zs = as_zeptoseconds(time_end).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_end overflowed during conversion".to_string(),
-        )
-    })?;
-
-    if query_time_zs < time_start_zs || query_time_zs > time_end_zs {
-        return Err(WavepeekError::Args(format!(
-            "time '{}' is outside dump bounds [{}, {}]. See 'wavepeek at --help'.",
-            args.time, metadata.time_start, metadata.time_end
-        )));
-    }
-
-    if query_time_zs % dump_tick_zs != 0 {
-        return Err(WavepeekError::Args(format!(
-            "time '{}' is not aligned to dump resolution '{}'. See 'wavepeek at --help'.",
-            args.time, metadata.time_unit
-        )));
-    }
-
-    let query_time_raw_u128 = query_time_zs / dump_tick_zs;
-    let query_time_raw = u64::try_from(query_time_raw_u128).map_err(|_| {
-        WavepeekError::Args(format!(
-            "time '{}' exceeds supported raw timestamp range. See 'wavepeek at --help'.",
-            args.time
-        ))
-    })?;
+    let dump_time = parse_dump_time_context(&metadata)?;
+    let query_time_raw = validate_time_token_to_raw(args.time.as_str(), dump_time, false)
+        .map_err(|error| map_at_time_validation_error(args.time.as_str(), &metadata, error))?;
 
     let canonical_paths = requested_signals
         .iter()
@@ -179,7 +54,7 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
         })
         .collect::<Vec<_>>();
 
-    let normalized_time = format_raw_timestamp(query_time_raw, dump_tick)?;
+    let normalized_time = format_raw_timestamp(query_time_raw, dump_time.dump_tick)?;
 
     Ok(CommandResult {
         command: CommandName::At,
@@ -227,38 +102,32 @@ fn resolve_requested_signals(
     Ok(resolved)
 }
 
-pub(crate) fn parse_time_token(token: &str) -> Option<ParsedTime> {
-    let split_at = token.find(|ch: char| !ch.is_ascii_digit())?;
-    if split_at == 0 || split_at >= token.len() {
-        return None;
+fn map_at_time_validation_error(
+    token: &str,
+    metadata: &WaveformMetadata,
+    error: TimeValidationError,
+) -> WavepeekError {
+    match error {
+        TimeValidationError::RequiresUnits | TimeValidationError::InvalidToken => {
+            WavepeekError::Args(format!(
+                "invalid time token '{token}': expected <integer><unit> (for example 10ns). See 'wavepeek at --help'."
+            ))
+        }
+        TimeValidationError::TooLarge => WavepeekError::Args(format!(
+            "time '{token}' is too large to process safely. See 'wavepeek at --help'."
+        )),
+        TimeValidationError::OutOfBounds => WavepeekError::Args(format!(
+            "time '{token}' is outside dump bounds [{}, {}]. See 'wavepeek at --help'.",
+            metadata.time_start, metadata.time_end
+        )),
+        TimeValidationError::NotAligned => WavepeekError::Args(format!(
+            "time '{token}' is not aligned to dump resolution '{}'. See 'wavepeek at --help'.",
+            metadata.time_unit
+        )),
+        TimeValidationError::RawOutOfRange => WavepeekError::Args(format!(
+            "time '{token}' exceeds supported raw timestamp range. See 'wavepeek at --help'."
+        )),
     }
-
-    let value = token[..split_at].parse::<u64>().ok()?;
-    let unit = TimeUnit::parse(&token[split_at..])?;
-    Some(ParsedTime { value, unit })
-}
-
-pub(crate) fn as_zeptoseconds(time: ParsedTime) -> Option<u128> {
-    u128::from(time.value).checked_mul(time.unit.multiplier_in_zeptoseconds())
-}
-
-pub(crate) fn ensure_non_zero_dump_tick(dump_tick_zs: u128) -> Result<(), WavepeekError> {
-    if dump_tick_zs == 0 {
-        return Err(WavepeekError::Internal(
-            "waveform metadata time_unit must be non-zero".to_string(),
-        ));
-    }
-    Ok(())
-}
-
-pub(crate) fn format_raw_timestamp(
-    raw_time: u64,
-    time_unit: ParsedTime,
-) -> Result<String, WavepeekError> {
-    let normalized = raw_time.checked_mul(time_unit.value).ok_or_else(|| {
-        WavepeekError::Internal("normalized time overflow while formatting timestamp".to_string())
-    })?;
-    Ok(format!("{normalized}{}", time_unit.unit.suffix()))
 }
 
 pub(crate) fn format_verilog_literal(width: u32, bits: &str) -> String {
@@ -305,63 +174,7 @@ fn bits_chunk_to_hex_digit(chunk: &str) -> char {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ParsedTime, TimeUnit, as_zeptoseconds, bits_chunk_to_hex_digit, ensure_non_zero_dump_tick,
-        format_raw_timestamp, format_verilog_literal, parse_time_token,
-    };
-
-    #[test]
-    fn parse_time_token_requires_integer_and_unit() {
-        assert_eq!(
-            parse_time_token("10ns"),
-            Some(ParsedTime {
-                value: 10,
-                unit: TimeUnit::Ns
-            })
-        );
-        assert_eq!(parse_time_token("100"), None);
-        assert_eq!(parse_time_token("ns"), None);
-        assert_eq!(parse_time_token("10NS"), None);
-    }
-
-    #[test]
-    fn zeptoseconds_conversion_supports_cross_unit_comparison() {
-        let one_ns = as_zeptoseconds(ParsedTime {
-            value: 1,
-            unit: TimeUnit::Ns,
-        })
-        .expect("1ns should convert");
-        let thousand_ps = as_zeptoseconds(ParsedTime {
-            value: 1000,
-            unit: TimeUnit::Ps,
-        })
-        .expect("1000ps should convert");
-
-        assert_eq!(one_ns, thousand_ps);
-    }
-
-    #[test]
-    fn raw_timestamp_formatting_uses_dump_time_unit() {
-        let formatted = format_raw_timestamp(
-            10,
-            ParsedTime {
-                value: 1,
-                unit: TimeUnit::Ns,
-            },
-        )
-        .expect("formatting should succeed");
-        assert_eq!(formatted, "10ns");
-
-        let formatted = format_raw_timestamp(
-            3,
-            ParsedTime {
-                value: 10,
-                unit: TimeUnit::Ps,
-            },
-        )
-        .expect("formatting should succeed");
-        assert_eq!(formatted, "30ps");
-    }
+    use super::{bits_chunk_to_hex_digit, format_verilog_literal};
 
     #[test]
     fn verilog_literal_formatter_emits_lowercase_hex_and_unknowns() {
@@ -377,16 +190,5 @@ mod tests {
         assert_eq!(bits_chunk_to_hex_digit("zz"), 'z');
         assert_eq!(bits_chunk_to_hex_digit("z1"), 'x');
         assert_eq!(bits_chunk_to_hex_digit("h"), 'x');
-    }
-
-    #[test]
-    fn dump_tick_must_be_non_zero() {
-        let error = ensure_non_zero_dump_tick(0).expect_err("zero tick must fail");
-        assert_eq!(
-            error.to_string(),
-            "error: internal: waveform metadata time_unit must be non-zero"
-        );
-
-        ensure_non_zero_dump_tick(1).expect("non-zero tick must pass");
     }
 }

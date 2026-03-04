@@ -4,9 +4,10 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
-use crate::engine::at::{
-    ParsedTime, as_zeptoseconds, ensure_non_zero_dump_tick, format_raw_timestamp,
-    format_verilog_literal, parse_time_token,
+use crate::engine::at::format_verilog_literal;
+use crate::engine::time::{
+    DumpTimeContext, ParsedTime, TimeValidationError, format_raw_timestamp,
+    parse_dump_time_context, validate_time_token_to_raw,
 };
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
@@ -204,52 +205,18 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         .collect::<Result<Vec<_>, _>>()?;
     let event_signal_paths = collect_event_signal_paths(resolved_event_terms.as_slice());
 
-    let dump_tick = parse_time_token(metadata.time_unit.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_unit '{}': expected <integer><unit>",
-            metadata.time_unit
-        ))
-    })?;
-    let dump_tick_zs = as_zeptoseconds(dump_tick).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_unit overflowed during conversion".to_string(),
-        )
-    })?;
-    ensure_non_zero_dump_tick(dump_tick_zs)?;
-
-    let dump_start = parse_time_token(metadata.time_start.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_start '{}': expected <integer><unit>",
-            metadata.time_start
-        ))
-    })?;
-    let dump_start_zs = as_zeptoseconds(dump_start).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_start overflowed during conversion".to_string(),
-        )
-    })?;
-
-    let dump_end = parse_time_token(metadata.time_end.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_end '{}': expected <integer><unit>",
-            metadata.time_end
-        ))
-    })?;
-    let dump_end_zs = as_zeptoseconds(dump_end).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_end overflowed during conversion".to_string(),
-        )
-    })?;
+    let dump_time = parse_dump_time_context(&metadata)?;
+    let dump_tick = dump_time.dump_tick;
 
     let from_raw = match args.from.as_deref() {
-        Some(token) => parse_bound_time(token, "--from", dump_tick, dump_tick_zs, &metadata)?,
-        None => u64::try_from(dump_start_zs / dump_tick_zs).map_err(|_| {
+        Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
+        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
             WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
         })?,
     };
     let to_raw = match args.to.as_deref() {
-        Some(token) => parse_bound_time(token, "--to", dump_tick, dump_tick_zs, &metadata)?,
-        None => u64::try_from(dump_end_zs / dump_tick_zs).map_err(|_| {
+        Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
+        None => u64::try_from(dump_time.dump_end_zs / dump_time.dump_tick_zs).map_err(|_| {
             WavepeekError::Internal("dump end timestamp exceeds supported range".to_string())
         })?,
     };
@@ -1465,71 +1432,35 @@ fn signal_edge(
 fn parse_bound_time(
     token: &str,
     arg_name: &str,
-    dump_tick: ParsedTime,
-    dump_tick_zs: u128,
+    dump_time: DumpTimeContext,
     metadata: &crate::waveform::WaveformMetadata,
 ) -> Result<u64, WavepeekError> {
-    if token.chars().all(|ch| ch.is_ascii_digit()) {
-        return Err(WavepeekError::Args(format!(
+    match validate_time_token_to_raw(token, dump_time, true) {
+        Ok(raw) => Ok(raw),
+        Err(TimeValidationError::RequiresUnits) => Err(WavepeekError::Args(format!(
             "time token '{token}' requires units. See 'wavepeek change --help'."
-        )));
-    }
-
-    let parsed = parse_time_token(token).ok_or_else(|| {
-        WavepeekError::Args(format!(
+        ))),
+        Err(TimeValidationError::InvalidToken) => Err(WavepeekError::Args(format!(
             "invalid time token '{token}': expected <integer><unit> (for example 10ns). See 'wavepeek change --help'."
-        ))
-    })?;
-    let parsed_zs = as_zeptoseconds(parsed).ok_or_else(|| {
-        WavepeekError::Args(format!(
+        ))),
+        Err(TimeValidationError::TooLarge) => Err(WavepeekError::Args(format!(
             "time '{token}' is too large to process safely. See 'wavepeek change --help'."
-        ))
-    })?;
-
-    let dump_start = parse_time_token(metadata.time_start.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_start '{}': expected <integer><unit>",
-            metadata.time_start
-        ))
-    })?;
-    let dump_start_zs = as_zeptoseconds(dump_start).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_start overflowed during conversion".to_string(),
-        )
-    })?;
-
-    let dump_end = parse_time_token(metadata.time_end.as_str()).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "waveform metadata contains invalid time_end '{}': expected <integer><unit>",
-            metadata.time_end
-        ))
-    })?;
-    let dump_end_zs = as_zeptoseconds(dump_end).ok_or_else(|| {
-        WavepeekError::Internal(
-            "waveform metadata time_end overflowed during conversion".to_string(),
-        )
-    })?;
-
-    if parsed_zs < dump_start_zs || parsed_zs > dump_end_zs {
-        return Err(WavepeekError::Args(format!(
+        ))),
+        Err(TimeValidationError::OutOfBounds) => Err(WavepeekError::Args(format!(
             "time '{}' for {} is outside dump bounds [{}, {}]. See 'wavepeek change --help'.",
             token, arg_name, metadata.time_start, metadata.time_end
-        )));
-    }
-
-    if parsed_zs % dump_tick_zs != 0 {
-        return Err(WavepeekError::Args(format!(
-            "time '{token}' cannot be represented exactly in dump precision '{}'.",
-            format_raw_timestamp(1, dump_tick)?
-        )));
-    }
-
-    let raw = parsed_zs / dump_tick_zs;
-    u64::try_from(raw).map_err(|_| {
-        WavepeekError::Args(format!(
+        ))),
+        Err(TimeValidationError::NotAligned) => {
+            let dump_precision = format_raw_timestamp(1, dump_time.dump_tick)?;
+            Err(WavepeekError::Args(format!(
+                "time '{token}' cannot be represented exactly in dump precision '{}'. See 'wavepeek change --help'.",
+                dump_precision
+            )))
+        }
+        Err(TimeValidationError::RawOutOfRange) => Err(WavepeekError::Args(format!(
             "time '{token}' exceeds supported raw timestamp range. See 'wavepeek change --help'."
-        ))
-    })
+        ))),
+    }
 }
 
 #[cfg(test)]

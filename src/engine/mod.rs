@@ -4,6 +4,7 @@ pub mod info;
 pub mod schema;
 pub mod scope;
 pub mod signal;
+pub mod time;
 pub mod when;
 
 use serde::Serialize;

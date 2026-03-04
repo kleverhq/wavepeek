@@ -424,6 +424,44 @@ fn change_equal_from_and_to_never_emits_baseline_row() {
 }
 
 #[test]
+fn change_accepts_inclusive_dump_time_bounds() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "10ns",
+            "--signals",
+            "top.clk",
+            "--json",
+        ])
+        .assert()
+        .success();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "10ns",
+            "--to",
+            "10ns",
+            "--signals",
+            "top.clk",
+            "--json",
+        ])
+        .assert()
+        .success();
+}
+
+#[test]
 fn change_union_or_and_comma_forms_are_exact_synonyms() {
     let fixture = fixture_path("change_edge_cases.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
@@ -1320,6 +1358,82 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .stderr(predicate::str::contains(
             "cannot be represented exactly in dump precision",
         ));
+}
+
+#[test]
+fn change_decimal_time_token_is_rejected_as_args_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "1.5ns",
+            "--signals",
+            "top.clk",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("invalid time token '1.5ns'"))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
+}
+
+#[test]
+fn change_out_of_range_from_time_is_args_error_with_bounds() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "11ns",
+            "--signals",
+            "top.clk",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "time '11ns' for --from is outside dump bounds [0ns, 10ns]",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
+}
+
+#[test]
+fn change_misaligned_time_includes_help_hint() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "15ps",
+            "--signals",
+            "top.clk",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "cannot be represented exactly in dump precision",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
 
 #[test]

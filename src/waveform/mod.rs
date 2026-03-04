@@ -18,10 +18,6 @@ use wellen::{ScopeRef, ScopeType, SignalRef, Timescale, TimescaleUnit, VarType, 
 use crate::error::WavepeekError;
 
 const STREAM_THRESHOLD_WORK: usize = 20_000;
-const MULTI_THREAD_LOAD_THRESHOLD: usize = 128;
-const STREAM_POINT_MIN_SIGNALS: usize = 256;
-const STREAM_POINT_MAX_SIGNALS: usize = 600;
-const STREAM_POINT_MIN_AVERAGE_TIMESTAMP_DELTA: u64 = 1_000;
 
 #[derive(Debug)]
 pub struct Waveform {
@@ -197,28 +193,7 @@ impl Waveform {
     ) -> Result<Vec<SampledSignal>, WavepeekError> {
         let (unique_paths, projection) = duplicate_preserving_projection(canonical_paths);
         let resolved = self.resolve_signals(&unique_paths)?;
-        let use_streaming = {
-            let time_table = self.inner.time_table();
-            floor_time_table_index(time_table, query_time_raw).is_some_and(|time_table_idx| {
-                let first_timestamp_raw = time_table.first().copied().unwrap_or(0);
-                let effective_time_raw = time_table[time_table_idx];
-                should_use_streaming_point_sampling(
-                    self.file_format,
-                    resolved.len(),
-                    effective_time_raw,
-                    time_table_idx,
-                    first_timestamp_raw,
-                )
-            })
-        };
-        let sampled_unique = if use_streaming {
-            match self.sample_resolved_optional_streaming(&resolved, query_time_raw) {
-                Ok(sampled) => sampled,
-                Err(_) => self.sample_resolved_optional(&resolved, query_time_raw)?,
-            }
-        } else {
-            self.sample_resolved_optional(&resolved, query_time_raw)?
-        };
+        let sampled_unique = self.sample_resolved_optional(&resolved, query_time_raw)?;
 
         let sampled = projection
             .iter()
@@ -296,78 +271,6 @@ impl Waveform {
         }
 
         Ok(sampled)
-    }
-
-    fn sample_resolved_optional_streaming(
-        &self,
-        resolved: &[ResolvedSignal],
-        query_time_raw: u64,
-    ) -> Result<Vec<SampledSignalState>, WavepeekError> {
-        let mut streaming = wellen::stream::read_from_file(
-            self.source_path.as_path(),
-            &wellen::LoadOptions::default(),
-        )
-        .map_err(|error| map_wellen_error(self.source_path.as_path(), error))?;
-
-        let stream_refs = resolved
-            .iter()
-            .map(|signal| {
-                resolve_signal_ref_with_width(streaming.hierarchy(), signal.path.as_str())
-                    .map(|(signal_ref, _)| signal_ref)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let mut slots_by_ref = HashMap::with_capacity(stream_refs.len());
-        for (slot, signal_ref) in stream_refs.into_iter().enumerate() {
-            slots_by_ref
-                .entry(signal_ref)
-                .or_insert_with(Vec::new)
-                .push(slot);
-        }
-        let filtered_refs = slots_by_ref.keys().copied().collect::<Vec<_>>();
-        let filter = wellen::stream::Filter {
-            start: 0,
-            end: Some(query_time_raw),
-            signals: Some(filtered_refs.as_slice()),
-        };
-
-        let mut sampled_bits = vec![None; resolved.len()];
-        let mut decode_error: Option<WavepeekError> = None;
-        streaming
-            .stream(&filter, |time, signal_ref, value| {
-                if decode_error.is_some() || time > query_time_raw {
-                    return;
-                }
-                let Some(slots) = slots_by_ref.get(&signal_ref) else {
-                    return;
-                };
-                let path = resolved[slots[0]].path.as_str();
-                match decode_signal_bits(value, path) {
-                    Ok(bits) => {
-                        for slot in slots {
-                            sampled_bits[*slot] = bits.clone();
-                        }
-                    }
-                    Err(error) => {
-                        decode_error = Some(error);
-                    }
-                }
-            })
-            .map_err(|error| map_wellen_error(self.source_path.as_path(), error))?;
-
-        if let Some(error) = decode_error {
-            return Err(error);
-        }
-
-        Ok(resolved
-            .iter()
-            .zip(sampled_bits)
-            .map(|(signal, bits)| SampledSignalState {
-                path: signal.path.clone(),
-                width: signal.width,
-                bits,
-            })
-            .collect())
     }
 
     pub fn signal_offset_at_index(
@@ -586,7 +489,7 @@ impl Waveform {
             return;
         }
 
-        if should_use_multithreaded_signal_load(self.file_format, to_load.len()) {
+        if should_use_multi_thread_signal_load(self.file_format) {
             self.inner.load_signals_multi_threaded(&to_load);
         } else {
             self.inner.load_signals(&to_load);
@@ -615,36 +518,8 @@ fn duplicate_preserving_projection(canonical_paths: &[String]) -> (Vec<String>, 
     (unique_paths, projection)
 }
 
-fn should_use_multithreaded_signal_load(
-    file_format: wellen::FileFormat,
-    to_load_count: usize,
-) -> bool {
-    file_format == wellen::FileFormat::Fst && to_load_count >= MULTI_THREAD_LOAD_THRESHOLD
-}
-
-fn should_use_streaming_point_sampling(
-    file_format: wellen::FileFormat,
-    signal_count: usize,
-    effective_time_raw: u64,
-    time_table_idx: usize,
-    first_timestamp_raw: u64,
-) -> bool {
-    if file_format != wellen::FileFormat::Fst
-        || !(STREAM_POINT_MIN_SIGNALS..=STREAM_POINT_MAX_SIGNALS).contains(&signal_count)
-    {
-        return false;
-    }
-
-    let step_count = u64::try_from(time_table_idx)
-        .unwrap_or(u64::MAX)
-        .saturating_add(1);
-    if step_count == 0 {
-        return false;
-    }
-
-    let elapsed_raw = effective_time_raw.saturating_sub(first_timestamp_raw);
-    let average_timestamp_delta = elapsed_raw / step_count;
-    average_timestamp_delta >= STREAM_POINT_MIN_AVERAGE_TIMESTAMP_DELTA
+fn should_use_multi_thread_signal_load(file_format: wellen::FileFormat) -> bool {
+    file_format == wellen::FileFormat::Fst
 }
 
 fn floor_time_table_index(time_table: &[u64], query_time_raw: u64) -> Option<usize> {
@@ -1337,64 +1212,12 @@ mod tests {
     }
 
     #[test]
-    fn multi_threaded_load_gate_only_applies_to_large_fst_batches() {
-        assert!(super::should_use_multithreaded_signal_load(
-            wellen::FileFormat::Fst,
-            super::MULTI_THREAD_LOAD_THRESHOLD
+    fn fst_uses_multi_thread_loader_in_shared_path() {
+        assert!(super::should_use_multi_thread_signal_load(
+            wellen::FileFormat::Fst
         ));
-        assert!(!super::should_use_multithreaded_signal_load(
-            wellen::FileFormat::Fst,
-            super::MULTI_THREAD_LOAD_THRESHOLD - 1
-        ));
-        assert!(!super::should_use_multithreaded_signal_load(
-            wellen::FileFormat::Vcd,
-            super::MULTI_THREAD_LOAD_THRESHOLD
-        ));
-    }
-
-    #[test]
-    fn streaming_point_sampling_gate_targets_large_fst_queries_only() {
-        assert!(super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Fst,
-            super::STREAM_POINT_MIN_SIGNALS,
-            1_000_000,
-            500,
-            0
-        ));
-        assert!(!super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Fst,
-            super::STREAM_POINT_MIN_SIGNALS - 1,
-            1_000_000,
-            500,
-            0
-        ));
-        assert!(!super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Fst,
-            super::STREAM_POINT_MAX_SIGNALS + 1,
-            1_000_000,
-            500,
-            0
-        ));
-        assert!(!super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Fst,
-            super::STREAM_POINT_MIN_SIGNALS,
-            10_000,
-            500,
-            0
-        ));
-        assert!(!super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Fst,
-            super::STREAM_POINT_MIN_SIGNALS,
-            1_000_000,
-            500,
-            999_500
-        ));
-        assert!(!super::should_use_streaming_point_sampling(
-            wellen::FileFormat::Vcd,
-            super::STREAM_POINT_MIN_SIGNALS,
-            1_000_000,
-            500,
-            0
+        assert!(!super::should_use_multi_thread_signal_load(
+            wellen::FileFormat::Vcd
         ));
     }
 

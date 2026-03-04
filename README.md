@@ -41,11 +41,11 @@ wavepeek info --waves ./dump.fst --json
 
 Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: https://github.com/kleverhq/rtl-artifacts
 
-## Agentic Flows
+## Agentic Flows (Soon)
 
-- OpenCode workflows are available today via repository guidance in `AGENTS.md` and `docs/DEVELOPMENT.md`.
-- Repository-local OpenCode assets live under `.opencode/agent/` and `.opencode/skills/` (including `repo-gc`, `exec-plan`, and `ask-review`).
-- Compatibility with additional agent runtimes and MCP-style integration remains a planned follow-up.
+- A dedicated `SKILL.md` for agent workflows is planned.
+- Planned compatibility targets: OpenCode, Codex CLI, and Claude Code.
+- An MCP server for tool-native agent integration is also planned.
 
 ## Commands
 

@@ -656,11 +656,11 @@ at each clock posedge. This needs a small expression language (defined in 3.2.6)
   (provided by the engine), and computes a 4-state boolean result using SystemVerilog-like semantics.
   `&&` and `||` use short-circuit evaluation. For `when` match decisions, unknown `x` is cast to false.
 
-**Implementation approach:** Deferred. The expression language is small enough
-(5 precedence levels, no user-defined functions) that both hand-written recursive
-descent and parser combinators (`nom`, `winnow`) are viable.
-The decision will be made during implementation based on error message quality
-requirements and complexity of the post-MVP extensions (bit slicing, bitwise ops).
+**Implementation status:** A hand-written parser path is now in place for the
+current staged event/expression surface (see `src/expr/parser.rs`, with shared
+types in `src/expr/mod.rs`). Lexer scaffolding also exists (`src/expr/lexer.rs`).
+Evaluator/runtime completion for the planned `property` flow remains deferred to
+post-MVP implementation work.
 
 ### 5.6 Error Handling Strategy
 

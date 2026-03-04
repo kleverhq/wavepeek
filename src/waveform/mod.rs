@@ -197,7 +197,28 @@ impl Waveform {
     ) -> Result<Vec<SampledSignal>, WavepeekError> {
         let (unique_paths, projection) = duplicate_preserving_projection(canonical_paths);
         let resolved = self.resolve_signals(&unique_paths)?;
-        let sampled_unique = self.sample_resolved_optional(&resolved, query_time_raw)?;
+        let use_streaming = {
+            let time_table = self.inner.time_table();
+            floor_time_table_index(time_table, query_time_raw).is_some_and(|time_table_idx| {
+                let first_timestamp_raw = time_table.first().copied().unwrap_or(0);
+                let effective_time_raw = time_table[time_table_idx];
+                should_use_streaming_point_sampling(
+                    self.file_format,
+                    resolved.len(),
+                    effective_time_raw,
+                    time_table_idx,
+                    first_timestamp_raw,
+                )
+            })
+        };
+        let sampled_unique = if use_streaming {
+            match self.sample_resolved_optional_streaming(&resolved, query_time_raw) {
+                Ok(sampled) => sampled,
+                Err(_) => self.sample_resolved_optional(&resolved, query_time_raw)?,
+            }
+        } else {
+            self.sample_resolved_optional(&resolved, query_time_raw)?
+        };
 
         let sampled = projection
             .iter()
@@ -258,18 +279,6 @@ impl Waveform {
             floor_time_table_index(time_table, query_time_raw).ok_or_else(|| {
                 WavepeekError::Internal("query time is before first dump timestamp".to_string())
             })?;
-        let first_timestamp_raw = time_table.first().copied().unwrap_or(0);
-
-        if should_use_streaming_point_sampling(
-            self.file_format,
-            resolved.len(),
-            query_time_raw,
-            time_table_idx,
-            first_timestamp_raw,
-        ) && let Ok(sampled) = self.sample_resolved_optional_streaming(resolved, query_time_raw)
-        {
-            return Ok(sampled);
-        }
 
         let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
             WavepeekError::Internal("time table index exceeds u32 range".to_string())
@@ -616,7 +625,7 @@ fn should_use_multithreaded_signal_load(
 fn should_use_streaming_point_sampling(
     file_format: wellen::FileFormat,
     signal_count: usize,
-    query_time_raw: u64,
+    effective_time_raw: u64,
     time_table_idx: usize,
     first_timestamp_raw: u64,
 ) -> bool {
@@ -633,7 +642,7 @@ fn should_use_streaming_point_sampling(
         return false;
     }
 
-    let elapsed_raw = query_time_raw.saturating_sub(first_timestamp_raw);
+    let elapsed_raw = effective_time_raw.saturating_sub(first_timestamp_raw);
     let average_timestamp_delta = elapsed_raw / step_count;
     average_timestamp_delta >= STREAM_POINT_MIN_AVERAGE_TIMESTAMP_DELTA
 }

@@ -6,7 +6,7 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-After this plan is implemented, `wavepeek change` keeps the recent performance gains while reducing accidental contract leakage from internal tuning controls. Internal override flags are renamed to a shorter `--perf-*` family, documented in code for maintainers, and gated behind a single debug contract: `DEBUG=1`. In parallel, architecture documentation explains why the multi-engine and heuristic dispatcher exists, changelog messaging reflects the public story (major speedup with large dumps/windows), and development docs define debug-mode behavior as a repository-wide contract.
+After this plan is implemented, `wavepeek change` keeps the recent performance gains while reducing accidental contract leakage from internal tuning controls. Internal override flags are exposed only via a hidden `--tune-*` family, documented in code for maintainers, and gated behind a single debug contract: `DEBUG=1`. In parallel, architecture documentation explains why the multi-engine and heuristic dispatcher exists, changelog messaging reflects the public story (major speedup with large dumps/windows), and development docs define debug-mode behavior as a repository-wide contract.
 
 The result is observable in four places: CLI behavior rejects internal overrides unless `DEBUG=1` is set, `docs/DEVELOPMENT.md` has a new debug-mode contract section, `docs/DESIGN.md` contains a clear high-level section on `change` execution architecture, and `CHANGELOG.md` highlights measured performance outcomes (around 0.5s on large-window scenarios) without exposing internal flags as a user-facing feature.
 
@@ -28,6 +28,11 @@ This plan does not change `change` output schema, event semantics, warning texts
 - [x] (2026-03-04 06:34Z) Completed review pass #1, addressed suggested test-coverage gaps, and re-ran targeted validation.
 - [x] (2026-03-04 06:35Z) Completed independent review pass #2 with fresh context; no remaining severity-tagged findings.
 - [x] (2026-03-04 06:36Z) Passed final verification gate `make ci` and captured closure artifacts in this plan.
+- [x] (2026-03-04 06:45Z) Applied follow-up hard rename: switched hidden `change` overrides from `--perf-*` to `--tune-*` and renamed engine mode label from `pre-fusion` to `baseline` across code/tests.
+- [x] (2026-03-04 06:45Z) Refreshed collateral for naming consistency (`docs/DESIGN.md`, active exec plan) and captured a new TDD red/green excerpt for the rename pass.
+- [x] (2026-03-04 07:15Z) Completed follow-up review pass #1 (clean after adding explicit candidate-auto and legacy-engine-label rejection tests).
+- [x] (2026-03-04 07:15Z) Completed independent follow-up review pass #2; fixed one low-severity docs label drift (`Pre-fusion` -> `Baseline`) and re-ran fresh pass #2 to clean.
+- [x] (2026-03-04 07:15Z) Re-ran final verification gate `make ci` after hard-rename follow-up; all checks passed.
 
 ## Surprises & Discoveries
 
@@ -42,19 +47,19 @@ This plan does not change `change` output schema, event semantics, warning texts
 
 ## Decision Log
 
-- Decision: Use the new internal flag family `--perf-engine`, `--perf-candidates`, and `--perf-edge-fast-force`, and remove the old `--internal-change-*` names.
+- Decision: Use the hidden internal flag family `--tune-engine`, `--tune-candidates`, and `--tune-edge-fast-force`, and remove both old `--internal-change-*` and interim `--perf-*` names.
   Rationale: The old names duplicate command context (`change`) and are unnecessarily verbose; removing old names prevents accidental long-term dependence.
   Date/Author: 2026-03-04 / OpenCode
 
-- Decision: Gate all `--perf-*` overrides behind a single debug contract: `DEBUG=1` environment variable.
+- Decision: Gate all `--tune-*` overrides behind a single debug contract: `DEBUG=1` environment variable.
   Rationale: One debug switch avoids ambiguity and keeps operator guidance simple while preserving internal access for engineers and CI diagnostics.
   Date/Author: 2026-03-04 / OpenCode
 
-- Decision: When users try `--perf-*` without debug mode, return an explicit `error: args:` message instead of pretending the flags do not exist.
+- Decision: When users try `--tune-*` without debug mode, return an explicit `error: args:` message instead of pretending the flags do not exist.
   Rationale: Clear user feedback is safer and more maintainable than ambiguous parse failures; the message should explain exactly how to intentionally opt in.
   Date/Author: 2026-03-04 / OpenCode
 
-- Decision: Keep `--perf-*` hidden from help output and document debug-mode access only in development docs and inline internal-flag docstrings.
+- Decision: Keep `--tune-*` hidden from help output and document debug-mode access only in development docs and inline internal-flag docstrings.
   Rationale: Internal controls remain non-public while still understandable for maintainers editing the code.
   Date/Author: 2026-03-04 / OpenCode
 
@@ -64,11 +69,11 @@ Current status: complete. All planned implementation, collateral updates, two-pa
 
 Expected completion outcome: internal tuning surface becomes intentionally unstable/private-by-default while preserving current optimized behavior and parity guarantees.
 
-Known residual risk to monitor during implementation: forced-mode tests may initially fail until all helpers are migrated to `--perf-*` plus debug opt-in; this is expected and should be handled inside the TDD flow.
+Known residual risk to monitor during implementation: forced-mode tests may initially fail until all helpers are migrated to `--tune-*` plus debug opt-in and baseline-mode rename; this is expected and should be handled inside the TDD flow.
 
 ## Context and Orientation
 
-`wavepeek` is a single-process stateless CLI. The `change` command currently has multiple execution engines in `src/engine/change.rs` (`pre-fusion`, `fused`, `edge-fast`, plus `auto` dispatcher). Internal CLI override args are defined in `src/cli/change.rs` and fed into engine selection/candidate collection in `src/engine/change.rs`.
+`wavepeek` is a single-process stateless CLI. The `change` command currently has multiple execution engines in `src/engine/change.rs` (`baseline`, `fused`, `edge-fast`, plus `auto` dispatcher). Internal CLI override args are defined in `src/cli/change.rs` and fed into engine selection/candidate collection in `src/engine/change.rs`.
 
 In this plan, “internal override” means a hidden CLI flag that changes engine/candidate mode regardless of normal auto-dispatch logic. “Debug mode” means process-level opt-in via environment variable `DEBUG=1` that allows such overrides for diagnostics. “Public contract leakage” means users can discover or script against internal knobs as if they were stable product features.
 
@@ -76,7 +81,7 @@ Key files to modify:
 
 - `src/cli/change.rs` for renamed hidden flags and maintainer-facing docstrings.
 - `src/cli/mod.rs` for centralized debug-mode detection (`DEBUG=1`) and debug gate enforcement before dispatch.
-- `src/engine/change.rs` for field/type rename plumbing from `internal_*` to `perf_*` without behavioral drift.
+- `src/engine/change.rs` for field/type rename plumbing from `internal_*` to `tune_*` without behavioral drift.
 - `tests/change_opt_equivalence.rs` and `tests/change_vcd_fst_parity.rs` for forced-mode helper migration.
 - `tests/cli_contract.rs` and/or `tests/change_cli.rs` for explicit debug-gate behavior coverage and hidden-help checks.
 - `docs/DEVELOPMENT.md` for repository-wide debug contract and high-level side-effect statement.
@@ -89,7 +94,7 @@ No blocking product-level questions remain. This plan assumes debug mode is enab
 
 ## Plan of Work
 
-Milestone 1 introduces a failing-test-first contract for internal override privacy. Start by updating/adding tests so they assert that `--perf-*` overrides require `DEBUG=1` and old `--internal-change-*` names are no longer accepted. Then implement CLI and engine wiring so internal overrides work only when `DEBUG=1` is set and are rejected otherwise with a clear `args` error. Keep help output unchanged for normal users (hidden options remain hidden).
+Milestone 1 introduces a failing-test-first contract for internal override privacy. Start by updating/adding tests so they assert that `--tune-*` overrides require `DEBUG=1` and old `--internal-change-*` / `--perf-*` names are no longer accepted. Then implement CLI and engine wiring so internal overrides work only when `DEBUG=1` is set and are rejected otherwise with a clear `args` error. Keep help output unchanged for normal users (hidden options remain hidden).
 
 Milestone 2 updates architecture and release collateral. Add a focused technical-architecture subsection in `docs/DESIGN.md` explaining the multi-engine `change` model, dispatcher heuristics at a high level, and why this complexity exists (performance on large windows while preserving contract-equivalent behavior). Add a new debug section in `docs/DEVELOPMENT.md` that defines `DEBUG=1` as the single debug switch and describes only high-level side effects (for now: hidden internal controls become available, without listing them). Update `CHANGELOG.md` Unreleased entries to remove hidden-flag callouts and replace them with user-facing performance outcomes.
 
@@ -105,10 +110,10 @@ Run all commands from `/workspaces/perf-change`.
 
    - Update forced-mode test helpers to use new flag names and explicit debug opt-in.
    - Add or extend tests that verify:
-     - `change` with `--perf-engine` (or other `--perf-*`) fails without debug mode and prints a clear `error: args:` hint.
+     - `change` with `--tune-engine` (or other `--tune-*`) fails without debug mode and prints a clear `error: args:` hint.
      - same invocation succeeds with `DEBUG=1`.
      - old `--internal-change-*` invocations fail with exit code `1` and `error: args:` parse guidance.
-     - `change --help` does not expose `--perf-*`.
+     - `change --help` does not expose `--tune-*`.
 
     Run:
 
@@ -122,9 +127,9 @@ Run all commands from `/workspaces/perf-change`.
 
 2. Implement CLI/engine changes.
 
-   - In `src/cli/change.rs`, rename internal args to `--perf-*`, keep `hide = true`, and add concise docstrings that these are unstable internal controls available only when `DEBUG=1` is set.
-   - In `src/cli/mod.rs`, add centralized debug detection based on `DEBUG=1`; enforce gate before dispatch when any `--perf-*` override is explicitly used.
-   - In `src/engine/change.rs`, rename argument/type usage from `internal_*` to `perf_*` and keep mode semantics unchanged.
+   - In `src/cli/change.rs`, rename internal args to `--tune-*`, keep `hide = true`, and add concise docstrings that these are unstable internal controls available only when `DEBUG=1` is set.
+   - In `src/cli/mod.rs`, add centralized debug detection based on `DEBUG=1`; enforce gate before dispatch when any `--tune-*` override is explicitly used.
+   - In `src/engine/change.rs`, rename argument/type usage from `internal_*` to `tune_*` and keep mode semantics unchanged.
 
    Re-run targeted tests:
 
@@ -199,11 +204,11 @@ Run all commands from `/workspaces/perf-change`.
 
 Acceptance is met only when all of the following are true together:
 
-- Internal override flags are renamed to `--perf-*`.
+- Internal override flags are renamed to `--tune-*`.
 - Invoking any old `--internal-change-*` flag fails with exit code `1` and `error: args:` parse guidance.
-- `--perf-*` usage without debug mode fails with explicit `error: args:` guidance.
-- `--perf-*` usage with `DEBUG=1` succeeds and preserves forced-mode parity tests.
-- `wavepeek change --help` does not expose `--perf-*`.
+- `--tune-*` usage without debug mode fails with explicit `error: args:` guidance.
+- `--tune-*` usage with `DEBUG=1` succeeds and preserves forced-mode parity tests.
+- `wavepeek change --help` does not expose `--tune-*`.
 - `docs/DEVELOPMENT.md` documents `DEBUG=1` as the single debug-mode contract and states high-level side effects only (hidden internal controls become available).
 - `docs/DESIGN.md` clearly explains the multi-engine `change` architecture and why heuristics exist.
 - `CHANGELOG.md` no longer advertises hidden flags and instead states the user-visible performance improvement narrative.
@@ -260,6 +265,21 @@ Recorded excerpts:
   - Pass #1 initial output: `No significant implementation defects found ...` with test-gap recommendations for explicit-default and per-flag gate assertions.
   - Pass #1 follow-up output after fixes: `No findings.`
   - Independent pass #2 output: `No severity-tagged findings in the reviewed scope`.
+  - Follow-up hard-rename pass #1 output: `No severity-tagged findings in the current working tree diff.`
+  - Follow-up hard-rename pass #2 initial output: one low finding (`docs/DESIGN.md` still said `Pre-fusion engine`); fixed immediately.
+  - Follow-up hard-rename pass #2 rerun output: `No remaining critical/high/medium/low findings ...`.
+
+- TDD red-phase for hard-rename follow-up (`cargo test --test change_cli change_tune_overrides_require_debug_mode -- --exact`, before rename implementation):
+
+      test change_tune_overrides_require_debug_mode ... FAILED
+      Unexpected stderr, failed var.contains(--tune-*)
+      var: error: args: unexpected argument '--tune-engine' found See 'wavepeek change --help'.
+
+- TDD green-phase for hard-rename follow-up (`cargo test --test change_cli change_tune_overrides_require_debug_mode -- --exact`, after rename implementation):
+
+      running 1 test
+      test change_tune_overrides_require_debug_mode ... ok
+      test result: ok. 1 passed; 0 failed
 
 ### Interfaces and Dependencies
 
@@ -277,3 +297,5 @@ Revision Note: 2026-03-04 / OpenCode - Created active wrap-up ExecPlan for inter
 Revision Note: 2026-03-04 / OpenCode - Updated plan after review pass #1 to remove ambiguous acceptance wording, make TDD evidence explicit, and tighten collateral commit scope.
 Revision Note: 2026-03-04 / OpenCode - Updated plan after independent review pass #2 to replace placeholder staging with executable commands, add explicit review invocations, and document review evidence requirements.
 Revision Note: 2026-03-04 / OpenCode - Incorporated user direction to use only `DEBUG=1` (no `--debug`), and added explicit `docs/DEVELOPMENT.md` debug-contract update requirements plus internal-flag docstring wording expectations.
+Revision Note: 2026-03-04 / OpenCode - Applied hard rename follow-up (`--perf-*` -> `--tune-*`) and engine label cleanup (`pre-fusion` -> `baseline`) per user feedback, with TDD evidence capture.
+Revision Note: 2026-03-04 / OpenCode - Completed mandatory two-pass re-review for hard-rename follow-up, resolved residual docs drift, and re-validated with `make ci`.

@@ -714,7 +714,7 @@ workloads.
 
 Execution engines:
 
-- **Pre-fusion engine** — Conservative baseline path used for narrow or low-work
+- **Baseline engine** — Conservative baseline path used for narrow or low-work
   windows. It prioritizes predictable behavior and low fixed overhead.
 - **Fused engine** — Optimized for broad candidate sets and any-tracked windows.
   It reduces repeated per-signal work by combining more work in shared passes.
@@ -727,7 +727,7 @@ Dispatcher heuristics:
 - Default mode routes requests automatically from simple workload estimates
   (window size, candidate density, requested signal count, and trigger shape).
 - Edge-only trigger profiles can be routed to fused or edge-fast depending on
-  estimated work, while sparse profiles remain on pre-fusion.
+  estimated work, while sparse profiles remain on baseline.
 - This policy is intentionally internal and may evolve without changing user
   payload semantics.
 

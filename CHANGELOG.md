@@ -30,7 +30,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accelerated `change` stateless execution with resolved-handle sampling, persistent signal-load caching, timestamp-slice iteration, and candidate-timestamp reduction while preserving strict pre-candidate baseline semantics.
 - Added a multi-engine dispatcher for dense and sparse `change` workloads so large dump/window scenarios now complete around ~0.5s in the benchmark matrix while keeping payload parity.
 - Added an FST streaming-capable candidate-time path (`wellen::stream` filter pushdown with fallback heuristic) and dense edge-trigger fast path internals while preserving existing `change` contract behavior and output parity.
-- Simplified `at` sampling internals by removing experimental streaming/heuristic point-sampling branches while keeping duplicate-preserving projection and per-call signal-load dedup; latest anomaly rerun is `at_picorv32_signals_1000 ~= 2.094s` and the hard perf gate remains open.
 
 ## [0.2.0] - 2026-02-20
 

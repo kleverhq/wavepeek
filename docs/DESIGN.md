@@ -656,11 +656,12 @@ at each clock posedge. This needs a small expression language (defined in 3.2.6)
   (provided by the engine), and computes a 4-state boolean result using SystemVerilog-like semantics.
   `&&` and `||` use short-circuit evaluation. For `when` match decisions, unknown `x` is cast to false.
 
-**Implementation status:** A hand-written parser path is now in place for the
-current staged event/expression surface (see `src/expr/parser.rs`, with shared
-types in `src/expr/mod.rs`). Lexer scaffolding also exists (`src/expr/lexer.rs`).
-Evaluator/runtime completion for the planned `property` flow remains deferred to
-post-MVP implementation work.
+**Implementation status:** Event-expression parsing for `change --when` is now
+implemented with a hand-written parser (`parse_event_expr` in
+`src/expr/parser.rs`, types in `src/expr/mod.rs`). For logical expressions,
+current `--cond` handling is still staged (`parse` stores validated source text),
+and full parser/evaluator runtime for the planned `property` flow remains
+deferred to post-MVP implementation work.
 
 ### 5.6 Error Handling Strategy
 

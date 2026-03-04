@@ -44,3 +44,16 @@ pub struct EventExpr {
 pub fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
     parser::parse_event_expr(source)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{EventKind, parse_event_expr};
+
+    #[test]
+    fn parse_event_expr_wrapper_supports_any_tracked() {
+        let expr = parse_event_expr("*").expect("event expression should parse");
+
+        assert_eq!(expr.terms.len(), 1);
+        assert!(matches!(expr.terms[0].event, EventKind::AnyTracked));
+    }
+}

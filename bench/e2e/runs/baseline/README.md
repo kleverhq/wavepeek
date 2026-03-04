@@ -1,161 +1,163 @@
-# CLI E2E Bench Run: 2026-03-01_20-48-49Z
+# CLI E2E Bench Run: baseline
 
-- Generated at (UTC): 2026-03-02T05:29:39Z
-- Run directory: `bench/e2e/runs/2026-03-01_20-48-49Z`
-- Hyperfine JSON files: 135
-- Wavepeek JSON files: 135
+- Generated at (UTC): 2026-03-04T10:14:21Z
+- Run directory: `bench/e2e/runs/baseline`
+- Hyperfine JSON files: 137
+- Wavepeek JSON files: 137
 
 ## at
 
 | test | mean_s | meta |
 | --- | --- | --- |
-| at_picorv32_signals_1000 | 2.203291 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1000 |
-| at_chipyard_dualrocketconfig_dhrystone_signals_1000 | 0.962917 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1000 |
-| at_chipyard_clusteredrocketconfig_dhrystone_signals_1000 | 0.944206 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1000 |
-| at_chipyard_dualrocketconfig_dhrystone_signals_100 | 0.546798 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=100 |
-| at_chipyard_clusteredrocketconfig_dhrystone_signals_100 | 0.541645 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=100 |
-| at_picorv32_signals_100 | 0.439924 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=100 |
-| at_scr1_signals_1000 | 0.391195 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1000 |
-| at_chipyard_clusteredrocketconfig_dhrystone_signals_1 | 0.220745 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1 |
-| at_chipyard_clusteredrocketconfig_dhrystone_signals_10 | 0.213956 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=10 |
-| at_chipyard_dualrocketconfig_dhrystone_signals_10 | 0.201597 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=10 |
-| at_chipyard_dualrocketconfig_dhrystone_signals_1 | 0.192773 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1 |
-| at_picorv32_signals_10 | 0.190331 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=10 |
-| at_picorv32_signals_1 | 0.089940 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1 |
-| at_scr1_signals_100 | 0.058173 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=100 |
-| at_scr1_signals_10 | 0.057697 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=10 |
-| at_scr1_signals_1 | 0.057397 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1 |
+| at_picorv32_signals_1000 | 2.111695 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1000 |
+| at_chipyard_clusteredrocketconfig_dhrystone_signals_1000 | 0.943218 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1000 |
+| at_chipyard_dualrocketconfig_dhrystone_signals_1000 | 0.909162 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1000 |
+| at_chipyard_clusteredrocketconfig_dhrystone_signals_100 | 0.541489 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=100 |
+| at_chipyard_dualrocketconfig_dhrystone_signals_100 | 0.537441 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=100 |
+| at_picorv32_signals_100 | 0.442084 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=100 |
+| at_scr1_signals_1000 | 0.391028 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1000 |
+| at_chipyard_clusteredrocketconfig_dhrystone_signals_1 | 0.236177 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1 |
+| at_chipyard_clusteredrocketconfig_dhrystone_signals_10 | 0.234630 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=10 |
+| at_chipyard_dualrocketconfig_dhrystone_signals_1 | 0.192960 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1 |
+| at_picorv32_signals_10 | 0.190834 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=10 |
+| at_chipyard_dualrocketconfig_dhrystone_signals_10 | 0.189862 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=10 |
+| at_picorv32_signals_1 | 0.090509 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1 |
+| at_scr1_signals_1 | 0.057242 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1 |
+| at_scr1_signals_10 | 0.057124 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=10 |
+| at_scr1_signals_100 | 0.057084 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=100 |
 
 ## change
 
 | test | mean_s | meta |
 | --- | --- | --- |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_posedge_clk | 300.044549 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_signal | 300.040667 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_posedge_clk | 300.040577 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_signal | 300.040109 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_signal | 300.039697 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_signal | 300.039441 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_signal | 300.038815 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_signal | 300.038781 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_signal | 300.038715 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_any | 300.038708 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=1 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_posedge_clk | 300.038384 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_signal | 300.038309 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_posedge_clk | 300.038304 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_signal | 300.038274 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_signal | 300.038216 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_signal | 300.037900 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8000000_trigger_signal | 300.037601 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_signal | 300.037564 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_any | 300.037451 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=1 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32000000_trigger_signal | 300.037094 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_signal | 300.037083 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_signal | 300.037041 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32000000_trigger_any | 300.036001 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=1 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8000000_trigger_any | 249.658151 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=1 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_posedge_clk | 207.378912 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_posedge_clk | 192.018158 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_posedge_clk | 191.866044 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_posedge_clk | 161.946556 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_posedge_clk | 161.799936 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_posedge_clk | 161.789326 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=100 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_signal | 157.376866 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_posedge_clk | 151.208062 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_signal | 124.704592 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_posedge_clk | 124.347674 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=1 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2000000_trigger_any | 108.173818 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=100 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32000000_trigger_any | 99.587675 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=100 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8000000_trigger_any | 98.734402 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=100 trigger=* |
-| change_picorv32_signals_100_window_8000000_trigger_signal | 95.689638 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=100 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_100_window_2000000_trigger_signal | 95.639759 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=100 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_100_window_32000000_trigger_signal | 95.437287 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=100 trigger=testbench.top.mem_axi_arvalid |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2000000_trigger_any | 82.190813 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=100 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8000000_trigger_any | 82.146188 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=100 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32000000_trigger_any | 82.048525 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=100 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2000000_trigger_any | 75.729878 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=1 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2000000_trigger_any | 62.398077 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=1 trigger=* |
-| change_scr1_signals_100_window_8000_trigger_signal | 48.260976 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_picorv32_signals_100_window_8000000_trigger_posedge_clk | 46.865943 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=100 trigger=posedge testbench.clk |
-| change_picorv32_signals_100_window_2000000_trigger_posedge_clk | 46.863675 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=100 trigger=posedge testbench.clk |
-| change_picorv32_signals_100_window_32000000_trigger_posedge_clk | 46.858943 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=100 trigger=posedge testbench.clk |
-| change_scr1_signals_100_window_2000_trigger_signal | 35.222091 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_scr1_signals_100_window_4000_trigger_signal | 33.107902 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_picorv32_signals_100_window_8000000_trigger_any | 23.902822 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=100 trigger=* |
-| change_picorv32_signals_100_window_2000000_trigger_any | 23.853849 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=100 trigger=* |
-| change_picorv32_signals_100_window_32000000_trigger_any | 23.801696 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=100 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_posedge_clk | 19.790339 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_posedge_clk | 19.788577 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_posedge_clk | 19.740444 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_posedge_clk | 17.686953 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_posedge_clk | 17.682676 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_posedge_clk | 17.635949 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=10 trigger=posedge TOP.TestDriver.clock |
-| change_scr1_signals_100_window_8000_trigger_posedge_clk | 12.041344 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=100 trigger=posedge TOP.clk |
-| change_scr1_signals_100_window_2000_trigger_posedge_clk | 12.033052 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=100 trigger=posedge TOP.clk |
-| change_scr1_signals_100_window_4000_trigger_posedge_clk | 12.024110 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=100 trigger=posedge TOP.clk |
-| change_picorv32_signals_10_window_2000000_trigger_signal | 10.321452 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=10 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_10_window_8000000_trigger_signal | 10.218332 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=10 trigger=testbench.top.mem_axi_arvalid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2000000_trigger_any | 10.216961 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2000000 signal_count=10 trigger=* |
-| change_picorv32_signals_10_window_32000000_trigger_signal | 10.214628 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=10 trigger=testbench.top.mem_axi_arvalid |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8000000_trigger_any | 10.116111 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8000000 signal_count=10 trigger=* |
-| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32000000_trigger_any | 10.114806 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32000000 signal_count=10 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8000000_trigger_any | 8.465509 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8000000 signal_count=10 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2000000_trigger_any | 8.461782 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2000000 signal_count=10 trigger=* |
-| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32000000_trigger_any | 8.413081 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32000000 signal_count=10 trigger=* |
-| change_scr1_signals_100_window_4000_trigger_any | 6.178330 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=100 trigger=* |
-| change_scr1_signals_100_window_2000_trigger_any | 6.168816 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=100 trigger=* |
-| change_scr1_signals_100_window_8000_trigger_any | 6.151855 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=100 trigger=* |
-| change_picorv32_signals_10_window_32000000_trigger_posedge_clk | 5.105291 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=10 trigger=posedge testbench.clk |
-| change_picorv32_signals_10_window_2000000_trigger_posedge_clk | 5.103223 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=10 trigger=posedge testbench.clk |
-| change_picorv32_signals_10_window_8000000_trigger_posedge_clk | 5.102954 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=10 trigger=posedge testbench.clk |
-| change_scr1_signals_10_window_8000_trigger_signal | 4.887935 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_picorv32_signals_1_window_32000000_trigger_signal | 4.252106 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=1 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_1_window_8000000_trigger_signal | 4.201289 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=1 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_1_window_2000000_trigger_signal | 3.952419 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=1 trigger=testbench.top.mem_axi_arvalid |
-| change_picorv32_signals_1_window_8000000_trigger_posedge_clk | 3.900054 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=1 trigger=posedge testbench.clk |
-| change_picorv32_signals_1_window_32000000_trigger_posedge_clk | 3.899941 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=1 trigger=posedge testbench.clk |
-| change_picorv32_signals_1_window_2000000_trigger_posedge_clk | 3.849599 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=1 trigger=posedge testbench.clk |
-| change_scr1_signals_10_window_2000_trigger_signal | 3.558537 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_scr1_signals_10_window_4000_trigger_signal | 3.368545 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_picorv32_signals_10_window_32000000_trigger_any | 2.700132 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=10 trigger=* |
-| change_picorv32_signals_10_window_8000000_trigger_any | 2.699849 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=10 trigger=* |
-| change_picorv32_signals_10_window_2000000_trigger_any | 2.699401 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=10 trigger=* |
-| change_picorv32_signals_1_window_8000000_trigger_any | 1.996672 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8000000 signal_count=1 trigger=* |
-| change_picorv32_signals_1_window_2000000_trigger_any | 1.996247 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2000000 signal_count=1 trigger=* |
-| change_picorv32_signals_1_window_32000000_trigger_any | 1.994588 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32000000 signal_count=1 trigger=* |
-| change_scr1_signals_10_window_4000_trigger_posedge_clk | 1.258895 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=10 trigger=posedge TOP.clk |
-| change_scr1_signals_10_window_8000_trigger_posedge_clk | 1.258190 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=10 trigger=posedge TOP.clk |
-| change_scr1_signals_10_window_2000_trigger_posedge_clk | 1.257351 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=10 trigger=posedge TOP.clk |
-| change_scr1_signals_1_window_8000_trigger_signal | 1.042323 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_scr1_signals_1_window_2000_trigger_signal | 0.786899 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_scr1_signals_1_window_4000_trigger_signal | 0.746201 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
-| change_scr1_signals_10_window_8000_trigger_any | 0.691854 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=10 trigger=* |
-| change_scr1_signals_10_window_2000_trigger_any | 0.691234 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=10 trigger=* |
-| change_scr1_signals_10_window_4000_trigger_any | 0.679738 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=10 trigger=* |
-| change_scr1_signals_1_window_8000_trigger_posedge_clk | 0.190442 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=1 trigger=posedge TOP.clk |
-| change_scr1_signals_1_window_2000_trigger_posedge_clk | 0.190384 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=1 trigger=posedge TOP.clk |
-| change_scr1_signals_1_window_4000_trigger_posedge_clk | 0.190171 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=1 trigger=posedge TOP.clk |
-| change_scr1_signals_1_window_8000_trigger_any | 0.141326 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8000 signal_count=1 trigger=* |
-| change_scr1_signals_1_window_2000_trigger_any | 0.140640 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2000 signal_count=1 trigger=* |
-| change_scr1_signals_1_window_4000_trigger_any | 0.139841 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4000 signal_count=1 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk | 0.591289 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk | 0.531244 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_picorv32_signals_100_window_32us_trigger_signal | 0.442625 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=100 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_100_window_2us_trigger_signal | 0.442112 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=100 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_100_window_8us_trigger_signal | 0.440949 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=100 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_100_window_32us_trigger_posedge_clk | 0.420937 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=100 trigger=posedge testbench.clk |
+| change_picorv32_signals_100_window_2us_trigger_posedge_clk | 0.411228 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=100 trigger=posedge testbench.clk |
+| change_picorv32_signals_100_window_8us_trigger_posedge_clk | 0.410178 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=100 trigger=posedge testbench.clk |
+| change_picorv32_signals_100_window_32us_trigger_any | 0.389907 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=100 trigger=* |
+| change_picorv32_signals_100_window_8us_trigger_any | 0.389881 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=100 trigger=* |
+| change_picorv32_signals_100_window_2us_trigger_any | 0.388895 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=100 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk | 0.330920 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_signal | 0.291834 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_signal | 0.291741 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk | 0.291410 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_signal | 0.290809 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_signal | 0.290497 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk | 0.290457 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk | 0.279866 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_any | 0.271525 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=100 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_any | 0.260162 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=100 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_signal | 0.250710 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_any | 0.249907 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=100 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_signal | 0.249779 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk | 0.242058 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_any | 0.241967 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_signal | 0.241540 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk | 0.241471 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk | 0.241464 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_signal | 0.241460 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_signal | 0.241238 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any | 0.240987 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk | 0.240973 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk | 0.240720 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_any | 0.240459 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=10 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk | 0.240008 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk | 0.239739 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_signal | 0.239579 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_signal | 0.239486 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=100 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk | 0.239450 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk | 0.239321 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_signal | 0.239234 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=10 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk | 0.239112 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=1 trigger=posedge TOP.TestDriver.clock |
+| change_scr1_signals_100_window_4ns_trigger_posedge_clk | 0.192789 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=100 trigger=posedge TOP.clk |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_any | 0.192653 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=1 trigger=* |
+| change_scr1_signals_100_window_8ns_trigger_any | 0.191771 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=100 trigger=* |
+| change_scr1_signals_100_window_2ns_trigger_posedge_clk | 0.191622 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=100 trigger=posedge TOP.clk |
+| change_scr1_signals_100_window_8ns_trigger_signal | 0.191373 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_100_pos_50_window_2ns_trigger_any | 0.191126 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=100 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_signal | 0.190959 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk | 0.190711 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=10 trigger=posedge TOP.TestDriver.clock |
+| change_scr1_signals_100_window_4ns_trigger_signal | 0.190632 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_signal | 0.190502 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_scr1_signals_100_window_8ns_trigger_posedge_clk | 0.190433 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=100 trigger=posedge TOP.clk |
+| change_scr1_signals_100_window_4ns_trigger_any | 0.190421 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=100 trigger=* |
+| change_scr1_signals_100_window_2ns_trigger_signal | 0.190255 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=100 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_signal | 0.190146 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_any | 0.189765 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_any | 0.189723 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_any | 0.189498 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=100 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_any | 0.189380 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk | 0.188903 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=100 trigger=posedge TOP.TestDriver.clock |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_any | 0.188836 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=100 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_any | 0.188463 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=100 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_signal | 0.188001 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=32us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_signal | 0.148919 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_picorv32_signals_1_window_8us_trigger_posedge_clk | 0.142557 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=1 trigger=posedge testbench.clk |
+| change_picorv32_signals_10_window_8us_trigger_any | 0.141691 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=10 trigger=* |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_any | 0.141519 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=8us signal_count=1 trigger=* |
+| change_picorv32_signals_10_window_2us_trigger_signal | 0.141503 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=10 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_10_window_2us_trigger_any | 0.141426 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=10 trigger=* |
+| change_picorv32_signals_10_window_32us_trigger_any | 0.141401 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=10 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_any | 0.141215 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=1 trigger=* |
+| change_picorv32_signals_10_window_8us_trigger_posedge_clk | 0.141153 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=10 trigger=posedge testbench.clk |
+| change_picorv32_signals_1_window_32us_trigger_posedge_clk | 0.141003 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=1 trigger=posedge testbench.clk |
+| change_picorv32_signals_10_window_32us_trigger_posedge_clk | 0.140947 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=10 trigger=posedge testbench.clk |
+| change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_any | 0.140935 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M window_size=2us signal_count=1 trigger=* |
+| change_picorv32_signals_10_window_2us_trigger_posedge_clk | 0.140875 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=10 trigger=posedge testbench.clk |
+| change_picorv32_signals_1_window_2us_trigger_posedge_clk | 0.140807 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=1 trigger=posedge testbench.clk |
+| change_picorv32_signals_10_window_32us_trigger_signal | 0.140479 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=10 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_10_window_8us_trigger_signal | 0.140455 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=10 trigger=testbench.top.mem_axi_arvalid |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_any | 0.139487 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=2us signal_count=1 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_any | 0.139354 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=32us signal_count=1 trigger=* |
+| change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_signal | 0.138819 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M window_size=8us signal_count=1 trigger=TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid |
+| change_picorv32_signals_1_window_32us_trigger_any | 0.091208 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=1 trigger=* |
+| change_picorv32_signals_1_window_8us_trigger_any | 0.090597 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=1 trigger=* |
+| change_picorv32_signals_1_window_2us_trigger_any | 0.090484 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=1 trigger=* |
+| change_picorv32_signals_1_window_2us_trigger_signal | 0.089898 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=2us signal_count=1 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_1_window_8us_trigger_signal | 0.089835 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=8us signal_count=1 trigger=testbench.top.mem_axi_arvalid |
+| change_picorv32_signals_1_window_32us_trigger_signal | 0.089616 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M window_size=32us signal_count=1 trigger=testbench.top.mem_axi_arvalid |
+| change_scr1_coremark_imem_axi_2sig_to_1000ps | 0.084229 | waves=/opt/rtl-artifacts/scr1_max_axi_coremark.fst scope=TOP.scr1_top_tb_axi.i_top.i_imem_axi signal_count=2 window_to=1000ps |
+| change_scr1_coremark_imem_axi_1sig_to_1000ps | 0.083349 | waves=/opt/rtl-artifacts/scr1_max_axi_coremark.fst scope=TOP.scr1_top_tb_axi.i_top.i_imem_axi signal_count=1 window_to=1000ps |
+| change_scr1_signals_10_window_4ns_trigger_signal | 0.064061 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_1_window_8ns_trigger_posedge_clk | 0.058040 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=1 trigger=posedge TOP.clk |
+| change_scr1_signals_1_window_4ns_trigger_any | 0.057683 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=1 trigger=* |
+| change_scr1_signals_1_window_8ns_trigger_any | 0.057563 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=1 trigger=* |
+| change_scr1_signals_1_window_2ns_trigger_posedge_clk | 0.057411 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=1 trigger=posedge TOP.clk |
+| change_scr1_signals_10_window_4ns_trigger_any | 0.057370 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=10 trigger=* |
+| change_scr1_signals_1_window_4ns_trigger_posedge_clk | 0.057261 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=1 trigger=posedge TOP.clk |
+| change_scr1_signals_10_window_4ns_trigger_posedge_clk | 0.057217 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=10 trigger=posedge TOP.clk |
+| change_scr1_signals_1_window_2ns_trigger_any | 0.057174 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=1 trigger=* |
+| change_scr1_signals_1_window_8ns_trigger_signal | 0.057144 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_1_window_4ns_trigger_signal | 0.057134 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=4ns signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_10_window_8ns_trigger_any | 0.057120 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=10 trigger=* |
+| change_scr1_signals_10_window_8ns_trigger_posedge_clk | 0.057119 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=10 trigger=posedge TOP.clk |
+| change_scr1_signals_10_window_2ns_trigger_posedge_clk | 0.056984 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=10 trigger=posedge TOP.clk |
+| change_scr1_signals_10_window_2ns_trigger_signal | 0.056867 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_1_window_2ns_trigger_signal | 0.056575 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=1 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
+| change_scr1_signals_10_window_2ns_trigger_any | 0.056396 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=2ns signal_count=10 trigger=* |
+| change_scr1_signals_10_window_8ns_trigger_signal | 0.056221 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=3.5M window_size=8ns signal_count=10 trigger=TOP.scr1_top_tb_axi.io_axi_dmem_araddr |
 
 ## info
 
 | test | mean_s | meta |
 | --- | --- | --- |
-| info_chipyard_clustered_mt_memcpy | 0.189855 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst size=411M |
-| info_chipyard_dualrocket_dhrystone | 0.089335 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M |
-| info_chipyard_clustered_dhrystone | 0.088096 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M |
-| info_scr1 | 0.043507 | waves=/opt/rtl-artifacts/scr1_max_axi_coremark.fst size=21M |
-| info_picorv32 | 0.040749 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M |
-| info_scr1_riscv_compliance | 0.032491 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M |
-| info_scr1_isr_sample | 0.026487 | waves=/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst size=69K |
-| info_picorv32_ez | 0.025943 | waves=/opt/rtl-artifacts/picorv32_test_ez_vcd.fst size=17K |
+| info_chipyard_clustered_mt_memcpy | 0.189627 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst size=411M |
+| info_chipyard_dualrocket_dhrystone | 0.090886 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M |
+| info_chipyard_clustered_dhrystone | 0.088897 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M |
+| info_scr1 | 0.048256 | waves=/opt/rtl-artifacts/scr1_max_axi_coremark.fst size=21M |
+| info_picorv32 | 0.046390 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M |
+| info_scr1_riscv_compliance | 0.032886 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M |
+| info_scr1_isr_sample | 0.028246 | waves=/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst size=69K |
+| info_picorv32_ez | 0.027236 | waves=/opt/rtl-artifacts/picorv32_test_ez_vcd.fst size=17K |
 
 ## signal
 
 | test | mean_s | meta |
 | --- | --- | --- |
-| signal_scr1_top_recursive_all_json | 0.040910 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=.* recursive=True max_depth=default |
-| signal_scr1_top_recursive_depth2_json | 0.036968 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=.* recursive=True max_depth=2 |
-| signal_scr1_top_recursive_filter_valid_json | 0.036775 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=(?i).*valid.* recursive=True max_depth=default |
+| signal_scr1_top_recursive_all_json | 0.039850 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=.* recursive=True max_depth=default |
+| signal_scr1_top_recursive_filter_valid_json | 0.037561 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=(?i).*valid.* recursive=True max_depth=default |
+| signal_scr1_top_recursive_depth2_json | 0.037220 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst scope=TOP filter=.* recursive=True max_depth=2 |

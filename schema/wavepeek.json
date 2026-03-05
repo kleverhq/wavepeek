@@ -21,7 +21,7 @@
         "info",
         "scope",
         "signal",
-        "at",
+        "value",
         "change"
       ]
     },
@@ -37,7 +37,7 @@
           "$ref": "#/$defs/signalData"
         },
         {
-          "$ref": "#/$defs/atData"
+          "$ref": "#/$defs/valueData"
         },
         {
           "$ref": "#/$defs/changeData"
@@ -113,7 +113,7 @@
       "if": {
         "properties": {
           "command": {
-            "const": "at"
+            "const": "value"
           }
         },
         "required": [
@@ -123,7 +123,7 @@
       "then": {
         "properties": {
           "data": {
-            "$ref": "#/$defs/atData"
+            "$ref": "#/$defs/valueData"
           }
         }
       }
@@ -220,7 +220,7 @@
         }
       }
     },
-    "atData": {
+    "valueData": {
       "type": "object",
       "additionalProperties": false,
       "required": [

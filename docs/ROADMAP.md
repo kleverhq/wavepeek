@@ -32,9 +32,9 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Value Extraction (→ v0.3.0)
 
-- `at` command (§3.2.4)
+- `value` command (§3.2.4)
 - `change` command — unified `--when` trigger model (default `*`, edge/signal expressions) (§3.2.5)
-- Time parsing with mandatory units (`--from`, `--to`, `--time`)
+- Time parsing with mandatory units (`--from`, `--to`, `--at`)
 - Expanded container-provisioned fixtures for value-extraction scenarios
 
 ### Query Engine (→ v0.4.0)

@@ -274,19 +274,19 @@ wavepeek signal --waves dump.vcd --scope top --recursive --max-depth 2
 wavepeek signal --waves dump.vcd --scope top --recursive --max 100 --max-depth unlimited
 ```
 
-#### 3.2.4 `at` — Value extraction at time point
+#### 3.2.4 `value` — Value extraction at time point
 
 Gets signal values at a specific time point.
 
 ```
-wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--abs] [--json]
+wavepeek value --waves <file> --at <time> [--scope <path>] --signals <names> [--abs] [--json]
 ```
 
 **Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--waves <file>` | required | Path to VCD/FST file |
-| `--time <time>` | required | Time point with units (e.g., `1337ns`, `10us`) |
+| `--at <time>` | required | Time point with units (e.g., `1337ns`, `10us`) |
 | `--scope <path>` | — | Scope for short signal names |
 | `--signals <names>` | required | Comma-separated signal names |
 | `--abs` | off | Show canonical paths in human mode |
@@ -310,13 +310,13 @@ wavepeek at --waves <file> --time <time> [--scope <path>] --signals <names> [--a
 **Examples:**
 ```bash
 # Get values by full paths
-wavepeek at --waves dump.vcd --time 100ns --signals top.cpu.clk,top.cpu.data
+wavepeek value --waves dump.vcd --at 100ns --signals top.cpu.clk,top.cpu.data
 
 # Get values relative to scope (shorter)
-wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk,data,valid
+wavepeek value --waves dump.vcd --at 100ns --scope top.cpu --signals clk,data,valid
 
 # Strict JSON envelope
-wavepeek at --waves dump.vcd --time 100ns --scope top.cpu --signals clk --json
+wavepeek value --waves dump.vcd --at 100ns --scope top.cpu --signals clk --json
 ```
 
 #### 3.2.5 `change` — Value changes over time range
@@ -351,7 +351,7 @@ but runtime evaluation of `logical_expr` is intentionally deferred and returns
 `error: args: iff logical expressions are not implemented yet`.
 
 **Behavior:**
-- Name resolution follows `at`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
+- Name resolution follows `value`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
 - Scoped mode rejects canonical full-path tokens for both `--signals` and `--when` names.
 - Time tokens require explicit units and exact alignment to dump precision.
 - `--from` defines a baseline checkpoint: values are sampled/initialized at `--from` (or dump start when omitted), and no row is emitted at that exact timestamp.
@@ -540,7 +540,7 @@ The CLI layer formats results for output.
    Passes typed command structs down to the engine.
 
 2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
-   `at`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
+   `value`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
    results. Contains shared time validation/normalization utilities, shared value-formatting
    utilities, expression evaluator (for `when`), and the `change` multi-engine dispatcher
    described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
@@ -578,7 +578,7 @@ src/
 │   ├── info.rs          # `info` command args + output
 │   ├── scope.rs         # `scope` command args + output
 │   ├── signal.rs        # `signal` command args + output
-│   ├── at.rs            # `at` command args + output
+│   ├── value.rs         # `value` command args + output
 │   ├── change.rs        # `change` command args + output
 │   ├── when.rs          # `when` command args + output
 │   └── schema.rs        # `schema` command args + output
@@ -587,7 +587,7 @@ src/
 │   ├── info.rs          # Dump metadata extraction
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
-│   ├── at.rs            # Value extraction at time point
+│   ├── value.rs         # Value extraction at time point
 │   ├── change.rs        # Value change tracking (`--when` event triggers, see 5.7)
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
@@ -685,7 +685,7 @@ error: <category>: <message>
 Examples:
 ```
 error: file: cannot open 'dump.vcd': No such file or directory
-error: args: --time requires units (e.g., '100ns'), got '100'
+error: args: --at requires units (e.g., '100ns'), got '100'
 error: signal: signal 'top.cpu.foo' not found in dump
 error: expr: parse error in condition: unexpected token ')' at position 12
 ```
@@ -772,7 +772,7 @@ Why this complexity exists:
 - Exit code
 - Stderr content for error cases
 - `--json` output validates against expected JSON structure and `$schema` URL contract
-- Human output is generally not asserted for exact formatting unless a command-level contract explicitly fixes it (currently `at`, including `--abs` display behavior)
+- Human output is generally not asserted for exact formatting unless a command-level contract explicitly fixes it (currently `value`, including `--abs` display behavior)
 - Consistency: same query on VCD and FST of the same design produces identical output
 
 ---

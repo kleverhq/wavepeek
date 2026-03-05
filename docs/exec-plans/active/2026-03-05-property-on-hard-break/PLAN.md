@@ -20,6 +20,8 @@ This plan does not introduce compatibility aliases for `when` command or `--when
 - [x] (2026-03-05 08:58Z) Mapped current implementation and contract gaps across `src/cli`, `src/engine`, `src/expr`, `tests/`, `docs/`, and `schema/`.
 - [x] (2026-03-05 09:05Z) Updated backlog wording so planned scope explicitly targets `property --on`, `change --on`, and no compatibility aliases.
 - [x] (2026-03-05 09:18Z) Authored this executable plan with TDD-first milestones, validation gates, commit boundaries, and mandatory double-review workflow.
+- [x] (2026-03-05 09:42Z) Completed review pass #1 for this planning diff; resolved findings on default omitted-`--on` semantics, baseline determinism, and self-contained verification details.
+- [x] (2026-03-05 09:56Z) Completed independent review pass #2 in fresh context; aligned `match` baseline semantics with transition modes and finalized backlog closure wording for `change --on`.
 - [ ] Implement TDD red phase for CLI contract migration (`property` surface, `--on`, hard-break rejection of legacy `when`/`--when`).
 - [ ] Implement `change --on` rename end-to-end in CLI, parser diagnostics, engine wiring, and tests.
 - [ ] Implement `property` command runtime path and `--capture` modes, replacing `when` surface end-to-end.
@@ -350,3 +352,4 @@ Contract invariants to preserve:
 Revision Note: 2026-03-05 / OpenCode - Created active ExecPlan from backlog items for `when`->`property`, `property --capture`, and user-mandated hard-break migration to `--on` for both `property` and `change`.
 Revision Note: 2026-03-05 / OpenCode - Revised plan after review: made default omitted-`--on` semantics explicit, defined baseline behavior for `switch/assert/deassert`, clarified transitional backlog wording for `change --when` to `--on`, and added concrete expected-output signatures for stateless verification.
 Revision Note: 2026-03-05 / OpenCode - Applied independent review follow-ups: synchronized baseline rule for `match` with other capture modes (strictly after baseline), added concrete fixture-based acceptance example, and aligned tech-debt closure wording to `change --on`.
+Revision Note: 2026-03-05 / OpenCode - Recorded dual review completion in `Progress` for planning-stage quality gate traceability.

@@ -1,12 +1,12 @@
 pub mod change;
 pub mod info;
+pub mod property;
 pub mod schema;
 pub mod scope;
 pub mod signal;
 pub mod time;
 pub mod value;
 mod value_format;
-pub mod when;
 
 use serde::Serialize;
 
@@ -21,7 +21,7 @@ pub enum Command {
     Signal(cli::signal::SignalArgs),
     Value(cli::value::ValueArgs),
     Change(cli::change::ChangeArgs),
-    When(cli::when::WhenArgs),
+    Property(cli::property::PropertyArgs),
 }
 
 #[allow(dead_code)]
@@ -86,6 +86,6 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Signal(args) => signal::run(args),
         Command::Value(args) => value::run(args),
         Command::Change(args) => change::run(args),
-        Command::When(args) => when::run(args),
+        Command::Property(args) => property::run(args),
     }
 }

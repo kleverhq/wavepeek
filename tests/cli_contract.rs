@@ -5,7 +5,7 @@ mod common;
 use common::wavepeek_cmd;
 
 const SHIPPED_COMMANDS: [&str; 7] = [
-    "info", "scope", "signal", "value", "change", "when", "schema",
+    "info", "scope", "signal", "value", "change", "property", "schema",
 ];
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
@@ -105,7 +105,7 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("value"))
         .stdout(predicate::str::contains("change"))
         .stdout(predicate::str::contains("\n  changes\n").not())
-        .stdout(predicate::str::contains("when"))
+        .stdout(predicate::str::contains("property"))
         .stdout(predicate::str::contains("\n  help\n").not());
 }
 
@@ -156,7 +156,7 @@ fn top_level_help_marks_unimplemented_subcommands() {
                 .not(),
         )
         .stdout(predicate::str::contains(
-            "Find cycles where a condition is true (not implemented yet)",
+            "Check property over event triggers (not implemented yet)",
         ));
 }
 
@@ -170,12 +170,12 @@ fn help_lists_schema_after_waveform_commands() {
     let schema_index = output
         .find("\n  schema")
         .expect("help output should list schema subcommand");
-    let when_index = output
-        .find("\n  when")
-        .expect("help output should list when subcommand");
+    let property_index = output
+        .find("\n  property")
+        .expect("help output should list property subcommand");
 
     assert!(
-        schema_index > when_index,
+        schema_index > property_index,
         "schema should appear after waveform commands in top-level help"
     );
 }
@@ -253,7 +253,7 @@ fn command_name_parser_ignores_wrapped_description_lines() {
 
 #[test]
 fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() {
-    for command_name in ["info", "scope", "signal", "value", "change", "when"] {
+    for command_name in ["info", "scope", "signal", "value", "change", "property"] {
         let long_help = successful_stdout_text(&[command_name, "--help"]);
 
         assert!(
@@ -281,7 +281,7 @@ fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() 
 
 #[test]
 fn waveform_help_avoids_literal_error_or_warning_message_bodies() {
-    for command_name in ["info", "scope", "signal", "value", "change", "when"] {
+    for command_name in ["info", "scope", "signal", "value", "change", "property"] {
         let long_help = successful_stdout_text(&[command_name, "--help"]);
 
         assert!(
@@ -347,11 +347,11 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
             ],
         ),
         (
-            "when",
+            "property",
             &[
                 "Intended semantics",
                 "Execution is not implemented yet",
-                "--max unlimited",
+                "--capture",
                 "wavepeek schema",
             ],
         ),
@@ -424,18 +424,18 @@ fn shipped_commands_help_is_self_descriptive() {
             &[
                 "range-based delta snapshots",
                 "Range boundaries are inclusive",
-                "omitted `--when` behaves as wildcard",
+                "omitted `--on` behaves as wildcard",
                 "Empty-result and truncation conditions may emit warnings",
                 "logical-condition execution for `iff` is deferred",
                 "wavepeek schema",
             ],
         ),
         (
-            "when",
+            "property",
             &[
-                "Find cycles where a condition is true",
-                "Qualifiers select all matches, first N, or last N",
-                "--max unlimited",
+                "Check property over event triggers",
+                "Intended semantics",
+                "--capture",
                 "Execution is not implemented yet",
                 "wavepeek schema",
             ],
@@ -500,16 +500,14 @@ fn subcommand_help_uses_extended_prd_descriptions() {
             "Truncation and disabled-limit conditions emit warnings",
         ));
 
-    let mut when_command = wavepeek_cmd();
+    let mut property_command = wavepeek_cmd();
 
-    when_command
-        .args(["when", "--help"])
+    property_command
+        .args(["property", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Intended semantics"))
-        .stdout(predicate::str::contains(
-            "Qualifiers select all matches, first N, or last N",
-        ));
+        .stdout(predicate::str::contains("--capture"));
 }
 
 #[test]
@@ -551,30 +549,29 @@ fn help_documents_unlimited_limit_literals_for_all_affected_commands() {
         .stdout(predicate::str::contains("unlimited"));
 
     wavepeek_cmd()
-        .args(["when", "--help"])
+        .args(["property", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("--max <LIMIT>"))
-        .stdout(predicate::str::contains("--max"))
-        .stdout(predicate::str::contains("unlimited"));
+        .stdout(predicate::str::contains("--capture <MODE>"))
+        .stdout(predicate::str::contains("switch"));
 }
 
 #[test]
-fn when_accepts_unlimited_max_in_cli_then_fails_as_unimplemented() {
+fn property_accepts_capture_flag_in_cli_then_fails_as_unimplemented() {
     let fixture = common::fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     wavepeek_cmd()
         .args([
-            "when",
+            "property",
             "--waves",
             fixture.as_str(),
-            "--clk",
-            "top.clk",
-            "--cond",
+            "--on",
+            "posedge top.clk",
+            "--eval",
             "1",
-            "--max",
-            "unlimited",
+            "--capture",
+            "switch",
         ])
         .assert()
         .failure()
@@ -582,7 +579,7 @@ fn when_accepts_unlimited_max_in_cli_then_fails_as_unimplemented() {
         .stderr(predicate::str::starts_with("error: unimplemented:"))
         .stderr(predicate::str::contains("error: args:").not())
         .stderr(predicate::str::contains(
-            "`when` command execution is not implemented yet",
+            "`property` command execution is not implemented yet",
         ));
 }
 
@@ -602,9 +599,9 @@ fn unimplemented_subcommands_disclose_status_in_help() {
         .success()
         .stdout(predicate::str::contains("Execution is not implemented yet.").not());
 
-    let mut when_command = wavepeek_cmd();
-    when_command
-        .args(["when", "--help"])
+    let mut property_command = wavepeek_cmd();
+    property_command
+        .args(["property", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains(
@@ -613,14 +610,14 @@ fn unimplemented_subcommands_disclose_status_in_help() {
 }
 
 #[test]
-fn change_help_documents_when_trigger_and_does_not_expose_clk() {
+fn change_help_documents_on_trigger_and_does_not_expose_clk() {
     let mut command = wavepeek_cmd();
 
     command
         .args(["change", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("--when"))
+        .stdout(predicate::str::contains("--on"))
         .stdout(predicate::str::contains("--clk").not())
         .stdout(predicate::str::contains("--tune-engine").not())
         .stdout(predicate::str::contains("--tune-candidates").not())
@@ -628,6 +625,29 @@ fn change_help_documents_when_trigger_and_does_not_expose_clk() {
         .stdout(predicate::str::contains("--perf-engine").not())
         .stdout(predicate::str::contains("--perf-candidates").not())
         .stdout(predicate::str::contains("--perf-edge-fast-force").not());
+}
+
+#[test]
+fn change_rejects_legacy_when_flag_without_alias() {
+    let fixture = common::fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--when",
+            "*",
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--when'"))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
 
 #[test]
@@ -748,6 +768,20 @@ fn legacy_changes_command_is_rejected_without_alias() {
         .stderr(predicate::str::contains(
             "unrecognized subcommand 'changes'",
         ))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+#[test]
+fn legacy_when_command_is_rejected_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("when")
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unrecognized subcommand 'when'"))
         .stderr(predicate::str::contains("See 'wavepeek --help'."));
 }
 
@@ -886,15 +920,16 @@ fn all_commands_reject_human_flag() {
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 
-    let mut when = wavepeek_cmd();
-    when.args([
-        "when", "--waves", "dump.vcd", "--clk", "clk", "--cond", "1", "--human",
-    ])
-    .assert()
-    .failure()
-    .stderr(predicate::str::starts_with("error: args:"))
-    .stderr(predicate::str::contains("unexpected argument '--human'"))
-    .stderr(predicate::str::contains("See 'wavepeek when --help'."));
+    let mut property = wavepeek_cmd();
+    property
+        .args([
+            "property", "--waves", "dump.vcd", "--on", "*", "--eval", "1", "--human",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--human'"))
+        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
 }
 
 #[test]

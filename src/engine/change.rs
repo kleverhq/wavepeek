@@ -189,7 +189,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
 
-    let event_expr_source = args.when.as_deref().unwrap_or("*");
+    let event_expr_source = args.on.as_deref().unwrap_or("*");
     let event_expr = parse_event_expr(event_expr_source)?;
 
     if event_expr.terms.iter().any(|term| term.iff_expr.is_some()) {
@@ -1281,7 +1281,7 @@ fn validate_event_name(name: &str) -> Result<&str, WavepeekError> {
     let name = name.trim();
     if name.is_empty() {
         return Err(WavepeekError::Args(
-            "invalid --when expression: missing signal name. See 'wavepeek change --help'."
+            "invalid --on expression: missing signal name. See 'wavepeek change --help'."
                 .to_string(),
         ));
     }

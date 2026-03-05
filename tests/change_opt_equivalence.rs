@@ -89,7 +89,7 @@ fn change_uses_strict_previous_timestamp_not_previous_candidate() {
             "10ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "posedge top.trig",
         ],
     );
@@ -125,7 +125,7 @@ fn change_from_inside_window_respects_intermediate_non_candidate_updates() {
             "10ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "posedge top.trig",
         ],
     );
@@ -154,7 +154,7 @@ fn change_empty_window_from_equals_to_remains_empty() {
             "5ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "top.sig",
         ],
     );
@@ -183,7 +183,7 @@ fn change_all_candidates_at_or_before_baseline_do_not_emit() {
             "5ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "posedge top.trig",
         ],
     );
@@ -251,7 +251,7 @@ fn change_redundant_same_value_dump_does_not_emit_row() {
             "10ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "top.sig",
         ],
     );
@@ -286,7 +286,7 @@ fn change_anychange_trigger_detects_none_to_some_transition() {
             "5ns",
             "--signals",
             "top.sig",
-            "--when",
+            "--on",
             "top.trig",
         ],
     );
@@ -320,7 +320,7 @@ fn change_forced_edge_fast_falls_back_for_non_edge_triggers() {
         "10ns",
         "--signals",
         "top.sig",
-        "--when",
+        "--on",
         "top.sig",
     ];
 
@@ -347,7 +347,7 @@ fn change_trigger_matrix_matches_between_baseline_and_fused() {
             "20ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "negedge top.clk",
         ],
         vec![
@@ -357,7 +357,7 @@ fn change_trigger_matrix_matches_between_baseline_and_fused() {
             "20ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "edge top.clk",
         ],
         vec![
@@ -367,7 +367,7 @@ fn change_trigger_matrix_matches_between_baseline_and_fused() {
             "20ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "posedge top.clk, negedge top.gate",
         ],
         vec![
@@ -377,7 +377,7 @@ fn change_trigger_matrix_matches_between_baseline_and_fused() {
             "20ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "top.gate",
         ],
     ] {
@@ -404,7 +404,7 @@ fn change_dense_posedge_sparse_delta_matches_all_modes() {
             "10ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "posedge top.clk",
         ],
     );
@@ -446,7 +446,7 @@ fn change_edge_without_requested_delta_remains_empty_in_all_modes() {
             "4ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "posedge top.clk",
         ],
     );
@@ -475,7 +475,7 @@ fn change_union_edge_trigger_dedups_same_timestamp_in_all_modes() {
             "10ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "posedge top.clk, negedge top.gate",
         ],
     );
@@ -517,7 +517,7 @@ fn change_dense_edge_max_one_truncation_matches_all_modes() {
             "10ns",
             "--signals",
             "top.data",
-            "--when",
+            "--on",
             "posedge top.clk",
             "--max",
             "1",
@@ -557,7 +557,7 @@ fn change_auto_dense_any_tracked_profile_matches_fused_output() {
         "800ns",
         "--signals",
         signals.as_str(),
-        "--when",
+        "--on",
         "*",
     ];
 
@@ -582,7 +582,7 @@ fn change_auto_dense_edge_profile_matches_edge_fast_output() {
         "100000ns",
         "--signals",
         signals.as_str(),
-        "--when",
+        "--on",
         "posedge top.clk",
     ];
 
@@ -607,7 +607,7 @@ fn change_auto_sparse_any_tracked_profile_matches_baseline_output() {
         "8ns",
         "--signals",
         signals.as_str(),
-        "--when",
+        "--on",
         "*",
     ];
 
@@ -632,7 +632,7 @@ fn change_auto_sparse_edge_profile_matches_baseline_output() {
         "8ns",
         "--signals",
         signals.as_str(),
-        "--when",
+        "--on",
         "posedge top.clk",
     ];
 

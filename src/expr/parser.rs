@@ -18,7 +18,7 @@ pub fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
     let source = source.trim();
     if source.is_empty() {
         return Err(WavepeekError::Args(
-            "--when expression cannot be empty. See 'wavepeek change --help'.".to_string(),
+            "--on expression cannot be empty. See 'wavepeek change --help'.".to_string(),
         ));
     }
 
@@ -189,7 +189,7 @@ fn token_boundary(input: &str, start: usize, token: &str) -> bool {
 
 fn invalid_event_expr_error(source: &str) -> WavepeekError {
     WavepeekError::Args(format!(
-        "invalid --when expression '{source}'. See 'wavepeek change --help'."
+        "invalid --on expression '{source}'. See 'wavepeek change --help'."
     ))
 }
 

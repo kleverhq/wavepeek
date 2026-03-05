@@ -42,7 +42,7 @@ pub struct ChangeArgs {
     pub signals: Vec<String>,
     /// Event trigger expression (default: `*` when omitted)
     #[arg(long)]
-    pub when: Option<String>,
+    pub on: Option<String>,
     /// Maximum number of snapshot rows (default: 50, `unlimited` disables truncation, value must be > 0)
     #[arg(long, default_value = "50")]
     pub max: LimitArg,

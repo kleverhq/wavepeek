@@ -1,11 +1,11 @@
 pub mod change;
 pub mod info;
 pub mod limits;
+pub mod property;
 pub mod schema;
 pub mod scope;
 pub mod signal;
 pub mod value;
-pub mod when;
 
 use clap::error::ErrorKind;
 use clap::parser::ValueSource;
@@ -26,7 +26,7 @@ It provides deterministic, machine-friendly output and a minimal set of primitiv
 General conventions:
 - No positional command arguments: after choosing a subcommand, inputs are named flags.
 - Waveform commands require `--waves <FILE>`; `schema` is the exception and accepts no waveform input flags.
-- Output is bounded by default (for example with `--max`, `--first`/`--last`, or finite command shape) and recursive traversals are depth-bounded.
+ - Output is bounded by default (for example with `--max` or finite command shape) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
@@ -104,7 +104,7 @@ Use this command for deterministic spot checks at a specific timestamp."#
 
 Behavior:
 - Range boundaries are inclusive; baseline state is initialized at range start.
-- Candidate timestamps come from `--when` triggers; omitted `--when` behaves as wildcard (`*`).
+- Candidate timestamps come from `--on` triggers; omitted `--on` behaves as wildcard (`*`).
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result and truncation conditions may emit warnings.
 - `iff` clauses are parsed, but logical-condition execution for `iff` is deferred in the current release.
@@ -114,19 +114,19 @@ Use this command to inspect value transitions over bounded time windows."#
     )]
     Change(change::ChangeArgs),
     #[command(
-        about = "Find cycles where a condition is true (not implemented yet)",
-        long_about = r#"Find cycles where a condition is true.
+        about = "Check property over event triggers (not implemented yet)",
+        long_about = r#"Check property over event triggers.
 
 Behavior:
-- Intended semantics: evaluate `--cond` on each posedge of `--clk` and report matching timestamps.
-- Qualifiers select all matches, first N, or last N using `--max`, `--first`, and `--last`.
-- `--max unlimited` is accepted by CLI parsing when no qualifier is used.
+- Intended semantics: evaluate `--eval` on timestamps selected by `--on`.
+- `--capture` controls reporting mode (`match`, `switch`, `assert`, `deassert`).
+- Omitted `--on` behaves as wildcard (`*`).
 - Execution is not implemented yet.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this help as the parse/contract reference until runtime execution is implemented."#
     )]
-    When(when::WhenArgs),
+    Property(property::PropertyArgs),
     #[command(
         about = "Print canonical JSON schema contract",
         long_about = r#"Prints the canonical JSON schema document for wavepeek machine output contracts.
@@ -332,7 +332,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
         Command::Signal(args) => EngineCommand::Signal(args),
         Command::Value(args) => EngineCommand::Value(args),
         Command::Change(args) => EngineCommand::Change(args),
-        Command::When(args) => EngineCommand::When(args),
+        Command::Property(args) => EngineCommand::Property(args),
     }
 }
 
@@ -492,7 +492,7 @@ mod tests {
     }
 
     #[test]
-    fn change_dispatch_keeps_when_abs_and_limits() {
+    fn change_dispatch_keeps_on_abs_and_limits() {
         let cli = Cli::parse_from([
             "wavepeek",
             "change",
@@ -506,7 +506,7 @@ mod tests {
             "top",
             "--signals",
             "clk,data",
-            "--when",
+            "--on",
             "posedge clk",
             "--max",
             "12",
@@ -522,7 +522,7 @@ mod tests {
                 assert_eq!(args.to.as_deref(), Some("10ns"));
                 assert_eq!(args.scope.as_deref(), Some("top"));
                 assert_eq!(args.signals, vec!["clk", "data"]);
-                assert_eq!(args.when.as_deref(), Some("posedge clk"));
+                assert_eq!(args.on.as_deref(), Some("posedge clk"));
                 assert_eq!(args.max, LimitArg::Numeric(12));
                 assert!(args.abs);
                 assert!(args.json);
@@ -532,28 +532,26 @@ mod tests {
     }
 
     #[test]
-    fn when_dispatch_parses_unlimited_max_literal() {
+    fn property_dispatch_parses_capture_default() {
         let cli = Cli::parse_from([
             "wavepeek",
-            "when",
+            "property",
             "--waves",
             "fixtures/sample.vcd",
-            "--clk",
-            "top.clk",
-            "--cond",
+            "--on",
+            "posedge top.clk",
+            "--eval",
             "1",
-            "--max",
-            "unlimited",
         ]);
 
         let command = into_engine_command(cli.command);
         match command {
-            EngineCommand::When(args) => {
-                assert_eq!(args.max, Some(LimitArg::Unlimited));
-                assert_eq!(args.clk, "top.clk");
-                assert_eq!(args.cond, "1");
+            EngineCommand::Property(args) => {
+                assert_eq!(args.on.as_deref(), Some("posedge top.clk"));
+                assert_eq!(args.eval, "1");
+                assert_eq!(args.capture, crate::cli::property::CaptureMode::Switch);
             }
-            other => panic!("expected when command, got {other:?}"),
+            other => panic!("expected property command, got {other:?}"),
         }
     }
 

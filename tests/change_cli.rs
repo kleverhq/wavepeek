@@ -93,7 +93,7 @@ fn change_omitted_when_matches_explicit_wildcard() {
             "--json",
         ])
         .output()
-        .expect("default --when run should execute");
+        .expect("default --on run should execute");
     let star_output = wavepeek_cmd()
         .args([
             "change",
@@ -105,7 +105,7 @@ fn change_omitted_when_matches_explicit_wildcard() {
             "10ns",
             "--signals",
             "top.clk,top.data",
-            "--when",
+            "--on",
             "*",
             "--json",
         ])
@@ -136,7 +136,7 @@ fn change_named_non_edge_trigger_emits_expected_single_row() {
             "top",
             "--signals",
             "data,clk",
-            "--when",
+            "--on",
             "data",
             "--json",
         ])
@@ -180,7 +180,7 @@ fn change_zero_delta_path_returns_empty_data_with_warning() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "posedge clk",
             "--json",
         ])
@@ -214,7 +214,7 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "posedge clk",
             "--json",
         ])
@@ -233,7 +233,7 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "posedge clk",
         ])
         .output()
@@ -332,7 +332,7 @@ fn change_omitted_from_uses_dump_start_baseline_checkpoint() {
             "top",
             "--signals",
             "sig",
-            "--when",
+            "--on",
             "*",
             "--json",
         ])
@@ -373,7 +373,7 @@ fn change_from_timestamp_is_baseline_only_for_emission() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "posedge clk",
             "--json",
         ])
@@ -407,7 +407,7 @@ fn change_equal_from_and_to_never_emits_baseline_row() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "posedge clk",
             "--json",
         ])
@@ -479,7 +479,7 @@ fn change_union_or_and_comma_forms_are_exact_synonyms() {
             "top",
             "--signals",
             "clk1",
-            "--when",
+            "--on",
             "posedge clk1, posedge clk2",
             "--json",
         ])
@@ -498,7 +498,7 @@ fn change_union_or_and_comma_forms_are_exact_synonyms() {
             "top",
             "--signals",
             "clk1",
-            "--when",
+            "--on",
             "posedge clk1 or posedge clk2",
             "--json",
         ])
@@ -529,7 +529,7 @@ fn change_union_overlap_timestamp_is_deduplicated() {
             "top",
             "--signals",
             "clk1",
-            "--when",
+            "--on",
             "posedge clk1, posedge clk2",
             "--json",
         ])
@@ -561,7 +561,7 @@ fn change_negedge_wiring_is_end_to_end() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "negedge clk",
             "--json",
         ])
@@ -600,7 +600,7 @@ fn change_edge_wiring_is_end_to_end() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "edge clk",
             "--json",
         ])
@@ -635,7 +635,7 @@ fn change_iff_is_recognized_but_runtime_is_deferred() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "negedge clk iff rstn",
         ])
         .assert()
@@ -656,7 +656,7 @@ fn change_iff_is_recognized_but_runtime_is_deferred() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "posedge clk iff (",
         ])
         .assert()
@@ -1299,7 +1299,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
             "top",
             "--signals",
             "top.clk",
-            "--when",
+            "--on",
             "posedge top.clk",
         ])
         .assert()
@@ -1313,7 +1313,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
             "change",
             "--waves",
             fixture.as_str(),
-            "--when",
+            "--on",
             "posedge nope",
             "--signals",
             "top.clk",
@@ -1452,7 +1452,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
             "4ns",
             "--signals",
             "top.clk",
-            "--when",
+            "--on",
             "posedge top.nope",
         ])
         .assert()
@@ -1474,7 +1474,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "posedge nope",
         ])
         .assert()
@@ -1514,7 +1514,7 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
             "top",
             "--signals",
             "clk",
-            "--when",
+            "--on",
             "posedge top.clk",
         ])
         .assert()

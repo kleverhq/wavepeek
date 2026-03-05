@@ -82,7 +82,7 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
             "top",
             "--signals",
             "data,clk",
-            "--when",
+            "--on",
             "data",
         ],
         vec![
@@ -94,7 +94,7 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
             "top",
             "--signals",
             "data",
-            "--when",
+            "--on",
             "posedge clk",
         ],
     ] {

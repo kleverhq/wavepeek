@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::cli::at::AtArgs;
+use crate::cli::value::ValueArgs;
 use crate::engine::time::{
     TimeValidationError, format_raw_timestamp, parse_dump_time_context, validate_time_token_to_raw,
 };
@@ -10,7 +10,7 @@ use crate::error::WavepeekError;
 use crate::waveform::{Waveform, WaveformMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct AtSignalValue {
+pub struct ValueSignalValue {
     #[serde(skip_serializing)]
     pub display: String,
     pub path: String,
@@ -18,9 +18,9 @@ pub struct AtSignalValue {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct AtData {
+pub struct ValueData {
     pub time: String,
-    pub signals: Vec<AtSignalValue>,
+    pub signals: Vec<ValueSignalValue>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,15 +29,15 @@ struct RequestedSignal {
     path: String,
 }
 
-pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
+pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     let mut waveform = Waveform::open(args.waves.as_path())?;
     let metadata = waveform.metadata()?;
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
 
     let dump_time = parse_dump_time_context(&metadata)?;
-    let query_time_raw = validate_time_token_to_raw(args.time.as_str(), dump_time, false)
-        .map_err(|error| map_at_time_validation_error(args.time.as_str(), &metadata, error))?;
+    let query_time_raw = validate_time_token_to_raw(args.at.as_str(), dump_time, false)
+        .map_err(|error| map_value_time_validation_error(args.at.as_str(), &metadata, error))?;
 
     let canonical_paths = requested_signals
         .iter()
@@ -48,7 +48,7 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
     let signals = requested_signals
         .into_iter()
         .zip(sampled)
-        .map(|(requested, sampled)| AtSignalValue {
+        .map(|(requested, sampled)| ValueSignalValue {
             display: requested.display,
             path: sampled.path,
             value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
@@ -58,13 +58,13 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
     let normalized_time = format_raw_timestamp(query_time_raw, dump_time.dump_tick)?;
 
     Ok(CommandResult {
-        command: CommandName::At,
+        command: CommandName::Value,
         json: args.json,
         human_options: crate::engine::HumanRenderOptions {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        data: CommandData::At(AtData {
+        data: CommandData::Value(ValueData {
             time: normalized_time,
             signals,
         }),
@@ -75,7 +75,7 @@ pub fn run(args: AtArgs) -> Result<CommandResult, WavepeekError> {
 fn resolve_requested_signals(
     waveform: &Waveform,
     scope: Option<&str>,
-    args: &AtArgs,
+    args: &ValueArgs,
 ) -> Result<Vec<RequestedSignal>, WavepeekError> {
     if let Some(scope) = scope {
         waveform.signals_in_scope(scope)?;
@@ -86,7 +86,7 @@ fn resolve_requested_signals(
         let display = token.trim();
         if display.is_empty() {
             return Err(WavepeekError::Args(
-                "signal names must not be empty. See 'wavepeek at --help'.".to_string(),
+                "signal names must not be empty. See 'wavepeek value --help'.".to_string(),
             ));
         }
 
@@ -103,7 +103,7 @@ fn resolve_requested_signals(
     Ok(resolved)
 }
 
-fn map_at_time_validation_error(
+fn map_value_time_validation_error(
     token: &str,
     metadata: &WaveformMetadata,
     error: TimeValidationError,
@@ -111,22 +111,22 @@ fn map_at_time_validation_error(
     match error {
         TimeValidationError::RequiresUnits | TimeValidationError::InvalidToken => {
             WavepeekError::Args(format!(
-                "invalid time token '{token}': expected <integer><unit> (for example 10ns). See 'wavepeek at --help'."
+                "invalid time token '{token}': expected <integer><unit> (for example 10ns). See 'wavepeek value --help'."
             ))
         }
         TimeValidationError::TooLarge => WavepeekError::Args(format!(
-            "time '{token}' is too large to process safely. See 'wavepeek at --help'."
+            "time '{token}' is too large to process safely. See 'wavepeek value --help'."
         )),
         TimeValidationError::OutOfBounds => WavepeekError::Args(format!(
-            "time '{token}' is outside dump bounds [{}, {}]. See 'wavepeek at --help'.",
+            "time '{token}' is outside dump bounds [{}, {}]. See 'wavepeek value --help'.",
             metadata.time_start, metadata.time_end
         )),
         TimeValidationError::NotAligned => WavepeekError::Args(format!(
-            "time '{token}' is not aligned to dump resolution '{}'. See 'wavepeek at --help'.",
+            "time '{token}' is not aligned to dump resolution '{}'. See 'wavepeek value --help'.",
             metadata.time_unit
         )),
         TimeValidationError::RawOutOfRange => WavepeekError::Args(format!(
-            "time '{token}' exceeds supported raw timestamp range. See 'wavepeek at --help'."
+            "time '{token}' exceeds supported raw timestamp range. See 'wavepeek value --help'."
         )),
     }
 }

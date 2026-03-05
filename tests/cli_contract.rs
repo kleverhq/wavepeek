@@ -4,7 +4,9 @@ use predicates::prelude::*;
 mod common;
 use common::wavepeek_cmd;
 
-const SHIPPED_COMMANDS: [&str; 7] = ["info", "scope", "signal", "at", "change", "when", "schema"];
+const SHIPPED_COMMANDS: [&str; 7] = [
+    "info", "scope", "signal", "value", "change", "when", "schema",
+];
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
     let mut command = wavepeek_cmd();
@@ -100,7 +102,7 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("\n  tree\n").not())
         .stdout(predicate::str::contains("signal"))
         .stdout(predicate::str::contains("\n  signals\n").not())
-        .stdout(predicate::str::contains("at"))
+        .stdout(predicate::str::contains("value"))
         .stdout(predicate::str::contains("change"))
         .stdout(predicate::str::contains("\n  changes\n").not())
         .stdout(predicate::str::contains("when"))
@@ -251,7 +253,7 @@ fn command_name_parser_ignores_wrapped_description_lines() {
 
 #[test]
 fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() {
-    for command_name in ["info", "scope", "signal", "at", "change", "when"] {
+    for command_name in ["info", "scope", "signal", "value", "change", "when"] {
         let long_help = successful_stdout_text(&[command_name, "--help"]);
 
         assert!(
@@ -279,7 +281,7 @@ fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() 
 
 #[test]
 fn waveform_help_avoids_literal_error_or_warning_message_bodies() {
-    for command_name in ["info", "scope", "signal", "at", "change", "when"] {
+    for command_name in ["info", "scope", "signal", "value", "change", "when"] {
         let long_help = successful_stdout_text(&[command_name, "--help"]);
 
         assert!(
@@ -327,7 +329,7 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
             ],
         ),
         (
-            "at",
+            "value",
             &[
                 "point-in-time sampling",
                 "input order from `--signals`",
@@ -408,7 +410,7 @@ fn shipped_commands_help_is_self_descriptive() {
             ],
         ),
         (
-            "at",
+            "value",
             &[
                 "point-in-time sampling",
                 "input order from `--signals`",
@@ -586,9 +588,9 @@ fn when_accepts_unlimited_max_in_cli_then_fails_as_unimplemented() {
 
 #[test]
 fn unimplemented_subcommands_disclose_status_in_help() {
-    let mut at_command = wavepeek_cmd();
-    at_command
-        .args(["at", "--help"])
+    let mut value_command = wavepeek_cmd();
+    value_command
+        .args(["value", "--help"])
         .assert()
         .success()
         .stdout(predicate::str::contains("Execution is not implemented yet.").not());
@@ -750,6 +752,42 @@ fn legacy_changes_command_is_rejected_without_alias() {
 }
 
 #[test]
+fn legacy_at_command_is_rejected_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg("at")
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unrecognized subcommand 'at'"))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+#[test]
+fn value_rejects_legacy_time_flag_without_alias() {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args([
+            "value",
+            "--waves",
+            "dump.vcd",
+            "--time",
+            "1ns",
+            "--signals",
+            "sig",
+        ])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--time'"))
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
+}
+
+#[test]
 fn positional_arguments_are_rejected() {
     let mut command = wavepeek_cmd();
 
@@ -814,22 +852,23 @@ fn all_commands_reject_human_flag() {
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 
-    let mut at = wavepeek_cmd();
-    at.args([
-        "at",
-        "--waves",
-        "dump.vcd",
-        "--time",
-        "1ns",
-        "--signals",
-        "sig",
-        "--human",
-    ])
-    .assert()
-    .failure()
-    .stderr(predicate::str::starts_with("error: args:"))
-    .stderr(predicate::str::contains("unexpected argument '--human'"))
-    .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+    let mut value = wavepeek_cmd();
+    value
+        .args([
+            "value",
+            "--waves",
+            "dump.vcd",
+            "--at",
+            "1ns",
+            "--signals",
+            "sig",
+            "--human",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--human'"))
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 
     let mut change = wavepeek_cmd();
     change

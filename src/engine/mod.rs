@@ -1,10 +1,10 @@
-pub mod at;
 pub mod change;
 pub mod info;
 pub mod schema;
 pub mod scope;
 pub mod signal;
 pub mod time;
+pub mod value;
 mod value_format;
 pub mod when;
 
@@ -19,7 +19,7 @@ pub enum Command {
     Info(cli::info::InfoArgs),
     Scope(cli::scope::ScopeArgs),
     Signal(cli::signal::SignalArgs),
-    At(cli::at::AtArgs),
+    Value(cli::value::ValueArgs),
     Change(cli::change::ChangeArgs),
     When(cli::when::WhenArgs),
 }
@@ -31,7 +31,7 @@ pub enum CommandName {
     Info,
     Scope,
     Signal,
-    At,
+    Value,
     Change,
 }
 
@@ -42,7 +42,7 @@ impl CommandName {
             Self::Info => "info",
             Self::Scope => "scope",
             Self::Signal => "signal",
-            Self::At => "at",
+            Self::Value => "value",
             Self::Change => "change",
         }
     }
@@ -62,7 +62,7 @@ pub enum CommandData {
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),
     Signal(Vec<signal::SignalEntry>),
-    At(at::AtData),
+    Value(value::ValueData),
     Change(Vec<change::ChangeSnapshot>),
 }
 
@@ -84,7 +84,7 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Info(args) => info::run(args),
         Command::Scope(args) => scope::run(args),
         Command::Signal(args) => signal::run(args),
-        Command::At(args) => at::run(args),
+        Command::Value(args) => value::run(args),
         Command::Change(args) => change::run(args),
         Command::When(args) => when::run(args),
     }

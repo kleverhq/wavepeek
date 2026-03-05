@@ -91,10 +91,10 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
-        CommandData::At(at_data) => {
-            let mut lines = Vec::with_capacity(at_data.signals.len() + 1);
-            lines.push(format!("@{}", at_data.time));
-            for signal in &at_data.signals {
+        CommandData::Value(value_data) => {
+            let mut lines = Vec::with_capacity(value_data.signals.len() + 1);
+            lines.push(format!("@{}", value_data.time));
+            for signal in &value_data.signals {
                 let display = if options.signals_abs {
                     signal.path.as_str()
                 } else {
@@ -299,17 +299,17 @@ mod tests {
     }
 
     #[test]
-    fn at_human_render_is_deterministic_and_compact() {
+    fn value_human_render_is_deterministic_and_compact() {
         let rendered = render_human(
-            &CommandData::At(crate::engine::at::AtData {
+            &CommandData::Value(crate::engine::value::ValueData {
                 time: "10ns".to_string(),
                 signals: vec![
-                    crate::engine::at::AtSignalValue {
+                    crate::engine::value::ValueSignalValue {
                         display: "clk".to_string(),
                         path: "top.clk".to_string(),
                         value: "1'h1".to_string(),
                     },
-                    crate::engine::at::AtSignalValue {
+                    crate::engine::value::ValueSignalValue {
                         display: "data".to_string(),
                         path: "top.data".to_string(),
                         value: "8'h0f".to_string(),

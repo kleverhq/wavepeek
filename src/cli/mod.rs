@@ -1,10 +1,10 @@
-pub mod at;
 pub mod change;
 pub mod info;
 pub mod limits;
 pub mod schema;
 pub mod scope;
 pub mod signal;
+pub mod value;
 pub mod when;
 
 use clap::error::ErrorKind;
@@ -97,7 +97,7 @@ Behavior:
 
 Use this command for deterministic spot checks at a specific timestamp."#
     )]
-    At(at::AtArgs),
+    Value(value::ValueArgs),
     #[command(
         about = "Get value snapshots over a time range",
         long_about = r#"Provides range-based delta snapshots for selected signals.
@@ -330,7 +330,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
         Command::Info(args) => EngineCommand::Info(args),
         Command::Scope(args) => EngineCommand::Scope(args),
         Command::Signal(args) => EngineCommand::Signal(args),
-        Command::At(args) => EngineCommand::At(args),
+        Command::Value(args) => EngineCommand::Value(args),
         Command::Change(args) => EngineCommand::Change(args),
         Command::When(args) => EngineCommand::When(args),
     }
@@ -461,13 +461,13 @@ mod tests {
     }
 
     #[test]
-    fn at_dispatch_keeps_scope_signals_abs_and_json_args() {
+    fn value_dispatch_keeps_scope_signals_abs_and_json_args() {
         let cli = Cli::parse_from([
             "wavepeek",
-            "at",
+            "value",
             "--waves",
             "fixtures/sample.vcd",
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -479,15 +479,15 @@ mod tests {
 
         let command = into_engine_command(cli.command);
         match command {
-            EngineCommand::At(args) => {
+            EngineCommand::Value(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
-                assert_eq!(args.time, "10ns");
+                assert_eq!(args.at, "10ns");
                 assert_eq!(args.scope.as_deref(), Some("top"));
                 assert_eq!(args.signals, vec!["clk", "data"]);
                 assert!(args.abs);
                 assert!(args.json);
             }
-            other => panic!("expected at command, got {other:?}"),
+            other => panic!("expected value command, got {other:?}"),
         }
     }
 

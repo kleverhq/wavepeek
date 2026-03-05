@@ -6,17 +6,17 @@ mod common;
 use common::{expected_schema_url, fixture_path, wavepeek_cmd};
 
 #[test]
-fn at_human_output_with_scope_is_default() {
+fn value_human_output_with_scope_is_default() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -30,17 +30,17 @@ fn at_human_output_with_scope_is_default() {
 }
 
 #[test]
-fn at_human_output_with_abs_shows_canonical_paths() {
+fn value_human_output_with_abs_shows_canonical_paths() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -55,34 +55,34 @@ fn at_human_output_with_abs_shows_canonical_paths() {
 }
 
 #[test]
-fn at_requires_signals_flag() {
+fn value_requires_signals_flag() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
-        .args(["at", "--waves", fixture.as_str(), "--time", "10ns"])
+        .args(["value", "--waves", fixture.as_str(), "--at", "10ns"])
         .assert()
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("--signals <SIGNALS>"))
-        .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
 
 #[test]
-fn at_json_shape_with_scope_is_stable_and_ordered() {
+fn value_json_shape_with_scope_is_stable_and_ordered() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -94,10 +94,10 @@ fn at_json_shape_with_scope_is_stable_and_ordered() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("at output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
 
     assert_eq!(value["$schema"], expected_schema_url());
-    assert_eq!(value["command"], "at");
+    assert_eq!(value["command"], "value");
     assert_eq!(value["warnings"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
@@ -112,17 +112,17 @@ fn at_json_shape_with_scope_is_stable_and_ordered() {
 }
 
 #[test]
-fn at_without_scope_treats_signals_as_canonical_paths() {
+fn value_without_scope_treats_signals_as_canonical_paths() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--signals",
             "top.clk,top.data",
@@ -132,7 +132,7 @@ fn at_without_scope_treats_signals_as_canonical_paths() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("at output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
 
     assert_eq!(
         value["data"]["signals"],
@@ -144,16 +144,16 @@ fn at_without_scope_treats_signals_as_canonical_paths() {
 }
 
 #[test]
-fn at_json_output_is_identical_with_and_without_abs() {
+fn value_json_output_is_identical_with_and_without_abs() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let without_abs = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -165,10 +165,10 @@ fn at_json_output_is_identical_with_and_without_abs() {
         .expect("run without --abs should execute");
     let with_abs = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -187,17 +187,17 @@ fn at_json_output_is_identical_with_and_without_abs() {
 }
 
 #[test]
-fn at_invalid_time_token_is_args_error() {
+fn value_invalid_time_token_is_args_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "100",
             "--scope",
             "top",
@@ -210,21 +210,21 @@ fn at_invalid_time_token_is_args_error() {
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("invalid time token '100'"))
-        .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
 
 #[test]
-fn at_decimal_time_token_is_rejected_as_args_error() {
+fn value_decimal_time_token_is_rejected_as_args_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "1.5ns",
             "--scope",
             "top",
@@ -237,21 +237,21 @@ fn at_decimal_time_token_is_rejected_as_args_error() {
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("invalid time token '1.5ns'"))
-        .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
 
 #[test]
-fn at_out_of_range_time_is_args_error_with_bounds() {
+fn value_out_of_range_time_is_args_error_with_bounds() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "11ns",
             "--scope",
             "top",
@@ -266,21 +266,21 @@ fn at_out_of_range_time_is_args_error_with_bounds() {
         .stderr(predicate::str::contains(
             "time '11ns' is outside dump bounds [0ns, 10ns]",
         ))
-        .stderr(predicate::str::contains("See 'wavepeek at --help'."));
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
 
 #[test]
-fn at_scope_not_found_is_scope_error() {
+fn value_scope_not_found_is_scope_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top.nope",
@@ -295,17 +295,17 @@ fn at_scope_not_found_is_scope_error() {
 }
 
 #[test]
-fn at_missing_signal_is_signal_error_and_fails_fast() {
+fn value_missing_signal_is_signal_error_and_fails_fast() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--signals",
             "top.nope,top.clk",
@@ -318,17 +318,17 @@ fn at_missing_signal_is_signal_error_and_fails_fast() {
 }
 
 #[test]
-fn at_preserves_duplicate_signal_order() {
+fn value_preserves_duplicate_signal_order() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     let assert = command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -340,7 +340,7 @@ fn at_preserves_duplicate_signal_order() {
         .success();
 
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("at output should be valid json");
+    let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
 
     assert_eq!(
         value["data"]["signals"],
@@ -353,17 +353,17 @@ fn at_preserves_duplicate_signal_order() {
 }
 
 #[test]
-fn at_mixed_mode_names_fail_without_scope() {
+fn value_mixed_mode_names_fail_without_scope() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--signals",
             "clk,top.data",
@@ -376,17 +376,17 @@ fn at_mixed_mode_names_fail_without_scope() {
 }
 
 #[test]
-fn at_mixed_mode_names_resolve_with_scope() {
+fn value_mixed_mode_names_resolve_with_scope() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -401,17 +401,17 @@ fn at_mixed_mode_names_resolve_with_scope() {
 }
 
 #[test]
-fn at_full_paths_are_not_accepted_when_scope_is_set() {
+fn value_full_paths_are_not_accepted_when_scope_is_set() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let mut command = wavepeek_cmd();
     command
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -426,16 +426,16 @@ fn at_full_paths_are_not_accepted_when_scope_is_set() {
 }
 
 #[test]
-fn at_accepts_inclusive_time_bounds() {
+fn value_accepts_inclusive_time_bounds() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "0ns",
             "--scope",
             "top",
@@ -448,10 +448,10 @@ fn at_accepts_inclusive_time_bounds() {
 
     wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -464,16 +464,16 @@ fn at_accepts_inclusive_time_bounds() {
 }
 
 #[test]
-fn at_json_is_deterministic_across_identical_runs() {
+fn value_json_is_deterministic_across_identical_runs() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let first = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -485,10 +485,10 @@ fn at_json_is_deterministic_across_identical_runs() {
         .expect("first run should execute");
     let second = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -506,7 +506,7 @@ fn at_json_is_deterministic_across_identical_runs() {
 }
 
 #[test]
-fn at_vcd_and_fst_payloads_match() {
+fn value_vcd_and_fst_payloads_match() {
     let vcd_fixture = fixture_path("m2_core.vcd");
     let vcd_fixture = vcd_fixture.to_string_lossy().into_owned();
     let fst_fixture = fixture_path("m2_core.fst");
@@ -514,10 +514,10 @@ fn at_vcd_and_fst_payloads_match() {
 
     let vcd_output = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             vcd_fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",
@@ -529,10 +529,10 @@ fn at_vcd_and_fst_payloads_match() {
         .expect("vcd run should execute");
     let fst_output = wavepeek_cmd()
         .args([
-            "at",
+            "value",
             "--waves",
             fst_fixture.as_str(),
-            "--time",
+            "--at",
             "10ns",
             "--scope",
             "top",

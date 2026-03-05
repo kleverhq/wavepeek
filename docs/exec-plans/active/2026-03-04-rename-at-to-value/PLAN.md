@@ -29,6 +29,7 @@ This plan does not change point-in-time sampling semantics, signal resolution ru
 - [x] (2026-03-05 06:47Z) Implemented CLI/engine/output/schema rename while preserving behavior: moved modules to `src/cli/value.rs` and `src/engine/value.rs`, replaced `At*` command/type variants with `Value*`, updated parse hints to `wavepeek value --help`, and validated green targeted tests (`value_cli`, `cli_contract`, `change_cli`, `change_opt_equivalence`).
 - [x] (2026-03-05 06:50Z) Updated collateral naming in `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`, and `bench/e2e/tests.json`; schema now uses discriminator `"value"` and `$defs.valueData`.
 - [x] (2026-03-05 06:58Z) Passed full validation gates (`make check`, `make ci`) and completed mandatory review pass #1 plus independent review pass #2 with clean outcomes and no required fixes.
+- [x] (2026-03-05 06:58Z) Re-ran required post-review quality gate after final documentation closure update: `make check` and `make ci` both passed.
 
 ## Surprises & Discoveries
 

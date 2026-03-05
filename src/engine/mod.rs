@@ -27,6 +27,7 @@ pub enum Command {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandName {
+    // `property` intentionally omitted while runtime remains unimplemented.
     Schema,
     Info,
     Scope,
@@ -58,6 +59,7 @@ pub struct HumanRenderOptions {
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum CommandData {
+    // `property` intentionally omitted while runtime remains unimplemented.
     Schema(String),
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),

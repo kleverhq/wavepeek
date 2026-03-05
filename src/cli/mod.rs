@@ -26,7 +26,7 @@ It provides deterministic, machine-friendly output and a minimal set of primitiv
 General conventions:
 - No positional command arguments: after choosing a subcommand, inputs are named flags.
 - Waveform commands require `--waves <FILE>`; `schema` is the exception and accepts no waveform input flags.
- - Output is bounded by default (for example with `--max` or finite command shape) and recursive traversals are depth-bounded.
+- Output is bounded by default (for example with `--max` or finite command shape) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.

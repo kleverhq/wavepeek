@@ -23,11 +23,11 @@ This plan does not change benchmark math, compare pass/fail policy, report table
 - [x] (2026-03-05 13:25Z) Drafted active ExecPlan with SDD scope, TDD-first implementation steps, and acceptance criteria.
 - [x] (2026-03-05 13:35Z) Completed review pass #1 on plan quality; tightened smoke scope, determinism, and test coverage requirements.
 - [x] (2026-03-05 13:47Z) Completed independent review pass #2 on plan quality; tightened binary/fixture pinning and `--tests` path semantics.
-- [ ] Execute Milestone 1 (tests-first CLI surface for `--tests` and verbosity controls).
-- [ ] Execute Milestone 2 (quiet-by-default logging behavior and report/list output changes).
-- [ ] Execute Milestone 3 (pre-commit smoke catalog + Makefile + hook wiring).
-- [ ] Run full validation, complete implementation review pass #1, apply fixes, commit.
-- [ ] Run independent mandatory review pass #2 (fresh context), apply fixes, re-validate, commit.
+- [x] (2026-03-05 18:39Z) Executed Milestone 1 with TDD red/green for new CLI surface (`--tests`, `--verbose`) and output contracts.
+- [x] (2026-03-05 18:41Z) Executed Milestone 2: `list` names-only, quiet-by-default `run`/`compare`, and run report metadata stabilization.
+- [x] (2026-03-05 18:45Z) Executed Milestone 3: added `tests_commit.json`, smoke Make target, and pre-commit hook wiring.
+- [x] (2026-03-05 18:48Z) Completed full validation + implementation review pass #1; applied findings and committed follow-up fixes.
+- [x] (2026-03-05 18:50Z) Completed independent mandatory review pass #2 (fresh context, clean) and re-ran required post-review validation.
 
 ## Surprises & Discoveries
 
@@ -39,6 +39,9 @@ This plan does not change benchmark math, compare pass/fail policy, report table
 
 - Observation: pre-commit currently validates harness unit tests only, not an actual benchmark run/compare smoke path.
   Evidence: `.pre-commit-config.yaml` hook `bench-e2e-test` runs `make test-bench-e2e`, which executes Python unittest discovery in `bench/e2e`.
+
+- Observation: quiet-mode contract initially leaked hyperfine progress output via inherited stdio even after harness `print(...)` calls were gated.
+  Evidence: initial `make bench-e2e-smoke-commit` still emitted `Benchmark 1: ...` blocks before switching non-verbose `run_test(...)` to captured subprocess output.
 
 ## Decision Log
 
@@ -70,13 +73,30 @@ This plan does not change benchmark math, compare pass/fail policy, report table
   Rationale: explicit path semantics eliminate shell/CI/hook ambiguity and match existing harness path normalization style.
   Date/Author: 2026-03-05 / OpenCode
 
+- Decision: treat non-verbose hyperfine failures as concise terminal diagnostics and reserve raw benchmark stderr/stdout details for `--verbose` mode.
+  Rationale: preserves quiet-by-default behavior under failure while keeping a deterministic verbose escape hatch.
+  Date/Author: 2026-03-05 / OpenCode
+
+- Decision: add an explicit smoke-specific fixture preflight target in Make (`check-bench-e2e-smoke-rtl-artifacts`) and include it in `bench-e2e-smoke-commit` prerequisites.
+  Rationale: fails fast with clearer diagnostics when any fixture required by `tests_commit.json` is missing.
+  Date/Author: 2026-03-05 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation complete and validated; both mandatory review passes are complete (pass #1 fixed findings and pass #2 clean).
 
-Expected outcome after implementation: `perf.py list` prints test names only, `run` and `compare` stay silent during execution unless `--verbose` is provided, generated run reports omit the run-directory line, and pre-commit executes a lightweight real benchmark smoke path powered by `tests_commit.json`.
+Implemented outcome: `perf.py list` now prints names only; `run` and `compare` are quiet by default with `--verbose` opt-in; generated run reports no longer include `- Run directory:`; and pre-commit executes a lightweight real run+compare smoke path using `tests_commit.json`.
 
-Primary risk to watch during implementation: over-suppressing error information in non-verbose mode. The acceptance contract below keeps one-line success/failure outcomes visible while reserving detailed diagnostics for verbose mode.
+Validation closure evidence captured during implementation:
+
+- `python3 -m unittest bench.e2e.test_perf` red phase (new CLI/output tests failed before implementation) and green phase (44 tests passing).
+- `make test-bench-e2e` passing.
+- `make bench-e2e-smoke-commit` passing with concise quiet-mode outcomes.
+- `pre-commit run bench-e2e-smoke-commit --all-files` passing.
+- `make check` passing.
+- `make ci` passing.
+
+Residual risk: low. Quiet mode now suppresses routine/noisy progress output while preserving deterministic failure semantics and verbose diagnostics.
 
 ## Context and Orientation
 
@@ -287,5 +307,7 @@ Interface changes after implementation:
 - Pre-commit interface gains a benchmark smoke hook backed by `tests_commit.json` and a dedicated Make target.
 
 Revision Note: 2026-03-05 / OpenCode - Created active ExecPlan for bench/e2e perf QoL improvements; implementation intentionally deferred per request.
+Revision Note: 2026-03-05 / OpenCode - Implemented milestones 1-3 with TDD red/green flow; added quiet defaults, `--tests`/`--verbose` CLI surface, stable report header, and smoke automation.
+Revision Note: 2026-03-05 / OpenCode - Completed mandatory review pass #1 with follow-up fixes (concise non-verbose hyperfine errors + explicit smoke fixture preflight) and independent pass #2 clean.
 Revision Note: 2026-03-05 / OpenCode - Incorporated pass #1 review fixes: mandatory run+compare smoke flow, deterministic 8-test commit catalog, negative-path test coverage, and expected red/green transcripts.
 Revision Note: 2026-03-05 / OpenCode - Incorporated independent pass #2 review fixes: explicit Make target prerequisites and binary pinning, explicit `--tests` path-resolution semantics, deterministic catalog invariants, and hook-level validation command.

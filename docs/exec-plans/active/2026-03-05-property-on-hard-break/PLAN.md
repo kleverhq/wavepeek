@@ -27,13 +27,14 @@ This plan does not implement `property` runtime behavior, expression evaluation,
 - [x] (2026-03-05 10:25Z) Scoped plan down per product clarification: rename and collateral only; `property` stays unimplemented.
 - [x] (2026-03-05 10:48Z) Completed corrected-scope review pass #1; resolved medium findings on backlog path wording, capture default test coverage, and review runbook clarity.
 - [x] (2026-03-05 10:56Z) Completed corrected-scope independent review pass #2 (fresh context); no high/medium findings remain.
-- [ ] Add/adjust failing tests first for rename-only hard-break contracts.
-- [ ] Rename `change --when` surface to `change --on` while preserving behavior.
-- [ ] Rename `when` command surface to `property`, add `--capture` parsing/help, keep runtime unimplemented.
-- [ ] Align docs/changelog/collateral with rename-only delivery and explicit unimplemented status.
-- [ ] Run validation gates (`make check`, `make ci`).
-- [ ] Run mandatory review pass #1 for implementation diff and fix findings.
-- [ ] Run mandatory independent review pass #2 (fresh context) and fix findings.
+- [x] (2026-03-05 11:17Z) Completed TDD red phase: updated rename-contract tests and captured expected failures (`unrecognized subcommand 'property'`, `unexpected argument '--on'`).
+- [x] (2026-03-05 11:31Z) Renamed `change --when` surface to `change --on` across CLI/runtime/parser diagnostics with no semantic behavior drift.
+- [x] (2026-03-05 11:35Z) Renamed `when` command surface to `property`, added `--capture` parser/help contract, and preserved deterministic unimplemented runtime status.
+- [x] (2026-03-05 11:44Z) Updated collateral (`README.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `CHANGELOG.md`, `docs/BACKLOG.md`) for rename-only delivery and explicit unimplemented `property` status.
+- [x] (2026-03-05 11:58Z) Ran validation gates (`make check`, `make ci`) successfully before implementation review.
+- [x] (2026-03-05 12:00Z) Completed mandatory review pass #1; addressed low findings by adding missing parse-contract tests for `property --eval` requiredness and empty `change --on` expression diagnostics.
+- [x] (2026-03-05 12:02Z) Completed mandatory independent review pass #2 (fresh context); applied low-risk cleanup for residual parser/help wording and intentional `property` enum omission notes.
+- [x] (2026-03-05 12:04Z) Re-ran full validation gates (`make check`, `make ci`) after review-fix commits; all checks green.
 
 ## Surprises & Discoveries
 
@@ -77,11 +78,16 @@ This plan does not implement `property` runtime behavior, expression evaluation,
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation complete and validated.
 
-Expected completion outcome: user-facing CLI and docs consistently use `property` and `--on`, legacy `when`/`--when` syntax is rejected, and `property` remains explicitly unimplemented with stable error messaging.
+Delivered outcome: user-facing CLI and docs now consistently use `property` and `--on`, legacy `when`/`--when` syntax is rejected without aliases, and `property` still returns deterministic `error: unimplemented:` status.
 
-Residual risk at completion: low functional risk (rename-only), with primary risk concentrated in missing a collateral reference (`--when`/`when`) in docs/tests.
+Validation evidence captured:
+- Red phase failure examples: `help_lists_expected_subcommands` failed on missing `property`; `change_omitted_when_matches_explicit_wildcard` failed on unsupported `--on`; `property_cli` initially failed with `unrecognized subcommand 'property'`.
+- Green phase: `cargo test --test property_cli`, `cargo test --test cli_contract`, `cargo test --test change_cli`, `cargo test --test change_opt_equivalence`, `cargo test --test change_vcd_fst_parity` all passed.
+- Full gates: `make check` and `make ci` passed before review and again after review-fix commits.
+
+Residual risk at completion: low (rename-only), mainly future drift risk if deferred `property` runtime implementation bypasses the locked parser/help contracts.
 
 ## Context and Orientation
 
@@ -282,3 +288,4 @@ Contract invariants:
 Revision Note: 2026-03-05 / OpenCode - Created active ExecPlan for hard-break `property`/`--on` migration.
 Revision Note: 2026-03-05 / OpenCode - Scope corrected after product clarification: only renames/collateral updates are in scope; `property` remains unimplemented.
 Revision Note: 2026-03-05 / OpenCode - Incorporated corrected-scope review feedback: prose-first tightening, broader collateral sweep, explicit `property` parse-vs-unimplemented boundary, and additional rename-contract checks.
+Revision Note: 2026-03-05 / OpenCode - Completed implementation with validation gates, dual independent review passes, and follow-up low-risk coverage/wording fixes.

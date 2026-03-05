@@ -541,7 +541,8 @@ The CLI layer formats results for output.
 
 2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
    `at`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
-   results. Contains expression evaluator (for `when`) and the `change` multi-engine dispatcher
+   results. Contains shared time validation/normalization utilities, shared value-formatting
+   utilities, expression evaluator (for `when`), and the `change` multi-engine dispatcher
    described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
@@ -582,12 +583,14 @@ src/
 │   ├── when.rs          # `when` command args + output
 │   └── schema.rs        # `schema` command args + output
 ├── engine/              # Business logic per command
-│   ├── mod.rs           # Shared types (result structs, time parsing)
+│   ├── mod.rs           # Command dispatch + shared result types
 │   ├── info.rs          # Dump metadata extraction
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
 │   ├── at.rs            # Value extraction at time point
 │   ├── change.rs        # Value change tracking (`--when` event triggers, see 5.7)
+│   ├── time.rs          # Shared time token parsing/validation/alignment helpers
+│   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── when.rs          # Condition evaluation over clock cycles
 │   └── schema.rs        # JSON schema export
 ├── expr/                # Expression engine (for `when` command)

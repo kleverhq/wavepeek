@@ -3,6 +3,9 @@
 RTL_ARTIFACTS_DIR ?= /opt/rtl-artifacts
 REQUIRED_RTL_ARTIFACTS := picorv32_test_vcd.fst scr1_max_axi_coremark.fst
 SCHEMA_PATH := schema/wavepeek.json
+BENCH_E2E_RUNS_DIR := bench/e2e/runs
+BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
+WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
 
 ## Require containerized execution
 require-container:
@@ -68,6 +71,20 @@ test: require-container check-rtl-artifacts
 ## Run benchmark harness unit tests
 test-bench-e2e: require-container
 	python3 -m unittest discover -s bench/e2e -p "test_*.py"
+
+## Build release binary
+build-release: require-container
+	cargo build --release
+
+## Refresh benchmark e2e baseline artifacts
+bench-e2e-update-baseline: check-rtl-artifacts build-release
+	rm -rf "$(BENCH_E2E_BASELINE_DIR)"
+	mkdir -p "$(BENCH_E2E_BASELINE_DIR)"
+	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --run-dir "$(BENCH_E2E_BASELINE_DIR)"
+
+## Run benchmark e2e suite with baseline compare
+bench-e2e-run: check-rtl-artifacts build-release
+	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

@@ -25,10 +25,10 @@ This plan does not change point-in-time sampling semantics, signal resolution ru
 - [x] (2026-03-05 06:32Z) Revalidated plan after branch rebase onto updated `main`; updated stale assumptions that previously referenced `change` importing time helpers from `engine::at`.
 - [x] (2026-03-05 06:34Z) Completed rebase-refresh review pass #1 and removed duplicated module-move instructions to keep linear stateless execution idempotent.
 - [x] (2026-03-05 06:36Z) Addressed rebase-refresh pass #2 low findings by making red-phase test naming explicit and adding a mandatory final post-review `make check` + `make ci` gate.
-- [ ] Implement TDD red phase for renamed CLI surface (`value`, `--at`) and migration assertions.
-- [ ] Implement CLI/engine/schema/output rename and keep payload semantics equivalent.
-- [ ] Update docs/changelog/benchmark catalog collateral to new naming.
-- [ ] Pass validation gates (`make check`, `make ci`) and complete mandatory review pass #1 + independent pass #2.
+- [x] (2026-03-05 06:41Z) Implemented TDD red phase: renamed `tests/at_cli.rs` to `tests/value_cli.rs`, updated `value`/`--at` expectations, added migration assertions in `tests/cli_contract.rs`, and captured expected failing outputs for `value_human_output_with_scope_is_default` and `legacy_at_command_is_rejected_without_alias`.
+- [x] (2026-03-05 06:47Z) Implemented CLI/engine/output/schema rename while preserving behavior: moved modules to `src/cli/value.rs` and `src/engine/value.rs`, replaced `At*` command/type variants with `Value*`, updated parse hints to `wavepeek value --help`, and validated green targeted tests (`value_cli`, `cli_contract`, `change_cli`, `change_opt_equivalence`).
+- [x] (2026-03-05 06:50Z) Updated collateral naming in `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`, and `bench/e2e/tests.json`; schema now uses discriminator `"value"` and `$defs.valueData`.
+- [x] (2026-03-05 06:58Z) Passed full validation gates (`make check`, `make ci`) and completed mandatory review pass #1 plus independent review pass #2 with clean outcomes and no required fixes.
 
 ## Surprises & Discoveries
 
@@ -57,7 +57,7 @@ This plan does not change point-in-time sampling semantics, signal resolution ru
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation complete and validated. Full quality gates and both mandatory review passes are complete with no unresolved findings.
 
 Expected completion outcome: point-in-time query UX is intent-first (`value`/`--at`), migration behavior is explicit and deterministic, and all contracts/tests/docs/changelog are aligned without hidden legacy entry points.
 
@@ -236,10 +236,10 @@ Expected modified/renamed artifacts:
 
 Before closure, add concise evidence snippets to this section:
 
-- One red-phase failing test excerpt.
-- Matching green-phase passing test excerpt.
-- `make ci` success signature excerpt.
-- Final outputs from review pass #1 and pass #2.
+- Red-phase failing test excerpt (`cargo test --test value_cli value_human_output_with_scope_is_default -- --exact`): `FAILED` with `error: args: unrecognized subcommand 'value' See 'wavepeek --help'.`
+- Matching green-phase passing test excerpt (`cargo test --test value_cli`): `test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out`.
+- `make ci` success signature excerpt: `cargo test -q` passed all suites (including `value_cli`, `cli_contract`, `change_cli`, `change_opt_equivalence`), bench harness unit tests reported `Ran 27 tests ... OK`, and final `cargo check` completed successfully.
+- Final outputs from review pass #1 and pass #2: pass #1 clean (no significant issues), independent pass #2 clean (no defects/regressions/missed updates in scope).
 
 ### Interfaces and Dependencies
 
@@ -265,3 +265,5 @@ Revision Note: 2026-03-04 / OpenCode - Updated after independent review pass #2 
 Revision Note: 2026-03-05 / OpenCode - Refreshed plan after rebase onto updated `main`: replaced stale `change -> engine::at` assumptions with current shared `engine::time` architecture and adjusted steps/interfaces accordingly.
 Revision Note: 2026-03-05 / OpenCode - Addressed rebase-refresh review pass #1 by removing duplicated module-move steps in Milestone 2.
 Revision Note: 2026-03-05 / OpenCode - Addressed rebase-refresh review pass #2 by clarifying test-function rename for exact red-phase execution and requiring post-review gate rerun.
+Revision Note: 2026-03-05 / OpenCode - Updated live progress after implementation start: recorded red/green TDD evidence, marked runtime/schema/docs/bench milestones complete, and set remaining closure work to full gates plus mandatory double review.
+Revision Note: 2026-03-05 / OpenCode - Recorded final gate and dual-review completion evidence; marked execution status complete.

@@ -17,11 +17,14 @@ This plan does not change point-in-time sampling semantics, signal resolution ru
 ## Progress
 
 - [x] (2026-03-04 20:19Z) Located backlog requirement in `docs/BACKLOG.md` and captured explicit closure criteria (CLI/help/docs/schema/tests/changelog + migration integration coverage).
-- [x] (2026-03-04 20:19Z) Mapped impacted code paths (`src/cli`, `src/engine`, `src/output.rs`, `schema/`, `tests/`, docs, and benchmark catalog) including the `src/engine/change.rs` dependency on `src/engine/at.rs` time helpers.
+- [x] (2026-03-04 20:19Z) Mapped impacted code paths (`src/cli`, `src/engine`, `src/output.rs`, `schema/`, `tests/`, docs, and benchmark catalog) and common time-validation usage across point-sampling and range-sampling flows.
 - [x] (2026-03-04 20:19Z) Chosen migration policy and recorded it: hard break (no compatibility alias), aligned with existing "legacy command is rejected" precedent in `tests/cli_contract.rs` and `docs/DESIGN.md`.
 - [x] (2026-03-04 20:19Z) Drafted this executable plan with TDD-first sequencing, validation gates, and mandatory two-pass review closure.
 - [x] (2026-03-04 20:24Z) Completed review pass #1 for this plan and tightened red-phase evidence, docs-audit scope, rename staging safety, and review-step executability wording.
 - [x] (2026-03-04 20:25Z) Completed independent review pass #2 for this plan and removed duplicate test-file rename instruction that could break linear execution.
+- [x] (2026-03-05 06:32Z) Revalidated plan after branch rebase onto updated `main`; updated stale assumptions that previously referenced `change` importing time helpers from `engine::at`.
+- [x] (2026-03-05 06:34Z) Completed rebase-refresh review pass #1 and removed duplicated module-move instructions to keep linear stateless execution idempotent.
+- [x] (2026-03-05 06:36Z) Addressed rebase-refresh pass #2 low findings by making red-phase test naming explicit and adding a mandatory final post-review `make check` + `make ci` gate.
 - [ ] Implement TDD red phase for renamed CLI surface (`value`, `--at`) and migration assertions.
 - [ ] Implement CLI/engine/schema/output rename and keep payload semantics equivalent.
 - [ ] Update docs/changelog/benchmark catalog collateral to new naming.
@@ -29,8 +32,8 @@ This plan does not change point-in-time sampling semantics, signal resolution ru
 
 ## Surprises & Discoveries
 
-- Observation: `change` runtime imports time parsing and formatting helpers directly from the `at` engine module.
-  Evidence: `src/engine/change.rs` imports `ParsedTime`, `parse_time_token`, `format_raw_timestamp`, and related helpers from `crate::engine::at`.
+- Observation: Recent refactor moved shared time parsing/alignment helpers into a dedicated engine module.
+  Evidence: `src/engine/change.rs` imports time helpers from `crate::engine::time`, and `src/engine/at.rs` now uses the same `crate::engine::time` utilities.
 
 - Observation: The benchmark E2E catalog hardcodes many `at` scenarios and `--time` flags; leaving this unchanged creates immediate drift in perf workflows after rename.
   Evidence: `bench/e2e/tests.json` contains repeated `"category": "at"`, `"at"`, and `"--time"` entries.
@@ -58,7 +61,7 @@ Current status: planning complete, implementation not started.
 
 Expected completion outcome: point-in-time query UX is intent-first (`value`/`--at`), migration behavior is explicit and deterministic, and all contracts/tests/docs/changelog are aligned without hidden legacy entry points.
 
-Primary delivery risk to monitor during implementation: partial rename can break compile paths because `change` reuses helpers from the current `at` module; this is handled by keeping module rename and import rewiring in the same atomic implementation unit.
+Primary delivery risk to monitor during implementation: partial rename can leave stale user-facing strings (`at`, `--time`, `wavepeek at --help`) across code, schema, tests, and docs; this is handled by global contract-audit steps plus focused migration assertions.
 
 ## Context and Orientation
 
@@ -78,7 +81,7 @@ Primary files in scope:
 - `src/cli/at.rs` (rename target: `src/cli/value.rs`)
 - `src/engine/mod.rs`
 - `src/engine/at.rs` (rename target: `src/engine/value.rs`)
-- `src/engine/change.rs` (import rewiring only)
+- `src/engine/time.rs` (shared time-validation context; verify no rename-driven edits are needed)
 - `src/output.rs`
 - `schema/wavepeek.json`
 - `tests/at_cli.rs` (rename target: `tests/value_cli.rs`)
@@ -97,7 +100,7 @@ No blocking questions remain for execution. This plan assumes hard-break migrati
 
 Milestone 1 establishes contract-first failing tests for the new CLI surface and migration behavior. Add/adjust integration tests so they expect `value` and `--at`, then run targeted tests before code changes to capture a red phase.
 
-Milestone 2 performs the runtime rename as one coherent atomic unit: CLI argument type, engine command variant, output rendering branch, schema discriminator/definitions, and the `change` helper import path are updated together. This keeps compile and behavior drift low.
+Milestone 2 performs the runtime rename as one coherent atomic unit: CLI argument type, engine command variant, output rendering branch, schema discriminator/definitions, and parse-hint strings are updated together. This keeps compile and behavior drift low.
 
 Milestone 3 updates collateral and user-facing documentation: design spec, roadmap naming, README command table, changelog migration notes, and perf scenario catalog entries.
 
@@ -112,6 +115,7 @@ Run all commands from `/workspaces/fix-rename-at-value`.
    - Rename `tests/at_cli.rs` to `tests/value_cli.rs` and update command invocations from `at` to `value`.
    - Rename flag usage and expectations from `--time` to `--at`.
    - Update JSON assertions from `"command": "at"` to `"command": "value"`.
+   - Rename test function prefixes from `at_*` to `value_*` so exact red/green invocations target concrete tests in the renamed file.
    - In `tests/cli_contract.rs`, update `SHIPPED_COMMANDS`, help markers, and add explicit migration checks:
      - `wavepeek at` fails as unrecognized subcommand (`error: args:`).
      - `wavepeek value --time ...` fails with unexpected argument guidance and `See 'wavepeek value --help'.`
@@ -129,11 +133,10 @@ Run all commands from `/workspaces/fix-rename-at-value`.
 2. Implement CLI and engine renames while preserving behavior.
 
    - Use `git mv` for module renames to preserve clear history: `src/cli/at.rs` -> `src/cli/value.rs` and `src/engine/at.rs` -> `src/engine/value.rs`. (`tests/at_cli.rs` is already renamed in step 1.)
-   - Move `src/cli/at.rs` -> `src/cli/value.rs`; rename `AtArgs` to `ValueArgs`; rename field `time` to `at` and clap long flag to `--at`.
-   - Move `src/engine/at.rs` -> `src/engine/value.rs`; rename types (`AtData`, `AtSignalValue`) and all `wavepeek at --help` parse hints to `wavepeek value --help`.
+   - In renamed `src/cli/value.rs`, rename `AtArgs` to `ValueArgs`, rename field `time` to `at`, and set clap long flag to `--at`.
+   - In renamed `src/engine/value.rs`, rename types (`AtData`, `AtSignalValue`) and all `wavepeek at --help` parse hints to `wavepeek value --help`.
    - In `src/cli/mod.rs`, replace command variant `At` with `Value`, update `about`/`long_about` text, dispatch mapping, and parser tests.
    - In `src/engine/mod.rs`, replace `Command::At`/`CommandName::At`/`CommandData::At` with `Value` equivalents and ensure `as_str()` returns `"value"`.
-   - In `src/engine/change.rs`, switch helper import path from `crate::engine::at` to `crate::engine::value`.
    - In `src/output.rs`, rename render branches/tests to `CommandData::Value` and `crate::engine::value::*` types.
 
    Re-run targeted tests:
@@ -167,7 +170,7 @@ Run all commands from `/workspaces/fix-rename-at-value`.
 
    Suggested commit split:
 
-       git add -A src/cli src/engine tests src/output.rs
+       git add -A src/cli src/engine src/output.rs tests
        git commit -m "rename point-in-time command surface to value"
 
        git add -A schema docs README.md CHANGELOG.md bench/e2e/tests.json
@@ -184,6 +187,11 @@ Run all commands from `/workspaces/fix-rename-at-value`.
    - Run pass #1 and fix findings in a new commit.
    - Spawn a fresh reviewer session for pass #2 (do not resume pass #1 context), fix findings, and rerun fresh pass #2 if needed until clean.
    - For each review request, include a compact context packet with: scope summary, plan reference path, current diff/commits, focus files, tests run + results, and explicit assumptions (hard break policy).
+
+8. Final post-review quality gate (required after last review fix commit).
+
+       make check
+       make ci
 
 ### Validation and Acceptance
 
@@ -203,7 +211,7 @@ TDD acceptance requires explicit red/green evidence: at least one newly updated 
 
 ### Idempotence and Recovery
 
-All edits are text-only and safe to reapply. If compile failures appear mid-rename, recover by completing module-path rewiring first (`src/cli/mod.rs`, `src/engine/mod.rs`, `src/engine/change.rs`, `src/output.rs`) before rerunning tests. Re-running `make update-schema`, `make check-schema`, `make check`, and `make ci` is safe and expected.
+All edits are text-only and safe to reapply. If compile failures appear mid-rename, recover by completing command/module-path rewiring first (`src/cli/mod.rs`, `src/engine/mod.rs`, `src/output.rs`) and then rerun targeted tests. Re-running `make update-schema`, `make check-schema`, `make check`, and `make ci` is safe and expected.
 
 If review findings require follow-ups, apply fixes in new commits. Do not rewrite history.
 
@@ -216,7 +224,7 @@ Expected modified/renamed artifacts:
 - `tests/at_cli.rs` -> `tests/value_cli.rs`
 - `src/cli/mod.rs`
 - `src/engine/mod.rs`
-- `src/engine/change.rs`
+- `src/engine/time.rs` (expected mostly unchanged; included for explicit shared-helper verification)
 - `src/output.rs`
 - `tests/cli_contract.rs`
 - `schema/wavepeek.json`
@@ -242,7 +250,7 @@ The implementation must end with these canonical interfaces:
 - `crate::cli::value::ValueArgs` with `waves`, `at`, `scope`, `signals`, `abs`, `json`.
 - `crate::engine::Command::Value`, `crate::engine::CommandName::Value`, and `crate::engine::CommandData::Value`.
 - `crate::engine::value::run(args: ValueArgs) -> Result<CommandResult, WavepeekError>`.
-- `crate::engine::change` imports shared time helpers from `crate::engine::value`.
+- Shared time-validation utilities remain centralized in `crate::engine::time`; renamed point-sampling command continues to consume that canonical path.
 
 Contract invariants to preserve:
 
@@ -254,3 +262,6 @@ Contract invariants to preserve:
 Revision Note: 2026-03-04 / OpenCode - Created active ExecPlan for backlog item “Rename `at` command to `value` and `--time` to `--at`”, with explicit hard-break migration policy, TDD-first steps, and mandatory double-review closure.
 Revision Note: 2026-03-04 / OpenCode - Updated after review pass #1 to remove tool-specific pseudocode, strengthen red-phase evidence criteria, require full live-doc audit for `wavepeek at`/`--time`, and harden commit staging for rename/delete safety.
 Revision Note: 2026-03-04 / OpenCode - Updated after independent review pass #2 to remove duplicate `tests/at_cli.rs` rename instruction and keep steps linearly executable.
+Revision Note: 2026-03-05 / OpenCode - Refreshed plan after rebase onto updated `main`: replaced stale `change -> engine::at` assumptions with current shared `engine::time` architecture and adjusted steps/interfaces accordingly.
+Revision Note: 2026-03-05 / OpenCode - Addressed rebase-refresh review pass #1 by removing duplicated module-move steps in Milestone 2.
+Revision Note: 2026-03-05 / OpenCode - Addressed rebase-refresh review pass #2 by clarifying test-function rename for exact red-phase execution and requiring post-review gate rerun.

@@ -1,4 +1,5 @@
 import argparse
+from collections import Counter
 import importlib.util
 import io
 import json
@@ -177,6 +178,52 @@ class PerfHelpersTest(unittest.TestCase):
             with self.assertRaises(SystemExit) as error:
                 perf.load_tests(tests_path)
         self.assertIn("error: tests: invalid JSON", str(error.exception))
+
+    def test_tests_commit_catalog_exact_subset_and_distribution(self) -> None:
+        payload = json.loads(
+            (perf.SCRIPT_DIR / "tests_commit.json").read_text(encoding="utf-8")
+        )
+        tests = payload["tests"]
+        names = [test["name"] for test in tests]
+
+        expected_names = {
+            "change_scr1_coremark_imem_axi_1sig_to_1000ps",
+            "change_scr1_signals_1_window_2ns_trigger_any",
+            "info_picorv32_ez",
+            "info_scr1_isr_sample",
+            "signal_scr1_top_recursive_depth2_json",
+            "signal_scr1_top_recursive_filter_valid_json",
+            "value_scr1_signals_1",
+            "value_scr1_signals_10",
+        }
+        self.assertEqual(set(names), expected_names)
+        self.assertEqual(len(names), 8)
+
+        category_counts = Counter(str(test["category"]) for test in tests)
+        self.assertEqual(
+            category_counts,
+            Counter({"change": 2, "info": 2, "signal": 2, "value": 2}),
+        )
+
+        for test in tests:
+            self.assertEqual(test["runs"], 1)
+            self.assertEqual(test["warmup"], 0)
+
+    def test_tests_commit_catalog_commands_match_tests_json(self) -> None:
+        full_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
+        commit_payload = json.loads(
+            (perf.SCRIPT_DIR / "tests_commit.json").read_text(encoding="utf-8")
+        )
+
+        full_by_name = {
+            str(test["name"]): test
+            for test in full_payload["tests"]
+        }
+
+        for test in commit_payload["tests"]:
+            name = str(test["name"])
+            self.assertIn(name, full_by_name)
+            self.assertEqual(test["command"], full_by_name[name]["command"])
 
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -86,6 +86,12 @@ bench-e2e-update-baseline: check-rtl-artifacts build-release
 bench-e2e-run: check-rtl-artifacts build-release
 	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
+## Run lightweight benchmark e2e smoke for pre-commit
+bench-e2e-smoke-commit: check-rtl-artifacts build-release
+	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
+		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$$tmp_revised" && \
+		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100
+
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts
 	pre-commit run --all-files

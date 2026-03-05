@@ -50,6 +50,14 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: bench-e2e-smoke-commit
+        name: Benchmark E2E pre-commit smoke
+        description: Run lightweight bench/e2e run+compare smoke catalog
+        entry: make bench-e2e-smoke-commit
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: git-commit-style
         name: Commit style check
         description: Run commitizen to validate commit message

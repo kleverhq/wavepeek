@@ -1,0 +1,187 @@
+{
+  "tests": [
+    {
+      "name": "change_scr1_coremark_imem_axi_1sig_to_1000ps",
+      "category": "change",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "1000ps",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "--signals",
+        "araddr",
+        "--max",
+        "1000"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
+        "signal_count": 1,
+        "window_to": "1000ps"
+      }
+    },
+    {
+      "name": "change_scr1_signals_1_window_2ns_trigger_any",
+      "category": "change",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--signals",
+        "TOP.clk",
+        "--from",
+        "939092ps",
+        "--to",
+        "941092ps",
+        "--on",
+        "*"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "size": "3.5M",
+        "window_size": "2ns",
+        "signal_count": 1,
+        "trigger": "*"
+      }
+    },
+    {
+      "name": "info_picorv32_ez",
+      "category": "info",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "info",
+        "--waves",
+        "/opt/rtl-artifacts/picorv32_test_ez_vcd.fst",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/picorv32_test_ez_vcd.fst",
+        "size": "17K"
+      }
+    },
+    {
+      "name": "info_scr1_isr_sample",
+      "category": "info",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "info",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst",
+        "size": "69K"
+      }
+    },
+    {
+      "name": "signal_scr1_top_recursive_depth2_json",
+      "category": "signal",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--scope",
+        "TOP",
+        "--recursive",
+        "--max-depth",
+        "2",
+        "--max",
+        "200000",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "scope": "TOP",
+        "filter": ".*",
+        "recursive": true,
+        "max_depth": 2
+      }
+    },
+    {
+      "name": "signal_scr1_top_recursive_filter_valid_json",
+      "category": "signal",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "signal",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--scope",
+        "TOP",
+        "--recursive",
+        "--filter",
+        "(?i).*valid.*",
+        "--max",
+        "200000",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "scope": "TOP",
+        "filter": "(?i).*valid.*",
+        "recursive": true,
+        "max_depth": "default"
+      }
+    },
+    {
+      "name": "value_scr1_signals_1",
+      "category": "value",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "value",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--signals",
+        "TOP.clk",
+        "--at",
+        "940092ps"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "size": "4M",
+        "signal_count": 1
+      }
+    },
+    {
+      "name": "value_scr1_signals_10",
+      "category": "value",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "value",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--signals",
+        "TOP.clk,TOP.$unit.SCR1_ARCH_MTVEC_BASE,TOP.$unit.SCR1_ARCH_RST_VECTOR,TOP.$unit.SCR1_CSR_ADDR_CYCLE,TOP.$unit.SCR1_CSR_ADDR_CYCLEH,TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE,TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN,TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK,TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK,TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+        "--at",
+        "940092ps"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "size": "4M",
+        "signal_count": 10
+      }
+    }
+  ]
+}

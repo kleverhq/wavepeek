@@ -1,7 +1,6 @@
 # CLI E2E Bench Run: new-baseline
 
 - Generated at (UTC): 2026-03-05T10:20:59Z
-- Run directory: `bench/e2e/runs/baseline`
 - Hyperfine JSON files: 137
 - Wavepeek JSON files: 137
 

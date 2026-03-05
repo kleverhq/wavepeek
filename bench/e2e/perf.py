@@ -71,17 +71,17 @@ def ensure_existing_dir(path: pathlib.Path, label: str) -> None:
         fail(f"error: {label}: directory does not exist: {path}")
 
 
-def load_tests() -> list[dict[str, Any]]:
-    if not TESTS_PATH.exists():
-        fail(f"error: tests: missing file {TESTS_PATH}")
+def load_tests(tests_path: pathlib.Path) -> list[dict[str, Any]]:
+    if not tests_path.exists():
+        fail(f"error: tests: missing file {tests_path}")
 
     try:
-        payload = json.loads(TESTS_PATH.read_text(encoding="utf-8"))
+        payload = json.loads(tests_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
-        fail(f"error: tests: invalid JSON in {TESTS_PATH}: {error}")
+        fail(f"error: tests: invalid JSON in {tests_path}: {error}")
 
     if not isinstance(payload, dict):
-        fail(f"error: tests: root of {TESTS_PATH} must be object")
+        fail(f"error: tests: root of {tests_path} must be object")
 
     tests = require_nonempty_list(payload.get("tests"), "tests")
 
@@ -265,6 +265,7 @@ def run_test(
     run_dir: pathlib.Path,
     wavepeek_bin: str,
     timeout_seconds: int,
+    verbose: bool,
 ) -> None:
     command_args = resolve_test_command(test, wavepeek_bin)
     benchmark_command = build_timed_benchmark_command(
@@ -289,9 +290,22 @@ def run_test(
         str(output_path),
         benchmark_command,
     ]
-    result = subprocess.run(hyperfine_cmd, check=False, cwd=REPO_ROOT)
+    if verbose:
+        result = subprocess.run(hyperfine_cmd, check=False, cwd=REPO_ROOT)
+    else:
+        result = subprocess.run(
+            hyperfine_cmd,
+            check=False,
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
     if result.returncode != 0:
-        fail(f"error: run: hyperfine failed for `{test['name']}`")
+        details = ""
+        if not verbose:
+            details = (result.stderr or result.stdout).strip()
+        suffix = f": {details}" if details else ""
+        fail(f"error: run: hyperfine failed for `{test['name']}`{suffix}")
 
 
 def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
@@ -557,7 +571,6 @@ def render_report(
         f"# CLI E2E Bench Run: {run_dir.name}",
         "",
         f"- Generated at (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
-        f"- Run directory: `{run_dir}`",
         f"- Hyperfine JSON files: {len(results)}",
         f"- Wavepeek JSON files: {len(functional_results)}",
     ]
@@ -662,20 +675,20 @@ def preview_command(test: dict[str, Any]) -> str:
 
 
 def cmd_list(args: argparse.Namespace) -> int:
-    tests = select_tests(load_tests(), args.filter)
+    tests_path = normalize_path(getattr(args, "tests", str(TESTS_PATH)))
+    tests = select_tests(load_tests(tests_path), args.filter)
     for test in tests:
-        print(
-            f"{test['name']}\t{test['category']}\truns={test['runs']}\twarmup={test['warmup']}\t{preview_command(test)}"
-        )
-    print(f"total={len(tests)}")
+        print(str(test["name"]))
     return 0
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    tests = load_tests()
+    tests_path = normalize_path(getattr(args, "tests", str(TESTS_PATH)))
+    tests = load_tests(tests_path)
     selected = select_tests(tests, args.filter)
     if not selected:
         fail("error: run: no tests matched the provided filter")
+    verbose = bool(getattr(args, "verbose", False))
 
     timeout_seconds = int(args.wavepeek_timeout_seconds)
     if timeout_seconds < 1:
@@ -686,25 +699,28 @@ def cmd_run(args: argparse.Namespace) -> int:
         ensure_existing_dir(compare_dir, "run")
 
     run_dir = resolve_run_dir(args.run_dir, args.out_dir)
-    print(f"info: run directory: {run_dir}")
+    if verbose:
+        print(f"info: run directory: {run_dir}")
 
     selected_to_run = selected
     if args.missing_only:
         selected_to_run, skipped = partition_missing_only_tests(selected, run_dir)
-        for test_name in skipped:
-            print(
-                f"info: skip `{test_name}` (missing-only: artifacts already exist)"
-            )
+        if verbose:
+            for test_name in skipped:
+                print(
+                    f"info: skip `{test_name}` (missing-only: artifacts already exist)"
+                )
 
     if selected_to_run:
         ensure_hyperfine()
         wavepeek_bin = resolve_wavepeek_bin()
         for index, test in enumerate(selected_to_run, start=1):
-            print(
-                f"[{index}/{len(selected_to_run)}] {test['name']} "
-                f"(runs={test['runs']}, warmup={test['warmup']})"
-            )
-            run_test(test, run_dir, wavepeek_bin, timeout_seconds)
+            if verbose:
+                print(
+                    f"[{index}/{len(selected_to_run)}] {test['name']} "
+                    f"(runs={test['runs']}, warmup={test['warmup']})"
+                )
+            run_test(test, run_dir, wavepeek_bin, timeout_seconds, verbose)
             try:
                 functional_payload = run_functional_capture(
                     test,
@@ -713,20 +729,24 @@ def cmd_run(args: argparse.Namespace) -> int:
                     timeout_seconds,
                 )
             except subprocess.TimeoutExpired:
-                print(
-                    f"warning: run: functional capture timed out for `{test['name']}` "
-                    f"after {timeout_seconds}s; writing empty wavepeek artifact"
-                )
+                if verbose:
+                    print(
+                        f"warning: run: functional capture timed out for `{test['name']}` "
+                        f"after {timeout_seconds}s; writing empty wavepeek artifact"
+                    )
                 write_wavepeek_timeout_artifact(run_dir, str(test["name"]))
                 continue
             write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
-    else:
+    elif verbose:
         print("info: no tests to run after --missing-only filter")
 
     tests_by_name = {str(test["name"]): test for test in tests}
     report_path = write_report(run_dir, tests_by_name, compare_dir)
-    print(f"info: run artifacts written to {run_dir}")
-    print(f"info: report updated at {report_path}")
+    if verbose:
+        print(f"info: run artifacts written to {run_dir}")
+        print(f"info: report updated at {report_path}")
+    else:
+        print("ok: run: completed successfully (use --verbose for detailed logs)")
     return 0
 
 
@@ -738,7 +758,7 @@ def cmd_report(args: argparse.Namespace) -> int:
     if compare_dir is not None:
         ensure_existing_dir(compare_dir, "report")
 
-    tests = load_tests()
+    tests = load_tests(TESTS_PATH)
     tests_by_name = {str(test["name"]): test for test in tests}
     report_path = write_report(run_dir, tests_by_name, compare_dir)
     print(f"info: report updated at {report_path}")
@@ -752,6 +772,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     ensure_existing_dir(golden_dir, "compare")
 
     threshold = float(args.max_negative_delta_pct)
+    verbose = bool(getattr(args, "verbose", False))
     if threshold < 0:
         fail("error: compare: --max-negative-delta-pct must be non-negative")
 
@@ -823,44 +844,53 @@ def cmd_compare(args: argparse.Namespace) -> int:
                 f"{test_name}: mismatched fields {', '.join(diff_fields)}"
             )
 
-    if revised_only:
-        print(
-            "warning: compare: tests only in revised run: " + ", ".join(revised_only),
-            file=sys.stderr,
-        )
-    if golden_only:
-        print(
-            "warning: compare: tests only in golden run: " + ", ".join(golden_only),
-            file=sys.stderr,
-        )
-    if functional_timeout_warnings:
-        print("warning: compare: timeout functional artifacts detected:", file=sys.stderr)
-        for issue in functional_timeout_warnings:
-            print(f"  - {issue}", file=sys.stderr)
+    if verbose:
+        if revised_only:
+            print(
+                "warning: compare: tests only in revised run: " + ", ".join(revised_only),
+                file=sys.stderr,
+            )
+        if golden_only:
+            print(
+                "warning: compare: tests only in golden run: " + ", ".join(golden_only),
+                file=sys.stderr,
+            )
+        if functional_timeout_warnings:
+            print("warning: compare: timeout functional artifacts detected:", file=sys.stderr)
+            for issue in functional_timeout_warnings:
+                print(f"  - {issue}", file=sys.stderr)
 
-    if timing_failures:
-        print(
-            "error: compare: mean regression exceeds allowed negative delta "
-            f"({threshold:.2f}%):",
-            file=sys.stderr,
-        )
-        for issue in timing_failures:
-            print(f"  - {issue}", file=sys.stderr)
+        if timing_failures:
+            print(
+                "error: compare: mean regression exceeds allowed negative delta "
+                f"({threshold:.2f}%):",
+                file=sys.stderr,
+            )
+            for issue in timing_failures:
+                print(f"  - {issue}", file=sys.stderr)
 
-    if functional_mismatches:
-        print("error: compare: functional mismatch detected:", file=sys.stderr)
-        for issue in functional_mismatches:
-            print(f"  - {issue}", file=sys.stderr)
+        if functional_mismatches:
+            print("error: compare: functional mismatch detected:", file=sys.stderr)
+            for issue in functional_mismatches:
+                print(f"  - {issue}", file=sys.stderr)
 
-    if functional_artifact_errors:
-        print("error: compare: functional artifact errors detected:", file=sys.stderr)
-        for issue in functional_artifact_errors:
-            print(f"  - {issue}", file=sys.stderr)
+        if functional_artifact_errors:
+            print("error: compare: functional artifact errors detected:", file=sys.stderr)
+            for issue in functional_artifact_errors:
+                print(f"  - {issue}", file=sys.stderr)
 
     if timing_failures or functional_mismatches or functional_artifact_errors:
+        if not verbose:
+            print(
+                "error: compare: checks failed (use --verbose for detailed logs)",
+                file=sys.stderr,
+            )
         return 1
 
-    print("info: compare: all checks passed")
+    if verbose:
+        print("info: compare: all checks passed")
+    else:
+        print("ok: compare: all checks passed (use --verbose for detailed logs)")
     return 0
 
 
@@ -870,6 +900,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     list_parser = subparsers.add_parser("list", help="list available benchmark tests")
     list_parser.add_argument("--filter", default=None, help="regex filter by test name")
+    list_parser.add_argument(
+        "--tests",
+        default=str(TESTS_PATH),
+        help="path to benchmark tests catalog JSON",
+    )
 
     run_parser = subparsers.add_parser("run", help="run selected benchmarks")
     run_parser.add_argument("--filter", default=None, help="regex filter by test name")
@@ -891,6 +926,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_WAVEPEEK_TIMEOUT_SECONDS,
         help="max seconds per wavepeek invocation before timeout cap",
     )
+    run_parser.add_argument(
+        "--tests",
+        default=str(TESTS_PATH),
+        help="path to benchmark tests catalog JSON",
+    )
+    run_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show detailed benchmark progress and diagnostics",
+    )
 
     report_parser = subparsers.add_parser("report", help="generate/update README.md for a run")
     report_parser.add_argument("--run-dir", required=True, help="run directory")
@@ -904,6 +950,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         type=float,
         help="fail when mean delta goes below negative threshold",
+    )
+    compare_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show detailed compare warnings and failures",
     )
 
     return parser

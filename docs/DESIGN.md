@@ -54,7 +54,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 - VCD/FST dump file support
 - Signal discovery: list, search, hierarchy navigation
 - Value extraction over time ranges
-- Property checks over event triggers (parse/help surface in this release)
+- Property checks over event triggers
 - Stateless CLI (no sessions, no caching, no background processes)
 
 ### 2.2 Out of Scope
@@ -395,12 +395,7 @@ wavepeek change --waves dump.vcd --signals top.sig --max unlimited
 
 #### 3.2.6 `property` — Property checks over event triggers
 
-Status: planned, not implemented in the current release. Current runtime behavior is
-`error: unimplemented: \`property\` command execution is not implemented yet`.
-
-Parses property contracts by combining event triggers (`--on`) with a logical
-expression (`--eval`) and a capture mode (`--capture`). Runtime execution is not
-delivered in this phase.
+Checks a logical property over event-selected timestamps.
 
 ```
 wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] [--on <event_expr>] --eval <logical_expr> [--capture <match|switch|assert|deassert>] [--json]
@@ -418,19 +413,23 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
 | `--capture <mode>` | `switch` | Capture mode: `match`, `switch`, `assert`, `deassert` |
 | `--json` | off | Strict JSON envelope output |
 
-**Behavior in this release:**
-- CLI parsing/help for `--on`, `--eval`, and `--capture` is available.
-- Legacy `when` surface flags (`--clk`, `--cond`, `--when`) are rejected.
-- After successful clap parsing, runtime exits deterministically with
-  `error: unimplemented: \`property\` command execution is not implemented yet`.
-- Event-expression semantic diagnostics are not exposed by `property` yet; this
-  remains part of deferred runtime delivery.
-
-**Planned capture semantics (deferred):**
+**Behavior (design target):**
+- Name/scope resolution follows `value` and `change`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
+- Time boundaries are inclusive (`--from`, `--to`), and time tokens require explicit units aligned to dump precision.
+- Candidate timestamps come from `--on`.
+- Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval` to avoid per-time-unit output spam.
+- Supported `--on` forms match `change`: `*`, `<name>`, `posedge <name>`, `negedge <name>`, `edge <name>`, and union forms via `or`/`,`.
+- `--eval` is evaluated on each candidate timestamp with 4-state semantics and 2-state final decision (`1` is true; `0`/`x` are false).
 - `match`: emit every event timestamp where `--eval` is true.
 - `switch`: emit only transitions (`assert` on `0->1`, `deassert` on `1->0`).
 - `assert`: emit only `0->1` transitions.
 - `deassert`: emit only `1->0` transitions.
+- Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
+- JSON output uses deterministic ordering and a strict envelope contract under `--json`.
+
+**Implementation status:**
+- Runtime evaluation/capture execution is not implemented yet.
+- Current runtime behavior is deterministic: `error: unimplemented: \`property\` command execution is not implemented yet`.
 
 **Expression language (MVP target):**
 
@@ -470,10 +469,17 @@ Post-MVP additions:
 - Signed comparison
 
 **Examples:**
+
+Examples below reflect the target command contract; runtime execution remains unimplemented.
+
 ```bash
-# Parse-only contract examples (runtime still unimplemented)
+# Basic property check on clock edges
 wavepeek property --waves dump.vcd --scope top.cpu --on "posedge clk" --eval "data == 0xff"
+
+# Emit only assertion edges (0->1)
 wavepeek property --waves dump.vcd --scope top.cpu --on "edge clk" --eval "valid && ready" --capture assert
+
+# Switch mode (default) can be passed explicitly
 wavepeek property --waves dump.vcd --from 1us --to 2us --eval "top.cpu.data == 0xff" --capture switch
 ```
 

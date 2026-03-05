@@ -2,13 +2,15 @@
 
 ## Issues
 
-### Replace `when` with `property` and SVA-like event/eval wording
+### Replace `when` with `property` and adopt `--on` event wording
 
 - `when` is generic; `property` communicates assertion-like intent and reads closer to natural language for waveform checks.
-- Target command shape: `wavepeek property --when "<event_expr>" --eval "<logical_expr>"`.
-- `--when` stays event-driven and defaults to `*` (any change among signals referenced by `--eval`) to avoid per-time-unit output spam.
+- Target command shape: `wavepeek property --on "<event_expr>" --eval "<logical_expr>"`.
+- `--on` stays event-driven and defaults to `*` (any change among signals referenced by `--eval`) to avoid per-time-unit output spam.
+- For consistency, `change` should also use `--on` instead of `--when` for event expressions.
+- Migration policy is a hard break: no compatibility aliases for legacy `when` command or `--when` flags.
 - Scope/name resolution and time-window behavior should stay deterministic and reuse current event/expression infrastructure where possible.
-- Close when `property` runs end-to-end with stable human/JSON contracts and `when` docs/runtime status are fully migrated.
+- Close when `property` runs end-to-end with stable human/JSON contracts and all legacy `when`/`--when` docs/runtime status are fully migrated.
 
 ### Add `property --capture` modes for match/transition reporting
 
@@ -34,11 +36,11 @@
 
 ## Tech Debt
 
-### `change --when`: deferred `iff logical_expr` execution
+### `change --when` (planned rename to `--on`): deferred `iff logical_expr` execution
 
 - Event terms with `iff` are parsed but intentionally rejected at runtime with `error: args: iff logical expressions are not implemented yet`.
 - This was introduced in `feat(change): implement --when triggers end to end` as a staged delivery compromise.
-- Close when `change --when "... iff ..."` is evaluated end-to-end (true/false branches), and the hard-fail path is removed.
+- Close when `change --on "... iff ..."` is evaluated end-to-end (true/false branches), and the hard-fail path is removed.
 
 ### Event-expression parser uses temporary `iff` capture rules
 

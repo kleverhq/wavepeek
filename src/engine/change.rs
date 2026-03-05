@@ -4,11 +4,11 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
-use crate::engine::at::format_verilog_literal;
 use crate::engine::time::{
     DumpTimeContext, ParsedTime, TimeValidationError, format_raw_timestamp,
     parse_dump_time_context, validate_time_token_to_raw,
 };
+use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::{EventKind, EventTerm, parse_event_expr};

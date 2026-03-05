@@ -126,6 +126,25 @@ fn property_rejects_legacy_when_surface_flags() {
 }
 
 #[test]
+fn property_requires_eval_flag() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args(["property", "--waves", fixture.as_str(), "--on", "*"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "required arguments were not provided",
+        ))
+        .stderr(predicate::str::contains("--eval <EVAL>"))
+        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
+}
+
+#[test]
 fn property_rejects_legacy_when_flag_name() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

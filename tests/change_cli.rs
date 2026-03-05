@@ -1385,6 +1385,30 @@ fn change_decimal_time_token_is_rejected_as_args_error() {
 }
 
 #[test]
+fn change_empty_on_expression_is_rejected_as_args_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--signals",
+            "top.clk",
+            "--on",
+            "",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("--on expression cannot be empty"))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
+}
+
+#[test]
 fn change_out_of_range_from_time_is_args_error_with_bounds() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

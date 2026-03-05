@@ -1,4 +1,4 @@
-# Deliver Hard-Break Migration to `property --on` and `change --on`
+# Hard-Break Surface Rename to `property` and `--on` (No Runtime Delivery)
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,350 +6,279 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-After this change, waveform property checks use one assertion-oriented command surface: `wavepeek property --on "<event_expr>" --eval "<logical_expr>"`. The legacy `when` command is removed, and `change` uses `--on` instead of `--when` for event triggers. This is an intentional hard break: no compatibility aliases are kept.
+After this change, command naming becomes consistent and assertion-oriented without changing runtime maturity: users call `wavepeek property ...` instead of `wavepeek when ...`, and they use `--on` (not `--when`) for event triggers in both `property` and `change` surfaces. This is a hard break with no compatibility aliases.
 
-Users can verify the outcome by checking that top-level help lists `property` (and not `when`), that `change --on` preserves existing trigger semantics, that legacy `--when` is rejected for both commands, and that `property --capture=match|switch|assert|deassert` produces deterministic human and JSON outputs.
+This plan intentionally does not implement property runtime execution. `property` remains unimplemented and should continue returning deterministic `error: unimplemented:` status; only naming and collateral are migrated.
+
+A user can verify the result by checking top-level help and argument parsing: `property` appears and `when` is gone, `change --on` works where `change --when` is rejected, `property --capture` is accepted by parser/help, and any `property` invocation still fails as unimplemented.
 
 ## Non-Goals
 
-This plan does not introduce compatibility aliases for `when` command or `--when` flags. This plan does not add temporal operators beyond the current MVP boolean expression scope. This plan does not add JSON streaming (`--jsonl`) or redesign unrelated commands. This plan does not change existing `change` runtime semantics beyond trigger-flag naming and related diagnostics.
+This plan does not implement `property` runtime behavior, expression evaluation, capture semantics execution, or any new waveform query engine logic. This plan does not change JSON payload schemas for successful command outputs. This plan does not implement deferred `iff logical_expr` execution. This plan does not add compatibility aliases for removed names.
 
 ## Progress
 
-- [x] (2026-03-05 08:55Z) Reviewed backlog requirements in `docs/BACKLOG.md` and captured user override: use `--on` (not `--when`) for `property` and `change` with hard-break migration policy.
-- [x] (2026-03-05 08:58Z) Mapped current implementation and contract gaps across `src/cli`, `src/engine`, `src/expr`, `tests/`, `docs/`, and `schema/`.
-- [x] (2026-03-05 09:05Z) Updated backlog wording so planned scope explicitly targets `property --on`, `change --on`, and no compatibility aliases.
-- [x] (2026-03-05 09:18Z) Authored this executable plan with TDD-first milestones, validation gates, commit boundaries, and mandatory double-review workflow.
-- [x] (2026-03-05 09:42Z) Completed review pass #1 for this planning diff; resolved findings on default omitted-`--on` semantics, baseline determinism, and self-contained verification details.
-- [x] (2026-03-05 09:56Z) Completed independent review pass #2 in fresh context; aligned `match` baseline semantics with transition modes and finalized backlog closure wording for `change --on`.
-- [ ] Implement TDD red phase for CLI contract migration (`property` surface, `--on`, hard-break rejection of legacy `when`/`--when`).
-- [ ] Implement `change --on` rename end-to-end in CLI, parser diagnostics, engine wiring, and tests.
-- [ ] Implement `property` command runtime path and `--capture` modes, replacing `when` surface end-to-end.
-- [ ] Complete expression parser/evaluator runtime needed for `property --eval` execution and deterministic capture decisions.
-- [ ] Align JSON schema, docs, changelog, and backlog closure with shipped behavior.
-- [ ] Run final gates (`make check`, `make ci`) after implementation and after last review-fix commit.
-- [ ] Complete mandatory review pass #1 (`review` agent), apply fixes, and commit.
-- [ ] Complete mandatory independent review pass #2 in fresh context, apply fixes if needed, and commit.
+- [x] (2026-03-05 08:55Z) Reviewed backlog items for `when` -> `property`, `property --capture`, and trigger-flag consistency.
+- [x] (2026-03-05 08:58Z) Mapped impacted code/docs/tests paths in `src/`, `tests/`, `docs/`, and `schema/`.
+- [x] (2026-03-05 09:05Z) Updated backlog wording to capture hard-break policy and `--on` direction.
+- [x] (2026-03-05 09:18Z) Authored initial active ExecPlan.
+- [x] (2026-03-05 09:42Z) Completed review pass #1 on planning docs and addressed findings.
+- [x] (2026-03-05 09:56Z) Completed independent review pass #2 on planning docs and addressed findings.
+- [x] (2026-03-05 10:25Z) Scoped plan down per product clarification: rename and collateral only; `property` stays unimplemented.
+- [x] (2026-03-05 10:48Z) Completed corrected-scope review pass #1; resolved medium findings on backlog path wording, capture default test coverage, and review runbook clarity.
+- [x] (2026-03-05 10:56Z) Completed corrected-scope independent review pass #2 (fresh context); no high/medium findings remain.
+- [ ] Add/adjust failing tests first for rename-only hard-break contracts.
+- [ ] Rename `change --when` surface to `change --on` while preserving behavior.
+- [ ] Rename `when` command surface to `property`, add `--capture` parsing/help, keep runtime unimplemented.
+- [ ] Align docs/changelog/collateral with rename-only delivery and explicit unimplemented status.
+- [ ] Run validation gates (`make check`, `make ci`).
+- [ ] Run mandatory review pass #1 for implementation diff and fix findings.
+- [ ] Run mandatory independent review pass #2 (fresh context) and fix findings.
 
 ## Surprises & Discoveries
 
-- Observation: `when` command exists only as CLI surface; runtime is still unimplemented.
-  Evidence: `src/engine/when.rs` returns `WavepeekError::Unimplemented("`when` command execution is not implemented yet")`.
+- Observation: `when` is already a parse-only/unimplemented command path, so command rename can be delivered without engine feature implementation.
+  Evidence: `src/engine/when.rs` currently returns `WavepeekError::Unimplemented("`when` command execution is not implemented yet")`.
 
-- Observation: Logical-expression runtime for property-like evaluation does not exist yet.
-  Evidence: `src/expr/eval.rs` returns `WavepeekError::Unimplemented("expression evaluation is not implemented yet")`, and `src/expr/parser.rs` currently stores raw `--cond` source text instead of a parsed AST.
+- Observation: Existing event-trigger runtime for `change` is mature and heavily test-locked, so flag rename must preserve semantics exactly.
+  Evidence: `tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, and `tests/change_vcd_fst_parity.rs` contain extensive `--when` contract assertions.
 
-- Observation: Event-expression parser and `change` diagnostics are tightly coupled to `--when` wording today.
-  Evidence: `src/expr/parser.rs` emits `invalid --when expression` and `src/engine/change.rs` validates event-name failures with `invalid --when expression: ...`.
+- Observation: Current schema excludes unimplemented command surfaces.
+  Evidence: `schema/wavepeek.json` command enum contains `info|scope|signal|value|change`; no `when` entry exists today.
 
-- Observation: Existing integration coverage heavily locks current `change --when` contracts.
-  Evidence: `tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, and `tests/change_vcd_fst_parity.rs` contain many explicit `--when` invocations and message assertions.
+- Observation: Prior draft over-scoped into runtime delivery (`property` evaluator/capture execution), which conflicts with clarified product scope.
+  Evidence: user clarification: "в плане должны быть только переименования ... Команда property всё также будет не реализована".
 
 ## Decision Log
 
-- Decision: Treat migration as a hard break with no compatibility options.
-  Rationale: User explicitly requested no compatibility aliases; repository precedent already enforces alias-free renames (`tree`, `modules`, `signals`, `changes`, `at`).
+- Decision: Execute this work as a hard break with no compatibility aliases.
+  Rationale: Product request is explicit and consistent with prior repo rename policy (`tree/modules/signals/changes/at` removals without aliases).
   Date/Author: 2026-03-05 / OpenCode
 
-- Decision: Standardize event-trigger flag spelling on `--on` for both `property` and `change`.
-  Rationale: One trigger keyword reduces cognitive load and avoids command-specific dialect drift.
+- Decision: Limit this plan to naming and collateral migration; do not deliver runtime behavior.
+  Rationale: Clarified scope requires that `property` remains intentionally unimplemented after rename.
   Date/Author: 2026-03-05 / OpenCode
 
-- Decision: Implement `property` by replacing `when` command surface and runtime modules, not by adding a parallel alias.
-  Rationale: Hard-break policy and long-term maintainability both favor one canonical command name.
+- Decision: Introduce `property --capture` only as CLI contract surface in this phase.
+  Rationale: Backlog requests flag introduction, while runtime semantics remain deferred.
   Date/Author: 2026-03-05 / OpenCode
 
-- Decision: Keep `--capture=switch` as default and preserve backlog semantics exactly (`match`, `switch`, `assert`, `deassert`).
-  Rationale: Backlog defines default signal-to-noise target and deterministic semantics for each mode.
+- Decision: `property` runtime must return unimplemented before event-expression semantic parsing in this phase.
+  Rationale: This avoids accidental partial-runtime behavior and keeps scope strictly rename-only.
   Date/Author: 2026-03-05 / OpenCode
 
-- Decision: When `--on` is omitted for `property`, treat wildcard `*` as "any change among signals referenced by `--eval`"; if `--eval` references no signals, fail with `error: args:` and require explicit `--on`.
-  Rationale: This preserves backlog intent (event-driven default tied to evaluated signals) and avoids accidental global wildcard scans on constant expressions.
+- Decision: Keep schema command/data surface unchanged in this phase.
+  Rationale: `property` remains unimplemented and does not produce successful JSON payloads requiring schema expansion.
   Date/Author: 2026-03-05 / OpenCode
 
-- Decision: For all capture modes, process candidate timestamps strictly after baseline checkpoint (`--from` or dump start). For transition modes (`switch`/`assert`/`deassert`), initialize previous boolean state at baseline and cast unknown to false.
-  Rationale: Explicit baseline rules keep `match` and transition modes deterministic and prevent first-sample ambiguity across fixtures and engines.
-  Date/Author: 2026-03-05 / OpenCode
-
-- Decision: Keep staged `iff` runtime behavior unchanged in this migration (still explicit deferred-runtime error), but rename user-facing flag references to `--on`.
-  Rationale: This plan focuses on command/flag migration and property delivery; full `iff` execution remains separately tracked debt.
+- Decision: Preserve all current `change` runtime semantics and only rename flag wording from `--when` to `--on`.
+  Rationale: This minimizes risk and keeps parity suites meaningful.
   Date/Author: 2026-03-05 / OpenCode
 
 ## Outcomes & Retrospective
 
-Current status: planning complete; implementation not started.
+Current status: planning complete, implementation not started.
 
-Expected completion outcome: users will have one event-driven property command (`property`) with deterministic capture modes and one consistent trigger flag (`--on`) across `property` and `change`, while legacy `when`/`--when` syntax is rejected deterministically.
+Expected completion outcome: user-facing CLI and docs consistently use `property` and `--on`, legacy `when`/`--when` syntax is rejected, and `property` remains explicitly unimplemented with stable error messaging.
 
-Primary delivery risk: the migration touches parser diagnostics, CLI help contracts, schema discriminators, and many integration tests at once. This is mitigated by TDD-first sequencing, small atomic commits, and mandatory two-pass review.
+Residual risk at completion: low functional risk (rename-only), with primary risk concentrated in missing a collateral reference (`--when`/`when`) in docs/tests.
 
 ## Context and Orientation
 
-`wavepeek` is a single-crate Rust CLI. Command parsing lives under `src/cli/`, runtime logic under `src/engine/`, expression parsing/evaluation under `src/expr/`, and output envelopes in `src/output.rs`. JSON schema is tracked as a canonical artifact at `schema/wavepeek.json`.
+`wavepeek` is a single-crate Rust CLI. Parsing and help contracts are in `src/cli/`. Runtime command dispatch is in `src/engine/mod.rs`. Output envelopes are in `src/output.rs`. Integration tests under `tests/` define the public CLI contract.
 
-In this repository, an "event expression" means the trigger language already used by `change` (`*`, named signal, `posedge`/`negedge`/`edge`, unions with `or`/`,`). A "capture mode" means how property outcomes are emitted per candidate event timestamp:
+Today, `src/cli/when.rs` defines the legacy `when` surface (`--clk`, `--cond`, and qualifiers), while `src/engine/when.rs` returns `Unimplemented`. The implemented `change` flow is wired around `--when` through `src/cli/change.rs`, `src/engine/change.rs`, and `src/expr/parser.rs` diagnostics. Contract tests in `tests/cli_contract.rs` and change-focused suites currently assert the legacy naming, and collateral in `README.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, and `CHANGELOG.md` still contains `when`/`--when` wording.
 
-- `match`: emit each candidate event where `--eval` is true.
-- `switch`: emit state transitions (`assert` for `0->1`, `deassert` for `1->0`).
-- `assert`: emit only `0->1` transitions.
-- `deassert`: emit only `1->0` transitions.
+In this plan, "rename-only rollout" means migrating CLI/help/tests/docs naming without adding engine behavior. "Collateral" means all non-runtime contract artifacts (tests, docs, changelog, help text) that must remain synchronized with the shipped surface. "TDD red phase" means first proving at least one targeted test fails before migration edits.
 
-Additional terms used in this plan:
-
-- "TDD red phase" means writing/updating tests first and proving at least one targeted test fails before implementation.
-- "Discriminator mapping" means JSON schema and runtime binding between envelope `command` value and the required `data` shape.
-- "Parity suite" means tests that assert behavior equivalence after refactor/rename (here: `change --on` must match previous `--when` semantics).
-
-Current state relevant to this work:
-
-- `src/cli/when.rs` and `src/engine/when.rs` define a planned-but-unimplemented command path.
-- `src/cli/change.rs`, `src/engine/change.rs`, and `src/expr/parser.rs` are currently wired around `--when` wording.
-- `src/engine/mod.rs` and `src/output.rs` have no `property` command/data variants yet.
-- `schema/wavepeek.json` command enum currently includes `info|scope|signal|value|change` only.
-- `tests/cli_contract.rs` currently expects top-level `when` and `change --when` help markers.
-- `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, and `CHANGELOG.md` contain `when`/`--when` references that must be reconciled with the hard break once implementation lands.
-
-Primary files in scope:
-
-- `src/cli/mod.rs`
-- `src/cli/change.rs`
-- `src/cli/when.rs` (rename target: `src/cli/property.rs`)
-- `src/engine/mod.rs`
-- `src/engine/change.rs`
-- `src/engine/when.rs` (rename target: `src/engine/property.rs`)
-- `src/expr/mod.rs`
-- `src/expr/parser.rs`
-- `src/expr/eval.rs`
-- `src/output.rs`
-- `schema/wavepeek.json`
-- `tests/cli_contract.rs`
-- `tests/change_cli.rs`
-- `tests/change_opt_equivalence.rs`
-- `tests/change_vcd_fst_parity.rs`
-- `tests/property_cli.rs` (new)
-- `docs/DESIGN.md`
-- `docs/ROADMAP.md`
-- `README.md`
-- `CHANGELOG.md`
-- `docs/BACKLOG.md`
+Expected touched paths are `src/cli/change.rs`, `src/cli/mod.rs`, `src/cli/when.rs` (renamed to `src/cli/property.rs`), `src/engine/change.rs`, `src/engine/mod.rs`, `src/engine/when.rs` (renamed to `src/engine/property.rs`), `src/expr/parser.rs`, `tests/cli_contract.rs`, `tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, `tests/change_vcd_fst_parity.rs`, `tests/property_cli.rs` (new), `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`, and `docs/BACKLOG.md`.
 
 ## Open Questions
 
-No blocking questions remain. Scope, naming, and migration policy are explicit and can be implemented directly.
+No blocking questions remain. Scope is explicitly rename-only with unimplemented `property` runtime preserved.
 
 ## Plan of Work
 
-Milestone 1 is contract-first TDD red phase. Update integration tests to assert the future surface (`property`, `--on`, hard-break rejection of legacy syntax) before runtime changes are applied, then run targeted test commands and capture failing evidence.
+Milestone 1 locks the future contract with failing tests first. The tests must prove hard-break behavior (`when`/`--when` rejected) and parse/help behavior (`property`, `--on`, `--capture`) before implementation edits.
 
-Milestone 2 migrates `change` trigger naming from `--when` to `--on` without changing event semantics. This includes clap flags, help text, parser diagnostics, engine wiring, and all `change`-related integration suites.
+Milestone 2 migrates `change` trigger flag naming to `--on` across CLI parsing, runtime wiring, and parser diagnostics, without changing event semantics.
 
-Milestone 3 replaces the `when` command path with `property` and implements runtime behavior required by backlog scope: event-driven candidate timestamps via `--on`, boolean evaluation via `--eval`, and deterministic capture semantics via `--capture` modes, including explicit baseline rules.
+Milestone 3 migrates command surface from `when` to `property` and adds `--capture` parsing/help while preserving unimplemented runtime status.
 
-Milestone 4 aligns schema and collateral. Update JSON schema discriminator/data definitions for `property`, update docs/changelog to reflect hard break, and close completed backlog items once implementation is validated.
+Milestone 4 updates collateral (`docs`, `README`, `CHANGELOG`, backlog wording) to match shipped rename-only behavior and explicitly document that `property` remains unimplemented.
 
-Milestone 5 enforces quality and review closure. Run repository quality gates, execute mandatory review pass #1, apply fixes, then run an independent fresh review pass #2 and resolve remaining findings.
+Milestone 5 runs full validation and mandatory dual review closure.
 
 ### Concrete Steps
 
 Run all commands from `/workspaces/fix-rename-when`.
 
-1. TDD red phase for CLI migration and property contract tests.
+1. TDD red phase for rename-only contracts.
 
-   - In `tests/cli_contract.rs`, replace `when` expectations with `property`, replace `change --when` help fragments with `change --on`, and add explicit hard-break checks:
-     - `wavepeek when ...` fails as unrecognized subcommand.
-     - `wavepeek change --when ...` fails as unexpected argument with `See 'wavepeek change --help'.`
-     - `wavepeek property --when ...` fails as unexpected argument with `See 'wavepeek property --help'.`
-   - Update `tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, and `tests/change_vcd_fst_parity.rs` invocations from `--when` to `--on` while keeping semantic expectations unchanged.
-   - Add `tests/property_cli.rs` with parser/help/runtime contract tests for `--on`, `--eval`, and `--capture` modes.
-    - In `tests/property_cli.rs`, add explicit defaults tests:
-      - omitted `--on` with signal-bearing `--eval` tracks changes among `--eval` signals;
-      - omitted `--on` with signal-free `--eval` (for example `"1"`) fails with deterministic `error: args:` guidance.
-    - In `tests/property_cli.rs`, add baseline tests for all capture modes at range baseline (`--from`):
-      - `match` confirms candidate evaluation starts strictly after baseline;
-      - `switch|assert|deassert` confirm previous-state initialization at baseline;
-      - include unknown (`x`/`z`) casting checks.
+   - Update `tests/cli_contract.rs`:
+     - replace expected subcommand `when` with `property`;
+     - keep unimplemented status checks, but for `property`;
+     - assert `change --when` is rejected with `error: args:` and help hint;
+     - assert legacy `when` command is rejected as unrecognized subcommand.
+   - Update change integration suites (`tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, `tests/change_vcd_fst_parity.rs`) to use `--on` instead of `--when` while preserving expected payloads.
+   - Add `tests/property_cli.rs` for parser/help contract:
+     - accepts `--on`, `--eval`, and `--capture=match|switch|assert|deassert`;
+     - confirms omitted `--capture` defaults to `switch` in parse/help contract;
+     - rejects legacy `when`-surface flags (`--clk`, `--cond`) on `property`;
+     - rejects `--when` for `property`;
+     - invocation fails as unimplemented after parse succeeds.
 
-   Red-phase runs (expect failure before implementation):
+   Red-phase commands (expect at least one failure before code migration):
 
        cargo test --test cli_contract help_lists_expected_subcommands -- --exact
        cargo test --test change_cli change_omitted_on_matches_explicit_wildcard -- --exact
-       cargo test --test property_cli property_default_capture_is_switch -- --exact
+       cargo test --test property_cli property_defaults_capture_to_switch -- --exact
+       cargo test --test property_cli property_accepts_capture_flag_but_is_unimplemented -- --exact
 
-   Expected red-phase signatures before implementation:
+   Expected failure signatures before implementation:
 
        error: args: unrecognized subcommand 'property'
        ... FAILED
 
-2. Implement `change --on` rename plumbing.
+2. Implement `change --on` rename (no semantic changes).
 
-   - In `src/cli/change.rs`, rename field `when` to `on` and clap long flag to `--on`.
-   - In `src/cli/mod.rs`, update `change` long help wording from `--when` to `--on`.
-   - In `src/engine/change.rs`, consume `args.on` (default `*`) and rename all user-facing diagnostics from `--when` to `--on`.
-   - In `src/expr/parser.rs` and `src/expr/mod.rs`, update event-expression parse error wording and helper hints so both `change` and `property` can reuse the same parser without stale `--when` phrasing.
+   - In `src/cli/change.rs`, rename field `when` to `on` and clap flag to `--on`.
+   - In `src/cli/mod.rs`, update change help text from `--when` to `--on`.
+   - In `src/engine/change.rs`, consume `args.on` with same default wildcard behavior (`*`) and rename user-facing diagnostics from `--when` to `--on`.
+   - In `src/expr/parser.rs`, update event-expression error wording/hints used by `change` so users see `--on` guidance.
 
-   Re-run change-focused tests:
+   Run change-focused suites:
 
        cargo test --test change_cli
        cargo test --test change_opt_equivalence
        cargo test --test change_vcd_fst_parity
 
-3. Implement `property` command and runtime semantics.
+3. Rename `when` command surface to `property` and keep runtime unimplemented.
 
-   - Rename modules with history preservation:
+   - Rename modules:
      - `src/cli/when.rs` -> `src/cli/property.rs`
      - `src/engine/when.rs` -> `src/engine/property.rs`
-    - Replace `WhenArgs` with `PropertyArgs` in `src/cli/property.rs` and wire subcommand rename in `src/cli/mod.rs`.
-    - In `src/engine/mod.rs`, replace `Command::When` path with `Command::Property`, add `CommandName::Property`, and add `CommandData::Property` payload type.
-    - Implement `src/engine/property.rs` end-to-end:
-      - resolve requested scope and time window deterministically;
-      - parse event expression from `--on`; when omitted, synthesize tracked wildcard from `--eval` signal references;
-      - parse/evaluate logical expression from `--eval` at candidate timestamps;
-      - initialize previous evaluation state at baseline (`--from` or dump start), cast unknown to false, then apply `--capture` semantics and emit deterministic records for candidate timestamps strictly greater than baseline.
-    - Implement expression runtime support needed by property in `src/expr/parser.rs`, `src/expr/mod.rs`, and `src/expr/eval.rs` (replace current placeholder-only path with executable parser/evaluator compatible with current MVP boolean operators).
-    - Update `src/output.rs` human/JSON rendering for `CommandData::Property`.
+   - In `src/cli/property.rs`, replace old `when`-specific flags with planned property surface (`--on`, `--eval`, `--capture`, waveform/scope/range/output controls as needed for docs consistency).
+   - In `src/cli/mod.rs`, replace subcommand wiring/help from `when` to `property`, including top-level ordering and descriptive text.
+   - In `src/engine/mod.rs`, replace `Command::When` path with `Command::Property`.
+   - In `src/engine/property.rs`, keep unimplemented return path with updated message:
 
-   Property-focused tests:
+       "`property` command execution is not implemented yet"
+
+   - Ensure `property` parser accepts `--capture` values but runtime still exits via unimplemented error.
+   - Ensure `property` does not invoke event-expression semantic parsing in this phase; malformed `--on` text must still surface as unimplemented runtime status (after clap-level parsing succeeds).
+
+   Run targeted suites:
 
        cargo test --test property_cli
        cargo test --test cli_contract
 
-4. Schema and collateral alignment.
+4. Collateral migration (rename-only, explicit unimplemented status).
 
-   - Update `schema/wavepeek.json`:
-     - add `"property"` command discriminator;
-     - add `$defs.propertyData` (or equivalent canonical name) with deterministic shape for capture records;
-     - ensure `allOf` discriminator mapping is complete.
-   - Run schema regeneration/verification targets as needed.
-   - Update live contracts and migration notes in `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, and `CHANGELOG.md`.
-   - Update `docs/BACKLOG.md` by removing or closing completed items after implementation acceptance.
+   - Update `docs/DESIGN.md` command/flag references:
+     - `change` uses `--on`;
+     - planned command is `property` with `--on`, `--eval`, and `--capture` surface;
+     - status remains unimplemented in this release.
+   - Update `docs/ROADMAP.md` query-engine naming from `when` to `property`.
+   - Update `README.md` command table (`property` planned/unimplemented, `change --on` wording).
+   - Update `CHANGELOG.md` with breaking rename notes and explicit statement that `property` remains unimplemented.
+   - Keep `schema/wavepeek.json` unchanged unless implementation creates successful `property --json` payloads (out of scope for this plan).
+   - Run a collateral sweep to catch stale wording outside intentional historical references:
 
-   Run:
+       rg --line-number '\\bwhen\\b|--when' docs/DESIGN.md docs/ROADMAP.md README.md CHANGELOG.md tests/cli_contract.rs
 
-       make update-schema
-       make check-schema
-
-   Expected schema-check signature:
-
-       ... check_schema_contract.py
-       (no error output, exit code 0)
+   - Allow only intentional historical mentions (for example, changelog history and explicit backlog tech-debt notes); all live contract/help wording must be `property`/`--on`.
 
 5. Commit atomic units.
 
-   Recommended commit split:
+   Suggested split:
 
-       git add -A tests/cli_contract.rs tests/change_cli.rs tests/change_opt_equivalence.rs tests/change_vcd_fst_parity.rs tests/property_cli.rs
-       git commit -m "test(cli)!: lock property and --on migration contracts"
+       git add tests/cli_contract.rs tests/change_cli.rs tests/change_opt_equivalence.rs tests/change_vcd_fst_parity.rs tests/property_cli.rs
+       git commit -m "test(cli)!: lock property and --on rename contracts"
 
-       git add -A src/cli/change.rs src/cli/mod.rs src/engine/change.rs src/expr/mod.rs src/expr/parser.rs
-       git commit -m "refactor(change)!: rename trigger flag from --when to --on"
+       git add src/cli/change.rs src/cli/mod.rs src/engine/change.rs src/expr/parser.rs
+       git commit -m "refactor(change)!: rename trigger flag to --on"
 
-       git add -A src/cli/property.rs src/engine/property.rs src/engine/mod.rs src/expr/eval.rs src/output.rs
-       git commit -m "feat(property)!: replace when command with property capture modes"
+       git add src/cli/property.rs src/engine/property.rs src/engine/mod.rs
+       git commit -m "refactor(cli)!: rename when surface to property"
 
-       git add -A schema/wavepeek.json docs/DESIGN.md docs/ROADMAP.md README.md CHANGELOG.md docs/BACKLOG.md
-       git commit -m "docs(schema)!: align contracts with property and --on"
+       git add docs/DESIGN.md docs/ROADMAP.md README.md CHANGELOG.md docs/BACKLOG.md
+       git commit -m "docs!: align collateral with property and --on hard break"
 
 6. Full validation gates.
 
        make check
        make ci
 
-   Expected gate signature:
+   Expected success signature:
 
        cargo fmt -- --check
        cargo clippy --all-targets --all-features -- -D warnings
        cargo test -q
        ... completed successfully
 
-7. Mandatory review pass #1, then independent pass #2.
+7. Mandatory review cycle.
 
-   - Load `ask-review` skill.
-   - Run review pass #1 on the full migration diff; fix valid findings in new commit(s).
-   - Run a fresh review pass #2 in a new reviewer session; fix findings in new commit(s) and re-run pass #2 until clean.
+   - Run review pass #1 (`review` agent), apply valid fixes, commit.
+   - Review pass #1 context packet must include: scope summary, changed file list, tests run/results, hard-break assumptions, and explicit "rename-only, property still unimplemented" note.
 
-8. Final post-review gate and plan lifecycle closure.
+   - Run independent review pass #2 in fresh context, apply valid fixes, commit.
+   - Pass #2 must use a fresh reviewer session (not resumed context) and must include a short delta of fixes applied after pass #1.
 
-       make check
-       make ci
-
-   - Record final evidence in this plan.
-   - Move plan directory from `docs/exec-plans/active/` to `docs/exec-plans/completed/` when fully done.
+   - Re-run `make check` and `make ci` after final review-fix commit.
 
 ### Validation and Acceptance
 
-Acceptance is complete only when all outcomes below are simultaneously true:
+Acceptance is complete only when all conditions below are true:
 
-- `wavepeek --help` lists `property` and does not list `when`.
-- `wavepeek property --waves tests/fixtures/hand/m2_core.vcd --scope top --on "posedge clk" --eval "data == 0x0f"` executes and emits deterministic records in human format `@<time> <state>` (for example `@10ns assert`) and equivalent JSON records.
-- Omitted `--on` with signal-bearing `--eval` uses tracked-signal wildcard semantics; omitted `--on` with signal-free `--eval` fails deterministically with `error: args:`.
-- All capture modes evaluate candidate timestamps strictly greater than baseline (`--from` or dump start): `--capture=match` emits true evaluations at those candidates, `--capture=switch` emits transition records (`assert`/`deassert`), and `--capture=assert|deassert` emit only their respective edges.
-- Transition-mode first-sample behavior is deterministic: baseline state is taken at `--from` (or dump start), unknown values cast to false, and transition decisions use that initialized baseline state.
-- `wavepeek change --on ...` preserves current event semantics and output parity (excluding renamed flag wording).
-- Legacy syntax is rejected deterministically: `wavepeek when ...`, `wavepeek change --when ...`, and `wavepeek property --when ...` all fail with stable `error: args:` guidance.
-- JSON schema and runtime output agree (`make check-schema` passes), including `command: "property"`, valid property data shape, and no legacy `when` discriminator.
-- `make check` and `make ci` pass after final review fixes.
-- Review pass #1 and independent review pass #2 are clean, or all findings are resolved and rechecked.
+- Top-level help lists `property` and does not list `when`.
+- `wavepeek change --on ...` behaves like prior `--when` behavior for equivalent inputs.
+- `wavepeek change --when ...` fails deterministically with `error: args:` and help hint.
+- `wavepeek property --when ...` fails deterministically with `error: args:` and help hint.
+- Legacy `property` flags `--clk` and `--cond` are rejected as argument errors.
+- Omitted `--capture` on `property` resolves to default `switch` in parser/help contract.
+- `wavepeek property --waves tests/fixtures/hand/m2_core.vcd --scope top --on "posedge clk" --eval "1" --capture switch` parses and then fails as unimplemented (not as parse error).
+- Unimplemented message is exactly ``error: unimplemented: `property` command execution is not implemented yet``.
+- Docs (`docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`) consistently use rename-only wording and do not claim property runtime delivery.
+- Invalid `property --on` text does not claim semantic parser errors in this phase; it still returns the unimplemented runtime status once clap parsing succeeds.
+- `make check` and `make ci` pass after review fixes.
+- Review pass #1 and independent review pass #2 are clean, or findings are fixed and rechecked.
 
-TDD acceptance requirement: at least one newly introduced migration/property test fails before implementation and passes after implementation in the same branch history.
+TDD acceptance requirement: at least one updated rename-contract test fails before implementation and passes after implementation in the same branch history.
 
 ### Idempotence and Recovery
 
-All planned steps are file edits, test runs, and schema regeneration; they are safe to re-run. If migration work temporarily breaks compilation (common during command/module renames), recover by completing `src/cli/mod.rs` and `src/engine/mod.rs` wiring first, then re-run targeted tests.
+All steps are safe to rerun: they are deterministic file edits and test/gate runs. If compilation fails mid-rename, restore consistency first in `src/cli/mod.rs` and `src/engine/mod.rs` (module/variant wiring), then rerun targeted suites. If a test fails due to stale wording, update the matching help/error contract where the rename was intended and rerun.
 
-If parser/evaluator rollout exposes semantic mismatches, keep `property` tests as the contract source of truth, fix evaluator behavior, and re-run targeted suites before broad gates. If review finds regressions, apply follow-up commits; do not rewrite history.
+If review reports regressions, apply follow-up commits; do not rewrite history.
 
 ### Artifacts and Notes
 
-Expected modified and new artifacts:
+Expected change set for this plan: `src/cli/change.rs`, `src/cli/mod.rs`, `src/cli/when.rs` -> `src/cli/property.rs`, `src/engine/change.rs`, `src/engine/mod.rs`, `src/engine/when.rs` -> `src/engine/property.rs`, `src/expr/parser.rs`, `tests/cli_contract.rs`, `tests/change_cli.rs`, `tests/change_opt_equivalence.rs`, `tests/change_vcd_fst_parity.rs`, `tests/property_cli.rs` (new), `docs/DESIGN.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`, and `docs/BACKLOG.md`.
 
-- `src/cli/change.rs`
-- `src/cli/mod.rs`
-- `src/cli/when.rs` -> `src/cli/property.rs`
-- `src/engine/change.rs`
-- `src/engine/mod.rs`
-- `src/engine/when.rs` -> `src/engine/property.rs`
-- `src/expr/mod.rs`
-- `src/expr/parser.rs`
-- `src/expr/eval.rs`
-- `src/output.rs`
-- `schema/wavepeek.json`
-- `tests/cli_contract.rs`
-- `tests/change_cli.rs`
-- `tests/change_opt_equivalence.rs`
-- `tests/change_vcd_fst_parity.rs`
-- `tests/property_cli.rs` (new)
-- `docs/DESIGN.md`
-- `docs/ROADMAP.md`
-- `README.md`
-- `CHANGELOG.md`
-- `docs/BACKLOG.md`
+Record concise evidence before closure:
 
-Before closure, record concise evidence snippets in this section:
-
-- Red-phase failing test excerpt (at least one explicit `FAILED` signature).
-- Green-phase passing excerpt for `property_cli` and `change` parity suites.
-- `make ci` success excerpt.
-- Review pass #1 and independent pass #2 outcomes.
+- Red-phase failure snippet from targeted tests.
+- Green-phase snippets for `property_cli` and renamed `change` suites.
+- `make ci` success snippet.
+- Review pass #1 and #2 outcomes.
 
 ### Interfaces and Dependencies
 
-No new external dependencies are expected.
+No new dependencies are expected.
 
-The implementation should end with these canonical interfaces:
+Target interfaces after implementation:
 
-- `crate::cli::property::PropertyArgs` includes waveform input, optional range/scope, `on`, `eval`, `capture`, output controls, and bounded-result controls consistent with repository conventions.
-- `crate::engine::Command::Property`, `crate::engine::CommandName::Property`, and `crate::engine::CommandData::Property` are wired through dispatch and output.
-- `crate::engine::property::run(args: PropertyArgs) -> Result<CommandResult, WavepeekError>` executes end-to-end.
-- Event-expression parsing is reused for both `change --on` and `property --on` without stale `--when` diagnostics.
-- Expression parsing/evaluation APIs in `crate::expr` are executable (no `Unimplemented` placeholder path for property runtime).
+- `crate::cli::change::ChangeArgs` exposes `on` (not `when`).
+- `crate::cli::property::PropertyArgs` exposes `on`, `eval`, and `capture` parser surface.
+- `crate::engine::Command::Property` and `crate::engine::property::run` exist, with `run` intentionally returning unimplemented error in this phase.
 
-Contract invariants to preserve:
+Contract invariants:
 
-- Error format remains `error: <category>: <message>`.
+- Error shape remains `error: <category>: <message>`.
 - Exit-code mapping stays unchanged.
-- `change` data shape remains stable; only trigger-flag naming and related docs/help/errors change.
+- This phase ships naming migration only and must not claim runtime property delivery.
 
-Revision Note: 2026-03-05 / OpenCode - Created active ExecPlan from backlog items for `when`->`property`, `property --capture`, and user-mandated hard-break migration to `--on` for both `property` and `change`.
-Revision Note: 2026-03-05 / OpenCode - Revised plan after review: made default omitted-`--on` semantics explicit, defined baseline behavior for `switch/assert/deassert`, clarified transitional backlog wording for `change --when` to `--on`, and added concrete expected-output signatures for stateless verification.
-Revision Note: 2026-03-05 / OpenCode - Applied independent review follow-ups: synchronized baseline rule for `match` with other capture modes (strictly after baseline), added concrete fixture-based acceptance example, and aligned tech-debt closure wording to `change --on`.
-Revision Note: 2026-03-05 / OpenCode - Recorded dual review completion in `Progress` for planning-stage quality gate traceability.
+Revision Note: 2026-03-05 / OpenCode - Created active ExecPlan for hard-break `property`/`--on` migration.
+Revision Note: 2026-03-05 / OpenCode - Scope corrected after product clarification: only renames/collateral updates are in scope; `property` remains unimplemented.
+Revision Note: 2026-03-05 / OpenCode - Incorporated corrected-scope review feedback: prose-first tightening, broader collateral sweep, explicit `property` parse-vs-unimplemented boundary, and additional rename-contract checks.

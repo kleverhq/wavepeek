@@ -2,6 +2,7 @@
 
 RTL_ARTIFACTS_DIR ?= /opt/rtl-artifacts
 REQUIRED_RTL_ARTIFACTS := picorv32_test_vcd.fst scr1_max_axi_coremark.fst
+BENCH_E2E_SMOKE_REQUIRED_RTL_ARTIFACTS := scr1_max_axi_coremark.fst scr1_max_axi_riscv_compliance.fst picorv32_test_ez_vcd.fst scr1_max_axi_isr_sample.fst
 SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
 BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
@@ -19,6 +20,15 @@ check-rtl-artifacts: require-container
 	@for fixture in $(REQUIRED_RTL_ARTIFACTS); do \
 		if [ ! -f "$(RTL_ARTIFACTS_DIR)/$$fixture" ]; then \
 			printf '%s\n' "error: file: required fixture missing at $(RTL_ARTIFACTS_DIR)/$$fixture" >&2; \
+			exit 1; \
+		fi; \
+	done
+
+## Verify benchmark smoke fixture payload is installed
+check-bench-e2e-smoke-rtl-artifacts: require-container
+	@for fixture in $(BENCH_E2E_SMOKE_REQUIRED_RTL_ARTIFACTS); do \
+		if [ ! -f "$(RTL_ARTIFACTS_DIR)/$$fixture" ]; then \
+			printf '%s\n' "error: file: required smoke fixture missing at $(RTL_ARTIFACTS_DIR)/$$fixture" >&2; \
 			exit 1; \
 		fi; \
 	done
@@ -87,7 +97,7 @@ bench-e2e-run: check-rtl-artifacts build-release
 	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run lightweight benchmark e2e smoke for pre-commit
-bench-e2e-smoke-commit: check-rtl-artifacts build-release
+bench-e2e-smoke-commit: check-rtl-artifacts check-bench-e2e-smoke-rtl-artifacts build-release
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
 		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$$tmp_revised" && \
 		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100

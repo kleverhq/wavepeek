@@ -301,11 +301,12 @@ def run_test(
             text=True,
         )
     if result.returncode != 0:
-        details = ""
-        if not verbose:
-            details = (result.stderr or result.stdout).strip()
-        suffix = f": {details}" if details else ""
-        fail(f"error: run: hyperfine failed for `{test['name']}`{suffix}")
+        if verbose:
+            fail(f"error: run: hyperfine failed for `{test['name']}`")
+        fail(
+            f"error: run: hyperfine failed for `{test['name']}` "
+            "(use --verbose for detailed logs)"
+        )
 
 
 def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:

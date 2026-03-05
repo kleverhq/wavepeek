@@ -10,11 +10,13 @@
 - For consistency, `change` should also use `--on` instead of `--when` for event expressions.
 - Migration policy is a hard break: no compatibility aliases for legacy `when` command or `--when` flags.
 - Scope/name resolution and time-window behavior should stay deterministic and reuse current event/expression infrastructure where possible.
-- Close when `property` runs end-to-end with stable human/JSON contracts and all legacy `when`/`--when` docs/runtime status are fully migrated.
+- Phase-1 close target: rename-only rollout (`when` -> `property`, `change --when` -> `change --on`) plus collateral migration, while `property` execution remains explicitly unimplemented.
+- Runtime delivery of `property --eval` behavior is tracked separately under tech debt (`Expression evaluator and property runtime path remain unimplemented`).
 
 ### Add `property --capture` modes for match/transition reporting
 
 - Add `--capture=match|switch|assert|deassert` to control report granularity.
+- Phase-1 migration scope: add CLI surface for `--capture` (including default `switch`) while `property` remains unimplemented.
 - Semantics: `match` emits each event where `--eval` is true; `switch` emits state transitions (`assert` on `0->1`, `deassert` on `1->0`); `assert` emits only `0->1`; `deassert` emits only `1->0`.
 - Default `--capture=switch` as the best signal/noise tradeoff for CI and terminal usage.
 - Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
@@ -50,7 +52,7 @@
 
 ### Expression evaluator and `property` runtime path remain unimplemented
 
-- Reusable expression/event types were expanded for `change`, but `src/expr/eval.rs` and `src/engine/when.rs` still return `Unimplemented`.
+- Reusable expression/event types were expanded for `change`, but `src/expr/eval.rs` and the command-runtime path (`src/engine/when.rs` before phase-1 rename, `src/engine/property.rs` after rename) still return `Unimplemented`.
 - This keeps logical-expression semantics fragmented and blocks end-to-end delivery of the planned `property` command semantics.
 - Close when the property runtime path (implemented in the canonical engine module, with `when` migration handled) runs end-to-end on the shared evaluator path with CLI/integration tests.
 

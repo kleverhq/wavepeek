@@ -43,6 +43,25 @@ Required scan categories:
 - **Complexity inflation**: unnecessary abstraction layers, pass-through functions, deeply nested flow where simpler control flow works.
 - **Naming or structure drift**: one concept named differently across modules, inconsistent placement of similar responsibilities.
 
+Delegation protocol (mandatory when step 2 is delegated):
+- Delegate with directed subagents in parallel; do not use one omnibus scan by default.
+- Minimum lanes:
+  - **Code lane**: implementation, tests, configs, scripts.
+  - **Docs lane**: README, docs, CLI help/man text, examples.
+  - **Architecture lane**: module boundaries, ownership, layering, naming/system structure.
+- A single-agent scan is allowed only for explicitly tiny scope; record the reason in baseline notes.
+- Each lane must return ledger-ready items with `path`, `evidence`, and `proposed fix`.
+
+Prompt completeness rule (mandatory):
+- Do not truncate delegated prompts.
+- Include full scope, exclusions, required scan categories, and output format.
+- Include the full **AI-slop smell checklist** from this skill verbatim (not summarized, not referenced by title only).
+- Require cross-lane tagging when one finding affects multiple lanes.
+
+Merge rule:
+- Consolidate all lane outputs into one drift ledger.
+- Deduplicate overlaps, keep strongest evidence, and preserve cross-lane links.
+
 ### 3) Prioritize and batch
 - Execute fixes in risk order:
   - P0: broken links, contracts, tests.
@@ -99,6 +118,8 @@ Treat these as high-signal drift indicators:
 - Temporary TODOs with no owner or expiry that survive multiple revisions.
 
 ## Tooling hints
+- For step 2, run parallel directed `explore` subagents (code/docs/architecture) and merge outputs into one ledger.
+- Avoid single-agent full-repo scans unless scope is explicitly tiny and justified.
 - Use `explore` for broad repository scans and pattern inventory.
 - Use `review` for a focused cleanup pass before final handoff.
 - Follow repository conventions from `AGENTS.md` and `docs/DEVELOPMENT.md`.

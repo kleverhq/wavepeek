@@ -38,10 +38,10 @@
 
 ## Tech Debt
 
-### `change --when` (planned rename to `--on`): deferred `iff logical_expr` execution
+### `change --on`: deferred `iff logical_expr` execution
 
 - Event terms with `iff` are parsed but intentionally rejected at runtime with `error: args: iff logical expressions are not implemented yet`.
-- This was introduced in `feat(change): implement --when triggers end to end` as a staged delivery compromise.
+- This was introduced in the staged trigger rollout as a delivery compromise.
 - Close when `change --on "... iff ..."` is evaluated end-to-end (true/false branches), and the hard-fail path is removed.
 
 ### Event-expression parser uses temporary `iff` capture rules

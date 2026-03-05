@@ -54,7 +54,7 @@ VCD is text and therefore natively readable by LLM agents, but real-world dumps 
 - VCD/FST dump file support
 - Signal discovery: list, search, hierarchy navigation
 - Value extraction over time ranges
-- Event search (find time when condition holds)
+- Property checks over event triggers (parse/help surface in this release)
 - Stateless CLI (no sessions, no caching, no background processes)
 
 ### 2.2 Out of Scope
@@ -324,7 +324,7 @@ wavepeek value --waves dump.vcd --at 100ns --scope top.cpu --signals clk --json
 Outputs delta snapshots of signal values over a time range using one event-trigger model.
 
 ```
-wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--when <event_expr>] [--max <n|unlimited>] [--abs] [--json]
+wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --signals <names> [--on <event_expr>] [--max <n|unlimited>] [--abs] [--json]
 ```
 
 **Parameters:**
@@ -335,12 +335,12 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 | `--to <time>` | end of dump | End time with units (e.g., `2us`) |
 | `--scope <path>` | — | Scope for short signal/trigger names |
 | `--signals <names>` | required | Comma-separated signal names |
-| `--when <event_expr>` | `*` | Event expression (`*`, named, edge, union) |
+| `--on <event_expr>` | `*` | Event expression (`*`, named, edge, union) |
 | `--max <n\|unlimited>` | 50 | Maximum number of snapshot rows; `unlimited` disables truncation |
 | `--abs` | off | Canonical paths in human output |
 | `--json` | off | Strict JSON envelope output |
 
-**Supported `--when` forms:**
+**Supported `--on` forms:**
 - Non-edge: `*` (any change in resolved `--signals`) and `<name>` (any change of that signal)
 - Edge: `posedge <name>`, `negedge <name>`, `edge <name>`
 - Union: `event or event`, `event, event` (exact synonyms)
@@ -352,10 +352,10 @@ but runtime evaluation of `logical_expr` is intentionally deferred and returns
 
 **Behavior:**
 - Name resolution follows `value`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
-- Scoped mode rejects canonical full-path tokens for both `--signals` and `--when` names.
+- Scoped mode rejects canonical full-path tokens for both `--signals` and `--on` names.
 - Time tokens require explicit units and exact alignment to dump precision.
 - `--from` defines a baseline checkpoint: values are sampled/initialized at `--from` (or dump start when omitted), and no row is emitted at that exact timestamp.
-- Candidate timestamps come from `--when` inside inclusive `[--from, --to]`; rows can only be emitted for timestamps strictly greater than the baseline checkpoint.
+- Candidate timestamps come from `--on` inside inclusive `[--from, --to]`; rows can only be emitted for timestamps strictly greater than the baseline checkpoint.
 - Candidate evaluation is internally reduced to event-relevant timestamps (tracked/event signal change points) instead of scanning every dump timestamp, while preserving observable behavior.
 - Each emitted row is delta-only: emit only when sampled `--signals` changed relative to the last known sampled state strictly before that timestamp.
 - Delta comparison always uses sampled state strictly before the candidate timestamp in the underlying dump order (not merely before the previous emitted candidate).
@@ -381,62 +381,58 @@ but runtime evaluation of `logical_expr` is intentionally deferred and returns
 wavepeek change --waves dump.vcd --from 1us --to 2us --signals top.cpu.clk,top.cpu.data
 
 # Named non-edge trigger with scope-relative names
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals data,valid --when "data"
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals data,valid --on "data"
 
 # Union trigger with comma/or synonyms
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk1 --when "posedge clk1, posedge clk2"
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk1 --on "posedge clk1, posedge clk2"
 
 # Strict JSON envelope
-wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --when "edge clk" --json
+wavepeek change --waves dump.vcd --from 1us --to 2us --scope top.cpu --signals clk --on "edge clk" --json
 
 # Disable row truncation explicitly
 wavepeek change --waves dump.vcd --signals top.sig --max unlimited
 ```
 
-#### 3.2.6 `when` — Event search
+#### 3.2.6 `property` — Property checks over event triggers
 
 Status: planned, not implemented in the current release. Current runtime behavior is
-`error: unimplemented: when command execution is not implemented yet`.
+`error: unimplemented: \`property\` command execution is not implemented yet`.
 
-Finds clock cycles where a boolean expression evaluates to true.
-Expression is evaluated on every posedge of the specified clock.
+Parses property contracts by combining event triggers (`--on`) with a logical
+expression (`--eval`) and a capture mode (`--capture`). Runtime execution is not
+delivered in this phase.
 
 ```
-wavepeek when --waves <file> --clk <name> [--from <time>] [--to <time>] [--scope <path>] --cond <expr> [--first [<n>]] [--last [<n>]] [--max <n|unlimited>] [--json]
+wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] [--on <event_expr>] --eval <logical_expr> [--capture <match|switch|assert|deassert>] [--json]
 ```
 
 **Parameters:**
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `--waves <file>` | required | Path to VCD/FST file |
-| `--clk <name>` | required | Clock signal for posedge sampling |
 | `--from <time>` | start of dump | Start of time range |
 | `--to <time>` | end of dump | End of time range |
-| `--scope <path>` | — | Scope for short signal/clock names in expression |
-| `--cond <expr>` | required | Boolean expression in expression language |
-| `--first [<n>]` | 1 if flag present | Return first N matches |
-| `--last [<n>]` | 1 if flag present | Return last N matches |
-| `--max <n\|unlimited>` | 50 | Maximum matches (when neither --first nor --last); `unlimited` disables truncation |
+| `--scope <path>` | — | Scope for short signal names in `--on`/`--eval` |
+| `--on <event_expr>` | `*` | Event expression (`*`, named, edge, union) |
+| `--eval <logical_expr>` | required | Logical expression to evaluate at candidate timestamps |
+| `--capture <mode>` | `switch` | Capture mode: `match`, `switch`, `assert`, `deassert` |
 | `--json` | off | Strict JSON envelope output |
 
-**Behavior:**
-- Expression is evaluated at every posedge (clean `0 -> 1` transition) of `--clk`.
-  Transitions involving `x`/`z` do not count as posedge.
-- Outputs timestamps where the expression is true after 2-state casting (unknown `x` counts as false).
-- Default output: human-readable timestamp list.
-- `--json` outputs JSON envelope with `data` as an array of objects: `{ "time": "<normalized>" }`.
-- `--clk` follows same scope convention as `--signals`: short name with `--scope`, full path without
-- **No qualifier:** return all matches up to `--max`
-- **`--first`:** return first N matches (default N=1 if no value given)
-- **`--last`:** return last N matches (default N=1 if no value given)
-- `--first` and `--last` are mutually exclusive — error if both specified
-- `--max` is not allowed together with `--first` or `--last`
-- `--max unlimited` is accepted by CLI parsing; runtime remains unimplemented.
-- Fail fast: error if any signal in expression not found
-- If no matches, `data` is empty and a warning is emitted.
-- If matches exceed `--max` (when neither `--first` nor `--last` is used), output is truncated and a warning is emitted.
+**Behavior in this release:**
+- CLI parsing/help for `--on`, `--eval`, and `--capture` is available.
+- Legacy `when` surface flags (`--clk`, `--cond`, `--when`) are rejected.
+- After successful clap parsing, runtime exits deterministically with
+  `error: unimplemented: \`property\` command execution is not implemented yet`.
+- Event-expression semantic diagnostics are not exposed by `property` yet; this
+  remains part of deferred runtime delivery.
 
-**Expression language (MVP):**
+**Planned capture semantics (deferred):**
+- `match`: emit every event timestamp where `--eval` is true.
+- `switch`: emit only transitions (`assert` on `0->1`, `deassert` on `1->0`).
+- `assert`: emit only `0->1` transitions.
+- `deassert`: emit only `1->0` transitions.
+
+**Expression language (MVP target):**
 
 Operands:
 - Signal names (scope-aware): `valid`, `data`, `top.cpu.data`
@@ -464,7 +460,7 @@ Truthy semantics: signal used without comparison operator is truthy if non-zero
 - Signal values are treated as 4-state bit vectors (`0`/`1`/`x`/`z`). Operators follow SystemVerilog-like
   4-state semantics and may produce an unknown boolean result `x`.
 - `&&` and `||` use short-circuit evaluation: the RHS is evaluated only when needed to determine the result.
-- For match decisions, the final expression result is cast to 2-state: only `1` is true; `0` and `x` are false.
+- For property decisions, the final expression result is cast to 2-state: only `1` is true; `0` and `x` are false.
 
 Post-MVP additions:
 - Bit select/slice: `data[7:0]`, `data[3]`
@@ -475,20 +471,10 @@ Post-MVP additions:
 
 **Examples:**
 ```bash
-# Find all clock cycles when data equals 0xff (up to 50)
-wavepeek when --waves dump.vcd --clk clk --cond "data == 0xff" --scope top.cpu
-
-# First cycle where valid handshake occurs
-wavepeek when --waves dump.vcd --clk clk --cond "valid && ready" --scope top.cpu --first
-
-# Last 3 cycles where error was asserted
-wavepeek when --waves dump.vcd --clk clk --cond "err == 1" --scope top.cpu --last 3
-
-# Search within time window
-wavepeek when --waves dump.vcd --clk top.cpu.clk --from 1us --to 2us --cond "top.cpu.data == 0xff"
-
-# Complex expression
-wavepeek when --waves dump.vcd --clk clk --scope top.cpu --cond "(a || b) && !reset"
+# Parse-only contract examples (runtime still unimplemented)
+wavepeek property --waves dump.vcd --scope top.cpu --on "posedge clk" --eval "data == 0xff"
+wavepeek property --waves dump.vcd --scope top.cpu --on "edge clk" --eval "valid && ready" --capture assert
+wavepeek property --waves dump.vcd --from 1us --to 2us --eval "top.cpu.data == 0xff" --capture switch
 ```
 
 ---
@@ -540,9 +526,9 @@ The CLI layer formats results for output.
    Passes typed command structs down to the engine.
 
 2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
-   `value`, `change`, `when`, `schema`. Operates on waveform abstractions, returns structured
+   `value`, `change`, `property`, `schema`. Operates on waveform abstractions, returns structured
    results. Contains shared time validation/normalization utilities, shared value-formatting
-   utilities, expression evaluator (for `when`), and the `change` multi-engine dispatcher
+   utilities, expression evaluator (planned `property` runtime), and the `change` multi-engine dispatcher
    described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
@@ -580,7 +566,7 @@ src/
 │   ├── signal.rs        # `signal` command args + output
 │   ├── value.rs         # `value` command args + output
 │   ├── change.rs        # `change` command args + output
-│   ├── when.rs          # `when` command args + output
+│   ├── property.rs      # `property` command args + output
 │   └── schema.rs        # `schema` command args + output
 ├── engine/              # Business logic per command
 │   ├── mod.rs           # Command dispatch + shared result types
@@ -588,12 +574,12 @@ src/
 │   ├── scope.rs         # Hierarchy traversal with depth/filter
 │   ├── signal.rs        # Signal listing within scope
 │   ├── value.rs         # Value extraction at time point
-│   ├── change.rs        # Value change tracking (`--when` event triggers, see 5.7)
+│   ├── change.rs        # Value change tracking (`--on` event triggers, see 5.7)
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
-│   ├── when.rs          # Condition evaluation over clock cycles
+│   ├── property.rs      # Property runtime entrypoint (currently unimplemented)
 │   └── schema.rs        # JSON schema export
-├── expr/                # Expression engine (for `when` command)
+├── expr/                # Expression engine (shared by `change`/`property`)
 │   ├── mod.rs           # Public API: parse() + eval()
 │   ├── lexer.rs         # Tokenizer
 │   ├── parser.rs        # Expression parser → AST
@@ -636,8 +622,8 @@ src/
 
 ### 5.5 Expression Engine
 
-The `when` command requires evaluating boolean expressions against signal values
-at each clock posedge. This needs a small expression language (defined in 3.2.6).
+The planned `property` command requires evaluating boolean expressions against signal values
+at event-selected timestamps. This needs a small expression language (defined in 3.2.6).
 
 **Pipeline:** Input string → Lexer → Token stream → Parser → AST → Evaluator (+ signal values at current time point)
 → 4-state boolean (`0`/`1`/`x`) → 2-state match (`x` counts as false)
@@ -657,13 +643,13 @@ at each clock posedge. This needs a small expression language (defined in 3.2.6)
 
 - **Evaluator** — Walks the AST, resolves signal names to current values
   (provided by the engine), and computes a 4-state boolean result using SystemVerilog-like semantics.
-  `&&` and `||` use short-circuit evaluation. For `when` match decisions, unknown `x` is cast to false.
+  `&&` and `||` use short-circuit evaluation. For property decisions, unknown `x` is cast to false.
 
-**Implementation status:** Event-expression parsing for `change --when` is now
+**Implementation status:** Event-expression parsing for `change --on` is now
 implemented with a hand-written parser (`parse_event_expr` in
 `src/expr/parser.rs`, types in `src/expr/mod.rs`). For logical expressions,
-current `--cond` handling is still staged (`parse` stores validated source text),
-and full parser/evaluator runtime for the planned `property` flow remains
+current `--eval` handling is still staged (`parse` stores validated source text),
+and full parser/evaluator runtime for the `property` flow remains
 deferred to post-MVP implementation work.
 
 ### 5.6 Error Handling Strategy

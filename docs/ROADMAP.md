@@ -33,13 +33,13 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 ### Value Extraction (→ v0.3.0)
 
 - `value` command (§3.2.4)
-- `change` command — unified `--when` trigger model (default `*`, edge/signal expressions) (§3.2.5)
+- `change` command — unified `--on` trigger model (default `*`, edge/signal expressions) (§3.2.5)
 - Time parsing with mandatory units (`--from`, `--to`, `--at`)
 - Expanded container-provisioned fixtures for value-extraction scenarios
 
 ### Query Engine (→ v0.4.0)
 
-- `when` command (§3.2.6)
+- `property` command (§3.2.6)
 - Expression engine: lexer, parser (Pratt/recursive descent), evaluator (§5.5)
 - MVP operators: `!`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `&&`, `||`
 - Literals: hex, binary, decimal

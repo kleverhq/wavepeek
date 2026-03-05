@@ -55,8 +55,8 @@ Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: http
 | `scope` | available | List hierarchy scopes (deterministic DFS, optional `--tree`) |
 | `signal` | available | List signals in a scope with metadata |
 | `value` | available | Signal values at a specific time |
-| `change` | available | Delta snapshots over a time range with `--when` event triggers |
-| `when` | planned | Cycles where expression is true |
+| `change` | available | Delta snapshots over a time range with `--on` event triggers |
+| `property` | planned | Property checks over event triggers (currently unimplemented) |
 | `schema` | available | Print canonical JSON schema used by `--json` output |
 
 Use `wavepeek --help` and `wavepeek <command> --help` for complete flag details.

@@ -2,14 +2,6 @@
 
 ## Issues
 
-### Rename `at` command to `value` and `--time` to `--at`
-
-- Current naming emphasizes the coordinate (`at`) more than the user intent (read signal values at a point); `value` is clearer and aligns command name with output semantics.
-- Rename CLI surface from `wavepeek at` to `wavepeek value`, and rename `--time <time>` to `--at <time>`.
-- Keep output/JSON behavior equivalent to current `at` semantics (point-in-time sampling, deterministic ordering, same literal formatting), except for command/flag naming.
-- Define migration behavior explicitly (compat alias vs hard break) and document it in help/release notes.
-- Close when CLI/help/docs/schema/tests/changelog are updated and migration behavior is covered by integration tests.
-
 ### Replace `when` with `property` and SVA-like event/eval wording
 
 - `when` is generic; `property` communicates assertion-like intent and reads closer to natural language for waveform checks.

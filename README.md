@@ -5,8 +5,6 @@
 
 `wavepeek` is a deterministic CLI for inspecting RTL waveforms (`.vcd`/`.fst`) in scripts, CI, and LLM-driven workflows.
 
-> Early stage project: command surface is stabilizing, but not complete yet.
-
 ## Why
 
 - In RTL debugging, waveforms are the primary artifact, but most existing tooling is GUI-first.
@@ -41,11 +39,23 @@ wavepeek info --waves ./dump.fst --json
 
 Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: https://github.com/kleverhq/rtl-artifacts
 
-## Agentic Flows (Soon)
+## Agentic Flows
 
-- A dedicated `SKILL.md` for agent workflows is planned.
-- Planned compatibility targets: OpenCode, Codex CLI, and Claude Code.
-- An MCP server for tool-native agent integration is also planned.
+`wavepeek` ships with a ready-to-install skill:
+
+- Skill folder (repo): `https://github.com/kleverhq/wavepeek/tree/main/.opencode/skills/wavepeek`
+
+Install via your agent:
+
+- Ask your coding agent to install the skill from the repository path above (for example, with a skill-installer workflow if your harness supports one).
+
+Manual install (copy the `.opencode/skills/wavepeek` folder):
+
+- Codex CLI: `~/.codex/skills/wavepeek`
+- Claude Code: `~/.claude/skills/wavepeek`
+- OpenCode (project-local): `<your-project>/.opencode/skills/wavepeek`
+
+Note: an MCP server for tool-native agent integration is not available yet, but is planned.
 
 ## Commands
 

@@ -22,22 +22,42 @@ cargo install wavepeek
 cargo install --path .
 ```
 
-Run:
+Run a complete inspection flow:
 
 ```bash
-wavepeek info --waves ./dump.fst
-wavepeek scope --waves ./dump.fst --tree
-wavepeek signal --waves ./dump.fst --scope top.cpu --filter '.*clk.*'
-wavepeek signal --waves ./dump.fst --scope top --recursive --max-depth 2
+# 0) Get a dump
+# Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: https://github.com/kleverhq/rtl-artifacts
+WAVES=./dump.fst
+
+# 1) Check dump bounds and time unit
+wavepeek info --waves "$WAVES"
+
+# 2) Discover hierarchy
+wavepeek scope --waves "$WAVES" --tree
+
+# 3) Find relevant signals in a scope (--filter is a regex)
+wavepeek signal --waves "$WAVES" --scope top.cpu --filter '.*(clk|rst|state).*'
+
+# 4) Sample values at one timestamp
+wavepeek value --waves "$WAVES" --at 100ns --scope top.cpu --signals reset_n,state
+
+# 5) Inspect transitions over a time window (--on is a SystemVerilog-like clocking event expression)
+wavepeek change --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --signals state --on 'posedge clk'
 ```
 
 By default, commands print human-readable output. Add `--json` for strict machine output:
 
 ```bash
-wavepeek info --waves ./dump.fst --json
+wavepeek info --waves "$WAVES" --json
 ```
 
-Note: example `.fst` dumps can be downloaded from `rtl-artifacts` releases: https://github.com/kleverhq/rtl-artifacts
+Chain commands in scripts with `jq`:
+
+```bash
+scope="$(wavepeek scope --waves "$WAVES" --json | jq -r '.data[0].path')"
+wavepeek signal --waves "$WAVES" --scope "$scope" --json | jq '.data[:5]'
+```
+
 
 ## Agentic Flows
 
@@ -66,10 +86,10 @@ Note: an MCP server for tool-native agent integration is not available yet, but 
 | `signal` | available | List signals in a scope with metadata |
 | `value` | available | Signal values at a specific time |
 | `change` | available | Delta snapshots over a time range with `--on` event triggers |
-| `property` | planned | Property checks over event triggers (currently unimplemented) |
+| `property` | planned | Property checks over event triggers |
 | `schema` | available | Print canonical JSON schema used by `--json` output |
 
-Use `wavepeek --help` and `wavepeek <command> --help` for complete flag details.
+Use progressive disclosure via built-in help: `wavepeek -h`, then `wavepeek <command> --help`.
 
 ## Development
 

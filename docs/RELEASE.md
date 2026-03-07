@@ -1,29 +1,23 @@
 # Release Runbook
 
-This runbook covers both dry-run and real release modes for `wavepeek`.
+This runbook covers the production release flow for `wavepeek`.
 
 ## Preconditions
 
 - `main` is green in pre-merge CI.
 - Local branch is up to date with `main`.
-- You have permission to push tags and manage repository variables.
-- For real releases: `CRATES_IO_TOKEN` exists in repository secrets.
-
-## Release Mode
-
-- Dry-run: set repository variable `RELEASE_DRY_RUN=1`.
-- Real release: unset `RELEASE_DRY_RUN` or set `RELEASE_DRY_RUN=0`.
-
-The release workflow always runs checks and packaging. In dry-run mode it skips
-crate publish and GitHub Release creation.
+- You have permission to push tags and create releases.
+- `CRATES_IO_TOKEN` exists in repository secrets.
 
 ## Checklist
 
 1. Choose a new semver version `X.Y.Z` and confirm tag `vX.Y.Z` does not exist.
 2. Update `CHANGELOG.md` using [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/):
-   - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
-   - keep a fresh `## [Unreleased]` section for future changes;
-   - update bottom links for `Unreleased` and the new version tag.
+    - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
+    - keep a fresh `## [Unreleased]` section for future changes;
+    - update bottom links for `Unreleased` and the new version tag.
+   The GitHub Release body is published from the `CHANGELOG.md` section for
+   `X.Y.Z`, so only shipped notes for that version should remain in that section.
 3. Reconcile `docs/ROADMAP.md` with actual shipped scope:
    - roadmap is planned scope; `CHANGELOG.md` is factual shipped scope;
    - if a feature planned for a future milestone shipped in `X.Y.Z`, move it to
@@ -60,20 +54,21 @@ crate publish and GitHub Release creation.
 
 9. Wait for `.github/workflows/release.yml` to finish.
 10. Check workflow logs for:
-   - tag/version validation
-   - `make ci`
-   - `cargo package --locked`
-   - expected mode behavior (skip side effects in dry-run, execute in real mode)
+    - tag/version validation
+    - `make ci`
+    - `cargo package --locked`
+    - release-note extraction from `CHANGELOG.md`
+    - `cargo publish --locked`
+    - GitHub Release creation with the extracted changelog body
 11. Validate schema publication endpoint for the tag (no extra asset upload required):
     - `https://raw.githubusercontent.com/kleverhq/wavepeek/vX.Y.Z/schema/wavepeek.json` resolves to the committed schema artifact.
 12. Verify final state:
-    - Dry-run: no crate publish, no GitHub Release for `vX.Y.Z`.
-    - Real release: crate published and GitHub Release created for `vX.Y.Z`.
-    - In both modes, schema is published implicitly via the tagged source raw URL.
+    - crate published for `X.Y.Z`;
+    - GitHub Release created for `vX.Y.Z` with notes matching `CHANGELOG.md` `## [X.Y.Z] - YYYY-MM-DD`;
+    - schema published implicitly via the tagged source raw URL.
 
 ## Rollback
 
-- If workflow behavior is unstable, force safe mode with `RELEASE_DRY_RUN=1`.
 - If tag was wrong, delete and recreate it after fixes:
 
   ```bash

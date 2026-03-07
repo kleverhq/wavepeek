@@ -72,6 +72,10 @@ test: require-container check-rtl-artifacts
 test-bench-e2e: require-container
 	python3 -m unittest discover -s bench/e2e -p "test_*.py"
 
+## Run release helper script unit tests
+test-scripts: require-container
+	python3 -m unittest scripts/test_extract_release_notes.py
+
 ## Build release binary
 build-release: require-container
 	cargo build --release
@@ -104,7 +108,7 @@ check-commit: require-container
 check: format-check lint check-schema check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema test test-bench-e2e check-build
+ci: format-check lint check-schema test test-bench-e2e test-scripts check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

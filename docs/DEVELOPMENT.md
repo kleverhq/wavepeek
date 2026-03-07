@@ -68,7 +68,7 @@ Common commands:
 - One-shot local gate:
   - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + cargo test + bench/e2e unittest + cargo check)
+  - `make ci` (format-check + clippy + check-schema + cargo test + bench/e2e unittest + release-script unittest + cargo check)
 - Cleanup:
   - `make clean`
 
@@ -163,6 +163,8 @@ Notes for agents:
   work.
 - During release prep, move `Unreleased` items into a versioned heading
   `## [X.Y.Z] - YYYY-MM-DD`, then create a new empty `Unreleased` section.
+- GitHub Release notes are published from the matching version section in
+  `CHANGELOG.md`; do not rely on auto-generated GitHub notes.
 - Keep comparison links at the bottom updated for `Unreleased` and each release.
 
 ## Rust Code Style

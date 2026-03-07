@@ -1,4 +1,0 @@
-interface:
-  display_name: "Use wavepeek CLI"
-  short_description: "Run deterministic wavepeek CLI waveform workflows"
-  default_prompt: "Use $wavepeek to inspect this waveform with precise commands."

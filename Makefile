@@ -6,6 +6,7 @@ SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
 BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
 WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
+PYTHON := python3 -B
 
 ## Require containerized execution
 require-container:
@@ -32,7 +33,7 @@ update-schema: require-container
 
 ## Validate canonical schema freshness and JSON contract URL
 check-schema: require-container
-	@python3 scripts/check_schema_contract.py "$(SCHEMA_PATH)"
+	@$(PYTHON) scripts/check_schema_contract.py "$(SCHEMA_PATH)"
 
 ## Bootstrap project env
 bootstrap: require-container
@@ -70,11 +71,11 @@ test: require-container check-rtl-artifacts
 
 ## Run benchmark harness unit tests
 test-bench-e2e: require-container
-	python3 -m unittest discover -s bench/e2e -p "test_*.py"
+	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
 
 ## Run release helper script unit tests
 test-scripts: require-container
-	python3 -m unittest scripts/test_extract_release_notes.py
+	$(PYTHON) -m unittest scripts/test_extract_release_notes.py
 
 ## Build release binary
 build-release: require-container
@@ -84,17 +85,17 @@ build-release: require-container
 bench-e2e-update-baseline: check-rtl-artifacts build-release
 	rm -rf "$(BENCH_E2E_BASELINE_DIR)"
 	mkdir -p "$(BENCH_E2E_BASELINE_DIR)"
-	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --run-dir "$(BENCH_E2E_BASELINE_DIR)"
+	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --run-dir "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run benchmark e2e suite with baseline compare
 bench-e2e-run: check-rtl-artifacts build-release
-	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
+	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run lightweight benchmark e2e smoke for pre-commit
 bench-e2e-smoke-commit: check-rtl-artifacts build-release
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
-		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$$tmp_revised" && \
-		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" python3 bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100
+		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$$tmp_revised" && \
+		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

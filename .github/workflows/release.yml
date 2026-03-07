@@ -84,7 +84,7 @@ jobs:
           TAG_VERSION: ${{ github.ref_name }}
         run: |
           version="${TAG_VERSION#v}"
-          python3 scripts/extract_release_notes.py --version "$version" > "${RUNNER_TEMP}/release-notes.md"
+          python3 -B scripts/extract_release_notes.py --version "$version" > "${RUNNER_TEMP}/release-notes.md"
 
       - name: Require crates.io token
         env:

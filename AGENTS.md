@@ -15,6 +15,18 @@ then follow links to deeper docs.
 
 For docs-local navigation, read `docs/AGENTS.md`.
 
+## Child Maps
+
+- Devcontainer setup notes: `.devcontainer/AGENTS.md`
+- GitHub automation assets: `.github/AGENTS.md`
+- OpenCode assets: `.opencode/AGENTS.md`
+- Performance and benchmark work: `bench/AGENTS.md`
+- Documentation map: `docs/AGENTS.md`
+- Schema contract assets: `schema/AGENTS.md`
+- Release/support scripts: `scripts/AGENTS.md`
+- Source code: `src/AGENTS.md`
+- Test suites: `tests/AGENTS.md`
+
 ## Breadcrumb Policy (`AGENTS.md` Network)
 
 - Treat each `AGENTS.md` as a local map, not a full manual.

@@ -104,7 +104,7 @@ For focused optimization campaigns, keep dedicated run directories under `bench/
 
 Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 
-`run` prints the resolved run directory at startup so resume/retry flows are explicit in logs.
+`run --verbose` prints the resolved run directory at startup so resume/retry flows are explicit in detailed logs. Default mode stays quiet and ends with a concise success line.
 
 Each benchmark run writes two per-test artifacts plus a run-level report:
 
@@ -142,7 +142,7 @@ If you need to profile test runtime:
 ## Pre-commit Hooks
 
 Hooks are defined in `.pre-commit-config.yaml` and installed by `make bootstrap`.
-Current hooks run (pre-commit): rustfmt, clippy, cargo check, cargo test, bench/e2e unittest.
+Current hooks run (pre-commit): rustfmt, clippy, cargo check, schema contract, cargo test, bench/e2e harness unit tests, and the bench/e2e smoke run+compare catalog.
 Commit messages are validated (commit-msg) via `commitizen` (`cz check`).
 
 Notes for agents:

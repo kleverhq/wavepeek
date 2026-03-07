@@ -511,7 +511,7 @@ wavepeek property --waves dump.vcd --from 1us --to 2us --eval "top.cpu.data == 0
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| **Language** | Rust stable (MSRV TBD) | Performance, memory safety, zero-cost abstractions. Ideal for parsing large binary/text dump files without GC pauses. |
+| **Language** | Rust stable (MSRV 1.93) | Performance, memory safety, zero-cost abstractions. Ideal for parsing large binary/text dump files without GC pauses. |
 | **CLI framework** | `clap` (derive API) | De-facto standard for Rust CLIs. Derive API provides self-documenting argument definitions with compile-time validation. |
 | **Waveform parsing** | `wellen` | Unified interface for VCD and FST formats. Battle-tested in the [Surfer](https://surfer-project.org/) waveform viewer. Multi-threaded VCD parsing via `rayon`. Optimized for on-demand signal access (loads hierarchy first, signal data lazily). |
 | **Serialization** | `serde` + `serde_json` | Standard Rust serialization. Used for strict `--json` envelope output and JSON schema export. |
@@ -521,25 +521,32 @@ wavepeek property --waves dump.vcd --from 1us --to 2us --eval "top.cpu.data == 0
 
 ### 5.2 High-Level Architecture
 
-The system is organized in three layers. Data flows top-down: CLI parses arguments,
-delegates to the engine, which reads waveform data and returns structured results.
-The CLI layer formats results for output.
+The system is organized in three execution layers plus a shared output module. Data
+flows top-down for execution: CLI parses arguments, delegates to the engine, which
+reads waveform data through the waveform layer and returns structured results. The
+shared output module renders those results for stdout.
 
-**Layers (top to bottom):**
+**Execution layers (top to bottom):**
 
-1. **CLI Layer** (`clap`) — Argument parsing, validation, output formatting.
-   Human-readable default output for all commands, strict JSON via `--json`, errors to stderr.
-   Passes typed command structs down to the engine.
+1. **CLI Layer** (`clap`) — Argument parsing, validation, and command dispatch.
+   Defines help text and typed command structs, then passes those structs to the
+   engine.
 
 2. **Engine Layer** — Business logic per command: `info`, `scope`, `signal`,
    `value`, `change`, `property`, `schema`. Operates on waveform abstractions, returns structured
-   results. Contains shared time validation/normalization utilities, shared value-formatting
-   utilities, expression evaluator (planned `property` runtime), and the `change` multi-engine dispatcher
-   described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
+   results. It is clap-free in behavior, but currently receives CLI-owned argument structs from
+   `src/cli/`. Contains shared time validation/normalization utilities, shared value-formatting
+   utilities, expression evaluator (planned `property` runtime), and the `change` multi-engine
+   dispatcher described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
    format detection (VCD/FST), hierarchy traversal, and signal value queries.
-   Exposes: Hierarchy, Signal, TimeTable.
+   Exposes adapter methods plus normalized metadata, scope, signal, and sampled-value structs.
+
+**Shared output module:**
+
+- `output.rs` — Human-readable default output and strict JSON rendering for engine
+  results. Owns stdout serialization; errors still go to stderr.
 
 **Key architectural decisions:**
 
@@ -565,15 +572,16 @@ engine and waveform modules can be extracted into a workspace crate with minimal
 ```
 src/
 ├── main.rs              # Entry point, top-level error handling
-├── cli/                 # CLI layer: argument definitions and output formatting
-│   ├── mod.rs           # Top-level CLI struct, subcommand dispatch
-│   ├── info.rs          # `info` command args + output
-│   ├── scope.rs         # `scope` command args + output
-│   ├── signal.rs        # `signal` command args + output
-│   ├── value.rs         # `value` command args + output
-│   ├── change.rs        # `change` command args + output
-│   ├── property.rs      # `property` command args + output
-│   └── schema.rs        # `schema` command args + output
+├── cli/                 # CLI layer: argument definitions, help text, dispatch
+│   ├── mod.rs           # Top-level CLI struct, parse-error normalization, output handoff
+│   ├── limits.rs        # Shared bounded-output flag parsing (`--max`, `--max-depth`)
+│   ├── info.rs          # `info` command args + clap help
+│   ├── scope.rs         # `scope` command args + clap help
+│   ├── signal.rs        # `signal` command args + clap help
+│   ├── value.rs         # `value` command args + clap help
+│   ├── change.rs        # `change` command args + clap help
+│   ├── property.rs      # `property` command args + clap help
+│   └── schema.rs        # `schema` command args + clap help
 ├── engine/              # Business logic per command
 │   ├── mod.rs           # Command dispatch + shared result types
 │   ├── info.rs          # Dump metadata extraction
@@ -585,6 +593,7 @@ src/
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint (currently unimplemented)
 │   └── schema.rs        # JSON schema export
+├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
 ├── expr/                # Expression engine (shared by `change`/`property`)
 │   ├── mod.rs           # Public API: parse() + eval()
 │   ├── lexer.rs         # Tokenizer
@@ -600,11 +609,11 @@ src/
 
 | Module | Knows about | Does not know about |
 |--------|-------------|---------------------|
-| `cli/` | clap, output formats (JSON/human) | wellen, file I/O |
-| `engine/` | domain logic, waveform layer API | clap, output formats |
+| `cli/` | clap, command dispatch, help text | wellen, file I/O, result rendering details |
+| `engine/` | domain logic, waveform layer API, CLI-owned command arg structs | clap parsing flow, output formats |
 | `expr/` | expression AST, signal values | wellen, CLI, output |
 | `waveform/` | wellen API | CLI, engine logic |
-| `output` | serde_json, JSON/human formatting | domain logic |
+| `output` | serde_json, JSON/human formatting | clap, waveform access, domain execution |
 | `error` | all error variants | nothing else |
 
 ### 5.4 Key Dependencies

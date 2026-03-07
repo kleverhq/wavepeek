@@ -2,6 +2,10 @@
 
 This directory contains implementation code.
 
+## Parent Map
+
+- Repository agent map: `../AGENTS.md`
+
 ## Source of Truth
 
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`

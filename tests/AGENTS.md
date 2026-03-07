@@ -2,6 +2,10 @@
 
 This directory contains integration and fixture-driven tests.
 
+## Parent Map
+
+- Repository agent map: `../AGENTS.md`
+
 ## Source of Truth
 
 - Testing workflow and conventions: `docs/DEVELOPMENT.md`

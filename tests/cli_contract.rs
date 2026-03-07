@@ -70,6 +70,35 @@ fn top_level_help_command_names() -> Vec<String> {
     command_names_from_top_level_help(&help)
 }
 
+fn assert_legacy_subcommand_rejected(legacy_name: &str) {
+    let mut command = wavepeek_cmd();
+
+    command
+        .arg(legacy_name)
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(format!(
+            "unrecognized subcommand '{legacy_name}'"
+        )))
+        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+}
+
+fn assert_human_flag_rejected(args: &[&str], command_name: &str) {
+    let mut command = wavepeek_cmd();
+
+    command
+        .args(args)
+        .assert()
+        .failure()
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--human'"))
+        .stderr(predicate::str::contains(format!(
+            "See 'wavepeek {command_name} --help'."
+        )));
+}
+
 #[test]
 fn no_args_prints_top_level_help_and_exits_zero() {
     let mut command = wavepeek_cmd();
@@ -710,93 +739,10 @@ fn schema_rejects_positional_arguments() {
 }
 
 #[test]
-fn legacy_tree_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("tree")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unrecognized subcommand 'tree'"))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
-}
-
-#[test]
-fn legacy_modules_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("modules")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "unrecognized subcommand 'modules'",
-        ))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
-}
-
-#[test]
-fn legacy_signals_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("signals")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "unrecognized subcommand 'signals'",
-        ))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
-}
-
-#[test]
-fn legacy_changes_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("changes")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "unrecognized subcommand 'changes'",
-        ))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
-}
-
-#[test]
-fn legacy_when_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("when")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unrecognized subcommand 'when'"))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
-}
-
-#[test]
-fn legacy_at_command_is_rejected_without_alias() {
-    let mut command = wavepeek_cmd();
-
-    command
-        .arg("at")
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unrecognized subcommand 'at'"))
-        .stderr(predicate::str::contains("See 'wavepeek --help'."));
+fn legacy_subcommands_are_rejected_without_alias() {
+    for legacy_name in ["tree", "modules", "signals", "changes", "when", "at"] {
+        assert_legacy_subcommand_rejected(legacy_name);
+    }
 }
 
 #[test]
@@ -851,85 +797,49 @@ fn unknown_flags_are_normalized_to_args_category() {
 
 #[test]
 fn all_commands_reject_human_flag() {
-    let mut schema = wavepeek_cmd();
-    schema
-        .args(["schema", "--human"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
-
-    let mut info = wavepeek_cmd();
-    info.args(["info", "--waves", "dump.vcd", "--human"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek info --help'."));
-
-    let mut scope = wavepeek_cmd();
-    scope
-        .args(["scope", "--waves", "dump.vcd", "--human"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
-
-    let mut signal = wavepeek_cmd();
-    signal
-        .args(["signal", "--waves", "dump.vcd", "--scope", "top", "--human"])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
-
-    let mut value = wavepeek_cmd();
-    value
-        .args([
+    let cases: &[(&[&str], &str)] = &[
+        (&["schema", "--human"], "schema"),
+        (&["info", "--waves", "dump.vcd", "--human"], "info"),
+        (&["scope", "--waves", "dump.vcd", "--human"], "scope"),
+        (
+            &["signal", "--waves", "dump.vcd", "--scope", "top", "--human"],
+            "signal",
+        ),
+        (
+            &[
+                "value",
+                "--waves",
+                "dump.vcd",
+                "--at",
+                "1ns",
+                "--signals",
+                "sig",
+                "--human",
+            ],
             "value",
-            "--waves",
-            "dump.vcd",
-            "--at",
-            "1ns",
-            "--signals",
-            "sig",
-            "--human",
-        ])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
-
-    let mut change = wavepeek_cmd();
-    change
-        .args([
+        ),
+        (
+            &[
+                "change",
+                "--waves",
+                "dump.vcd",
+                "--signals",
+                "sig",
+                "--human",
+            ],
             "change",
-            "--waves",
-            "dump.vcd",
-            "--signals",
-            "sig",
-            "--human",
-        ])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
+        ),
+        (
+            &[
+                "property", "--waves", "dump.vcd", "--on", "*", "--eval", "1", "--human",
+            ],
+            "property",
+        ),
+    ];
 
-    let mut property = wavepeek_cmd();
-    property
-        .args([
-            "property", "--waves", "dump.vcd", "--on", "*", "--eval", "1", "--human",
-        ])
-        .assert()
-        .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--human'"))
-        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
+    for (args, command_name) in cases {
+        assert_human_flag_rejected(args, command_name);
+    }
 }
 
 #[test]

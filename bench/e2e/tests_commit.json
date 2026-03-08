@@ -88,6 +88,52 @@
       }
     },
     {
+      "name": "scope_clustered_all_depth13_json",
+      "category": "scope",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "--max",
+        "200000",
+        "--max-depth",
+        "13",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "filter": ".*",
+        "max_depth": 13,
+        "scope_count": 4625
+      }
+    },
+    {
+      "name": "scope_scr1_all_depth7_json",
+      "category": "scope",
+      "runs": 1,
+      "warmup": 0,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--max",
+        "200000",
+        "--max-depth",
+        "7",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "filter": ".*",
+        "max_depth": 7,
+        "scope_count": 136
+      }
+    },
+    {
       "name": "signal_scr1_top_recursive_depth2_json",
       "category": "signal",
       "runs": 1,

@@ -473,6 +473,77 @@
       }
     },
     {
+      "name": "scope_scr1_all_depth7_json",
+      "category": "scope",
+      "runs": 15,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "--max",
+        "200000",
+        "--max-depth",
+        "7",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "filter": ".*",
+        "max_depth": 7,
+        "scope_count": 136
+      }
+    },
+    {
+      "name": "scope_dualrocket_filter_frontend_depth12_json",
+      "category": "scope",
+      "runs": 10,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
+        "--filter",
+        ".*frontend.*",
+        "--max",
+        "200000",
+        "--max-depth",
+        "12",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
+        "filter": ".*frontend.*",
+        "max_depth": 12,
+        "scope_count": 118
+      }
+    },
+    {
+      "name": "scope_clustered_all_depth13_json",
+      "category": "scope",
+      "runs": 6,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "scope",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "--max",
+        "200000",
+        "--max-depth",
+        "13",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "filter": ".*",
+        "max_depth": 13,
+        "scope_count": 4625
+      }
+    },
+    {
       "name": "signal_scr1_top_recursive_all_json",
       "category": "signal",
       "runs": 10,

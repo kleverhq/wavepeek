@@ -191,23 +191,38 @@ class PerfHelpersTest(unittest.TestCase):
             "change_scr1_signals_1_window_2ns_trigger_any",
             "info_picorv32_ez",
             "info_scr1_isr_sample",
+            "scope_clustered_all_depth13_json",
+            "scope_scr1_all_depth7_json",
             "signal_scr1_top_recursive_depth2_json",
             "signal_scr1_top_recursive_filter_valid_json",
             "value_scr1_signals_1",
             "value_scr1_signals_10",
         }
         self.assertEqual(set(names), expected_names)
-        self.assertEqual(len(names), 8)
+        self.assertEqual(len(names), 10)
 
         category_counts = Counter(str(test["category"]) for test in tests)
         self.assertEqual(
             category_counts,
-            Counter({"change": 2, "info": 2, "signal": 2, "value": 2}),
+            Counter({"change": 2, "info": 2, "scope": 2, "signal": 2, "value": 2}),
         )
 
         for test in tests:
             self.assertEqual(test["runs"], 1)
             self.assertEqual(test["warmup"], 0)
+
+    def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
+        payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
+        scope_tests = [test for test in payload["tests"] if test["category"] == "scope"]
+
+        self.assertEqual(
+            {test["name"] for test in scope_tests},
+            {
+                "scope_clustered_all_depth13_json",
+                "scope_dualrocket_filter_frontend_depth12_json",
+                "scope_scr1_all_depth7_json",
+            },
+        )
 
     def test_tests_commit_catalog_commands_match_tests_json(self) -> None:
         full_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))

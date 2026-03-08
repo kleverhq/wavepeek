@@ -105,6 +105,7 @@
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "size": "411M",
         "filter": ".*",
         "max_depth": 13,
         "scope_count": 4625
@@ -128,6 +129,7 @@
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "size": "4M",
         "filter": ".*",
         "max_depth": 7,
         "scope_count": 136

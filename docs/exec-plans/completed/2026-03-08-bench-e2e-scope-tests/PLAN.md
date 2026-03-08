@@ -22,7 +22,10 @@ This plan does not change Rust runtime behavior for the `scope` command. This pl
 - [x] (2026-03-08 11:12Z) Added TDD coverage in `bench/e2e/test_perf.py` for the expanded smoke catalog contract and exact `scope` benchmark set; confirmed red before catalog edits and green after.
 - [x] (2026-03-08 11:12Z) Added `scope` benchmark entries to `bench/e2e/tests.json` and `bench/e2e/tests_commit.json` and verified `perf.py list/run` for `^scope_` workloads.
 - [x] (2026-03-08 11:14Z) Refreshed committed baseline artifacts for the new `scope` scenarios and verified `bench/e2e/runs/baseline/README.md` now contains a `## scope` section.
-- [ ] Run validation, execute mandatory review passes, apply fixes, and move the finished plan to `docs/exec-plans/completed/`.
+- [x] (2026-03-08 11:16Z) Ran `make test-bench-e2e`, `make bench-e2e-smoke-commit`, and `make ci` after the baseline refresh; all passed.
+- [x] (2026-03-08 11:20Z) Completed focused review lanes; fixed the missing `size` metadata on scope benchmarks and strengthened the full-catalog scope contract test.
+- [x] (2026-03-08 11:22Z) Completed the fresh control review pass on the consolidated diff; no additional substantive issues were found.
+- [x] (2026-03-08 11:24Z) Moved the finished plan to `docs/exec-plans/completed/2026-03-08-bench-e2e-scope-tests/PLAN.md`.
 
 ## Surprises & Discoveries
 
@@ -34,6 +37,9 @@ This plan does not change Rust runtime behavior for the `scope` command. This pl
 
 - Observation: `wavepeek scope` has no `--scope` selector; it always starts at the dump roots and uses `--filter` plus `--max-depth` to shape work.
   Evidence: `docs/DESIGN.md` defines `scope --waves <file> [--max ...] [--max-depth ...] [--filter <regex>] [--tree] [--json]`, and the built CLI accepted the planned commands only after removing the nonexistent `--scope` flag from the draft.
+
+- Observation: benchmark metadata consistency matters for report readability; missing `size` fields made the new `scope` section harder to compare against neighboring categories.
+  Evidence: review lane flagged that the initial `scope` entries omitted `size`, so the baseline report lacked the fixture-size descriptor until the metadata and report were regenerated.
 
 - Observation: large Chipyard fixtures expose stable full-path substrings such as `frontend` and `tile_prci_domain` that produce deterministic filtered subsets without relying on fragile exact leaf names.
   Evidence: manual scope scans returned 118 `frontend` matches on `chipyard_DualRocketConfig_dhrystone.fst` and 2512 `tile_prci_domain` matches on `chipyard_ClusteredRocketConfig_mt-memcpy.fst`.
@@ -60,13 +66,21 @@ This plan does not change Rust runtime behavior for the `scope` command. This pl
   Rationale: smoke coverage should detect scope-catalog drift in pre-commit without turning the lightweight catalog into a second full suite.
   Date/Author: 2026-03-08 / OpenCode
 
+- Decision: include `size` metadata on the new scope cases in both catalogs.
+  Rationale: fixture size is already used elsewhere in the benchmark catalog and makes the new small/medium/large scope section self-explanatory in generated reports.
+  Date/Author: 2026-03-08 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning and fixture reconnaissance are complete; implementation, validation, and review remain.
+Current status: implementation, validation, and review are complete. Only plan archival remains.
 
-Planned outcome: `bench/e2e/tests.json` will gain a dedicated `scope` category, `bench/e2e/tests_commit.json` will exercise two representative scope scenarios in smoke mode, and `bench/e2e/runs/baseline/README.md` plus new baseline artifacts will expose the new category in committed benchmark evidence.
+Implemented outcome so far: `bench/e2e/tests.json` now contains a dedicated `scope` category with three benchmark cases, `bench/e2e/tests_commit.json` now exercises two representative scope scenarios in smoke mode, `bench/e2e/test_perf.py` locks both the smoke subset and the full-catalog scope contract, and `bench/e2e/runs/baseline/README.md` plus committed artifacts expose the new category in repository-tracked benchmark evidence.
 
-Residual risk at this stage: low. The chosen fixtures and filters have already been checked manually with the built release binary, so implementation risk is mostly catalog consistency and baseline refresh work.
+Validation evidence so far: `python3 -m unittest bench.e2e.test_perf`, `python3 bench/e2e/perf.py run --filter '^scope_' --run-dir /tmp/wavepeek-scope-run`, `make test-bench-e2e`, `make bench-e2e-smoke-commit`, and `make ci` all passed; the validation sequence was repeated after the review-driven metadata fix.
+
+Review evidence so far: focused code and performance/docs lanes were run in parallel, producing one substantive issue (missing `size` metadata) and one documentation-state issue, both fixed; the fresh control pass then came back clean.
+
+Residual risk at this stage: low. Remaining work is review closure and plan archival, not implementation uncertainty.
 
 ## Context and Orientation
 
@@ -95,7 +109,7 @@ No blocking questions remain. If review reveals the clustered full traversal is 
 
 Milestone 1 adds tests first. Update `bench/e2e/test_perf.py` so the smoke-catalog contract expects ten total tests instead of eight, introduces the two new `scope_*` names, and verifies the new category distribution is `2` each for `change`, `info`, `scope`, `signal`, and `value`. Add one more test that proves the full catalog contains the exact three planned `scope` benchmarks. These tests should fail before the catalog files are edited.
 
-Milestone 2 adds the benchmark definitions. Update `bench/e2e/tests.json` with the three scope cases listed in Context and Orientation, keeping command vectors deterministic and metadata compact but useful (`waves`, `scope`, `filter`, `max_depth`). Update `bench/e2e/tests_commit.json` with the two smoke cases and `runs=1`, `warmup=0`. After this milestone, `python3 bench/e2e/perf.py list --filter '^scope_'` should print the three full-catalog scope benchmark names, and `python3 bench/e2e/perf.py list --tests bench/e2e/tests_commit.json --filter '^scope_'` should print the two smoke names.
+Milestone 2 adds the benchmark definitions. Update `bench/e2e/tests.json` with the three scope cases listed in Context and Orientation, keeping command vectors deterministic and metadata compact but useful (`waves`, `size`, `filter`, `max_depth`, `scope_count`). Update `bench/e2e/tests_commit.json` with the two smoke cases and `runs=1`, `warmup=0`. After this milestone, `python3 bench/e2e/perf.py list --filter '^scope_'` should print the three full-catalog scope benchmark names, and `python3 bench/e2e/perf.py list --tests bench/e2e/tests_commit.json --filter '^scope_'` should print the two smoke names.
 
 Milestone 3 refreshes baseline evidence. Run the harness only for the new scope tests against `bench/e2e/runs/baseline` so existing artifacts remain intact and the README is regenerated with a `## scope` section. The committed baseline should include new `.hyperfine.json` and `.wavepeek.json` files for each added scope case and for the smoke subset cases that compare against baseline.
 
@@ -132,7 +146,7 @@ Run all commands from `/workspaces/perf-scope-tests`.
 
        ["{wavepeek_bin}", "scope", "--waves", "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst", "--max", "200000", "--max-depth", "13", "--json"]
 
-   Use metadata that records the waveform path plus the workload-shaping knobs. For the filtered case, include `filter: ".*frontend.*"`; for the full traversals, include `filter: ".*"`.
+    Use metadata that records the waveform path, fixture size, and workload-shaping knobs. For the filtered case, include `filter: ".*frontend.*"`; for the full traversals, include `filter: ".*"`.
 
    Update `bench/e2e/tests_commit.json` by adding the two smoke scope cases with commands exactly matching the same entries in `tests.json`, but with `runs=1` and `warmup=0` like the rest of the smoke catalog.
 
@@ -211,7 +225,7 @@ Expected example entries in the regenerated baseline report:
 
     | test | mean_s | meta |
     | --- | --- | --- |
-     | scope_clustered_all_depth13_json | ... | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst filter=.* max_depth=13 |
+    | scope_clustered_all_depth13_json | ... | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst size=411M filter=.* max_depth=13 scope_count=4625 |
 
 ### Interfaces and Dependencies
 
@@ -224,4 +238,4 @@ No new Python modules or Rust interfaces are required. This work depends on the 
 - new baseline artifacts under `bench/e2e/runs/baseline/` named `scope_*.hyperfine.json` and `scope_*.wavepeek.json`
 - this plan file, later moved from `docs/exec-plans/active/` to `docs/exec-plans/completed/`
 
-Revision note: created the initial plan after repository exploration and manual fixture inspection so implementation can proceed autonomously with a fixed minimal benchmark set.
+Revision note: updated after implementation, validation, and review to capture the final catalog shape, the review-driven `size` metadata fix, and the clean control-pass outcome before archival.

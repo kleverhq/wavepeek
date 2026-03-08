@@ -213,14 +213,87 @@ class PerfHelpersTest(unittest.TestCase):
 
     def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
         payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
-        scope_tests = [test for test in payload["tests"] if test["category"] == "scope"]
+        scope_tests = {
+            test["name"]: test for test in payload["tests"] if test["category"] == "scope"
+        }
 
         self.assertEqual(
-            {test["name"] for test in scope_tests},
+            scope_tests,
             {
-                "scope_clustered_all_depth13_json",
-                "scope_dualrocket_filter_frontend_depth12_json",
-                "scope_scr1_all_depth7_json",
+                "scope_clustered_all_depth13_json": {
+                    "name": "scope_clustered_all_depth13_json",
+                    "category": "scope",
+                    "runs": 6,
+                    "warmup": 3,
+                    "command": [
+                        "{wavepeek_bin}",
+                        "scope",
+                        "--waves",
+                        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+                        "--max",
+                        "200000",
+                        "--max-depth",
+                        "13",
+                        "--json",
+                    ],
+                    "meta": {
+                        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+                        "size": "411M",
+                        "filter": ".*",
+                        "max_depth": 13,
+                        "scope_count": 4625,
+                    },
+                },
+                "scope_dualrocket_filter_frontend_depth12_json": {
+                    "name": "scope_dualrocket_filter_frontend_depth12_json",
+                    "category": "scope",
+                    "runs": 10,
+                    "warmup": 3,
+                    "command": [
+                        "{wavepeek_bin}",
+                        "scope",
+                        "--waves",
+                        "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
+                        "--filter",
+                        ".*frontend.*",
+                        "--max",
+                        "200000",
+                        "--max-depth",
+                        "12",
+                        "--json",
+                    ],
+                    "meta": {
+                        "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
+                        "size": "76M",
+                        "filter": ".*frontend.*",
+                        "max_depth": 12,
+                        "scope_count": 118,
+                    },
+                },
+                "scope_scr1_all_depth7_json": {
+                    "name": "scope_scr1_all_depth7_json",
+                    "category": "scope",
+                    "runs": 15,
+                    "warmup": 3,
+                    "command": [
+                        "{wavepeek_bin}",
+                        "scope",
+                        "--waves",
+                        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+                        "--max",
+                        "200000",
+                        "--max-depth",
+                        "7",
+                        "--json",
+                    ],
+                    "meta": {
+                        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+                        "size": "4M",
+                        "filter": ".*",
+                        "max_depth": 7,
+                        "scope_count": 136,
+                    },
+                },
             },
         )
 

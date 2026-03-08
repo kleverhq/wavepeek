@@ -1,6 +1,6 @@
 # CLI E2E Bench Run: baseline
 
-- Generated at (UTC): 2026-03-08T11:14:02Z
+- Generated at (UTC): 2026-03-08T11:18:05Z
 - Hyperfine JSON files: 140
 - Wavepeek JSON files: 140
 
@@ -136,9 +136,9 @@
 
 | test | mean_s | meta |
 | --- | --- | --- |
-| scope_clustered_all_depth13_json | 0.189225 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst filter=.* max_depth=13 scope_count=4625 |
-| scope_dualrocket_filter_frontend_depth12_json | 0.089034 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst filter=.*frontend.* max_depth=12 scope_count=118 |
-| scope_scr1_all_depth7_json | 0.033829 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst filter=.* max_depth=7 scope_count=136 |
+| scope_clustered_all_depth13_json | 0.189225 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst size=411M filter=.* max_depth=13 scope_count=4625 |
+| scope_dualrocket_filter_frontend_depth12_json | 0.089034 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M filter=.*frontend.* max_depth=12 scope_count=118 |
+| scope_scr1_all_depth7_json | 0.033829 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M filter=.* max_depth=7 scope_count=136 |
 
 ## signal
 

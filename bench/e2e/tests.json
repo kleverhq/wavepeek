@@ -490,6 +490,7 @@
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "size": "4M",
         "filter": ".*",
         "max_depth": 7,
         "scope_count": 136
@@ -515,6 +516,7 @@
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
+        "size": "76M",
         "filter": ".*frontend.*",
         "max_depth": 12,
         "scope_count": 118
@@ -538,6 +540,7 @@
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "size": "411M",
         "filter": ".*",
         "max_depth": 13,
         "scope_count": 4625

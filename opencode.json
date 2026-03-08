@@ -1,5 +1,12 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "command": {
+    "warmup": {
+      "agent": "plan",
+      "description": "Warm up on repo context",
+      "template": "Do a warm-up before working in this repository. Read the root README.md, all AGENTS.md files in the repository, and all docs/*.md files."
+    }
+  },
   "permission": {
     "external_directory": "allow",
     "bash": {

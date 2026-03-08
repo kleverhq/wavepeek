@@ -1,0 +1,685 @@
+{
+  "data": [
+    {
+      "depth": 0,
+      "kind": "module",
+      "path": "TOP"
+    },
+    {
+      "depth": 1,
+      "kind": "module",
+      "path": "TOP.$unit"
+    },
+    {
+      "depth": 1,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi"
+    },
+    {
+      "depth": 2,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.araddr"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arburst"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arid"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arlen"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arsize"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr_hold"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awid"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awlen"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize_hold"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bid"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bresp"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rdata"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rid"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rresp"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wdata"
+    },
+    {
+      "depth": 3,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wstrb"
+    },
+    {
+      "depth": 2,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.dm_hart_status_qlfy"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dm.pipe2dm_hart_status_i"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_dmi"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.exu2tdu_i_mon"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.exu2tdu_i_mon_qlfy"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_csr"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.exu2tdu_imon_o"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.exu_queue"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.i_ialu"
+    },
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.i_ialu.main_sum_flags"
+    },
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.i_ialu.unnamedblk1"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.i_lsu"
+    },
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.i_lsu.lsu2tdu_dmon_o"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.idu2exu_cmd_i"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_exu.lsu2tdu_dmon_o"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.csr_dcsr_in"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.csr_dcsr_out"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.hart_haltstatus"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.hart_runctrl"
+    },
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.hart_runctrl.redirect"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_hdu.hdu2dm_hart_status_o"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_idu"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_idu.idu2exu_cmd_o"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ifu"
+    },
+    {
+      "depth": 6,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ifu.q_data"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic.ipic_cicsr"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic.ipic_icsr"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic.irr_priority"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic.isvr_priority_eoi"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ipic.unnamedblk8"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_mprf"
+    },
+    {
+      "depth": 6,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_mprf.mprf_int"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu"
+    },
+    {
+      "depth": 6,
+      "kind": "vhdl_array",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.csr_tdata2_ff"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.exu2tdu_imon_i"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.lsu2tdu_dmon_i"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk1"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk2"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk3"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk4"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk5"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_tdu.unnamedblk6"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_tracelog"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.idu2exu_cmd"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.lsu2tdu_d_mon"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.lsu2tdu_d_mon_qlfy"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.pipe2dm_hart_status_o"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_core_rstn_qlfy_adapter_cell_sync"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_core_rstn_qlfy_adapter_cell_sync.i_reset_output_buf"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_core_rstn_status_sync"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_dm_rstn_buf_cell"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_hdu_rstn_qlfy_adapter_cell_sync"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_hdu_rstn_qlfy_adapter_cell_sync.i_reset_output_buf"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_hdu_rstn_status_sync"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_sys_rstn_qlfy_adapter_cell_sync"
+    },
+    {
+      "depth": 6,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_sys_rstn_qlfy_adapter_cell_sync.i_reset_output_buf"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.i_sys_rstn_status_sync"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_control_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_mode_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_status_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_status_ff_dly"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_status_ff_posedge"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.scu_sticky_sts_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.tapc_shadow_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.tapc_shift_ff"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.tapc_shift_next"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_scu.unnamedblk1"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_tapc"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_tapc.i_bypass_reg"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_tapc.i_tap_dr_bld_id_reg"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_tapc.i_tap_idcode_reg"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_core_top.i_tapc_synchronizer"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_cpu_rstn_reset_sync"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.idle_status"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.idle_status.unnamedblk1"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_fifo[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_fifo[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_status[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_status[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_status_new[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.req_status_new[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_axi.unnamedblk2"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_dmem_router"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.idle_status"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.idle_status.unnamedblk1"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_fifo[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_fifo[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_status[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_status[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_status_new[0]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.req_status_new[1]"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.unnamedblk2"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_imem_router"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_pwrup_rstn_reset_sync"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_rstn_reset_sync"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_tapc_rstn_and2_cell"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_tcm"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_tcm.i_dp_memory"
+    },
+    {
+      "depth": 5,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_tcm.i_dp_memory.unnamedblk1"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.i_top.i_timer"
+    },
+    {
+      "depth": 2,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5"
+    },
+    {
+      "depth": 3,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5.unnamedblk6"
+    },
+    {
+      "depth": 4,
+      "kind": "module",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5.unnamedblk6.unnamedblk7"
+    }
+  ],
+  "warnings": []
+}

@@ -21,7 +21,7 @@ This plan does not change Rust runtime behavior for the `scope` command. This pl
 - [x] (2026-03-08 11:08Z) Chose the minimal benchmark set and documented exact commands, fixture paths, and acceptance targets in this active ExecPlan.
 - [x] (2026-03-08 11:12Z) Added TDD coverage in `bench/e2e/test_perf.py` for the expanded smoke catalog contract and exact `scope` benchmark set; confirmed red before catalog edits and green after.
 - [x] (2026-03-08 11:12Z) Added `scope` benchmark entries to `bench/e2e/tests.json` and `bench/e2e/tests_commit.json` and verified `perf.py list/run` for `^scope_` workloads.
-- [ ] Refresh committed baseline artifacts for the new `scope` scenarios and verify report grouping.
+- [x] (2026-03-08 11:14Z) Refreshed committed baseline artifacts for the new `scope` scenarios and verified `bench/e2e/runs/baseline/README.md` now contains a `## scope` section.
 - [ ] Run validation, execute mandatory review passes, apply fixes, and move the finished plan to `docs/exec-plans/completed/`.
 
 ## Surprises & Discoveries

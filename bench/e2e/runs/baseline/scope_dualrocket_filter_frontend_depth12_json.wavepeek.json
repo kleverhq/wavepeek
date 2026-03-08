@@ -1,0 +1,595 @@
+{
+  "data": [
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.btb"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.btb.table_ext"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.btb.table_ext.unnamedblk1"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.btb.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.fq"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.fq.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.repl_way_v0_prng"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.icache.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_1"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_10"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_11"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_12"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_2"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_3"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_4"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_5"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_6"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_8"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.entries_barrier_9"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.mpu_ppn_barrier"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.pma"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.pmp"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.tlb.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain.element_reset_domain_rockettile.frontend.unnamedblk1"
+    },
+    {
+      "depth": 7,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.btb"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.btb.table_ext"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.btb.table_ext.unnamedblk1"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.btb.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.fq"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.fq.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.repl_way_v0_prng"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_0.rockettile_icache_data_arrays_0_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_data_arrays_1.rockettile_icache_data_arrays_0_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array"
+    },
+    {
+      "depth": 10,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_0"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_1"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_2"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_3"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_4"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_5"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_6"
+    },
+    {
+      "depth": 11,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.rockettile_icache_tag_array.rockettile_icache_tag_array_ext.mem_0_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.icache.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_1"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_10"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_11"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_12"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_2"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_3"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_4"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_5"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_6"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_7"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_8"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.entries_barrier_9"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.mpu_ppn_barrier"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.pma"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.pmp"
+    },
+    {
+      "depth": 9,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.tlb.unnamedblk1"
+    },
+    {
+      "depth": 8,
+      "kind": "module",
+      "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.unnamedblk1"
+    }
+  ],
+  "warnings": []
+}

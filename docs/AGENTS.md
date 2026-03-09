@@ -5,6 +5,7 @@ This file is a local navigation map for the `docs/` directory.
 ## Canonical Docs
 
 - Product requirements and contracts: `docs/DESIGN.md`
+- Expression language target semantics: `docs/expression_lang.md`
 - Delivery milestones and target versions: `docs/ROADMAP.md`
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`
 - Release checklist and rollback notes: `docs/RELEASE.md`

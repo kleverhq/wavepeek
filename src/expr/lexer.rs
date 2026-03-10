@@ -98,3 +98,47 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
 
     Ok(tokens)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TokenKind, lex_event_expr};
+
+    #[test]
+    fn lex_event_expr_tracks_keywords_and_spans() {
+        let source = "posedge clk iff (a or b), *";
+        let tokens = lex_event_expr(source).expect("lexing should succeed");
+
+        let kinds = tokens.iter().map(|token| &token.kind).collect::<Vec<_>>();
+        assert_eq!(
+            kinds,
+            vec![
+                &TokenKind::KeywordPosedge,
+                &TokenKind::Identifier,
+                &TokenKind::KeywordIff,
+                &TokenKind::LeftParen,
+                &TokenKind::Identifier,
+                &TokenKind::KeywordOr,
+                &TokenKind::Identifier,
+                &TokenKind::RightParen,
+                &TokenKind::Comma,
+                &TokenKind::Star,
+            ]
+        );
+        assert_eq!(tokens[0].span.start, 0);
+        assert_eq!(tokens[0].span.end, 7);
+        assert_eq!(tokens[9].span.start, 26);
+        assert_eq!(tokens[9].span.end, 27);
+    }
+
+    #[test]
+    fn lex_event_expr_keeps_logical_symbols_as_identifiers() {
+        let source = "posedge clk iff a && b";
+        let tokens = lex_event_expr(source).expect("lexing should succeed");
+
+        assert!(
+            tokens
+                .iter()
+                .any(|token| token.lexeme == "&&" && token.kind == TokenKind::Identifier)
+        );
+    }
+}

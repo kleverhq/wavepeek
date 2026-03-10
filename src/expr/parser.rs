@@ -1,27 +1,373 @@
 use crate::error::WavepeekError;
 
-use super::ast::EventExprAst;
+use super::ast::{BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst};
 use super::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
+use super::lexer::{Token, TokenKind, lex_event_expr};
 use super::{EventExpr, EventKind, EventTerm, Expression};
 
 pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
     if source.trim().is_empty() {
-        return Err(ExprDiagnostic {
-            layer: DiagnosticLayer::Parse,
-            code: "C1-PARSE-EMPTY",
-            message: "event expression cannot be empty".to_string(),
-            primary_span: Span::new(0, source.len()),
-            notes: vec!["expected one event term".to_string()],
-        });
+        return Err(parse_diag(
+            "C1-PARSE-EMPTY",
+            "event expression cannot be empty",
+            Span::new(0, source.len()),
+            &["expected one event term"],
+        ));
     }
 
-    Err(ExprDiagnostic {
+    let tokens = lex_event_expr(source)?;
+    if tokens.is_empty() {
+        return Err(parse_diag(
+            "C1-PARSE-EMPTY",
+            "event expression cannot be empty",
+            Span::new(0, source.len()),
+            &["expected one event term"],
+        ));
+    }
+
+    StrictParser {
+        source,
+        tokens,
+        index: 0,
+    }
+    .parse_event_expr()
+}
+
+struct StrictParser<'a> {
+    source: &'a str,
+    tokens: Vec<Token>,
+    index: usize,
+}
+
+impl<'a> StrictParser<'a> {
+    fn parse_event_expr(&mut self) -> Result<EventExprAst, ExprDiagnostic> {
+        let mut terms = Vec::new();
+        terms.push(self.parse_event_term()?);
+
+        while self.index < self.tokens.len() {
+            let separator = self.current().cloned().ok_or_else(|| {
+                parse_diag(
+                    "C1-PARSE-BROKEN-UNION",
+                    "broken event union segmentation",
+                    Span::new(self.source.len(), self.source.len()),
+                    &["expected 'or' or ',' between event terms"],
+                )
+            })?;
+
+            match separator.kind {
+                TokenKind::KeywordOr | TokenKind::Comma => {
+                    self.index += 1;
+                    if self.index >= self.tokens.len() {
+                        return Err(parse_diag(
+                            "C1-PARSE-BROKEN-UNION",
+                            "broken event union segmentation",
+                            separator.span,
+                            &["union separator must be followed by an event term"],
+                        ));
+                    }
+
+                    if matches!(
+                        self.current().map(|token| &token.kind),
+                        Some(TokenKind::KeywordOr | TokenKind::Comma)
+                    ) {
+                        let duplicated = self.current().expect("token should exist");
+                        return Err(parse_diag(
+                            "C1-PARSE-BROKEN-UNION",
+                            "broken event union segmentation",
+                            duplicated.span,
+                            &["duplicate union separator is not allowed"],
+                        ));
+                    }
+
+                    terms.push(self.parse_event_term()?);
+                }
+                TokenKind::RightParen => {
+                    return Err(parse_diag(
+                        "C1-PARSE-UNMATCHED-CLOSE",
+                        "unmatched closing parenthesis",
+                        separator.span,
+                        &["remove ')' or add a matching '(' in an iff payload"],
+                    ));
+                }
+                TokenKind::LeftParen => {
+                    return Err(parse_diag(
+                        "C1-PARSE-UNMATCHED-OPEN",
+                        "unmatched opening parenthesis",
+                        separator.span,
+                        &["event-level grouping is not supported; use parentheses only inside iff"],
+                    ));
+                }
+                _ => {
+                    return Err(parse_diag(
+                        "C1-PARSE-BROKEN-UNION",
+                        "broken event union segmentation",
+                        separator.span,
+                        &["expected 'or' or ',' between event terms"],
+                    ));
+                }
+            }
+        }
+
+        let span = Span::new(
+            terms.first().expect("one term exists").span.start,
+            terms.last().expect("one term exists").span.end,
+        );
+        Ok(EventExprAst { terms, span })
+    }
+
+    fn parse_event_term(&mut self) -> Result<EventTermAst, ExprDiagnostic> {
+        let (event, event_span) = self.parse_basic_event()?;
+        let mut term_end = event_span.end;
+
+        let iff = if matches!(
+            self.current().map(|token| &token.kind),
+            Some(TokenKind::KeywordIff)
+        ) {
+            let iff_token = self.bump().expect("iff token should exist");
+            let (logical_source, logical_span) = self.capture_iff_payload(iff_token.span)?;
+            term_end = logical_span.end;
+            Some(DeferredLogicalExpr {
+                source: logical_source,
+                span: logical_span,
+            })
+        } else {
+            None
+        };
+
+        Ok(EventTermAst {
+            event,
+            iff,
+            span: Span::new(event_span.start, term_end),
+        })
+    }
+
+    fn parse_basic_event(&mut self) -> Result<(BasicEventAst, Span), ExprDiagnostic> {
+        let token = self.current().cloned().ok_or_else(|| {
+            parse_diag(
+                "C1-PARSE-BROKEN-UNION",
+                "broken event union segmentation",
+                Span::new(self.source.len(), self.source.len()),
+                &["expected one event term"],
+            )
+        })?;
+
+        match token.kind {
+            TokenKind::Star => {
+                self.index += 1;
+                Ok((BasicEventAst::AnyTracked { span: token.span }, token.span))
+            }
+            TokenKind::Identifier => {
+                self.index += 1;
+                Ok((
+                    BasicEventAst::Named {
+                        name: token.lexeme,
+                        span: token.span,
+                    },
+                    token.span,
+                ))
+            }
+            TokenKind::KeywordPosedge => self.parse_edge_event(TokenKind::KeywordPosedge),
+            TokenKind::KeywordNegedge => self.parse_edge_event(TokenKind::KeywordNegedge),
+            TokenKind::KeywordEdge => self.parse_edge_event(TokenKind::KeywordEdge),
+            TokenKind::KeywordOr | TokenKind::Comma => Err(parse_diag(
+                "C1-PARSE-BROKEN-UNION",
+                "broken event union segmentation",
+                token.span,
+                &["event term is missing before union separator"],
+            )),
+            TokenKind::LeftParen => Err(parse_diag(
+                "C1-PARSE-UNMATCHED-OPEN",
+                "unmatched opening parenthesis",
+                token.span,
+                &["event-level grouping is not supported; use parentheses only inside iff"],
+            )),
+            TokenKind::RightParen => Err(parse_diag(
+                "C1-PARSE-UNMATCHED-CLOSE",
+                "unmatched closing parenthesis",
+                token.span,
+                &["remove ')' or add a matching '(' in an iff payload"],
+            )),
+            TokenKind::KeywordIff => Err(parse_diag(
+                "C1-PARSE-BROKEN-UNION",
+                "broken event union segmentation",
+                token.span,
+                &["'iff' must follow a basic event term"],
+            )),
+        }
+    }
+
+    fn parse_edge_event(
+        &mut self,
+        kind: TokenKind,
+    ) -> Result<(BasicEventAst, Span), ExprDiagnostic> {
+        let keyword = self.bump().expect("edge keyword token should exist");
+        let Some(name_token) = self.current().cloned() else {
+            return Err(parse_diag(
+                "C1-PARSE-MISSING-NAME",
+                "missing signal name after edge keyword",
+                keyword.span,
+                &["expected a signal name after edge keyword"],
+            ));
+        };
+
+        if name_token.kind != TokenKind::Identifier {
+            let diagnostic = match name_token.kind {
+                TokenKind::LeftParen => parse_diag(
+                    "C1-PARSE-UNMATCHED-OPEN",
+                    "unmatched opening parenthesis",
+                    name_token.span,
+                    &["event-level grouping is not supported; use parentheses only inside iff"],
+                ),
+                TokenKind::RightParen => parse_diag(
+                    "C1-PARSE-UNMATCHED-CLOSE",
+                    "unmatched closing parenthesis",
+                    name_token.span,
+                    &["remove ')' or add a matching '(' in an iff payload"],
+                ),
+                _ => parse_diag(
+                    "C1-PARSE-MISSING-NAME",
+                    "missing signal name after edge keyword",
+                    keyword.span,
+                    &["expected a signal name after edge keyword"],
+                ),
+            };
+            return Err(diagnostic);
+        }
+
+        self.index += 1;
+        let span = Span::new(keyword.span.start, name_token.span.end);
+        let ast = match kind {
+            TokenKind::KeywordPosedge => BasicEventAst::Posedge {
+                name: name_token.lexeme,
+                span,
+            },
+            TokenKind::KeywordNegedge => BasicEventAst::Negedge {
+                name: name_token.lexeme,
+                span,
+            },
+            TokenKind::KeywordEdge => BasicEventAst::Edge {
+                name: name_token.lexeme,
+                span,
+            },
+            _ => {
+                return Err(parse_diag(
+                    "C1-PARSE-BROKEN-UNION",
+                    "broken event union segmentation",
+                    keyword.span,
+                    &["internal parser keyword dispatch failure"],
+                ));
+            }
+        };
+
+        Ok((ast, span))
+    }
+
+    fn capture_iff_payload(&mut self, iff_span: Span) -> Result<(String, Span), ExprDiagnostic> {
+        if self.index >= self.tokens.len() {
+            return Err(parse_diag(
+                "C1-PARSE-EMPTY-IFF",
+                "empty iff payload",
+                iff_span,
+                &["expected logical expression after 'iff'"],
+            ));
+        }
+
+        let start = self.tokens[self.index].span.start;
+        let mut end = start;
+        let mut open_stack: Vec<Span> = Vec::new();
+
+        while self.index < self.tokens.len() {
+            let token = self.current().cloned().expect("token should exist");
+            match token.kind {
+                TokenKind::LeftParen => {
+                    open_stack.push(token.span);
+                    end = token.span.end;
+                    self.index += 1;
+                }
+                TokenKind::RightParen => {
+                    if open_stack.pop().is_none() {
+                        return Err(parse_diag(
+                            "C1-PARSE-UNMATCHED-CLOSE",
+                            "unmatched closing parenthesis",
+                            token.span,
+                            &["remove ')' or add a matching '(' in an iff payload"],
+                        ));
+                    }
+                    end = token.span.end;
+                    self.index += 1;
+                }
+                TokenKind::KeywordOr | TokenKind::Comma if open_stack.is_empty() => {
+                    break;
+                }
+                _ => {
+                    end = token.span.end;
+                    self.index += 1;
+                }
+            }
+        }
+
+        if start == end {
+            return Err(parse_diag(
+                "C1-PARSE-EMPTY-IFF",
+                "empty iff payload",
+                iff_span,
+                &["expected logical expression after 'iff'"],
+            ));
+        }
+
+        if let Some(unmatched_open) = open_stack.first().copied() {
+            return Err(parse_diag(
+                "C1-PARSE-UNMATCHED-OPEN",
+                "unmatched opening parenthesis",
+                unmatched_open,
+                &["close the '(' opened in iff payload"],
+            ));
+        }
+
+        let raw = &self.source[start..end];
+        let trimmed_start = raw
+            .find(|ch: char| !ch.is_whitespace())
+            .map(|offset| start + offset)
+            .unwrap_or(start);
+        let trimmed_end = raw
+            .rfind(|ch: char| !ch.is_whitespace())
+            .map(|offset| start + offset + 1)
+            .unwrap_or(end);
+        let payload = self.source[trimmed_start..trimmed_end].to_string();
+
+        if payload.is_empty() {
+            return Err(parse_diag(
+                "C1-PARSE-EMPTY-IFF",
+                "empty iff payload",
+                iff_span,
+                &["expected logical expression after 'iff'"],
+            ));
+        }
+
+        Ok((payload, Span::new(trimmed_start, trimmed_end)))
+    }
+
+    fn current(&self) -> Option<&Token> {
+        self.tokens.get(self.index)
+    }
+
+    fn bump(&mut self) -> Option<Token> {
+        let token = self.tokens.get(self.index).cloned();
+        if token.is_some() {
+            self.index += 1;
+        }
+        token
+    }
+}
+
+fn parse_diag(code: &'static str, message: &str, span: Span, notes: &[&str]) -> ExprDiagnostic {
+    ExprDiagnostic {
         layer: DiagnosticLayer::Parse,
-        code: "C1-PARSE-STUB",
-        message: "typed event parser scaffold is not implemented yet".to_string(),
-        primary_span: Span::new(0, source.len()),
-        notes: vec!["legacy adapter remains active during C1 scaffolding".to_string()],
-    })
+        code,
+        message: message.to_string(),
+        primary_span: span,
+        notes: notes.iter().map(|note| (*note).to_string()).collect(),
+    }
 }
 
 pub fn parse(source: &str) -> Result<Expression, WavepeekError> {
@@ -217,8 +563,8 @@ fn invalid_event_expr_error(source: &str) -> WavepeekError {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_event_expr;
-    use crate::expr::{EventKind, EventTerm};
+    use super::{parse_event_expr, parse_event_expr_ast};
+    use crate::expr::{BasicEventAst, DiagnosticLayer, EventKind, EventTerm};
 
     #[test]
     fn event_expr_iff_binding_with_union() {
@@ -268,5 +614,50 @@ mod tests {
         assert_eq!(parsed.terms.len(), 2);
         assert!(matches!(parsed.terms[0].event, EventKind::Posedge(_)));
         assert!(matches!(parsed.terms[1].event, EventKind::Posedge(_)));
+    }
+
+    #[test]
+    fn typed_parser_rejects_unmatched_open_parenthesis() {
+        let error = parse_event_expr_ast("(").expect_err("source should fail");
+
+        assert_eq!(error.layer, DiagnosticLayer::Parse);
+        assert_eq!(error.code, "C1-PARSE-UNMATCHED-OPEN");
+        assert_eq!(error.primary_span.start, 0);
+        assert_eq!(error.primary_span.end, 1);
+    }
+
+    #[test]
+    fn typed_parser_rejects_broken_union_segmentation() {
+        let error = parse_event_expr_ast("posedge clk or , clk").expect_err("source should fail");
+
+        assert_eq!(error.layer, DiagnosticLayer::Parse);
+        assert_eq!(error.code, "C1-PARSE-BROKEN-UNION");
+        assert_eq!(error.primary_span.start, 15);
+        assert_eq!(error.primary_span.end, 16);
+    }
+
+    #[test]
+    fn typed_parser_preserves_iff_binding_to_single_term() {
+        let parsed =
+            parse_event_expr_ast("negedge clk iff rstn or ready").expect("source should parse");
+
+        assert_eq!(parsed.terms.len(), 2);
+        assert!(matches!(
+            parsed.terms[0].event,
+            BasicEventAst::Negedge { ref name, .. } if name == "clk"
+        ));
+        assert_eq!(
+            parsed.terms[0]
+                .iff
+                .as_ref()
+                .expect("iff payload should exist")
+                .source,
+            "rstn"
+        );
+        assert!(matches!(
+            parsed.terms[1].event,
+            BasicEventAst::Named { ref name, .. } if name == "ready"
+        ));
+        assert!(parsed.terms[1].iff.is_none());
     }
 }

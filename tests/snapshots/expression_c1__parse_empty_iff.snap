@@ -1,0 +1,8 @@
+---
+source: tests/expression_c1.rs
+expression: diagnostic.render(case.source.as_str())
+---
+parse:C1-PARSE-EMPTY-IFF: empty iff payload
+--> span 12..15
+source: posedge clk iff
+note: expected logical expression after 'iff'

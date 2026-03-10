@@ -61,6 +61,7 @@ Common commands:
 - Tests:
   - `make test`
   - `make test-bench-e2e`
+  - `make test-bench-expr`
 - Run all pre-commit hooks locally:
   - `make pre-commit`
 - Validate commit message (commit-msg hook runs this):
@@ -84,6 +85,9 @@ Direct Cargo equivalents (useful when iterating):
 ## CLI E2E Benchmark Harness
 
 For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib only, powered by `hyperfine`).
+
+This harness is intentionally scoped to end-to-end CLI command timing. Do not
+use it for parser-internal microbenchmarks.
 
 - List benchmark test catalog:
   - `python3 bench/e2e/perf.py list`
@@ -115,6 +119,24 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 `run --compare` and `report --compare` annotate timing deltas in `README.md`, add `🟢`/`🔴` markers when absolute delta is at least 3%, and include a functional parity marker (`✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart).
 
 `compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals and are reported as warnings. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
+
+## Parser/Internal Microbenchmarks
+
+For parser/tokenization microbenchmarks, use `Criterion` via `cargo bench` with
+the dedicated target in `benches/expr_c1.rs`.
+
+- Run parser microbench target and save named baseline:
+  - `cargo bench --bench expr_c1 -- --save-baseline <name> --noplot`
+- Validate benchmark target in test mode:
+  - `cargo test --bench expr_c1`
+- Export stable benchmark artifacts from `target/criterion`:
+  - `python3 bench/expr/capture.py --criterion-root target/criterion --baseline-name <name> --output bench/expr/runs/<run-name> --source-commit "$(git rev-parse HEAD)" --worktree-state clean --environment-note "wavepeek devcontainer/CI image"`
+- Compare exported runs with explicit threshold:
+  - `python3 bench/expr/compare.py --revised bench/expr/runs/<revised> --golden bench/expr/runs/<golden> --max-negative-delta-pct 15`
+
+`bench/expr/capture.py` intentionally consumes only Criterion `raw.csv`
+artifacts and writes deterministic run-local `summary.json` + `README.md`
+outputs into `bench/expr/runs/`.
 
 ### Run A Single Test (Rust)
 

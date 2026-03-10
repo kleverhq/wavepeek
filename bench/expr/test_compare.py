@@ -137,6 +137,55 @@ class CompareHelpersTest(unittest.TestCase):
 
         self.assertIn("exceeded allowed negative delta", str(error.exception))
 
+    def test_load_summary_rejects_duplicate_scenarios(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            payload = {
+                "scenarios": [
+                    {
+                        "scenario": "tokenize_union_iff",
+                        "mean_ns_per_iter": 100.0,
+                        "median_ns_per_iter": 100.0,
+                    },
+                    {
+                        "scenario": "tokenize_union_iff",
+                        "mean_ns_per_iter": 101.0,
+                        "median_ns_per_iter": 101.0,
+                    },
+                ]
+            }
+            (run_dir / "summary.json").write_text(
+                json.dumps(payload),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as error:
+                compare.load_summary(run_dir)
+
+        self.assertIn("duplicate scenario", str(error.exception))
+
+    def test_load_summary_rejects_non_finite_metrics(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            payload = {
+                "scenarios": [
+                    {
+                        "scenario": "tokenize_union_iff",
+                        "mean_ns_per_iter": "nan",
+                        "median_ns_per_iter": 100.0,
+                    }
+                ]
+            }
+            (run_dir / "summary.json").write_text(
+                json.dumps(payload),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as error:
+                compare.load_summary(run_dir)
+
+        self.assertIn("non-finite", str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

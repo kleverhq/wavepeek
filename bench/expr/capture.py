@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import pathlib
 import re
 import shutil
@@ -52,6 +53,8 @@ def parse_raw_csv(path: pathlib.Path) -> list[float]:
                 iterations = int(row["iteration_count"])
                 if iterations <= 0:
                     fail(f"{path} contains non-positive iteration_count")
+                if not math.isfinite(measured):
+                    fail(f"{path} contains non-finite sample_measured_value")
                 values.append(measured / iterations)
     except OSError as error:
         fail(f"failed to read {path}: {error}")
@@ -60,6 +63,8 @@ def parse_raw_csv(path: pathlib.Path) -> list[float]:
 
     if not values:
         fail(f"{path} contains no samples")
+    if not all(math.isfinite(value) and value > 0 for value in values):
+        fail(f"{path} contains non-finite or non-positive per-iteration values")
     return values
 
 

@@ -113,6 +113,16 @@
         "start": 0,
         "end": 4
       }
+    },
+    {
+      "name": "invalid_identifier_character",
+      "source": "clk@",
+      "layer": "parse",
+      "code": "C1-PARSE-LEX-CHAR",
+      "span": {
+        "start": 3,
+        "end": 4
+      }
     }
   ]
 }

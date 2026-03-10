@@ -123,6 +123,27 @@ class CaptureHelpersTest(unittest.TestCase):
                 raw_path = output / str(row["raw_csv"])
                 self.assertTrue(raw_path.is_file())
 
+    def test_parse_raw_csv_rejects_non_finite_values(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = pathlib.Path(temp_dir) / "raw.csv"
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["sample_measured_value", "iteration_count"],
+                )
+                writer.writeheader()
+                writer.writerow(
+                    {
+                        "sample_measured_value": "nan",
+                        "iteration_count": "10",
+                    }
+                )
+
+            with self.assertRaises(SystemExit) as error:
+                capture.parse_raw_csv(path)
+
+        self.assertIn("non-finite sample_measured_value", str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

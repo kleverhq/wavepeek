@@ -60,26 +60,46 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
             continue;
         }
 
-        let start = index;
-        let mut end = index;
-        for (offset, current) in source[index..].char_indices() {
-            if current.is_whitespace() || matches!(current, '*' | ',' | '(' | ')') {
-                break;
-            }
-            end = index + offset + current.len_utf8();
-        }
-
-        if end == start {
+        if !is_name_char(ch) {
             return Err(ExprDiagnostic {
                 layer: crate::expr::diagnostic::DiagnosticLayer::Parse,
                 code: "C1-PARSE-LEX-CHAR",
                 message: format!("unexpected character '{ch}'"),
-                primary_span: Span::new(start, start + ch_len),
+                primary_span: Span::new(index, index + ch_len),
                 notes: vec![],
             });
         }
 
-        let lexeme = source[start..end].to_string();
+        let start = index;
+        while index < source.len() {
+            let current = source[index..]
+                .chars()
+                .next()
+                .ok_or_else(|| ExprDiagnostic {
+                    layer: crate::expr::diagnostic::DiagnosticLayer::Parse,
+                    code: "C1-PARSE-LEX-EOF",
+                    message: "failed to decode event expression".to_string(),
+                    primary_span: Span::new(index, index),
+                    notes: vec![],
+                })?;
+            let current_len = current.len_utf8();
+            if is_name_char(current) {
+                index += current_len;
+                continue;
+            }
+            if current.is_whitespace() || matches!(current, '*' | ',' | '(' | ')') {
+                break;
+            }
+            return Err(ExprDiagnostic {
+                layer: crate::expr::diagnostic::DiagnosticLayer::Parse,
+                code: "C1-PARSE-LEX-CHAR",
+                message: format!("unexpected character '{current}'"),
+                primary_span: Span::new(index, index + current_len),
+                notes: vec![],
+            });
+        }
+
+        let lexeme = source[start..index].to_string();
         let kind = match lexeme.as_str() {
             "or" => TokenKind::KeywordOr,
             "iff" => TokenKind::KeywordIff,
@@ -90,13 +110,16 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
         };
         tokens.push(Token {
             kind,
-            span: Span::new(start, end),
+            span: Span::new(start, index),
             lexeme,
         });
-        index = end;
     }
 
     Ok(tokens)
+}
+
+fn is_name_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.' | '$' | '[' | ']' | ':')
 }
 
 #[cfg(test)]
@@ -131,14 +154,12 @@ mod tests {
     }
 
     #[test]
-    fn lex_event_expr_keeps_logical_symbols_as_identifiers() {
-        let source = "posedge clk iff a && b";
-        let tokens = lex_event_expr(source).expect("lexing should succeed");
+    fn lex_event_expr_rejects_invalid_characters() {
+        let source = "posedge clk@";
+        let error = lex_event_expr(source).expect_err("lexing should fail");
 
-        assert!(
-            tokens
-                .iter()
-                .any(|token| token.lexeme == "&&" && token.kind == TokenKind::Identifier)
-        );
+        assert_eq!(error.code, "C1-PARSE-LEX-CHAR");
+        assert_eq!(error.primary_span.start, 11);
+        assert_eq!(error.primary_span.end, 12);
     }
 }

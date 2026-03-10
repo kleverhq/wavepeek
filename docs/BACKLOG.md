@@ -24,6 +24,12 @@
 - This was introduced in the staged trigger rollout as a delivery compromise.
 - Close when `change --on "... iff ..."` is evaluated end-to-end (true/false branches), and the hard-fail path is removed.
 
+### Legacy `change --on` parser adapter remains separate from typed parser
+
+- `src/engine/change.rs` still uses the compatibility adapter (`expr::parse_event_expr`) while strict typed parsing lives behind `wavepeek::expr::parse_event_expr_ast`.
+- This keeps C1 command behavior stable but duplicates parser ownership and can drift if follow-up integration is delayed.
+- Close when command runtime parsing converges on the typed parser boundary with explicit compatibility policy and regression coverage.
+
 ### Expression evaluator and `property` runtime path remain unimplemented
 
 - Reusable expression/event types were expanded for `change`, but `src/expr/eval.rs` and the command-runtime path (`src/engine/property.rs`) still return `Unimplemented`.

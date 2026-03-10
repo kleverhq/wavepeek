@@ -1,10 +1,16 @@
 #![allow(dead_code)]
 
+pub mod ast;
+pub mod diagnostic;
 pub mod eval;
 pub mod lexer;
 pub mod parser;
 
 use crate::error::WavepeekError;
+
+pub use crate::expr::ast::{BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst};
+pub use crate::expr::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
+pub use crate::expr::lexer::{Token, TokenKind};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Expression {
@@ -17,8 +23,12 @@ impl Expression {
     }
 }
 
-pub fn parse(source: &str) -> Result<Expression, WavepeekError> {
-    parser::parse(source)
+pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
+    lexer::lex_event_expr(source)
+}
+
+pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
+    parser::parse_event_expr_ast(source)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +51,11 @@ pub struct EventExpr {
     pub terms: Vec<EventTerm>,
 }
 
-pub fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
+pub(crate) fn parse(source: &str) -> Result<Expression, WavepeekError> {
+    parser::parse(source)
+}
+
+pub(crate) fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
     parser::parse_event_expr(source)
 }
 

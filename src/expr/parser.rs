@@ -1,6 +1,28 @@
 use crate::error::WavepeekError;
 
+use super::ast::EventExprAst;
+use super::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
 use super::{EventExpr, EventKind, EventTerm, Expression};
+
+pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
+    if source.trim().is_empty() {
+        return Err(ExprDiagnostic {
+            layer: DiagnosticLayer::Parse,
+            code: "C1-PARSE-EMPTY",
+            message: "event expression cannot be empty".to_string(),
+            primary_span: Span::new(0, source.len()),
+            notes: vec!["expected one event term".to_string()],
+        });
+    }
+
+    Err(ExprDiagnostic {
+        layer: DiagnosticLayer::Parse,
+        code: "C1-PARSE-STUB",
+        message: "typed event parser scaffold is not implemented yet".to_string(),
+        primary_span: Span::new(0, source.len()),
+        notes: vec!["legacy adapter remains active during C1 scaffolding".to_string()],
+    })
+}
 
 pub fn parse(source: &str) -> Result<Expression, WavepeekError> {
     if source.trim().is_empty() {

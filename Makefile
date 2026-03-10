@@ -73,6 +73,10 @@ test: require-container check-rtl-artifacts
 test-bench-e2e: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
 
+## Run expression microbenchmark helper unit tests
+test-bench-expr: require-container
+	$(PYTHON) -m unittest discover -s bench/expr -p "test_*.py"
+
 ## Run release helper script unit tests
 test-scripts: require-container
 	$(PYTHON) -m unittest scripts/test_extract_release_notes.py
@@ -109,7 +113,7 @@ check-commit: require-container
 check: format-check lint check-schema check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema test test-bench-e2e test-scripts check-build
+ci: format-check lint check-schema test test-bench-e2e test-bench-expr test-scripts check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

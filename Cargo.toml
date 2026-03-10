@@ -31,6 +31,7 @@ assert_cmd = "~2"
 predicates = "~3"
 tempfile = "~3"
 insta = "~1"
+criterion = "~0.8"
 
 [profile.dev.package]
 insta.opt-level = 3
@@ -43,3 +44,7 @@ bench = false
 name = "wavepeek"
 path = "src/main.rs"
 bench = false
+
+[[bench]]
+name = "expr_c1"
+harness = false

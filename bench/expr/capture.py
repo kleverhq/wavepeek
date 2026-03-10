@@ -14,7 +14,7 @@ from typing import Any, NoReturn
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
-REPO_ROOT = SCRIPT_DIR.parents[2]
+REPO_ROOT = SCRIPT_DIR.parents[1]
 REQUIRED_SCENARIOS = (
     "tokenize_union_iff",
     "parse_event_union_iff",
@@ -82,7 +82,7 @@ def collect_raw_csv_paths(
     if not selected:
         fail(f"requested baseline '{baseline_name}' not found under {criterion_root}")
 
-    expected = set(REQUIRED_SCENARIOS)
+    expected = {str(name) for name in REQUIRED_SCENARIOS}
     actual = set(selected.keys())
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)

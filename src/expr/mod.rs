@@ -2,10 +2,10 @@
 
 pub mod ast;
 pub mod diagnostic;
-pub mod eval;
-pub mod host;
-pub mod lexer;
-pub mod parser;
+pub(crate) mod eval;
+pub(crate) mod host;
+mod lexer;
+mod parser;
 pub(crate) mod sema;
 
 use crate::error::WavepeekError;

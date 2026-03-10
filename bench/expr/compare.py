@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import pathlib
 from typing import Any, NoReturn
 
@@ -51,16 +52,23 @@ def load_summary(run_dir: pathlib.Path) -> dict[str, dict[str, float]]:
         if scenario in by_name:
             fail(f"{summary_path} has duplicate scenario '{scenario}'")
 
-        mean = row.get("mean_ns_per_iter")
-        median = row.get("median_ns_per_iter")
+        mean_raw = row.get("mean_ns_per_iter")
+        median_raw = row.get("median_ns_per_iter")
+        if mean_raw is None or median_raw is None:
+            fail(
+                f"{summary_path} scenario '{scenario}' is missing "
+                "mean_ns_per_iter or median_ns_per_iter"
+            )
         try:
-            mean_value = float(mean)
-            median_value = float(median)
+            mean_value = float(mean_raw)
+            median_value = float(median_raw)
         except (TypeError, ValueError):
             fail(
                 f"{summary_path} scenario '{scenario}' must have numeric "
                 "mean_ns_per_iter and median_ns_per_iter"
             )
+        if not math.isfinite(mean_value) or not math.isfinite(median_value):
+            fail(f"{summary_path} scenario '{scenario}' has non-finite mean/median")
         if mean_value <= 0 or median_value <= 0:
             fail(
                 f"{summary_path} scenario '{scenario}' mean/median must be positive numbers"

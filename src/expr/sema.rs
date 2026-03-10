@@ -138,7 +138,8 @@ mod tests {
 
     #[test]
     fn bind_logical_expr_is_still_deferred_with_snapshot() {
-        let ast = parse_event_expr_ast("posedge clk iff rstn").expect("source should parse");
+        let full_source = "posedge clk iff rstn";
+        let ast = parse_event_expr_ast(full_source).expect("source should parse");
         let host = HostStub::new();
         let logical = first_term_with_iff(&ast)
             .iff
@@ -150,7 +151,7 @@ mod tests {
         assert_eq!(diagnostic.code, "C1-SEMANTIC-LOGICAL-NOT-IMPLEMENTED");
         insta::assert_snapshot!(
             "bind_logical_expr_not_implemented",
-            diagnostic.render(logical.source.as_str())
+            diagnostic.render(full_source)
         );
     }
 }

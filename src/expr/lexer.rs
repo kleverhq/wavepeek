@@ -22,7 +22,7 @@ pub struct Token {
 }
 
 pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
-    let mut tokens = Vec::new();
+    let mut tokens = Vec::with_capacity(source.len() / 2 + 1);
     let mut index = 0usize;
 
     while index < source.len() {
@@ -60,16 +60,6 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
             continue;
         }
 
-        if !is_name_char(ch) {
-            return Err(ExprDiagnostic {
-                layer: crate::expr::diagnostic::DiagnosticLayer::Parse,
-                code: "C1-PARSE-LEX-CHAR",
-                message: format!("unexpected character '{ch}'"),
-                primary_span: Span::new(index, index + ch_len),
-                notes: vec![],
-            });
-        }
-
         let start = index;
         while index < source.len() {
             let current = source[index..]
@@ -82,21 +72,10 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
                     primary_span: Span::new(index, index),
                     notes: vec![],
                 })?;
-            let current_len = current.len_utf8();
-            if is_name_char(current) {
-                index += current_len;
-                continue;
-            }
             if current.is_whitespace() || matches!(current, '*' | ',' | '(' | ')') {
                 break;
             }
-            return Err(ExprDiagnostic {
-                layer: crate::expr::diagnostic::DiagnosticLayer::Parse,
-                code: "C1-PARSE-LEX-CHAR",
-                message: format!("unexpected character '{current}'"),
-                primary_span: Span::new(index, index + current_len),
-                notes: vec![],
-            });
+            index += current.len_utf8();
         }
 
         let lexeme = source[start..index].to_string();
@@ -116,10 +95,6 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
     }
 
     Ok(tokens)
-}
-
-fn is_name_char(ch: char) -> bool {
-    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.' | '$' | '[' | ']' | ':')
 }
 
 #[cfg(test)]
@@ -154,12 +129,22 @@ mod tests {
     }
 
     #[test]
-    fn lex_event_expr_rejects_invalid_characters() {
-        let source = "posedge clk@";
-        let error = lex_event_expr(source).expect_err("lexing should fail");
+    fn lex_event_expr_keeps_deferred_logical_operators() {
+        let source = "posedge clk iff a && b";
+        let tokens = lex_event_expr(source).expect("lexing should succeed");
 
-        assert_eq!(error.code, "C1-PARSE-LEX-CHAR");
-        assert_eq!(error.primary_span.start, 11);
-        assert_eq!(error.primary_span.end, 12);
+        assert!(
+            tokens
+                .iter()
+                .any(|token| token.lexeme == "&&" && token.kind == TokenKind::Identifier)
+        );
+    }
+
+    #[test]
+    fn lex_event_expr_keeps_invalid_name_chunks_for_parser_diagnostics() {
+        let source = "posedge clk@";
+        let tokens = lex_event_expr(source).expect("lexing should succeed");
+
+        assert!(tokens.iter().any(|token| token.lexeme == "clk@"));
     }
 }

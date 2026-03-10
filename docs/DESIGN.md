@@ -346,6 +346,9 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 - Union: `event or event`, `event, event` (exact synonyms)
 - Optional staged clause: `event iff logical_expr`
 
+Formal event-expression grammar, precedence, and semantics are defined in
+`docs/expression_lang.md` (Event Expressions).
+
 Current delivery parses `iff` and preserves its binding (`iff` applies to the immediately preceding event term),
 but runtime evaluation of `logical_expr` is intentionally deferred and returns
 `error: args: iff logical expressions are not implemented yet`.
@@ -431,42 +434,11 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
 - Runtime evaluation/capture execution is not implemented yet.
 - Current runtime behavior is deterministic: `error: unimplemented: \`property\` command execution is not implemented yet`.
 
-**Expression language (MVP target):**
-
-Operands:
-- Signal names (scope-aware): `valid`, `data`, `top.cpu.data`
-- Hex literal: `0xff`
-- Binary literal: `0b1010`
-- Decimal literal: `42`
-- All values are unsigned
-
-Operators (by precedence, highest first):
-
-| Precedence | Operator | Description |
-|------------|----------|-------------|
-| 1 | `!` | Logical NOT |
-| 2 | `<`, `>`, `<=`, `>=` | Comparison (unsigned) |
-| 3 | `==`, `!=` | Equality |
-| 4 | `&&` | Logical AND |
-| 5 | `\|\|` | Logical OR |
-
-Grouping: `(`, `)`
-
-Truthy semantics: signal used without comparison operator is truthy if non-zero
-(e.g., `valid` means `valid != 0`).
-
-4-state semantics (MVP):
-- Signal values are treated as 4-state bit vectors (`0`/`1`/`x`/`z`). Operators follow SystemVerilog-like
-  4-state semantics and may produce an unknown boolean result `x`.
-- `&&` and `||` use short-circuit evaluation: the RHS is evaluated only when needed to determine the result.
-- For property decisions, the final expression result is cast to 2-state: only `1` is true; `0` and `x` are false.
-
-Post-MVP additions:
-- Bit select/slice: `data[7:0]`, `data[3]`
-- Bitwise operators: `&`, `|`, `^`, `~`
-- Arithmetic: `+`, `-`
-- Shift: `<<`, `>>`
-- Signed comparison
+**Expression language contract:**
+- `--on` and `--eval` syntax/semantics are defined in `docs/expression_lang.md`.
+- This document keeps command-level behavior only; operator sets, precedence,
+  casts, and detailed type semantics are centralized in the expression language
+  contract.
 
 **Examples:**
 
@@ -638,27 +610,22 @@ src/
 ### 5.5 Expression Engine
 
 The planned `property` command requires evaluating boolean expressions against signal values
-at event-selected timestamps. This needs a small expression language (defined in 3.2.6).
+at event-selected timestamps.
+
+Language syntax and semantics are specified in `docs/expression_lang.md`; this
+section describes implementation architecture only.
 
 **Pipeline:** Input string → Lexer → Token stream → Parser → AST → Evaluator (+ signal values at current time point)
 → 4-state boolean (`0`/`1`/`x`) → 2-state match (`x` counts as false)
 
 **Components:**
 
-- **Lexer** — Converts input string into tokens: identifiers (signal names),
-  literals (hex `0xff`, binary `0b1010`, decimal `42`), operators (`==`, `!=`,
-  `&&`, `||`, `!`, `<`, `>`, `<=`, `>=`), and parentheses.
-
-- **Parser** — Pratt parser or recursive descent. Produces an AST respecting
-  operator precedence (see 3.2.6). All signal names in the AST are strings
-  that get resolved against the waveform hierarchy at evaluation time.
-
-- **AST** — Enum-based tree: `BinaryOp(op, lhs, rhs)`, `UnaryOp(op, expr)`,
-  `Signal(name)`, `Literal(value)`. Minimal, no optimization passes.
-
-- **Evaluator** — Walks the AST, resolves signal names to current values
-  (provided by the engine), and computes a 4-state boolean result using SystemVerilog-like semantics.
-  `&&` and `||` use short-circuit evaluation. For property decisions, unknown `x` is cast to false.
+- **Lexer/Parser** — Parse event and logical expression inputs into shared
+  expression structures used by command runtimes.
+- **AST/types** — Provide stable internal representation in `src/expr/` for
+  reuse by `change` (`--on`) and `property` (`--eval`).
+- **Evaluator** — Resolves signal names against sampled waveform values and
+  computes expression outcomes for runtime decision points.
 
 **Implementation status:** Event-expression parsing for `change --on` is now
 implemented with a hand-written parser (`parse_event_expr` in
@@ -790,6 +757,7 @@ Why this complexity exists:
 ---
 
 ## 8. References
+- `docs/expression_lang.md` — canonical event/logical expression contract
 - [GTKWave](http://gtkwave.sourceforge.net/) — reference waveform viewer
 - [Surfer](https://surfer-project.org/) — modern waveform viewer; reference implementation context for the parsing stack
 - [VCD Format Specification](https://en.wikipedia.org/wiki/Value_change_dump)

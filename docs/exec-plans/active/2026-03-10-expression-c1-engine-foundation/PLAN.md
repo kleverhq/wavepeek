@@ -26,10 +26,11 @@ This plan does not implement event runtime evaluation semantics. This plan does 
 - [x] (2026-03-10 13:36Z) Reopened the plan before implementation, reviewed repository benchmark/snapshot conventions, and revised the `C1` infrastructure strategy to adopt `insta` for diagnostics and `Criterion` for parser microbenchmarks while keeping `hyperfine` E2E-only.
 - [x] (2026-03-10 13:57Z) Completed focused docs/architecture/performance review on the revised `insta`/`Criterion` plan and fixed sequencing, breadcrumb, named-baseline export, and reproducibility-gate issues.
 - [x] (2026-03-10 13:57Z) Completed a fresh control-pass review on the revised dependency/tooling pivot; no substantive findings remain.
-- [ ] Implement Milestone 1: lock `C1` behavior with positive/negative manifests, `insta` diagnostic snapshots, and red-phase tests.
-- [ ] Implement Milestone 2: add spanned lexer/parser, AST, semantic host interface, and deterministic parse/semantic/runtime diagnostics.
-- [ ] Implement Milestone 3: stabilize compatibility wrappers and regression guards without turning `change` or `property` into new `C1` integration surfaces.
-- [ ] Implement Milestone 4: add `Criterion` parser/tokenization benchmark harness, exported baseline/compare artifacts, repository microbench collateral, and close the required review/validation loop.
+- [x] (2026-03-10 14:26Z) Implemented Milestone 1 with manifest fixtures, integration tests, deterministic no-panic corpus coverage, and red-phase evidence before strict parser implementation.
+- [x] (2026-03-10 15:07Z) Implemented Milestone 2 with spanned typed lexer/parser, AST, diagnostics, host/binder/eval scaffolding, and locked semantic/runtime snapshots.
+- [x] (2026-03-10 15:12Z) Implemented Milestone 3 by keeping legacy `change` adapter behavior stable, adding explicit malformed-input CLI regression tests, and isolating legacy parser ownership in `src/expr/legacy.rs`.
+- [x] (2026-03-10 16:01Z) Implemented Milestone 4 with `Criterion` bench target, export/compare helpers, candidate/baseline/verify artifacts, reproducibility and regression compare passes, and docs/breadcrumb collateral updates.
+- [x] (2026-03-10 16:22Z) Completed focused code/architecture/performance review lanes, applied follow-up fixes (visibility hardening, parser/lexer strictness refinements, compare finite-threshold gating), reran impacted validation, and closed with a fresh independent control-pass review.
 
 ## Surprises & Discoveries
 
@@ -59,6 +60,15 @@ This plan does not implement event runtime evaluation semantics. This plan does 
 
 - Observation: the repository is currently a binary-only crate, so new manifest-driven expression integration tests and a `Criterion` bench target cannot call shared modules until a library entrypoint exists.
   Evidence: `src/main.rs` declares the module tree directly and there is no `src/lib.rs` today.
+
+- Observation: Criterion `raw.csv` artifacts are emitted only when the `criterion` crate enables the `csv_output` feature.
+  Evidence: initial capture attempts failed to find baseline `raw.csv`; enabling `criterion = { ..., features = ["csv_output"] }` produced `target/criterion/*/<baseline>/raw.csv` and unblocked export.
+
+- Observation: validating event-name characters in the lexer was too strict for deferred `iff` payload capture because it rejected operators like `&&` that should remain opaque in `C1`.
+  Evidence: focused code-lane review found `posedge clk iff a && b` regressed; parser-side event-name validation restored deferred payload acceptance while keeping malformed event names deterministic.
+
+- Observation: architecture review identified that exposing legacy adapter structs publicly (`EventExpr`/`EventTerm`/`EventKind`) would create accidental semver surface area.
+  Evidence: review lane flagged `src/expr/mod.rs` visibility; moving legacy parsing into `src/expr/legacy.rs` and making adapter structs crate-private removed the leak.
 
 ## Decision Log
 
@@ -110,13 +120,25 @@ This plan does not implement event runtime evaluation semantics. This plan does 
   Rationale: the roadmap default `15%` gate is an acceptable coarse cross-commit regression screen, but review showed that single-run exported mean/median pairs still need a stricter same-state noise check to avoid misleading benchmark evidence.
   Date/Author: 2026-03-10 / OpenCode
 
+- Decision: keep lexer tokenization permissive enough to preserve deferred `iff` payload text, and enforce strict event-name characters in parser event-name positions.
+  Rationale: `C1` requires strict malformed-event rejection without prematurely implementing logical-expression syntax constraints; parser-position validation preserves both requirements.
+  Date/Author: 2026-03-10 / OpenCode
+
+- Decision: isolate compatibility parser logic in `src/expr/legacy.rs` and keep `src/expr/parser.rs` focused on the strict typed parser.
+  Rationale: this addresses review-identified ownership drift risk while preserving `change` command behavior through explicit legacy adapter boundaries.
+  Date/Author: 2026-03-10 / OpenCode
+
+- Decision: hard-fail benchmark compare helpers on non-finite numeric input (including `nan` thresholds and metric values).
+  Rationale: failing open on non-finite math would weaken regression gating; explicit finite checks keep benchmark policy deterministic and trustworthy.
+  Date/Author: 2026-03-10 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete; implementation has not started yet.
+Current status: implementation complete and validated.
 
-This plan now gives a stateless contributor one place to find the `C1` scope, architecture targets, exact artifact paths, `insta` snapshot workflow, `Criterion` microbenchmark/export flow, commit boundaries, and review policy. The remaining work is implementation, validation, and closure against the locked `C1` gates.
+`C1` now ships the intended foundation: reusable library entrypoint, strict typed expression parser with deterministic diagnostics and snapshots, internal host/binder/eval architecture seams, legacy-command compatibility boundary isolation, parser microbenchmark harness/export/compare tooling, and committed candidate+baseline+verify run artifacts.
 
-The main risk to watch during implementation is accidental phase creep. The expression roadmap intentionally separates parser architecture from runtime semantics and from command-surface rollout. If a change starts enabling real logical evaluation, `property` execution, or new `change`/`property` public behavior, it belongs in a later plan and should be rejected here.
+The key lesson was boundary discipline. Strict parser behavior, deferred logical/runtime semantics, and unchanged CLI behavior can coexist cleanly only when typed and legacy parser paths are explicitly separated and tested. Remaining risk is mainly future-phase integration drift; `docs/BACKLOG.md` now tracks the legacy-adapter retirement debt for later phases.
 
 ## Context and Orientation
 
@@ -431,6 +453,7 @@ Expected modified or added files for `C1` implementation:
 - `src/expr/host.rs`
 - `src/expr/lexer.rs`
 - `src/expr/parser.rs`
+- `src/expr/legacy.rs`
 - `src/expr/sema.rs`
 - `src/expr/eval.rs`
 - `src/lib.rs`
@@ -458,11 +481,38 @@ Expected modified or added files for `C1` implementation:
 
 Before closing this plan, record these excerpts here:
 
-- one red-phase failure from `tests/expression_c1.rs` before the parser foundation is implemented,
-- one green-phase pass for the same test after implementation,
-- one short typed expression-diagnostic excerpt proving malformed input is rejected deterministically,
-- one short benchmark-compare success excerpt,
-- one short summary each from the focused review lanes and the fresh control pass.
+- Red-phase failure excerpt (`cargo test --test expression_c1 c1_positive_manifest_parses -- --exact` before strict parser implementation):
+
+      test c1_positive_manifest_parses ... FAILED
+      wildcard_any_tracked should parse: ExprDiagnostic { layer: Parse, code: "C1-PARSE-STUB", ... }
+
+- Green-phase pass excerpt (`INSTA_UPDATE=no cargo test --test expression_c1` after implementation):
+
+      running 3 tests
+      test c1_positive_manifest_parses ... ok
+      test c1_negative_manifest_matches_snapshots ... ok
+      test c1_no_panic_corpus_holds ... ok
+      test result: ok. 3 passed; 0 failed
+
+- Typed diagnostic excerpt (`tests/snapshots/expression_c1__parse_unmatched_close.snap`):
+
+      parse:C1-PARSE-UNMATCHED-CLOSE: unmatched closing parenthesis
+      --> span 11..12
+      source: posedge clk)
+      note: remove ')' or add a matching '(' in an iff payload
+
+- Benchmark compare success excerpt:
+
+      ok: no matched scenario exceeded 15.00% negative delta in mean or median
+      ok: no matched scenario exceeded 5.00% negative delta in mean or median
+
+- Focused review lanes summary:
+  - Code lane: initially flagged strictness regression for deferred `iff` operator payload; resolved by parser-position name validation with lexer permissiveness for deferred payload text.
+  - Architecture lane: initially flagged public legacy-surface leakage; resolved by crate-private legacy structs and `src/expr/legacy.rs` ownership split.
+  - Performance lane: initially flagged non-finite gate bypass risk; resolved by finite numeric validation in `bench/expr/capture.py` and `bench/expr/compare.py` plus unit tests.
+
+- Fresh control pass summary:
+  - Independent control review on consolidated diff reported no substantive findings.
 
 ### Interfaces and Dependencies
 
@@ -690,3 +740,5 @@ Treat `parse(...)` and `parse_event_expr(...)` as transitional adapters for exis
 Revision Note: 2026-03-10 / OpenCode - Created the initial active ExecPlan for roadmap phase `C1`, then tightened it after review to keep command integration out of scope, make `src/lib.rs` extraction explicit, and turn the parser benchmark into a reproducible golden-plus-verify harness with exact scenario-set checks.
 
 Revision Note: 2026-03-10 / OpenCode - Reopened the plan before implementation to adopt `insta` for diagnostic snapshots, switch parser microbenchmarks from a `hyperfine`-driven `src/bin` helper to a `Criterion` benchmark target under `benches/`, export committed `raw.csv`-based run artifacts under `bench/expr/runs/`, and document `hyperfine` as E2E-only collateral.
+
+Revision Note: 2026-03-10 / OpenCode - Completed `C1` implementation with commits, validation, candidate/baseline/verify captures, focused multi-lane review, review-fix commits, and fresh control-pass closure; updated living sections and evidence excerpts to reflect final state.

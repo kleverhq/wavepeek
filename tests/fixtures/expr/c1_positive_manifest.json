@@ -1,0 +1,95 @@
+{
+  "cases": [
+    {
+      "name": "wildcard_any_tracked",
+      "source": "*",
+      "terms": [
+        {
+          "event": "any_tracked",
+          "name": null,
+          "iff": null
+        }
+      ]
+    },
+    {
+      "name": "named_any_change",
+      "source": "clk",
+      "terms": [
+        {
+          "event": "named",
+          "name": "clk",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "name": "edge_keywords",
+      "source": "posedge clk or negedge rst or edge data",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk",
+          "iff": null
+        },
+        {
+          "event": "negedge",
+          "name": "rst",
+          "iff": null
+        },
+        {
+          "event": "edge",
+          "name": "data",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "name": "comma_union",
+      "source": "posedge clk1, posedge clk2",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk1",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "clk2",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "name": "iff_binds_to_preceding_term_only",
+      "source": "negedge clk iff rstn or ready",
+      "terms": [
+        {
+          "event": "negedge",
+          "name": "clk",
+          "iff": "rstn"
+        },
+        {
+          "event": "named",
+          "name": "ready",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "name": "iff_parenthesized_payload",
+      "source": "posedge clk iff (a or b) or done",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk",
+          "iff": "(a or b)"
+        },
+        {
+          "event": "named",
+          "name": "done",
+          "iff": null
+        }
+      ]
+    }
+  ]
+}

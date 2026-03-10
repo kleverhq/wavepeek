@@ -1,0 +1,8 @@
+---
+source: src/expr/eval.rs
+expression: diagnostic.render(expr.source.as_str())
+---
+runtime:C1-RUNTIME-LOGICAL-NOT-IMPLEMENTED: logical expression evaluation is not implemented yet
+--> span 0..4
+source: rstn
+note: C1 keeps logical runtime semantics deferred

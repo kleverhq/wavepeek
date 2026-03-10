@@ -670,6 +670,110 @@ fn change_iff_is_recognized_but_runtime_is_deferred() {
 }
 
 #[test]
+fn change_rejects_unmatched_open_parenthesis_with_legacy_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge (",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: invalid --on expression 'posedge ('. See 'wavepeek change --help'.",
+        ));
+}
+
+#[test]
+fn change_rejects_unmatched_close_parenthesis_with_legacy_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk)",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: invalid --on expression 'posedge clk)'. See 'wavepeek change --help'.",
+        ));
+}
+
+#[test]
+fn change_rejects_broken_union_with_legacy_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk or , clk",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: invalid --on expression 'posedge clk or , clk'. See 'wavepeek change --help'.",
+        ));
+}
+
+#[test]
+fn change_empty_iff_stays_deferred_runtime_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk iff",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "error: args: iff logical expressions are not implemented yet",
+        ));
+}
+
+#[test]
 fn change_empty_result_warning_matches_between_json_and_human_modes() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

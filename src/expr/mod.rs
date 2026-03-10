@@ -4,6 +4,7 @@ pub mod ast;
 pub mod diagnostic;
 pub(crate) mod eval;
 pub(crate) mod host;
+mod legacy;
 mod lexer;
 mod parser;
 pub(crate) mod sema;
@@ -34,7 +35,7 @@ pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EventKind {
+pub(crate) enum EventKind {
     AnyTracked,
     AnyChange(String),
     Posedge(String),
@@ -43,22 +44,22 @@ pub enum EventKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EventTerm {
+pub(crate) struct EventTerm {
     pub event: EventKind,
     pub iff_expr: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct EventExpr {
+pub(crate) struct EventExpr {
     pub terms: Vec<EventTerm>,
 }
 
 pub(crate) fn parse(source: &str) -> Result<Expression, WavepeekError> {
-    parser::parse(source)
+    legacy::parse(source)
 }
 
 pub(crate) fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
-    parser::parse_event_expr(source)
+    legacy::parse_event_expr(source)
 }
 
 #[cfg(test)]

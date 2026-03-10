@@ -106,8 +106,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     threshold = float(args.max_negative_delta_pct)
-    if threshold < 0:
-        fail("--max-negative-delta-pct must be non-negative")
+    if not math.isfinite(threshold) or threshold < 0:
+        fail("--max-negative-delta-pct must be a finite non-negative number")
 
     revised_dir = normalize_path(args.revised)
     golden_dir = normalize_path(args.golden)

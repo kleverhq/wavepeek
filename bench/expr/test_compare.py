@@ -186,6 +186,33 @@ class CompareHelpersTest(unittest.TestCase):
 
         self.assertIn("non-finite", str(error.exception))
 
+    def test_main_rejects_non_finite_threshold(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            scenarios = {
+                "tokenize_union_iff": (100.0, 100.0),
+                "parse_event_union_iff": (200.0, 200.0),
+                "parse_event_malformed": (300.0, 300.0),
+            }
+            self._write_summary(revised, scenarios)
+            self._write_summary(golden, scenarios)
+
+            with self.assertRaises(SystemExit) as error:
+                compare.main(
+                    [
+                        "--revised",
+                        str(revised),
+                        "--golden",
+                        str(golden),
+                        "--max-negative-delta-pct",
+                        "nan",
+                    ]
+                )
+
+        self.assertIn("finite non-negative", str(error.exception))
+
 
 if __name__ == "__main__":
     unittest.main()

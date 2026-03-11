@@ -43,10 +43,10 @@ This plan does not implement event runtime evaluation semantics. This plan does 
 - Observation: `property` remains a pure runtime stub, which gives this phase a safe place to establish parser/evaluator interfaces without accidentally expanding product behavior.
   Evidence: `src/engine/property.rs` returns `WavepeekError::Unimplemented("`property` command execution is not implemented yet")` immediately.
 
-- Observation: the repository has benchmark infrastructure for CLI end-to-end work, but not for parser-internal benchmarking.
+- Observation: the repository has benchmark infrastructure for CLI end-to-end work, but not for parser microbenchmarking.
   Evidence: `bench/e2e/` contains the existing `hyperfine`-based harness, while no `bench/expr/` directory or parser benchmark driver exists today.
 
-- Observation: repository docs already scope `hyperfine` to CLI end-to-end benchmarking rather than parser-internal work.
+- Observation: repository docs already scope `hyperfine` to CLI end-to-end benchmarking rather than parser work.
   Evidence: `docs/DEVELOPMENT.md` documents `bench/e2e/perf.py` as the CLI E2E benchmark harness and does not define any parser microbenchmark workflow.
 
 - Observation: `Criterion` exposes `raw.csv` as its stable machine-readable artifact, while its JSON analysis files are private implementation details.
@@ -84,7 +84,7 @@ This plan does not implement event runtime evaluation semantics. This plan does 
   Rationale: `C1` is infrastructure work, and adopting the repository's long-lived diagnostic snapshot workflow now gives later expression phases a ready-made review/update path without sacrificing readable committed inputs under `tests/fixtures/expr/`.
   Date/Author: 2026-03-10 / OpenCode
 
-- Decision: adopt `Criterion` as the repository-standard harness for parser microbenchmarks, place benchmark code under `benches/`, and keep parser benchmarks separate from the existing `hyperfine`-backed CLI E2E harness in `bench/e2e/`.
+- Decision: adopt `Criterion` as the repository-standard harness for parser microbenchmarks, place benchmark code under `bench/expr/`, and keep parser benchmarks separate from the existing `hyperfine`-backed CLI E2E harness in `bench/e2e/`.
   Rationale: `C1` regression gating is about lexer/parser internals rather than command latency, and `Criterion` integrates naturally with `cargo bench` while preserving the existing repository rule that `hyperfine` is for end-to-end CLI measurements.
   Date/Author: 2026-03-10 / OpenCode
 
@@ -97,7 +97,7 @@ This plan does not implement event runtime evaluation semantics. This plan does 
   Date/Author: 2026-03-10 / OpenCode
 
 - Decision: add `src/lib.rs` and move `src/main.rs` to a thin wrapper before the new `C1` tests and `Criterion` bench target are introduced.
-  Rationale: both `tests/expression_c1.rs` and `benches/expr_c1.rs` need a reusable crate surface; without `src/lib.rs`, a novice implementer would be blocked immediately.
+  Rationale: both `tests/expression_c1.rs` and `bench/expr/expr_c1.rs` need a reusable crate surface; without `src/lib.rs`, a novice implementer would be blocked immediately.
   Date/Author: 2026-03-10 / OpenCode
 
 - Decision: keep `bind_event_expr(...)` and the new host interface internal-only in `C1`; `src/engine/change.rs` keeps ownership of runtime name resolution and trigger execution in this phase.
@@ -148,13 +148,13 @@ The only production caller of the current event parser is `src/engine/change.rs`
 
 The expression language contract is split across two docs. `docs/expression_lang.md` defines the full intended syntax and semantics, including event unions, `iff` binding, and future boolean-expression behavior. `docs/expression_roadmap.md` defines the phased rollout. In that roadmap, `C1` means architecture and strict parser/diagnostic foundations only. It explicitly includes strict rejection of unmatched parentheses, empty `iff`, and broken union segmentation. It explicitly excludes runtime expression evaluation and `property` runtime execution.
 
-Several terms in this plan have repository-specific meanings. A "span" is a byte-range inside an expression string, with inclusive `start` and exclusive `end`, so diagnostics can point at exact text without ambiguity. A "manifest" is a repository-tracked list of test cases that a Rust test loads at runtime; here it means JSON files under `tests/fixtures/expr/` that lock parse successes and failures. An "Insta snapshot" is a committed `.snap` file under `tests/snapshots/` produced by named `insta` assertions in `tests/expression_c1.rs`; in this plan it stores the exact rendered form of one internal expression diagnostic. "Criterion" is the Rust microbenchmark library integrated through `cargo bench`; in this plan it measures parser/tokenization scenarios from `benches/expr_c1.rs`, writes temporary results under `target/criterion`, and a repo-local export step copies the stable `raw.csv` measurements into committed run directories under `bench/expr/runs/`. A "host" is a trait that lets the expression layer ask the rest of the program to resolve signal names, query recovered type metadata, and fetch sampled values without importing waveform/engine logic directly. A "binder" is the semantic pass that converts parsed names into resolved handles and rejects invalid references before evaluation.
+Several terms in this plan have repository-specific meanings. A "span" is a byte-range inside an expression string, with inclusive `start` and exclusive `end`, so diagnostics can point at exact text without ambiguity. A "manifest" is a repository-tracked list of test cases that a Rust test loads at runtime; here it means JSON files under `tests/fixtures/expr/` that lock parse successes and failures. An "Insta snapshot" is a committed `.snap` file under `tests/snapshots/` produced by named `insta` assertions in `tests/expression_c1.rs`; in this plan it stores the exact rendered form of one internal expression diagnostic. "Criterion" is the Rust microbenchmark library integrated through `cargo bench`; in this plan it measures parser/tokenization scenarios from `bench/expr/expr_c1.rs`, writes temporary results under `target/criterion`, and a repo-local export step copies the stable `raw.csv` measurements into committed run directories under `bench/expr/runs/`. A "host" is a trait that lets the expression layer ask the rest of the program to resolve signal names, query recovered type metadata, and fetch sampled values without importing waveform/engine logic directly. A "binder" is the semantic pass that converts parsed names into resolved handles and rejects invalid references before evaluation.
 
 The current gaps that `C1` must close are concrete. There is no reusable library crate surface, no spanned token stream, no dedicated AST module, no semantic binding entry point, no internal parse/semantic/runtime diagnostic format, no locked manifest-based parser matrix, no deterministic no-panic corpus, and no parser benchmark harness. `docs/BACKLOG.md` already tracks two of these gaps directly: temporary `iff` capture rules in the event parser and unused lexer scaffolding.
 
 ## Open Questions
 
-There are no blocking product questions left for `C1`. The plan resolves the two implementation-shape questions that matter here: use `insta` file snapshots for diagnostics while keeping manifests as repository fixtures, and use `Criterion` benchmarks under `benches/` plus repo-local export/compare helpers under `bench/expr/` instead of extending `bench/e2e`.
+There are no blocking product questions left for `C1`. The plan resolves the two implementation-shape questions that matter here: use `insta` file snapshots for diagnostics while keeping manifests as repository fixtures, and use `Criterion` benchmarks under `bench/expr/` plus repo-local export/compare helpers under `bench/expr/runs/` instead of extending `bench/e2e`.
 
 No alternate microbenchmark harness path is planned in `C1`. Use `cargo bench --bench expr_c1 ...` and export Criterion's stable `raw.csv` output into committed `bench/expr/runs/` artifacts; do not add `src/bin/*` parser benchmark drivers or `hyperfine`-based parser harnesses.
 
@@ -166,7 +166,7 @@ Milestone 2 introduces the actual foundation modules. Add dedicated files for AS
 
 Milestone 3 stabilizes the compatibility boundary without broadening command integration. The new parser/diagnostic stack must be reachable through `src/expr/mod.rs` compatibility wrappers and direct expression tests, but `src/engine/change.rs` and `src/engine/property.rs` should remain command-level regression guards rather than active `C1` feature targets. The semantic binder and host interface are introduced in this milestone as internal-only architecture that later phases can consume.
 
-Milestone 4 adds the benchmark and closure artifacts. Create a `Criterion` parser benchmark target under `benches/`, repo-local export/compare helpers under `bench/expr/`, and committed run directories under `bench/expr/runs/` that store exported `raw.csv` inputs plus derived summaries. The compare helper must enforce the roadmap default gate of no worse than 15% mean and median regression on the fixed `C1` scenario set. In this milestone, `c1-foundation-candidate` is captured from the first fully green implementation before review, `c1-foundation-baseline` is captured from the final accepted `C1` state after the last review-fix commit, and `c1-foundation-verify` is a second run from that same final state used to prove reproducibility. Then update collateral: establish `Criterion` as the documented repository-standard microbenchmark tool for parser-internal work, keep `hyperfine` documented as E2E-only, close the relevant `docs/BACKLOG.md` items when they are actually resolved, keep `CHANGELOG.md` unchanged because `C1` does not intentionally roll out new public behavior, and keep the active plan updated with red/green/review evidence.
+Milestone 4 adds the benchmark and closure artifacts. Create a `Criterion` parser benchmark target under `bench/expr/`, repo-local export/compare helpers under `bench/expr/`, and committed run directories under `bench/expr/runs/` that store exported `raw.csv` inputs plus derived summaries. The compare helper must enforce the roadmap default gate of no worse than 15% mean and median regression on the fixed `C1` scenario set. In this milestone, `c1-foundation-candidate` is captured from the first fully green implementation before review, `c1-foundation-baseline` is captured from the final accepted `C1` state after the last review-fix commit, and `c1-foundation-verify` is a second run from that same final state used to prove reproducibility. Then update collateral: establish `Criterion` as the documented repository-standard microbenchmark tool for parser work, keep `hyperfine` documented as E2E-only, close the relevant `docs/BACKLOG.md` items when they are actually resolved, keep `CHANGELOG.md` unchanged because `C1` does not intentionally roll out new public behavior, and keep the active plan updated with red/green/review evidence.
 
 Milestone 5 is validation and review closure. Run the dedicated expression tests, affected CLI tests, and the parser benchmark compare. Then run the mandatory review workflow using focused lanes and one fresh independent control pass. Any fixes from review must be committed separately, and the final validation run must happen after the last review-fix commit.
 
@@ -176,7 +176,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
 0. Extract a minimal library entrypoint and typed API scaffold so the new tests and `Criterion` bench target have a stable crate surface.
 
-   Add `src/lib.rs` and move ownership of the existing module tree there (`cli`, `engine`, `error`, `expr`, `output`, `schema_contract`, `waveform`). `src/main.rs` must stop declaring modules and become a thin binary wrapper around the library entrypoint. In the same step, add the minimal public `wavepeek::expr` type/function stubs needed for `tests/expression_c1.rs` and `benches/expr_c1.rs` to compile against the future `C1` surface. Also add the `insta` dev-dependency and the `profile.dev.package` optimization entries required for Step 1 snapshot tests to compile and stay ergonomic; reserve the `criterion` dependency and bench-target wiring for Step 4. Placeholder bodies are acceptable here if they return deterministic scaffold diagnostics; Step 2 will replace them with the full implementation.
+   Add `src/lib.rs` and move ownership of the existing module tree there (`cli`, `engine`, `error`, `expr`, `output`, `schema_contract`, `waveform`). `src/main.rs` must stop declaring modules and become a thin binary wrapper around the library entrypoint. In the same step, add the minimal public `wavepeek::expr` type/function stubs needed for `tests/expression_c1.rs` and `bench/expr/expr_c1.rs` to compile against the future `C1` surface. Also add the `insta` dev-dependency and the `profile.dev.package` optimization entries required for Step 1 snapshot tests to compile and stay ergonomic; reserve the `criterion` dependency and bench-target wiring for Step 4. Placeholder bodies are acceptable here if they return deterministic scaffold diagnostics; Step 2 will replace them with the full implementation.
 
    This is prerequisite scaffolding required to make the `C1` manifest tests and `Criterion` bench target feasible. Keep it minimal and structural; do not mix real parser semantics into this step.
 
@@ -277,12 +277,10 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
 4. Add parser/tokenization microbenchmark tooling and artifacts.
 
-   Create new durable directories `bench/expr/`, `bench/expr/runs/`, and `benches/` and satisfy the breadcrumb policy in the same change:
+   Create new durable directories `bench/expr/` and `bench/expr/runs/` and satisfy the breadcrumb policy in the same change:
 
-    - update `AGENTS.md` to add `benches/AGENTS.md` under `Child Maps`
     - update `bench/AGENTS.md` to add `bench/expr/AGENTS.md` under `Child Maps`
-    - add `benches/AGENTS.md`
-    - add `benches/expr_c1.rs`
+    - add `bench/expr/expr_c1.rs`
     - add `bench/expr/AGENTS.md`
     - add `bench/expr/runs/AGENTS.md`
     - add `bench/expr/capture.py`
@@ -296,10 +294,10 @@ Run all commands from `/workspaces/feat-cmd-property`.
    Update repository collateral in the same milestone so the new tooling becomes the default microbenchmark path for later phases:
 
     - update `Cargo.toml` to add the `criterion` dev-dependency, add the explicit `[[bench]]` entry for `expr_c1`, and disable stray bench harnesses on the library/main binary if needed so Criterion arguments do not get intercepted by `libtest`
-    - update `docs/DEVELOPMENT.md` to document `Criterion` for parser/internal microbenchmarks and keep `hyperfine` scoped to `bench/e2e`
+    - update `docs/DEVELOPMENT.md` to document `Criterion` for parser microbenchmarks and keep `hyperfine` scoped to `bench/e2e`
     - update `Makefile` to add a dedicated microbenchmark-helper unit-test target (for example `test-bench-expr`) and include it in `make ci`
 
-   Add a `Criterion` benchmark target at `benches/expr_c1.rs`. It must benchmark only the public expression entry points, without touching waveform files or command runtimes. Use `criterion::black_box` inside the measured closures, configure a fixed profile in code (`sample_size = 100`, `warm_up_time = 3s`, `measurement_time = 5s`, `significance_level = 0.05`, `noise_threshold = 0.01`), and call `configure_from_args()` so named baselines and `--noplot` remain available from the command line. Define exactly these benchmark IDs:
+   Add a `Criterion` benchmark target at `bench/expr/expr_c1.rs`. It must benchmark only the public expression entry points, without touching waveform files or command runtimes. Use `criterion::black_box` inside the measured closures, configure a fixed profile in code (`sample_size = 100`, `warm_up_time = 3s`, `measurement_time = 5s`, `significance_level = 0.05`, `noise_threshold = 0.01`), and call `configure_from_args()` so named baselines and `--noplot` remain available from the command line. Define exactly these benchmark IDs:
 
    - `tokenize_union_iff`
    - `parse_event_union_iff`
@@ -342,7 +340,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
         git add src/expr/mod.rs src/expr/ast.rs src/expr/diagnostic.rs src/expr/host.rs src/expr/lexer.rs src/expr/parser.rs src/expr/sema.rs src/expr/eval.rs src/expr/snapshots
         git commit -m "refactor(expr): add c1 spanned parser foundation"
 
-         git add Cargo.toml AGENTS.md bench/AGENTS.md bench/expr/AGENTS.md bench/expr/runs/AGENTS.md bench/expr/capture.py bench/expr/compare.py bench/expr/test_capture.py bench/expr/test_compare.py benches/AGENTS.md benches/expr_c1.rs docs/DEVELOPMENT.md Makefile
+         git add Cargo.toml AGENTS.md bench/AGENTS.md bench/expr/AGENTS.md bench/expr/runs/AGENTS.md bench/expr/capture.py bench/expr/compare.py bench/expr/test_capture.py bench/expr/test_compare.py bench/expr/expr_c1.rs docs/DEVELOPMENT.md Makefile
          git commit -m "bench(expr): add c1 criterion microbench harness"
 
          git add bench/expr/runs/c1-foundation-candidate
@@ -414,14 +412,14 @@ Acceptance is complete only when all of the conditions below are true together:
 - Internal unit tests in `src/expr/eval.rs` prove that the evaluator API still returns a deterministic runtime unimplemented diagnostic at `C1`.
 - The internal semantic/runtime unit tests lock their rendered diagnostics in committed snapshots under `src/expr/snapshots/`, because those entry points remain internal in `C1`.
 - The legacy `parse_event_expr(...)` adapter and the real `change` CLI boundary remain compatibility-preserving in `C1`; any strict malformed-input rollout is deferred to a later integration phase.
-- `AGENTS.md` links to the new `benches/AGENTS.md` child map, `bench/AGENTS.md` links to the new `bench/expr/AGENTS.md` child map, and `bench/expr/AGENTS.md` links to `bench/expr/runs/AGENTS.md`.
+- `bench/AGENTS.md` links to the new `bench/expr/AGENTS.md` child map, and `bench/expr/AGENTS.md` links to `bench/expr/runs/AGENTS.md`.
 - `bench/expr/runs/c1-foundation-candidate/`, `bench/expr/runs/c1-foundation-baseline/`, and `bench/expr/runs/c1-foundation-verify/` all exist with committed `*.raw.csv` exports, deterministic `summary.json`, and readable `README.md` summaries.
 - Each benchmark `README.md` records the fixed `cargo bench` command, `cargo -V`, `rustc -V`, the resolved `criterion` crate version, the source commit used for measurement, whether the worktree was clean or dirty, and the basic environment note used to generate the artifacts. The candidate run must come from a clean dedicated commit so the source state is reconstructable.
 - `cargo test --bench expr_c1` passes, proving the microbenchmark harness compiles and runs in Criterion test mode.
 - `python3 -m unittest discover -s bench/expr -p 'test_*.py'` passes, including missing/extra-scenario hard-failure coverage and wrong-baseline export rejection when multiple saved baselines coexist.
 - `python3 bench/expr/compare.py --revised bench/expr/runs/c1-foundation-baseline --golden bench/expr/runs/c1-foundation-candidate --max-negative-delta-pct 15` passes, proving no unacceptable regression from the first-green state to the final accepted state.
 - `python3 bench/expr/compare.py --revised bench/expr/runs/c1-foundation-verify --golden bench/expr/runs/c1-foundation-baseline --max-negative-delta-pct 5` passes, proving same-commit reproducibility stays within a tighter noise guard before cross-commit regression conclusions are trusted.
-- `docs/DEVELOPMENT.md` documents `Criterion` as the microbenchmark workflow for parser/internal work and keeps `hyperfine` scoped to `bench/e2e` CLI runs.
+- `docs/DEVELOPMENT.md` documents `Criterion` as the microbenchmark workflow for parser work and keeps `hyperfine` scoped to `bench/e2e` CLI runs.
 - `Makefile` exposes the new microbenchmark-helper unit-test target and `make ci` runs it.
 - `docs/BACKLOG.md` closes the parser-strictness debt and the unused-lexer debt only if the implementation actually resolves them; later-phase debts must remain open.
 - `CHANGELOG.md` remains unchanged in `C1`; a changelog delta is a scope warning because this plan does not intentionally roll out new public behavior.
@@ -438,7 +436,7 @@ If the parser refactor temporarily breaks `change`, recover in this order: first
 
 If benchmark capture fails because `target/criterion` contains stale or partial data, remove the affected `target/criterion/expr_c1*` directories and rerun the same `cargo bench --bench expr_c1 ...` command before touching code. If the same-commit `baseline` versus `verify` compare exceeds the tighter `5%` reproducibility guard, rerun the capture pair before drawing any cross-commit conclusion. Only treat the `15%` candidate-versus-baseline gate as actionable after the same-state reproducibility check is stable.
 
-If review finds issues, apply follow-up commits instead of rewriting history. If the new durable directories `bench/expr/` and `benches/` are kept, ensure their local `AGENTS.md` files and the matching breadcrumb updates in `AGENTS.md` and `bench/AGENTS.md` are committed in the same review-fix sequence.
+If review finds issues, apply follow-up commits instead of rewriting history. If the new durable directories under `bench/expr/` are kept, ensure their local `AGENTS.md` files and matching breadcrumb updates in `AGENTS.md` and `bench/AGENTS.md` are committed in the same review-fix sequence.
 
 ### Artifacts and Notes
 
@@ -474,8 +472,7 @@ Expected modified or added files for `C1` implementation:
 - `bench/expr/runs/c1-foundation-candidate/`
 - `bench/expr/runs/c1-foundation-baseline/`
 - `bench/expr/runs/c1-foundation-verify/`
-- `benches/AGENTS.md`
-- `benches/expr_c1.rs`
+- `bench/expr/expr_c1.rs`
 - `docs/DEVELOPMENT.md`
 - `docs/BACKLOG.md`
 
@@ -561,7 +558,7 @@ In `src/lib.rs`, define a thin reusable crate surface for tests and benchmark ta
     pub mod expr;
     pub use crate::error::WavepeekError;
 
-`src/main.rs` should become a tiny binary wrapper that calls `wavepeek::run_cli()` and keeps exit-code/error-print behavior unchanged. The public library surface must be sufficient for `tests/expression_c1.rs` and `benches/expr_c1.rs` to use expression entry points without duplicating private module wiring.
+`src/main.rs` should become a tiny binary wrapper that calls `wavepeek::run_cli()` and keeps exit-code/error-print behavior unchanged. The public library surface must be sufficient for `tests/expression_c1.rs` and `bench/expr/expr_c1.rs` to use expression entry points without duplicating private module wiring.
 
 In `src/expr/diagnostic.rs`, define:
 
@@ -717,7 +714,7 @@ In `src/expr/mod.rs`, keep the public typed lex/parse surface separate from tran
 
 The internal unit tests in `src/expr/sema.rs` and `src/expr/eval.rs` should use their own named `insta` assertions for the semantic and runtime diagnostic layers, because those entry points remain `pub(crate)` in `C1` and are not part of the integration-test public surface.
 
-In `benches/expr_c1.rs`, define one `Criterion` benchmark group that uses only `lex_event_expr(...)` and `parse_event_expr_ast(...)`, not private modules. The benchmark IDs must be exactly `tokenize_union_iff`, `parse_event_union_iff`, and `parse_event_malformed`. The benchmark bodies must panic if a supposedly-successful scenario fails or if the malformed scenario unexpectedly parses, so broken parser behavior is caught during measurement runs instead of silently skewing numbers.
+In `bench/expr/expr_c1.rs`, define one `Criterion` benchmark group that uses only `lex_event_expr(...)` and `parse_event_expr_ast(...)`, not private modules. The benchmark IDs must be exactly `tokenize_union_iff`, `parse_event_union_iff`, and `parse_event_malformed`. The benchmark bodies must panic if a supposedly-successful scenario fails or if the malformed scenario unexpectedly parses, so broken parser behavior is caught during measurement runs instead of silently skewing numbers.
 
 In `bench/expr/capture.py`, define a CLI with this shape:
 
@@ -739,6 +736,6 @@ Treat `parse(...)` and `parse_event_expr(...)` as transitional adapters for exis
 
 Revision Note: 2026-03-10 / OpenCode - Created the initial active ExecPlan for roadmap phase `C1`, then tightened it after review to keep command integration out of scope, make `src/lib.rs` extraction explicit, and turn the parser benchmark into a reproducible golden-plus-verify harness with exact scenario-set checks.
 
-Revision Note: 2026-03-10 / OpenCode - Reopened the plan before implementation to adopt `insta` for diagnostic snapshots, switch parser microbenchmarks from a `hyperfine`-driven `src/bin` helper to a `Criterion` benchmark target under `benches/`, export committed `raw.csv`-based run artifacts under `bench/expr/runs/`, and document `hyperfine` as E2E-only collateral.
+Revision Note: 2026-03-10 / OpenCode - Reopened the plan before implementation to adopt `insta` for diagnostic snapshots, switch parser microbenchmarks from a `hyperfine`-driven `src/bin` helper to a `Criterion` benchmark target under `bench/expr/`, export committed `raw.csv`-based run artifacts under `bench/expr/runs/`, and document `hyperfine` as E2E-only collateral.
 
 Revision Note: 2026-03-10 / OpenCode - Completed `C1` implementation with commits, validation, candidate/baseline/verify captures, focused multi-lane review, review-fix commits, and fresh control-pass closure; updated living sections and evidence excerpts to reflect final state.

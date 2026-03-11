@@ -1,13 +1,12 @@
-use std::time::Duration;
-
 use std::hint::black_box;
+use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn bench_tokenize_union_iff(c: &mut Criterion) {
     c.bench_function("tokenize_union_iff", |b| {
         b.iter(|| {
-            let source = black_box("posedge clk iff (a or b) or negedge rstn");
+            let source = black_box("posedge clk iff (a || b) or negedge rstn");
             assert!(
                 wavepeek::expr::lex_event_expr(source).is_ok(),
                 "tokenize_union_iff unexpectedly failed"
@@ -19,7 +18,7 @@ fn bench_tokenize_union_iff(c: &mut Criterion) {
 fn bench_parse_event_union_iff(c: &mut Criterion) {
     c.bench_function("parse_event_union_iff", |b| {
         b.iter(|| {
-            let source = black_box("posedge clk iff (a or b) or negedge rstn");
+            let source = black_box("posedge clk iff (a || b) or negedge rstn");
             assert!(
                 wavepeek::expr::parse_event_expr_ast(source).is_ok(),
                 "parse_event_union_iff unexpectedly failed"

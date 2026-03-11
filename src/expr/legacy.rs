@@ -219,8 +219,8 @@ mod tests {
     }
 
     #[test]
-    fn event_expr_iff_capture_parenthesized_or() {
-        let parsed = parse_event_expr("posedge clk iff (a or b) or bar")
+    fn event_expr_iff_capture_parenthesized_logical_payload() {
+        let parsed = parse_event_expr("posedge clk iff (a || b) or bar")
             .expect("event expression should parse");
 
         assert_eq!(
@@ -228,7 +228,7 @@ mod tests {
             vec![
                 EventTerm {
                     event: EventKind::Posedge("clk".to_string()),
-                    iff_expr: Some("(a or b)".to_string())
+                    iff_expr: Some("(a || b)".to_string())
                 },
                 EventTerm {
                     event: EventKind::AnyChange("bar".to_string()),

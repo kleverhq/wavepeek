@@ -87,7 +87,7 @@ Direct Cargo equivalents (useful when iterating):
 For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib only, powered by `hyperfine`).
 
 This harness is intentionally scoped to end-to-end CLI command timing. Do not
-use it for parser-internal microbenchmarks.
+use it for any internal microbenchmarks.
 
 - List benchmark test catalog:
   - `python3 bench/e2e/perf.py list`
@@ -120,10 +120,10 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 
 `compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals and are reported as warnings. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
 
-## Parser/Internal Microbenchmarks
+## Parser Microbenchmarks
 
 For parser/tokenization microbenchmarks, use `Criterion` via `cargo bench` with
-the dedicated target in `benches/expr_c1.rs`.
+the dedicated target in `bench/expr/expr_c1.rs`.
 
 - Run parser microbench target and save named baseline:
   - `cargo bench --bench expr_c1 -- --save-baseline <name> --noplot`

@@ -47,4 +47,5 @@ bench = false
 
 [[bench]]
 name = "expr_c1"
+path = "bench/expr/expr_c1.rs"
 harness = false

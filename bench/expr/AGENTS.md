@@ -3,6 +3,9 @@
 This directory contains parser/tokenization microbenchmark helper scripts and
 committed run artifacts for expression-engine phases.
 
+The Rust Criterion target for this area lives at `bench/expr/expr_c1.rs` and is
+wired through `Cargo.toml` `[[bench]]` metadata.
+
 ## Parent Maps
 
 - Performance map: `bench/AGENTS.md`

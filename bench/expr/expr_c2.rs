@@ -13,7 +13,7 @@ struct BenchSignal {
     width: u32,
     is_four_state: bool,
     is_signed: bool,
-    samples: Vec<(u64, &'static str)>,
+    samples: Vec<(u64, String)>,
 }
 
 struct BenchHost {
@@ -34,13 +34,18 @@ impl BenchHost {
                           samples: Vec<(u64, &'static str)>| {
             let signal_handle = SignalHandle(handle);
             handles.insert(name, signal_handle);
+            let mut normalized_samples: Vec<(u64, String)> = samples
+                .into_iter()
+                .map(|(timestamp, bits)| (timestamp, bits.to_string()))
+                .collect();
+            normalized_samples.sort_by_key(|(timestamp, _)| *timestamp);
             signals.insert(
                 signal_handle,
                 BenchSignal {
                     width,
                     is_four_state,
                     is_signed,
-                    samples,
+                    samples: normalized_samples,
                 },
             );
         };
@@ -130,12 +135,14 @@ impl ExpressionHost for BenchHost {
             primary_span: wavepeek::expr::Span::new(0, 0),
             notes: vec![],
         })?;
-        let sampled = signal
+        let insertion_index = signal
             .samples
-            .iter()
-            .rev()
-            .find(|(sample_time, _)| *sample_time <= timestamp)
-            .map(|(_, bits)| (*bits).to_string());
+            .partition_point(|(sample_time, _)| *sample_time <= timestamp);
+        let sampled = if insertion_index == 0 {
+            None
+        } else {
+            Some(signal.samples[insertion_index - 1].1.clone())
+        };
         Ok(SampledValue { bits: sampled })
     }
 }
@@ -165,12 +172,15 @@ fn bench_eval_event_union_iff_true(c: &mut Criterion) {
         previous_timestamp: Some(12),
         tracked_signals: tracked.as_slice(),
     };
+    assert!(
+        event_matches_at(&bound, &host, &frame).expect("eval true setup must evaluate"),
+        "eval_event_union_iff_true should match"
+    );
 
     c.bench_function("eval_event_union_iff_true", |b| {
         b.iter(|| {
             let matched = event_matches_at(black_box(&bound), black_box(&host), black_box(&frame))
                 .expect("eval_event_union_iff_true must evaluate");
-            assert!(matched, "eval_event_union_iff_true should match");
             black_box(matched);
         })
     });
@@ -187,15 +197,15 @@ fn bench_eval_event_union_iff_unknown(c: &mut Criterion) {
         previous_timestamp: Some(8),
         tracked_signals: tracked.as_slice(),
     };
+    assert!(
+        !event_matches_at(&bound, &host, &frame).expect("eval unknown setup must evaluate"),
+        "eval_event_union_iff_unknown should be suppressed by unknown iff result"
+    );
 
     c.bench_function("eval_event_union_iff_unknown", |b| {
         b.iter(|| {
             let matched = event_matches_at(black_box(&bound), black_box(&host), black_box(&frame))
                 .expect("eval_event_union_iff_unknown must evaluate");
-            assert!(
-                !matched,
-                "eval_event_union_iff_unknown should be suppressed by unknown iff result"
-            );
             black_box(matched);
         })
     });

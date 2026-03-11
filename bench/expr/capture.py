@@ -31,6 +31,19 @@ def ensure_existing_dir(path: pathlib.Path, label: str) -> None:
         fail(f"{label} directory does not exist: {path}")
 
 
+def ensure_output_dir_ready(path: pathlib.Path) -> None:
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=False)
+        return
+    if not path.is_dir():
+        fail(f"output path exists but is not a directory: {path}")
+    if any(path.iterdir()):
+        fail(
+            "output directory must be empty before capture: "
+            f"{path} (remove it or choose a fresh --output path)"
+        )
+
+
 def normalize_repo_relative(path: pathlib.Path) -> str:
     try:
         return str(path.relative_to(REPO_ROOT))
@@ -304,7 +317,7 @@ def main(argv: list[str] | None = None) -> int:
     scenario_set_path = normalize_path(args.scenario_set)
     output_dir = normalize_path(args.output)
     ensure_existing_dir(criterion_root, "criterion root")
-    output_dir.mkdir(parents=True, exist_ok=True)
+    ensure_output_dir_ready(output_dir)
 
     scenario_set_id, manifest_bench_target, required_scenarios = load_scenario_set(
         scenario_set_path

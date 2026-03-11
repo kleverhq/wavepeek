@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use crate::error::WavepeekError;
 use crate::expr::ast::LogicalBinaryOp;
 use crate::expr::diagnostic::ExprDiagnostic;
@@ -19,6 +22,11 @@ pub enum TruthValue {
 struct RuntimeValue {
     bits: Vec<BoundBit>,
     signed: bool,
+}
+
+#[derive(Default)]
+struct EvalCache {
+    samples: HashMap<(SignalHandle, u64), Option<Arc<str>>>,
 }
 
 impl RuntimeValue {
@@ -51,19 +59,45 @@ impl RuntimeValue {
     }
 }
 
+impl EvalCache {
+    fn sample_bits(
+        &mut self,
+        host: &dyn ExpressionHost,
+        handle: SignalHandle,
+        timestamp: u64,
+    ) -> Result<Option<Arc<str>>, ExprDiagnostic> {
+        if let Some(sampled) = self.samples.get(&(handle, timestamp)) {
+            return Ok(sampled.clone());
+        }
+
+        let sampled = host
+            .sample_value(handle, timestamp)?
+            .bits
+            .map(Arc::<str>::from);
+        self.samples.insert((handle, timestamp), sampled.clone());
+        Ok(sampled)
+    }
+}
+
 pub fn event_matches_at(
     expr: &BoundEventExpr,
     host: &dyn ExpressionHost,
     frame: &EventEvalFrame<'_>,
 ) -> Result<bool, ExprDiagnostic> {
+    let mut cache = EvalCache::default();
+
     for term in &expr.terms {
         let event_matches = match term.event {
-            BoundEventKind::AnyTracked => any_tracked_matches(host, frame)?,
-            BoundEventKind::Named(handle) => named_event_matches(host, handle, frame)?,
-            BoundEventKind::Posedge(handle) => edge_event_matches(host, handle, frame)?.0,
-            BoundEventKind::Negedge(handle) => edge_event_matches(host, handle, frame)?.1,
+            BoundEventKind::AnyTracked => any_tracked_matches(host, frame, &mut cache)?,
+            BoundEventKind::Named(handle) => named_event_matches(host, handle, frame, &mut cache)?,
+            BoundEventKind::Posedge(handle) => {
+                edge_event_matches(host, handle, frame, &mut cache)?.0
+            }
+            BoundEventKind::Negedge(handle) => {
+                edge_event_matches(host, handle, frame, &mut cache)?.1
+            }
             BoundEventKind::Edge(handle) => {
-                let (posedge, negedge) = edge_event_matches(host, handle, frame)?;
+                let (posedge, negedge) = edge_event_matches(host, handle, frame, &mut cache)?;
                 posedge || negedge
             }
         };
@@ -73,7 +107,9 @@ pub fn event_matches_at(
         }
 
         if let Some(iff) = &term.iff {
-            if eval_logical_expr(iff, host, frame.timestamp)? == TruthValue::One {
+            if eval_logical_expr_with_cache(iff, host, frame.timestamp, &mut cache)?
+                == TruthValue::One
+            {
                 return Ok(true);
             }
             continue;
@@ -90,7 +126,17 @@ pub(crate) fn eval_logical_expr(
     host: &dyn ExpressionHost,
     timestamp: u64,
 ) -> Result<TruthValue, ExprDiagnostic> {
-    let value = eval_logical_node(&expr.root, host, timestamp)?;
+    let mut cache = EvalCache::default();
+    eval_logical_expr_with_cache(expr, host, timestamp, &mut cache)
+}
+
+fn eval_logical_expr_with_cache(
+    expr: &BoundLogicalExpr,
+    host: &dyn ExpressionHost,
+    timestamp: u64,
+    cache: &mut EvalCache,
+) -> Result<TruthValue, ExprDiagnostic> {
+    let value = eval_logical_node(&expr.root, host, timestamp, cache)?;
     Ok(truthiness(&value))
 }
 
@@ -98,13 +144,13 @@ fn eval_logical_node(
     node: &BoundLogicalNode,
     host: &dyn ExpressionHost,
     timestamp: u64,
+    cache: &mut EvalCache,
 ) -> Result<RuntimeValue, ExprDiagnostic> {
     match node {
         BoundLogicalNode::SignalRef { handle, ty, .. } => {
-            let sampled = host.sample_value(*handle, timestamp)?;
+            let sampled = cache.sample_bits(host, *handle, timestamp)?;
             let width = ty.width.max(1) as usize;
             let bits = sampled
-                .bits
                 .as_deref()
                 .map(bits_from_sample)
                 .unwrap_or_else(|| vec![BoundBit::X; width]);
@@ -119,7 +165,7 @@ fn eval_logical_node(
             signed: value.signed,
         }),
         BoundLogicalNode::UnaryNot { expr, .. } => {
-            let truth = truthiness(&eval_logical_node(expr, host, timestamp)?);
+            let truth = truthiness(&eval_logical_node(expr, host, timestamp, cache)?);
             Ok(RuntimeValue::truth(match truth {
                 TruthValue::Zero => TruthValue::One,
                 TruthValue::One => TruthValue::Zero,
@@ -128,7 +174,7 @@ fn eval_logical_node(
         }
         BoundLogicalNode::Binary {
             op, left, right, ..
-        } => eval_binary_node(*op, left, right, host, timestamp),
+        } => eval_binary_node(*op, left, right, host, timestamp, cache),
     }
 }
 
@@ -138,15 +184,17 @@ fn eval_binary_node(
     right: &BoundLogicalNode,
     host: &dyn ExpressionHost,
     timestamp: u64,
+    cache: &mut EvalCache,
 ) -> Result<RuntimeValue, ExprDiagnostic> {
     match op {
         LogicalBinaryOp::AndAnd => {
-            let left_truth = truthiness(&eval_logical_node(left, host, timestamp)?);
+            let left_truth = truthiness(&eval_logical_node(left, host, timestamp, cache)?);
             let result = match left_truth {
                 TruthValue::Zero => TruthValue::Zero,
-                TruthValue::One => truthiness(&eval_logical_node(right, host, timestamp)?),
+                TruthValue::One => truthiness(&eval_logical_node(right, host, timestamp, cache)?),
                 TruthValue::Unknown => {
-                    let right_truth = truthiness(&eval_logical_node(right, host, timestamp)?);
+                    let right_truth =
+                        truthiness(&eval_logical_node(right, host, timestamp, cache)?);
                     if right_truth == TruthValue::Zero {
                         TruthValue::Zero
                     } else {
@@ -157,12 +205,13 @@ fn eval_binary_node(
             Ok(RuntimeValue::truth(result))
         }
         LogicalBinaryOp::OrOr => {
-            let left_truth = truthiness(&eval_logical_node(left, host, timestamp)?);
+            let left_truth = truthiness(&eval_logical_node(left, host, timestamp, cache)?);
             let result = match left_truth {
                 TruthValue::One => TruthValue::One,
-                TruthValue::Zero => truthiness(&eval_logical_node(right, host, timestamp)?),
+                TruthValue::Zero => truthiness(&eval_logical_node(right, host, timestamp, cache)?),
                 TruthValue::Unknown => {
-                    let right_truth = truthiness(&eval_logical_node(right, host, timestamp)?);
+                    let right_truth =
+                        truthiness(&eval_logical_node(right, host, timestamp, cache)?);
                     if right_truth == TruthValue::One {
                         TruthValue::One
                     } else {
@@ -178,8 +227,8 @@ fn eval_binary_node(
         | LogicalBinaryOp::Ge
         | LogicalBinaryOp::Eq
         | LogicalBinaryOp::Ne => {
-            let left = eval_logical_node(left, host, timestamp)?;
-            let right = eval_logical_node(right, host, timestamp)?;
+            let left = eval_logical_node(left, host, timestamp, cache)?;
+            let right = eval_logical_node(right, host, timestamp, cache)?;
             let truth = compare_runtime_values(op, left, right);
             Ok(RuntimeValue::truth(truth))
         }
@@ -192,8 +241,9 @@ fn compare_runtime_values(
     right: RuntimeValue,
 ) -> TruthValue {
     let width = left.bits.len().max(right.bits.len()).max(1);
-    let left = extend_runtime_value(left, width);
-    let right = extend_runtime_value(right, width);
+    let common_signed = left.signed && right.signed;
+    let left = extend_runtime_value(left, width, common_signed);
+    let right = extend_runtime_value(right, width, common_signed);
 
     if has_unknown_bits(&left.bits) || has_unknown_bits(&right.bits) {
         return TruthValue::Unknown;
@@ -215,7 +265,7 @@ fn compare_runtime_values(
             }
         }
         LogicalBinaryOp::Lt | LogicalBinaryOp::Le | LogicalBinaryOp::Gt | LogicalBinaryOp::Ge => {
-            let ordering = signed_ordering(left.signed && right.signed, &left.bits, &right.bits);
+            let ordering = signed_ordering(common_signed, &left.bits, &right.bits);
             let matched = match op {
                 LogicalBinaryOp::Lt => ordering.is_lt(),
                 LogicalBinaryOp::Le => ordering.is_le(),
@@ -233,14 +283,18 @@ fn compare_runtime_values(
     }
 }
 
-fn extend_runtime_value(mut value: RuntimeValue, width: usize) -> RuntimeValue {
+fn extend_runtime_value(
+    mut value: RuntimeValue,
+    width: usize,
+    common_signed: bool,
+) -> RuntimeValue {
     if value.bits.len() > width {
         value.bits = value.bits[value.bits.len() - width..].to_vec();
         return value;
     }
 
     if value.bits.len() < width {
-        let fill = if value.signed {
+        let fill = if common_signed {
             value.bits.first().copied().unwrap_or(BoundBit::Zero)
         } else {
             BoundBit::Zero
@@ -280,14 +334,15 @@ fn unsigned_ordering(left: &[BoundBit], right: &[BoundBit]) -> std::cmp::Orderin
 fn any_tracked_matches(
     host: &dyn ExpressionHost,
     frame: &EventEvalFrame<'_>,
+    cache: &mut EvalCache,
 ) -> Result<bool, ExprDiagnostic> {
     let Some(previous_timestamp) = frame.previous_timestamp else {
         return Ok(false);
     };
 
     for &handle in frame.tracked_signals {
-        let previous_bits = sample_signal_bits(host, handle, previous_timestamp)?;
-        let current_bits = sample_signal_bits(host, handle, frame.timestamp)?;
+        let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
+        let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
         if let (Some(previous), Some(current)) = (previous_bits, current_bits)
             && previous != current
         {
@@ -302,13 +357,14 @@ fn named_event_matches(
     host: &dyn ExpressionHost,
     handle: SignalHandle,
     frame: &EventEvalFrame<'_>,
+    cache: &mut EvalCache,
 ) -> Result<bool, ExprDiagnostic> {
     let Some(previous_timestamp) = frame.previous_timestamp else {
         return Ok(false);
     };
 
-    let previous_bits = sample_signal_bits(host, handle, previous_timestamp)?;
-    let current_bits = sample_signal_bits(host, handle, frame.timestamp)?;
+    let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
+    let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
     Ok(
         matches!((previous_bits, current_bits), (Some(previous), Some(current)) if previous != current),
     )
@@ -318,27 +374,28 @@ fn edge_event_matches(
     host: &dyn ExpressionHost,
     handle: SignalHandle,
     frame: &EventEvalFrame<'_>,
+    cache: &mut EvalCache,
 ) -> Result<(bool, bool), ExprDiagnostic> {
     let Some(previous_timestamp) = frame.previous_timestamp else {
         return Ok((false, false));
     };
 
-    let previous_bits = sample_signal_bits(host, handle, previous_timestamp)?;
-    let current_bits = sample_signal_bits(host, handle, frame.timestamp)?;
+    let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
+    let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
     let (Some(previous_bits), Some(current_bits)) = (previous_bits, current_bits) else {
         return Ok((false, false));
     };
 
-    Ok(classify_edge(previous_bits.as_str(), current_bits.as_str()))
+    Ok(classify_edge(previous_bits.as_ref(), current_bits.as_ref()))
 }
 
 fn sample_signal_bits(
     host: &dyn ExpressionHost,
     handle: SignalHandle,
     timestamp: u64,
-) -> Result<Option<String>, ExprDiagnostic> {
-    host.sample_value(handle, timestamp)
-        .map(|sample| sample.bits)
+    cache: &mut EvalCache,
+) -> Result<Option<Arc<str>>, ExprDiagnostic> {
+    cache.sample_bits(host, handle, timestamp)
 }
 
 fn classify_edge(previous_bits: &str, current_bits: &str) -> (bool, bool) {
@@ -522,5 +579,30 @@ mod tests {
 
         assert_eq!(truthiness(&unknown), TruthValue::Unknown);
         assert_eq!(truthiness(&known_non_zero), TruthValue::One);
+    }
+
+    #[test]
+    fn mixed_signedness_uses_unsigned_comparison() {
+        let signed_minus_one = RuntimeValue {
+            bits: vec![BoundBit::One],
+            signed: true,
+        };
+        let unsigned_one = RuntimeValue {
+            bits: vec![BoundBit::Zero, BoundBit::One],
+            signed: false,
+        };
+
+        assert_eq!(
+            compare_runtime_values(
+                LogicalBinaryOp::Lt,
+                signed_minus_one.clone(),
+                unsigned_one.clone(),
+            ),
+            TruthValue::Zero
+        );
+        assert_eq!(
+            compare_runtime_values(LogicalBinaryOp::Eq, signed_minus_one, unsigned_one),
+            TruthValue::One
+        );
     }
 }

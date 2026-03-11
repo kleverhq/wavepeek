@@ -30,7 +30,7 @@
 - This keeps C1 command behavior stable but duplicates parser ownership and can drift if follow-up integration is delayed.
 - Close when command runtime parsing converges on the typed parser boundary with explicit compatibility policy and regression coverage.
 
-### Expression evaluator and `property` runtime path remain unimplemented
+### Expression command integration and `property` runtime remain unimplemented
 
 - Standalone typed event/logical runtime is now available in `src/expr/`, but
   command wiring is still deferred: `src/engine/change.rs` keeps the legacy

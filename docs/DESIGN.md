@@ -537,13 +537,13 @@ shared output module renders those results for stdout.
 
 ### 5.3 Module Structure
 
-Single crate with internal module boundaries. This is sufficient for a focused CLI tool.
-If a library target is needed later (e.g., for an MCP server), the
-engine and waveform modules can be extracted into a workspace crate with minimal effort.
+Single crate with internal module boundaries and a thin library entrypoint used
+by the CLI binary and integration-style expression tests/benchmarks.
 
 ```
 src/
-├── main.rs              # Entry point, top-level error handling
+├── lib.rs               # Crate entrypoint (`run_cli`) + module ownership
+├── main.rs              # Thin binary wrapper around `wavepeek::run_cli()`
 ├── cli/                 # CLI layer: argument definitions, help text, dispatch
 │   ├── mod.rs           # Top-level CLI struct, parse-error normalization, output handoff
 │   ├── limits.rs        # Shared bounded-output flag parsing (`--max`, `--max-depth`)
@@ -566,11 +566,16 @@ src/
 │   ├── property.rs      # Property runtime entrypoint (currently unimplemented)
 │   └── schema.rs        # JSON schema export
 ├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
-├── expr/                # Expression engine (shared by `change`/`property`)
-│   ├── mod.rs           # Public API: parse() + eval()
-│   ├── lexer.rs         # Tokenizer
-│   ├── parser.rs        # Expression parser → AST
-│   └── eval.rs          # AST evaluator against signal values
+├── expr/                # Expression engine foundation (shared by `change`/`property`)
+│   ├── mod.rs           # Public typed facade + crate-private legacy adapter
+│   ├── ast.rs           # Spanned expression AST types
+│   ├── diagnostic.rs    # Parse/semantic/runtime diagnostic contract
+│   ├── lexer.rs         # Spanned tokenizer for event-expression parsing
+│   ├── parser.rs        # Strict typed parser (`parse_event_expr_ast`)
+│   ├── host.rs          # Host trait + signal/type/value bridge types
+│   ├── sema.rs          # Binding entry points (logical binding still deferred)
+│   ├── eval.rs          # Runtime API (logical evaluation still deferred)
+│   └── legacy.rs        # Compatibility parser path used by current command runtime
 ├── waveform/            # Thin adapter over wellen
 │   └── mod.rs           # File loading, format detection, query helpers
 ├── output.rs            # Shared output formatting (JSON + human)
@@ -606,6 +611,8 @@ src/
 | `assert_cmd` | CLI integration testing (run binary, assert stdout/stderr/exit code) |
 | `predicates` | Assertion helpers for `assert_cmd` |
 | `tempfile` | Temporary file creation for tests |
+| `insta` | Snapshot assertions for deterministic diagnostics |
+| `criterion` | Parser microbenchmarks (`cargo bench --bench expr_c1`) |
 
 ### 5.5 Expression Engine
 
@@ -627,12 +634,17 @@ section describes implementation architecture only.
 - **Evaluator** — Resolves signal names against sampled waveform values and
   computes expression outcomes for runtime decision points.
 
-**Implementation status:** Event-expression parsing for `change --on` is now
-implemented with a hand-written parser (`parse_event_expr` in
-`src/expr/parser.rs`, types in `src/expr/mod.rs`). For logical expressions,
-current `--eval` handling is still staged (`parse` stores validated source text),
-and full parser/evaluator runtime for the `property` flow remains
-deferred to post-MVP implementation work.
+**Implementation status:**
+
+- `C1` strict typed parser foundation is implemented in `src/expr/lexer.rs`,
+  `src/expr/parser.rs`, `src/expr/ast.rs`, and `src/expr/diagnostic.rs`, with
+  deterministic parser diagnostics/snapshots and internal semantic/runtime
+  scaffolding in `src/expr/sema.rs` and `src/expr/eval.rs`.
+- Current `change` runtime remains intentionally compatibility-preserving and
+  still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
+  (via `parse_event_expr(...)` facade) until later integration phases.
+- Logical expression binding/evaluation and `property` runtime execution remain
+  deferred and deterministically return not-implemented diagnostics/errors.
 
 ### 5.6 Error Handling Strategy
 

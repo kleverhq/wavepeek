@@ -1,6 +1,6 @@
-# Expression run: c2-event-runtime-candidate
+# Expression run: c2-event-runtime-baseline
 
-- Benchmark command: `cargo bench --bench expr_c2 -- --save-baseline c2-event-runtime-candidate --noplot`
+- Benchmark command: `cargo bench --bench expr_c2 -- --save-baseline c2-event-runtime-baseline --noplot`
 - Bench target: `expr_c2`
 - Scenario set: `c2_event_runtime` (bench/expr/scenarios/c2_event_runtime.json)
 - cargo -V: `cargo 1.93.0 (083ac5135 2025-12-15)`
@@ -12,6 +12,6 @@
 
 | scenario | samples | mean ns/iter | median ns/iter | raw csv |
 | --- | ---: | ---: | ---: | --- |
-| bind_event_union_iff | 100 | 721.204003 | 714.955243 | bind_event_union_iff.raw.csv |
-| eval_event_union_iff_true | 100 | 477.674295 | 477.611421 | eval_event_union_iff_true.raw.csv |
-| eval_event_union_iff_unknown | 100 | 268.427638 | 267.526452 | eval_event_union_iff_unknown.raw.csv |
+| bind_event_union_iff | 100 | 733.019925 | 729.404694 | bind_event_union_iff.raw.csv |
+| eval_event_union_iff_true | 100 | 477.459663 | 476.587675 | eval_event_union_iff_true.raw.csv |
+| eval_event_union_iff_unknown | 100 | 270.190418 | 269.613217 | eval_event_union_iff_unknown.raw.csv |

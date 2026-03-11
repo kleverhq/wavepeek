@@ -215,6 +215,17 @@ fn decode_integral_literal(
                 primary_span: literal.span,
                 notes: vec!["decimal literals must fit in the supported integer range".to_string()],
             })?;
+            if literal.width.is_none() && literal.signed && value > i128::MAX as u128 {
+                return Err(ExprDiagnostic {
+                    layer: DiagnosticLayer::Parse,
+                    code: "C2-PARSE-LOGICAL-LITERAL",
+                    message: "signed decimal literal exceeds supported range".to_string(),
+                    primary_span: literal.span,
+                    notes: vec![
+                        "unsized signed decimal literals must fit in i128 range".to_string(),
+                    ],
+                });
+            }
             let width = if let Some(width) = literal.width {
                 width
             } else if literal.signed {
@@ -261,7 +272,9 @@ fn unsigned_to_bits(value: u128, width: u32) -> Vec<BoundBit> {
     let width = width.max(1);
     let mut bits = Vec::with_capacity(width as usize);
     for shift in (0..width).rev() {
-        if (value >> shift) & 1 == 1 {
+        if shift >= u128::BITS {
+            bits.push(BoundBit::Zero);
+        } else if (value >> shift) & 1 == 1 {
             bits.push(BoundBit::One);
         } else {
             bits.push(BoundBit::Zero);
@@ -431,5 +444,22 @@ mod tests {
         assert_eq!(diagnostic.layer, DiagnosticLayer::Semantic);
         assert_eq!(diagnostic.code, "C2-SEMANTIC-UNKNOWN-SIGNAL");
         assert_eq!(diagnostic.primary_span, Span::new(16, 23));
+    }
+
+    #[test]
+    fn bind_logical_expr_rejects_unsized_signed_decimal_over_i128_max() {
+        let source = "posedge clk iff 'sd170141183460469231731687303715884105728";
+        let ast = parse_event_expr_ast(source).expect("source should parse");
+        let host = HostStub::new();
+        let logical = ast.terms[0].iff.as_ref().expect("iff payload should exist");
+
+        let diagnostic = bind_logical_expr(logical, &host).expect_err("binding should fail");
+
+        assert_eq!(diagnostic.layer, DiagnosticLayer::Parse);
+        assert_eq!(diagnostic.code, "C2-PARSE-LOGICAL-LITERAL");
+        assert_eq!(
+            diagnostic.message,
+            "signed decimal literal exceeds supported range"
+        );
     }
 }

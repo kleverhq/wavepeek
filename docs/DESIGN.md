@@ -508,7 +508,7 @@ shared output module renders those results for stdout.
    `value`, `change`, `property`, `schema`. Operates on waveform abstractions, returns structured
    results. It is clap-free in behavior, but currently receives CLI-owned argument structs from
    `src/cli/`. Contains shared time validation/normalization utilities, shared value-formatting
-   utilities, expression evaluator (planned `property` runtime), and the `change` multi-engine
+   utilities, standalone expression evaluator (`property` command runtime still deferred), and the `change` multi-engine
    dispatcher described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,

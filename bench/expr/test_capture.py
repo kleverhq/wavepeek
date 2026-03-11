@@ -202,6 +202,115 @@ class CaptureHelpersTest(unittest.TestCase):
 
         self.assertIn("bench target mismatch", str(error.exception))
 
+    def test_main_rejects_non_empty_output_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            criterion_root = root / "criterion"
+            scenario_set = root / "scenario_set.json"
+            output = root / "run"
+
+            scenario_set.write_text(
+                json.dumps(
+                    {
+                        "id": "c1_parser",
+                        "bench_target": "expr_c1",
+                        "scenarios": list(self.SCENARIOS),
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            for scenario in self.SCENARIOS:
+                self._write_raw_csv(
+                    criterion_root / scenario / "wanted" / "raw.csv",
+                    [10.0, 20.0],
+                )
+
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "stale.txt").write_text("stale\n", encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as error:
+                capture.main(
+                    [
+                        "--criterion-root",
+                        str(criterion_root),
+                        "--baseline-name",
+                        "wanted",
+                        "--bench-target",
+                        "expr_c1",
+                        "--scenario-set",
+                        str(scenario_set),
+                        "--output",
+                        str(output),
+                        "--source-commit",
+                        "abc123",
+                        "--worktree-state",
+                        "clean",
+                        "--environment-note",
+                        "test-env",
+                    ]
+                )
+
+        self.assertIn("output directory must be empty", str(error.exception))
+
+    def test_main_rejects_output_path_that_is_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            criterion_root = root / "criterion"
+            scenario_set = root / "scenario_set.json"
+            output = root / "run.txt"
+
+            scenario_set.write_text(
+                json.dumps(
+                    {
+                        "id": "c1_parser",
+                        "bench_target": "expr_c1",
+                        "scenarios": list(self.SCENARIOS),
+                    },
+                    ensure_ascii=True,
+                    indent=2,
+                    sort_keys=True,
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            for scenario in self.SCENARIOS:
+                self._write_raw_csv(
+                    criterion_root / scenario / "wanted" / "raw.csv",
+                    [10.0, 20.0],
+                )
+
+            output.write_text("not-a-dir\n", encoding="utf-8")
+
+            with self.assertRaises(SystemExit) as error:
+                capture.main(
+                    [
+                        "--criterion-root",
+                        str(criterion_root),
+                        "--baseline-name",
+                        "wanted",
+                        "--bench-target",
+                        "expr_c1",
+                        "--scenario-set",
+                        str(scenario_set),
+                        "--output",
+                        str(output),
+                        "--source-commit",
+                        "abc123",
+                        "--worktree-state",
+                        "clean",
+                        "--environment-note",
+                        "test-env",
+                    ]
+                )
+
+        self.assertIn("output path exists but is not a directory", str(error.exception))
+
     def test_parse_raw_csv_rejects_non_finite_values(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = pathlib.Path(temp_dir) / "raw.csv"

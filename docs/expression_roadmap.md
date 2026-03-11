@@ -8,22 +8,25 @@ syntax and semantics remain in `docs/expression_lang.md`.
 
 ## Purpose
 
-- Start point: staged/partial support (event parsing exists, logical evaluation
-  and property runtime are not implemented).
+- Start point: staged support where standalone engine milestones can land before
+  command integration.
 - End point: full expression-language contract implemented, validated, and
   integrated in command runtimes with deterministic behavior.
 
-## Current Baseline (C0)
+## Current Baseline (post-C2 standalone engine)
 
 Current implementation snapshot:
 
-- `change --on` supports `*`, named, edge terms, and union (`or`, `,`).
-- `iff` is parsed/captured but rejected at runtime.
-- `--eval` is not parsed into executable AST and is not evaluated.
-- `property` runtime path is unimplemented.
-- lexer scaffolding exists but is not the single runtime tokenization path.
+- Standalone typed runtime in `src/expr/` supports C2 event forms plus bounded
+  `iff` subset (`bind_event_expr_ast(...)`, `event_matches_at(...)`).
+- `change --on` default runtime remains on legacy compatibility path, so
+  `... iff ...` is still intentionally rejected at runtime.
+- `property` runtime path remains unimplemented.
+- Full Section `2` logical surface and command integration remain deferred to
+  later phases.
 
-This is contract level `C0`.
+Current delivered boundary is `C2` for standalone engine work, with command
+integration still pending toward `C5`.
 
 ## Final Target (C5)
 
@@ -256,7 +259,7 @@ Exit criteria:
 Traceability:
 
 - Design refs: `docs/DESIGN.md` sections for `change` and `property`.
-- Backlog refs: evaluator/property unimplemented debt in `docs/BACKLOG.md`.
+- Backlog refs: command integration and `property` runtime debt in `docs/BACKLOG.md`.
 
 ## Coverage Map (Spec -> Phase)
 

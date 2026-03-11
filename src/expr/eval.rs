@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::rc::Rc;
 
 use crate::error::WavepeekError;
 use crate::expr::ast::LogicalBinaryOp;
@@ -26,8 +26,10 @@ struct RuntimeValue {
 
 #[derive(Default)]
 struct EvalCache {
-    samples: HashMap<(SignalHandle, u64), Option<Arc<str>>>,
+    samples: HashMap<CachedSampleKey, Option<Rc<str>>>,
 }
+
+type CachedSampleKey = (SignalHandle, u64);
 
 impl RuntimeValue {
     fn truth(value: TruthValue) -> Self {
@@ -65,16 +67,17 @@ impl EvalCache {
         host: &dyn ExpressionHost,
         handle: SignalHandle,
         timestamp: u64,
-    ) -> Result<Option<Arc<str>>, ExprDiagnostic> {
-        if let Some(sampled) = self.samples.get(&(handle, timestamp)) {
+    ) -> Result<Option<Rc<str>>, ExprDiagnostic> {
+        let key = (handle, timestamp);
+        if let Some(sampled) = self.samples.get(&key) {
             return Ok(sampled.clone());
         }
 
         let sampled = host
             .sample_value(handle, timestamp)?
             .bits
-            .map(Arc::<str>::from);
-        self.samples.insert((handle, timestamp), sampled.clone());
+            .map(Rc::<str>::from);
+        self.samples.insert(key, sampled.clone());
         Ok(sampled)
     }
 }
@@ -394,7 +397,7 @@ fn sample_signal_bits(
     handle: SignalHandle,
     timestamp: u64,
     cache: &mut EvalCache,
-) -> Result<Option<Arc<str>>, ExprDiagnostic> {
+) -> Result<Option<Rc<str>>, ExprDiagnostic> {
     cache.sample_bits(host, handle, timestamp)
 }
 

@@ -21,11 +21,11 @@ This plan does not implement full Section `2` Boolean Expression support. Anythi
 - [x] (2026-03-11 09:12Z) Reviewed `docs/expression_roadmap.md`, `docs/expression_lang.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, current `src/expr/` and `src/engine/change.rs`, and prior ExecPlan conventions.
 - [x] (2026-03-11 09:24Z) Drafted the active `C2` ExecPlan with explicit scope clauses, runtime/test strategy, benchmark artifact requirements, and roadmap alignment.
 - [x] (2026-03-11 09:35Z) Completed focused docs and architecture plan review, revised roadmap wording, progress tracking, host-contract wording, parity strategy, and acceptance criteria, then closed with a fresh clean control pass.
-- [ ] Implement Milestone 1: lock `C2` runtime manifests, diagnostics snapshots, and red-phase proof before the runtime implementation.
-- [ ] Implement Milestone 2: add the bounded logical binder and evaluator plus the narrow public typed event-runtime surface.
-- [ ] Implement Milestone 3: add targeted short-circuit, unknown-flow, and legacy-runtime parity guards without changing default command behavior.
-- [ ] Implement Milestone 4: generalize the benchmark workflow, capture `C2` artifacts, and update status collateral.
-- [ ] Implement Milestone 5: run full validation, complete multi-lane review, and close the phase with final evidence.
+- [x] (2026-03-11 12:05Z) Implemented Milestone 1: added locked `C2` runtime manifests, snapshots, and red-to-green runtime proof in `tests/expression_c2.rs`.
+- [x] (2026-03-11 12:44Z) Implemented Milestone 2: shipped bounded logical binder/evaluator and public typed event-runtime surface in `src/expr/`.
+- [x] (2026-03-11 13:02Z) Implemented Milestone 3: added short-circuit/unknown-flow coverage and non-`iff` parity guard while keeping default `change`/`property` behavior deferred.
+- [x] (2026-03-11 13:28Z) Implemented Milestone 4: generalized benchmark workflow, added `expr_c2` scenarios, and captured `c2-event-runtime-*` run artifacts.
+- [x] (2026-03-11 15:31Z) Implemented Milestone 5: completed validation (`make check`, `make ci`), multi-lane review, control pass, and committed follow-up fixes.
 
 ## Surprises & Discoveries
 
@@ -65,17 +65,26 @@ This plan does not implement full Section `2` Boolean Expression support. Anythi
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: `C2` implementation complete and validated on this branch.
 
-This plan now gives a novice contributor one self-contained path to `C2`: first lock runtime behavior with manifests and snapshots, then implement the bounded logical subset behind a typed event-runtime API, then add benchmark artifacts and status-doc updates without accidentally rolling out command behavior. The main residual risk is semantic drift between the new standalone runtime and the legacy `change` path; the plan addresses that with test-only parity guards and by keeping command integration explicitly deferred.
+Delivered outcomes:
+
+- Standalone typed `C2` event runtime with bounded `iff` subset is live in `src/expr/` through `bind_event_expr_ast(...)` and `event_matches_at(...)`.
+- Default command behavior stayed phase-correct: `change` still rejects runtime `iff` and `property` remains unimplemented.
+- Deterministic manifests/snapshots and benchmark artifacts are committed for `c2-event-runtime-candidate`, `c2-event-runtime-baseline`, and `c2-event-runtime-verify`.
+- Post-review fixes addressed mixed-sign extension correctness, decimal overflow guardrails, evaluator sample dedupe, benchmark-host determinism, and capture output-dir safety.
+
+Residual risk:
+
+- Command integration remains deferred to later phases (`C5`), so semantic drift risk between legacy and typed runtime still exists; this is bounded by parity tests and explicit backlog tracking.
 
 ## Context and Orientation
 
-`wavepeek` is a single-crate Rust CLI with a thin library surface in `src/lib.rs`. Expression work is concentrated in `src/expr/`. Today `src/expr/mod.rs` publicly exposes only the typed `C1` parser surface: `lex_event_expr(...)`, `parse_event_expr_ast(...)`, the event AST types from `src/expr/ast.rs`, and deterministic diagnostics from `src/expr/diagnostic.rs`. The same module also keeps crate-private legacy compatibility wrappers (`parse(...)`, `parse_event_expr(...)`) that the current `change` runtime still uses.
+`wavepeek` is a single-crate Rust CLI with a thin library surface in `src/lib.rs`. Expression work is concentrated in `src/expr/`. The module now exposes typed parser plus standalone event-runtime surface (`lex_event_expr(...)`, `parse_event_expr_ast(...)`, `bind_event_expr_ast(...)`, `event_matches_at(...)`) with deterministic diagnostics. It still keeps crate-private legacy compatibility wrappers (`parse(...)`, `parse_event_expr(...)`) used by the current `change` runtime.
 
-The current `C1` typed parser is intentionally incomplete for runtime work. `src/expr/ast.rs` stores `iff` payloads as `DeferredLogicalExpr { source, span }` rather than a parsed logical AST. `src/expr/sema.rs` resolves event names into `SignalHandle`s but leaves `iff` binding unimplemented. `src/expr/eval.rs` defines `TruthValue` yet still returns the deterministic `C1-RUNTIME-LOGICAL-NOT-IMPLEMENTED` diagnostic. `src/expr/host.rs` defines the host bridge (`ExpressionHost`, `SignalHandle`, `ExprType`, `SampledValue`) used by typed tests and future runtime code.
+At plan start, the `C1` typed parser was intentionally incomplete for runtime work. `src/expr/ast.rs` stored `iff` payloads as `DeferredLogicalExpr { source, span }`, while `src/expr/sema.rs` and `src/expr/eval.rs` had no bounded logical binding/evaluation path. `C2` implementation closed this gap while preserving deferred command integration.
 
-The production behavior that users see today still lives elsewhere. `src/engine/change.rs` parses `--on` through the legacy adapter in `src/expr/legacy.rs`, resolves event names against waveform scopes, computes event candidate timestamps, implements named and edge event matching, and hard-fails any `iff` term with `error: args: iff logical expressions are not implemented yet`. `src/engine/property.rs` remains a complete runtime stub. That split is exactly why `C2` matters: the repository has strict typed parsing now, but the shared typed runtime core still does not exist.
+The production behavior that users see today still lives in command runtimes. `src/engine/change.rs` continues to parse `--on` through the legacy adapter in `src/expr/legacy.rs` and still hard-fails runtime `iff` terms with `error: args: iff logical expressions are not implemented yet`. `src/engine/property.rs` remains a runtime stub. This split remains intentional in `C2`; command integration is deferred to `C5`.
 
 The contract for this phase comes from two documents. `docs/expression_lang.md` is the source of truth for syntax and semantics; for `C2`, the in-scope clauses are Section `1.1` through `1.6` event forms and runtime behavior plus a bounded subset of Section `2` used only inside `iff`: operand references, integral literals, parentheses, `!`, `<`, `<=`, `>`, `>=`, `==`, `!=`, `&&`, and `||`. `docs/expression_roadmap.md` defines the rollout boundary: `C2` implements event runtime and the bounded `iff` subset, while any other Section `2` surface, rich types, and command integration must still fail deterministically.
 
@@ -389,13 +398,18 @@ Expected modified or added files for `C2` implementation:
 - `docs/DEVELOPMENT.md`
 - `docs/BACKLOG.md`
 
-Before closing this plan, record concise evidence snippets here:
+Evidence snippets recorded during execution:
 
-- Red-phase failure excerpt from `cargo test --test expression_c2 c2_positive_manifest_matches -- --exact`.
-- Green-phase pass excerpt from `INSTA_UPDATE=no cargo test --test expression_c2`.
-- One representative `C2` unsupported-feature diagnostic snapshot.
-- The two benchmark compare success lines (`15%` cross-commit and `5%` same-commit verify).
-- Focused review lane findings and the control-pass outcome.
+- Green phase (`INSTA_UPDATE=no cargo test --test expression_c2`): `test result: ok. 4 passed; 0 failed`.
+- Deferred command guards: `cargo test --test change_cli change_iff_is_recognized_but_runtime_is_deferred -- --exact` and `cargo test --test property_cli` both passed.
+- Representative unsupported-feature diagnostic: `tests/snapshots/expression_c2__c2_parse_unsupported_inside.snap` (`C2-PARSE-LOGICAL-UNSUPPORTED`).
+- Benchmark compare gates:
+  - `ok: no matched scenario exceeded 15.00% negative delta in mean or median`
+  - `ok: no matched scenario exceeded 5.00% negative delta in mean or median`
+- Review outcome:
+  - Multi-lane review ran for code, architecture, performance, and docs.
+  - Findings were fixed in follow-up implementation/doc changes.
+  - Fresh control re-review reported clean for code/performance, with docs clean after plan-status updates.
 
 ### Interfaces and Dependencies
 

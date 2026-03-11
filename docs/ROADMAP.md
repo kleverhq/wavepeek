@@ -41,7 +41,12 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Query Engine (→ v0.4.0)
 
-- `property` command (§3.2.6)
+- Delivery is phased by `docs/expression_roadmap.md`: `C2` through `C4` are
+  standalone expression-engine milestones, while shared typed-engine
+  convergence for existing `change` behavior and end-to-end `property` runtime
+  remain gated on `C5`.
+- Public `property` command runtime integration (§3.2.6) lands with `C5`
+  command wiring, not with the standalone `C2`-`C4` engine milestones.
 - Expression engine: lexer, parser (Pratt/recursive descent), and evaluator (§5.5)
 - MVP operator set: `!`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `&&`, `||`
 - Literal support: hex, binary, decimal

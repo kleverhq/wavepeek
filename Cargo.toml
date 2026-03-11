@@ -49,3 +49,8 @@ bench = false
 name = "expr_c1"
 path = "bench/expr/expr_c1.rs"
 harness = false
+
+[[bench]]
+name = "expr_c2"
+path = "bench/expr/expr_c2.rs"
+harness = false

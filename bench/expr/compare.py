@@ -22,7 +22,9 @@ def ensure_existing_dir(path: pathlib.Path, label: str) -> None:
         fail(f"{label} directory does not exist: {path}")
 
 
-def load_summary(run_dir: pathlib.Path) -> dict[str, dict[str, float]]:
+def load_summary(
+    run_dir: pathlib.Path,
+) -> tuple[dict[str, str | None], dict[str, dict[str, float]]]:
     summary_path = run_dir / "summary.json"
     if not summary_path.exists() or not summary_path.is_file():
         fail(f"missing summary.json in {run_dir}")
@@ -36,6 +38,16 @@ def load_summary(run_dir: pathlib.Path) -> dict[str, dict[str, float]]:
 
     if not isinstance(payload, dict):
         fail(f"{summary_path} must be an object")
+
+    metadata: dict[str, str | None] = {}
+    for field in ("bench_target", "scenario_set_id", "scenario_set_path"):
+        raw_value = payload.get(field)
+        if raw_value is None:
+            metadata[field] = None
+            continue
+        if not isinstance(raw_value, str) or not raw_value:
+            fail(f"{summary_path} field `{field}` must be a non-empty string when present")
+        metadata[field] = raw_value
 
     raw_scenarios = payload.get("scenarios")
     if not isinstance(raw_scenarios, list) or not raw_scenarios:
@@ -79,7 +91,32 @@ def load_summary(run_dir: pathlib.Path) -> dict[str, dict[str, float]]:
             "median": median_value,
         }
 
-    return by_name
+    return metadata, by_name
+
+
+def validate_identity(
+    revised_dir: pathlib.Path,
+    revised_meta: dict[str, str | None],
+    golden_dir: pathlib.Path,
+    golden_meta: dict[str, str | None],
+) -> None:
+    for field in ("bench_target", "scenario_set_id"):
+        revised_value = revised_meta[field]
+        golden_value = golden_meta[field]
+        if revised_value is None and golden_value is None:
+            continue
+        if revised_value is None or golden_value is None:
+            fail(
+                "summary identity mismatch: "
+                f"field `{field}` missing in one summary "
+                f"(revised={revised_dir}, golden={golden_dir})"
+            )
+        if revised_value != golden_value:
+            fail(
+                "summary identity mismatch: "
+                f"field `{field}` differs "
+                f"(revised={revised_value}, golden={golden_value})"
+            )
 
 
 def delta_pct(revised: float, golden: float) -> float:
@@ -114,8 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     ensure_existing_dir(revised_dir, "revised")
     ensure_existing_dir(golden_dir, "golden")
 
-    revised = load_summary(revised_dir)
-    golden = load_summary(golden_dir)
+    revised_meta, revised = load_summary(revised_dir)
+    golden_meta, golden = load_summary(golden_dir)
+    validate_identity(revised_dir, revised_meta, golden_dir, golden_meta)
 
     revised_set = set(revised)
     golden_set = set(golden)

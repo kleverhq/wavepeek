@@ -32,6 +32,10 @@
 
 ### Expression evaluator and `property` runtime path remain unimplemented
 
-- Reusable expression/event types were expanded for `change`, but `src/expr/eval.rs` and the command-runtime path (`src/engine/property.rs`) still return `Unimplemented`.
-- This keeps logical-expression semantics fragmented and blocks end-to-end delivery of the planned `property` command semantics.
-- Close when the property runtime path (implemented in the canonical engine module) runs end-to-end on the shared evaluator path with CLI/integration tests.
+- Standalone typed event/logical runtime is now available in `src/expr/`, but
+  command wiring is still deferred: `src/engine/change.rs` keeps the legacy
+  runtime path and `src/engine/property.rs` still returns `Unimplemented`.
+- This leaves end-to-end `property` execution and shared command/runtime
+  convergence for `change` as explicit remaining debt.
+- Close when `property` runs end to end on the shared evaluator path and
+  `change` converges to the same typed runtime with CLI/integration coverage.

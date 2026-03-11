@@ -1,0 +1,9 @@
+{
+  "id": "c2_event_runtime",
+  "bench_target": "expr_c2",
+  "scenarios": [
+    "bind_event_union_iff",
+    "eval_event_union_iff_true",
+    "eval_event_union_iff_unknown"
+  ]
+}

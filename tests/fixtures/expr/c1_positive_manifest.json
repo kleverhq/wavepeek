@@ -77,12 +77,12 @@
     },
     {
       "name": "iff_parenthesized_payload",
-      "source": "posedge clk iff (a or b) or done",
+      "source": "posedge clk iff (a || b) or done",
       "terms": [
         {
           "event": "posedge",
           "name": "clk",
-          "iff": "(a or b)"
+          "iff": "(a || b)"
         },
         {
           "event": "named",

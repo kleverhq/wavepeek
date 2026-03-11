@@ -103,7 +103,7 @@ mod tests {
 
     #[test]
     fn lex_event_expr_tracks_keywords_and_spans() {
-        let source = "posedge clk iff (a or b), *";
+        let source = "posedge clk iff (a || b), *";
         let tokens = lex_event_expr(source).expect("lexing should succeed");
 
         let kinds = tokens.iter().map(|token| &token.kind).collect::<Vec<_>>();
@@ -115,7 +115,7 @@ mod tests {
                 &TokenKind::KeywordIff,
                 &TokenKind::LeftParen,
                 &TokenKind::Identifier,
-                &TokenKind::KeywordOr,
+                &TokenKind::Identifier,
                 &TokenKind::Identifier,
                 &TokenKind::RightParen,
                 &TokenKind::Comma,
@@ -138,6 +138,16 @@ mod tests {
                 .iter()
                 .any(|token| token.lexeme == "&&" && token.kind == TokenKind::Identifier)
         );
+    }
+
+    #[test]
+    fn lex_event_expr_classifies_event_union_or_keyword() {
+        let source = "clk or rstn";
+        let tokens = lex_event_expr(source).expect("lexing should succeed");
+
+        assert_eq!(tokens[0].kind, TokenKind::Identifier);
+        assert_eq!(tokens[1].kind, TokenKind::KeywordOr);
+        assert_eq!(tokens[2].kind, TokenKind::Identifier);
     }
 
     #[test]

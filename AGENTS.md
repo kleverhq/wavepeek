@@ -21,7 +21,6 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - GitHub automation assets: `.github/AGENTS.md`
 - OpenCode assets: `.opencode/AGENTS.md`
 - Performance and benchmark work: `bench/AGENTS.md`
-- Rust microbenchmark targets: `benches/AGENTS.md`
 - Documentation map: `docs/AGENTS.md`
 - Schema contract assets: `schema/AGENTS.md`
 - Release/support scripts: `scripts/AGENTS.md`

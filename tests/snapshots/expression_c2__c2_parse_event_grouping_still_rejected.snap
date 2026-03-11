@@ -1,0 +1,8 @@
+---
+source: tests/expression_c2.rs
+expression: diagnostic.render(case.source.as_str())
+---
+parse:C1-PARSE-UNMATCHED-OPEN: unmatched opening parenthesis
+--> span 0..1
+source: (posedge clk) or ready
+note: event-level grouping is not supported; use parentheses only inside iff

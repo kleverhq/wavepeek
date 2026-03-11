@@ -1,0 +1,8 @@
+---
+source: tests/expression_c2.rs
+expression: diagnostic.render(case.source.as_str())
+---
+parse:C2-PARSE-LOGICAL-UNSUPPORTED: unsupported operator in C2 iff subset
+--> span 18..24
+source: posedge clk iff a inside {1}
+note: inside is outside the bounded C2 logical subset

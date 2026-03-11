@@ -1,4 +1,7 @@
-use super::ast::{BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst};
+use super::ast::{
+    BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst, IntegralBase, IntegralLiteral,
+    LogicalBinaryOp, LogicalExprAst, LogicalExprNode,
+};
 use super::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
 use super::lexer::{Token, TokenKind, lex_event_expr};
 
@@ -396,6 +399,728 @@ fn invalid_name_char(name: &str) -> Option<(usize, char)> {
 
 fn is_name_char(ch: char) -> bool {
     ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.' | '$' | '[' | ']' | ':')
+}
+
+pub(crate) fn parse_bounded_logical_expr(
+    source: &str,
+    span_offset: usize,
+) -> Result<LogicalExprAst, ExprDiagnostic> {
+    if source.trim().is_empty() {
+        return Err(logical_parse_diag(
+            "C2-PARSE-LOGICAL-EMPTY",
+            "empty iff logical expression",
+            Span::new(span_offset, span_offset + source.len()),
+            &["expected logical expression after 'iff'"],
+        ));
+    }
+
+    let mut lexer = LogicalLexer::new(source, span_offset);
+    let tokens = lexer.lex()?;
+    let mut parser = LogicalParser {
+        source,
+        tokens,
+        index: 0,
+    };
+    parser.parse()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LogicalTokenKind {
+    Identifier(String),
+    IntegralLiteral(IntegralLiteral),
+    Bang,
+    AndAnd,
+    OrOr,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    EqEq,
+    NotEq,
+    LeftParen,
+    RightParen,
+    Eof,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct LogicalToken {
+    kind: LogicalTokenKind,
+    span: Span,
+}
+
+struct LogicalLexer<'a> {
+    source: &'a str,
+    span_offset: usize,
+    index: usize,
+}
+
+impl<'a> LogicalLexer<'a> {
+    fn new(source: &'a str, span_offset: usize) -> Self {
+        Self {
+            source,
+            span_offset,
+            index: 0,
+        }
+    }
+
+    fn lex(&mut self) -> Result<Vec<LogicalToken>, ExprDiagnostic> {
+        let mut tokens = Vec::new();
+
+        while let Some(ch) = self.peek_char() {
+            if ch.is_whitespace() {
+                self.bump_char();
+                continue;
+            }
+
+            if self.starts_with("===")
+                || self.starts_with("!==")
+                || self.starts_with("==?")
+                || self.starts_with("!=?")
+                || self.starts_with("<<<")
+                || self.starts_with(">>>")
+                || self.starts_with("<<")
+                || self.starts_with(">>")
+            {
+                let start = self.index;
+                let token = if self.starts_with("<<") || self.starts_with(">>") {
+                    self.take_exact(2)
+                } else {
+                    self.take_exact(3)
+                };
+                return Err(logical_parse_diag(
+                    "C2-PARSE-LOGICAL-UNSUPPORTED",
+                    "unsupported operator in C2 iff subset",
+                    self.span(start, start + token.len()),
+                    &["this operator is outside the bounded C2 logical subset"],
+                ));
+            }
+
+            if self.starts_with("&&") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::AndAnd,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+            if self.starts_with("||") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::OrOr,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+            if self.starts_with("<=") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::Le,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+            if self.starts_with(">=") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::Ge,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+            if self.starts_with("==") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::EqEq,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+            if self.starts_with("!=") {
+                let start = self.index;
+                self.take_exact(2);
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::NotEq,
+                    span: self.span(start, start + 2),
+                });
+                continue;
+            }
+
+            let start = self.index;
+            match ch {
+                '!' => {
+                    self.bump_char();
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::Bang,
+                        span: self.span(start, self.index),
+                    });
+                }
+                '<' => {
+                    self.bump_char();
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::Lt,
+                        span: self.span(start, self.index),
+                    });
+                }
+                '>' => {
+                    self.bump_char();
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::Gt,
+                        span: self.span(start, self.index),
+                    });
+                }
+                '(' => {
+                    self.bump_char();
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::LeftParen,
+                        span: self.span(start, self.index),
+                    });
+                }
+                ')' => {
+                    self.bump_char();
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::RightParen,
+                        span: self.span(start, self.index),
+                    });
+                }
+                '"' => {
+                    return Err(logical_parse_diag(
+                        "C2-PARSE-LOGICAL-UNSUPPORTED",
+                        "string literals are outside the C2 iff subset",
+                        self.span(start, start + 1),
+                        &["C2 iff supports integral literals only"],
+                    ));
+                }
+                '?' | ':' | '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '~' | '{' | '}'
+                | '[' | ']' => {
+                    self.bump_char();
+                    return Err(logical_parse_diag(
+                        "C2-PARSE-LOGICAL-UNSUPPORTED",
+                        "unsupported operator in C2 iff subset",
+                        self.span(start, self.index),
+                        &["this operator is outside the bounded C2 logical subset"],
+                    ));
+                }
+                '\'' => {
+                    let literal = self.lex_based_literal(None, start)?;
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::IntegralLiteral(literal.clone()),
+                        span: literal.span,
+                    });
+                }
+                _ if ch.is_ascii_digit() => {
+                    let literal = self.lex_numeric_literal()?;
+                    tokens.push(LogicalToken {
+                        kind: LogicalTokenKind::IntegralLiteral(literal.clone()),
+                        span: literal.span,
+                    });
+                }
+                _ if logical_identifier_start(ch) => {
+                    let token = self.lex_identifier_token()?;
+                    tokens.push(token);
+                }
+                _ => {
+                    self.bump_char();
+                    return Err(logical_parse_diag(
+                        "C2-PARSE-LOGICAL-UNSUPPORTED",
+                        "unsupported token in C2 iff subset",
+                        self.span(start, self.index),
+                        &[
+                            "only operand references, literals, !, comparisons, &&, ||, and parentheses are supported",
+                        ],
+                    ));
+                }
+            }
+        }
+
+        tokens.push(LogicalToken {
+            kind: LogicalTokenKind::Eof,
+            span: self.span(self.source.len(), self.source.len()),
+        });
+
+        Ok(tokens)
+    }
+
+    fn lex_identifier_token(&mut self) -> Result<LogicalToken, ExprDiagnostic> {
+        let start = self.index;
+        self.bump_char();
+        while let Some(next) = self.peek_char() {
+            if logical_identifier_char(next) {
+                self.bump_char();
+                continue;
+            }
+            break;
+        }
+        let end = self.index;
+        let lexeme = self.source[start..end].to_string();
+        let span = self.span(start, end);
+
+        if lexeme == "inside" {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNSUPPORTED",
+                "unsupported operator in C2 iff subset",
+                span,
+                &["inside is outside the bounded C2 logical subset"],
+            ));
+        }
+
+        if lexeme.ends_with(".triggered") {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNSUPPORTED",
+                "unsupported primary form in C2 iff subset",
+                span,
+                &[".triggered is deferred to later expression phases"],
+            ));
+        }
+
+        if lexeme == "type" && matches!(self.peek_char(), Some('(')) {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNSUPPORTED",
+                "unsupported primary form in C2 iff subset",
+                span,
+                &["type(...) forms are deferred to later expression phases"],
+            ));
+        }
+
+        if matches!(self.peek_char(), Some('\'')) {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNSUPPORTED",
+                "unsupported cast form in C2 iff subset",
+                span,
+                &["casts are deferred to later expression phases"],
+            ));
+        }
+
+        Ok(LogicalToken {
+            kind: LogicalTokenKind::Identifier(lexeme),
+            span,
+        })
+    }
+
+    fn lex_numeric_literal(&mut self) -> Result<IntegralLiteral, ExprDiagnostic> {
+        let start = self.index;
+        self.consume_while(|ch| ch.is_ascii_digit() || ch == '_');
+        let integer_end = self.index;
+
+        if matches!(self.peek_char(), Some('.')) {
+            let dot_start = self.index;
+            self.bump_char();
+            if matches!(self.peek_char(), Some(ch) if ch.is_ascii_digit()) {
+                self.consume_while(|ch| ch.is_ascii_digit() || ch == '_');
+                return Err(logical_parse_diag(
+                    "C2-PARSE-LOGICAL-UNSUPPORTED",
+                    "real literals are outside the C2 iff subset",
+                    self.span(start, self.index),
+                    &["C2 iff supports integral literals only"],
+                ));
+            }
+
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNSUPPORTED",
+                "unsupported token in C2 iff subset",
+                self.span(dot_start, dot_start + 1),
+                &[
+                    "only operand references, literals, !, comparisons, &&, ||, and parentheses are supported",
+                ],
+            ));
+        }
+
+        if matches!(self.peek_char(), Some('\'')) {
+            let size = self.source[start..integer_end]
+                .chars()
+                .filter(|ch| *ch != '_')
+                .collect::<String>();
+            let width = size.parse::<u32>().map_err(|_| {
+                logical_parse_diag(
+                    "C2-PARSE-LOGICAL-LITERAL",
+                    "invalid sized integral literal",
+                    self.span(start, integer_end),
+                    &["integral literal size must be a positive integer"],
+                )
+            })?;
+            if width == 0 {
+                return Err(logical_parse_diag(
+                    "C2-PARSE-LOGICAL-LITERAL",
+                    "invalid sized integral literal",
+                    self.span(start, integer_end),
+                    &["integral literal size must be greater than zero"],
+                ));
+            }
+            return self.lex_based_literal(Some(width), start);
+        }
+
+        let digits = self.source[start..integer_end]
+            .chars()
+            .filter(|ch| *ch != '_')
+            .collect::<String>();
+        if digits.is_empty() {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-LITERAL",
+                "invalid integral literal",
+                self.span(start, integer_end),
+                &["integral literals must contain digits"],
+            ));
+        }
+
+        Ok(IntegralLiteral {
+            width: None,
+            signed: true,
+            base: IntegralBase::Decimal,
+            digits,
+            span: self.span(start, integer_end),
+        })
+    }
+
+    fn lex_based_literal(
+        &mut self,
+        width: Option<u32>,
+        literal_start: usize,
+    ) -> Result<IntegralLiteral, ExprDiagnostic> {
+        let Some('\'') = self.peek_char() else {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-LITERAL",
+                "invalid based integral literal",
+                self.span(literal_start, literal_start),
+                &["expected apostrophe in based literal"],
+            ));
+        };
+        self.bump_char();
+
+        let signed = if matches!(self.peek_char(), Some('s' | 'S')) {
+            self.bump_char();
+            true
+        } else {
+            false
+        };
+
+        let base = match self.peek_char() {
+            Some('b' | 'B') => {
+                self.bump_char();
+                IntegralBase::Binary
+            }
+            Some('d' | 'D') => {
+                self.bump_char();
+                IntegralBase::Decimal
+            }
+            Some('h' | 'H') => {
+                self.bump_char();
+                IntegralBase::Hex
+            }
+            _ => {
+                return Err(logical_parse_diag(
+                    "C2-PARSE-LOGICAL-LITERAL",
+                    "invalid based integral literal",
+                    self.span(literal_start, self.index),
+                    &["expected base specifier 'b', 'd', or 'h'"],
+                ));
+            }
+        };
+
+        let digits_start = self.index;
+        self.consume_while(|ch| {
+            ch.is_ascii_alphanumeric()
+                || ch == '_'
+                || ch == 'x'
+                || ch == 'X'
+                || ch == 'z'
+                || ch == 'Z'
+        });
+        let digits_end = self.index;
+        let digits = self.source[digits_start..digits_end]
+            .chars()
+            .filter(|ch| *ch != '_')
+            .collect::<String>();
+        if digits.is_empty() {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-LITERAL",
+                "invalid based integral literal",
+                self.span(literal_start, self.index),
+                &["based literals must include digits after the base specifier"],
+            ));
+        }
+
+        for (offset, ch) in digits.char_indices() {
+            let ok = match base {
+                IntegralBase::Binary => matches!(ch, '0' | '1' | 'x' | 'X' | 'z' | 'Z'),
+                IntegralBase::Decimal => ch.is_ascii_digit(),
+                IntegralBase::Hex => ch.is_ascii_hexdigit() || matches!(ch, 'x' | 'X' | 'z' | 'Z'),
+            };
+            if !ok {
+                return Err(logical_parse_diag(
+                    "C2-PARSE-LOGICAL-LITERAL",
+                    "invalid digit for integral literal base",
+                    self.span(digits_start + offset, digits_start + offset + ch.len_utf8()),
+                    &["integral literal digit is not valid for this base"],
+                ));
+            }
+        }
+
+        Ok(IntegralLiteral {
+            width,
+            signed,
+            base,
+            digits: digits.to_ascii_lowercase(),
+            span: self.span(literal_start, self.index),
+        })
+    }
+
+    fn starts_with(&self, prefix: &str) -> bool {
+        self.source[self.index..].starts_with(prefix)
+    }
+
+    fn take_exact(&mut self, byte_len: usize) -> String {
+        let token = self.source[self.index..self.index + byte_len].to_string();
+        self.index += byte_len;
+        token
+    }
+
+    fn consume_while<F>(&mut self, mut predicate: F)
+    where
+        F: FnMut(char) -> bool,
+    {
+        while let Some(ch) = self.peek_char() {
+            if !predicate(ch) {
+                break;
+            }
+            self.bump_char();
+        }
+    }
+
+    fn peek_char(&self) -> Option<char> {
+        self.source[self.index..].chars().next()
+    }
+
+    fn bump_char(&mut self) {
+        if let Some(ch) = self.peek_char() {
+            self.index += ch.len_utf8();
+        }
+    }
+
+    fn span(&self, local_start: usize, local_end: usize) -> Span {
+        Span::new(self.span_offset + local_start, self.span_offset + local_end)
+    }
+}
+
+struct LogicalParser<'a> {
+    source: &'a str,
+    tokens: Vec<LogicalToken>,
+    index: usize,
+}
+
+impl<'a> LogicalParser<'a> {
+    fn parse(&mut self) -> Result<LogicalExprAst, ExprDiagnostic> {
+        let root = self.parse_or_expr()?;
+        if !matches!(self.current().kind, LogicalTokenKind::Eof) {
+            return Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-TRAILING",
+                "trailing tokens in iff logical expression",
+                self.current().span,
+                &["remove extra tokens after a complete logical expression"],
+            ));
+        }
+        Ok(LogicalExprAst { root })
+    }
+
+    fn parse_or_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let mut node = self.parse_and_expr()?;
+        while matches!(self.current().kind, LogicalTokenKind::OrOr) {
+            self.index += 1;
+            let right = self.parse_and_expr()?;
+            let span = Span::new(node.span().start, right.span().end);
+            node = LogicalExprNode::Binary {
+                op: LogicalBinaryOp::OrOr,
+                left: Box::new(node),
+                right: Box::new(right),
+                span,
+            };
+        }
+        Ok(node)
+    }
+
+    fn parse_and_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let mut node = self.parse_equality_expr()?;
+        while matches!(self.current().kind, LogicalTokenKind::AndAnd) {
+            self.index += 1;
+            let right = self.parse_equality_expr()?;
+            let span = Span::new(node.span().start, right.span().end);
+            node = LogicalExprNode::Binary {
+                op: LogicalBinaryOp::AndAnd,
+                left: Box::new(node),
+                right: Box::new(right),
+                span,
+            };
+        }
+        Ok(node)
+    }
+
+    fn parse_equality_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let mut node = self.parse_relation_expr()?;
+
+        loop {
+            let op = match self.current().kind {
+                LogicalTokenKind::EqEq => LogicalBinaryOp::Eq,
+                LogicalTokenKind::NotEq => LogicalBinaryOp::Ne,
+                _ => break,
+            };
+            self.index += 1;
+            let right = self.parse_relation_expr()?;
+            let span = Span::new(node.span().start, right.span().end);
+            node = LogicalExprNode::Binary {
+                op,
+                left: Box::new(node),
+                right: Box::new(right),
+                span,
+            };
+        }
+
+        Ok(node)
+    }
+
+    fn parse_relation_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let mut node = self.parse_unary_expr()?;
+
+        loop {
+            let op = match self.current().kind {
+                LogicalTokenKind::Lt => LogicalBinaryOp::Lt,
+                LogicalTokenKind::Le => LogicalBinaryOp::Le,
+                LogicalTokenKind::Gt => LogicalBinaryOp::Gt,
+                LogicalTokenKind::Ge => LogicalBinaryOp::Ge,
+                _ => break,
+            };
+            self.index += 1;
+            let right = self.parse_unary_expr()?;
+            let span = Span::new(node.span().start, right.span().end);
+            node = LogicalExprNode::Binary {
+                op,
+                left: Box::new(node),
+                right: Box::new(right),
+                span,
+            };
+        }
+
+        Ok(node)
+    }
+
+    fn parse_unary_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        if matches!(self.current().kind, LogicalTokenKind::Bang) {
+            let start = self.current().span.start;
+            self.index += 1;
+            let inner = self.parse_unary_expr()?;
+            let span = Span::new(start, inner.span().end);
+            return Ok(LogicalExprNode::UnaryNot {
+                expr: Box::new(inner),
+                span,
+            });
+        }
+
+        self.parse_primary_expr()
+    }
+
+    fn parse_primary_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        let token = self.current().clone();
+        match token.kind {
+            LogicalTokenKind::Identifier(name) => {
+                self.index += 1;
+                Ok(LogicalExprNode::OperandRef {
+                    name,
+                    span: token.span,
+                })
+            }
+            LogicalTokenKind::IntegralLiteral(literal) => {
+                self.index += 1;
+                Ok(LogicalExprNode::IntegralLiteral {
+                    literal,
+                    span: token.span,
+                })
+            }
+            LogicalTokenKind::LeftParen => {
+                let open_span = token.span;
+                self.index += 1;
+                let expr = self.parse_or_expr()?;
+                if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
+                    return Err(logical_parse_diag(
+                        "C2-PARSE-LOGICAL-UNMATCHED-OPEN",
+                        "unmatched opening parenthesis in iff payload",
+                        open_span,
+                        &["close this parenthesis in the iff logical expression"],
+                    ));
+                }
+                let close_span = self.current().span;
+                self.index += 1;
+                let span = Span::new(open_span.start, close_span.end);
+                Ok(re_span(expr, span))
+            }
+            LogicalTokenKind::RightParen => Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-UNMATCHED-CLOSE",
+                "unmatched closing parenthesis in iff payload",
+                token.span,
+                &["remove ')' or add a matching '(' in the iff logical expression"],
+            )),
+            LogicalTokenKind::Eof => Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-EXPECTED-OPERAND",
+                "incomplete iff logical expression",
+                token.span,
+                &["expected operand, literal, or '('"],
+            )),
+            _ => Err(logical_parse_diag(
+                "C2-PARSE-LOGICAL-EXPECTED-OPERAND",
+                "expected operand in iff logical expression",
+                token.span,
+                &["expected operand reference, integral literal, or '('"],
+            )),
+        }
+    }
+
+    fn current(&self) -> &LogicalToken {
+        self.tokens
+            .get(self.index)
+            .expect("logical parser should keep eof sentinel")
+    }
+}
+
+fn logical_identifier_start(ch: char) -> bool {
+    ch.is_ascii_alphabetic() || matches!(ch, '_' | '$')
+}
+
+fn logical_identifier_char(ch: char) -> bool {
+    ch.is_ascii_alphanumeric() || matches!(ch, '_' | '.' | '$' | '[' | ']' | ':')
+}
+
+fn re_span(node: LogicalExprNode, span: Span) -> LogicalExprNode {
+    match node {
+        LogicalExprNode::OperandRef { name, .. } => LogicalExprNode::OperandRef { name, span },
+        LogicalExprNode::IntegralLiteral { literal, .. } => {
+            LogicalExprNode::IntegralLiteral { literal, span }
+        }
+        LogicalExprNode::UnaryNot { expr, .. } => LogicalExprNode::UnaryNot { expr, span },
+        LogicalExprNode::Binary {
+            op, left, right, ..
+        } => LogicalExprNode::Binary {
+            op,
+            left,
+            right,
+            span,
+        },
+    }
+}
+
+fn logical_parse_diag(
+    code: &'static str,
+    message: &str,
+    span: Span,
+    notes: &[&str],
+) -> ExprDiagnostic {
+    ExprDiagnostic {
+        layer: DiagnosticLayer::Parse,
+        code,
+        message: message.to_string(),
+        primary_span: span,
+        notes: notes.iter().map(|note| (*note).to_string()).collect(),
+    }
 }
 
 #[cfg(test)]

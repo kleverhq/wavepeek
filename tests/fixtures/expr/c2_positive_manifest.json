@@ -1,0 +1,224 @@
+{
+  "cases": [
+    {
+      "name": "wildcard_any_tracked_same_timestamp_dedup",
+      "source": "* or posedge clk",
+      "tracked_signals": ["clk", "data"],
+      "signals": [
+        {
+          "name": "clk",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 5, "bits": "1" },
+            { "timestamp": 10, "bits": "0" },
+            { "timestamp": 15, "bits": "1" }
+          ]
+        },
+        {
+          "name": "data",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 10, "bits": "1" }
+          ]
+        }
+      ],
+      "probes": [0, 5, 10, 15],
+      "matches": [5, 10, 15]
+    },
+    {
+      "name": "named_change_requires_previous_sample",
+      "source": "data",
+      "tracked_signals": ["data"],
+      "signals": [
+        {
+          "name": "data",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 5, "bits": "0" },
+            { "timestamp": 10, "bits": "1" },
+            { "timestamp": 12, "bits": "1" }
+          ]
+        }
+      ],
+      "probes": [5, 10, 12],
+      "matches": [10]
+    },
+    {
+      "name": "edge_terms_use_lsb_and_xz_normalization",
+      "source": "posedge clk or negedge clk or edge bus",
+      "tracked_signals": ["clk", "bus"],
+      "signals": [
+        {
+          "name": "clk",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 5, "bits": "1" },
+            { "timestamp": 10, "bits": "x" },
+            { "timestamp": 15, "bits": "0" },
+            { "timestamp": 20, "bits": "z" },
+            { "timestamp": 25, "bits": "1" }
+          ]
+        },
+        {
+          "name": "bus",
+          "width": 2,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "10" },
+            { "timestamp": 5, "bits": "10" },
+            { "timestamp": 10, "bits": "11" },
+            { "timestamp": 15, "bits": "1h" },
+            { "timestamp": 20, "bits": "10" }
+          ]
+        }
+      ],
+      "probes": [0, 5, 10, 15, 20, 25],
+      "matches": [5, 10, 15, 20, 25]
+    },
+    {
+      "name": "iff_binds_only_to_preceding_term",
+      "source": "posedge clk iff gate or ready",
+      "tracked_signals": ["clk", "ready"],
+      "signals": [
+        {
+          "name": "clk",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 5, "bits": "1" },
+            { "timestamp": 8, "bits": "0" },
+            { "timestamp": 10, "bits": "1" }
+          ]
+        },
+        {
+          "name": "gate",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 10, "bits": "1" }
+          ]
+        },
+        {
+          "name": "ready",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 7, "bits": "1" }
+          ]
+        }
+      ],
+      "probes": [0, 5, 7, 8, 10],
+      "matches": [7, 10]
+    },
+    {
+      "name": "iff_bounded_ops_and_literals",
+      "source": "posedge clk iff (!rstn && (count >= 8'd3) || flag == 'h1)",
+      "tracked_signals": ["clk"],
+      "signals": [
+        {
+          "name": "clk",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 5, "bits": "1" },
+            { "timestamp": 8, "bits": "0" },
+            { "timestamp": 10, "bits": "1" },
+            { "timestamp": 12, "bits": "0" },
+            { "timestamp": 15, "bits": "1" }
+          ]
+        },
+        {
+          "name": "rstn",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "1" },
+            { "timestamp": 10, "bits": "0" }
+          ]
+        },
+        {
+          "name": "count",
+          "width": 8,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 10, "bits": "00000010" },
+            { "timestamp": 15, "bits": "00000011" }
+          ]
+        },
+        {
+          "name": "flag",
+          "width": 4,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 10, "bits": "0000" },
+            { "timestamp": 15, "bits": "0001" }
+          ]
+        }
+      ],
+      "probes": [0, 5, 8, 10, 12, 15],
+      "matches": [15]
+    },
+    {
+      "name": "iff_unknown_suppresses_event",
+      "source": "posedge clk iff (a && b)",
+      "tracked_signals": ["clk"],
+      "signals": [
+        {
+          "name": "clk",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "0" },
+            { "timestamp": 5, "bits": "1" },
+            { "timestamp": 8, "bits": "0" },
+            { "timestamp": 10, "bits": "1" }
+          ]
+        },
+        {
+          "name": "a",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "x" }
+          ]
+        },
+        {
+          "name": "b",
+          "width": 1,
+          "is_four_state": true,
+          "is_signed": false,
+          "samples": [
+            { "timestamp": 0, "bits": "1" }
+          ]
+        }
+      ],
+      "probes": [0, 5, 8, 10],
+      "matches": []
+    }
+  ]
+}

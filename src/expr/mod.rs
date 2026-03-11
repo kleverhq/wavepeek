@@ -13,7 +13,9 @@ use crate::error::WavepeekError;
 
 pub use crate::expr::ast::{BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst};
 pub use crate::expr::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
+pub use crate::expr::host::{EventEvalFrame, ExprType, ExpressionHost, SampledValue, SignalHandle};
 pub use crate::expr::lexer::{Token, TokenKind};
+pub use crate::expr::sema::BoundEventExpr;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Expression {
@@ -32,6 +34,21 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
 
 pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
     parser::parse_event_expr_ast(source)
+}
+
+pub fn bind_event_expr_ast(
+    ast: &EventExprAst,
+    host: &dyn ExpressionHost,
+) -> Result<BoundEventExpr, ExprDiagnostic> {
+    sema::bind_event_expr_ast(ast, host)
+}
+
+pub fn event_matches_at(
+    expr: &BoundEventExpr,
+    host: &dyn ExpressionHost,
+    frame: &EventEvalFrame<'_>,
+) -> Result<bool, ExprDiagnostic> {
+    eval::event_matches_at(expr, host, frame)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

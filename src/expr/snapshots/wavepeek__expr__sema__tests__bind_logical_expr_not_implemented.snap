@@ -1,8 +1,0 @@
----
-source: src/expr/sema.rs
-expression: diagnostic.render(full_source)
----
-semantic:C1-SEMANTIC-LOGICAL-NOT-IMPLEMENTED: logical expression binding is not implemented yet
---> span 16..20
-source: posedge clk iff rstn
-note: C1 keeps logical semantics deferred

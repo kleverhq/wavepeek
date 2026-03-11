@@ -1,10 +1,15 @@
-# Parser Microbench Guide
+# Expression Microbench Guide
 
-This directory contains parser/tokenization microbenchmark helper scripts and
-committed run artifacts for expression-engine phases.
+This directory contains expression-engine microbenchmark helper scripts,
+scenario manifests, and committed run artifacts across expression phases.
 
-The Rust Criterion target for this area lives at `bench/expr/expr_c1.rs` and is
-wired through `Cargo.toml` `[[bench]]` metadata.
+Rust Criterion targets for this area live at:
+
+- `bench/expr/expr_c1.rs` (parser/tokenization scenarios)
+- `bench/expr/expr_c2.rs` (event-runtime scenarios)
+
+Both are wired through `Cargo.toml` `[[bench]]` metadata and captured through
+the shared `bench/expr/capture.py` + `bench/expr/compare.py` workflow.
 
 ## Parent Maps
 
@@ -18,4 +23,5 @@ wired through `Cargo.toml` `[[bench]]` metadata.
 
 ## Child Maps
 
+- Scenario manifests: `bench/expr/scenarios/AGENTS.md`
 - Committed run artifacts: `bench/expr/runs/AGENTS.md`

@@ -120,23 +120,27 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 
 `compare` is a blocking gate for matched tests: it exits with code `1` for timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals and are reported as warnings. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
 
-## Parser Microbenchmarks
+## Expression Microbenchmarks
 
-For parser/tokenization microbenchmarks, use `Criterion` via `cargo bench` with
-the dedicated target in `bench/expr/expr_c1.rs`.
+For expression-engine microbenchmarks, use `Criterion` via `cargo bench` with
+the dedicated targets in `bench/expr/expr_c1.rs` and `bench/expr/expr_c2.rs`.
 
-- Run parser microbench target and save named baseline:
-  - `cargo bench --bench expr_c1 -- --save-baseline <name> --noplot`
+Scenario sets are declared in committed manifests under
+`bench/expr/scenarios/` and must match the bench target being exported.
+
+- Run an expression microbench target and save a named baseline:
+  - `cargo bench --bench <bench-target> -- --save-baseline <name> --noplot`
 - Validate benchmark target in test mode:
-  - `cargo test --bench expr_c1`
+  - `cargo test --bench <bench-target>`
 - Export stable benchmark artifacts from `target/criterion`:
-  - `python3 bench/expr/capture.py --criterion-root target/criterion --baseline-name <name> --output bench/expr/runs/<run-name> --source-commit "$(git rev-parse HEAD)" --worktree-state clean --environment-note "wavepeek devcontainer/CI image"`
+  - `python3 bench/expr/capture.py --criterion-root target/criterion --baseline-name <name> --bench-target <bench-target> --scenario-set bench/expr/scenarios/<scenario-set>.json --output bench/expr/runs/<run-name> --source-commit "$(git rev-parse HEAD)" --worktree-state clean --environment-note "wavepeek devcontainer/CI image"`
 - Compare exported runs with explicit threshold:
   - `python3 bench/expr/compare.py --revised bench/expr/runs/<revised> --golden bench/expr/runs/<golden> --max-negative-delta-pct 15`
 
-`bench/expr/capture.py` intentionally consumes only Criterion `raw.csv`
-artifacts and writes deterministic run-local `summary.json` + `README.md`
-outputs into `bench/expr/runs/`.
+`bench/expr/capture.py` consumes only Criterion `raw.csv` artifacts and writes
+deterministic run-local `summary.json` + `README.md` outputs into
+`bench/expr/runs/`, including bench-target and scenario-set identity metadata
+that `bench/expr/compare.py` validates before timing-delta checks.
 
 ### Run A Single Test (Rust)
 

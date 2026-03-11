@@ -573,8 +573,8 @@ src/
 │   ├── lexer.rs         # Spanned tokenizer for event-expression parsing
 │   ├── parser.rs        # Strict typed parser (`parse_event_expr_ast`)
 │   ├── host.rs          # Host trait + signal/type/value bridge types
-│   ├── sema.rs          # Binding entry points (logical binding still deferred)
-│   ├── eval.rs          # Runtime API (logical evaluation still deferred)
+│   ├── sema.rs          # Typed event/logical binder (`bind_event_expr_ast`)
+│   ├── eval.rs          # Typed event matcher + bounded logical evaluator (`event_matches_at`)
 │   └── legacy.rs        # Compatibility parser path used by current command runtime
 ├── waveform/            # Thin adapter over wellen
 │   └── mod.rs           # File loading, format detection, query helpers
@@ -612,7 +612,7 @@ src/
 | `predicates` | Assertion helpers for `assert_cmd` |
 | `tempfile` | Temporary file creation for tests |
 | `insta` | Snapshot assertions for deterministic diagnostics |
-| `criterion` | Parser microbenchmarks (`cargo bench --bench expr_c1`) |
+| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_c1`, `cargo bench --bench expr_c2`) |
 
 ### 5.5 Expression Engine
 
@@ -636,15 +636,18 @@ section describes implementation architecture only.
 
 **Implementation status:**
 
-- `C1` strict typed parser foundation is implemented in `src/expr/lexer.rs`,
-  `src/expr/parser.rs`, `src/expr/ast.rs`, and `src/expr/diagnostic.rs`, with
-  deterministic parser diagnostics/snapshots and internal semantic/runtime
-  scaffolding in `src/expr/sema.rs` and `src/expr/eval.rs`.
+- Typed standalone event runtime for `C2` is implemented in `src/expr/sema.rs`,
+  `src/expr/eval.rs`, and `src/expr/host.rs` through public
+  `wavepeek::expr::bind_event_expr_ast(...)` and
+  `wavepeek::expr::event_matches_at(...)`, with bounded `iff` logical-subset
+  support and deterministic diagnostics.
 - Current `change` runtime remains intentionally compatibility-preserving and
   still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
   (via `parse_event_expr(...)` facade) until later integration phases.
-- Logical expression binding/evaluation and `property` runtime execution remain
-  deferred and deterministically return not-implemented diagnostics/errors.
+- Default `change --on "... iff ..."` execution remains deferred and still
+  returns `error: args: iff logical expressions are not implemented yet`.
+- `property` runtime execution remains deferred and deterministically returns
+  `error: unimplemented: \`property\` command execution is not implemented yet`.
 
 ### 5.6 Error Handling Strategy
 

@@ -1,6 +1,6 @@
-# Parser Run Artifacts Guide
+# Expression Run Artifacts Guide
 
-This directory stores committed exported parser microbenchmark runs.
+This directory stores committed exported expression microbenchmark runs.
 
 ## Parent Maps
 

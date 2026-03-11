@@ -16,11 +16,6 @@ from typing import Any, NoReturn
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
 REPO_ROOT = SCRIPT_DIR.parents[1]
-REQUIRED_SCENARIOS = (
-    "tokenize_union_iff",
-    "parse_event_union_iff",
-    "parse_event_malformed",
-)
 
 
 def fail(message: str) -> NoReturn:
@@ -34,6 +29,58 @@ def normalize_path(path_value: str) -> pathlib.Path:
 def ensure_existing_dir(path: pathlib.Path, label: str) -> None:
     if not path.exists() or not path.is_dir():
         fail(f"{label} directory does not exist: {path}")
+
+
+def normalize_repo_relative(path: pathlib.Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def load_scenario_set(path: pathlib.Path) -> tuple[str, str, tuple[str, ...]]:
+    if not path.exists() or not path.is_file():
+        fail(f"scenario-set file does not exist: {path}")
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        fail(f"invalid JSON in scenario-set file {path}: {error}")
+    except OSError as error:
+        fail(f"failed to read scenario-set file {path}: {error}")
+
+    if not isinstance(payload, dict):
+        fail(f"scenario-set file {path} must contain a JSON object")
+
+    scenario_set_id = payload.get("id")
+    if not isinstance(scenario_set_id, str) or not scenario_set_id:
+        fail(f"scenario-set file {path} field `id` must be a non-empty string")
+
+    bench_target = payload.get("bench_target")
+    if not isinstance(bench_target, str) or not bench_target:
+        fail(
+            f"scenario-set file {path} field `bench_target` must be a non-empty string"
+        )
+
+    scenarios_raw = payload.get("scenarios")
+    if not isinstance(scenarios_raw, list) or not scenarios_raw:
+        fail(
+            f"scenario-set file {path} field `scenarios` must be a non-empty list"
+        )
+
+    scenarios: list[str] = []
+    seen: set[str] = set()
+    for index, item in enumerate(scenarios_raw):
+        if not isinstance(item, str) or not item:
+            fail(
+                f"scenario-set file {path} scenarios[{index}] must be a non-empty string"
+            )
+        if item in seen:
+            fail(f"scenario-set file {path} has duplicate scenario '{item}'")
+        seen.add(item)
+        scenarios.append(item)
+
+    return scenario_set_id, bench_target, tuple(scenarios)
 
 
 def parse_raw_csv(path: pathlib.Path) -> list[float]:
@@ -71,6 +118,7 @@ def parse_raw_csv(path: pathlib.Path) -> list[float]:
 def collect_raw_csv_paths(
     criterion_root: pathlib.Path,
     baseline_name: str,
+    required_scenarios: tuple[str, ...],
 ) -> dict[str, pathlib.Path]:
     selected: dict[str, pathlib.Path] = {}
 
@@ -87,7 +135,7 @@ def collect_raw_csv_paths(
     if not selected:
         fail(f"requested baseline '{baseline_name}' not found under {criterion_root}")
 
-    expected = {str(name) for name in REQUIRED_SCENARIOS}
+    expected = set(required_scenarios)
     actual = set(selected.keys())
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)
@@ -128,6 +176,9 @@ def tool_version(command: list[str]) -> str:
 
 def write_summary(
     output_dir: pathlib.Path,
+    bench_target: str,
+    scenario_set_id: str,
+    scenario_set_path: str,
     baseline_name: str,
     source_commit: str,
     worktree_state: str,
@@ -139,11 +190,14 @@ def write_summary(
 ) -> None:
     payload = {
         "baseline_name": baseline_name,
+        "bench_target": bench_target,
         "cargo_version": cargo_version,
         "criterion_version": criterion_version,
         "environment_note": environment_note,
         "run_name": output_dir.name,
         "rustc_version": rustc_version,
+        "scenario_set_id": scenario_set_id,
+        "scenario_set_path": scenario_set_path,
         "scenarios": scenarios,
         "source_commit": source_commit,
         "worktree_state": worktree_state,
@@ -157,6 +211,9 @@ def write_summary(
 
 def write_readme(
     output_dir: pathlib.Path,
+    bench_target: str,
+    scenario_set_id: str,
+    scenario_set_path: str,
     baseline_name: str,
     source_commit: str,
     worktree_state: str,
@@ -166,11 +223,13 @@ def write_readme(
     criterion_version: str,
     scenarios: list[dict[str, Any]],
 ) -> None:
-    command = f"cargo bench --bench expr_c1 -- --save-baseline {baseline_name} --noplot"
+    command = f"cargo bench --bench {bench_target} -- --save-baseline {baseline_name} --noplot"
     lines = [
-        f"# Expression C1 run: {output_dir.name}",
+        f"# Expression run: {output_dir.name}",
         "",
         f"- Benchmark command: `{command}`",
+        f"- Bench target: `{bench_target}`",
+        f"- Scenario set: `{scenario_set_id}` ({scenario_set_path})",
         f"- cargo -V: `{cargo_version}`",
         f"- rustc -V: `{rustc_version}`",
         f"- criterion crate version: `{criterion_version}`",
@@ -211,6 +270,16 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="saved Criterion baseline name to export",
     )
+    parser.add_argument(
+        "--bench-target",
+        required=True,
+        help="criterion bench target name used for this run",
+    )
+    parser.add_argument(
+        "--scenario-set",
+        required=True,
+        help="path to scenario-set JSON manifest",
+    )
     parser.add_argument("--output", required=True, help="output run directory")
     parser.add_argument("--source-commit", required=True, help="git commit used for capture")
     parser.add_argument(
@@ -232,14 +301,28 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     criterion_root = normalize_path(args.criterion_root)
+    scenario_set_path = normalize_path(args.scenario_set)
     output_dir = normalize_path(args.output)
     ensure_existing_dir(criterion_root, "criterion root")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    selected = collect_raw_csv_paths(criterion_root, args.baseline_name)
+    scenario_set_id, manifest_bench_target, required_scenarios = load_scenario_set(
+        scenario_set_path
+    )
+    if manifest_bench_target != args.bench_target:
+        fail(
+            "bench target mismatch between arguments and scenario set: "
+            f"--bench-target={args.bench_target} vs manifest bench_target={manifest_bench_target}"
+        )
+
+    selected = collect_raw_csv_paths(
+        criterion_root,
+        args.baseline_name,
+        required_scenarios,
+    )
     scenarios: list[dict[str, Any]] = []
 
-    for scenario in sorted(REQUIRED_SCENARIOS):
+    for scenario in sorted(required_scenarios):
         source_path = selected[scenario]
         samples = parse_raw_csv(source_path)
 
@@ -264,6 +347,9 @@ def main(argv: list[str] | None = None) -> int:
 
     write_summary(
         output_dir,
+        args.bench_target,
+        scenario_set_id,
+        normalize_repo_relative(scenario_set_path),
         args.baseline_name,
         args.source_commit,
         args.worktree_state,
@@ -275,6 +361,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     write_readme(
         output_dir,
+        args.bench_target,
+        scenario_set_id,
+        normalize_repo_relative(scenario_set_path),
         args.baseline_name,
         args.source_commit,
         args.worktree_state,
@@ -287,7 +376,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         "ok: exported baseline "
-        f"'{args.baseline_name}' for {len(scenarios)} scenarios into {output_dir}"
+        f"'{args.baseline_name}' for {len(scenarios)} scenarios into {output_dir} "
+        f"(bench target {args.bench_target}, scenario set {scenario_set_id})"
     )
     return 0
 

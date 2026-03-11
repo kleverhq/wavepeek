@@ -19,9 +19,18 @@ SPEC.loader.exec_module(compare)
 
 class CompareHelpersTest(unittest.TestCase):
     @staticmethod
-    def _write_summary(run_dir: pathlib.Path, scenarios: dict[str, tuple[float, float]]) -> None:
+    def _write_summary(
+        run_dir: pathlib.Path,
+        scenarios: dict[str, tuple[float, float]],
+        *,
+        bench_target: str = "expr_c1",
+        scenario_set_id: str = "c1_parser",
+    ) -> None:
         run_dir.mkdir(parents=True, exist_ok=True)
         payload = {
+            "bench_target": bench_target,
+            "scenario_set_id": scenario_set_id,
+            "scenario_set_path": f"bench/expr/scenarios/{scenario_set_id}.json",
             "scenarios": [
                 {
                     "scenario": name,
@@ -136,6 +145,60 @@ class CompareHelpersTest(unittest.TestCase):
                 )
 
         self.assertIn("exceeded allowed negative delta", str(error.exception))
+
+    def test_main_fails_when_bench_target_mismatches(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            scenarios = {
+                "tokenize_union_iff": (100.0, 100.0),
+                "parse_event_union_iff": (200.0, 200.0),
+                "parse_event_malformed": (300.0, 300.0),
+            }
+            self._write_summary(revised, scenarios, bench_target="expr_c2")
+            self._write_summary(golden, scenarios, bench_target="expr_c1")
+
+            with self.assertRaises(SystemExit) as error:
+                compare.main(
+                    [
+                        "--revised",
+                        str(revised),
+                        "--golden",
+                        str(golden),
+                        "--max-negative-delta-pct",
+                        "5",
+                    ]
+                )
+
+        self.assertIn("summary identity mismatch", str(error.exception))
+
+    def test_main_fails_when_scenario_set_id_mismatches(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            scenarios = {
+                "tokenize_union_iff": (100.0, 100.0),
+                "parse_event_union_iff": (200.0, 200.0),
+                "parse_event_malformed": (300.0, 300.0),
+            }
+            self._write_summary(revised, scenarios, scenario_set_id="c2_event_runtime")
+            self._write_summary(golden, scenarios, scenario_set_id="c1_parser")
+
+            with self.assertRaises(SystemExit) as error:
+                compare.main(
+                    [
+                        "--revised",
+                        str(revised),
+                        "--golden",
+                        str(golden),
+                        "--max-negative-delta-pct",
+                        "5",
+                    ]
+                )
+
+        self.assertIn("summary identity mismatch", str(error.exception))
 
     def test_load_summary_rejects_duplicate_scenarios(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

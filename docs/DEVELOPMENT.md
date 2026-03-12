@@ -123,7 +123,8 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 ## Expression Microbenchmarks
 
 For expression-engine microbenchmarks, use `Criterion` via `cargo bench` with
-the dedicated targets in `bench/expr/expr_c1.rs` and `bench/expr/expr_c2.rs`.
+the dedicated targets in `bench/expr/expr_c1.rs`, `bench/expr/expr_c2.rs`,
+and `bench/expr/expr_c3.rs`.
 
 Scenario sets are declared in committed manifests under
 `bench/expr/scenarios/` and must match the bench target being exported.
@@ -135,7 +136,7 @@ Scenario sets are declared in committed manifests under
 - Export stable benchmark artifacts from `target/criterion`:
   - `python3 bench/expr/capture.py --criterion-root target/criterion --baseline-name <name> --bench-target <bench-target> --scenario-set bench/expr/scenarios/<scenario-set>.json --output bench/expr/runs/<run-name> --source-commit "$(git rev-parse HEAD)" --worktree-state clean --environment-note "wavepeek devcontainer/CI image"`
 - Compare exported runs with explicit threshold:
-  - `python3 bench/expr/compare.py --revised bench/expr/runs/<revised> --golden bench/expr/runs/<golden> --max-negative-delta-pct 15`
+  - `python3 bench/expr/compare.py --revised bench/expr/runs/<revised> --golden bench/expr/runs/<golden> --max-negative-delta-pct 15 --require-matching-metadata <key> [<key> ...]`
 
 `bench/expr/capture.py` consumes only Criterion `raw.csv` artifacts and writes
 deterministic run-local `summary.json` + `README.md` outputs into

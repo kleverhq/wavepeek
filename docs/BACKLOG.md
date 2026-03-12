@@ -32,7 +32,7 @@
 
 ### Expression command integration and `property` runtime remain unimplemented
 
-- Standalone typed event/logical runtime is now available in `src/expr/`, but
+- Standalone typed `C3` event/logical runtime is now available in `src/expr/`, but
   command wiring is still deferred: `src/engine/change.rs` keeps the legacy
   runtime path and `src/engine/property.rs` still returns `Unimplemented`.
 - This leaves end-to-end `property` execution and shared command/runtime

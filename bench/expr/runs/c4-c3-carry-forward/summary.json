@@ -1,0 +1,47 @@
+{
+  "baseline_name": "c4-c3-carry-forward",
+  "bench_target": "expr_c3",
+  "cargo_version": "cargo 1.93.0 (083ac5135 2025-12-15)",
+  "criterion_version": "0.8.2",
+  "environment_note": "wavepeek devcontainer/CI image",
+  "run_name": "c4-c3-carry-forward",
+  "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
+  "scenario_set_id": "c3_integral_boolean",
+  "scenario_set_path": "bench/expr/scenarios/c3_integral_boolean.json",
+  "scenarios": [
+    {
+      "baseline_name": "c4-c3-carry-forward",
+      "mean_ns_per_iter": 587.0274407803854,
+      "median_ns_per_iter": 585.3821208835441,
+      "raw_csv": "bind_logical_core_integral.raw.csv",
+      "sample_count": 100,
+      "scenario": "bind_logical_core_integral"
+    },
+    {
+      "baseline_name": "c4-c3-carry-forward",
+      "mean_ns_per_iter": 513.8339497182599,
+      "median_ns_per_iter": 512.8959196617336,
+      "raw_csv": "eval_event_iff_core_integral.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_event_iff_core_integral"
+    },
+    {
+      "baseline_name": "c4-c3-carry-forward",
+      "mean_ns_per_iter": 801.5430343136696,
+      "median_ns_per_iter": 801.9719006796416,
+      "raw_csv": "eval_logical_core_integral_true.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_core_integral_true"
+    },
+    {
+      "baseline_name": "c4-c3-carry-forward",
+      "mean_ns_per_iter": 512.6874286076459,
+      "median_ns_per_iter": 509.7611677196785,
+      "raw_csv": "eval_logical_core_integral_unknown.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_core_integral_unknown"
+    }
+  ],
+  "source_commit": "71dd01581296a225f5f8b1376c2c6826d6d5c255",
+  "worktree_state": "clean"
+}

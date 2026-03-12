@@ -1,7 +1,7 @@
 {
-  "scenario_set": "c4_rich_types",
+  "id": "c4_rich_types",
   "bench_target": "expr_c4",
-  "benchmark_ids": [
+  "scenarios": [
     "bind_logical_rich_types",
     "bind_waveform_host_metadata_path",
     "eval_logical_real_mixed_numeric",

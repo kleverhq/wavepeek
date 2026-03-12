@@ -1,6 +1,9 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+pub mod expr_runtime;
+
+#[allow(dead_code)]
 pub fn wavepeek_cmd() -> Command {
     Command::new(env!("CARGO_BIN_EXE_wavepeek"))
 }

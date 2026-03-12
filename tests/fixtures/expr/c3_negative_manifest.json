@@ -1,0 +1,139 @@
+{
+  "cases": [
+    {
+      "name": "deferred_real_cast",
+      "entrypoint": "logical",
+      "source": "real'(a)",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 0, "end": 4 },
+      "snapshot": "c3_parse_deferred_real_cast"
+    },
+    {
+      "name": "deferred_string_literal",
+      "entrypoint": "logical",
+      "source": "\"ok\"",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 0, "end": 1 },
+      "snapshot": null
+    },
+    {
+      "name": "deferred_type_operand_cast",
+      "entrypoint": "logical",
+      "source": "type(a)'(1)",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 0, "end": 7 },
+      "snapshot": null
+    },
+    {
+      "name": "deferred_enum_label_reference",
+      "entrypoint": "logical",
+      "source": "type(state)::BUSY",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 0, "end": 4 },
+      "snapshot": null
+    },
+    {
+      "name": "deferred_triggered_primary",
+      "entrypoint": "logical",
+      "source": "ev.triggered",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 0, "end": 12 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_const_part_select_bound",
+      "entrypoint": "logical",
+      "source": "a[idx:0]",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-CONST-REQUIRED",
+      "span": { "start": 2, "end": 5 },
+      "snapshot": "c3_semantic_const_required_part_select"
+    },
+    {
+      "name": "invalid_const_indexed_width",
+      "entrypoint": "logical",
+      "source": "a[0 +: idx]",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-CONST-REQUIRED",
+      "span": { "start": 7, "end": 10 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_const_replication_multiplier",
+      "entrypoint": "logical",
+      "source": "{idx{a}}",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-CONST-REQUIRED",
+      "span": { "start": 1, "end": 4 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_selection_base_scalar_integer_like",
+      "entrypoint": "logical",
+      "source": "count[0]",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-SELECTION-BASE",
+      "span": { "start": 0, "end": 5 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_cast_target_width",
+      "entrypoint": "logical",
+      "source": "bit[0]'(a)",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-CAST",
+      "span": { "start": 4, "end": 5 },
+      "snapshot": null
+    },
+    {
+      "name": "unresolved_signal_logical",
+      "entrypoint": "logical",
+      "source": "missing + 1",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": { "start": 0, "end": 7 },
+      "snapshot": null
+    },
+    {
+      "name": "unresolved_signal_in_event_iff",
+      "entrypoint": "event",
+      "source": "posedge clk iff missing",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": { "start": 16, "end": 23 },
+      "snapshot": null
+    },
+    {
+      "name": "malformed_inside_set",
+      "entrypoint": "logical",
+      "source": "a inside {}",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-EXPECTED",
+      "span": { "start": 10, "end": 11 },
+      "snapshot": null
+    },
+    {
+      "name": "malformed_concatenation",
+      "entrypoint": "logical",
+      "source": "{a,",
+      "layer": "parse",
+      "code": "C3-PARSE-LOGICAL-EXPECTED",
+      "span": { "start": 3, "end": 3 },
+      "snapshot": null
+    },
+    {
+      "name": "event_level_grouping_stays_outside_c3",
+      "entrypoint": "event",
+      "source": "(posedge clk) or ready",
+      "layer": "parse",
+      "code": "C1-PARSE-UNMATCHED-OPEN",
+      "span": { "start": 0, "end": 1 },
+      "snapshot": null
+    }
+  ]
+}

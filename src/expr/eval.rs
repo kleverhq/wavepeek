@@ -32,6 +32,7 @@ struct RuntimeValue {
 #[derive(Default)]
 struct EvalCache {
     samples: HashMap<(SignalHandle, u64), Option<Rc<str>>>,
+    decoded_samples: HashMap<(SignalHandle, u64), Option<Rc<[BoundBit]>>>,
 }
 
 impl EvalCache {
@@ -52,6 +53,25 @@ impl EvalCache {
             .map(Rc::<str>::from);
         self.samples.insert(key, sampled.clone());
         Ok(sampled)
+    }
+
+    fn sample_decoded_bits(
+        &mut self,
+        host: &dyn ExpressionHost,
+        handle: SignalHandle,
+        timestamp: u64,
+    ) -> Result<Option<Rc<[BoundBit]>>, ExprDiagnostic> {
+        let key = (handle, timestamp);
+        if let Some(value) = self.decoded_samples.get(&key) {
+            return Ok(value.clone());
+        }
+
+        let decoded = self
+            .sample_bits(host, handle, timestamp)?
+            .as_deref()
+            .map(|raw| Rc::<[BoundBit]>::from(bits_from_sample(raw)));
+        self.decoded_samples.insert(key, decoded.clone());
+        Ok(decoded)
     }
 }
 
@@ -128,10 +148,10 @@ fn eval_node(
 ) -> Result<RuntimeValue, ExprDiagnostic> {
     let value = match &node.kind {
         BoundLogicalKind::SignalRef { handle } => {
-            let sampled = cache.sample_bits(host, *handle, timestamp)?;
+            let sampled = cache.sample_decoded_bits(host, *handle, timestamp)?;
             let bits = sampled
                 .as_deref()
-                .map(bits_from_sample)
+                .map(|value| value.to_vec())
                 .unwrap_or_else(|| vec![BoundBit::X; node.ty.width.max(1) as usize]);
             RuntimeValue {
                 ty: node.ty.clone(),
@@ -644,7 +664,7 @@ fn eval_shift(
     }
 
     let shift = bits_to_u128(right.bits.as_slice())
-        .map(|value| value as usize)
+        .and_then(|value| usize::try_from(value).ok())
         .unwrap_or(usize::MAX);
     if shift >= left.bits.len() {
         return match op {
@@ -696,7 +716,13 @@ fn eval_arithmetic(
     result_ty: &ExprType,
 ) -> RuntimeValue {
     let left = coerce_runtime_to_type(left, result_ty);
-    let right = coerce_runtime_to_type(right, result_ty);
+    let exponent_signed = right.ty.is_signed;
+    let right_ty = right.ty.clone();
+    let right = if op == BinaryOpAst::Power {
+        coerce_runtime_to_type(right, &right_ty)
+    } else {
+        coerce_runtime_to_type(right, result_ty)
+    };
 
     if left
         .bits
@@ -707,42 +733,90 @@ fn eval_arithmetic(
         return all_x(result_ty);
     }
 
-    let Some(lhs) = bits_to_u128(left.bits.as_slice()) else {
+    let Some(lhs_unsigned) = bits_to_u128(left.bits.as_slice()) else {
         return all_x(result_ty);
     };
-    let Some(rhs) = bits_to_u128(right.bits.as_slice()) else {
+    let Some(rhs_unsigned) = bits_to_u128(right.bits.as_slice()) else {
         return all_x(result_ty);
     };
 
-    let raw = match op {
-        BinaryOpAst::Add => lhs.wrapping_add(rhs),
-        BinaryOpAst::Subtract => lhs.wrapping_sub(rhs),
-        BinaryOpAst::Multiply => lhs.wrapping_mul(rhs),
+    let bits = match op {
+        BinaryOpAst::Add => {
+            unsigned_to_bits(lhs_unsigned.wrapping_add(rhs_unsigned), result_ty.width)
+        }
+        BinaryOpAst::Subtract => {
+            unsigned_to_bits(lhs_unsigned.wrapping_sub(rhs_unsigned), result_ty.width)
+        }
+        BinaryOpAst::Multiply => {
+            unsigned_to_bits(lhs_unsigned.wrapping_mul(rhs_unsigned), result_ty.width)
+        }
         BinaryOpAst::Divide => {
-            if rhs == 0 {
+            if rhs_unsigned == 0 {
                 return all_x(result_ty);
             }
-            lhs / rhs
+            if result_ty.is_signed {
+                let Some(lhs_signed) = bits_to_i128(left.bits.as_slice(), true) else {
+                    return all_x(result_ty);
+                };
+                let Some(rhs_signed) = bits_to_i128(right.bits.as_slice(), true) else {
+                    return all_x(result_ty);
+                };
+                if rhs_signed == 0 {
+                    return all_x(result_ty);
+                }
+                signed_to_bits(lhs_signed.wrapping_div(rhs_signed), result_ty.width)
+            } else {
+                unsigned_to_bits(lhs_unsigned / rhs_unsigned, result_ty.width)
+            }
         }
         BinaryOpAst::Modulo => {
-            if rhs == 0 {
+            if rhs_unsigned == 0 {
                 return all_x(result_ty);
             }
-            lhs % rhs
+            if result_ty.is_signed {
+                let Some(lhs_signed) = bits_to_i128(left.bits.as_slice(), true) else {
+                    return all_x(result_ty);
+                };
+                let Some(rhs_signed) = bits_to_i128(right.bits.as_slice(), true) else {
+                    return all_x(result_ty);
+                };
+                if rhs_signed == 0 {
+                    return all_x(result_ty);
+                }
+                signed_to_bits(lhs_signed.wrapping_rem(rhs_signed), result_ty.width)
+            } else {
+                unsigned_to_bits(lhs_unsigned % rhs_unsigned, result_ty.width)
+            }
         }
         BinaryOpAst::Power => {
-            let mut acc = 1u128;
-            for _ in 0..rhs {
-                acc = acc.wrapping_mul(lhs);
+            if exponent_signed {
+                let Some(exp_signed) = bits_to_i128(right.bits.as_slice(), true) else {
+                    return all_x(result_ty);
+                };
+                if exp_signed < 0 {
+                    if lhs_unsigned == 0 {
+                        return all_x(result_ty);
+                    }
+                    vec![BoundBit::Zero; result_ty.width.max(1) as usize]
+                } else {
+                    unsigned_to_bits(
+                        pow_wrapping_u128(lhs_unsigned, exp_signed as u128),
+                        result_ty.width,
+                    )
+                }
+            } else {
+                unsigned_to_bits(
+                    pow_wrapping_u128(lhs_unsigned, rhs_unsigned),
+                    result_ty.width,
+                )
             }
-            acc
         }
         _ => return all_x(result_ty),
     };
 
     RuntimeValue {
         ty: result_ty.clone(),
-        bits: unsigned_to_bits(raw, result_ty.width),
+        bits,
     }
 }
 
@@ -930,6 +1004,44 @@ fn bits_to_u128(bits: &[BoundBit]) -> Option<u128> {
         }
     }
     Some(value)
+}
+
+fn bits_to_i128(bits: &[BoundBit], signed: bool) -> Option<i128> {
+    let unsigned = bits_to_u128(bits)?;
+    if !signed {
+        return i128::try_from(unsigned).ok();
+    }
+    let width = bits.len().clamp(1, 128);
+    if width == 128 {
+        return Some(unsigned as i128);
+    }
+    let mask = (1_u128 << width) - 1;
+    let narrowed = unsigned & mask;
+    let sign_bit = 1_u128 << (width - 1);
+    if narrowed & sign_bit == 0 {
+        Some(narrowed as i128)
+    } else {
+        let magnitude = ((!narrowed).wrapping_add(1)) & mask;
+        Some(-(magnitude as i128))
+    }
+}
+
+fn signed_to_bits(value: i128, width: u32) -> Vec<BoundBit> {
+    unsigned_to_bits(value as u128, width)
+}
+
+fn pow_wrapping_u128(mut base: u128, mut exp: u128) -> u128 {
+    let mut acc = 1u128;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = acc.wrapping_mul(base);
+        }
+        exp >>= 1;
+        if exp > 0 {
+            base = base.wrapping_mul(base);
+        }
+    }
+    acc
 }
 
 fn unsigned_to_bits(value: u128, width: u32) -> Vec<BoundBit> {

@@ -1096,6 +1096,37 @@ fn binary_result_type(
     right: &ExprType,
     right_span: Span,
 ) -> Result<ExprType, ExprDiagnostic> {
+    if is_integral_type(left) && is_integral_type(right) {
+        return Ok(match op {
+            BinaryOpAst::LogicalAnd
+            | BinaryOpAst::LogicalOr
+            | BinaryOpAst::Lt
+            | BinaryOpAst::Le
+            | BinaryOpAst::Gt
+            | BinaryOpAst::Ge
+            | BinaryOpAst::Eq
+            | BinaryOpAst::Ne
+            | BinaryOpAst::CaseEq
+            | BinaryOpAst::CaseNe
+            | BinaryOpAst::WildEq
+            | BinaryOpAst::WildNe => bool_result_type(),
+            BinaryOpAst::ShiftLeft
+            | BinaryOpAst::ShiftRight
+            | BinaryOpAst::ShiftArithLeft
+            | BinaryOpAst::ShiftArithRight => non_enum_integral_type(left),
+            BinaryOpAst::BitAnd
+            | BinaryOpAst::BitXor
+            | BinaryOpAst::BitXnor
+            | BinaryOpAst::BitOr
+            | BinaryOpAst::Power
+            | BinaryOpAst::Multiply
+            | BinaryOpAst::Divide
+            | BinaryOpAst::Modulo
+            | BinaryOpAst::Add
+            | BinaryOpAst::Subtract => common_integral_type(left, right),
+        });
+    }
+
     match op {
         BinaryOpAst::LogicalAnd | BinaryOpAst::LogicalOr => {
             ensure_boolean_context_type(left, left_span, "binary lhs")?;

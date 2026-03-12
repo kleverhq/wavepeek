@@ -25,6 +25,9 @@ This plan does not route `change` or `property` through the typed standalone eng
 - [x] (2026-03-12 16:46Z) Added manifest-driven `tests/expression_c4.rs` coverage plus committed snapshots for deterministic rich-type runtime/semantic failures, and extended CLI boundary tests so `change` and `property` still stay on the `C5` side of command integration even when their inputs contain `C4`-valid standalone expressions.
 - [x] (2026-03-12 16:46Z) Added the crate-private waveform expression adapter in `src/waveform/expr_host.rs`, added waveform-backed availability/fallback tests for VCD/FST metadata paths, and added the dedicated `expr_c4` benchmark target plus scenario manifest.
 - [x] (2026-03-12 16:46Z) Ran the focused green validation suite for `expression_c1` through `expression_c4`, parser/sema/eval unit tests, waveform adapter tests, `change_cli`, `property_cli`, and `cargo test --bench expr_c4` before benchmark capture and review.
+- [x] (2026-03-12 19:09Z) Captured candidate, final baseline, verify, and carry-forward benchmark artifacts; refreshed the committed `c3-integral-boolean-baseline` collateral to stay like-for-like with the final carry-forward workload; and passed all three compare gates.
+- [x] (2026-03-12 19:09Z) Completed the mandatory `ask-review` workflow: initial multi-lane review found rich-event runtime, cache/event hot-path, and collateral issues; follow-up commits fixed them; the fresh control pass then reported no substantive remaining issues.
+- [x] (2026-03-12 19:09Z) Passed `make check` and `make ci` after the last follow-up fix and final artifact capture.
 
 ## Surprises & Discoveries
 
@@ -45,6 +48,12 @@ This plan does not route `change` or `property` through the typed standalone eng
 
 - Observation: the historical `C2` and `C3` negative manifests needed carry-forward pruning once `C4` landed.
   Evidence: before updating those manifests, `expression_c2` and `expression_c3` failed because they still asserted that `real`, `string`, `type(...)`, enum-label references, and `.triggered` must remain deferred forever.
+
+- Observation: the intended finite-`real` contract is not enforced by Rust parsing by default.
+  Evidence: `f64::parse` accepts values like `1e309` as `inf`, so the standalone binder and evaluator needed explicit `is_finite()` guards plus new regression coverage.
+
+- Observation: the `expr_c3` carry-forward benchmark had to be treated as benchmark collateral, not immutable history.
+  Evidence: once the current branch settled on the simplified carry-forward workload, the old `bench/expr/runs/c3-integral-boolean-baseline/` no longer represented the same scenario semantics, so the baseline export itself had to be refreshed before the final compare gate became meaningful again.
 
 ## Decision Log
 
@@ -80,11 +89,15 @@ This plan does not route `change` or `property` through the typed standalone eng
   Rationale: the repository already has stable VCD/FST hand fixtures for ordinary signal metadata, but it does not yet ship a compact checked-in rich-type FST pair; combining the existing fixtures with a temporary rich VCD preserves deterministic coverage without widening the public API or inventing fake enum labels.
   Date/Author: 2026-03-12 / OpenCode
 
+- Decision: refresh `bench/expr/runs/c3-integral-boolean-baseline/` in the same branch once the simplified carry-forward workload was accepted.
+  Rationale: the carry-forward control still needed a like-for-like golden run for the exact scenario IDs currently shipped in `bench/expr/expr_c3.rs`; leaving the old baseline in place would have made the final compare report benchmark-workload drift instead of engine regression signal.
+  Date/Author: 2026-03-12 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: standalone engine, carry-forward suites, waveform adapter, CLI boundary regressions, and benchmark target are implemented; benchmark artifact capture, repository-wide gates, and review/cleanup remain.
+Current status: complete.
 
-The implementation reached the intended `C4` standalone boundary without changing default command routing. Public `wavepeek::expr` calls now parse, bind, and evaluate rich standalone expressions across `real`, `string`, enum labels, recovered operand-type casts, and raw-event `.triggered`, while the crate-private waveform adapter proves both availability and deterministic metadata fallback on dump-backed hosts. The remaining work is mechanical but important: capture the committed benchmark baselines, run the full repository gates, complete the mandatory review workflow, and then record the final evidence excerpts back into this plan.
+The implementation reached the intended `C4` standalone boundary without changing default command routing. Public `wavepeek::expr` calls now parse, bind, and evaluate rich standalone expressions across `real`, `string`, enum labels, recovered operand-type casts, and raw-event `.triggered`; the crate-private waveform adapter proves both availability and deterministic metadata fallback on dump-backed hosts; the C2/C3 carry-forward suites still pass after pruning obsolete deferrals; and the dedicated benchmark collateral now includes candidate, baseline, verify, refreshed `c3` golden, and carry-forward runs with passing compare gates. The remaining residual risk is practical rather than contractual: positive rich-value waveform coverage is still VCD-only, while checked-in FST coverage remains on recovered bit-vector paths plus deterministic fallback. That limitation is documented in the code, tests, and review notes, and command routing debt remains explicitly deferred to `C5`.
 
 ## Context and Orientation
 
@@ -445,6 +458,7 @@ Expected modified or added files for `C4` implementation:
 - `bench/expr/runs/c4-rich-types-baseline/`
 - `bench/expr/runs/c4-rich-types-verify/`
 - `bench/expr/runs/c4-c3-carry-forward/`
+- `bench/expr/runs/c3-integral-boolean-baseline/`
 - `bench/expr/AGENTS.md`
 - `docs/DESIGN.md`
 - `docs/DEVELOPMENT.md`
@@ -453,17 +467,32 @@ Expected modified or added files for `C4` implementation:
 
 Before closing this plan, record these evidence excerpts here:
 
-- Red phase from `cargo test --test expression_c4 c4_positive_manifest_matches -- --exact` showing that a valid C4 expression still fails before implementation.
-- Green phase from `INSTA_UPDATE=no cargo test --test expression_c4` with `test result: ok.`.
-- One representative deterministic snapshot showing a missing-metadata or invalid-rich-type diagnostic.
-- One waveform-backed test excerpt showing availability or deterministic fallback on both VCD and FST fixtures.
+- Red phase from `cargo test --test expression_c4 c4_positive_manifest_matches -- --exact` before the implementation settled:
+      test c4_positive_manifest_matches ... FAILED
+      assertion `left == right` failed: case 'real_condition_in_ternary' is_four_state
+
+- Green phase from `INSTA_UPDATE=no cargo test --test expression_c4`:
+      running 4 tests
+      test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+- Representative deterministic snapshots:
+  - `tests/snapshots/expression_c4__c4_runtime_real_cast_unknown.snap`
+  - `tests/snapshots/expression_c4__c4_semantic_missing_enum_metadata.snap`
+
+- Waveform-backed coverage excerpts:
+  - `cargo test waveform::expr_host::tests` passed with:
+        test waveform::expr_host::tests::waveform_expr_host_supports_recovered_bit_vector_cast_on_vcd_and_fst ... ok
+        test waveform::expr_host::tests::waveform_expr_host_reports_missing_enum_metadata_on_vcd ... ok
+  - `cargo test waveform::tests::sample_signals_at_time_stays_non_bit_vector_for_rich_values` passed, proving the legacy CLI-facing sampling path still rejects rich non-bit-vector values.
+
 - Benchmark compare gates:
   - `ok: no matched scenario exceeded 15.00% negative delta in mean or median`
   - `ok: no matched scenario exceeded 5.00% negative delta in mean or median`
   - `ok: no matched scenario exceeded 15.00% negative delta in mean or median` for the `expr_c3` carry-forward control run versus `c3-integral-boolean-baseline`
+
 - Review outcome:
   - multi-lane review ran for code, architecture, performance, and docs;
-  - findings were fixed in follow-up commits if needed;
+  - findings were fixed in follow-up commits `48a4870`, `a943d5a`, `a5ef010`, `caa9018`, `71dd015`, and `ff79598`;
   - fresh control review reported no substantive remaining issues.
 
 ### Interfaces and Dependencies

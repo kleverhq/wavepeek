@@ -11,61 +11,61 @@
   "scenarios": [
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 966.5816783210133,
-      "median_ns_per_iter": 963.5317974182935,
+      "mean_ns_per_iter": 953.3327441013913,
+      "median_ns_per_iter": 951.8567120556831,
       "raw_csv": "bind_logical_rich_types.raw.csv",
       "sample_count": 100,
       "scenario": "bind_logical_rich_types"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 22329.41607468169,
-      "median_ns_per_iter": 22285.823111411006,
+      "mean_ns_per_iter": 22598.505846315245,
+      "median_ns_per_iter": 22518.09887585533,
       "raw_csv": "bind_waveform_host_metadata_path.raw.csv",
       "sample_count": 100,
       "scenario": "bind_waveform_host_metadata_path"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 959.473805001672,
-      "median_ns_per_iter": 958.5082780694484,
+      "mean_ns_per_iter": 965.38525933685,
+      "median_ns_per_iter": 963.6665233705849,
       "raw_csv": "eval_event_iff_triggered_rich.raw.csv",
       "sample_count": 100,
       "scenario": "eval_event_iff_triggered_rich"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 317.4900284056109,
-      "median_ns_per_iter": 317.29597318939443,
+      "mean_ns_per_iter": 313.7671234360597,
+      "median_ns_per_iter": 313.594858380614,
       "raw_csv": "eval_logical_enum_label_preservation.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_enum_label_preservation"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 428.9985440637172,
-      "median_ns_per_iter": 428.43302467070237,
+      "mean_ns_per_iter": 415.116252922857,
+      "median_ns_per_iter": 414.3521804563909,
       "raw_csv": "eval_logical_real_mixed_numeric.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_real_mixed_numeric"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 258.6113343840952,
-      "median_ns_per_iter": 258.6709324640872,
+      "mean_ns_per_iter": 253.64714704997394,
+      "median_ns_per_iter": 252.75040450639233,
       "raw_csv": "eval_logical_string_equality.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_string_equality"
     },
     {
       "baseline_name": "c4-rich-types-baseline",
-      "mean_ns_per_iter": 213.96461487021716,
-      "median_ns_per_iter": 214.44136763671176,
+      "mean_ns_per_iter": 210.151763158286,
+      "median_ns_per_iter": 210.0820469208211,
       "raw_csv": "eval_waveform_host_metadata_path.raw.csv",
       "sample_count": 100,
       "scenario": "eval_waveform_host_metadata_path"
     }
   ],
-  "source_commit": "71dd01581296a225f5f8b1376c2c6826d6d5c255",
+  "source_commit": "ff7959845fd7a252851325af8cc4494e6de419d1",
   "worktree_state": "clean"
 }

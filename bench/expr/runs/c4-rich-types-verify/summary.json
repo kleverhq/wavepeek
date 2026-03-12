@@ -11,61 +11,61 @@
   "scenarios": [
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 987.7466958122642,
-      "median_ns_per_iter": 985.5838436169397,
+      "mean_ns_per_iter": 967.4206072015226,
+      "median_ns_per_iter": 964.3354232175269,
       "raw_csv": "bind_logical_rich_types.raw.csv",
       "sample_count": 100,
       "scenario": "bind_logical_rich_types"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 22728.724237351827,
-      "median_ns_per_iter": 22575.99956597222,
+      "mean_ns_per_iter": 22988.11359921479,
+      "median_ns_per_iter": 22832.66993112948,
       "raw_csv": "bind_waveform_host_metadata_path.raw.csv",
       "sample_count": 100,
       "scenario": "bind_waveform_host_metadata_path"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 968.9183879537698,
-      "median_ns_per_iter": 966.3756260805103,
+      "mean_ns_per_iter": 964.5623878850733,
+      "median_ns_per_iter": 963.3571747639785,
       "raw_csv": "eval_event_iff_triggered_rich.raw.csv",
       "sample_count": 100,
       "scenario": "eval_event_iff_triggered_rich"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 327.9301912076763,
-      "median_ns_per_iter": 326.3364903725932,
+      "mean_ns_per_iter": 317.9279793375331,
+      "median_ns_per_iter": 315.42582894340046,
       "raw_csv": "eval_logical_enum_label_preservation.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_enum_label_preservation"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 424.6302674257128,
-      "median_ns_per_iter": 423.47549335850937,
+      "mean_ns_per_iter": 425.23199948533374,
+      "median_ns_per_iter": 425.6979688469062,
       "raw_csv": "eval_logical_real_mixed_numeric.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_real_mixed_numeric"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 264.24253957265256,
-      "median_ns_per_iter": 262.77308526201966,
+      "mean_ns_per_iter": 255.49330888079726,
+      "median_ns_per_iter": 254.17439863384726,
       "raw_csv": "eval_logical_string_equality.raw.csv",
       "sample_count": 100,
       "scenario": "eval_logical_string_equality"
     },
     {
       "baseline_name": "c4-rich-types-verify",
-      "mean_ns_per_iter": 216.42067166165324,
-      "median_ns_per_iter": 216.1342648135759,
+      "mean_ns_per_iter": 211.69880097473325,
+      "median_ns_per_iter": 211.6017495998836,
       "raw_csv": "eval_waveform_host_metadata_path.raw.csv",
       "sample_count": 100,
       "scenario": "eval_waveform_host_metadata_path"
     }
   ],
-  "source_commit": "71dd01581296a225f5f8b1376c2c6826d6d5c255",
+  "source_commit": "ff7959845fd7a252851325af8cc4494e6de419d1",
   "worktree_state": "clean"
 }

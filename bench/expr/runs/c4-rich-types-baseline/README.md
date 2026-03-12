@@ -6,16 +6,16 @@
 - cargo -V: `cargo 1.93.0 (083ac5135 2025-12-15)`
 - rustc -V: `rustc 1.93.0 (254b59607 2026-01-19)`
 - criterion crate version: `0.8.2`
-- Source commit: `71dd01581296a225f5f8b1376c2c6826d6d5c255`
+- Source commit: `ff7959845fd7a252851325af8cc4494e6de419d1`
 - Worktree state: `clean`
 - Environment note: wavepeek devcontainer/CI image
 
 | scenario | samples | mean ns/iter | median ns/iter | raw csv |
 | --- | ---: | ---: | ---: | --- |
-| bind_logical_rich_types | 100 | 966.581678 | 963.531797 | bind_logical_rich_types.raw.csv |
-| bind_waveform_host_metadata_path | 100 | 22329.416075 | 22285.823111 | bind_waveform_host_metadata_path.raw.csv |
-| eval_event_iff_triggered_rich | 100 | 959.473805 | 958.508278 | eval_event_iff_triggered_rich.raw.csv |
-| eval_logical_enum_label_preservation | 100 | 317.490028 | 317.295973 | eval_logical_enum_label_preservation.raw.csv |
-| eval_logical_real_mixed_numeric | 100 | 428.998544 | 428.433025 | eval_logical_real_mixed_numeric.raw.csv |
-| eval_logical_string_equality | 100 | 258.611334 | 258.670932 | eval_logical_string_equality.raw.csv |
-| eval_waveform_host_metadata_path | 100 | 213.964615 | 214.441368 | eval_waveform_host_metadata_path.raw.csv |
+| bind_logical_rich_types | 100 | 953.332744 | 951.856712 | bind_logical_rich_types.raw.csv |
+| bind_waveform_host_metadata_path | 100 | 22598.505846 | 22518.098876 | bind_waveform_host_metadata_path.raw.csv |
+| eval_event_iff_triggered_rich | 100 | 965.385259 | 963.666523 | eval_event_iff_triggered_rich.raw.csv |
+| eval_logical_enum_label_preservation | 100 | 313.767123 | 313.594858 | eval_logical_enum_label_preservation.raw.csv |
+| eval_logical_real_mixed_numeric | 100 | 415.116253 | 414.352180 | eval_logical_real_mixed_numeric.raw.csv |
+| eval_logical_string_equality | 100 | 253.647147 | 252.750405 | eval_logical_string_equality.raw.csv |
+| eval_waveform_host_metadata_path | 100 | 210.151763 | 210.082047 | eval_waveform_host_metadata_path.raw.csv |

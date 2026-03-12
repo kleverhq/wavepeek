@@ -774,6 +774,60 @@ fn change_empty_iff_stays_deferred_runtime_error() {
 }
 
 #[test]
+fn change_rich_c4_iff_payload_stays_deferred_runtime_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk iff (type(data)'(3) == 8'h03 && real'(1) > 0.5 && \"go\" == \"go\")",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "iff logical expressions are not implemented yet",
+        ));
+}
+
+#[test]
+fn change_triggered_iff_payload_stays_deferred_runtime_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk iff ev.triggered",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "iff logical expressions are not implemented yet",
+        ));
+}
+
+#[test]
 fn change_empty_result_warning_matches_between_json_and_human_modes() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

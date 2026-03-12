@@ -18,12 +18,21 @@ pub enum ExprTypeKind {
     BitVector,
     IntegerLike(IntegerLikeKind),
     EnumCore,
+    Real,
+    String,
+    Event,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ExprStorage {
     PackedVector,
     Scalar,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumLabelInfo {
+    pub name: String,
+    pub bits: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,11 +43,21 @@ pub struct ExprType {
     pub is_four_state: bool,
     pub is_signed: bool,
     pub enum_type_id: Option<String>,
+    pub enum_labels: Option<Vec<EnumLabelInfo>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SampledValue {
-    pub bits: Option<String>,
+#[derive(Debug, Clone, PartialEq)]
+pub enum SampledValue {
+    Integral {
+        bits: Option<String>,
+        label: Option<String>,
+    },
+    Real {
+        value: Option<f64>,
+    },
+    String {
+        value: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,11 +72,18 @@ pub trait ExpressionHost {
     fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic>;
     /// Returns the sampled signal state at or before `timestamp`.
     ///
-    /// `SampledValue.bits == None` means no sampled state exists at or before
-    /// this timestamp.
+    /// `None` inside the returned payload means no sampled state exists at or
+    /// before this timestamp.
+    ///
+    /// Raw `event` operands are not sampled through this method.
     fn sample_value(
         &self,
         handle: SignalHandle,
         timestamp: u64,
     ) -> Result<SampledValue, ExprDiagnostic>;
+
+    /// Returns whether a raw `event` operand occurred at `timestamp`.
+    ///
+    /// Non-event operands are not queried through this method.
+    fn event_occurred(&self, handle: SignalHandle, timestamp: u64) -> Result<bool, ExprDiagnostic>;
 }

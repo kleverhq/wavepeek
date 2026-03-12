@@ -1,4 +1,4 @@
-use crate::expr::ast::{IntegralBase, IntegralLiteral};
+use crate::expr::ast::{IntegralBase, IntegralLiteral, RealLiteral, StringLiteral};
 use crate::expr::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +103,8 @@ pub(crate) enum LogicalTokenKind {
     Identifier(String),
     KeywordInside,
     IntegralLiteral(IntegralLiteral),
+    RealLiteral(RealLiteral),
+    StringLiteral(StringLiteral),
     LeftParen,
     RightParen,
     LeftBracket,
@@ -199,12 +201,13 @@ impl<'a> LogicalLexer<'a> {
             }
 
             if ch.is_ascii_digit() {
-                let literal = self.lex_numeric_literal()?;
-                let span = literal.span;
-                tokens.push(LogicalToken {
-                    kind: LogicalTokenKind::IntegralLiteral(literal),
-                    span,
-                });
+                let token = self.lex_numeric_literal()?;
+                let span = match &token {
+                    LogicalTokenKind::IntegralLiteral(literal) => literal.span,
+                    LogicalTokenKind::RealLiteral(literal) => literal.span,
+                    _ => unreachable!("numeric lexer must return numeric literal token"),
+                };
+                tokens.push(LogicalToken { kind: token, span });
                 continue;
             }
 
@@ -228,18 +231,22 @@ impl<'a> LogicalLexer<'a> {
             }
 
             if ch == '"' {
-                return Err(self.parse_diag(
-                    "C3-PARSE-LOGICAL-DEFERRED",
-                    "string literals are deferred to C4",
-                    self.span(self.index, self.index + 1),
-                    &["C3 supports integral operands only"],
-                ));
+                let literal = self.lex_string_literal()?;
+                let span = literal.span;
+                tokens.push(LogicalToken {
+                    kind: LogicalTokenKind::StringLiteral(literal),
+                    span,
+                });
+                continue;
             }
 
             if logical_identifier_start(ch) {
                 let start = self.index;
                 self.bump_char();
                 while let Some(next) = self.peek_char() {
+                    if next == '.' && self.peek_reserved_triggered_suffix() {
+                        break;
+                    }
                     if logical_identifier_char(next) {
                         self.bump_char();
                     } else {
@@ -408,7 +415,7 @@ impl<'a> LogicalLexer<'a> {
         None
     }
 
-    fn lex_numeric_literal(&mut self) -> Result<IntegralLiteral, ExprDiagnostic> {
+    fn lex_numeric_literal(&mut self) -> Result<LogicalTokenKind, ExprDiagnostic> {
         let start = self.index;
         self.consume_while(|ch| ch.is_ascii_digit() || ch == '_');
         let integer_end = self.index;
@@ -418,12 +425,18 @@ impl<'a> LogicalLexer<'a> {
         {
             self.bump_char();
             self.consume_while(|ch| ch.is_ascii_digit() || ch == '_');
-            return Err(self.parse_diag(
-                "C3-PARSE-LOGICAL-DEFERRED",
-                "real literals are deferred to C4",
-                self.span(start, self.index),
-                &["C3 supports integral operands only"],
-            ));
+            self.consume_real_exponent();
+            return Ok(LogicalTokenKind::RealLiteral(RealLiteral {
+                text: self.source[start..self.index].replace('_', ""),
+                span: self.span(start, self.index),
+            }));
+        }
+
+        if self.consume_real_exponent() {
+            return Ok(LogicalTokenKind::RealLiteral(RealLiteral {
+                text: self.source[start..self.index].replace('_', ""),
+                span: self.span(start, self.index),
+            }));
         }
 
         if matches!(self.peek_char(), Some('\'')) {
@@ -447,7 +460,9 @@ impl<'a> LogicalLexer<'a> {
                     &["literal size must be greater than zero"],
                 ));
             }
-            return self.lex_based_literal(Some(width), start);
+            return Ok(LogicalTokenKind::IntegralLiteral(
+                self.lex_based_literal(Some(width), start)?,
+            ));
         }
 
         let digits = self.source[start..integer_end]
@@ -463,13 +478,87 @@ impl<'a> LogicalLexer<'a> {
             ));
         }
 
-        Ok(IntegralLiteral {
+        Ok(LogicalTokenKind::IntegralLiteral(IntegralLiteral {
             width: None,
             signed: true,
             base: IntegralBase::Decimal,
             digits,
             span: self.span(start, integer_end),
-        })
+        }))
+    }
+
+    fn consume_real_exponent(&mut self) -> bool {
+        let save = self.index;
+        if !matches!(self.peek_char(), Some('e' | 'E')) {
+            return false;
+        }
+        self.bump_char();
+        if matches!(self.peek_char(), Some('+' | '-')) {
+            self.bump_char();
+        }
+        if !matches!(self.peek_char(), Some(ch) if ch.is_ascii_digit()) {
+            self.index = save;
+            return false;
+        }
+        self.consume_while(|ch| ch.is_ascii_digit() || ch == '_');
+        true
+    }
+
+    fn lex_string_literal(&mut self) -> Result<StringLiteral, ExprDiagnostic> {
+        let start = self.index;
+        self.bump_char();
+        let mut value = String::new();
+
+        while let Some(ch) = self.peek_char() {
+            if ch == '"' {
+                self.bump_char();
+                return Ok(StringLiteral {
+                    value,
+                    span: self.span(start, self.index),
+                });
+            }
+
+            if ch == '\\' {
+                let escape_start = self.index;
+                self.bump_char();
+                let Some(escaped) = self.peek_char() else {
+                    return Err(self.parse_diag(
+                        "C4-PARSE-LOGICAL-STRING",
+                        "unterminated string literal",
+                        self.span(start, self.index),
+                        &["close the string literal with '\"'"],
+                    ));
+                };
+                let mapped = match escaped {
+                    'n' => '\n',
+                    'r' => '\r',
+                    't' => '\t',
+                    '"' => '"',
+                    '\\' => '\\',
+                    _ => {
+                        return Err(self.parse_diag(
+                            "C4-PARSE-LOGICAL-STRING",
+                            "unsupported string escape sequence",
+                            self.span(escape_start, escape_start + 2),
+                            &["supported escapes are \\n, \\r, \\t, \\\" and \\\\"],
+                        ));
+                    }
+                };
+                self.bump_char();
+                value.push(mapped);
+                continue;
+            }
+
+            value.push(ch);
+            self.bump_char();
+        }
+
+        Err(self.parse_diag(
+            "C4-PARSE-LOGICAL-STRING",
+            "unterminated string literal",
+            self.span(start, self.index),
+            &["close the string literal with '\"'"],
+        ))
     }
 
     fn next_char_is_based_marker(&self) -> bool {
@@ -599,6 +688,17 @@ impl<'a> LogicalLexer<'a> {
         }
     }
 
+    fn peek_reserved_triggered_suffix(&self) -> bool {
+        let tail = &self.source[self.index..];
+        if !tail.starts_with(".triggered") {
+            return false;
+        }
+        !matches!(
+            tail[".triggered".len()..].chars().next(),
+            Some(next) if next.is_ascii_alphanumeric() || matches!(next, '_' | '$')
+        )
+    }
+
     fn span(&self, start: usize, end: usize) -> Span {
         Span::new(self.span_offset + start, self.span_offset + end)
     }
@@ -664,5 +764,34 @@ mod tests {
         let tokens = lex_logical_expr("logic[8]'({a,b}) inside {[3:4], 8'hx?}", 0).expect("lexes");
 
         assert!(tokens.len() > 8, "token stream should be non-trivial");
+    }
+
+    #[test]
+    fn lex_logical_expr_reserves_triggered_suffix() {
+        let tokens = lex_logical_expr("top.ev.triggered", 0).expect("lexes");
+
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "top.ev"
+        ));
+        assert!(matches!(tokens[1].kind, super::LogicalTokenKind::Dot));
+        assert!(matches!(
+            tokens[2].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "triggered"
+        ));
+    }
+
+    #[test]
+    fn lex_logical_expr_accepts_real_and_string_literals() {
+        let tokens = lex_logical_expr("1.25e2 == \"ok\"", 0).expect("lexes");
+
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::RealLiteral(_)
+        ));
+        assert!(matches!(
+            tokens[2].kind,
+            super::LogicalTokenKind::StringLiteral(_)
+        ));
     }
 }

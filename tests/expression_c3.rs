@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 use wavepeek::expr::{
-    DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprType, bind_event_expr_ast,
-    bind_logical_expr_ast, eval_logical_expr_at, event_matches_at, parse_event_expr_ast,
-    parse_logical_expr_ast,
+    DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprType, ExprValue, ExprValuePayload,
+    bind_event_expr_ast, bind_logical_expr_ast, eval_logical_expr_at, event_matches_at,
+    parse_event_expr_ast, parse_logical_expr_ast,
 };
 
 mod common;
@@ -101,7 +101,12 @@ fn c3_positive_manifest_matches() {
         let value = eval_logical_expr_at(&bound, &host, case.timestamp)
             .unwrap_or_else(|error| panic!("{} should evaluate: {error:?}", case.name));
 
-        assert_eq!(value.bits, case.expected_bits, "case '{}'", case.name);
+        assert_eq!(
+            integral_bits(&value),
+            case.expected_bits,
+            "case '{}'",
+            case.name
+        );
         assert_expr_type_eq(
             &value.ty,
             &expr_type_from_fixture(&case.expected_type),
@@ -152,10 +157,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("0".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -168,10 +178,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("00000000".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -184,10 +199,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("0001".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -200,10 +220,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: false,
                     is_signed: true,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("00000000000000000000000000000001".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -216,10 +241,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: Some("fsm_state".to_string()),
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("00".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -232,10 +262,15 @@ fn c3_negative_manifest_matches_snapshots() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("0".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
         ]
@@ -295,10 +330,15 @@ fn c3_unknown_flow_regressions_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("x".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -311,10 +351,15 @@ fn c3_unknown_flow_regressions_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("01".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -327,10 +372,15 @@ fn c3_unknown_flow_regressions_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("x1".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
         ]
@@ -338,27 +388,27 @@ fn c3_unknown_flow_regressions_hold() {
     );
 
     let conditional = eval_expr_at("x_cond ? 4'b1010 : 4'b1001", &host, 0).expect("eval");
-    assert_eq!(conditional.bits, "10xx");
+    assert_eq!(integral_bits(&conditional), "10xx");
 
     let wildcard = eval_expr_at("lhs ==? rhs", &host, 0).expect("eval");
     let case_eq = eval_expr_at("lhs === rhs", &host, 0).expect("eval");
-    assert_eq!(wildcard.bits, "1");
-    assert_eq!(case_eq.bits, "0");
+    assert_eq!(integral_bits(&wildcard), "1");
+    assert_eq!(integral_bits(&case_eq), "0");
 
     let inside = eval_expr_at("2'b1x inside {2'b10, 2'b11}", &host, 0).expect("eval");
-    assert_eq!(inside.bits, "x");
+    assert_eq!(integral_bits(&inside), "x");
 
     let signed_div = eval_expr_at("signed'(8'hfc) / signed'(8'h02)", &host, 0).expect("eval");
     let signed_mod = eval_expr_at("signed'(8'hfb) % signed'(8'h02)", &host, 0).expect("eval");
-    assert_eq!(signed_div.bits, "11111110");
-    assert_eq!(signed_mod.bits, "11111111");
+    assert_eq!(integral_bits(&signed_div), "11111110");
+    assert_eq!(integral_bits(&signed_mod), "11111111");
 
     let zero_pow_negative =
         eval_expr_at("signed'(8'h00) ** signed'(8'hff)", &host, 0).expect("eval");
     let nonzero_pow_negative =
         eval_expr_at("signed'(8'h02) ** signed'(8'hff)", &host, 0).expect("eval");
-    assert_eq!(zero_pow_negative.bits, "xxxxxxxx");
-    assert_eq!(nonzero_pow_negative.bits, "00000000");
+    assert_eq!(integral_bits(&zero_pow_negative), "xxxxxxxx");
+    assert_eq!(integral_bits(&nonzero_pow_negative), "00000000");
 }
 
 #[test]
@@ -375,10 +425,15 @@ fn c3_short_circuit_preservation_holds() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("1".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -391,10 +446,15 @@ fn c3_short_circuit_preservation_holds() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("0001".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -407,10 +467,15 @@ fn c3_short_circuit_preservation_holds() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("0010".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
         ]
@@ -422,7 +487,7 @@ fn c3_short_circuit_preservation_holds() {
     let value = eval_expr_at("0 && ((a + b) > trap)", &host, 0).expect("eval");
     let after = host.sample_count("trap");
 
-    assert_eq!(value.bits, "0");
+    assert_eq!(integral_bits(&value), "0");
     assert_eq!(before, after, "rhs signal must not be sampled");
 }
 
@@ -440,10 +505,15 @@ fn c3_selection_from_derived_values_and_missing_sample_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("10".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -456,10 +526,15 @@ fn c3_selection_from_derived_values_and_missing_sample_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("01".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -472,10 +547,15 @@ fn c3_selection_from_derived_values_and_missing_sample_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: Some("01".to_string()),
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
             SignalFixture {
@@ -488,10 +568,15 @@ fn c3_selection_from_derived_values_and_missing_sample_hold() {
                     is_four_state: true,
                     is_signed: false,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
+                event_timestamps: vec![],
                 samples: vec![common::expr_runtime::SignalSample {
                     timestamp: 0,
                     bits: None,
+                    label: None,
+                    real: None,
+                    string: None,
                 }],
             },
         ]
@@ -499,13 +584,13 @@ fn c3_selection_from_derived_values_and_missing_sample_hold() {
     );
 
     let derived = eval_expr_at("{a,b}[3:1]", &host, 0).expect("eval");
-    assert_eq!(derived.bits, "100");
+    assert_eq!(integral_bits(&derived), "100");
 
     let replicated = eval_expr_at("{2{a}}[2]", &host, 0).expect("eval");
-    assert_eq!(replicated.bits, "0");
+    assert_eq!(integral_bits(&replicated), "0");
 
     let missing = eval_expr_at("data[idx]", &host, 0).expect("eval");
-    assert_eq!(missing.bits, "x");
+    assert_eq!(integral_bits(&missing), "x");
 }
 
 fn eval_expr_at(
@@ -537,4 +622,15 @@ fn assert_expr_type_eq(actual: &ExprType, expected: &ExprType, case_name: &str) 
         actual.enum_type_id, expected.enum_type_id,
         "case '{case_name}' enum_type_id"
     );
+    assert_eq!(
+        actual.enum_labels, expected.enum_labels,
+        "case '{case_name}' enum_labels"
+    );
+}
+
+fn integral_bits(value: &ExprValue) -> &str {
+    match &value.payload {
+        ExprValuePayload::Integral { bits, .. } => bits.as_str(),
+        other => panic!("expected integral payload, got {other:?}"),
+    }
 }

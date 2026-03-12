@@ -21,6 +21,10 @@ This plan does not route `change` or `property` through the typed standalone eng
 - [x] (2026-03-12 14:12Z) Reviewed `docs/expression_roadmap.md`, `docs/expression_lang.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, the completed `C1` through `C3` expression ExecPlans, and the current `src/expr/`, `src/waveform/`, `tests/`, and `bench/expr/` implementation state.
 - [x] (2026-03-12 14:12Z) Drafted the active `C4` ExecPlan with explicit spec ownership, deterministic boundary rules, manifest and snapshot strategy, waveform-metadata fallback policy, benchmark artifacts, and validation gates.
 - [x] (2026-03-12 14:37Z) Completed focused review lanes plus a fresh clean control pass, then revised the plan for recovered-type casts on `real` and `string`, real boolean and exponentiation coverage, string-result `?:`, waveform-adapter layering, explicit CLI boundary regressions, waveform benchmark lifecycle, and C3 carry-forward performance control.
+- [x] (2026-03-12 16:46Z) Extended the public standalone host/value contract, parser, binder, and evaluator to cover `real`, `string`, recovered operand-type casts, enum-label references, enum-label preservation/reacquisition, and raw-event `.triggered`, then updated the `C2` and `C3` carry-forward suites so they continue validating earlier delivered behavior without freezing now-supported `C4` forms as permanent failures.
+- [x] (2026-03-12 16:46Z) Added manifest-driven `tests/expression_c4.rs` coverage plus committed snapshots for deterministic rich-type runtime/semantic failures, and extended CLI boundary tests so `change` and `property` still stay on the `C5` side of command integration even when their inputs contain `C4`-valid standalone expressions.
+- [x] (2026-03-12 16:46Z) Added the crate-private waveform expression adapter in `src/waveform/expr_host.rs`, added waveform-backed availability/fallback tests for VCD/FST metadata paths, and added the dedicated `expr_c4` benchmark target plus scenario manifest.
+- [x] (2026-03-12 16:46Z) Ran the focused green validation suite for `expression_c1` through `expression_c4`, parser/sema/eval unit tests, waveform adapter tests, `change_cli`, `property_cli`, and `cargo test --bench expr_c4` before benchmark capture and review.
 
 ## Surprises & Discoveries
 
@@ -35,6 +39,12 @@ This plan does not route `change` or `property` through the typed standalone eng
 
 - Observation: the C3 phase already locked every major C4 feature behind deterministic failures, which is good for red-first work because the missing surface is already enumerated.
   Evidence: `tests/fixtures/expr/c3_negative_manifest.json` explicitly rejects `real`, `string`, `type(...)`, enum-label references, and `.triggered` with stable diagnostics.
+
+- Observation: plain VCD `enum` variables can advertise enum kind without carrying enum-table metadata, which makes them ideal deterministic fallback fixtures for `type(enum_operand_reference)::LABEL` failures.
+  Evidence: the temporary rich VCD used in `src/waveform/expr_host.rs` binds `type(top.state)::BUSY` far enough to recover enum kind, but binding still fails with `C4-SEMANTIC-METADATA` because no label table is available.
+
+- Observation: the historical `C2` and `C3` negative manifests needed carry-forward pruning once `C4` landed.
+  Evidence: before updating those manifests, `expression_c2` and `expression_c3` failed because they still asserted that `real`, `string`, `type(...)`, enum-label references, and `.triggered` must remain deferred forever.
 
 ## Decision Log
 
@@ -66,11 +76,15 @@ This plan does not route `change` or `property` through the typed standalone eng
   Rationale: review found that recovered-type casts for `real` and `string`, real boolean/exponentiation semantics, C4-specific CLI boundary regressions, waveform adapter placement, and carry-forward performance controls needed to be explicit so a stateless implementer could not satisfy the plan with a narrower or phase-unsafe implementation.
   Date/Author: 2026-03-12 / OpenCode
 
+- Decision: keep the waveform positive path lightweight by benchmarking and testing adapter-backed recovered bit-vector casts on checked-in `m2_core` fixtures, while using a temporary rich VCD fixture for positive `real`/`string`/`event` adapter semantics and enum-metadata fallback.
+  Rationale: the repository already has stable VCD/FST hand fixtures for ordinary signal metadata, but it does not yet ship a compact checked-in rich-type FST pair; combining the existing fixtures with a temporary rich VCD preserves deterministic coverage without widening the public API or inventing fake enum labels.
+  Date/Author: 2026-03-12 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: standalone engine, carry-forward suites, waveform adapter, CLI boundary regressions, and benchmark target are implemented; benchmark artifact capture, repository-wide gates, and review/cleanup remain.
 
-This plan defines a phase-correct path from the delivered `C3` integral engine to the `C4` standalone closure required by `docs/expression_roadmap.md`. The main residual risk is not parser or evaluator mechanics; it is metadata fidelity at the waveform boundary, especially enum labels and any format-specific limitations around raw `event`, `real`, and `string` values. The plan resolves that risk by making semantic conformance independent from dump-backed availability tests and by requiring deterministic fallback diagnostics wherever dump metadata is missing.
+The implementation reached the intended `C4` standalone boundary without changing default command routing. Public `wavepeek::expr` calls now parse, bind, and evaluate rich standalone expressions across `real`, `string`, enum labels, recovered operand-type casts, and raw-event `.triggered`, while the crate-private waveform adapter proves both availability and deterministic metadata fallback on dump-backed hosts. The remaining work is mechanical but important: capture the committed benchmark baselines, run the full repository gates, complete the mandatory review workflow, and then record the final evidence excerpts back into this plan.
 
 ## Context and Orientation
 

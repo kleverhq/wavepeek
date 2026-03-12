@@ -13,10 +13,10 @@ pub use crate::expr::ast::{
     BasicEventAst, DeferredLogicalExpr, EventExprAst, EventTermAst, LogicalExprAst,
 };
 pub use crate::expr::diagnostic::{DiagnosticLayer, ExprDiagnostic, Span};
-pub use crate::expr::eval::ExprValue;
+pub use crate::expr::eval::{ExprValue, ExprValuePayload};
 pub use crate::expr::host::{
-    EventEvalFrame, ExprStorage, ExprType, ExprTypeKind, ExpressionHost, IntegerLikeKind,
-    SampledValue, SignalHandle,
+    EnumLabelInfo, EventEvalFrame, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
+    IntegerLikeKind, SampledValue, SignalHandle,
 };
 pub use crate::expr::lexer::{Token, TokenKind};
 pub use crate::expr::sema::{BoundEventExpr, BoundLogicalExpr};

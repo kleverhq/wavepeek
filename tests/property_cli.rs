@@ -193,3 +193,29 @@ fn property_invalid_on_expression_still_fails_as_unimplemented() {
             "`property` command execution is not implemented yet",
         ));
 }
+
+#[test]
+fn property_rich_c4_surface_stays_unimplemented() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--on",
+            "posedge top.clk iff top.ev.triggered",
+            "--eval",
+            "type(top.data)'(3) == 8'h03 ? real'(1) > 0.5 : \"go\" == \"go\"",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: unimplemented:"))
+        .stderr(predicate::str::contains("error: args:").not())
+        .stderr(predicate::str::contains(
+            "`property` command execution is not implemented yet",
+        ));
+}

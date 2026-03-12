@@ -5,8 +5,8 @@ use std::collections::{HashMap, HashSet};
 
 use serde::Deserialize;
 use wavepeek::expr::{
-    DiagnosticLayer, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
-    IntegerLikeKind, SampledValue, SignalHandle, Span,
+    DiagnosticLayer, EnumLabelInfo, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind,
+    ExpressionHost, IntegerLikeKind, SampledValue, SignalHandle, Span,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -14,6 +14,8 @@ pub struct SignalFixture {
     pub name: String,
     pub ty: TypeFixture,
     pub samples: Vec<SignalSample>,
+    #[serde(default)]
+    pub event_timestamps: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -25,19 +27,34 @@ pub struct TypeFixture {
     pub is_four_state: bool,
     pub is_signed: bool,
     pub enum_type_id: Option<String>,
+    #[serde(default)]
+    pub enum_labels: Option<Vec<EnumLabelFixture>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct EnumLabelFixture {
+    pub name: String,
+    pub bits: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct SignalSample {
     pub timestamp: u64,
     pub bits: Option<String>,
+    #[serde(default)]
+    pub label: Option<String>,
+    #[serde(default)]
+    pub real: Option<f64>,
+    #[serde(default)]
+    pub string: Option<String>,
 }
 
 #[derive(Default)]
 pub struct InMemoryExprHost {
     handles_by_name: HashMap<String, SignalHandle>,
     types_by_handle: HashMap<SignalHandle, ExprType>,
-    timelines_by_handle: HashMap<SignalHandle, Vec<(u64, Option<String>)>>,
+    timelines_by_handle: HashMap<SignalHandle, Vec<(u64, SampledValue)>>,
+    events_by_handle: HashMap<SignalHandle, Vec<u64>>,
     trap_handles: HashSet<SignalHandle>,
     sample_counts: RefCell<HashMap<SignalHandle, usize>>,
 }
@@ -50,14 +67,10 @@ impl InMemoryExprHost {
             host.handles_by_name.insert(signal.name.clone(), handle);
             host.types_by_handle
                 .insert(handle, expr_type_from_fixture(&signal.ty));
-            host.timelines_by_handle.insert(
-                handle,
-                signal
-                    .samples
-                    .iter()
-                    .map(|sample| (sample.timestamp, sample.bits.clone()))
-                    .collect(),
-            );
+            host.timelines_by_handle
+                .insert(handle, samples_from_fixture(signal));
+            host.events_by_handle
+                .insert(handle, signal.event_timestamps.clone());
         }
         host
     }
@@ -150,13 +163,58 @@ impl ExpressionHost for InMemoryExprHost {
                 notes: vec![],
             })?;
 
+        if matches!(
+            self.types_by_handle.get(&handle).map(|ty| &ty.kind),
+            Some(ExprTypeKind::Event)
+        ) {
+            return Err(ExprDiagnostic {
+                layer: DiagnosticLayer::Runtime,
+                code: "HOST-EVENT-SAMPLE-MISUSE",
+                message: format!("event handle {} cannot be sampled as a value", handle.0),
+                primary_span: Span::new(0, 0),
+                notes: vec!["use event_occurred for raw event operands".to_string()],
+            });
+        }
+
         let sampled = timeline
             .iter()
             .rev()
             .find(|(sample_time, _)| *sample_time <= timestamp)
-            .map(|(_, bits)| bits.clone())
-            .unwrap_or(None);
-        Ok(SampledValue { bits: sampled })
+            .map(|(_, value)| value.clone())
+            .unwrap_or_else(
+                || match self.types_by_handle.get(&handle).map(|ty| &ty.kind) {
+                    Some(ExprTypeKind::Real) => SampledValue::Real { value: None },
+                    Some(ExprTypeKind::String) => SampledValue::String { value: None },
+                    _ => SampledValue::Integral {
+                        bits: None,
+                        label: None,
+                    },
+                },
+            );
+        Ok(sampled)
+    }
+
+    fn event_occurred(&self, handle: SignalHandle, timestamp: u64) -> Result<bool, ExprDiagnostic> {
+        if !matches!(
+            self.types_by_handle.get(&handle).map(|ty| &ty.kind),
+            Some(ExprTypeKind::Event)
+        ) {
+            return Err(ExprDiagnostic {
+                layer: DiagnosticLayer::Runtime,
+                code: "HOST-EVENT-OCCURRED-MISUSE",
+                message: format!(
+                    "non-event handle {} cannot be queried as an event",
+                    handle.0
+                ),
+                primary_span: Span::new(0, 0),
+                notes: vec!["event_occurred is reserved for raw event operands".to_string()],
+            });
+        }
+
+        Ok(self
+            .events_by_handle
+            .get(&handle)
+            .is_some_and(|events| events.contains(&timestamp)))
     }
 }
 
@@ -179,6 +237,9 @@ pub fn expr_type_from_fixture(fixture: &TypeFixture) -> ExprType {
             })
         }
         "enum_core" => ExprTypeKind::EnumCore,
+        "real" => ExprTypeKind::Real,
+        "string" => ExprTypeKind::String,
+        "event" => ExprTypeKind::Event,
         other => panic!("unsupported type kind '{other}'"),
     };
 
@@ -195,5 +256,34 @@ pub fn expr_type_from_fixture(fixture: &TypeFixture) -> ExprType {
         is_four_state: fixture.is_four_state,
         is_signed: fixture.is_signed,
         enum_type_id: fixture.enum_type_id.clone(),
+        enum_labels: fixture.enum_labels.as_ref().map(|labels| {
+            labels
+                .iter()
+                .map(|entry| EnumLabelInfo {
+                    name: entry.name.clone(),
+                    bits: entry.bits.clone(),
+                })
+                .collect()
+        }),
     }
+}
+
+fn samples_from_fixture(signal: &SignalFixture) -> Vec<(u64, SampledValue)> {
+    signal
+        .samples
+        .iter()
+        .map(|sample| {
+            let value = match signal.ty.kind.as_str() {
+                "real" => SampledValue::Real { value: sample.real },
+                "string" => SampledValue::String {
+                    value: sample.string.clone(),
+                },
+                _ => SampledValue::Integral {
+                    bits: sample.bits.clone(),
+                    label: sample.label.clone(),
+                },
+            };
+            (sample.timestamp, value)
+        })
+        .collect()
 }

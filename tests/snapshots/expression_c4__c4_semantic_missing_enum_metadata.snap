@@ -1,0 +1,8 @@
+---
+source: tests/expression_c4.rs
+expression: diagnostic.render(case.source.as_str())
+---
+semantic:C4-SEMANTIC-METADATA: metadata for enum labels is unavailable
+--> span 23..27
+source: type(state_no_labels)::BUSY
+note: enum label references require recovered enum label metadata

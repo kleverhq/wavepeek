@@ -1,46 +1,6 @@
 {
   "cases": [
     {
-      "name": "real_literal_is_deferred",
-      "source": "posedge clk iff 1.5",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 16, "end": 19 },
-      "snapshot": null
-    },
-    {
-      "name": "string_literal_is_deferred",
-      "source": "posedge clk iff \"ok\"",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 16, "end": 17 },
-      "snapshot": null
-    },
-    {
-      "name": "enum_label_form_is_deferred",
-      "source": "posedge clk iff type(state)::BUSY",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 16, "end": 20 },
-      "snapshot": null
-    },
-    {
-      "name": "triggered_primary_is_deferred",
-      "source": "posedge clk iff ev.triggered",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 16, "end": 28 },
-      "snapshot": null
-    },
-    {
-      "name": "type_cast_form_is_deferred",
-      "source": "posedge clk iff type(clk)'(a)",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 16, "end": 25 },
-      "snapshot": null
-    },
-    {
       "name": "unknown_signal_inside_iff",
       "source": "posedge clk iff missing_sig",
       "layer": "semantic",

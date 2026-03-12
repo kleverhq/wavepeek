@@ -1,0 +1,112 @@
+{
+  "cases": [
+    {
+      "name": "invalid_string_numeric_add",
+      "entrypoint": "logical",
+      "source": "msg + 1",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-NUMERIC",
+      "span": { "start": 0, "end": 3 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_string_boolean_context",
+      "entrypoint": "logical",
+      "source": "msg && 1",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-BOOLEAN-CONTEXT",
+      "span": { "start": 0, "end": 3 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_string_cast_from_integral",
+      "entrypoint": "logical",
+      "source": "string'(count)",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-CAST-TARGET",
+      "span": { "start": 0, "end": 14 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_real_cast_from_unknown_bits",
+      "entrypoint": "logical",
+      "source": "real'(xbus)",
+      "layer": "runtime",
+      "code": "C4-RUNTIME-REAL-CAST",
+      "span": { "start": 0, "end": 0 },
+      "snapshot": "c4_runtime_real_cast_unknown"
+    },
+    {
+      "name": "invalid_event_cast",
+      "entrypoint": "logical",
+      "source": "bit'(ev)",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-EVENT-VALUE",
+      "span": { "start": 5, "end": 7 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_recovered_type_unknown_signal",
+      "entrypoint": "logical",
+      "source": "type(missing)'(1)",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": { "start": 5, "end": 12 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_enum_label_on_non_enum",
+      "entrypoint": "logical",
+      "source": "type(data)::BUSY",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-ENUM-LABEL",
+      "span": { "start": 5, "end": 9 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_missing_enum_label",
+      "entrypoint": "logical",
+      "source": "type(state)::MISS",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-ENUM-LABEL",
+      "span": { "start": 13, "end": 17 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_missing_enum_metadata",
+      "entrypoint": "logical",
+      "source": "type(state_no_labels)::BUSY",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-METADATA",
+      "span": { "start": 23, "end": 27 },
+      "snapshot": "c4_semantic_missing_enum_metadata"
+    },
+    {
+      "name": "invalid_triggered_on_non_event",
+      "entrypoint": "logical",
+      "source": "data.triggered",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-TRIGGERED",
+      "span": { "start": 0, "end": 4 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_chained_triggered",
+      "entrypoint": "logical",
+      "source": "ev.triggered.triggered",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-TRIGGERED",
+      "span": { "start": 0, "end": 22 },
+      "snapshot": null
+    },
+    {
+      "name": "invalid_raw_event_value_use",
+      "entrypoint": "logical",
+      "source": "ev + 1",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-EVENT-VALUE",
+      "span": { "start": 0, "end": 2 },
+      "snapshot": null
+    }
+  ]
+}

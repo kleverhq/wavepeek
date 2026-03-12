@@ -665,20 +665,19 @@ impl<'a> LogicalParser<'a> {
                     let token = self.current().clone();
                     match token.kind {
                         LogicalTokenKind::Identifier(ref name) if name == "triggered" => {
-                            let span = Span::new(dot_span.start, token.span.end);
-                            return Err(logical_parse_diag(
-                                "C3-PARSE-LOGICAL-DEFERRED",
-                                ".triggered is deferred to C4",
+                            self.index += 1;
+                            let span = Span::new(node.span().start, token.span.end);
+                            node = LogicalExprNode::Triggered {
+                                expr: Box::new(node),
                                 span,
-                                &["event-member primaries are outside C3"],
-                            ));
+                            };
                         }
                         _ => {
                             return Err(logical_parse_diag(
-                                "C3-PARSE-LOGICAL-EXPECTED",
+                                "C4-PARSE-LOGICAL-EXPECTED",
                                 "unsupported member-like suffix",
                                 dot_span,
-                                &["only .triggered is reserved and it is deferred to C4"],
+                                &["only .triggered is supported as a member-like suffix"],
                             ));
                         }
                     }
@@ -829,6 +828,10 @@ impl<'a> LogicalParser<'a> {
     }
 
     fn parse_primary_expr(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
+        if let Some(enum_label) = self.try_parse_enum_label_expr()? {
+            return Ok(enum_label);
+        }
+
         if let Some(cast) = self.try_parse_cast_expr()? {
             return Ok(cast);
         }
@@ -836,23 +839,6 @@ impl<'a> LogicalParser<'a> {
         let token = self.current().clone();
         match token.kind {
             LogicalTokenKind::Identifier(name) => {
-                if name.ends_with(".triggered") {
-                    return Err(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-DEFERRED",
-                        ".triggered is deferred to C4",
-                        token.span,
-                        &["event-member primaries are outside C3"],
-                    ));
-                }
-                if name == "type" && matches!(self.peek_kind(1), Some(LogicalTokenKind::LeftParen))
-                {
-                    return Err(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-DEFERRED",
-                        "type(...) enum-label forms are deferred to C4",
-                        token.span,
-                        &["type(enum_operand_reference)::LABEL is outside C3"],
-                    ));
-                }
                 self.index += 1;
                 Ok(LogicalExprNode::OperandRef {
                     name,
@@ -862,6 +848,20 @@ impl<'a> LogicalParser<'a> {
             LogicalTokenKind::IntegralLiteral(literal) => {
                 self.index += 1;
                 Ok(LogicalExprNode::IntegralLiteral {
+                    literal,
+                    span: token.span,
+                })
+            }
+            LogicalTokenKind::RealLiteral(literal) => {
+                self.index += 1;
+                Ok(LogicalExprNode::RealLiteral {
+                    literal,
+                    span: token.span,
+                })
+            }
+            LogicalTokenKind::StringLiteral(literal) => {
+                self.index += 1;
+                Ok(LogicalExprNode::StringLiteral {
                     literal,
                     span: token.span,
                 })
@@ -899,12 +899,79 @@ impl<'a> LogicalParser<'a> {
                 &["expected an operand or literal"],
             )),
             _ => Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "C4-PARSE-LOGICAL-EXPECTED",
                 "expected logical expression operand",
                 token.span,
                 &["expected operand reference, literal, cast, or parenthesized expression"],
             )),
         }
+    }
+
+    fn try_parse_enum_label_expr(&mut self) -> Result<Option<LogicalExprNode>, ExprDiagnostic> {
+        let save = self.index;
+        let token = self.current().clone();
+        let LogicalTokenKind::Identifier(name) = token.kind else {
+            return Ok(None);
+        };
+        if name != "type" {
+            return Ok(None);
+        }
+
+        self.index += 1;
+        if !matches!(self.current().kind, LogicalTokenKind::LeftParen) {
+            self.index = save;
+            return Ok(None);
+        }
+        self.index += 1;
+
+        let operand = match self.current().clone().kind {
+            LogicalTokenKind::Identifier(operand) => {
+                let span = self.current().span;
+                self.index += 1;
+                (operand, span)
+            }
+            _ => {
+                self.index = save;
+                return Ok(None);
+            }
+        };
+
+        if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
+            self.index = save;
+            return Ok(None);
+        }
+        let close = self.current().span;
+        self.index += 1;
+
+        if !matches!(self.current().kind, LogicalTokenKind::DoubleColon) {
+            self.index = save;
+            return Ok(None);
+        }
+        self.index += 1;
+
+        let (label, label_span) = match self.current().clone().kind {
+            LogicalTokenKind::Identifier(label) => {
+                let span = self.current().span;
+                self.index += 1;
+                (label, span)
+            }
+            _ => {
+                return Err(logical_parse_diag(
+                    "C4-PARSE-LOGICAL-EXPECTED",
+                    "enum label reference is missing a label",
+                    self.current().span,
+                    &["enum label form is type(enum_operand_reference)::LABEL"],
+                ));
+            }
+        };
+
+        Ok(Some(LogicalExprNode::EnumLabel {
+            operand: operand.0,
+            operand_span: operand.1,
+            label,
+            label_span,
+            span: Span::new(token.span.start, label_span.end.max(close.end)),
+        }))
     }
 
     fn parse_braced_primary(&mut self) -> Result<LogicalExprNode, ExprDiagnostic> {
@@ -987,16 +1054,16 @@ impl<'a> LogicalParser<'a> {
         }
         let Some(target) = candidate.target else {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-CAST",
+                "C4-PARSE-LOGICAL-CAST",
                 "invalid cast target",
                 candidate.span,
-                &["cast target must be an integral C3 target"],
+                &["cast target must be a supported expression type"],
             ));
         };
 
         if !matches!(self.current().kind, LogicalTokenKind::LeftParen) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-CAST",
+                "C4-PARSE-LOGICAL-CAST",
                 "malformed cast expression",
                 self.current().span,
                 &["cast form is type'(expr)"],
@@ -1006,7 +1073,7 @@ impl<'a> LogicalParser<'a> {
         let inner = self.parse_conditional_expr()?;
         if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-UNMATCHED-OPEN",
+                "C4-PARSE-LOGICAL-UNMATCHED-OPEN",
                 "unmatched opening parenthesis in cast expression",
                 candidate.span,
                 &["cast form is type'(expr)"],
@@ -1125,26 +1192,16 @@ impl<'a> LogicalParser<'a> {
             "real" => {
                 self.index += 1;
                 Ok(Some(CastTargetCandidate {
-                    target: None,
-                    deferred_error: Some(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-DEFERRED",
-                        "real casts are deferred to C4",
-                        token.span,
-                        &["C3 supports integral cast targets only"],
-                    )),
+                    target: Some(CastTargetAst::Real),
+                    deferred_error: None,
                     span: token.span,
                 }))
             }
             "string" => {
                 self.index += 1;
                 Ok(Some(CastTargetCandidate {
-                    target: None,
-                    deferred_error: Some(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-DEFERRED",
-                        "string casts are deferred to C4",
-                        token.span,
-                        &["C3 supports integral cast targets only"],
-                    )),
+                    target: Some(CastTargetAst::String),
+                    deferred_error: None,
                     span: token.span,
                 }))
             }
@@ -1157,48 +1214,46 @@ impl<'a> LogicalParser<'a> {
                 }
                 let open = self.current().span;
                 self.index += 1;
-                let mut depth = 1usize;
-                let mut end = open;
-                while depth > 0 {
-                    let token = self.current().clone();
-                    match token.kind {
-                        LogicalTokenKind::LeftParen => {
-                            depth += 1;
-                            end = token.span;
-                            self.index += 1;
-                        }
-                        LogicalTokenKind::RightParen => {
-                            depth = depth.saturating_sub(1);
-                            end = token.span;
-                            self.index += 1;
-                            if depth == 0 {
-                                break;
-                            }
-                        }
-                        LogicalTokenKind::Eof => {
-                            return Err(logical_parse_diag(
-                                "C3-PARSE-LOGICAL-UNMATCHED-OPEN",
-                                "unmatched opening parenthesis in type(...) cast target",
-                                open,
-                                &["type(...) forms are deferred to C4"],
-                            ));
-                        }
-                        _ => {
-                            end = token.span;
-                            self.index += 1;
-                        }
+                let (operand, operand_span) = match self.current().clone().kind {
+                    LogicalTokenKind::Identifier(operand) => {
+                        let span = self.current().span;
+                        self.index += 1;
+                        (operand, span)
                     }
+                    LogicalTokenKind::Eof => {
+                        return Err(logical_parse_diag(
+                            "C4-PARSE-LOGICAL-UNMATCHED-OPEN",
+                            "unmatched opening parenthesis in type(...) cast target",
+                            open,
+                            &["type(...) forms must close the recovered operand reference"],
+                        ));
+                    }
+                    _ => {
+                        return Err(logical_parse_diag(
+                            "C4-PARSE-LOGICAL-CAST",
+                            "type(...) cast target must name an operand reference",
+                            self.current().span,
+                            &["type(...) cast target is type(operand_reference)"],
+                        ));
+                    }
+                };
+                if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
+                    return Err(logical_parse_diag(
+                        "C4-PARSE-LOGICAL-CAST",
+                        "type(...) cast target is missing closing ')'",
+                        open,
+                        &["type(...) cast target is type(operand_reference)"],
+                    ));
                 }
-
+                let close = self.current().span;
+                self.index += 1;
                 Ok(Some(CastTargetCandidate {
-                    target: None,
-                    deferred_error: Some(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-DEFERRED",
-                        "type(operand_reference) casts are deferred to C4",
-                        Span::new(token.span.start, end.end),
-                        &["type(...) cast targets are outside C3"],
-                    )),
-                    span: Span::new(token.span.start, end.end),
+                    target: Some(CastTargetAst::RecoveredType {
+                        name: operand,
+                        span: operand_span,
+                    }),
+                    deferred_error: None,
+                    span: Span::new(token.span.start, close.end),
                 }))
             }
             _ => Ok(None),
@@ -1388,7 +1443,7 @@ fn logical_parse_diag(
 #[cfg(test)]
 mod tests {
     use super::{parse_event_expr_ast, parse_logical_expr_ast};
-    use crate::expr::{BasicEventAst, DiagnosticLayer};
+    use crate::expr::{BasicEventAst, DiagnosticLayer, ast::LogicalExprNode};
 
     #[test]
     fn typed_parser_rejects_unmatched_open_parenthesis() {
@@ -1441,5 +1496,15 @@ mod tests {
             "(signed'(a + 3) inside {[1:8], 16'hx0}) ? {2{b[3]}} : (c ==? 4'b1x0z)",
         )
         .expect("c3 sample expression should parse");
+    }
+
+    #[test]
+    fn logical_parser_accepts_c4_rich_surface_sample() {
+        let parsed = parse_logical_expr_ast(
+            "ev.triggered ? type(state)::BUSY : type(msg)'(\"idle\") == \"idle\"",
+        )
+        .expect("c4 rich sample should parse");
+
+        assert!(matches!(parsed.root, LogicalExprNode::Conditional { .. }));
     }
 }

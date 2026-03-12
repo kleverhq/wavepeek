@@ -577,7 +577,8 @@ src/
 │   ├── eval.rs          # Typed event matcher + standalone logical evaluator (`event_matches_at`, `eval_logical_expr_at`)
 │   └── legacy.rs        # Compatibility parser path used by current command runtime
 ├── waveform/            # Thin adapter over wellen
-│   └── mod.rs           # File loading, format detection, query helpers
+│   ├── mod.rs           # File loading, format detection, query helpers
+│   └── expr_host.rs     # Crate-private waveform-to-expression adapter for standalone C4 tests/benchmarks
 ├── output.rs            # Shared output formatting (JSON + human)
 └── error.rs             # Error enum (WavepeekError)
 ```
@@ -636,13 +637,18 @@ section describes implementation architecture only.
 
 **Implementation status:**
 
-- Typed standalone event and logical runtime for `C3` is implemented in
+- Typed standalone event and logical runtime for `C4` is implemented in
   `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/expr/host.rs` through
   public `wavepeek::expr::parse_logical_expr_ast(...)`,
   `wavepeek::expr::bind_logical_expr_ast(...)`,
   `wavepeek::expr::eval_logical_expr_at(...)`, plus event
   `bind_event_expr_ast(...)` and `event_matches_at(...)` with `iff` payload
-  reuse.
+  reuse. That standalone surface now includes `real`, `string`, operand-type
+  casts, enum-label references, and raw-event `.triggered`.
+- Dump-backed rich metadata is bridged through the crate-private
+  `src/waveform/expr_host.rs` adapter so standalone tests and benchmarks can
+  bind/evaluate against VCD/FST metadata without widening the public
+  `wavepeek::expr` facade.
 - Current `change` runtime remains intentionally compatibility-preserving and
   still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
   (via `parse_event_expr(...)` facade) until later integration phases.

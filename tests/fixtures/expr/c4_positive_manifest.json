@@ -1,0 +1,632 @@
+{
+  "logical_cases": [
+    {
+      "name": "real_mixed_numeric_result",
+      "source": "1.5 + count",
+      "signals": [
+        {
+          "name": "count",
+          "ty": {
+            "kind": "integer_like",
+            "integer_like_kind": "int",
+            "storage": "scalar",
+            "width": 32,
+            "is_four_state": false,
+            "is_signed": true,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "00000000000000000000000000000010", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "real",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 64,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "real",
+        "bits": null,
+        "label": null,
+        "real": 3.5,
+        "string": null
+      }
+    },
+    {
+      "name": "real_power_result",
+      "source": "2 ** 3.0",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "real",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 64,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "real",
+        "bits": null,
+        "label": null,
+        "real": 8.0,
+        "string": null
+      }
+    },
+    {
+      "name": "real_cast_truncates_to_int",
+      "source": "int'(3.75)",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "integer_like",
+        "integer_like_kind": "int",
+        "storage": "scalar",
+        "width": 32,
+        "is_four_state": false,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "00000000000000000000000000000011",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "string_conditional_result",
+      "source": "sel ? \"busy\" : string'(msg)",
+      "signals": [
+        {
+          "name": "sel",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "1", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "msg",
+          "ty": {
+            "kind": "string",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": null, "string": "idle" }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "string",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 0,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "string",
+        "bits": null,
+        "label": null,
+        "real": null,
+        "string": "busy"
+      }
+    },
+    {
+      "name": "string_equality_exact",
+      "source": "msg == \"go\"",
+      "signals": [
+        {
+          "name": "msg",
+          "ty": {
+            "kind": "string",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": null, "string": "go" }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "operand_type_cast_bit_vector",
+      "source": "type(data)'(3)",
+      "signals": [
+        {
+          "name": "data",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 8,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "00000000", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "00000011",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "operand_type_cast_integer_like",
+      "source": "type(count)'(3.9)",
+      "signals": [
+        {
+          "name": "count",
+          "ty": {
+            "kind": "integer_like",
+            "integer_like_kind": "int",
+            "storage": "scalar",
+            "width": 32,
+            "is_four_state": false,
+            "is_signed": true,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "00000000000000000000000000000010", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "integer_like",
+        "integer_like_kind": "int",
+        "storage": "scalar",
+        "width": 32,
+        "is_four_state": false,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "00000000000000000000000000000011",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "operand_type_cast_real",
+      "source": "type(temp)'(count)",
+      "signals": [
+        {
+          "name": "temp",
+          "ty": {
+            "kind": "real",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 64,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": 1.0, "string": null }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "count",
+          "ty": {
+            "kind": "integer_like",
+            "integer_like_kind": "int",
+            "storage": "scalar",
+            "width": 32,
+            "is_four_state": false,
+            "is_signed": true,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "00000000000000000000000000000010", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "real",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 64,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "real",
+        "bits": null,
+        "label": null,
+        "real": 2.0,
+        "string": null
+      }
+    },
+    {
+      "name": "operand_type_cast_string",
+      "source": "type(msg)'(\"hi\")",
+      "signals": [
+        {
+          "name": "msg",
+          "ty": {
+            "kind": "string",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": null, "string": "idle" }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "string",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 0,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "string",
+        "bits": null,
+        "label": null,
+        "real": null,
+        "string": "hi"
+      }
+    },
+    {
+      "name": "enum_label_reference",
+      "source": "type(state)::BUSY",
+      "signals": [
+        {
+          "name": "state",
+          "ty": {
+            "kind": "enum_core",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": "fsm_state",
+            "enum_labels": [
+              { "name": "IDLE", "bits": "00" },
+              { "name": "BUSY", "bits": "01" },
+              { "name": "DONE", "bits": "10" }
+            ]
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "01", "label": "BUSY", "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "enum_core",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 2,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": "fsm_state",
+        "enum_labels": [
+          { "name": "IDLE", "bits": "00" },
+          { "name": "BUSY", "bits": "01" },
+          { "name": "DONE", "bits": "10" }
+        ]
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "01",
+        "label": "BUSY",
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "enum_cast_reacquires_label",
+      "source": "type(state)'(2'b01)",
+      "signals": [
+        {
+          "name": "state",
+          "ty": {
+            "kind": "enum_core",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": "fsm_state",
+            "enum_labels": [
+              { "name": "IDLE", "bits": "00" },
+              { "name": "BUSY", "bits": "01" },
+              { "name": "DONE", "bits": "10" }
+            ]
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "00", "label": "IDLE", "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "enum_core",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 2,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": "fsm_state",
+        "enum_labels": [
+          { "name": "IDLE", "bits": "00" },
+          { "name": "BUSY", "bits": "01" },
+          { "name": "DONE", "bits": "10" }
+        ]
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "01",
+        "label": "BUSY",
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "triggered_logical_primary",
+      "source": "ev.triggered",
+      "signals": [
+        {
+          "name": "ev",
+          "ty": {
+            "kind": "event",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [],
+          "event_timestamps": [10]
+        }
+      ],
+      "timestamp": 10,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "name": "real_condition_in_ternary",
+      "source": "temp ? 8'd1 : 8'd2",
+      "signals": [
+        {
+          "name": "temp",
+          "ty": {
+            "kind": "real",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 64,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": 0.5, "string": null }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": false,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "00000001",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    }
+  ],
+  "event_cases": [
+    {
+      "name": "rich_iff_with_triggered_real_and_string",
+      "source": "posedge clk iff (ev.triggered && (temp > 1.0) && (msg == \"go\"))",
+      "tracked_signals": ["clk"],
+      "signals": [
+        {
+          "name": "clk",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": "0", "label": null, "real": null, "string": null },
+            { "timestamp": 10, "bits": "1", "label": null, "real": null, "string": null },
+            { "timestamp": 20, "bits": "0", "label": null, "real": null, "string": null }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "ev",
+          "ty": {
+            "kind": "event",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [],
+          "event_timestamps": [10]
+        },
+        {
+          "name": "temp",
+          "ty": {
+            "kind": "real",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 64,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": 0.5, "string": null },
+            { "timestamp": 10, "bits": null, "label": null, "real": 1.5, "string": null },
+            { "timestamp": 20, "bits": null, "label": null, "real": 1.5, "string": null }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "msg",
+          "ty": {
+            "kind": "string",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            { "timestamp": 0, "bits": null, "label": null, "real": null, "string": "idle" },
+            { "timestamp": 10, "bits": null, "label": null, "real": null, "string": "go" },
+            { "timestamp": 20, "bits": null, "label": null, "real": null, "string": "hold" }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "probes": [0, 10, 20],
+      "matches": [10]
+    }
+  ]
+}

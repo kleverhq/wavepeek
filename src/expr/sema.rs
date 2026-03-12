@@ -8,12 +8,12 @@ use crate::expr::host::{
 };
 use crate::expr::parser::parse_logical_expr_with_offset;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BoundEventExpr {
     pub(crate) terms: Vec<BoundEventTerm>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BoundEventTerm {
     pub event: BoundEventKind,
     pub iff: Option<BoundLogicalExpr>,
@@ -28,12 +28,12 @@ pub(crate) enum BoundEventKind {
     Edge(SignalHandle),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct BoundLogicalExpr {
     pub(crate) root: BoundLogicalNode,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) struct BoundLogicalNode {
     pub ty: ExprType,
     pub span: Span,
@@ -46,7 +46,7 @@ impl BoundLogicalNode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum BoundLogicalKind {
     SignalRef {
         handle: SignalHandle,
@@ -55,11 +55,21 @@ pub(crate) enum BoundLogicalKind {
         value: BoundIntegralValue,
         is_unsized: bool,
     },
+    RealLiteral {
+        value: f64,
+    },
+    StringLiteral {
+        value: String,
+    },
+    EnumLabel {
+        value: BoundIntegralValue,
+        label: String,
+    },
     Parenthesized {
         expr: Box<BoundLogicalNode>,
     },
     Cast {
-        target: CastTargetAst,
+        kind: BoundCastKind,
         expr: Box<BoundLogicalNode>,
     },
     Selection {
@@ -91,9 +101,19 @@ pub(crate) enum BoundLogicalKind {
         count: usize,
         expr: Box<BoundLogicalNode>,
     },
+    Triggered {
+        handle: SignalHandle,
+    },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BoundCastKind {
+    Signed,
+    Unsigned,
+    Static,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum BoundSelection {
     Bit {
         index: Box<BoundLogicalNode>,
@@ -112,7 +132,7 @@ pub(crate) enum BoundSelection {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum BoundInsideItem {
     Expr(BoundLogicalNode),
     Range {
@@ -191,12 +211,12 @@ fn bind_logical_node(
                 },
             })?;
             let ty = host.signal_type(handle)?;
-            if !is_integral_type(&ty) {
+            if matches!(&ty.kind, ExprTypeKind::Event) {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-EXPECTED-INTEGRAL",
-                    "logical expressions in C3 require integral operands",
+                    "C4-SEMANTIC-EVENT-VALUE",
+                    "raw event operands are only valid with .triggered",
                     *span,
-                    &["non-integral operand types are deferred to C4"],
+                    &["use event_operand.triggered to read a raw event occurrence"],
                 ));
             }
             Ok(BoundLogicalNode {
@@ -229,6 +249,63 @@ fn bind_logical_node(
                 },
             })
         }
+        LogicalExprNode::RealLiteral { literal, span } => {
+            let value = literal.text.parse::<f64>().map_err(|_| {
+                sema_diag(
+                    "C4-SEMANTIC-REAL-LITERAL",
+                    "invalid real literal",
+                    literal.span,
+                    &["real literals must parse as finite 64-bit floating-point values"],
+                )
+            })?;
+            Ok(BoundLogicalNode {
+                ty: real_type(),
+                span: *span,
+                kind: BoundLogicalKind::RealLiteral { value },
+            })
+        }
+        LogicalExprNode::StringLiteral { literal, span } => Ok(BoundLogicalNode {
+            ty: string_type(),
+            span: *span,
+            kind: BoundLogicalKind::StringLiteral {
+                value: literal.value.clone(),
+            },
+        }),
+        LogicalExprNode::EnumLabel {
+            operand,
+            operand_span,
+            label,
+            label_span,
+            span,
+        } => {
+            let handle = host
+                .resolve_signal(operand)
+                .map_err(|inner| ExprDiagnostic {
+                    layer: DiagnosticLayer::Semantic,
+                    code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                    message: format!("unknown signal '{operand}'"),
+                    primary_span: *operand_span,
+                    notes: if inner.message.is_empty() {
+                        vec![]
+                    } else {
+                        vec![format!("host detail: {}", inner.message)]
+                    },
+                })?;
+            let ty = host.signal_type(handle)?;
+            ensure_enum_type(&ty, *operand_span, "enum label operand")?;
+            let bits = lookup_enum_label_bits(&ty, label.as_str(), *label_span)?;
+            Ok(BoundLogicalNode {
+                ty,
+                span: *span,
+                kind: BoundLogicalKind::EnumLabel {
+                    value: BoundIntegralValue {
+                        bits: bits_from_sample(bits.as_str()),
+                        signed: false,
+                    },
+                    label: label.clone(),
+                },
+            })
+        }
         LogicalExprNode::Parenthesized { expr, span } => {
             let expr = bind_logical_node(expr, host)?;
             Ok(BoundLogicalNode {
@@ -241,13 +318,12 @@ fn bind_logical_node(
         }
         LogicalExprNode::Cast { target, expr, span } => {
             let expr = bind_logical_node(expr, host)?;
-            ensure_integral(&expr.ty, expr.span, "cast source")?;
-            let ty = cast_target_type(target, &expr.ty, *span)?;
+            let (ty, kind) = cast_target_type(target, &expr.ty, host, *span)?;
             Ok(BoundLogicalNode {
                 ty,
                 span: *span,
                 kind: BoundLogicalKind::Cast {
-                    target: target.clone(),
+                    kind,
                     expr: Box::new(expr),
                 },
             })
@@ -382,17 +458,31 @@ fn bind_logical_node(
         }
         LogicalExprNode::Unary { op, expr, span } => {
             let expr = bind_logical_node(expr, host)?;
-            ensure_integral(&expr.ty, expr.span, "unary operand")?;
             let ty = match op {
-                UnaryOpAst::LogicalNot
-                | UnaryOpAst::ReduceAnd
+                UnaryOpAst::LogicalNot => {
+                    ensure_boolean_context_type(&expr.ty, expr.span, "logical operand")?;
+                    bool_result_type()
+                }
+                UnaryOpAst::ReduceAnd
                 | UnaryOpAst::ReduceNand
                 | UnaryOpAst::ReduceOr
                 | UnaryOpAst::ReduceNor
                 | UnaryOpAst::ReduceXor
-                | UnaryOpAst::ReduceXnor => bool_result_type(),
-                UnaryOpAst::BitNot | UnaryOpAst::Plus | UnaryOpAst::Minus => {
+                | UnaryOpAst::ReduceXnor => {
+                    ensure_integral(&expr.ty, expr.span, "reduction operand")?;
+                    bool_result_type()
+                }
+                UnaryOpAst::BitNot => {
+                    ensure_integral(&expr.ty, expr.span, "bitwise operand")?;
                     non_enum_integral_type(&expr.ty)
+                }
+                UnaryOpAst::Plus | UnaryOpAst::Minus => {
+                    ensure_numeric(&expr.ty, expr.span, "unary operand")?;
+                    if matches!(expr.ty.kind, ExprTypeKind::Real) {
+                        real_type()
+                    } else {
+                        non_enum_integral_type(&expr.ty)
+                    }
                 }
             };
             Ok(BoundLogicalNode {
@@ -412,37 +502,7 @@ fn bind_logical_node(
         } => {
             let left = bind_logical_node(left, host)?;
             let right = bind_logical_node(right, host)?;
-            ensure_integral(&left.ty, left.span, "binary lhs")?;
-            ensure_integral(&right.ty, right.span, "binary rhs")?;
-
-            let ty = match op {
-                BinaryOpAst::LogicalAnd
-                | BinaryOpAst::LogicalOr
-                | BinaryOpAst::Lt
-                | BinaryOpAst::Le
-                | BinaryOpAst::Gt
-                | BinaryOpAst::Ge
-                | BinaryOpAst::Eq
-                | BinaryOpAst::Ne
-                | BinaryOpAst::CaseEq
-                | BinaryOpAst::CaseNe
-                | BinaryOpAst::WildEq
-                | BinaryOpAst::WildNe => bool_result_type(),
-                BinaryOpAst::ShiftLeft
-                | BinaryOpAst::ShiftRight
-                | BinaryOpAst::ShiftArithLeft
-                | BinaryOpAst::ShiftArithRight => non_enum_integral_type(&left.ty),
-                BinaryOpAst::BitAnd
-                | BinaryOpAst::BitXor
-                | BinaryOpAst::BitXnor
-                | BinaryOpAst::BitOr
-                | BinaryOpAst::Power
-                | BinaryOpAst::Multiply
-                | BinaryOpAst::Divide
-                | BinaryOpAst::Modulo
-                | BinaryOpAst::Add
-                | BinaryOpAst::Subtract => common_integral_type(&left.ty, &right.ty),
-            };
+            let ty = binary_result_type(*op, &left.ty, left.span, &right.ty, right.span)?;
 
             Ok(BoundLogicalNode {
                 ty,
@@ -461,21 +521,15 @@ fn bind_logical_node(
             span,
         } => {
             let condition = bind_logical_node(condition, host)?;
-            ensure_integral(&condition.ty, condition.span, "conditional condition")?;
+            ensure_boolean_context_type(&condition.ty, condition.span, "conditional condition")?;
             let when_true = bind_logical_node(when_true, host)?;
             let when_false = bind_logical_node(when_false, host)?;
-            ensure_integral(&when_true.ty, when_true.span, "conditional true arm")?;
-            ensure_integral(&when_false.ty, when_false.span, "conditional false arm")?;
-
-            let ty = if matches!(when_true.ty.kind, ExprTypeKind::EnumCore)
-                && matches!(when_false.ty.kind, ExprTypeKind::EnumCore)
-                && when_true.ty.enum_type_id.is_some()
-                && when_true.ty.enum_type_id == when_false.ty.enum_type_id
-            {
-                when_true.ty.clone()
-            } else {
-                common_integral_type(&when_true.ty, &when_false.ty)
-            };
+            let ty = conditional_result_type(
+                &when_true.ty,
+                when_true.span,
+                &when_false.ty,
+                when_false.span,
+            )?;
 
             Ok(BoundLogicalNode {
                 ty,
@@ -608,6 +662,50 @@ fn bind_logical_node(
                 },
             })
         }
+        LogicalExprNode::Triggered { expr, span } => match expr.as_ref() {
+            LogicalExprNode::OperandRef {
+                name,
+                span: operand_span,
+            } => {
+                let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
+                    layer: DiagnosticLayer::Semantic,
+                    code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                    message: format!("unknown signal '{name}'"),
+                    primary_span: *operand_span,
+                    notes: if inner.message.is_empty() {
+                        vec![]
+                    } else {
+                        vec![format!("host detail: {}", inner.message)]
+                    },
+                })?;
+                let ty = host.signal_type(handle)?;
+                if !matches!(&ty.kind, ExprTypeKind::Event) {
+                    return Err(sema_diag(
+                        "C4-SEMANTIC-TRIGGERED",
+                        ".triggered requires a raw event operand",
+                        *operand_span,
+                        &["only operands with event type support .triggered"],
+                    ));
+                }
+                Ok(BoundLogicalNode {
+                    ty: bit_vector_type(1, false, false, false),
+                    span: *span,
+                    kind: BoundLogicalKind::Triggered { handle },
+                })
+            }
+            LogicalExprNode::Triggered { .. } => Err(sema_diag(
+                "C4-SEMANTIC-TRIGGERED",
+                "chained .triggered is invalid",
+                *span,
+                &["apply .triggered only once to a raw event operand reference"],
+            )),
+            other => Err(sema_diag(
+                "C4-SEMANTIC-TRIGGERED",
+                ".triggered requires a raw event operand",
+                other.span(),
+                &["apply .triggered directly to an event operand reference"],
+            )),
+        },
     }
 }
 
@@ -617,7 +715,47 @@ fn ensure_integral(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprD
     }
     Err(sema_diag(
         "C3-SEMANTIC-EXPECTED-INTEGRAL",
-        "integral operand is required in C3",
+        "integral operand is required",
+        span,
+        &[context],
+    ))
+}
+
+fn ensure_numeric(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprDiagnostic> {
+    if is_integral_type(ty) || matches!(&ty.kind, ExprTypeKind::Real) {
+        return Ok(());
+    }
+    Err(sema_diag(
+        "C4-SEMANTIC-NUMERIC",
+        "numeric operand is required",
+        span,
+        &[context],
+    ))
+}
+
+fn ensure_boolean_context_type(
+    ty: &ExprType,
+    span: Span,
+    context: &str,
+) -> Result<(), ExprDiagnostic> {
+    if is_boolean_context_type(ty) {
+        return Ok(());
+    }
+    Err(sema_diag(
+        "C4-SEMANTIC-BOOLEAN-CONTEXT",
+        "logical operators require integral or real operands",
+        span,
+        &[context],
+    ))
+}
+
+fn ensure_enum_type(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprDiagnostic> {
+    if matches!(&ty.kind, ExprTypeKind::EnumCore) {
+        return Ok(());
+    }
+    Err(sema_diag(
+        "C4-SEMANTIC-ENUM-LABEL",
+        "enum label references require an enum-typed operand",
         span,
         &[context],
     ))
@@ -630,8 +768,36 @@ fn is_integral_type(ty: &ExprType) -> bool {
     )
 }
 
+fn is_boolean_context_type(ty: &ExprType) -> bool {
+    is_integral_type(ty) || matches!(&ty.kind, ExprTypeKind::Real)
+}
+
 fn bool_result_type() -> ExprType {
     bit_vector_type(1, true, false, false)
+}
+
+fn real_type() -> ExprType {
+    ExprType {
+        kind: ExprTypeKind::Real,
+        storage: ExprStorage::Scalar,
+        width: 64,
+        is_four_state: false,
+        is_signed: false,
+        enum_type_id: None,
+        enum_labels: None,
+    }
+}
+
+fn string_type() -> ExprType {
+    ExprType {
+        kind: ExprTypeKind::String,
+        storage: ExprStorage::Scalar,
+        width: 0,
+        is_four_state: false,
+        is_signed: false,
+        enum_type_id: None,
+        enum_labels: None,
+    }
 }
 
 fn bit_vector_type(width: u32, is_four_state: bool, is_signed: bool, packed: bool) -> ExprType {
@@ -646,6 +812,7 @@ fn bit_vector_type(width: u32, is_four_state: bool, is_signed: bool, packed: boo
         is_four_state,
         is_signed,
         enum_type_id: None,
+        enum_labels: None,
     }
 }
 
@@ -665,14 +832,16 @@ fn integer_like_type(kind: IntegerLikeKind) -> ExprType {
         is_four_state,
         is_signed,
         enum_type_id: None,
+        enum_labels: None,
     }
 }
 
 fn cast_target_type(
     target: &CastTargetAst,
     source: &ExprType,
+    host: &dyn ExpressionHost,
     span: Span,
-) -> Result<ExprType, ExprDiagnostic> {
+) -> Result<(ExprType, BoundCastKind), ExprDiagnostic> {
     match target {
         CastTargetAst::Signed => {
             if !is_integral_type(source) {
@@ -683,9 +852,9 @@ fn cast_target_type(
                     &["signed'(expr) is valid only for integral expr"],
                 ));
             }
-            let mut ty = source.clone();
+            let mut ty = non_enum_integral_type(source);
             ty.is_signed = true;
-            Ok(ty)
+            Ok((ty, BoundCastKind::Signed))
         }
         CastTargetAst::Unsigned => {
             if !is_integral_type(source) {
@@ -696,26 +865,125 @@ fn cast_target_type(
                     &["unsigned'(expr) is valid only for integral expr"],
                 ));
             }
-            let mut ty = source.clone();
+            let mut ty = non_enum_integral_type(source);
             ty.is_signed = false;
-            Ok(ty)
+            Ok((ty, BoundCastKind::Unsigned))
         }
         CastTargetAst::BitVector {
             width,
             is_four_state,
             is_signed,
-        } => Ok(bit_vector_type(
-            *width,
-            *is_four_state,
-            *is_signed,
-            *width > 1,
-        )),
-        CastTargetAst::IntegerLike(kind) => Ok(integer_like_type(*kind)),
+        } => {
+            ensure_cast_compatible(source, &ExprTypeKind::BitVector, span)?;
+            Ok((
+                bit_vector_type(*width, *is_four_state, *is_signed, *width > 1),
+                BoundCastKind::Static,
+            ))
+        }
+        CastTargetAst::IntegerLike(kind) => {
+            ensure_cast_compatible(source, &ExprTypeKind::IntegerLike(*kind), span)?;
+            Ok((integer_like_type(*kind), BoundCastKind::Static))
+        }
+        CastTargetAst::Real => {
+            ensure_real_cast_source(source, span)?;
+            Ok((real_type(), BoundCastKind::Static))
+        }
+        CastTargetAst::String => {
+            ensure_string_cast_source(source, span)?;
+            Ok((string_type(), BoundCastKind::Static))
+        }
+        CastTargetAst::RecoveredType {
+            name,
+            span: target_span,
+        } => {
+            let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
+                layer: DiagnosticLayer::Semantic,
+                code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                message: format!("unknown signal '{name}'"),
+                primary_span: *target_span,
+                notes: if inner.message.is_empty() {
+                    vec![]
+                } else {
+                    vec![format!("host detail: {}", inner.message)]
+                },
+            })?;
+            let ty = host.signal_type(handle)?;
+            if matches!(&ty.kind, ExprTypeKind::Event) {
+                return Err(sema_diag(
+                    "C4-SEMANTIC-CAST-TARGET",
+                    "raw event operands cannot be used as cast targets",
+                    *target_span,
+                    &["type(event_operand_reference)'(...) is invalid"],
+                ));
+            }
+            if matches!(&ty.kind, ExprTypeKind::EnumCore) && ty.enum_type_id.is_none() {
+                return Err(sema_diag(
+                    "C4-SEMANTIC-METADATA",
+                    "metadata for the recovered enum type is unavailable",
+                    *target_span,
+                    &["enum operand-type casts require recovered enum type metadata"],
+                ));
+            }
+            match &ty.kind {
+                ExprTypeKind::Real => ensure_real_cast_source(source, span)?,
+                ExprTypeKind::String => ensure_string_cast_source(source, span)?,
+                ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+                    ensure_cast_compatible(source, &ty.kind, span)?
+                }
+                ExprTypeKind::Event => unreachable!(),
+            }
+            Ok((ty, BoundCastKind::Static))
+        }
     }
 }
 
+fn ensure_cast_compatible(
+    source: &ExprType,
+    target_kind: &ExprTypeKind,
+    span: Span,
+) -> Result<(), ExprDiagnostic> {
+    match target_kind {
+        ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+            if is_integral_type(source) || matches!(&source.kind, ExprTypeKind::Real) {
+                return Ok(());
+            }
+            Err(sema_diag(
+                "C4-SEMANTIC-CAST-TARGET",
+                "integral cast target requires an integral or real source",
+                span,
+                &["string and raw event operands cannot be cast to integral targets"],
+            ))
+        }
+        _ => Ok(()),
+    }
+}
+
+fn ensure_real_cast_source(source: &ExprType, span: Span) -> Result<(), ExprDiagnostic> {
+    if is_integral_type(source) || matches!(&source.kind, ExprTypeKind::Real) {
+        return Ok(());
+    }
+    Err(sema_diag(
+        "C4-SEMANTIC-CAST-TARGET",
+        "real cast requires an integral or real source",
+        span,
+        &["string and raw event operands cannot be cast to real"],
+    ))
+}
+
+fn ensure_string_cast_source(source: &ExprType, span: Span) -> Result<(), ExprDiagnostic> {
+    if matches!(&source.kind, ExprTypeKind::String) {
+        return Ok(());
+    }
+    Err(sema_diag(
+        "C4-SEMANTIC-CAST-TARGET",
+        "string cast is supported only as string identity",
+        span,
+        &["string'(expr) is valid only when expr already has string type"],
+    ))
+}
+
 fn non_enum_integral_type(ty: &ExprType) -> ExprType {
-    match ty.kind {
+    match &ty.kind {
         ExprTypeKind::EnumCore => {
             bit_vector_type(ty.width, ty.is_four_state, ty.is_signed, ty.width > 1)
         }
@@ -742,6 +1010,148 @@ fn common_integral_type(left: &ExprType, right: &ExprType) -> ExprType {
     }
 
     bit_vector_type(width, is_four_state, is_signed, width > 1)
+}
+
+fn common_numeric_result_type(left: &ExprType, right: &ExprType) -> ExprType {
+    if matches!(&left.kind, ExprTypeKind::Real) || matches!(&right.kind, ExprTypeKind::Real) {
+        real_type()
+    } else {
+        common_integral_type(left, right)
+    }
+}
+
+fn conditional_result_type(
+    when_true: &ExprType,
+    when_true_span: Span,
+    when_false: &ExprType,
+    when_false_span: Span,
+) -> Result<ExprType, ExprDiagnostic> {
+    if matches!(&when_true.kind, ExprTypeKind::EnumCore)
+        && matches!(&when_false.kind, ExprTypeKind::EnumCore)
+        && when_true.enum_type_id.is_some()
+        && when_true.enum_type_id == when_false.enum_type_id
+    {
+        return Ok(when_true.clone());
+    }
+
+    if matches!(&when_true.kind, ExprTypeKind::String)
+        && matches!(&when_false.kind, ExprTypeKind::String)
+    {
+        return Ok(string_type());
+    }
+
+    if is_integral_type(when_true) && is_integral_type(when_false) {
+        return Ok(common_integral_type(when_true, when_false));
+    }
+
+    if (is_integral_type(when_true) || matches!(&when_true.kind, ExprTypeKind::Real))
+        && (is_integral_type(when_false) || matches!(&when_false.kind, ExprTypeKind::Real))
+    {
+        return Ok(common_numeric_result_type(when_true, when_false));
+    }
+
+    Err(sema_diag(
+        "C4-SEMANTIC-CONDITIONAL-TYPE",
+        "conditional result arms do not have a common type",
+        Span::new(when_true_span.start, when_false_span.end),
+        &["both result arms must be compatible integral, real, enum, or string values"],
+    ))
+}
+
+fn binary_result_type(
+    op: BinaryOpAst,
+    left: &ExprType,
+    left_span: Span,
+    right: &ExprType,
+    right_span: Span,
+) -> Result<ExprType, ExprDiagnostic> {
+    match op {
+        BinaryOpAst::LogicalAnd | BinaryOpAst::LogicalOr => {
+            ensure_boolean_context_type(left, left_span, "binary lhs")?;
+            ensure_boolean_context_type(right, right_span, "binary rhs")?;
+            Ok(bool_result_type())
+        }
+        BinaryOpAst::Lt | BinaryOpAst::Le | BinaryOpAst::Gt | BinaryOpAst::Ge => {
+            ensure_numeric(left, left_span, "comparison lhs")?;
+            ensure_numeric(right, right_span, "comparison rhs")?;
+            Ok(bool_result_type())
+        }
+        BinaryOpAst::Eq | BinaryOpAst::Ne => {
+            if matches!(&left.kind, ExprTypeKind::String)
+                || matches!(&right.kind, ExprTypeKind::String)
+            {
+                if matches!(&left.kind, ExprTypeKind::String)
+                    && matches!(&right.kind, ExprTypeKind::String)
+                {
+                    return Ok(bool_result_type());
+                }
+                return Err(sema_diag(
+                    "C4-SEMANTIC-EQUALITY-TYPE",
+                    "string equality requires string operands on both sides",
+                    Span::new(left_span.start, right_span.end),
+                    &["string values do not use numeric coercion"],
+                ));
+            }
+            ensure_numeric(left, left_span, "equality lhs")?;
+            ensure_numeric(right, right_span, "equality rhs")?;
+            Ok(bool_result_type())
+        }
+        BinaryOpAst::CaseEq | BinaryOpAst::CaseNe | BinaryOpAst::WildEq | BinaryOpAst::WildNe => {
+            ensure_integral(left, left_span, "integral equality lhs")?;
+            ensure_integral(right, right_span, "integral equality rhs")?;
+            Ok(bool_result_type())
+        }
+        BinaryOpAst::ShiftLeft
+        | BinaryOpAst::ShiftRight
+        | BinaryOpAst::ShiftArithLeft
+        | BinaryOpAst::ShiftArithRight => {
+            ensure_integral(left, left_span, "shift lhs")?;
+            ensure_integral(right, right_span, "shift rhs")?;
+            Ok(non_enum_integral_type(left))
+        }
+        BinaryOpAst::BitAnd | BinaryOpAst::BitXor | BinaryOpAst::BitXnor | BinaryOpAst::BitOr => {
+            ensure_integral(left, left_span, "bitwise lhs")?;
+            ensure_integral(right, right_span, "bitwise rhs")?;
+            Ok(common_integral_type(left, right))
+        }
+        BinaryOpAst::Power
+        | BinaryOpAst::Multiply
+        | BinaryOpAst::Divide
+        | BinaryOpAst::Modulo
+        | BinaryOpAst::Add
+        | BinaryOpAst::Subtract => {
+            ensure_numeric(left, left_span, "numeric lhs")?;
+            ensure_numeric(right, right_span, "numeric rhs")?;
+            Ok(common_numeric_result_type(left, right))
+        }
+    }
+}
+
+fn lookup_enum_label_bits(
+    ty: &ExprType,
+    label: &str,
+    span: Span,
+) -> Result<String, ExprDiagnostic> {
+    let labels = ty.enum_labels.as_ref().ok_or_else(|| {
+        sema_diag(
+            "C4-SEMANTIC-METADATA",
+            "metadata for enum labels is unavailable",
+            span,
+            &["enum label references require recovered enum label metadata"],
+        )
+    })?;
+    labels
+        .iter()
+        .find(|entry| entry.name == label)
+        .map(|entry| entry.bits.clone())
+        .ok_or_else(|| {
+            sema_diag(
+                "C4-SEMANTIC-ENUM-LABEL",
+                "enum label does not exist in the recovered type",
+                span,
+                &["type(enum_operand_reference)::LABEL requires a declared label"],
+            )
+        })
 }
 
 fn decode_integral_literal(
@@ -875,6 +1285,12 @@ fn bit_from_char(ch: char) -> Option<BoundBit> {
     }
 }
 
+fn bits_from_sample(raw: &str) -> Vec<BoundBit> {
+    raw.chars()
+        .map(|ch| bit_from_char(ch).unwrap_or(BoundBit::X))
+        .collect()
+}
+
 fn push_hex_nibble(ch: char, out: &mut Vec<BoundBit>) -> Option<()> {
     match ch.to_ascii_lowercase() {
         '0' => out.extend([
@@ -992,17 +1408,23 @@ fn eval_const_node(node: &BoundLogicalNode) -> Result<Option<BoundIntegralValue>
     let value = match &node.kind {
         BoundLogicalKind::SignalRef { .. } => return Ok(None),
         BoundLogicalKind::IntegralLiteral { value, .. } => value.clone(),
+        BoundLogicalKind::RealLiteral { .. } => return Ok(None),
+        BoundLogicalKind::StringLiteral { .. } => return Ok(None),
+        BoundLogicalKind::EnumLabel { value, .. } => value.clone(),
         BoundLogicalKind::Parenthesized { expr } => {
             let Some(value) = eval_const_node(expr)? else {
                 return Ok(None);
             };
             value
         }
-        BoundLogicalKind::Cast { target, expr } => {
+        BoundLogicalKind::Cast { kind, expr } => {
             let Some(inner) = eval_const_node(expr)? else {
                 return Ok(None);
             };
-            apply_const_cast(target, inner, &node.ty)
+            if !is_integral_type(&node.ty) {
+                return Ok(None);
+            }
+            apply_const_cast(*kind, inner, &node.ty)
         }
         BoundLogicalKind::Selection { .. } => return Ok(None),
         BoundLogicalKind::Unary { op, expr } => {
@@ -1081,6 +1503,7 @@ fn eval_const_node(node: &BoundLogicalNode) -> Result<Option<BoundIntegralValue>
                 signed: false,
             }
         }
+        BoundLogicalKind::Triggered { .. } => return Ok(None),
     };
     Ok(Some(coerce_const_to_type(value, &node.ty)))
 }
@@ -1109,19 +1532,17 @@ fn truthiness_bits(bits: &[BoundBit]) -> ConstTruth {
 }
 
 fn apply_const_cast(
-    target: &CastTargetAst,
+    kind: BoundCastKind,
     value: BoundIntegralValue,
     result_ty: &ExprType,
 ) -> BoundIntegralValue {
-    match target {
-        CastTargetAst::Signed | CastTargetAst::Unsigned => {
+    match kind {
+        BoundCastKind::Signed | BoundCastKind::Unsigned => {
             let mut value = value;
             value.signed = result_ty.is_signed;
             value
         }
-        CastTargetAst::BitVector { .. } | CastTargetAst::IntegerLike(_) => {
-            coerce_const_to_type(value, result_ty)
-        }
+        BoundCastKind::Static => coerce_const_to_type(value, result_ty),
     }
 }
 
@@ -1718,9 +2139,18 @@ mod tests {
             _handle: SignalHandle,
             _timestamp: u64,
         ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-            Ok(crate::expr::SampledValue {
+            Ok(crate::expr::SampledValue::Integral {
                 bits: Some("0".to_string()),
+                label: None,
             })
+        }
+
+        fn event_occurred(
+            &self,
+            _handle: SignalHandle,
+            _timestamp: u64,
+        ) -> Result<bool, ExprDiagnostic> {
+            Ok(false)
         }
     }
 
@@ -1772,6 +2202,7 @@ mod tests {
                         is_four_state: true,
                         is_signed: false,
                         enum_type_id: Some("fsm_state".to_string()),
+                        enum_labels: None,
                     })
                 }
             }
@@ -1781,9 +2212,18 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                Ok(crate::expr::SampledValue {
+                Ok(crate::expr::SampledValue::Integral {
                     bits: Some("0".to_string()),
+                    label: None,
                 })
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                Ok(false)
             }
         }
 

@@ -144,7 +144,18 @@ impl ExpressionHost for BenchHost {
         } else {
             Some(signal.samples[insertion_index - 1].1.clone())
         };
-        Ok(SampledValue { bits: sampled })
+        Ok(SampledValue::Integral {
+            bits: sampled,
+            label: None,
+        })
+    }
+
+    fn event_occurred(
+        &self,
+        _handle: SignalHandle,
+        _timestamp: u64,
+    ) -> Result<bool, ExprDiagnostic> {
+        Ok(false)
     }
 }
 
@@ -160,6 +171,7 @@ fn bit_ty(width: u32, is_four_state: bool, is_signed: bool) -> ExprType {
         is_four_state,
         is_signed,
         enum_type_id: None,
+        enum_labels: None,
     }
 }
 
@@ -184,10 +196,10 @@ fn bench_eval_logical_core_integral_true(c: &mut Criterion) {
     let bound = bind_logical_expr_ast(&ast, &host).expect("eval true source should bind");
 
     let value = eval_logical_expr_at(&bound, &host, 0).expect("eval true setup must evaluate");
-    assert_eq!(
-        value.bits, "1",
-        "eval_logical_core_integral_true should be true"
-    );
+    assert!(matches!(
+        value.payload,
+        wavepeek::expr::ExprValuePayload::Integral { ref bits, .. } if bits == "1"
+    ));
 
     c.bench_function("eval_logical_core_integral_true", |b| {
         b.iter(|| {
@@ -205,10 +217,10 @@ fn bench_eval_logical_core_integral_unknown(c: &mut Criterion) {
     let bound = bind_logical_expr_ast(&ast, &host).expect("eval unknown source should bind");
 
     let value = eval_logical_expr_at(&bound, &host, 0).expect("eval unknown setup must evaluate");
-    assert_eq!(
-        value.bits, "1xx1",
-        "eval_logical_core_integral_unknown should preserve unknowns"
-    );
+    assert!(matches!(
+        value.payload,
+        wavepeek::expr::ExprValuePayload::Integral { ref bits, .. } if bits == "1xx1"
+    ));
 
     c.bench_function("eval_logical_core_integral_unknown", |b| {
         b.iter(|| {

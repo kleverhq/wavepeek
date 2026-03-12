@@ -122,6 +122,7 @@ impl InMemoryHost {
                     is_four_state: signal.is_four_state,
                     is_signed: signal.is_signed,
                     enum_type_id: None,
+                    enum_labels: None,
                 },
             );
             host.timelines_by_handle.insert(
@@ -229,7 +230,24 @@ impl ExpressionHost for InMemoryHost {
             .rev()
             .find(|(sample_time, _)| *sample_time <= timestamp)
             .map(|(_, bits)| bits.clone());
-        Ok(SampledValue { bits: sampled })
+        Ok(SampledValue::Integral {
+            bits: sampled,
+            label: None,
+        })
+    }
+
+    fn event_occurred(
+        &self,
+        _handle: SignalHandle,
+        _timestamp: u64,
+    ) -> Result<bool, ExprDiagnostic> {
+        Err(ExprDiagnostic {
+            layer: DiagnosticLayer::Runtime,
+            code: "HOST-EVENT-OCCURRED-MISUSE",
+            message: "raw event queries are not used in C2 tests".to_string(),
+            primary_span: wavepeek::expr::Span::new(0, 0),
+            notes: vec![],
+        })
     }
 }
 

@@ -1200,6 +1200,8 @@ mod tests {
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
 
+    const RICH_VALUE_VCD: &str = "$date\n  2026-03-12\n$end\n$version\n  wavepeek-rich-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var real 1 ! temp $end\n$var string 1 \" msg $end\n$upscope $end\n$enddefinitions $end\n#0\nr1.5 !\nsgo \"\n";
+
     const RECURSIVE_TEST_VCD: &str = "$date\n  2026-02-28\n$end\n$version\n  wavepeek-recursive-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$scope module cpu $end\n$var wire 1 \" valid $end\n$scope module core $end\n$var wire 1 # execute $end\n$upscope $end\n$upscope $end\n$scope module mem $end\n$var wire 1 $ ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n0#\n0$\n#5\n1!\n1\"\n1#\n1$\n";
 
     const DELAYED_VALUE_VCD: &str = "$date\n  2026-03-03\n$end\n$version\n  wavepeek-delayed-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\n1!\n";
@@ -1471,6 +1473,21 @@ mod tests {
                     bits: "00001111".to_string()
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn sample_signals_at_time_stays_non_bit_vector_for_rich_values() {
+        let fixture = write_fixture(RICH_VALUE_VCD, "rich-sample.vcd");
+
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let error = waveform
+            .sample_signals_at_time(&["top.temp".to_string()], 0)
+            .expect_err("rich real sampling should stay on the legacy CLI rejection path");
+
+        assert_eq!(
+            error.to_string(),
+            "error: signal: signal 'top.temp' has unsupported non-bit-vector encoding"
         );
     }
 

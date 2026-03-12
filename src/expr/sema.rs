@@ -163,14 +163,27 @@ pub fn bind_event_expr_ast(
     for term in &ast.terms {
         let event = match &term.event {
             BasicEventAst::AnyTracked { .. } => BoundEventKind::AnyTracked,
-            BasicEventAst::Named { name, .. } => BoundEventKind::Named(host.resolve_signal(name)?),
-            BasicEventAst::Posedge { name, .. } => {
-                BoundEventKind::Posedge(host.resolve_signal(name)?)
+            BasicEventAst::Named { name, span } => {
+                BoundEventKind::Named(resolve_event_signal(host, name, *span)?)
             }
-            BasicEventAst::Negedge { name, .. } => {
-                BoundEventKind::Negedge(host.resolve_signal(name)?)
+            BasicEventAst::Posedge { name, span } => {
+                let handle = resolve_event_signal(host, name, *span)?;
+                let ty = host.signal_type(handle)?;
+                ensure_integral(&ty, *span, "posedge operand")?;
+                BoundEventKind::Posedge(handle)
             }
-            BasicEventAst::Edge { name, .. } => BoundEventKind::Edge(host.resolve_signal(name)?),
+            BasicEventAst::Negedge { name, span } => {
+                let handle = resolve_event_signal(host, name, *span)?;
+                let ty = host.signal_type(handle)?;
+                ensure_integral(&ty, *span, "negedge operand")?;
+                BoundEventKind::Negedge(handle)
+            }
+            BasicEventAst::Edge { name, span } => {
+                let handle = resolve_event_signal(host, name, *span)?;
+                let ty = host.signal_type(handle)?;
+                ensure_integral(&ty, *span, "edge operand")?;
+                BoundEventKind::Edge(handle)
+            }
         };
 
         let iff = if let Some(iff) = &term.iff {
@@ -183,6 +196,24 @@ pub fn bind_event_expr_ast(
         terms.push(BoundEventTerm { event, iff });
     }
     Ok(BoundEventExpr { terms })
+}
+
+fn resolve_event_signal(
+    host: &dyn ExpressionHost,
+    name: &str,
+    span: Span,
+) -> Result<SignalHandle, ExprDiagnostic> {
+    host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
+        layer: DiagnosticLayer::Semantic,
+        code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+        message: format!("unknown signal '{name}'"),
+        primary_span: span,
+        notes: if inner.message.is_empty() {
+            vec![]
+        } else {
+            vec![format!("host detail: {}", inner.message)]
+        },
+    })
 }
 
 pub fn bind_logical_expr_ast(

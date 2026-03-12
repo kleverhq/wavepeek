@@ -10,7 +10,7 @@ Rust Criterion targets for this area live at:
 - `bench/expr/expr_c3.rs` (integral-core logical/event scenarios)
 - `bench/expr/expr_c4.rs` (rich-type logical/event + waveform-host scenarios)
 
-All three targets are wired through `Cargo.toml` `[[bench]]` metadata and captured through
+All four targets are wired through `Cargo.toml` `[[bench]]` metadata and captured through
 the shared `bench/expr/capture.py` + `bench/expr/compare.py` workflow.
 
 ## Parent Maps

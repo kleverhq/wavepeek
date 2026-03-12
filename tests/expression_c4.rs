@@ -232,6 +232,39 @@ fn c4_triggered_and_rich_type_regressions_hold() {
     assert_eq!(error.code, "C4-RUNTIME-REAL-CAST");
 }
 
+#[test]
+fn c4_named_and_tracked_events_handle_rich_signal_changes() {
+    let host = InMemoryExprHost::from_fixtures(default_positive_signals().as_slice());
+
+    let msg_ast = parse_event_expr_ast("msg").expect("named string event should parse");
+    let msg_expr = bind_event_expr_ast(&msg_ast, &host).expect("named string event should bind");
+    let msg_frame = EventEvalFrame {
+        timestamp: 10,
+        previous_timestamp: Some(0),
+        tracked_signals: &[],
+    };
+    assert!(event_matches_at(&msg_expr, &host, &msg_frame).expect("named string event eval"));
+
+    let ev_ast = parse_event_expr_ast("ev").expect("named event should parse");
+    let ev_expr = bind_event_expr_ast(&ev_ast, &host).expect("named event should bind");
+    let ev_frame = EventEvalFrame {
+        timestamp: 10,
+        previous_timestamp: Some(0),
+        tracked_signals: &[],
+    };
+    assert!(event_matches_at(&ev_expr, &host, &ev_frame).expect("named event eval"));
+
+    let any_ast = parse_event_expr_ast("*").expect("wildcard event should parse");
+    let any_expr = bind_event_expr_ast(&any_ast, &host).expect("wildcard event should bind");
+    let tracked = host.tracked_handles(&["msg".to_string(), "ev".to_string()]);
+    let any_frame = EventEvalFrame {
+        timestamp: 10,
+        previous_timestamp: Some(0),
+        tracked_signals: tracked.as_slice(),
+    };
+    assert!(event_matches_at(&any_expr, &host, &any_frame).expect("wildcard event eval"));
+}
+
 fn eval_expr_at(
     source: &str,
     host: &dyn wavepeek::expr::ExpressionHost,

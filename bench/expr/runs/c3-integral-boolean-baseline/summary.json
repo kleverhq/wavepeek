@@ -1,0 +1,47 @@
+{
+  "baseline_name": "c3-integral-boolean-baseline",
+  "bench_target": "expr_c3",
+  "cargo_version": "cargo 1.93.0 (083ac5135 2025-12-15)",
+  "criterion_version": "0.8.2",
+  "environment_note": "wavepeek devcontainer/CI image",
+  "run_name": "c3-integral-boolean-baseline",
+  "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
+  "scenario_set_id": "c3_integral_boolean",
+  "scenario_set_path": "bench/expr/scenarios/c3_integral_boolean.json",
+  "scenarios": [
+    {
+      "baseline_name": "c3-integral-boolean-baseline",
+      "mean_ns_per_iter": 595.6943413849584,
+      "median_ns_per_iter": 593.4413359890455,
+      "raw_csv": "bind_logical_core_integral.raw.csv",
+      "sample_count": 100,
+      "scenario": "bind_logical_core_integral"
+    },
+    {
+      "baseline_name": "c3-integral-boolean-baseline",
+      "mean_ns_per_iter": 904.9993029157548,
+      "median_ns_per_iter": 904.2971761189881,
+      "raw_csv": "eval_event_iff_core_integral.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_event_iff_core_integral"
+    },
+    {
+      "baseline_name": "c3-integral-boolean-baseline",
+      "mean_ns_per_iter": 714.963040913622,
+      "median_ns_per_iter": 713.2116181416646,
+      "raw_csv": "eval_logical_core_integral_true.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_core_integral_true"
+    },
+    {
+      "baseline_name": "c3-integral-boolean-baseline",
+      "mean_ns_per_iter": 531.7084275455038,
+      "median_ns_per_iter": 530.3095728961441,
+      "raw_csv": "eval_logical_core_integral_unknown.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_core_integral_unknown"
+    }
+  ],
+  "source_commit": "5ee64deca3ed8008ab6a6d0d835e2691a754814c",
+  "worktree_state": "clean"
+}

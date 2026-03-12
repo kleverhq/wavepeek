@@ -249,7 +249,7 @@ fn c4_named_and_tracked_events_handle_rich_signal_changes() {
     let ev_expr = bind_event_expr_ast(&ev_ast, &host).expect("named event should bind");
     let ev_frame = EventEvalFrame {
         timestamp: 10,
-        previous_timestamp: Some(0),
+        previous_timestamp: None,
         tracked_signals: &[],
     };
     assert!(event_matches_at(&ev_expr, &host, &ev_frame).expect("named event eval"));
@@ -259,7 +259,7 @@ fn c4_named_and_tracked_events_handle_rich_signal_changes() {
     let tracked = host.tracked_handles(&["msg".to_string(), "ev".to_string()]);
     let any_frame = EventEvalFrame {
         timestamp: 10,
-        previous_timestamp: Some(0),
+        previous_timestamp: None,
         tracked_signals: tracked.as_slice(),
     };
     assert!(event_matches_at(&any_expr, &host, &any_frame).expect("wildcard event eval"));

@@ -127,6 +127,7 @@ impl ExpressionHost for BenchHost {
             is_four_state: signal.is_four_state,
             is_signed: signal.is_signed,
             enum_type_id: None,
+            enum_labels: None,
         })
     }
 
@@ -150,7 +151,18 @@ impl ExpressionHost for BenchHost {
         } else {
             Some(signal.samples[insertion_index - 1].1.clone())
         };
-        Ok(SampledValue { bits: sampled })
+        Ok(SampledValue::Integral {
+            bits: sampled,
+            label: None,
+        })
+    }
+
+    fn event_occurred(
+        &self,
+        _handle: SignalHandle,
+        _timestamp: u64,
+    ) -> Result<bool, ExprDiagnostic> {
+        Ok(false)
     }
 }
 

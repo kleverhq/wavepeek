@@ -45,6 +45,21 @@ pub enum LogicalExprNode {
         literal: IntegralLiteral,
         span: Span,
     },
+    RealLiteral {
+        literal: RealLiteral,
+        span: Span,
+    },
+    StringLiteral {
+        literal: StringLiteral,
+        span: Span,
+    },
+    EnumLabel {
+        operand: String,
+        operand_span: Span,
+        label: String,
+        label_span: Span,
+        span: Span,
+    },
     Parenthesized {
         expr: Box<LogicalExprNode>,
         span: Span,
@@ -90,6 +105,10 @@ pub enum LogicalExprNode {
         expr: Box<LogicalExprNode>,
         span: Span,
     },
+    Triggered {
+        expr: Box<LogicalExprNode>,
+        span: Span,
+    },
 }
 
 impl LogicalExprNode {
@@ -97,6 +116,9 @@ impl LogicalExprNode {
         match self {
             Self::OperandRef { span, .. }
             | Self::IntegralLiteral { span, .. }
+            | Self::RealLiteral { span, .. }
+            | Self::StringLiteral { span, .. }
+            | Self::EnumLabel { span, .. }
             | Self::Parenthesized { span, .. }
             | Self::Cast { span, .. }
             | Self::Selection { span, .. }
@@ -105,7 +127,8 @@ impl LogicalExprNode {
             | Self::Conditional { span, .. }
             | Self::Inside { span, .. }
             | Self::Concatenation { span, .. }
-            | Self::Replication { span, .. } => *span,
+            | Self::Replication { span, .. }
+            | Self::Triggered { span, .. } => *span,
         }
     }
 }
@@ -120,6 +143,12 @@ pub enum CastTargetAst {
         is_signed: bool,
     },
     IntegerLike(IntegerLikeKind),
+    Real,
+    String,
+    RecoveredType {
+        name: String,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -201,6 +230,18 @@ pub struct IntegralLiteral {
     pub signed: bool,
     pub base: IntegralBase,
     pub digits: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RealLiteral {
+    pub text: String,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StringLiteral {
+    pub value: String,
     pub span: Span,
 }
 

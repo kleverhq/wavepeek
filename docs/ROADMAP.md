@@ -52,10 +52,9 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
   command wiring, not with the standalone `C2`-`C4` engine milestones.
 - Standalone typed expression engine foundation (`C2`-`C4`) with strict parser,
   typed binder, deterministic diagnostics, and standalone event/logical eval APIs.
-- `C3` standalone surface includes integral-family casts, selection,
-  concatenation/replication, arithmetic/shift/bitwise/reduction/comparison and
-  equality families, conditional `?:`, and `inside`, with event `iff` reuse in
-  standalone evaluation.
+- `C4` standalone surface closes the remaining rich-type scope: `real`,
+  `string`, enum-label references, operand-type casts, raw-event `.triggered`,
+  and full logical `iff` support in standalone evaluation.
 - Deferred runtime command integration remains explicit until `C5`.
 
 ### Query Engine Enhancements (→ v0.5.0)

@@ -5,6 +5,9 @@
 //! - Scope and signal names are preserved exactly as provided by the parser.
 //! - No additional escaping or normalization pass is applied.
 
+#[allow(dead_code)]
+pub(crate) mod expr_host;
+
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
@@ -16,6 +19,9 @@ use std::path::PathBuf;
 use wellen::{ScopeRef, ScopeType, SignalRef, Timescale, TimescaleUnit, VarType, simple};
 
 use crate::error::WavepeekError;
+use crate::expr::{
+    EnumLabelInfo, ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind, SampledValue,
+};
 
 const STREAM_THRESHOLD_WORK: usize = 20_000;
 
@@ -68,6 +74,14 @@ pub struct ResolvedSignal {
     pub path: String,
     pub signal_ref: SignalRef,
     pub width: u32,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
+pub(crate) struct ExprResolvedSignal {
+    pub path: String,
+    pub signal_ref: SignalRef,
+    pub expr_type: ExprType,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,6 +254,22 @@ impl Waveform {
             .collect()
     }
 
+    #[allow(dead_code)]
+    pub(crate) fn resolve_expr_signal(
+        &self,
+        canonical_path: &str,
+    ) -> Result<ExprResolvedSignal, WavepeekError> {
+        let hierarchy = self.inner.hierarchy();
+        let var_ref = resolve_var_ref(hierarchy, canonical_path)?;
+        let var = &hierarchy[var_ref];
+        let expr_type = expr_type_from_var(hierarchy, var, canonical_path)?;
+        Ok(ExprResolvedSignal {
+            path: canonical_path.to_string(),
+            signal_ref: var.signal_ref(),
+            expr_type,
+        })
+    }
+
     pub fn sample_resolved_optional(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -271,6 +301,96 @@ impl Waveform {
         }
 
         Ok(sampled)
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn sample_expr_value(
+        &mut self,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
+    ) -> Result<SampledValue, WavepeekError> {
+        if matches!(&resolved.expr_type.kind, ExprTypeKind::Event) {
+            return Err(WavepeekError::Internal(format!(
+                "signal '{}' is a raw event and cannot be sampled as a value",
+                resolved.path
+            )));
+        }
+
+        let Some(time_table_idx) = floor_time_table_index(self.inner.time_table(), query_time_raw)
+        else {
+            return Ok(empty_sampled_value(&resolved.expr_type));
+        };
+        let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
+            WavepeekError::Internal("time table index exceeds u32 range".to_string())
+        })?;
+
+        self.ensure_signals_loaded(&[resolved.signal_ref]);
+        let loaded = self.inner.get_signal(resolved.signal_ref).ok_or_else(|| {
+            WavepeekError::Internal(format!(
+                "signal '{}' could not be loaded from waveform backend",
+                resolved.path
+            ))
+        })?;
+
+        let Some(offset) = loaded.get_offset(time_table_idx) else {
+            return Ok(empty_sampled_value(&resolved.expr_type));
+        };
+
+        let value = loaded.get_value_at(&offset, offset.elements - 1);
+        match value {
+            wellen::SignalValue::Event => Err(WavepeekError::Internal(format!(
+                "signal '{}' produced event data through value sampling",
+                resolved.path
+            ))),
+            wellen::SignalValue::Binary(_, _)
+            | wellen::SignalValue::FourValue(_, _)
+            | wellen::SignalValue::NineValue(_, _) => {
+                let bits = value.to_bit_string().ok_or_else(|| {
+                    WavepeekError::Internal(format!(
+                        "failed to convert value for signal '{}' to bit string",
+                        resolved.path
+                    ))
+                })?;
+                Ok(SampledValue::Integral {
+                    label: enum_label_for_bits(&resolved.expr_type, bits.as_str()),
+                    bits: Some(bits),
+                })
+            }
+            wellen::SignalValue::String(raw) => Ok(SampledValue::String {
+                value: Some(raw.to_string()),
+            }),
+            wellen::SignalValue::Real(value) => Ok(SampledValue::Real { value: Some(value) }),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn expr_event_occurred(
+        &mut self,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
+    ) -> Result<bool, WavepeekError> {
+        if !matches!(&resolved.expr_type.kind, ExprTypeKind::Event) {
+            return Err(WavepeekError::Internal(format!(
+                "signal '{}' is not a raw event",
+                resolved.path
+            )));
+        }
+
+        let Ok(time_table_idx) = self.inner.time_table().binary_search(&query_time_raw) else {
+            return Ok(false);
+        };
+        let time_table_idx = u32::try_from(time_table_idx).map_err(|_| {
+            WavepeekError::Internal("time table index exceeds u32 range".to_string())
+        })?;
+
+        self.ensure_signals_loaded(&[resolved.signal_ref]);
+        let loaded = self.inner.get_signal(resolved.signal_ref).ok_or_else(|| {
+            WavepeekError::Internal(format!(
+                "signal '{}' could not be loaded from waveform backend",
+                resolved.path
+            ))
+        })?;
+        Ok(loaded.time_indices().binary_search(&time_table_idx).is_ok())
     }
 
     pub fn signal_offset_at_index(
@@ -584,6 +704,21 @@ fn resolve_signal_ref_with_width(
     hierarchy: &wellen::Hierarchy,
     canonical_path: &str,
 ) -> Result<(SignalRef, u32), WavepeekError> {
+    let var_ref = resolve_var_ref(hierarchy, canonical_path)?;
+    let var = &hierarchy[var_ref];
+    let width = var.length().ok_or_else(|| {
+        WavepeekError::Signal(format!(
+            "signal '{canonical_path}' has unsupported non-bit-vector encoding"
+        ))
+    })?;
+
+    Ok((var.signal_ref(), width))
+}
+
+fn resolve_var_ref(
+    hierarchy: &wellen::Hierarchy,
+    canonical_path: &str,
+) -> Result<wellen::VarRef, WavepeekError> {
     if canonical_path.is_empty() {
         return Err(WavepeekError::Signal(format!(
             "signal '{canonical_path}' not found in dump"
@@ -602,20 +737,169 @@ fn resolve_signal_ref_with_width(
         None => (Vec::new(), canonical_path),
     };
 
-    let var_ref = hierarchy
+    hierarchy
         .lookup_var(&scope_names, signal_name)
         .ok_or_else(|| {
             WavepeekError::Signal(format!("signal '{canonical_path}' not found in dump"))
-        })?;
+        })
+}
 
-    let var = &hierarchy[var_ref];
-    let width = var.length().ok_or_else(|| {
-        WavepeekError::Signal(format!(
-            "signal '{canonical_path}' has unsupported non-bit-vector encoding"
-        ))
-    })?;
+#[allow(dead_code)]
+fn expr_type_from_var(
+    hierarchy: &wellen::Hierarchy,
+    var: &wellen::Var,
+    canonical_path: &str,
+) -> Result<ExprType, WavepeekError> {
+    let (kind, width, is_four_state, is_signed, storage) = match var.var_type() {
+        VarType::Byte => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Byte),
+            8,
+            false,
+            true,
+            ExprStorage::Scalar,
+        ),
+        VarType::ShortInt => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Shortint),
+            16,
+            false,
+            true,
+            ExprStorage::Scalar,
+        ),
+        VarType::Int => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Int),
+            32,
+            false,
+            true,
+            ExprStorage::Scalar,
+        ),
+        VarType::LongInt => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Longint),
+            64,
+            false,
+            true,
+            ExprStorage::Scalar,
+        ),
+        VarType::Integer => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Integer),
+            32,
+            true,
+            true,
+            ExprStorage::Scalar,
+        ),
+        VarType::Time => (
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Time),
+            64,
+            true,
+            false,
+            ExprStorage::Scalar,
+        ),
+        VarType::Real | VarType::RealTime | VarType::RealParameter | VarType::ShortReal => {
+            (ExprTypeKind::Real, 64, false, false, ExprStorage::Scalar)
+        }
+        VarType::String => (ExprTypeKind::String, 0, false, false, ExprStorage::Scalar),
+        VarType::Event => (ExprTypeKind::Event, 0, false, false, ExprStorage::Scalar),
+        VarType::Enum => (
+            ExprTypeKind::EnumCore,
+            var.length().ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{canonical_path}' is missing enum width metadata"
+                ))
+            })?,
+            true,
+            false,
+            ExprStorage::Scalar,
+        ),
+        other => {
+            let width = var.length().ok_or_else(|| {
+                WavepeekError::Signal(format!(
+                    "signal '{canonical_path}' has unsupported non-bit-vector encoding"
+                ))
+            })?;
+            (
+                ExprTypeKind::BitVector,
+                width,
+                var_type_is_four_state(other),
+                var_type_is_signed(other),
+                if width > 1 {
+                    ExprStorage::PackedVector
+                } else {
+                    ExprStorage::Scalar
+                },
+            )
+        }
+    };
 
-    Ok((var.signal_ref(), width))
+    let (enum_type_id, enum_labels) = match &kind {
+        ExprTypeKind::EnumCore => match var.enum_type(hierarchy) {
+            Some((name, labels)) => (
+                Some(name.to_string()),
+                Some(
+                    labels
+                        .into_iter()
+                        .map(|(bits, label)| EnumLabelInfo {
+                            name: label.to_string(),
+                            bits: bits.to_string(),
+                        })
+                        .collect(),
+                ),
+            ),
+            None => (None, None),
+        },
+        _ => (None, None),
+    };
+
+    Ok(ExprType {
+        kind,
+        storage,
+        width,
+        is_four_state,
+        is_signed,
+        enum_type_id,
+        enum_labels,
+    })
+}
+
+#[allow(dead_code)]
+fn var_type_is_four_state(var_type: VarType) -> bool {
+    !matches!(
+        var_type,
+        VarType::Bit
+            | VarType::Byte
+            | VarType::ShortInt
+            | VarType::Int
+            | VarType::LongInt
+            | VarType::Boolean
+            | VarType::BitVector
+    )
+}
+
+#[allow(dead_code)]
+fn var_type_is_signed(var_type: VarType) -> bool {
+    matches!(
+        var_type,
+        VarType::Byte | VarType::ShortInt | VarType::Int | VarType::LongInt | VarType::Integer
+    )
+}
+
+#[allow(dead_code)]
+fn empty_sampled_value(ty: &ExprType) -> SampledValue {
+    match &ty.kind {
+        ExprTypeKind::Real => SampledValue::Real { value: None },
+        ExprTypeKind::String => SampledValue::String { value: None },
+        _ => SampledValue::Integral {
+            bits: None,
+            label: None,
+        },
+    }
+}
+
+#[allow(dead_code)]
+fn enum_label_for_bits(ty: &ExprType, bits: &str) -> Option<String> {
+    ty.enum_labels
+        .as_ref()?
+        .iter()
+        .find(|entry| entry.bits == bits)
+        .map(|entry| entry.name.clone())
 }
 
 fn collect_scope_entries(

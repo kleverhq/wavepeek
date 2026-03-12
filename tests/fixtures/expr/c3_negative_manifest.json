@@ -1,51 +1,6 @@
 {
   "cases": [
     {
-      "name": "deferred_real_cast",
-      "entrypoint": "logical",
-      "source": "real'(a)",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 0, "end": 4 },
-      "snapshot": "c3_parse_deferred_real_cast"
-    },
-    {
-      "name": "deferred_string_literal",
-      "entrypoint": "logical",
-      "source": "\"ok\"",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 0, "end": 1 },
-      "snapshot": null
-    },
-    {
-      "name": "deferred_type_operand_cast",
-      "entrypoint": "logical",
-      "source": "type(a)'(1)",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 0, "end": 7 },
-      "snapshot": null
-    },
-    {
-      "name": "deferred_enum_label_reference",
-      "entrypoint": "logical",
-      "source": "type(state)::BUSY",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 0, "end": 4 },
-      "snapshot": null
-    },
-    {
-      "name": "deferred_triggered_primary",
-      "entrypoint": "logical",
-      "source": "ev.triggered",
-      "layer": "parse",
-      "code": "C3-PARSE-LOGICAL-DEFERRED",
-      "span": { "start": 0, "end": 12 },
-      "snapshot": null
-    },
-    {
       "name": "invalid_const_part_select_bound",
       "entrypoint": "logical",
       "source": "a[idx:0]",

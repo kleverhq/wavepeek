@@ -124,7 +124,7 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 
 For expression-engine microbenchmarks, use `Criterion` via `cargo bench` with
 the dedicated targets in `bench/expr/expr_c1.rs`, `bench/expr/expr_c2.rs`,
-and `bench/expr/expr_c3.rs`.
+`bench/expr/expr_c3.rs`, and `bench/expr/expr_c4.rs`.
 
 Scenario sets are declared in committed manifests under
 `bench/expr/scenarios/` and must match the bench target being exported.

@@ -1,0 +1,71 @@
+{
+  "baseline_name": "c4-rich-types-baseline",
+  "bench_target": "expr_c4",
+  "cargo_version": "cargo 1.93.0 (083ac5135 2025-12-15)",
+  "criterion_version": "0.8.2",
+  "environment_note": "wavepeek devcontainer/CI image",
+  "run_name": "c4-rich-types-baseline",
+  "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
+  "scenario_set_id": "c4_rich_types",
+  "scenario_set_path": "bench/expr/scenarios/c4_rich_types.json",
+  "scenarios": [
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 966.5816783210133,
+      "median_ns_per_iter": 963.5317974182935,
+      "raw_csv": "bind_logical_rich_types.raw.csv",
+      "sample_count": 100,
+      "scenario": "bind_logical_rich_types"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 22329.41607468169,
+      "median_ns_per_iter": 22285.823111411006,
+      "raw_csv": "bind_waveform_host_metadata_path.raw.csv",
+      "sample_count": 100,
+      "scenario": "bind_waveform_host_metadata_path"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 959.473805001672,
+      "median_ns_per_iter": 958.5082780694484,
+      "raw_csv": "eval_event_iff_triggered_rich.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_event_iff_triggered_rich"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 317.4900284056109,
+      "median_ns_per_iter": 317.29597318939443,
+      "raw_csv": "eval_logical_enum_label_preservation.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_enum_label_preservation"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 428.9985440637172,
+      "median_ns_per_iter": 428.43302467070237,
+      "raw_csv": "eval_logical_real_mixed_numeric.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_real_mixed_numeric"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 258.6113343840952,
+      "median_ns_per_iter": 258.6709324640872,
+      "raw_csv": "eval_logical_string_equality.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_logical_string_equality"
+    },
+    {
+      "baseline_name": "c4-rich-types-baseline",
+      "mean_ns_per_iter": 213.96461487021716,
+      "median_ns_per_iter": 214.44136763671176,
+      "raw_csv": "eval_waveform_host_metadata_path.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_waveform_host_metadata_path"
+    }
+  ],
+  "source_commit": "71dd01581296a225f5f8b1376c2c6826d6d5c255",
+  "worktree_state": "clean"
+}

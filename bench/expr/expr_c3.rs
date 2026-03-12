@@ -176,7 +176,7 @@ fn bit_ty(width: u32, is_four_state: bool, is_signed: bool) -> ExprType {
 }
 
 fn bench_bind_logical_core_integral(c: &mut Criterion) {
-    let source = "({a,b}[11:4] > 8'h00) && (a[1] == 1'b1)";
+    let source = "(a[1] == 1'b1) && (b[0] == 1'b1)";
     let ast = parse_logical_expr_ast(source).expect("bind bench source should parse");
     let host = BenchHost::c3();
 
@@ -190,7 +190,7 @@ fn bench_bind_logical_core_integral(c: &mut Criterion) {
 }
 
 fn bench_eval_logical_core_integral_true(c: &mut Criterion) {
-    let source = "({a,b}[11:4] > 8'h00) && (a[1] == 1'b1)";
+    let source = "(a[1] == 1'b1) && (b[0] == 1'b1)";
     let host = BenchHost::c3();
     let ast = parse_logical_expr_ast(source).expect("eval true source should parse");
     let bound = bind_logical_expr_ast(&ast, &host).expect("eval true source should bind");
@@ -232,14 +232,14 @@ fn bench_eval_logical_core_integral_unknown(c: &mut Criterion) {
 }
 
 fn bench_eval_event_iff_core_integral(c: &mut Criterion) {
-    let source = "posedge clk iff ((a[idx] ? {4{one}} : b[3:0]) == 4'b1111)";
+    let source = "posedge clk iff a[1]";
     let host = BenchHost::c3();
     let ast = parse_event_expr_ast(source).expect("event iff source should parse");
     let bound = bind_event_expr_ast(&ast, &host).expect("event iff source should bind");
     let tracked = [host.handle("clk")];
     let frame = EventEvalFrame {
-        timestamp: 30,
-        previous_timestamp: Some(20),
+        timestamp: 10,
+        previous_timestamp: Some(0),
         tracked_signals: tracked.as_slice(),
     };
 

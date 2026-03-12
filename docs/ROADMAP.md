@@ -45,6 +45,9 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
   standalone expression-engine milestones, while shared typed-engine
   convergence for existing `change` behavior and end-to-end `property` runtime
   remain gated on `C5`.
+- `C3` scope includes the standalone core integral boolean contract (logical
+  parse/bind/eval APIs and event `iff` reuse in the standalone engine), while
+  command runtime routing remains deferred.
 - Public `property` command runtime integration (§3.2.6) lands with `C5`
   command wiring, not with the standalone `C2`-`C4` engine milestones.
 - Expression engine: lexer, parser (Pratt/recursive descent), and evaluator (§5.5)
@@ -55,7 +58,9 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Query Engine Enhancements (→ v0.5.0)
 
-- Post-MVP expression extensions: bit selects/slices, bitwise ops, arithmetic, shifts
+- Post-standalone command integration: route `change` and `property` runtime
+  execution through the typed expression engine (`C5`) and close legacy runtime
+  split debt.
 
 ### MCP Server (→ v0.6.0)
 

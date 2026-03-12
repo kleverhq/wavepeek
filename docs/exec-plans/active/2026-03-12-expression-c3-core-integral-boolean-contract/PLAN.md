@@ -23,9 +23,9 @@ This plan does not implement `real` semantics, `string` semantics, dump-derived 
 - [x] (2026-03-12 06:19Z) Reviewed `docs/expression_roadmap.md`, `docs/expression_lang.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, current `src/expr/` modules, `tests/expression_c2.rs`, existing benchmark artifacts, and prior expression ExecPlans.
 - [x] (2026-03-12 06:19Z) Drafted the active `C3` ExecPlan with explicit spec scope, file targets, manifest and snapshot strategy, benchmark artifacts, validation gates, and phase-correct command boundaries.
 - [x] (2026-03-12 06:34Z) Completed focused plan-review lanes, revised the plan for dynamic bit-select scope, enum-type identity, benchmark provenance checks, roadmap collateral, and `EventEvalFrame` self-containment, then closed with a fresh clean control pass.
-- [ ] Implement Milestone 1 by adding locked `C3` positive and negative manifests, direct standalone logical tests, `iff` integration cases, and red-phase proof.
-- [ ] Implement Milestone 2 by extending the lexer, parser, AST, and public standalone logical API to cover the `C3` integral grammar surface.
-- [ ] Implement Milestone 3 by adding integral type binding, common-type rules, casts, constant-expression validation, evaluator semantics, and `iff` reuse for the standalone event engine.
+- [x] (2026-03-12 08:35Z) Implemented Milestone 1 with locked `C3` manifests, dedicated `tests/expression_c3.rs`, focused unknown-flow regressions, and committed deterministic snapshots for deferred `C4`/const-expression diagnostics.
+- [x] (2026-03-12 08:35Z) Implemented Milestone 2 by replacing the bounded logical parser path with full `C3` logical AST/lexer/parser and public `parse_logical_expr_ast(...)` plus offset-aware `iff` parsing reuse.
+- [x] (2026-03-12 08:35Z) Implemented Milestone 3 by extending public type metadata, adding standalone logical bind/eval APIs, and wiring event `iff` evaluation through the shared logical binder/evaluator.
 - [ ] Implement Milestone 4 by adding `C3` benchmark scenarios and collateral updates while preserving deferred `change` and `property` command behavior.
 - [ ] Run validation, capture candidate/baseline/verify benchmark artifacts, complete mandatory multi-lane review, apply any review-fix commits, and rerun final gates.
 
@@ -45,6 +45,12 @@ This plan does not implement `real` semantics, `string` semantics, dump-derived 
 
 - Observation: the repository already has the right artifact patterns for this phase, so `C3` should extend them rather than inventing new workflows.
   Evidence: `tests/fixtures/expr/c2_positive_manifest.json`, `tests/fixtures/expr/c2_negative_manifest.json`, `tests/snapshots/`, `bench/expr/expr_c2.rs`, and `bench/expr/scenarios/c2_event_runtime.json` already define the manifest, snapshot, and `Criterion` conventions.
+
+- Observation: logical based literals needed an explicit four-state type-domain default even when digits contain only `0/1` to preserve unknown conditional merge behavior.
+  Evidence: `tests/expression_c3.rs` case `c3_unknown_flow_regressions_hold` expected `10xx` for `x_cond ? 4'b1010 : 4'b1001`; binder literal typing originally collapsed to two-state `1000` until based literals were typed four-state.
+
+- Observation: the shared `tests/common` module is compiled per integration test crate under clippy `-D warnings`, so new reusable fixtures require explicit dead-code allowances.
+  Evidence: pre-commit `cargo clippy --all-targets --all-features -- -D warnings` failed with dead-code diagnostics in `tests/common/expr_runtime.rs` until file-level/item-level `#[allow(dead_code)]` was added.
 
 ## Decision Log
 
@@ -78,7 +84,7 @@ This plan does not implement `real` semantics, `string` semantics, dump-derived 
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: Milestones 1-3 implemented and committed; Milestones 4-5 (benchmark collateral, captured run artifacts, mandatory multi-lane review, and final closure) are in progress.
 
 This plan now defines the intended `C3` contract, test manifests, public standalone API shape, benchmark artifacts, and review gates tightly enough for a stateless contributor to execute the phase without relying on prior context. The largest remaining delivery risk is the interaction between selection semantics, constant-expression validation, common-type rules, and unknown-value propagation; the plan therefore sequences type-model work before operator expansion.
 

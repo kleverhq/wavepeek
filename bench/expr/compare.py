@@ -135,6 +135,12 @@ def build_parser() -> argparse.ArgumentParser:
         type=float,
         help="fail when mean or median delta goes below negative threshold",
     )
+    parser.add_argument(
+        "--require-matching-metadata",
+        nargs="+",
+        default=[],
+        help="extra summary.json metadata keys that must match between runs",
+    )
     return parser
 
 
@@ -154,6 +160,28 @@ def main(argv: list[str] | None = None) -> int:
     revised_meta, revised = load_summary(revised_dir)
     golden_meta, golden = load_summary(golden_dir)
     validate_identity(revised_dir, revised_meta, golden_dir, golden_meta)
+
+    summary_path_revised = revised_dir / "summary.json"
+    summary_path_golden = golden_dir / "summary.json"
+    try:
+        revised_payload = json.loads(summary_path_revised.read_text(encoding="utf-8"))
+        golden_payload = json.loads(summary_path_golden.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        fail(f"invalid JSON while loading metadata keys: {error}")
+    except OSError as error:
+        fail(f"failed to read summary payload for metadata checks: {error}")
+
+    for key in args.require_matching_metadata:
+        if key not in revised_payload or key not in golden_payload:
+            fail(
+                "required metadata key missing from summary: "
+                f"{key} (revised={revised_dir}, golden={golden_dir})"
+            )
+        if revised_payload[key] != golden_payload[key]:
+            fail(
+                "required metadata mismatch: "
+                f"{key} (revised={revised_payload[key]!r}, golden={golden_payload[key]!r})"
+            )
 
     revised_set = set(revised)
     golden_set = set(golden)

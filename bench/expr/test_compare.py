@@ -4,6 +4,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from typing import Mapping
 from unittest import mock
 
 
@@ -25,6 +26,7 @@ class CompareHelpersTest(unittest.TestCase):
         *,
         bench_target: str = "expr_c1",
         scenario_set_id: str = "c1_parser",
+        extra_metadata: Mapping[str, object] | None = None,
     ) -> None:
         run_dir.mkdir(parents=True, exist_ok=True)
         payload = {
@@ -40,6 +42,8 @@ class CompareHelpersTest(unittest.TestCase):
                 for name, (mean, median) in sorted(scenarios.items())
             ]
         }
+        if extra_metadata:
+            payload.update(extra_metadata)
         (run_dir / "summary.json").write_text(
             json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
@@ -275,6 +279,76 @@ class CompareHelpersTest(unittest.TestCase):
                 )
 
         self.assertIn("finite non-negative", str(error.exception))
+
+    def test_main_supports_required_matching_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            scenarios = {
+                "tokenize_union_iff": (100.0, 100.0),
+                "parse_event_union_iff": (200.0, 200.0),
+                "parse_event_malformed": (300.0, 300.0),
+            }
+            extra = {
+                "source_commit": "abc123",
+                "worktree_state": "clean",
+            }
+            self._write_summary(revised, scenarios, extra_metadata=extra)
+            self._write_summary(golden, scenarios, extra_metadata=extra)
+
+            exit_code = compare.main(
+                [
+                    "--revised",
+                    str(revised),
+                    "--golden",
+                    str(golden),
+                    "--max-negative-delta-pct",
+                    "5",
+                    "--require-matching-metadata",
+                    "source_commit",
+                    "worktree_state",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+
+    def test_main_fails_when_required_metadata_mismatches(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            scenarios = {
+                "tokenize_union_iff": (100.0, 100.0),
+                "parse_event_union_iff": (200.0, 200.0),
+                "parse_event_malformed": (300.0, 300.0),
+            }
+            self._write_summary(
+                revised,
+                scenarios,
+                extra_metadata={"source_commit": "abc123"},
+            )
+            self._write_summary(
+                golden,
+                scenarios,
+                extra_metadata={"source_commit": "def456"},
+            )
+
+            with self.assertRaises(SystemExit) as error:
+                compare.main(
+                    [
+                        "--revised",
+                        str(revised),
+                        "--golden",
+                        str(golden),
+                        "--max-negative-delta-pct",
+                        "5",
+                        "--require-matching-metadata",
+                        "source_commit",
+                    ]
+                )
+
+        self.assertIn("required metadata mismatch", str(error.exception))
 
 
 if __name__ == "__main__":

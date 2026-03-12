@@ -571,10 +571,10 @@ src/
 │   ├── ast.rs           # Spanned expression AST types
 │   ├── diagnostic.rs    # Parse/semantic/runtime diagnostic contract
 │   ├── lexer.rs         # Spanned tokenizer for event-expression parsing
-│   ├── parser.rs        # Strict typed parser (`parse_event_expr_ast`)
+│   ├── parser.rs        # Strict typed parser (`parse_event_expr_ast`, `parse_logical_expr_ast`)
 │   ├── host.rs          # Host trait + signal/type/value bridge types
-│   ├── sema.rs          # Typed event/logical binder (`bind_event_expr_ast`)
-│   ├── eval.rs          # Typed event matcher + bounded logical evaluator (`event_matches_at`)
+│   ├── sema.rs          # Typed event/logical binder (`bind_event_expr_ast`, `bind_logical_expr_ast`)
+│   ├── eval.rs          # Typed event matcher + standalone logical evaluator (`event_matches_at`, `eval_logical_expr_at`)
 │   └── legacy.rs        # Compatibility parser path used by current command runtime
 ├── waveform/            # Thin adapter over wellen
 │   └── mod.rs           # File loading, format detection, query helpers
@@ -612,7 +612,7 @@ src/
 | `predicates` | Assertion helpers for `assert_cmd` |
 | `tempfile` | Temporary file creation for tests |
 | `insta` | Snapshot assertions for deterministic diagnostics |
-| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_c1`, `cargo bench --bench expr_c2`) |
+| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_c1`, `cargo bench --bench expr_c2`, `cargo bench --bench expr_c3`) |
 
 ### 5.5 Expression Engine
 
@@ -636,11 +636,13 @@ section describes implementation architecture only.
 
 **Implementation status:**
 
-- Typed standalone event runtime for `C2` is implemented in `src/expr/sema.rs`,
-  `src/expr/eval.rs`, and `src/expr/host.rs` through public
-  `wavepeek::expr::bind_event_expr_ast(...)` and
-  `wavepeek::expr::event_matches_at(...)`, with bounded `iff` logical-subset
-  support and deterministic diagnostics.
+- Typed standalone event and logical runtime for `C3` is implemented in
+  `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/expr/host.rs` through
+  public `wavepeek::expr::parse_logical_expr_ast(...)`,
+  `wavepeek::expr::bind_logical_expr_ast(...)`,
+  `wavepeek::expr::eval_logical_expr_at(...)`, plus event
+  `bind_event_expr_ast(...)` and `event_matches_at(...)` with `iff` payload
+  reuse.
 - Current `change` runtime remains intentionally compatibility-preserving and
   still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
   (via `parse_event_expr(...)` facade) until later integration phases.

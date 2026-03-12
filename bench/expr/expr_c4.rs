@@ -349,7 +349,7 @@ fn bench_bind_waveform_host_metadata_path(c: &mut Criterion) {
 }
 
 fn bench_eval_logical_real_mixed_numeric(c: &mut Criterion) {
-    let source = "1.5 + count + count + temp";
+    let source = "1.5 + count + temp";
     let host = RichBenchHost::c4();
     let ast = parse_logical_expr_ast(source).expect("real bench source should parse");
     let bound = bind_logical_expr_ast(&ast, &host).expect("real bench source should bind");
@@ -370,7 +370,7 @@ fn bench_eval_logical_real_mixed_numeric(c: &mut Criterion) {
 }
 
 fn bench_eval_logical_string_equality(c: &mut Criterion) {
-    let source = "(msg == \"go\") && (msg == \"go\")";
+    let source = "msg == \"go\"";
     let host = RichBenchHost::c4();
     let ast = parse_logical_expr_ast(source).expect("string bench source should parse");
     let bound = bind_logical_expr_ast(&ast, &host).expect("string bench source should bind");
@@ -435,7 +435,7 @@ fn bench_eval_event_iff_triggered_rich(c: &mut Criterion) {
 }
 
 fn bench_eval_waveform_host_metadata_path(c: &mut Criterion) {
-    let source = "(type(top.data)'(3) == 8'h03) && (top.data == 8'h00) && (top.data != 8'hff)";
+    let source = "type(top.data)'(3) == 8'h03";
     let fixture = fixture_path("m2_core.vcd");
     let host = WaveformExprHost::open(fixture.as_path()).expect("waveform fixture should open");
     let ast = parse_logical_expr_ast(source).expect("waveform eval source should parse");

@@ -26,8 +26,8 @@ This plan does not implement `real` semantics, `string` semantics, dump-derived 
 - [x] (2026-03-12 08:35Z) Implemented Milestone 1 with locked `C3` manifests, dedicated `tests/expression_c3.rs`, focused unknown-flow regressions, and committed deterministic snapshots for deferred `C4`/const-expression diagnostics.
 - [x] (2026-03-12 08:35Z) Implemented Milestone 2 by replacing the bounded logical parser path with full `C3` logical AST/lexer/parser and public `parse_logical_expr_ast(...)` plus offset-aware `iff` parsing reuse.
 - [x] (2026-03-12 08:35Z) Implemented Milestone 3 by extending public type metadata, adding standalone logical bind/eval APIs, and wiring event `iff` evaluation through the shared logical binder/evaluator.
-- [ ] Implement Milestone 4 by adding `C3` benchmark scenarios and collateral updates while preserving deferred `change` and `property` command behavior.
-- [ ] Run validation, capture candidate/baseline/verify benchmark artifacts, complete mandatory multi-lane review, apply any review-fix commits, and rerun final gates.
+- [x] (2026-03-12 10:58Z) Implemented Milestone 4 by adding `expr_c3` benchmark target/scenario set, compare metadata gating, and collateral updates in `docs/` and benchmark breadcrumbs while preserving deferred command-runtime boundaries.
+- [x] (2026-03-12 11:28Z) Completed Milestone 5: full validation (`make check`, `make ci`), captured refreshed candidate + final baseline/verify artifacts, passed compare gates, completed multi-lane review plus fresh control pass, and applied/validated review-fix commits.
 
 ## Surprises & Discoveries
 
@@ -84,9 +84,9 @@ This plan does not implement `real` semantics, `string` semantics, dump-derived 
 
 ## Outcomes & Retrospective
 
-Current status: Milestones 1-3 implemented and committed; Milestones 4-5 (benchmark collateral, captured run artifacts, mandatory multi-lane review, and final closure) are in progress.
+Current status: complete. All milestones are implemented, reviewed, validated, benchmarked, and committed.
 
-This plan now defines the intended `C3` contract, test manifests, public standalone API shape, benchmark artifacts, and review gates tightly enough for a stateless contributor to execute the phase without relying on prior context. The largest remaining delivery risk is the interaction between selection semantics, constant-expression validation, common-type rules, and unknown-value propagation; the plan therefore sequences type-model work before operator expansion.
+The `C3` standalone phase is delivered: direct logical parse/bind/eval APIs are public, event `iff` reuses the same logical engine for integral-core forms, deferred `C4` features remain deterministic failures, command-runtime boundaries remain intact, and benchmark artifacts/comparisons are committed with provenance checks. Residual risk is now primarily future-phase integration drift (`C5` command routing and richer `C4` types), not `C3` contract completeness.
 
 ## Context and Orientation
 

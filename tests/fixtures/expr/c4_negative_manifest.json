@@ -37,6 +37,15 @@
       "snapshot": "c4_runtime_real_cast_unknown"
     },
     {
+      "name": "invalid_nonfinite_real_literal",
+      "entrypoint": "logical",
+      "source": "1e309",
+      "layer": "semantic",
+      "code": "C4-SEMANTIC-REAL-LITERAL",
+      "span": { "start": 0, "end": 5 },
+      "snapshot": null
+    },
+    {
       "name": "invalid_event_cast",
       "entrypoint": "logical",
       "source": "bit'(ev)",

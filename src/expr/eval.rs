@@ -335,7 +335,9 @@ fn eval_signal_ref(
         }),
         (ExprTypeKind::Real, CachedSample::Real { value: Some(value) }) => Ok(RuntimeValue {
             ty: node.ty.clone(),
-            payload: RuntimeValuePayload::Real { value },
+            payload: RuntimeValuePayload::Real {
+                value: finite_real(value)?,
+            },
         }),
         (ExprTypeKind::String, CachedSample::String { value: Some(value) }) => Ok(RuntimeValue {
             ty: node.ty.clone(),
@@ -932,7 +934,9 @@ fn eval_arithmetic(
         };
         return Ok(RuntimeValue {
             ty: result_ty.clone(),
-            payload: RuntimeValuePayload::Real { value },
+            payload: RuntimeValuePayload::Real {
+                value: finite_real(value)?,
+            },
         });
     }
 
@@ -1301,7 +1305,9 @@ fn coerce_runtime_to_type(
                 };
                 Ok(RuntimeValue {
                     ty: ty.clone(),
-                    payload: RuntimeValuePayload::Real { value },
+                    payload: RuntimeValuePayload::Real {
+                        value: finite_real(value)?,
+                    },
                 })
             }
             RuntimeValuePayload::String { .. } => Err(runtime_diag(
@@ -1631,6 +1637,17 @@ fn runtime_diag(code: &'static str, message: &str) -> ExprDiagnostic {
         message: message.to_string(),
         primary_span: crate::expr::Span::new(0, 0),
         notes: vec![],
+    }
+}
+
+fn finite_real(value: f64) -> Result<f64, ExprDiagnostic> {
+    if value.is_finite() {
+        Ok(value)
+    } else {
+        Err(runtime_diag(
+            "C4-RUNTIME-REAL-NONFINITE",
+            "real evaluation produced a non-finite value",
+        ))
     }
 }
 

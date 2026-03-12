@@ -289,6 +289,14 @@ fn bind_logical_node(
                     &["real literals must parse as finite 64-bit floating-point values"],
                 )
             })?;
+            if !value.is_finite() {
+                return Err(sema_diag(
+                    "C4-SEMANTIC-REAL-LITERAL",
+                    "real literal is outside the supported finite range",
+                    literal.span,
+                    &["real literals must parse as finite 64-bit floating-point values"],
+                ));
+            }
             Ok(BoundLogicalNode {
                 ty: real_type(),
                 span: *span,

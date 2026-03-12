@@ -4,8 +4,8 @@ use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use wavepeek::expr::{
-    EventEvalFrame, ExprDiagnostic, ExprType, ExpressionHost, SampledValue, SignalHandle,
-    bind_event_expr_ast, event_matches_at, parse_event_expr_ast,
+    EventEvalFrame, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
+    SampledValue, SignalHandle, bind_event_expr_ast, event_matches_at, parse_event_expr_ast,
 };
 
 #[derive(Clone)]
@@ -117,9 +117,16 @@ impl ExpressionHost for BenchHost {
             notes: vec![],
         })?;
         Ok(ExprType {
+            kind: ExprTypeKind::BitVector,
+            storage: if signal.width > 1 {
+                ExprStorage::PackedVector
+            } else {
+                ExprStorage::Scalar
+            },
             width: signal.width,
             is_four_state: signal.is_four_state,
             is_signed: signal.is_signed,
+            enum_type_id: None,
         })
     }
 

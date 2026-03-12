@@ -3,11 +3,37 @@ use crate::expr::diagnostic::ExprDiagnostic;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SignalHandle(pub u32);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IntegerLikeKind {
+    Byte,
+    Shortint,
+    Int,
+    Longint,
+    Integer,
+    Time,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExprTypeKind {
+    BitVector,
+    IntegerLike(IntegerLikeKind),
+    EnumCore,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ExprStorage {
+    PackedVector,
+    Scalar,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExprType {
+    pub kind: ExprTypeKind,
+    pub storage: ExprStorage,
     pub width: u32,
     pub is_four_state: bool,
     pub is_signed: bool,
+    pub enum_type_id: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,127 +1,52 @@
 {
   "cases": [
     {
-      "name": "arithmetic_plus_is_unsupported",
-      "source": "posedge clk iff a + b",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 19 },
-      "snapshot": "c2_parse_unsupported_arithmetic_plus"
-    },
-    {
-      "name": "bitwise_and_is_unsupported",
-      "source": "posedge clk iff a & b",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 19 }
-    },
-    {
-      "name": "reduction_and_is_unsupported",
-      "source": "posedge clk iff &a",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 17 }
-    },
-    {
-      "name": "shift_left_is_unsupported",
-      "source": "posedge clk iff a << 1",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 20 }
-    },
-    {
-      "name": "wildcard_equality_is_unsupported",
-      "source": "posedge clk iff a ==? b",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 21 }
-    },
-    {
-      "name": "case_equality_is_unsupported",
-      "source": "posedge clk iff a === b",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 21 }
-    },
-    {
-      "name": "conditional_operator_is_unsupported",
-      "source": "posedge clk iff a ? b : c",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 19 }
-    },
-    {
-      "name": "inside_operator_is_unsupported",
-      "source": "posedge clk iff a inside {1}",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 18, "end": 24 },
-      "snapshot": "c2_parse_unsupported_inside"
-    },
-    {
-      "name": "real_literal_is_unsupported",
+      "name": "real_literal_is_deferred",
       "source": "posedge clk iff 1.5",
       "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
       "span": { "start": 16, "end": 19 },
-      "snapshot": "c2_parse_unsupported_real_literal"
+      "snapshot": null
     },
     {
-      "name": "string_literal_is_unsupported",
+      "name": "string_literal_is_deferred",
       "source": "posedge clk iff \"ok\"",
       "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 17 }
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 16, "end": 17 },
+      "snapshot": null
     },
     {
-      "name": "enum_label_form_is_unsupported",
+      "name": "enum_label_form_is_deferred",
       "source": "posedge clk iff type(state)::BUSY",
       "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 20 }
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 16, "end": 20 },
+      "snapshot": null
     },
     {
-      "name": "triggered_primary_is_unsupported",
+      "name": "triggered_primary_is_deferred",
       "source": "posedge clk iff ev.triggered",
       "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 28 }
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 16, "end": 28 },
+      "snapshot": null
     },
     {
-      "name": "cast_form_is_unsupported",
-      "source": "posedge clk iff int'(a)",
+      "name": "type_cast_form_is_deferred",
+      "source": "posedge clk iff type(clk)'(a)",
       "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 19 }
-    },
-    {
-      "name": "selection_form_is_unsupported",
-      "source": "posedge clk iff data [0]",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 21, "end": 22 }
-    },
-    {
-      "name": "concatenation_form_is_unsupported",
-      "source": "posedge clk iff {a}",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 17 }
-    },
-    {
-      "name": "replication_form_is_unsupported",
-      "source": "posedge clk iff {2{a}}",
-      "layer": "parse",
-      "code": "C2-PARSE-LOGICAL-UNSUPPORTED",
-      "span": { "start": 16, "end": 17 }
+      "code": "C3-PARSE-LOGICAL-DEFERRED",
+      "span": { "start": 16, "end": 25 },
+      "snapshot": null
     },
     {
       "name": "unknown_signal_inside_iff",
       "source": "posedge clk iff missing_sig",
       "layer": "semantic",
-      "code": "C2-SEMANTIC-UNKNOWN-SIGNAL",
+      "code": "C3-SEMANTIC-UNKNOWN-SIGNAL",
       "span": { "start": 16, "end": 27 },
-      "snapshot": "c2_semantic_unknown_signal"
+      "snapshot": null
     },
     {
       "name": "event_grouping_stays_unsupported",
@@ -129,7 +54,7 @@
       "layer": "parse",
       "code": "C1-PARSE-UNMATCHED-OPEN",
       "span": { "start": 0, "end": 1 },
-      "snapshot": "c2_parse_event_grouping_still_rejected"
+      "snapshot": null
     }
   ]
 }

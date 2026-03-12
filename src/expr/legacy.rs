@@ -1,18 +1,6 @@
 use crate::error::WavepeekError;
 
-use super::{EventExpr, EventKind, EventTerm, Expression};
-
-pub(crate) fn parse(source: &str) -> Result<Expression, WavepeekError> {
-    if source.trim().is_empty() {
-        return Err(WavepeekError::Args(
-            "--eval expression cannot be empty".to_owned(),
-        ));
-    }
-
-    Ok(Expression {
-        source: source.to_owned(),
-    })
-}
+use super::{EventExpr, EventKind, EventTerm};
 
 pub(crate) fn parse_event_expr(source: &str) -> Result<EventExpr, WavepeekError> {
     let source = source.trim();

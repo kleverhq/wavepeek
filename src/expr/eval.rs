@@ -1,18 +1,23 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use crate::error::WavepeekError;
-use crate::expr::ast::LogicalBinaryOp;
+use crate::expr::ast::{BinaryOpAst, CastTargetAst, UnaryOpAst};
 use crate::expr::diagnostic::ExprDiagnostic;
-use crate::expr::host::{EventEvalFrame, ExpressionHost, SignalHandle};
+use crate::expr::host::{EventEvalFrame, ExprType, ExprTypeKind, ExpressionHost, SignalHandle};
 use crate::expr::sema::{
-    BoundBit, BoundEventExpr, BoundEventKind, BoundLogicalExpr, BoundLogicalNode,
+    BoundBit, BoundEventExpr, BoundEventKind, BoundInsideItem, BoundLogicalExpr, BoundLogicalKind,
+    BoundLogicalNode, BoundSelection,
 };
 
-use super::Expression;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExprValue {
+    pub ty: ExprType,
+    pub bits: String,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TruthValue {
+enum TruthValue {
     Zero,
     One,
     Unknown,
@@ -20,45 +25,13 @@ pub enum TruthValue {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RuntimeValue {
+    ty: ExprType,
     bits: Vec<BoundBit>,
-    signed: bool,
 }
 
 #[derive(Default)]
 struct EvalCache {
-    samples: HashMap<CachedSampleKey, Option<Rc<str>>>,
-}
-
-type CachedSampleKey = (SignalHandle, u64);
-
-impl RuntimeValue {
-    fn truth(value: TruthValue) -> Self {
-        let bit = match value {
-            TruthValue::Zero => BoundBit::Zero,
-            TruthValue::One => BoundBit::One,
-            TruthValue::Unknown => BoundBit::X,
-        };
-        Self {
-            bits: vec![bit],
-            signed: false,
-        }
-    }
-
-    fn with_width(mut self, width: usize) -> Self {
-        if width == 0 {
-            self.bits = vec![BoundBit::Zero];
-            return self;
-        }
-
-        if self.bits.len() > width {
-            self.bits = self.bits[self.bits.len() - width..].to_vec();
-        } else if self.bits.len() < width {
-            let mut extended = vec![BoundBit::Zero; width - self.bits.len()];
-            extended.extend(self.bits);
-            self.bits = extended;
-        }
-        self
-    }
+    samples: HashMap<(SignalHandle, u64), Option<Rc<str>>>,
 }
 
 impl EvalCache {
@@ -69,8 +42,8 @@ impl EvalCache {
         timestamp: u64,
     ) -> Result<Option<Rc<str>>, ExprDiagnostic> {
         let key = (handle, timestamp);
-        if let Some(sampled) = self.samples.get(&key) {
-            return Ok(sampled.clone());
+        if let Some(value) = self.samples.get(&key) {
+            return Ok(value.clone());
         }
 
         let sampled = host
@@ -80,6 +53,20 @@ impl EvalCache {
         self.samples.insert(key, sampled.clone());
         Ok(sampled)
     }
+}
+
+pub fn eval_logical_expr_at(
+    expr: &BoundLogicalExpr,
+    host: &dyn ExpressionHost,
+    timestamp: u64,
+) -> Result<ExprValue, ExprDiagnostic> {
+    let mut cache = EvalCache::default();
+    let value = eval_node(&expr.root, host, timestamp, &mut cache)?;
+    let value = coerce_runtime_to_type(value, &expr.root.ty);
+    Ok(ExprValue {
+        ty: value.ty,
+        bits: bits_to_string(value.bits.as_slice()),
+    })
 }
 
 pub fn event_matches_at(
@@ -110,9 +97,8 @@ pub fn event_matches_at(
         }
 
         if let Some(iff) = &term.iff {
-            if eval_logical_expr_with_cache(iff, host, frame.timestamp, &mut cache)?
-                == TruthValue::One
-            {
+            let iff_value = eval_bound_logical_with_cache(iff, host, frame.timestamp, &mut cache)?;
+            if truthiness(iff_value.bits.as_slice()) == TruthValue::One {
                 return Ok(true);
             }
             continue;
@@ -124,214 +110,1003 @@ pub fn event_matches_at(
     Ok(false)
 }
 
-pub(crate) fn eval_logical_expr(
-    expr: &BoundLogicalExpr,
-    host: &dyn ExpressionHost,
-    timestamp: u64,
-) -> Result<TruthValue, ExprDiagnostic> {
-    let mut cache = EvalCache::default();
-    eval_logical_expr_with_cache(expr, host, timestamp, &mut cache)
-}
-
-fn eval_logical_expr_with_cache(
+fn eval_bound_logical_with_cache(
     expr: &BoundLogicalExpr,
     host: &dyn ExpressionHost,
     timestamp: u64,
     cache: &mut EvalCache,
-) -> Result<TruthValue, ExprDiagnostic> {
-    let value = eval_logical_node(&expr.root, host, timestamp, cache)?;
-    Ok(truthiness(&value))
+) -> Result<RuntimeValue, ExprDiagnostic> {
+    let value = eval_node(&expr.root, host, timestamp, cache)?;
+    Ok(coerce_runtime_to_type(value, &expr.root.ty))
 }
 
-fn eval_logical_node(
+fn eval_node(
     node: &BoundLogicalNode,
     host: &dyn ExpressionHost,
     timestamp: u64,
     cache: &mut EvalCache,
 ) -> Result<RuntimeValue, ExprDiagnostic> {
-    match node {
-        BoundLogicalNode::SignalRef { handle, ty, .. } => {
+    let value = match &node.kind {
+        BoundLogicalKind::SignalRef { handle } => {
             let sampled = cache.sample_bits(host, *handle, timestamp)?;
-            let width = ty.width.max(1) as usize;
             let bits = sampled
                 .as_deref()
                 .map(bits_from_sample)
-                .unwrap_or_else(|| vec![BoundBit::X; width]);
-            Ok(RuntimeValue {
+                .unwrap_or_else(|| vec![BoundBit::X; node.ty.width.max(1) as usize]);
+            RuntimeValue {
+                ty: node.ty.clone(),
                 bits,
-                signed: ty.is_signed,
             }
-            .with_width(width))
         }
-        BoundLogicalNode::IntegralLiteral { value, .. } => Ok(RuntimeValue {
+        BoundLogicalKind::IntegralLiteral { value, .. } => RuntimeValue {
+            ty: node.ty.clone(),
             bits: value.bits.clone(),
-            signed: value.signed,
-        }),
-        BoundLogicalNode::UnaryNot { expr, .. } => {
-            let truth = truthiness(&eval_logical_node(expr, host, timestamp, cache)?);
-            Ok(RuntimeValue::truth(match truth {
-                TruthValue::Zero => TruthValue::One,
-                TruthValue::One => TruthValue::Zero,
-                TruthValue::Unknown => TruthValue::Unknown,
-            }))
+        },
+        BoundLogicalKind::Parenthesized { expr } => eval_node(expr, host, timestamp, cache)?,
+        BoundLogicalKind::Cast { target, expr } => {
+            let value = eval_node(expr, host, timestamp, cache)?;
+            eval_cast(target, value, &node.ty)
         }
-        BoundLogicalNode::Binary {
-            op, left, right, ..
-        } => eval_binary_node(*op, left, right, host, timestamp, cache),
+        BoundLogicalKind::Selection { base, selection } => {
+            let base_value = eval_node(base, host, timestamp, cache)?;
+            eval_selection(base_value, selection, host, timestamp, cache, &node.ty)?
+        }
+        BoundLogicalKind::Unary { op, expr } => {
+            let value = eval_node(expr, host, timestamp, cache)?;
+            eval_unary(*op, value, &node.ty)
+        }
+        BoundLogicalKind::Binary { op, left, right } => {
+            eval_binary(*op, left, right, host, timestamp, cache, &node.ty)?
+        }
+        BoundLogicalKind::Conditional {
+            condition,
+            when_true,
+            when_false,
+        } => eval_conditional(
+            condition, when_true, when_false, host, timestamp, cache, &node.ty,
+        )?,
+        BoundLogicalKind::Inside { expr, set } => {
+            eval_inside(expr, set.as_slice(), host, timestamp, cache, &node.ty)?
+        }
+        BoundLogicalKind::Concatenation { items } => {
+            let mut bits = Vec::new();
+            for item in items {
+                let item_value = eval_node(item, host, timestamp, cache)?;
+                let item_value = coerce_runtime_to_type(item_value, &item.ty);
+                bits.extend(item_value.bits);
+            }
+            RuntimeValue {
+                ty: node.ty.clone(),
+                bits,
+            }
+        }
+        BoundLogicalKind::Replication { count, expr } => {
+            let value = eval_node(expr, host, timestamp, cache)?;
+            let value = coerce_runtime_to_type(value, &expr.ty);
+            let mut bits = Vec::with_capacity(value.bits.len() * *count);
+            for _ in 0..*count {
+                bits.extend(value.bits.iter().copied());
+            }
+            RuntimeValue {
+                ty: node.ty.clone(),
+                bits,
+            }
+        }
+    };
+
+    Ok(coerce_runtime_to_type(value, &node.ty))
+}
+
+fn eval_cast(target: &CastTargetAst, value: RuntimeValue, result_ty: &ExprType) -> RuntimeValue {
+    match target {
+        CastTargetAst::Signed | CastTargetAst::Unsigned => {
+            let mut coerced = coerce_runtime_to_type(value, result_ty);
+            coerced.ty.is_signed = result_ty.is_signed;
+            coerced
+        }
+        CastTargetAst::BitVector { .. } | CastTargetAst::IntegerLike(_) => {
+            coerce_runtime_to_type(value, result_ty)
+        }
     }
 }
 
-fn eval_binary_node(
-    op: LogicalBinaryOp,
+fn eval_selection(
+    base: RuntimeValue,
+    selection: &BoundSelection,
+    host: &dyn ExpressionHost,
+    timestamp: u64,
+    cache: &mut EvalCache,
+    result_ty: &ExprType,
+) -> Result<RuntimeValue, ExprDiagnostic> {
+    let base_ty = base.ty.clone();
+    let base = coerce_runtime_to_type(base, &base_ty);
+    let width = base.bits.len();
+    let result = match selection {
+        BoundSelection::Bit { index } => {
+            let index = eval_node(index, host, timestamp, cache)?;
+            let index_ty = index.ty.clone();
+            let index = coerce_runtime_to_type(index, &index_ty);
+            if let Some(bit_index) = runtime_index_to_usize(index.bits.as_slice()) {
+                if bit_index < width {
+                    RuntimeValue {
+                        ty: result_ty.clone(),
+                        bits: vec![base.bits[width - 1 - bit_index]],
+                    }
+                } else {
+                    RuntimeValue {
+                        ty: result_ty.clone(),
+                        bits: vec![if base.ty.is_four_state {
+                            BoundBit::X
+                        } else {
+                            BoundBit::Zero
+                        }],
+                    }
+                }
+            } else {
+                RuntimeValue {
+                    ty: result_ty.clone(),
+                    bits: vec![if base.ty.is_four_state {
+                        BoundBit::X
+                    } else {
+                        BoundBit::Zero
+                    }],
+                }
+            }
+        }
+        BoundSelection::Part { msb, lsb } => {
+            let bits = part_select_bits(base.bits.as_slice(), *msb, *lsb, base.ty.is_four_state);
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits,
+            }
+        }
+        BoundSelection::IndexedUp {
+            base: index_base,
+            width,
+        } => {
+            let index_base = eval_node(index_base, host, timestamp, cache)?;
+            let index_base_ty = index_base.ty.clone();
+            let index_base = coerce_runtime_to_type(index_base, &index_base_ty);
+            let bits = if let Some(start) = runtime_index_to_i64(index_base.bits.as_slice()) {
+                indexed_part_select_bits(
+                    base.bits.as_slice(),
+                    start,
+                    *width,
+                    true,
+                    base.ty.is_four_state,
+                )
+            } else {
+                vec![BoundBit::X; *width]
+            };
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits,
+            }
+        }
+        BoundSelection::IndexedDown {
+            base: index_base,
+            width,
+        } => {
+            let index_base = eval_node(index_base, host, timestamp, cache)?;
+            let index_base_ty = index_base.ty.clone();
+            let index_base = coerce_runtime_to_type(index_base, &index_base_ty);
+            let bits = if let Some(start) = runtime_index_to_i64(index_base.bits.as_slice()) {
+                indexed_part_select_bits(
+                    base.bits.as_slice(),
+                    start,
+                    *width,
+                    false,
+                    base.ty.is_four_state,
+                )
+            } else {
+                vec![BoundBit::X; *width]
+            };
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits,
+            }
+        }
+    };
+    Ok(result)
+}
+
+fn eval_unary(op: UnaryOpAst, value: RuntimeValue, result_ty: &ExprType) -> RuntimeValue {
+    let value_ty = value.ty.clone();
+    let value = coerce_runtime_to_type(value, &value_ty);
+    match op {
+        UnaryOpAst::Plus => coerce_runtime_to_type(value, result_ty),
+        UnaryOpAst::Minus => {
+            let value = coerce_runtime_to_type(value, result_ty);
+            if value
+                .bits
+                .iter()
+                .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+            {
+                return all_x(result_ty);
+            }
+            match bits_to_u128(value.bits.as_slice()) {
+                Some(raw) => {
+                    let width = result_ty.width.min(128);
+                    let modulus = 1_u128.checked_shl(width).unwrap_or(0);
+                    let negated = if modulus == 0 {
+                        (!raw).wrapping_add(1)
+                    } else {
+                        modulus.wrapping_sub(raw) & (modulus - 1)
+                    };
+                    coerce_runtime_to_type(
+                        RuntimeValue {
+                            ty: result_ty.clone(),
+                            bits: unsigned_to_bits(negated, result_ty.width),
+                        },
+                        result_ty,
+                    )
+                }
+                None => all_x(result_ty),
+            }
+        }
+        UnaryOpAst::LogicalNot => RuntimeValue {
+            ty: result_ty.clone(),
+            bits: vec![match truthiness(value.bits.as_slice()) {
+                TruthValue::Zero => BoundBit::One,
+                TruthValue::One => BoundBit::Zero,
+                TruthValue::Unknown => BoundBit::X,
+            }],
+        },
+        UnaryOpAst::BitNot => {
+            let value = coerce_runtime_to_type(value, result_ty);
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits: value
+                    .bits
+                    .iter()
+                    .map(|bit| match bit {
+                        BoundBit::Zero => BoundBit::One,
+                        BoundBit::One => BoundBit::Zero,
+                        BoundBit::X | BoundBit::Z => BoundBit::X,
+                    })
+                    .collect(),
+            }
+        }
+        UnaryOpAst::ReduceAnd
+        | UnaryOpAst::ReduceNand
+        | UnaryOpAst::ReduceOr
+        | UnaryOpAst::ReduceNor
+        | UnaryOpAst::ReduceXor
+        | UnaryOpAst::ReduceXnor => {
+            let value_ty = value.ty.clone();
+            let value = coerce_runtime_to_type(value, &value_ty);
+            let reduced = match op {
+                UnaryOpAst::ReduceAnd => reduce_and(value.bits.as_slice()),
+                UnaryOpAst::ReduceNand => invert_bit(reduce_and(value.bits.as_slice())),
+                UnaryOpAst::ReduceOr => reduce_or(value.bits.as_slice()),
+                UnaryOpAst::ReduceNor => invert_bit(reduce_or(value.bits.as_slice())),
+                UnaryOpAst::ReduceXor => reduce_xor(value.bits.as_slice()),
+                UnaryOpAst::ReduceXnor => invert_bit(reduce_xor(value.bits.as_slice())),
+                _ => BoundBit::X,
+            };
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![reduced],
+            }
+        }
+    }
+}
+
+fn eval_binary(
+    op: BinaryOpAst,
     left: &BoundLogicalNode,
     right: &BoundLogicalNode,
     host: &dyn ExpressionHost,
     timestamp: u64,
     cache: &mut EvalCache,
+    result_ty: &ExprType,
 ) -> Result<RuntimeValue, ExprDiagnostic> {
     match op {
-        LogicalBinaryOp::AndAnd => {
-            let left_truth = truthiness(&eval_logical_node(left, host, timestamp, cache)?);
-            let result = match left_truth {
+        BinaryOpAst::LogicalAnd => {
+            let lhs = eval_node(left, host, timestamp, cache)?;
+            let lhs_truth = truthiness(lhs.bits.as_slice());
+            let truth = match lhs_truth {
                 TruthValue::Zero => TruthValue::Zero,
-                TruthValue::One => truthiness(&eval_logical_node(right, host, timestamp, cache)?),
+                TruthValue::One => {
+                    let rhs = eval_node(right, host, timestamp, cache)?;
+                    truthiness(rhs.bits.as_slice())
+                }
                 TruthValue::Unknown => {
-                    let right_truth =
-                        truthiness(&eval_logical_node(right, host, timestamp, cache)?);
-                    if right_truth == TruthValue::Zero {
+                    let rhs = eval_node(right, host, timestamp, cache)?;
+                    let rhs_truth = truthiness(rhs.bits.as_slice());
+                    if rhs_truth == TruthValue::Zero {
                         TruthValue::Zero
                     } else {
                         TruthValue::Unknown
                     }
                 }
             };
-            Ok(RuntimeValue::truth(result))
+            return Ok(RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![truth_to_bit(truth)],
+            });
         }
-        LogicalBinaryOp::OrOr => {
-            let left_truth = truthiness(&eval_logical_node(left, host, timestamp, cache)?);
-            let result = match left_truth {
+        BinaryOpAst::LogicalOr => {
+            let lhs = eval_node(left, host, timestamp, cache)?;
+            let lhs_truth = truthiness(lhs.bits.as_slice());
+            let truth = match lhs_truth {
                 TruthValue::One => TruthValue::One,
-                TruthValue::Zero => truthiness(&eval_logical_node(right, host, timestamp, cache)?),
+                TruthValue::Zero => {
+                    let rhs = eval_node(right, host, timestamp, cache)?;
+                    truthiness(rhs.bits.as_slice())
+                }
                 TruthValue::Unknown => {
-                    let right_truth =
-                        truthiness(&eval_logical_node(right, host, timestamp, cache)?);
-                    if right_truth == TruthValue::One {
+                    let rhs = eval_node(right, host, timestamp, cache)?;
+                    let rhs_truth = truthiness(rhs.bits.as_slice());
+                    if rhs_truth == TruthValue::One {
                         TruthValue::One
                     } else {
                         TruthValue::Unknown
                     }
                 }
             };
-            Ok(RuntimeValue::truth(result))
+            return Ok(RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![truth_to_bit(truth)],
+            });
         }
-        LogicalBinaryOp::Lt
-        | LogicalBinaryOp::Le
-        | LogicalBinaryOp::Gt
-        | LogicalBinaryOp::Ge
-        | LogicalBinaryOp::Eq
-        | LogicalBinaryOp::Ne => {
-            let left = eval_logical_node(left, host, timestamp, cache)?;
-            let right = eval_logical_node(right, host, timestamp, cache)?;
-            let truth = compare_runtime_values(op, left, right);
-            Ok(RuntimeValue::truth(truth))
+        _ => {}
+    }
+
+    let lhs = eval_node(left, host, timestamp, cache)?;
+    let rhs = eval_node(right, host, timestamp, cache)?;
+
+    let out = match op {
+        BinaryOpAst::Lt
+        | BinaryOpAst::Le
+        | BinaryOpAst::Gt
+        | BinaryOpAst::Ge
+        | BinaryOpAst::Eq
+        | BinaryOpAst::Ne => {
+            let truth = compare_unknown_sensitive(op, lhs, rhs);
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![truth_to_bit(truth)],
+            }
+        }
+        BinaryOpAst::CaseEq | BinaryOpAst::CaseNe => {
+            let truth = compare_case(op, lhs, rhs);
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![truth_to_bit(truth)],
+            }
+        }
+        BinaryOpAst::WildEq | BinaryOpAst::WildNe => {
+            let truth = compare_wild(op, lhs, rhs);
+            RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![truth_to_bit(truth)],
+            }
+        }
+        BinaryOpAst::BitAnd | BinaryOpAst::BitOr | BinaryOpAst::BitXor | BinaryOpAst::BitXnor => {
+            eval_bitwise(op, lhs, rhs, result_ty)
+        }
+        BinaryOpAst::ShiftLeft
+        | BinaryOpAst::ShiftRight
+        | BinaryOpAst::ShiftArithLeft
+        | BinaryOpAst::ShiftArithRight => eval_shift(op, lhs, rhs, result_ty),
+        BinaryOpAst::Add
+        | BinaryOpAst::Subtract
+        | BinaryOpAst::Multiply
+        | BinaryOpAst::Divide
+        | BinaryOpAst::Modulo
+        | BinaryOpAst::Power => eval_arithmetic(op, lhs, rhs, result_ty),
+        BinaryOpAst::LogicalAnd | BinaryOpAst::LogicalOr => unreachable!(),
+    };
+
+    Ok(out)
+}
+
+fn eval_conditional(
+    condition: &BoundLogicalNode,
+    when_true: &BoundLogicalNode,
+    when_false: &BoundLogicalNode,
+    host: &dyn ExpressionHost,
+    timestamp: u64,
+    cache: &mut EvalCache,
+    result_ty: &ExprType,
+) -> Result<RuntimeValue, ExprDiagnostic> {
+    let cond = eval_node(condition, host, timestamp, cache)?;
+    let cond_truth = truthiness(cond.bits.as_slice());
+
+    match cond_truth {
+        TruthValue::One => {
+            let value = eval_node(when_true, host, timestamp, cache)?;
+            Ok(coerce_runtime_to_type(value, result_ty))
+        }
+        TruthValue::Zero => {
+            let value = eval_node(when_false, host, timestamp, cache)?;
+            Ok(coerce_runtime_to_type(value, result_ty))
+        }
+        TruthValue::Unknown => {
+            let lhs = eval_node(when_true, host, timestamp, cache)?;
+            let rhs = eval_node(when_false, host, timestamp, cache)?;
+            let lhs = coerce_runtime_to_type(lhs, result_ty);
+            let rhs = coerce_runtime_to_type(rhs, result_ty);
+            let bits = lhs
+                .bits
+                .iter()
+                .zip(rhs.bits.iter())
+                .map(|(lhs, rhs)| if lhs == rhs { *lhs } else { BoundBit::X })
+                .collect::<Vec<_>>();
+            Ok(coerce_runtime_to_type(
+                RuntimeValue {
+                    ty: result_ty.clone(),
+                    bits,
+                },
+                result_ty,
+            ))
         }
     }
 }
 
-fn compare_runtime_values(
-    op: LogicalBinaryOp,
+fn eval_inside(
+    expr: &BoundLogicalNode,
+    set: &[BoundInsideItem],
+    host: &dyn ExpressionHost,
+    timestamp: u64,
+    cache: &mut EvalCache,
+    result_ty: &ExprType,
+) -> Result<RuntimeValue, ExprDiagnostic> {
+    let lhs = eval_node(expr, host, timestamp, cache)?;
+
+    let mut saw_unknown = false;
+    for item in set {
+        let item_truth = match item {
+            BoundInsideItem::Expr(value) => {
+                let rhs = eval_node(value, host, timestamp, cache)?;
+                compare_wild(BinaryOpAst::WildEq, lhs.clone(), rhs)
+            }
+            BoundInsideItem::Range { low, high } => {
+                let low = eval_node(low, host, timestamp, cache)?;
+                let high = eval_node(high, host, timestamp, cache)?;
+                let ge_low = compare_unknown_sensitive(BinaryOpAst::Ge, lhs.clone(), low);
+                let le_high = compare_unknown_sensitive(BinaryOpAst::Le, lhs.clone(), high);
+                match (ge_low, le_high) {
+                    (TruthValue::One, TruthValue::One) => TruthValue::One,
+                    (TruthValue::Zero, _) | (_, TruthValue::Zero) => TruthValue::Zero,
+                    _ => TruthValue::Unknown,
+                }
+            }
+        };
+
+        match item_truth {
+            TruthValue::One => {
+                return Ok(RuntimeValue {
+                    ty: result_ty.clone(),
+                    bits: vec![BoundBit::One],
+                });
+            }
+            TruthValue::Unknown => saw_unknown = true,
+            TruthValue::Zero => {}
+        }
+    }
+
+    let bit = if saw_unknown {
+        BoundBit::X
+    } else {
+        BoundBit::Zero
+    };
+    Ok(RuntimeValue {
+        ty: result_ty.clone(),
+        bits: vec![bit],
+    })
+}
+
+fn eval_bitwise(
+    op: BinaryOpAst,
+    left: RuntimeValue,
+    right: RuntimeValue,
+    result_ty: &ExprType,
+) -> RuntimeValue {
+    let left = coerce_runtime_to_type(left, result_ty);
+    let right = coerce_runtime_to_type(right, result_ty);
+
+    let bits = left
+        .bits
+        .iter()
+        .zip(right.bits.iter())
+        .map(|(lhs, rhs)| match op {
+            BinaryOpAst::BitAnd => bitwise_and(*lhs, *rhs),
+            BinaryOpAst::BitOr => bitwise_or(*lhs, *rhs),
+            BinaryOpAst::BitXor => bitwise_xor(*lhs, *rhs),
+            BinaryOpAst::BitXnor => invert_bit(bitwise_xor(*lhs, *rhs)),
+            _ => BoundBit::X,
+        })
+        .collect();
+
+    RuntimeValue {
+        ty: result_ty.clone(),
+        bits,
+    }
+}
+
+fn eval_shift(
+    op: BinaryOpAst,
+    left: RuntimeValue,
+    right: RuntimeValue,
+    result_ty: &ExprType,
+) -> RuntimeValue {
+    let left = coerce_runtime_to_type(left, result_ty);
+    let right_ty = right.ty.clone();
+    let right = coerce_runtime_to_type(right, &right_ty);
+    if right
+        .bits
+        .iter()
+        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+    {
+        return all_x(result_ty);
+    }
+
+    let shift = bits_to_u128(right.bits.as_slice())
+        .map(|value| value as usize)
+        .unwrap_or(usize::MAX);
+    if shift >= left.bits.len() {
+        return match op {
+            BinaryOpAst::ShiftArithRight if result_ty.is_signed => RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![left.bits.first().copied().unwrap_or(BoundBit::Zero); left.bits.len()],
+            },
+            _ => RuntimeValue {
+                ty: result_ty.clone(),
+                bits: vec![BoundBit::Zero; left.bits.len()],
+            },
+        };
+    }
+
+    let bits = match op {
+        BinaryOpAst::ShiftLeft | BinaryOpAst::ShiftArithLeft => {
+            let mut bits = left.bits[shift..].to_vec();
+            bits.extend(std::iter::repeat_n(BoundBit::Zero, shift));
+            bits
+        }
+        BinaryOpAst::ShiftRight => {
+            let mut bits = vec![BoundBit::Zero; shift];
+            bits.extend(left.bits[..left.bits.len() - shift].iter().copied());
+            bits
+        }
+        BinaryOpAst::ShiftArithRight => {
+            let fill = if result_ty.is_signed {
+                left.bits.first().copied().unwrap_or(BoundBit::Zero)
+            } else {
+                BoundBit::Zero
+            };
+            let mut bits = vec![fill; shift];
+            bits.extend(left.bits[..left.bits.len() - shift].iter().copied());
+            bits
+        }
+        _ => vec![BoundBit::X; left.bits.len()],
+    };
+
+    RuntimeValue {
+        ty: result_ty.clone(),
+        bits,
+    }
+}
+
+fn eval_arithmetic(
+    op: BinaryOpAst,
+    left: RuntimeValue,
+    right: RuntimeValue,
+    result_ty: &ExprType,
+) -> RuntimeValue {
+    let left = coerce_runtime_to_type(left, result_ty);
+    let right = coerce_runtime_to_type(right, result_ty);
+
+    if left
+        .bits
+        .iter()
+        .chain(right.bits.iter())
+        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+    {
+        return all_x(result_ty);
+    }
+
+    let Some(lhs) = bits_to_u128(left.bits.as_slice()) else {
+        return all_x(result_ty);
+    };
+    let Some(rhs) = bits_to_u128(right.bits.as_slice()) else {
+        return all_x(result_ty);
+    };
+
+    let raw = match op {
+        BinaryOpAst::Add => lhs.wrapping_add(rhs),
+        BinaryOpAst::Subtract => lhs.wrapping_sub(rhs),
+        BinaryOpAst::Multiply => lhs.wrapping_mul(rhs),
+        BinaryOpAst::Divide => {
+            if rhs == 0 {
+                return all_x(result_ty);
+            }
+            lhs / rhs
+        }
+        BinaryOpAst::Modulo => {
+            if rhs == 0 {
+                return all_x(result_ty);
+            }
+            lhs % rhs
+        }
+        BinaryOpAst::Power => {
+            let mut acc = 1u128;
+            for _ in 0..rhs {
+                acc = acc.wrapping_mul(lhs);
+            }
+            acc
+        }
+        _ => return all_x(result_ty),
+    };
+
+    RuntimeValue {
+        ty: result_ty.clone(),
+        bits: unsigned_to_bits(raw, result_ty.width),
+    }
+}
+
+fn compare_unknown_sensitive(
+    op: BinaryOpAst,
     left: RuntimeValue,
     right: RuntimeValue,
 ) -> TruthValue {
-    let width = left.bits.len().max(right.bits.len()).max(1);
-    let common_signed = left.signed && right.signed;
-    let left = extend_runtime_value(left, width, common_signed);
-    let right = extend_runtime_value(right, width, common_signed);
+    let common = common_integral_type_for_eval(&left.ty, &right.ty);
+    let left = coerce_runtime_to_type(left, &common);
+    let right = coerce_runtime_to_type(right, &common);
 
-    if has_unknown_bits(&left.bits) || has_unknown_bits(&right.bits) {
+    if left
+        .bits
+        .iter()
+        .chain(right.bits.iter())
+        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+    {
         return TruthValue::Unknown;
     }
 
+    let ord = compare_ordering(&left, &right);
     match op {
-        LogicalBinaryOp::Eq => {
-            if left.bits == right.bits {
-                TruthValue::One
-            } else {
-                TruthValue::Zero
-            }
+        BinaryOpAst::Lt => ordering_truth(ord.is_lt()),
+        BinaryOpAst::Le => ordering_truth(ord.is_le()),
+        BinaryOpAst::Gt => ordering_truth(ord.is_gt()),
+        BinaryOpAst::Ge => ordering_truth(ord.is_ge()),
+        BinaryOpAst::Eq => ordering_truth(ord.is_eq()),
+        BinaryOpAst::Ne => ordering_truth(!ord.is_eq()),
+        _ => TruthValue::Unknown,
+    }
+}
+
+fn compare_case(op: BinaryOpAst, left: RuntimeValue, right: RuntimeValue) -> TruthValue {
+    let common = common_integral_type_for_eval(&left.ty, &right.ty);
+    let left = coerce_runtime_to_type(left, &common);
+    let right = coerce_runtime_to_type(right, &common);
+    let equal = left.bits == right.bits;
+    match op {
+        BinaryOpAst::CaseEq => ordering_truth(equal),
+        BinaryOpAst::CaseNe => ordering_truth(!equal),
+        _ => TruthValue::Unknown,
+    }
+}
+
+fn compare_wild(op: BinaryOpAst, left: RuntimeValue, right: RuntimeValue) -> TruthValue {
+    let common = common_integral_type_for_eval(&left.ty, &right.ty);
+    let left = coerce_runtime_to_type(left, &common);
+    let right = coerce_runtime_to_type(right, &common);
+
+    let mut saw_unknown = false;
+    for (lhs, rhs) in left.bits.iter().zip(right.bits.iter()) {
+        if matches!(rhs, BoundBit::X | BoundBit::Z) {
+            continue;
         }
-        LogicalBinaryOp::Ne => {
-            if left.bits != right.bits {
-                TruthValue::One
-            } else {
-                TruthValue::Zero
-            }
+        if matches!(lhs, BoundBit::X | BoundBit::Z) {
+            saw_unknown = true;
+            continue;
         }
-        LogicalBinaryOp::Lt | LogicalBinaryOp::Le | LogicalBinaryOp::Gt | LogicalBinaryOp::Ge => {
-            let ordering = signed_ordering(common_signed, &left.bits, &right.bits);
-            let matched = match op {
-                LogicalBinaryOp::Lt => ordering.is_lt(),
-                LogicalBinaryOp::Le => ordering.is_le(),
-                LogicalBinaryOp::Gt => ordering.is_gt(),
-                LogicalBinaryOp::Ge => ordering.is_ge(),
-                _ => false,
+        if lhs != rhs {
+            return match op {
+                BinaryOpAst::WildEq => TruthValue::Zero,
+                BinaryOpAst::WildNe => TruthValue::One,
+                _ => TruthValue::Unknown,
             };
-            if matched {
-                TruthValue::One
-            } else {
-                TruthValue::Zero
-            }
         }
-        LogicalBinaryOp::AndAnd | LogicalBinaryOp::OrOr => TruthValue::Unknown,
+    }
+
+    let eq = if saw_unknown {
+        TruthValue::Unknown
+    } else {
+        TruthValue::One
+    };
+    match op {
+        BinaryOpAst::WildEq => eq,
+        BinaryOpAst::WildNe => match eq {
+            TruthValue::Zero => TruthValue::One,
+            TruthValue::One => TruthValue::Zero,
+            TruthValue::Unknown => TruthValue::Unknown,
+        },
+        _ => TruthValue::Unknown,
     }
 }
 
-fn extend_runtime_value(
-    mut value: RuntimeValue,
-    width: usize,
-    common_signed: bool,
-) -> RuntimeValue {
-    if value.bits.len() > width {
-        value.bits = value.bits[value.bits.len() - width..].to_vec();
-        return value;
-    }
-
-    if value.bits.len() < width {
-        let fill = if common_signed {
-            value.bits.first().copied().unwrap_or(BoundBit::Zero)
-        } else {
-            BoundBit::Zero
-        };
-        let mut extended = vec![fill; width - value.bits.len()];
-        extended.extend(value.bits);
-        value.bits = extended;
-    }
-    value
-}
-
-fn signed_ordering(signed: bool, left: &[BoundBit], right: &[BoundBit]) -> std::cmp::Ordering {
+fn compare_ordering(left: &RuntimeValue, right: &RuntimeValue) -> Ordering {
+    let signed = left.ty.is_signed && right.ty.is_signed;
     if !signed {
-        return unsigned_ordering(left, right);
+        return compare_unsigned(left.bits.as_slice(), right.bits.as_slice());
     }
 
-    let left_negative = matches!(left.first(), Some(BoundBit::One));
-    let right_negative = matches!(right.first(), Some(BoundBit::One));
+    let left_negative = left.bits.first().copied() == Some(BoundBit::One);
+    let right_negative = right.bits.first().copied() == Some(BoundBit::One);
     match (left_negative, right_negative) {
-        (true, false) => std::cmp::Ordering::Less,
-        (false, true) => std::cmp::Ordering::Greater,
-        _ => unsigned_ordering(left, right),
+        (true, false) => Ordering::Less,
+        (false, true) => Ordering::Greater,
+        _ => compare_unsigned(left.bits.as_slice(), right.bits.as_slice()),
     }
 }
 
-fn unsigned_ordering(left: &[BoundBit], right: &[BoundBit]) -> std::cmp::Ordering {
+fn compare_unsigned(left: &[BoundBit], right: &[BoundBit]) -> Ordering {
     for (lhs, rhs) in left.iter().zip(right.iter()) {
-        match (lhs, rhs) {
-            (BoundBit::One, BoundBit::Zero) => return std::cmp::Ordering::Greater,
-            (BoundBit::Zero, BoundBit::One) => return std::cmp::Ordering::Less,
+        match (*lhs, *rhs) {
+            (BoundBit::One, BoundBit::Zero) => return Ordering::Greater,
+            (BoundBit::Zero, BoundBit::One) => return Ordering::Less,
             _ => {}
         }
     }
-    std::cmp::Ordering::Equal
+    Ordering::Equal
+}
+
+fn ordering_truth(value: bool) -> TruthValue {
+    if value {
+        TruthValue::One
+    } else {
+        TruthValue::Zero
+    }
+}
+
+fn coerce_runtime_to_type(value: RuntimeValue, ty: &ExprType) -> RuntimeValue {
+    let mut bits = resize_bits(value.bits, ty.width, value.ty.is_signed);
+    if !ty.is_four_state {
+        for bit in &mut bits {
+            if matches!(bit, BoundBit::X | BoundBit::Z) {
+                *bit = BoundBit::Zero;
+            }
+        }
+    }
+    RuntimeValue {
+        ty: ty.clone(),
+        bits,
+    }
+}
+
+fn common_integral_type_for_eval(left: &ExprType, right: &ExprType) -> ExprType {
+    let width = left.width.max(right.width).max(1);
+    let is_signed = left.is_signed && right.is_signed;
+    let is_four_state = left.is_four_state || right.is_four_state;
+    ExprType {
+        kind: ExprTypeKind::BitVector,
+        storage: if width > 1 {
+            crate::expr::ExprStorage::PackedVector
+        } else {
+            crate::expr::ExprStorage::Scalar
+        },
+        width,
+        is_four_state,
+        is_signed,
+        enum_type_id: None,
+    }
+}
+
+fn resize_bits(mut bits: Vec<BoundBit>, width: u32, signed: bool) -> Vec<BoundBit> {
+    let target = width.max(1) as usize;
+    if bits.len() > target {
+        bits = bits[bits.len() - target..].to_vec();
+    } else if bits.len() < target {
+        let fill = if signed {
+            bits.first().copied().unwrap_or(BoundBit::Zero)
+        } else {
+            BoundBit::Zero
+        };
+        let mut extended = vec![fill; target - bits.len()];
+        extended.extend(bits);
+        bits = extended;
+    }
+    bits
+}
+
+fn runtime_index_to_usize(bits: &[BoundBit]) -> Option<usize> {
+    bits_to_u128(bits).and_then(|value| usize::try_from(value).ok())
+}
+
+fn runtime_index_to_i64(bits: &[BoundBit]) -> Option<i64> {
+    bits_to_u128(bits).and_then(|value| i64::try_from(value).ok())
+}
+
+fn bits_to_u128(bits: &[BoundBit]) -> Option<u128> {
+    let mut value = 0u128;
+    for bit in bits {
+        value <<= 1;
+        match bit {
+            BoundBit::Zero => {}
+            BoundBit::One => value |= 1,
+            BoundBit::X | BoundBit::Z => return None,
+        }
+    }
+    Some(value)
+}
+
+fn unsigned_to_bits(value: u128, width: u32) -> Vec<BoundBit> {
+    let width = width.max(1);
+    let mut bits = Vec::with_capacity(width as usize);
+    for shift in (0..width).rev() {
+        if shift >= u128::BITS {
+            bits.push(BoundBit::Zero);
+        } else if (value >> shift) & 1 == 1 {
+            bits.push(BoundBit::One);
+        } else {
+            bits.push(BoundBit::Zero);
+        }
+    }
+    bits
+}
+
+fn all_x(ty: &ExprType) -> RuntimeValue {
+    RuntimeValue {
+        ty: ty.clone(),
+        bits: vec![BoundBit::X; ty.width.max(1) as usize],
+    }
+}
+
+fn part_select_bits(base: &[BoundBit], msb: i64, lsb: i64, base_four_state: bool) -> Vec<BoundBit> {
+    let width = msb.abs_diff(lsb) as usize + 1;
+    let mut result = Vec::with_capacity(width);
+    if msb >= lsb {
+        for idx in (lsb..=msb).rev() {
+            result.push(select_bit(base, idx, base_four_state, true));
+        }
+    } else {
+        for idx in msb..=lsb {
+            result.push(select_bit(base, idx, base_four_state, true));
+        }
+    }
+    result
+}
+
+fn indexed_part_select_bits(
+    base: &[BoundBit],
+    start: i64,
+    width: usize,
+    up: bool,
+    base_four_state: bool,
+) -> Vec<BoundBit> {
+    let mut result = Vec::with_capacity(width);
+    for offset in 0..width {
+        let idx = if up {
+            start.saturating_add(offset as i64)
+        } else {
+            start.saturating_sub(offset as i64)
+        };
+        result.push(select_bit(base, idx, base_four_state, true));
+    }
+    result.reverse();
+    result
+}
+
+fn select_bit(
+    base: &[BoundBit],
+    index: i64,
+    base_four_state: bool,
+    x_for_out_of_range: bool,
+) -> BoundBit {
+    if index < 0 {
+        return if x_for_out_of_range || base_four_state {
+            BoundBit::X
+        } else {
+            BoundBit::Zero
+        };
+    }
+    let index = index as usize;
+    if index >= base.len() {
+        return if x_for_out_of_range || base_four_state {
+            BoundBit::X
+        } else {
+            BoundBit::Zero
+        };
+    }
+    base[base.len() - 1 - index]
+}
+
+fn reduce_and(bits: &[BoundBit]) -> BoundBit {
+    let mut unknown = false;
+    for bit in bits {
+        match bit {
+            BoundBit::Zero => return BoundBit::Zero,
+            BoundBit::One => {}
+            BoundBit::X | BoundBit::Z => unknown = true,
+        }
+    }
+    if unknown { BoundBit::X } else { BoundBit::One }
+}
+
+fn reduce_or(bits: &[BoundBit]) -> BoundBit {
+    let mut unknown = false;
+    for bit in bits {
+        match bit {
+            BoundBit::One => return BoundBit::One,
+            BoundBit::Zero => {}
+            BoundBit::X | BoundBit::Z => unknown = true,
+        }
+    }
+    if unknown { BoundBit::X } else { BoundBit::Zero }
+}
+
+fn reduce_xor(bits: &[BoundBit]) -> BoundBit {
+    if bits
+        .iter()
+        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+    {
+        return BoundBit::X;
+    }
+    let ones = bits.iter().filter(|bit| **bit == BoundBit::One).count();
+    if ones % 2 == 0 {
+        BoundBit::Zero
+    } else {
+        BoundBit::One
+    }
+}
+
+fn invert_bit(bit: BoundBit) -> BoundBit {
+    match bit {
+        BoundBit::Zero => BoundBit::One,
+        BoundBit::One => BoundBit::Zero,
+        BoundBit::X | BoundBit::Z => BoundBit::X,
+    }
+}
+
+fn bitwise_and(lhs: BoundBit, rhs: BoundBit) -> BoundBit {
+    match (lhs, rhs) {
+        (BoundBit::Zero, _) | (_, BoundBit::Zero) => BoundBit::Zero,
+        (BoundBit::One, BoundBit::One) => BoundBit::One,
+        _ => BoundBit::X,
+    }
+}
+
+fn bitwise_or(lhs: BoundBit, rhs: BoundBit) -> BoundBit {
+    match (lhs, rhs) {
+        (BoundBit::One, _) | (_, BoundBit::One) => BoundBit::One,
+        (BoundBit::Zero, BoundBit::Zero) => BoundBit::Zero,
+        _ => BoundBit::X,
+    }
+}
+
+fn bitwise_xor(lhs: BoundBit, rhs: BoundBit) -> BoundBit {
+    match (lhs, rhs) {
+        (BoundBit::Zero, BoundBit::Zero) | (BoundBit::One, BoundBit::One) => BoundBit::Zero,
+        (BoundBit::Zero, BoundBit::One) | (BoundBit::One, BoundBit::Zero) => BoundBit::One,
+        _ => BoundBit::X,
+    }
+}
+
+fn truth_to_bit(truth: TruthValue) -> BoundBit {
+    match truth {
+        TruthValue::Zero => BoundBit::Zero,
+        TruthValue::One => BoundBit::One,
+        TruthValue::Unknown => BoundBit::X,
+    }
+}
+
+fn truthiness(bits: &[BoundBit]) -> TruthValue {
+    let mut has_unknown = false;
+    for bit in bits {
+        match bit {
+            BoundBit::One => return TruthValue::One,
+            BoundBit::X | BoundBit::Z => has_unknown = true,
+            BoundBit::Zero => {}
+        }
+    }
+
+    if has_unknown {
+        TruthValue::Unknown
+    } else {
+        TruthValue::Zero
+    }
 }
 
 fn any_tracked_matches(
@@ -445,66 +1220,45 @@ fn bits_from_sample(raw: &str) -> Vec<BoundBit> {
         .collect()
 }
 
-fn has_unknown_bits(bits: &[BoundBit]) -> bool {
+fn bits_to_string(bits: &[BoundBit]) -> String {
     bits.iter()
-        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
-}
-
-fn truthiness(value: &RuntimeValue) -> TruthValue {
-    let mut has_unknown = false;
-    for bit in &value.bits {
-        match bit {
-            BoundBit::One => return TruthValue::One,
-            BoundBit::X | BoundBit::Z => has_unknown = true,
-            BoundBit::Zero => {}
-        }
-    }
-
-    if has_unknown {
-        TruthValue::Unknown
-    } else {
-        TruthValue::Zero
-    }
-}
-
-pub fn eval(_expression: &Expression) -> Result<bool, WavepeekError> {
-    Err(WavepeekError::Unimplemented(
-        "expression evaluation is not implemented yet",
-    ))
+        .map(|bit| match bit {
+            BoundBit::Zero => '0',
+            BoundBit::One => '1',
+            BoundBit::X => 'x',
+            BoundBit::Z => 'z',
+        })
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use std::cell::RefCell;
-    use std::collections::HashMap;
 
-    use crate::expr::ast::LogicalBinaryOp;
-    use crate::expr::diagnostic::{DiagnosticLayer, Span};
-    use crate::expr::host::{ExprType, SampledValue};
-    use crate::expr::sema::{BoundIntegralValue, BoundLogicalExpr, BoundLogicalNode};
+    use crate::expr::ast::BinaryOpAst;
+    use crate::expr::host::{ExprStorage, ExprType, ExprTypeKind, SampledValue};
+    use crate::expr::sema::{BoundLogicalExpr, BoundLogicalKind, BoundLogicalNode};
 
     use super::*;
 
     #[derive(Default)]
     struct HostStub {
-        values: HashMap<SignalHandle, String>,
         sampled: RefCell<Vec<SignalHandle>>,
     }
 
     impl ExpressionHost for HostStub {
-        fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
-            match name {
-                "rhs" => Ok(SignalHandle(2)),
-                "xv" => Ok(SignalHandle(3)),
-                _ => Ok(SignalHandle(1)),
-            }
+        fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+            Ok(SignalHandle(1))
         }
 
         fn signal_type(&self, _handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
             Ok(ExprType {
+                kind: ExprTypeKind::BitVector,
+                storage: ExprStorage::Scalar,
                 width: 1,
                 is_four_state: true,
                 is_signed: false,
+                enum_type_id: None,
             })
         }
 
@@ -514,98 +1268,104 @@ mod tests {
             _timestamp: u64,
         ) -> Result<SampledValue, ExprDiagnostic> {
             self.sampled.borrow_mut().push(handle);
-            if handle == SignalHandle(2) {
-                return Err(ExprDiagnostic {
-                    layer: DiagnosticLayer::Runtime,
-                    code: "TEST-RHS-SAMPLED",
-                    message: "rhs sampled".to_string(),
-                    primary_span: Span::new(0, 0),
-                    notes: vec![],
-                });
-            }
             Ok(SampledValue {
-                bits: Some(
-                    self.values
-                        .get(&handle)
-                        .cloned()
-                        .unwrap_or_else(|| "0".to_string()),
-                ),
+                bits: Some("1".to_string()),
             })
         }
     }
 
-    fn literal(bits: &str) -> BoundLogicalNode {
-        BoundLogicalNode::IntegralLiteral {
-            value: BoundIntegralValue {
-                bits: bits_from_sample(bits),
-                signed: false,
+    fn literal(bits: &[BoundBit]) -> BoundLogicalNode {
+        BoundLogicalNode {
+            ty: ExprType {
+                kind: ExprTypeKind::BitVector,
+                storage: if bits.len() > 1 {
+                    ExprStorage::PackedVector
+                } else {
+                    ExprStorage::Scalar
+                },
+                width: bits.len() as u32,
+                is_four_state: true,
+                is_signed: false,
+                enum_type_id: None,
             },
-            span: Span::new(0, bits.len()),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::IntegralLiteral {
+                value: crate::expr::sema::BoundIntegralValue {
+                    bits: bits.to_vec(),
+                    signed: false,
+                },
+                is_unsized: false,
+            },
         }
     }
 
     #[test]
-    fn eval_logical_expr_short_circuits_rhs_sampling() {
+    fn logical_and_short_circuits_rhs() {
         let host = HostStub::default();
         let expr = BoundLogicalExpr {
-            root: BoundLogicalNode::Binary {
-                op: LogicalBinaryOp::AndAnd,
-                left: Box::new(literal("0")),
-                right: Box::new(BoundLogicalNode::SignalRef {
-                    handle: SignalHandle(2),
-                    ty: ExprType {
-                        width: 1,
-                        is_four_state: true,
-                        is_signed: false,
-                    },
-                    span: Span::new(0, 0),
-                }),
-                span: Span::new(0, 0),
+            root: BoundLogicalNode {
+                ty: ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::Scalar,
+                    width: 1,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                },
+                span: crate::expr::Span::new(0, 0),
+                kind: BoundLogicalKind::Binary {
+                    op: BinaryOpAst::LogicalAnd,
+                    left: Box::new(literal(&[BoundBit::Zero])),
+                    right: Box::new(BoundLogicalNode {
+                        ty: ExprType {
+                            kind: ExprTypeKind::BitVector,
+                            storage: ExprStorage::Scalar,
+                            width: 1,
+                            is_four_state: true,
+                            is_signed: false,
+                            enum_type_id: None,
+                        },
+                        span: crate::expr::Span::new(0, 0),
+                        kind: BoundLogicalKind::SignalRef {
+                            handle: SignalHandle(9),
+                        },
+                    }),
+                },
             },
         };
 
-        let truth = eval_logical_expr(&expr, &host, 10).expect("evaluation should succeed");
-        assert_eq!(truth, TruthValue::Zero);
+        let value = eval_logical_expr_at(&expr, &host, 10).expect("eval works");
+        assert_eq!(value.bits, "0");
         assert!(host.sampled.borrow().is_empty());
     }
 
     #[test]
-    fn truthiness_handles_unknown_and_known_non_zero() {
-        let unknown = RuntimeValue {
-            bits: vec![BoundBit::X],
-            signed: false,
-        };
-        let known_non_zero = RuntimeValue {
-            bits: vec![BoundBit::One, BoundBit::X],
-            signed: false,
-        };
-
-        assert_eq!(truthiness(&unknown), TruthValue::Unknown);
-        assert_eq!(truthiness(&known_non_zero), TruthValue::One);
-    }
-
-    #[test]
-    fn mixed_signedness_uses_unsigned_comparison() {
-        let signed_minus_one = RuntimeValue {
-            bits: vec![BoundBit::One],
-            signed: true,
-        };
-        let unsigned_one = RuntimeValue {
-            bits: vec![BoundBit::Zero, BoundBit::One],
-            signed: false,
-        };
-
-        assert_eq!(
-            compare_runtime_values(
-                LogicalBinaryOp::Lt,
-                signed_minus_one.clone(),
-                unsigned_one.clone(),
-            ),
-            TruthValue::Zero
+    fn wildcard_equality_preserves_unknown_from_lhs() {
+        let truth = compare_wild(
+            BinaryOpAst::WildEq,
+            RuntimeValue {
+                ty: ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::PackedVector,
+                    width: 2,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                },
+                bits: vec![BoundBit::X, BoundBit::One],
+            },
+            RuntimeValue {
+                ty: ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::PackedVector,
+                    width: 2,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                },
+                bits: vec![BoundBit::Zero, BoundBit::One],
+            },
         );
-        assert_eq!(
-            compare_runtime_values(LogicalBinaryOp::Eq, signed_minus_one, unsigned_one),
-            TruthValue::One
-        );
+        assert_eq!(truth, TruthValue::Unknown);
     }
 }

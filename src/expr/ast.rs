@@ -1,4 +1,5 @@
 use crate::expr::diagnostic::Span;
+use crate::expr::host::IntegerLikeKind;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventExprAst {
@@ -29,12 +30,13 @@ pub struct DeferredLogicalExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct LogicalExprAst {
+pub struct LogicalExprAst {
     pub root: LogicalExprNode,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum LogicalExprNode {
+pub enum LogicalExprNode {
     OperandRef {
         name: String,
         span: Span,
@@ -43,43 +45,158 @@ pub(crate) enum LogicalExprNode {
         literal: IntegralLiteral,
         span: Span,
     },
-    UnaryNot {
+    Parenthesized {
+        expr: Box<LogicalExprNode>,
+        span: Span,
+    },
+    Cast {
+        target: CastTargetAst,
+        expr: Box<LogicalExprNode>,
+        span: Span,
+    },
+    Selection {
+        base: Box<LogicalExprNode>,
+        selection: SelectionKindAst,
+        span: Span,
+    },
+    Unary {
+        op: UnaryOpAst,
         expr: Box<LogicalExprNode>,
         span: Span,
     },
     Binary {
-        op: LogicalBinaryOp,
+        op: BinaryOpAst,
         left: Box<LogicalExprNode>,
         right: Box<LogicalExprNode>,
+        span: Span,
+    },
+    Conditional {
+        condition: Box<LogicalExprNode>,
+        when_true: Box<LogicalExprNode>,
+        when_false: Box<LogicalExprNode>,
+        span: Span,
+    },
+    Inside {
+        expr: Box<LogicalExprNode>,
+        set: Vec<InsideItemAst>,
+        span: Span,
+    },
+    Concatenation {
+        items: Vec<LogicalExprNode>,
+        span: Span,
+    },
+    Replication {
+        count: Box<LogicalExprNode>,
+        expr: Box<LogicalExprNode>,
         span: Span,
     },
 }
 
 impl LogicalExprNode {
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Self::OperandRef { span, .. }
             | Self::IntegralLiteral { span, .. }
-            | Self::UnaryNot { span, .. }
-            | Self::Binary { span, .. } => *span,
+            | Self::Parenthesized { span, .. }
+            | Self::Cast { span, .. }
+            | Self::Selection { span, .. }
+            | Self::Unary { span, .. }
+            | Self::Binary { span, .. }
+            | Self::Conditional { span, .. }
+            | Self::Inside { span, .. }
+            | Self::Concatenation { span, .. }
+            | Self::Replication { span, .. } => *span,
         }
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CastTargetAst {
+    Signed,
+    Unsigned,
+    BitVector {
+        width: u32,
+        is_four_state: bool,
+        is_signed: bool,
+    },
+    IntegerLike(IntegerLikeKind),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectionKindAst {
+    Bit {
+        index: Box<LogicalExprNode>,
+    },
+    Part {
+        msb: Box<LogicalExprNode>,
+        lsb: Box<LogicalExprNode>,
+    },
+    IndexedUp {
+        base: Box<LogicalExprNode>,
+        width: Box<LogicalExprNode>,
+    },
+    IndexedDown {
+        base: Box<LogicalExprNode>,
+        width: Box<LogicalExprNode>,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LogicalBinaryOp {
+pub enum UnaryOpAst {
+    Plus,
+    Minus,
+    LogicalNot,
+    BitNot,
+    ReduceAnd,
+    ReduceNand,
+    ReduceOr,
+    ReduceNor,
+    ReduceXor,
+    ReduceXnor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryOpAst {
+    Power,
+    Multiply,
+    Divide,
+    Modulo,
+    Add,
+    Subtract,
+    ShiftLeft,
+    ShiftRight,
+    ShiftArithLeft,
+    ShiftArithRight,
     Lt,
     Le,
     Gt,
     Ge,
     Eq,
     Ne,
-    AndAnd,
-    OrOr,
+    CaseEq,
+    CaseNe,
+    WildEq,
+    WildNe,
+    BitAnd,
+    BitXor,
+    BitXnor,
+    BitOr,
+    LogicalAnd,
+    LogicalOr,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct IntegralLiteral {
+pub enum InsideItemAst {
+    Expr(LogicalExprNode),
+    Range {
+        low: LogicalExprNode,
+        high: LogicalExprNode,
+        span: Span,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntegralLiteral {
     pub width: Option<u32>,
     pub signed: bool,
     pub base: IntegralBase,
@@ -88,7 +205,7 @@ pub(crate) struct IntegralLiteral {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum IntegralBase {
+pub enum IntegralBase {
     Binary,
     Decimal,
     Hex,

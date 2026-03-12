@@ -6,8 +6,9 @@ use std::path::PathBuf;
 use serde::Deserialize;
 use serde_json::Value;
 use wavepeek::expr::{
-    DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprType, ExpressionHost, SampledValue,
-    SignalHandle, bind_event_expr_ast, event_matches_at, parse_event_expr_ast,
+    DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind,
+    ExpressionHost, SampledValue, SignalHandle, bind_event_expr_ast, event_matches_at,
+    parse_event_expr_ast,
 };
 
 mod common;
@@ -111,9 +112,16 @@ impl InMemoryHost {
             host.types_by_handle.insert(
                 handle,
                 ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: if signal.width > 1 {
+                        ExprStorage::PackedVector
+                    } else {
+                        ExprStorage::Scalar
+                    },
                     width: signal.width,
                     is_four_state: signal.is_four_state,
                     is_signed: signal.is_signed,
+                    enum_type_id: None,
                 },
             );
             host.timelines_by_handle.insert(

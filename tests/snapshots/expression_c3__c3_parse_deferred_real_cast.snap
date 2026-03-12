@@ -1,0 +1,8 @@
+---
+source: tests/expression_c3.rs
+expression: diagnostic.render(case.source.as_str())
+---
+parse:C3-PARSE-LOGICAL-DEFERRED: real casts are deferred to C4
+--> span 0..4
+source: real'(a)
+note: C3 supports integral cast targets only

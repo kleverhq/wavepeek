@@ -347,6 +347,18 @@ fn c3_unknown_flow_regressions_hold() {
 
     let inside = eval_expr_at("2'b1x inside {2'b10, 2'b11}", &host, 0).expect("eval");
     assert_eq!(inside.bits, "x");
+
+    let signed_div = eval_expr_at("signed'(8'hfc) / signed'(8'h02)", &host, 0).expect("eval");
+    let signed_mod = eval_expr_at("signed'(8'hfb) % signed'(8'h02)", &host, 0).expect("eval");
+    assert_eq!(signed_div.bits, "11111110");
+    assert_eq!(signed_mod.bits, "11111111");
+
+    let zero_pow_negative =
+        eval_expr_at("signed'(8'h00) ** signed'(8'hff)", &host, 0).expect("eval");
+    let nonzero_pow_negative =
+        eval_expr_at("signed'(8'h02) ** signed'(8'hff)", &host, 0).expect("eval");
+    assert_eq!(zero_pow_negative.bits, "xxxxxxxx");
+    assert_eq!(nonzero_pow_negative.bits, "00000000");
 }
 
 #[test]

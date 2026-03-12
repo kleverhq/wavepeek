@@ -50,11 +50,13 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
   command runtime routing remains deferred.
 - Public `property` command runtime integration (§3.2.6) lands with `C5`
   command wiring, not with the standalone `C2`-`C4` engine milestones.
-- Expression engine: lexer, parser (Pratt/recursive descent), and evaluator (§5.5)
-- MVP operator set: `!`, `<`, `>`, `<=`, `>=`, `==`, `!=`, `&&`, `||`
-- Literal support: hex, binary, decimal
-- Parentheses grouping and truthy semantics
-- SystemVerilog-like 4-state evaluation with short-circuiting; unknown `x` values cast to false for matching
+- Standalone typed expression engine foundation (`C2`-`C4`) with strict parser,
+  typed binder, deterministic diagnostics, and standalone event/logical eval APIs.
+- `C3` standalone surface includes integral-family casts, selection,
+  concatenation/replication, arithmetic/shift/bitwise/reduction/comparison and
+  equality families, conditional `?:`, and `inside`, with event `iff` reuse in
+  standalone evaluation.
+- Deferred runtime command integration remains explicit until `C5`.
 
 ### Query Engine Enhancements (→ v0.5.0)
 

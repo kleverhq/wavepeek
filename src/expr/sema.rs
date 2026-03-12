@@ -1212,6 +1212,7 @@ fn eval_const_binary(
     right: BoundIntegralValue,
     ty: &ExprType,
 ) -> BoundIntegralValue {
+    let exponent_signed = right.signed;
     let left = coerce_const_to_type(left, ty);
     let right = coerce_const_to_type(right, ty);
 
@@ -1255,6 +1256,30 @@ fn eval_const_binary(
                     bits: vec![BoundBit::X; ty.width as usize],
                     signed: ty.is_signed,
                 }
+            } else if ty.is_signed {
+                let Some(lhs) = bits_to_i128(&left.bits, true) else {
+                    return BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    };
+                };
+                let Some(rhs) = bits_to_i128(&right.bits, true) else {
+                    return BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    };
+                };
+                if rhs == 0 {
+                    BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    }
+                } else {
+                    BoundIntegralValue {
+                        bits: signed_to_bits(lhs.wrapping_div(rhs), ty.width),
+                        signed: ty.is_signed,
+                    }
+                }
             } else {
                 numeric_binary(&left, &right, ty, |a, b| a / b)
             }
@@ -1264,6 +1289,30 @@ fn eval_const_binary(
                 BoundIntegralValue {
                     bits: vec![BoundBit::X; ty.width as usize],
                     signed: ty.is_signed,
+                }
+            } else if ty.is_signed {
+                let Some(lhs) = bits_to_i128(&left.bits, true) else {
+                    return BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    };
+                };
+                let Some(rhs) = bits_to_i128(&right.bits, true) else {
+                    return BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    };
+                };
+                if rhs == 0 {
+                    BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    }
+                } else {
+                    BoundIntegralValue {
+                        bits: signed_to_bits(lhs.wrapping_rem(rhs), ty.width),
+                        signed: ty.is_signed,
+                    }
                 }
             } else {
                 numeric_binary(&left, &right, ty, |a, b| a % b)
@@ -1282,17 +1331,36 @@ fn eval_const_binary(
                     signed: ty.is_signed,
                 };
             };
-            let mut acc = 1_u128;
-            for _ in 0..exp {
-                acc = acc.wrapping_mul(base);
-            }
+            let acc = if exponent_signed {
+                let Some(exp_signed) = bits_to_i128(&right.bits, true) else {
+                    return BoundIntegralValue {
+                        bits: vec![BoundBit::X; ty.width as usize],
+                        signed: ty.is_signed,
+                    };
+                };
+                if exp_signed < 0 {
+                    if base == 0 {
+                        return BoundIntegralValue {
+                            bits: vec![BoundBit::X; ty.width as usize],
+                            signed: ty.is_signed,
+                        };
+                    }
+                    0
+                } else {
+                    pow_wrapping_u128(base, exp_signed as u128)
+                }
+            } else {
+                pow_wrapping_u128(base, exp)
+            };
             BoundIntegralValue {
                 bits: unsigned_to_bits(acc, ty.width),
                 signed: ty.is_signed,
             }
         }
         BinaryOpAst::ShiftLeft | BinaryOpAst::ShiftArithLeft => {
-            let shift = bits_to_u128(&right.bits).unwrap_or(u128::MAX) as usize;
+            let shift = bits_to_u128(&right.bits)
+                .and_then(|value| usize::try_from(value).ok())
+                .unwrap_or(usize::MAX);
             if shift >= left.bits.len() {
                 BoundIntegralValue {
                     bits: vec![BoundBit::Zero; left.bits.len()],
@@ -1308,7 +1376,9 @@ fn eval_const_binary(
             }
         }
         BinaryOpAst::ShiftRight => {
-            let shift = bits_to_u128(&right.bits).unwrap_or(u128::MAX) as usize;
+            let shift = bits_to_u128(&right.bits)
+                .and_then(|value| usize::try_from(value).ok())
+                .unwrap_or(usize::MAX);
             if shift >= left.bits.len() {
                 BoundIntegralValue {
                     bits: vec![BoundBit::Zero; left.bits.len()],
@@ -1324,7 +1394,9 @@ fn eval_const_binary(
             }
         }
         BinaryOpAst::ShiftArithRight => {
-            let shift = bits_to_u128(&right.bits).unwrap_or(u128::MAX) as usize;
+            let shift = bits_to_u128(&right.bits)
+                .and_then(|value| usize::try_from(value).ok())
+                .unwrap_or(usize::MAX);
             let fill = if left.signed {
                 left.bits.first().copied().unwrap_or(BoundBit::Zero)
             } else {
@@ -1480,6 +1552,44 @@ fn bits_to_i64(bits: &[BoundBit], signed: bool) -> Option<i64> {
         }
     };
     Some(signed_value)
+}
+
+fn bits_to_i128(bits: &[BoundBit], signed: bool) -> Option<i128> {
+    let unsigned = bits_to_u128(bits)?;
+    if !signed {
+        return i128::try_from(unsigned).ok();
+    }
+    let width = bits.len().clamp(1, 128);
+    if width == 128 {
+        return Some(unsigned as i128);
+    }
+    let mask = (1_u128 << width) - 1;
+    let narrowed = unsigned & mask;
+    let sign_bit = 1_u128 << (width - 1);
+    if narrowed & sign_bit == 0 {
+        Some(narrowed as i128)
+    } else {
+        let magnitude = ((!narrowed).wrapping_add(1)) & mask;
+        Some(-(magnitude as i128))
+    }
+}
+
+fn signed_to_bits(value: i128, width: u32) -> Vec<BoundBit> {
+    unsigned_to_bits(value as u128, width)
+}
+
+fn pow_wrapping_u128(mut base: u128, mut exp: u128) -> u128 {
+    let mut acc = 1u128;
+    while exp > 0 {
+        if exp & 1 == 1 {
+            acc = acc.wrapping_mul(base);
+        }
+        exp >>= 1;
+        if exp > 0 {
+            base = base.wrapping_mul(base);
+        }
+    }
+    acc
 }
 
 fn reduce_and(bits: &[BoundBit]) -> BoundBit {

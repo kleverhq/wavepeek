@@ -1,6 +1,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::Path;
+use std::rc::Rc;
 
 use crate::error::WavepeekError;
 use crate::expr::{
@@ -12,7 +13,7 @@ use crate::waveform::{ExprResolvedSignal, Waveform};
 pub(crate) struct WaveformExprHost {
     waveform: RefCell<Waveform>,
     handles_by_name: RefCell<HashMap<String, SignalHandle>>,
-    signals_by_handle: RefCell<HashMap<SignalHandle, ExprResolvedSignal>>,
+    signals_by_handle: RefCell<HashMap<SignalHandle, Rc<ExprResolvedSignal>>>,
     next_handle: Cell<u32>,
 }
 
@@ -31,7 +32,10 @@ impl WaveformExprHost {
         }
     }
 
-    fn resolved_signal(&self, handle: SignalHandle) -> Result<ExprResolvedSignal, ExprDiagnostic> {
+    fn resolved_signal(
+        &self,
+        handle: SignalHandle,
+    ) -> Result<Rc<ExprResolvedSignal>, ExprDiagnostic> {
         self.signals_by_handle
             .borrow()
             .get(&handle)
@@ -69,12 +73,14 @@ impl ExpressionHost for WaveformExprHost {
         self.handles_by_name
             .borrow_mut()
             .insert(name.to_string(), handle);
-        self.signals_by_handle.borrow_mut().insert(handle, resolved);
+        self.signals_by_handle
+            .borrow_mut()
+            .insert(handle, Rc::new(resolved));
         Ok(handle)
     }
 
     fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
-        Ok(self.resolved_signal(handle)?.expr_type)
+        Ok(self.resolved_signal(handle)?.expr_type.clone())
     }
 
     fn sample_value(

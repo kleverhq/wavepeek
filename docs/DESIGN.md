@@ -646,9 +646,9 @@ section describes implementation architecture only.
   reuse. That standalone surface now includes `real`, `string`, operand-type
   casts, enum-label references, and raw-event `.triggered`.
 - Dump-backed rich metadata is bridged through the crate-private
-  `src/waveform/expr_host.rs` adapter so standalone tests and benchmarks can
-  bind/evaluate against VCD/FST metadata without widening the public
-  `wavepeek::expr` facade.
+  `src/waveform/expr_host.rs` adapter plus crate-private lookup/decode helpers
+  in `src/waveform/mod.rs`, so standalone tests and benchmarks can bind/evaluate
+  against VCD/FST metadata without widening the public `wavepeek::expr` facade.
 - Current `change` runtime remains intentionally compatibility-preserving and
   still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
   (via `parse_event_expr(...)` facade) until later integration phases.

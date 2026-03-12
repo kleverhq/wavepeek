@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use crate::expr::ast::{BinaryOpAst, UnaryOpAst};
 use crate::expr::diagnostic::ExprDiagnostic;
@@ -53,8 +54,23 @@ enum RuntimeValuePayload {
 
 #[derive(Default)]
 struct EvalCache {
-    samples: HashMap<(SignalHandle, u64), SampledValue>,
+    samples: HashMap<(SignalHandle, u64), CachedSample>,
     event_occurrences: HashMap<(SignalHandle, u64), bool>,
+    signal_types: HashMap<SignalHandle, ExprType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+enum CachedSample {
+    Integral {
+        bits: Option<Rc<[BoundBit]>>,
+        label: Option<Rc<str>>,
+    },
+    Real {
+        value: Option<f64>,
+    },
+    String {
+        value: Option<Rc<str>>,
+    },
 }
 
 impl EvalCache {
@@ -63,15 +79,29 @@ impl EvalCache {
         host: &dyn ExpressionHost,
         handle: SignalHandle,
         timestamp: u64,
-    ) -> Result<SampledValue, ExprDiagnostic> {
+    ) -> Result<CachedSample, ExprDiagnostic> {
         let key = (handle, timestamp);
         if let Some(value) = self.samples.get(&key) {
             return Ok(value.clone());
         }
 
-        let sampled = host.sample_value(handle, timestamp)?;
+        let sampled = cache_sample(host.sample_value(handle, timestamp)?);
         self.samples.insert(key, sampled.clone());
         Ok(sampled)
+    }
+
+    fn signal_type(
+        &mut self,
+        host: &dyn ExpressionHost,
+        handle: SignalHandle,
+    ) -> Result<ExprType, ExprDiagnostic> {
+        if let Some(ty) = self.signal_types.get(&handle) {
+            return Ok(ty.clone());
+        }
+
+        let ty = host.signal_type(handle)?;
+        self.signal_types.insert(handle, ty.clone());
+        Ok(ty)
     }
 
     fn event_occurred(
@@ -88,6 +118,19 @@ impl EvalCache {
         let occurred = host.event_occurred(handle, timestamp)?;
         self.event_occurrences.insert(key, occurred);
         Ok(occurred)
+    }
+}
+
+fn cache_sample(sample: SampledValue) -> CachedSample {
+    match sample {
+        SampledValue::Integral { bits, label } => CachedSample::Integral {
+            bits: bits.map(|bits| Rc::<[BoundBit]>::from(bits_from_sample(bits.as_str()))),
+            label: label.map(Rc::<str>::from),
+        },
+        SampledValue::Real { value } => CachedSample::Real { value },
+        SampledValue::String { value } => CachedSample::String {
+            value: value.map(Rc::<str>::from),
+        },
     }
 }
 
@@ -280,29 +323,31 @@ fn eval_signal_ref(
     match (&node.ty.kind, sampled) {
         (
             ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore,
-            SampledValue::Integral { bits, label },
+            CachedSample::Integral { bits, label },
         ) => Ok(RuntimeValue {
             ty: node.ty.clone(),
             payload: RuntimeValuePayload::Integral {
                 bits: bits
-                    .map(|raw| bits_from_sample(raw.as_str()))
+                    .map(|raw| raw.as_ref().to_vec())
                     .unwrap_or_else(|| vec![BoundBit::X; node.ty.width.max(1) as usize]),
-                label,
+                label: label.map(|label| label.to_string()),
             },
         }),
-        (ExprTypeKind::Real, SampledValue::Real { value: Some(value) }) => Ok(RuntimeValue {
+        (ExprTypeKind::Real, CachedSample::Real { value: Some(value) }) => Ok(RuntimeValue {
             ty: node.ty.clone(),
             payload: RuntimeValuePayload::Real { value },
         }),
-        (ExprTypeKind::String, SampledValue::String { value: Some(value) }) => Ok(RuntimeValue {
+        (ExprTypeKind::String, CachedSample::String { value: Some(value) }) => Ok(RuntimeValue {
             ty: node.ty.clone(),
-            payload: RuntimeValuePayload::String { value },
+            payload: RuntimeValuePayload::String {
+                value: value.to_string(),
+            },
         }),
-        (ExprTypeKind::Real, SampledValue::Real { value: None }) => Err(runtime_diag(
+        (ExprTypeKind::Real, CachedSample::Real { value: None }) => Err(runtime_diag(
             "C4-RUNTIME-MISSING-SAMPLE",
             "real operand has no sampled value at or before the requested timestamp",
         )),
-        (ExprTypeKind::String, SampledValue::String { value: None }) => Err(runtime_diag(
+        (ExprTypeKind::String, CachedSample::String { value: None }) => Err(runtime_diag(
             "C4-RUNTIME-MISSING-SAMPLE",
             "string operand has no sampled value at or before the requested timestamp",
         )),
@@ -1628,11 +1673,7 @@ fn any_tracked_matches(
     };
 
     for &handle in frame.tracked_signals {
-        let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
-        let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
-        if let (Some(previous), Some(current)) = (previous_bits, current_bits)
-            && previous != current
-        {
+        if signal_changed(host, handle, previous_timestamp, frame.timestamp, cache)? {
             return Ok(true);
         }
     }
@@ -1650,11 +1691,7 @@ fn named_event_matches(
         return Ok(false);
     };
 
-    let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
-    let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
-    Ok(
-        matches!((previous_bits, current_bits), (Some(previous), Some(current)) if previous != current),
-    )
+    signal_changed(host, handle, previous_timestamp, frame.timestamp, cache)
 }
 
 fn edge_event_matches(
@@ -1667,6 +1704,17 @@ fn edge_event_matches(
         return Ok((false, false));
     };
 
+    let ty = cache.signal_type(host, handle)?;
+    if !matches!(
+        ty.kind,
+        ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore
+    ) {
+        return Err(runtime_diag(
+            "C4-SEMANTIC-EVENT-EDGE",
+            "edge event terms require integral operands",
+        ));
+    }
+
     let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
     let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
     let (Some(previous_bits), Some(current_bits)) = (previous_bits, current_bits) else {
@@ -1676,6 +1724,40 @@ fn edge_event_matches(
     Ok(classify_edge(previous_bits.as_ref(), current_bits.as_ref()))
 }
 
+fn signal_changed(
+    host: &dyn ExpressionHost,
+    handle: SignalHandle,
+    previous_timestamp: u64,
+    current_timestamp: u64,
+    cache: &mut EvalCache,
+) -> Result<bool, ExprDiagnostic> {
+    let ty = cache.signal_type(host, handle)?;
+    match ty.kind {
+        ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+            let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
+            let current_bits = sample_signal_bits(host, handle, current_timestamp, cache)?;
+            Ok(
+                matches!((previous_bits, current_bits), (Some(previous), Some(current)) if previous != current),
+            )
+        }
+        ExprTypeKind::Real => {
+            let previous = sample_real_value(host, handle, previous_timestamp, cache)?;
+            let current = sample_real_value(host, handle, current_timestamp, cache)?;
+            Ok(
+                matches!((previous, current), (Some(previous), Some(current)) if previous != current),
+            )
+        }
+        ExprTypeKind::String => {
+            let previous = sample_string_value(host, handle, previous_timestamp, cache)?;
+            let current = sample_string_value(host, handle, current_timestamp, cache)?;
+            Ok(
+                matches!((previous, current), (Some(previous), Some(current)) if previous != current),
+            )
+        }
+        ExprTypeKind::Event => cache.event_occurred(host, handle, current_timestamp),
+    }
+}
+
 fn sample_signal_bits(
     host: &dyn ExpressionHost,
     handle: SignalHandle,
@@ -1683,10 +1765,40 @@ fn sample_signal_bits(
     cache: &mut EvalCache,
 ) -> Result<Option<String>, ExprDiagnostic> {
     match cache.sample_value(host, handle, timestamp)? {
-        SampledValue::Integral { bits, .. } => Ok(bits),
+        CachedSample::Integral { bits, .. } => Ok(bits.map(|bits| bits_to_string(bits.as_ref()))),
         _ => Err(runtime_diag(
             "HOST-TYPE-MISMATCH",
             "event matching requires integral sampled values for edge and change detection",
+        )),
+    }
+}
+
+fn sample_real_value(
+    host: &dyn ExpressionHost,
+    handle: SignalHandle,
+    timestamp: u64,
+    cache: &mut EvalCache,
+) -> Result<Option<f64>, ExprDiagnostic> {
+    match cache.sample_value(host, handle, timestamp)? {
+        CachedSample::Real { value } => Ok(value),
+        _ => Err(runtime_diag(
+            "HOST-TYPE-MISMATCH",
+            "event matching expected a real sampled value",
+        )),
+    }
+}
+
+fn sample_string_value(
+    host: &dyn ExpressionHost,
+    handle: SignalHandle,
+    timestamp: u64,
+    cache: &mut EvalCache,
+) -> Result<Option<String>, ExprDiagnostic> {
+    match cache.sample_value(host, handle, timestamp)? {
+        CachedSample::String { value } => Ok(value.map(|value| value.to_string())),
+        _ => Err(runtime_diag(
+            "HOST-TYPE-MISMATCH",
+            "event matching expected a string sampled value",
         )),
     }
 }

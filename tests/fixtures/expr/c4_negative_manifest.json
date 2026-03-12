@@ -107,6 +107,15 @@
       "code": "C4-SEMANTIC-EVENT-VALUE",
       "span": { "start": 0, "end": 2 },
       "snapshot": null
+    },
+    {
+      "name": "invalid_edge_on_real_signal",
+      "entrypoint": "event",
+      "source": "posedge temp",
+      "layer": "semantic",
+      "code": "C3-SEMANTIC-EXPECTED-INTEGRAL",
+      "span": { "start": 0, "end": 12 },
+      "snapshot": null
     }
   ]
 }

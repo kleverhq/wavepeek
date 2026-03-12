@@ -1668,12 +1668,14 @@ fn any_tracked_matches(
     frame: &EventEvalFrame<'_>,
     cache: &mut EvalCache,
 ) -> Result<bool, ExprDiagnostic> {
-    let Some(previous_timestamp) = frame.previous_timestamp else {
-        return Ok(false);
-    };
-
     for &handle in frame.tracked_signals {
-        if signal_changed(host, handle, previous_timestamp, frame.timestamp, cache)? {
+        if signal_changed(
+            host,
+            handle,
+            frame.previous_timestamp,
+            frame.timestamp,
+            cache,
+        )? {
             return Ok(true);
         }
     }
@@ -1687,11 +1689,13 @@ fn named_event_matches(
     frame: &EventEvalFrame<'_>,
     cache: &mut EvalCache,
 ) -> Result<bool, ExprDiagnostic> {
-    let Some(previous_timestamp) = frame.previous_timestamp else {
-        return Ok(false);
-    };
-
-    signal_changed(host, handle, previous_timestamp, frame.timestamp, cache)
+    signal_changed(
+        host,
+        handle,
+        frame.previous_timestamp,
+        frame.timestamp,
+        cache,
+    )
 }
 
 fn edge_event_matches(
@@ -1721,19 +1725,25 @@ fn edge_event_matches(
         return Ok((false, false));
     };
 
-    Ok(classify_edge(previous_bits.as_ref(), current_bits.as_ref()))
+    Ok(classify_edge_bits(
+        previous_bits.as_ref(),
+        current_bits.as_ref(),
+    ))
 }
 
 fn signal_changed(
     host: &dyn ExpressionHost,
     handle: SignalHandle,
-    previous_timestamp: u64,
+    previous_timestamp: Option<u64>,
     current_timestamp: u64,
     cache: &mut EvalCache,
 ) -> Result<bool, ExprDiagnostic> {
     let ty = cache.signal_type(host, handle)?;
     match ty.kind {
         ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+            let Some(previous_timestamp) = previous_timestamp else {
+                return Ok(false);
+            };
             let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
             let current_bits = sample_signal_bits(host, handle, current_timestamp, cache)?;
             Ok(
@@ -1741,6 +1751,9 @@ fn signal_changed(
             )
         }
         ExprTypeKind::Real => {
+            let Some(previous_timestamp) = previous_timestamp else {
+                return Ok(false);
+            };
             let previous = sample_real_value(host, handle, previous_timestamp, cache)?;
             let current = sample_real_value(host, handle, current_timestamp, cache)?;
             Ok(
@@ -1748,6 +1761,9 @@ fn signal_changed(
             )
         }
         ExprTypeKind::String => {
+            let Some(previous_timestamp) = previous_timestamp else {
+                return Ok(false);
+            };
             let previous = sample_string_value(host, handle, previous_timestamp, cache)?;
             let current = sample_string_value(host, handle, current_timestamp, cache)?;
             Ok(
@@ -1763,9 +1779,9 @@ fn sample_signal_bits(
     handle: SignalHandle,
     timestamp: u64,
     cache: &mut EvalCache,
-) -> Result<Option<String>, ExprDiagnostic> {
+) -> Result<Option<Rc<[BoundBit]>>, ExprDiagnostic> {
     match cache.sample_value(host, handle, timestamp)? {
-        CachedSample::Integral { bits, .. } => Ok(bits.map(|bits| bits_to_string(bits.as_ref()))),
+        CachedSample::Integral { bits, .. } => Ok(bits),
         _ => Err(runtime_diag(
             "HOST-TYPE-MISMATCH",
             "event matching requires integral sampled values for edge and change detection",
@@ -1803,11 +1819,11 @@ fn sample_string_value(
     }
 }
 
-fn classify_edge(previous_bits: &str, current_bits: &str) -> (bool, bool) {
-    let Some(previous_lsb) = previous_bits.chars().last() else {
+fn classify_edge_bits(previous_bits: &[BoundBit], current_bits: &[BoundBit]) -> (bool, bool) {
+    let Some(previous_lsb) = previous_bits.last().copied() else {
         return (false, false);
     };
-    let Some(current_lsb) = current_bits.chars().last() else {
+    let Some(current_lsb) = current_bits.last().copied() else {
         return (false, false);
     };
 
@@ -1825,13 +1841,12 @@ fn classify_edge(previous_bits: &str, current_bits: &str) -> (bool, bool) {
     (posedge, negedge)
 }
 
-fn normalize_edge_bit(bit: char) -> char {
-    match bit.to_ascii_lowercase() {
-        '0' => '0',
-        '1' => '1',
-        'z' => 'z',
-        'x' | 'h' | 'u' | 'w' | 'l' | '-' => 'x',
-        _ => 'x',
+fn normalize_edge_bit(bit: BoundBit) -> char {
+    match bit {
+        BoundBit::Zero => '0',
+        BoundBit::One => '1',
+        BoundBit::Z => 'z',
+        BoundBit::X => 'x',
     }
 }
 

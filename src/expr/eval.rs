@@ -1213,6 +1213,10 @@ fn coerce_runtime_to_type(
     value: RuntimeValue,
     ty: &ExprType,
 ) -> Result<RuntimeValue, ExprDiagnostic> {
+    if &value.ty == ty {
+        return Ok(value);
+    }
+
     let RuntimeValue {
         ty: source_ty,
         payload,

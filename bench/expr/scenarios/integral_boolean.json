@@ -1,0 +1,10 @@
+{
+  "id": "integral_boolean",
+  "bench_target": "expr_integral_boolean",
+  "scenarios": [
+    "bind_logical_core_integral",
+    "eval_logical_core_integral_true",
+    "eval_logical_core_integral_unknown",
+    "eval_event_iff_core_integral"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "baseline_name": "parser-baseline",
+  "bench_target": "expr_parser",
+  "cargo_version": "cargo 1.93.0 (083ac5135 2025-12-15)",
+  "criterion_version": "0.8.2",
+  "environment_note": "wavepeek devcontainer/CI image",
+  "run_name": "parser-baseline",
+  "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
+  "scenario_set_id": "parser",
+  "scenario_set_path": "bench/expr/scenarios/parser.json",
+  "scenarios": [
+    {
+      "baseline_name": "parser-baseline",
+      "mean_ns_per_iter": 151.24122862364413,
+      "median_ns_per_iter": 150.85231238488808,
+      "raw_csv": "parse_event_malformed.raw.csv",
+      "sample_count": 100,
+      "scenario": "parse_event_malformed"
+    },
+    {
+      "baseline_name": "parser-baseline",
+      "mean_ns_per_iter": 277.879252955031,
+      "median_ns_per_iter": 273.9561958210272,
+      "raw_csv": "parse_event_union_iff.raw.csv",
+      "sample_count": 100,
+      "scenario": "parse_event_union_iff"
+    },
+    {
+      "baseline_name": "parser-baseline",
+      "mean_ns_per_iter": 192.33601694368215,
+      "median_ns_per_iter": 192.2079464112981,
+      "raw_csv": "tokenize_union_iff.raw.csv",
+      "sample_count": 100,
+      "scenario": "tokenize_union_iff"
+    }
+  ],
+  "source_commit": "2305a2381e02b6ec6cf6426bd82f3dc8e9be4c65",
+  "worktree_state": "clean"
+}

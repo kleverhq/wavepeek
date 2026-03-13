@@ -1,0 +1,9 @@
+{
+  "id": "parser",
+  "bench_target": "expr_parser",
+  "scenarios": [
+    "tokenize_union_iff",
+    "parse_event_union_iff",
+    "parse_event_malformed"
+  ]
+}

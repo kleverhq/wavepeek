@@ -200,11 +200,11 @@ fn rich_type_and_triggered_regressions_hold() {
 
     let error = eval_expr_at("real'(xbus)", &host, 10).expect_err("runtime cast should fail");
     assert_eq!(error.layer, DiagnosticLayer::Runtime);
-    assert_eq!(error.code, "C4-RUNTIME-REAL-CAST");
+    assert_eq!(error.code, "EXPR-RUNTIME-REAL-CAST");
 
     let nonfinite = eval_expr_at("1.0 / 0.0", &host, 10).expect_err("non-finite real should fail");
     assert_eq!(nonfinite.layer, DiagnosticLayer::Runtime);
-    assert_eq!(nonfinite.code, "C4-RUNTIME-REAL-NONFINITE");
+    assert_eq!(nonfinite.code, "EXPR-RUNTIME-REAL-NONFINITE");
 }
 
 #[test]

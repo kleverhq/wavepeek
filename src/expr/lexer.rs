@@ -32,7 +32,7 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
             .next()
             .ok_or_else(|| ExprDiagnostic {
                 layer: DiagnosticLayer::Parse,
-                code: "C1-PARSE-LEX-EOF",
+                code: "EXPR-PARSE-EVENT-LEX-EOF",
                 message: "failed to decode event expression".to_string(),
                 primary_span: Span::new(index, index),
                 notes: vec![],
@@ -68,7 +68,7 @@ pub fn lex_event_expr(source: &str) -> Result<Vec<Token>, ExprDiagnostic> {
                 .next()
                 .ok_or_else(|| ExprDiagnostic {
                     layer: DiagnosticLayer::Parse,
-                    code: "C1-PARSE-LEX-EOF",
+                    code: "EXPR-PARSE-EVENT-LEX-EOF",
                     message: "failed to decode event expression".to_string(),
                     primary_span: Span::new(index, index),
                     notes: vec![],
@@ -360,10 +360,10 @@ impl<'a> LogicalLexer<'a> {
                 _ => {
                     self.bump_char();
                     return Err(self.parse_diag(
-                        "C3-PARSE-LOGICAL-TOKEN",
+                        "EXPR-PARSE-LOGICAL-TOKEN",
                         "unsupported token in logical expression",
                         self.span(start, self.index),
-                        &["C3 supports the integral Boolean surface only"],
+                        &["this operator is not supported in this logical expression surface"],
                     ));
                 }
             };
@@ -446,7 +446,7 @@ impl<'a> LogicalLexer<'a> {
                 .collect::<String>();
             let width = size_digits.parse::<u32>().map_err(|_| {
                 self.parse_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
                     "invalid sized integral literal",
                     self.span(start, integer_end),
                     &["literal size must be a positive integer"],
@@ -454,7 +454,7 @@ impl<'a> LogicalLexer<'a> {
             })?;
             if width == 0 {
                 return Err(self.parse_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
                     "invalid sized integral literal",
                     self.span(start, integer_end),
                     &["literal size must be greater than zero"],
@@ -471,7 +471,7 @@ impl<'a> LogicalLexer<'a> {
             .collect::<String>();
         if digits.is_empty() {
             return Err(self.parse_diag(
-                "C3-PARSE-LOGICAL-LITERAL",
+                "EXPR-PARSE-LOGICAL-LITERAL",
                 "invalid integral literal",
                 self.span(start, integer_end),
                 &["integral literals must contain at least one digit"],
@@ -523,7 +523,7 @@ impl<'a> LogicalLexer<'a> {
                 self.bump_char();
                 let Some(escaped) = self.peek_char() else {
                     return Err(self.parse_diag(
-                        "C4-PARSE-LOGICAL-STRING",
+                        "EXPR-PARSE-LOGICAL-STRING",
                         "unterminated string literal",
                         self.span(start, self.index),
                         &["close the string literal with '\"'"],
@@ -537,7 +537,7 @@ impl<'a> LogicalLexer<'a> {
                     '\\' => '\\',
                     _ => {
                         return Err(self.parse_diag(
-                            "C4-PARSE-LOGICAL-STRING",
+                            "EXPR-PARSE-LOGICAL-STRING",
                             "unsupported string escape sequence",
                             self.span(escape_start, escape_start + 2),
                             &["supported escapes are \\n, \\r, \\t, \\\" and \\\\"],
@@ -554,7 +554,7 @@ impl<'a> LogicalLexer<'a> {
         }
 
         Err(self.parse_diag(
-            "C4-PARSE-LOGICAL-STRING",
+            "EXPR-PARSE-LOGICAL-STRING",
             "unterminated string literal",
             self.span(start, self.index),
             &["close the string literal with '\"'"],
@@ -604,7 +604,7 @@ impl<'a> LogicalLexer<'a> {
             }
             _ => {
                 return Err(self.parse_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
                     "invalid based integral literal",
                     self.span(start, self.index),
                     &["expected base specifier b, d, or h"],
@@ -623,7 +623,7 @@ impl<'a> LogicalLexer<'a> {
             .collect::<String>();
         if digits.is_empty() {
             return Err(self.parse_diag(
-                "C3-PARSE-LOGICAL-LITERAL",
+                "EXPR-PARSE-LOGICAL-LITERAL",
                 "invalid based integral literal",
                 self.span(start, self.index),
                 &["based literal must include at least one digit"],
@@ -645,7 +645,7 @@ impl<'a> LogicalLexer<'a> {
             };
             if !valid {
                 return Err(self.parse_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
                     "invalid digit for integral literal base",
                     self.span(digits_start + offset, digits_start + offset + ch.len_utf8()),
                     &["digit is not valid for the literal base"],
@@ -760,7 +760,7 @@ mod tests {
     }
 
     #[test]
-    fn lex_logical_expr_accepts_core_c3_operators() {
+    fn lex_logical_expr_accepts_integral_boolean_operators() {
         let tokens = lex_logical_expr("logic[8]'({a,b}) inside {[3:4], 8'hx?}", 0).expect("lexes");
 
         assert!(tokens.len() > 8, "token stream should be non-trivial");

@@ -346,11 +346,11 @@ fn eval_signal_ref(
             },
         }),
         (ExprTypeKind::Real, CachedSample::Real { value: None }) => Err(runtime_diag(
-            "C4-RUNTIME-MISSING-SAMPLE",
+            "EXPR-RUNTIME-MISSING-SAMPLE",
             "real operand has no sampled value at or before the requested timestamp",
         )),
         (ExprTypeKind::String, CachedSample::String { value: None }) => Err(runtime_diag(
-            "C4-RUNTIME-MISSING-SAMPLE",
+            "EXPR-RUNTIME-MISSING-SAMPLE",
             "string operand has no sampled value at or before the requested timestamp",
         )),
         _ => Err(runtime_diag(
@@ -739,7 +739,7 @@ fn eval_conditional(
                 Ok(lhs)
             } else {
                 Err(runtime_diag(
-                    "C4-RUNTIME-CONDITIONAL-UNKNOWN",
+                    "EXPR-RUNTIME-CONDITIONAL-UNKNOWN",
                     "unknown conditional selection requires matching non-integral result arms",
                 ))
             }
@@ -1264,7 +1264,7 @@ fn coerce_runtime_to_type(
                     })
                 }
                 RuntimeValuePayload::String { .. } => Err(runtime_diag(
-                    "C4-RUNTIME-CAST",
+                    "EXPR-RUNTIME-CAST",
                     "string values cannot be coerced to integral types",
                 )),
             }
@@ -1280,7 +1280,7 @@ fn coerce_runtime_to_type(
                     .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
                 {
                     return Err(runtime_diag(
-                        "C4-RUNTIME-REAL-CAST",
+                        "EXPR-RUNTIME-REAL-CAST",
                         "integral-to-real conversion is invalid when the source contains x or z",
                     ));
                 }
@@ -1289,7 +1289,7 @@ fn coerce_runtime_to_type(
                         .map(|value| value as f64)
                         .ok_or_else(|| {
                             runtime_diag(
-                                "C4-RUNTIME-REAL-CAST",
+                                "EXPR-RUNTIME-REAL-CAST",
                                 "integral-to-real conversion overflowed the supported range",
                             )
                         })?
@@ -1298,7 +1298,7 @@ fn coerce_runtime_to_type(
                         .map(|value| value as f64)
                         .ok_or_else(|| {
                             runtime_diag(
-                                "C4-RUNTIME-REAL-CAST",
+                                "EXPR-RUNTIME-REAL-CAST",
                                 "integral-to-real conversion overflowed the supported range",
                             )
                         })?
@@ -1311,7 +1311,7 @@ fn coerce_runtime_to_type(
                 })
             }
             RuntimeValuePayload::String { .. } => Err(runtime_diag(
-                "C4-RUNTIME-CAST",
+                "EXPR-RUNTIME-CAST",
                 "string values cannot be coerced to real",
             )),
         },
@@ -1321,7 +1321,7 @@ fn coerce_runtime_to_type(
                 payload: RuntimeValuePayload::String { value },
             }),
             _ => Err(runtime_diag(
-                "C4-RUNTIME-CAST",
+                "EXPR-RUNTIME-CAST",
                 "string casts are supported only as string identity",
             )),
         },
@@ -1645,7 +1645,7 @@ fn finite_real(value: f64) -> Result<f64, ExprDiagnostic> {
         Ok(value)
     } else {
         Err(runtime_diag(
-            "C4-RUNTIME-REAL-NONFINITE",
+            "EXPR-RUNTIME-REAL-NONFINITE",
             "real evaluation produced a non-finite value",
         ))
     }
@@ -1735,7 +1735,7 @@ fn edge_event_matches(
         ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore
     ) {
         return Err(runtime_diag(
-            "C4-SEMANTIC-EVENT-EDGE",
+            "EXPR-SEMANTIC-EVENT-EDGE",
             "edge event terms require integral operands",
         ));
     }

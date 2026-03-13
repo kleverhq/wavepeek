@@ -2,7 +2,7 @@
 source: tests/expression_integral_boolean.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-semantic:C3-SEMANTIC-CONST-REQUIRED: constant integer expression is required
+semantic:EXPR-SEMANTIC-CONST-REQUIRED: constant integer expression is required
 --> span 2..5
 source: a[idx:0]
 note: part-select msb

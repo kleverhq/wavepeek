@@ -2,6 +2,6 @@
 source: tests/expression_rich_types.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-runtime:C4-RUNTIME-REAL-CAST: integral-to-real conversion is invalid when the source contains x or z
+runtime:EXPR-RUNTIME-REAL-CAST: integral-to-real conversion is invalid when the source contains x or z
 --> span 0..0
 source: real'(xbus)

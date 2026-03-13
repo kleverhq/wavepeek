@@ -2,7 +2,7 @@
 source: tests/expression_parse.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-parse:C1-PARSE-BROKEN-UNION: broken event union segmentation
+parse:EXPR-PARSE-EVENT-BROKEN-UNION: broken event union segmentation
 --> span 15..16
 source: posedge clk or , clk
 note: duplicate union separator is not allowed

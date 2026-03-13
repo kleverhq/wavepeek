@@ -14,12 +14,15 @@ The observable outcome is concrete. A repository-wide search for expression roll
 
 This plan does not change expression language semantics from `docs/expression_lang.md`, does not integrate the standalone engine into default `change` or `property` execution, and does not remove the phase model from the documents that are explicitly about rollout sequencing. It does not add new expression features, does not change benchmark methodology beyond renaming and recapturing expression collateral, and does not preserve backwards-compatible aliases for old diagnostic codes or old benchmark target names. This is a deliberate cleanup, not a compatibility bridge.
 
+This plan also does not leave behind temporary control-only artifacts. If implementation work creates a throwaway test, fixture, script, file, or helper only to inspect state, compare intermediate outputs, or drive a one-off migration, that artifact must be deleted before the milestone commit lands unless it is intentionally promoted into durable regression coverage, benchmark coverage, or a permanent hygiene guard.
+
 ## Progress
 
 - [x] (2026-03-13 00:00Z) Audited `docs/expression_lang.md`, `docs/expression_roadmap.md`, `src/expr/`, `src/waveform/expr_host.rs`, `tests/`, `bench/expr/`, and the current benchmark/docs collateral to inventory every remaining expression phase tag outside roadmap/history surfaces.
 - [x] (2026-03-13 00:00Z) Chose the end-state policy for this cleanup: rollout-phase language remains only in roadmap and execution-plan history, while all live expression code/tests/bench/docs use capability-oriented names plus stable `EXPR-*` diagnostics.
 - [x] (2026-03-13 00:00Z) Drafted this active ExecPlan with explicit naming targets, migration order, validation gates, review lanes, and commit checkpoints.
 - [x] (2026-03-13 00:00Z) Completed docs and architecture review plus a fresh control pass for the plan itself, then tightened the hygiene-guard policy to completed-history paths, added archive steps for stale active plans, and expanded the diagnostic-cleanup scope to include lexer-owned codes.
+- [x] (2026-03-13 00:00Z) Incorporated the explicit repository rule that any temporary control-only tests, files, fixtures, scripts, or helpers created during execution must be removed before the milestone or final cleanup commit unless they are intentionally promoted into permanent coverage.
 - [ ] Add a repository guard that fails when expression phase tags appear outside the allowed roadmap/history paths.
 - [ ] Reorganize expression integration tests, fixture manifests, snapshots, and shared test helpers around feature-oriented names instead of `expression_c1` through `expression_c4`.
 - [ ] Replace rollout-coded expression diagnostics and helper-only trap codes with stable `EXPR-*` and `TEST-*` identifiers, and rewrite messages so they describe current behavior instead of rollout history.
@@ -68,6 +71,10 @@ This plan does not change expression language semantics from `docs/expression_la
 
 - Decision: use additive migration inside each milestone, then remove the old names before the milestone commit lands.
   Rationale: this keeps the work safe and reviewable. The implementer can create neutral files, move coverage over, prove parity, and only then delete the old phase-tagged files in the same atomic unit.
+  Date/Author: 2026-03-13 / OpenCode
+
+- Decision: temporary control-only artifacts must be cleaned up before final acceptance.
+  Rationale: this cleanup is meant to make the repository feel cohesive, not to trade one kind of historical residue for another. Throwaway migration scripts, temporary fixtures, and one-off audit tests are acceptable only while they actively de-risk a milestone; they must either be deleted or explicitly promoted into permanent coverage before the milestone commit is finalized.
   Date/Author: 2026-03-13 / OpenCode
 
 ## Outcomes & Retrospective
@@ -188,6 +195,8 @@ Run all commands from `/workspaces/feat-cmd-property` inside the repository devc
 
    Keep the migration additive until parity is proven. Copy each old phase-named test file to its new neutral name, switch the helpers and fixtures over, run the target test file, and only then delete the old file in the same milestone. Apply the same approach to fixtures and snapshots.
 
+   If a temporary comparator test, ad hoc fixture, or one-off migration helper is needed during this test move, keep it local to the working tree and delete it before the milestone commit unless it graduates into a permanent shared helper or durable regression test.
+
    Commands while moving each suite:
 
        cargo test --test expression_parse
@@ -290,6 +299,8 @@ Run all commands from `/workspaces/feat-cmd-property` inside the repository devc
    Regenerate any run metadata whose schema shape still reflects the older C1 export format so every `summary.json` records `bench_target`, `scenario_set_id`, and `scenario_set_path`. Update the Python unit tests so their example payloads use the new names and still validate mismatch handling.
 
    Capture new artifacts only after the renamed bench files and scenario manifests are green in test mode.
+
+   If you need a temporary export helper, rename shim, or analysis script to recapture the benchmark collateral safely, treat it as throwaway control infrastructure and delete it before the milestone commit unless it becomes part of the permanent benchmark workflow documented in `bench/expr/AGENTS.md` and `docs/DEVELOPMENT.md`.
 
    Commands for this milestone:
 
@@ -413,7 +424,7 @@ Run all commands from `/workspaces/feat-cmd-property` inside the repository devc
 
 The cleanup is complete only when all four forms of evidence agree.
 
-First, repository navigation must be visibly cleaner: the neutral file names, manifest names, snapshot names, benchmark targets, and run directories must exist, and the old `expression_c*`, `expr_c*`, `c*_manifest`, and `c*-baseline` names must be absent from live surfaces. Second, the engine contract must be visibly cleaner: diagnostic snapshots and assertion strings must use `EXPR-*` codes and present-tense rule descriptions. Third, the workflow must be visibly cleaner: `docs/DEVELOPMENT.md` and the benchmark breadcrumbs must instruct contributors to run the neutral target names. Fourth, the hygiene guard must prove the rule automatically by failing if a forbidden phase tag reappears outside the roadmap/history allowlist.
+First, repository navigation must be visibly cleaner: the neutral file names, manifest names, snapshot names, benchmark targets, and run directories must exist, and the old `expression_c*`, `expr_c*`, `c*_manifest`, and `c*-baseline` names must be absent from live surfaces. Second, the engine contract must be visibly cleaner: diagnostic snapshots and assertion strings must use `EXPR-*` codes and present-tense rule descriptions. Third, the workflow must be visibly cleaner: `docs/DEVELOPMENT.md` and the benchmark breadcrumbs must instruct contributors to run the neutral target names. Fourth, the hygiene guard must prove the rule automatically by failing if a forbidden phase tag reappears outside the roadmap/history allowlist. Fifth, no temporary control-only tests, files, fixtures, or scripts created during the cleanup may remain unless they were explicitly promoted into permanent repository coverage.
 
 The simplest human check after implementation is to run:
 
@@ -431,7 +442,7 @@ This cleanup is safe to implement incrementally because each milestone is additi
 
 Benchmark collateral needs special care because `target/criterion` can retain stale directories. If capture or compare commands start mixing old and new names, delete only the affected expression bench directories under `target/criterion/` and rerun the same `cargo bench --bench ...` command. Do not delete committed run artifacts until their neutral replacements have been captured and verified.
 
-The hygiene guard allowlist is the one place where being overly permissive would hide mistakes. If the guard flags a live path, treat that as a rename bug, not as a reason to widen the allowlist. Only roadmap/history paths may remain exempt.
+The hygiene guard allowlist is the one place where being overly permissive would hide mistakes. If the guard flags a live path, treat that as a rename bug, not as a reason to widen the allowlist. Only roadmap/history paths may remain exempt. Apply the same discipline to temporary control artifacts: if a milestone needed a throwaway script or file to get unstuck, delete it before closing the milestone instead of normalizing it as accidental residue.
 
 ### Artifacts and Notes
 
@@ -486,4 +497,4 @@ In `Cargo.toml`, the final bench registrations must be exactly these names and p
 
 The benchmark scenario manifests and run summaries must record matching neutral identities. The four scenario-set IDs must be `parser`, `event_runtime`, `integral_boolean`, and `rich_types`.
 
-Revision note (2026-03-13 / OpenCode): initial plan authored from the expression contract docs, current repository implementation state, targeted audits of tests/bench/docs/source, and the user requirement that rollout phases remain only in roadmap and execution-plan history. Revised after focused docs and architecture review plus a fresh control pass to narrow the final hygiene allowlist to roadmap plus completed-plan history, archive stale completed plans that still sit under `docs/exec-plans/active/`, and include lexer-owned diagnostics in the `EXPR-*` cleanup scope.
+Revision note (2026-03-13 / OpenCode): initial plan authored from the expression contract docs, current repository implementation state, targeted audits of tests/bench/docs/source, and the user requirement that rollout phases remain only in roadmap and execution-plan history. Revised after focused docs and architecture review plus a fresh control pass to narrow the final hygiene allowlist to roadmap plus completed-plan history, archive stale completed plans that still sit under `docs/exec-plans/active/`, and include lexer-owned diagnostics in the `EXPR-*` cleanup scope. Revised again after user feedback to make cleanup of temporary control-only tests, files, fixtures, and scripts an explicit success condition rather than an implied expectation.

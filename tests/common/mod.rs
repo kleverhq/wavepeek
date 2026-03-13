@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+pub mod expr_cases;
 pub mod expr_runtime;
 
 #[allow(dead_code)]

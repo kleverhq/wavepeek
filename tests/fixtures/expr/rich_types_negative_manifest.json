@@ -34,7 +34,7 @@
       "layer": "runtime",
       "code": "C4-RUNTIME-REAL-CAST",
       "span": { "start": 0, "end": 0 },
-      "snapshot": "c4_runtime_real_cast_unknown"
+      "snapshot": "runtime_real_cast_unknown"
     },
     {
       "name": "invalid_nonfinite_real_literal",
@@ -88,7 +88,7 @@
       "layer": "semantic",
       "code": "C4-SEMANTIC-METADATA",
       "span": { "start": 23, "end": 27 },
-      "snapshot": "c4_semantic_missing_enum_metadata"
+      "snapshot": "semantic_missing_enum_metadata"
     },
     {
       "name": "invalid_triggered_on_non_event",

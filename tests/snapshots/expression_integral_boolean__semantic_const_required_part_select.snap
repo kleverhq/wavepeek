@@ -1,5 +1,5 @@
 ---
-source: tests/expression_c3.rs
+source: tests/expression_integral_boolean.rs
 expression: diagnostic.render(case.source.as_str())
 ---
 semantic:C3-SEMANTIC-CONST-REQUIRED: constant integer expression is required

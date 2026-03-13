@@ -1,5 +1,5 @@
 ---
-source: tests/expression_c1.rs
+source: tests/expression_parse.rs
 expression: diagnostic.render(case.source.as_str())
 ---
 parse:C1-PARSE-BROKEN-UNION: broken event union segmentation

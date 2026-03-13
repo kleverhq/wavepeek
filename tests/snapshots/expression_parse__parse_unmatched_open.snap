@@ -2,7 +2,7 @@
 source: tests/expression_parse.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-parse:C1-PARSE-UNMATCHED-OPEN: unmatched opening parenthesis
+parse:EXPR-PARSE-EVENT-UNMATCHED-OPEN: unmatched opening parenthesis
 --> span 0..1
 source: (
 note: event-level grouping is not supported; use parentheses only inside iff

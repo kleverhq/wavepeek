@@ -11,7 +11,7 @@ use super::lexer::{
 pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic> {
     if source.trim().is_empty() {
         return Err(parse_diag(
-            "C1-PARSE-EMPTY",
+            "EXPR-PARSE-EVENT-EMPTY",
             "event expression cannot be empty",
             Span::new(0, source.len()),
             &["expected one event term"],
@@ -21,7 +21,7 @@ pub fn parse_event_expr_ast(source: &str) -> Result<EventExprAst, ExprDiagnostic
     let tokens = lex_event_expr(source)?;
     if tokens.is_empty() {
         return Err(parse_diag(
-            "C1-PARSE-EMPTY",
+            "EXPR-PARSE-EVENT-EMPTY",
             "event expression cannot be empty",
             Span::new(0, source.len()),
             &["expected one event term"],
@@ -46,7 +46,7 @@ pub(crate) fn parse_logical_expr_with_offset(
 ) -> Result<LogicalExprAst, ExprDiagnostic> {
     if source.trim().is_empty() {
         return Err(logical_parse_diag(
-            "C3-PARSE-LOGICAL-EMPTY",
+            "EXPR-PARSE-LOGICAL-EMPTY",
             "logical expression cannot be empty",
             Span::new(source_offset, source_offset + source.len()),
             &["expected a logical expression"],
@@ -76,7 +76,7 @@ impl<'a> StrictParser<'a> {
         while self.index < self.tokens.len() {
             let separator = self.current().ok_or_else(|| {
                 parse_diag(
-                    "C1-PARSE-BROKEN-UNION",
+                    "EXPR-PARSE-EVENT-BROKEN-UNION",
                     "broken event union segmentation",
                     Span::new(self.source.len(), self.source.len()),
                     &["expected 'or' or ',' between event terms"],
@@ -90,7 +90,7 @@ impl<'a> StrictParser<'a> {
                     self.index += 1;
                     if self.index >= self.tokens.len() {
                         return Err(parse_diag(
-                            "C1-PARSE-BROKEN-UNION",
+                            "EXPR-PARSE-EVENT-BROKEN-UNION",
                             "broken event union segmentation",
                             separator_span,
                             &["union separator must be followed by an event term"],
@@ -103,7 +103,7 @@ impl<'a> StrictParser<'a> {
                     ) {
                         let duplicated = self.current().expect("token should exist");
                         return Err(parse_diag(
-                            "C1-PARSE-BROKEN-UNION",
+                            "EXPR-PARSE-EVENT-BROKEN-UNION",
                             "broken event union segmentation",
                             duplicated.span,
                             &["duplicate union separator is not allowed"],
@@ -114,7 +114,7 @@ impl<'a> StrictParser<'a> {
                 }
                 TokenKind::RightParen => {
                     return Err(parse_diag(
-                        "C1-PARSE-UNMATCHED-CLOSE",
+                        "EXPR-PARSE-EVENT-UNMATCHED-CLOSE",
                         "unmatched closing parenthesis",
                         separator_span,
                         &["remove ')' or add a matching '(' in an iff payload"],
@@ -122,7 +122,7 @@ impl<'a> StrictParser<'a> {
                 }
                 TokenKind::LeftParen => {
                     return Err(parse_diag(
-                        "C1-PARSE-UNMATCHED-OPEN",
+                        "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
                         "unmatched opening parenthesis",
                         separator_span,
                         &["event-level grouping is not supported; use parentheses only inside iff"],
@@ -130,7 +130,7 @@ impl<'a> StrictParser<'a> {
                 }
                 _ => {
                     return Err(parse_diag(
-                        "C1-PARSE-BROKEN-UNION",
+                        "EXPR-PARSE-EVENT-BROKEN-UNION",
                         "broken event union segmentation",
                         separator_span,
                         &["expected 'or' or ',' between event terms"],
@@ -176,7 +176,7 @@ impl<'a> StrictParser<'a> {
     fn parse_basic_event(&mut self) -> Result<(BasicEventAst, Span), ExprDiagnostic> {
         let token = self.current().ok_or_else(|| {
             parse_diag(
-                "C1-PARSE-BROKEN-UNION",
+                "EXPR-PARSE-EVENT-BROKEN-UNION",
                 "broken event union segmentation",
                 Span::new(self.source.len(), self.source.len()),
                 &["expected one event term"],
@@ -195,7 +195,7 @@ impl<'a> StrictParser<'a> {
                 if let Some((offset, ch)) = invalid_name_char(name.as_str()) {
                     let message = format!("unexpected character '{ch}' in signal name");
                     return Err(parse_diag(
-                        "C1-PARSE-LEX-CHAR",
+                        "EXPR-PARSE-EVENT-LEX-CHAR",
                         message.as_str(),
                         Span::new(
                             token_span.start + offset,
@@ -217,25 +217,25 @@ impl<'a> StrictParser<'a> {
             TokenKind::KeywordNegedge => self.parse_edge_event(TokenKind::KeywordNegedge),
             TokenKind::KeywordEdge => self.parse_edge_event(TokenKind::KeywordEdge),
             TokenKind::KeywordOr | TokenKind::Comma => Err(parse_diag(
-                "C1-PARSE-BROKEN-UNION",
+                "EXPR-PARSE-EVENT-BROKEN-UNION",
                 "broken event union segmentation",
                 token_span,
                 &["event term is missing before union separator"],
             )),
             TokenKind::LeftParen => Err(parse_diag(
-                "C1-PARSE-UNMATCHED-OPEN",
+                "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
                 "unmatched opening parenthesis",
                 token_span,
                 &["event-level grouping is not supported; use parentheses only inside iff"],
             )),
             TokenKind::RightParen => Err(parse_diag(
-                "C1-PARSE-UNMATCHED-CLOSE",
+                "EXPR-PARSE-EVENT-UNMATCHED-CLOSE",
                 "unmatched closing parenthesis",
                 token_span,
                 &["remove ')' or add a matching '(' in an iff payload"],
             )),
             TokenKind::KeywordIff => Err(parse_diag(
-                "C1-PARSE-BROKEN-UNION",
+                "EXPR-PARSE-EVENT-BROKEN-UNION",
                 "broken event union segmentation",
                 token_span,
                 &["'iff' must follow a basic event term"],
@@ -254,7 +254,7 @@ impl<'a> StrictParser<'a> {
         self.index += 1;
         let Some(name_token) = self.current() else {
             return Err(parse_diag(
-                "C1-PARSE-MISSING-NAME",
+                "EXPR-PARSE-EVENT-MISSING-NAME",
                 "missing signal name after edge keyword",
                 keyword_span,
                 &["expected a signal name after edge keyword"],
@@ -265,19 +265,19 @@ impl<'a> StrictParser<'a> {
             let name_span = name_token.span;
             let diagnostic = match name_token.kind {
                 TokenKind::LeftParen => parse_diag(
-                    "C1-PARSE-UNMATCHED-OPEN",
+                    "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
                     "unmatched opening parenthesis",
                     name_span,
                     &["event-level grouping is not supported; use parentheses only inside iff"],
                 ),
                 TokenKind::RightParen => parse_diag(
-                    "C1-PARSE-UNMATCHED-CLOSE",
+                    "EXPR-PARSE-EVENT-UNMATCHED-CLOSE",
                     "unmatched closing parenthesis",
                     name_span,
                     &["remove ')' or add a matching '(' in an iff payload"],
                 ),
                 _ => parse_diag(
-                    "C1-PARSE-MISSING-NAME",
+                    "EXPR-PARSE-EVENT-MISSING-NAME",
                     "missing signal name after edge keyword",
                     keyword_span,
                     &["expected a signal name after edge keyword"],
@@ -291,7 +291,7 @@ impl<'a> StrictParser<'a> {
         if let Some((offset, ch)) = invalid_name_char(name.as_str()) {
             let message = format!("unexpected character '{ch}' in signal name");
             return Err(parse_diag(
-                "C1-PARSE-LEX-CHAR",
+                "EXPR-PARSE-EVENT-LEX-CHAR",
                 message.as_str(),
                 Span::new(
                     name_span.start + offset,
@@ -310,7 +310,7 @@ impl<'a> StrictParser<'a> {
             BasicEventAst::Edge { name, span }
         } else {
             return Err(parse_diag(
-                "C1-PARSE-BROKEN-UNION",
+                "EXPR-PARSE-EVENT-BROKEN-UNION",
                 "broken event union segmentation",
                 keyword_span,
                 &["internal parser keyword dispatch failure"],
@@ -323,7 +323,7 @@ impl<'a> StrictParser<'a> {
     fn capture_iff_payload(&mut self, iff_span: Span) -> Result<(String, Span), ExprDiagnostic> {
         if self.index >= self.tokens.len() {
             return Err(parse_diag(
-                "C1-PARSE-EMPTY-IFF",
+                "EXPR-PARSE-EVENT-EMPTY-IFF",
                 "empty iff payload",
                 iff_span,
                 &["expected logical expression after 'iff'"],
@@ -347,7 +347,7 @@ impl<'a> StrictParser<'a> {
                 TokenKind::RightParen => {
                     if open_stack.pop().is_none() {
                         return Err(parse_diag(
-                            "C1-PARSE-UNMATCHED-CLOSE",
+                            "EXPR-PARSE-EVENT-UNMATCHED-CLOSE",
                             "unmatched closing parenthesis",
                             token_span,
                             &["remove ')' or add a matching '(' in an iff payload"],
@@ -368,7 +368,7 @@ impl<'a> StrictParser<'a> {
 
         if start == end {
             return Err(parse_diag(
-                "C1-PARSE-EMPTY-IFF",
+                "EXPR-PARSE-EVENT-EMPTY-IFF",
                 "empty iff payload",
                 iff_span,
                 &["expected logical expression after 'iff'"],
@@ -377,7 +377,7 @@ impl<'a> StrictParser<'a> {
 
         if let Some(unmatched_open) = open_stack.first().copied() {
             return Err(parse_diag(
-                "C1-PARSE-UNMATCHED-OPEN",
+                "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
                 "unmatched opening parenthesis",
                 unmatched_open,
                 &["close the '(' opened in iff payload"],
@@ -397,7 +397,7 @@ impl<'a> StrictParser<'a> {
 
         if payload.is_empty() {
             return Err(parse_diag(
-                "C1-PARSE-EMPTY-IFF",
+                "EXPR-PARSE-EVENT-EMPTY-IFF",
                 "empty iff payload",
                 iff_span,
                 &["expected logical expression after 'iff'"],
@@ -424,7 +424,7 @@ impl<'a> LogicalParser<'a> {
         let root = self.parse_conditional_expr()?;
         if !matches!(self.current().kind, LogicalTokenKind::Eof) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-TRAILING",
+                "EXPR-PARSE-LOGICAL-TRAILING",
                 "trailing tokens in logical expression",
                 self.current().span,
                 &["remove extra tokens after a complete expression"],
@@ -446,7 +446,7 @@ impl<'a> LogicalParser<'a> {
         let when_true = self.parse_conditional_expr()?;
         if !matches!(self.current().kind, LogicalTokenKind::Colon) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "expected ':' in conditional expression",
                 self.current().span,
                 &["conditional expression form is cond ? a : b"],
@@ -674,7 +674,7 @@ impl<'a> LogicalParser<'a> {
                         }
                         _ => {
                             return Err(logical_parse_diag(
-                                "C4-PARSE-LOGICAL-EXPECTED",
+                                "EXPR-PARSE-LOGICAL-EXPECTED",
                                 "unsupported member-like suffix",
                                 dot_span,
                                 &["only .triggered is supported as a member-like suffix"],
@@ -752,7 +752,7 @@ impl<'a> LogicalParser<'a> {
                 })
             }
             _ => Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "malformed selection suffix",
                 open,
                 &["expected ] or : or +: or -: in selection"],
@@ -763,7 +763,7 @@ impl<'a> LogicalParser<'a> {
     fn parse_inside_set(&mut self) -> Result<(Vec<InsideItemAst>, Span), ExprDiagnostic> {
         if !matches!(self.current().kind, LogicalTokenKind::LeftBrace) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "inside requires a braced set",
                 self.current().span,
                 &["use inside { item1, item2 }"],
@@ -774,7 +774,7 @@ impl<'a> LogicalParser<'a> {
 
         if matches!(self.current().kind, LogicalTokenKind::RightBrace) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "inside set cannot be empty",
                 self.current().span,
                 &["add at least one set item"],
@@ -789,7 +789,7 @@ impl<'a> LogicalParser<'a> {
                 let low = self.parse_conditional_expr()?;
                 if !matches!(self.current().kind, LogicalTokenKind::Colon) {
                     return Err(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-EXPECTED",
+                        "EXPR-PARSE-LOGICAL-EXPECTED",
                         "inside range requires ':'",
                         self.current().span,
                         &["inside ranges use [low:high]"],
@@ -816,7 +816,7 @@ impl<'a> LogicalParser<'a> {
 
         if !matches!(self.current().kind, LogicalTokenKind::RightBrace) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "inside set must end with '}'",
                 self.current().span,
                 &["close the inside set with '}'"],
@@ -872,7 +872,7 @@ impl<'a> LogicalParser<'a> {
                 let expr = self.parse_conditional_expr()?;
                 if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
                     return Err(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-UNMATCHED-OPEN",
+                        "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN",
                         "unmatched opening parenthesis in logical expression",
                         open,
                         &["close this '('"],
@@ -887,19 +887,19 @@ impl<'a> LogicalParser<'a> {
             }
             LogicalTokenKind::LeftBrace => self.parse_braced_primary(),
             LogicalTokenKind::RightParen => Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-UNMATCHED-CLOSE",
+                "EXPR-PARSE-LOGICAL-UNMATCHED-CLOSE",
                 "unmatched closing parenthesis in logical expression",
                 token.span,
                 &["remove ')' or add a matching '('"],
             )),
             LogicalTokenKind::Eof => Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "incomplete logical expression",
                 token.span,
                 &["expected an operand or literal"],
             )),
             _ => Err(logical_parse_diag(
-                "C4-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "expected logical expression operand",
                 token.span,
                 &["expected operand reference, literal, cast, or parenthesized expression"],
@@ -957,7 +957,7 @@ impl<'a> LogicalParser<'a> {
             }
             _ => {
                 return Err(logical_parse_diag(
-                    "C4-PARSE-LOGICAL-EXPECTED",
+                    "EXPR-PARSE-LOGICAL-EXPECTED",
                     "enum label reference is missing a label",
                     self.current().span,
                     &["enum label form is type(enum_operand_reference)::LABEL"],
@@ -979,7 +979,7 @@ impl<'a> LogicalParser<'a> {
         self.index += 1;
         if matches!(self.current().kind, LogicalTokenKind::RightBrace) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "empty concatenation is not valid",
                 open,
                 &["add one or more expressions inside braces"],
@@ -992,7 +992,7 @@ impl<'a> LogicalParser<'a> {
             let repeated = self.parse_conditional_expr()?;
             if !matches!(self.current().kind, LogicalTokenKind::RightBrace) {
                 return Err(logical_parse_diag(
-                    "C3-PARSE-LOGICAL-EXPECTED",
+                    "EXPR-PARSE-LOGICAL-EXPECTED",
                     "replication is missing inner closing '}'",
                     self.current().span,
                     &["replication form is {N{expr}}"],
@@ -1001,7 +1001,7 @@ impl<'a> LogicalParser<'a> {
             self.index += 1;
             if !matches!(self.current().kind, LogicalTokenKind::RightBrace) {
                 return Err(logical_parse_diag(
-                    "C3-PARSE-LOGICAL-EXPECTED",
+                    "EXPR-PARSE-LOGICAL-EXPECTED",
                     "replication is missing outer closing '}'",
                     self.current().span,
                     &["replication form is {N{expr}}"],
@@ -1023,7 +1023,7 @@ impl<'a> LogicalParser<'a> {
         }
         if !matches!(self.current().kind, LogicalTokenKind::RightBrace) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "concatenation must end with '}'",
                 self.current().span,
                 &["concatenation form is {a, b, c}"],
@@ -1054,7 +1054,7 @@ impl<'a> LogicalParser<'a> {
         }
         let Some(target) = candidate.target else {
             return Err(logical_parse_diag(
-                "C4-PARSE-LOGICAL-CAST",
+                "EXPR-PARSE-LOGICAL-CAST",
                 "invalid cast target",
                 candidate.span,
                 &["cast target must be a supported expression type"],
@@ -1063,7 +1063,7 @@ impl<'a> LogicalParser<'a> {
 
         if !matches!(self.current().kind, LogicalTokenKind::LeftParen) {
             return Err(logical_parse_diag(
-                "C4-PARSE-LOGICAL-CAST",
+                "EXPR-PARSE-LOGICAL-CAST",
                 "malformed cast expression",
                 self.current().span,
                 &["cast form is type'(expr)"],
@@ -1073,7 +1073,7 @@ impl<'a> LogicalParser<'a> {
         let inner = self.parse_conditional_expr()?;
         if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
             return Err(logical_parse_diag(
-                "C4-PARSE-LOGICAL-UNMATCHED-OPEN",
+                "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN",
                 "unmatched opening parenthesis in cast expression",
                 candidate.span,
                 &["cast form is type'(expr)"],
@@ -1222,7 +1222,7 @@ impl<'a> LogicalParser<'a> {
                     }
                     LogicalTokenKind::Eof => {
                         return Err(logical_parse_diag(
-                            "C4-PARSE-LOGICAL-UNMATCHED-OPEN",
+                            "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN",
                             "unmatched opening parenthesis in type(...) cast target",
                             open,
                             &["type(...) forms must close the recovered operand reference"],
@@ -1230,7 +1230,7 @@ impl<'a> LogicalParser<'a> {
                     }
                     _ => {
                         return Err(logical_parse_diag(
-                            "C4-PARSE-LOGICAL-CAST",
+                            "EXPR-PARSE-LOGICAL-CAST",
                             "type(...) cast target must name an operand reference",
                             self.current().span,
                             &["type(...) cast target is type(operand_reference)"],
@@ -1239,7 +1239,7 @@ impl<'a> LogicalParser<'a> {
                 };
                 if !matches!(self.current().kind, LogicalTokenKind::RightParen) {
                     return Err(logical_parse_diag(
-                        "C4-PARSE-LOGICAL-CAST",
+                        "EXPR-PARSE-LOGICAL-CAST",
                         "type(...) cast target is missing closing ')'",
                         open,
                         &["type(...) cast target is type(operand_reference)"],
@@ -1292,7 +1292,7 @@ impl<'a> LogicalParser<'a> {
                 LogicalTokenKind::IntegralLiteral(ref literal) => literal,
                 _ => {
                     return Err(logical_parse_diag(
-                        "C3-PARSE-LOGICAL-CAST",
+                        "EXPR-PARSE-LOGICAL-CAST",
                         "cast target width must be a positive integer",
                         token.span,
                         &["bit/logic cast widths use bit[N] or logic[N]"],
@@ -1304,7 +1304,7 @@ impl<'a> LogicalParser<'a> {
                 || !matches!(literal.base, IntegralBase::Decimal)
             {
                 return Err(logical_parse_diag(
-                    "C3-PARSE-LOGICAL-CAST",
+                    "EXPR-PARSE-LOGICAL-CAST",
                     "cast target width must be an unsized decimal integer",
                     token.span,
                     &["bit/logic cast widths use bit[N] or logic[N]"],
@@ -1312,7 +1312,7 @@ impl<'a> LogicalParser<'a> {
             }
             width = literal.digits.parse::<u32>().map_err(|_| {
                 logical_parse_diag(
-                    "C3-PARSE-LOGICAL-CAST",
+                    "EXPR-PARSE-LOGICAL-CAST",
                     "cast target width is out of range",
                     token.span,
                     &["bit/logic cast widths must fit in u32"],
@@ -1320,7 +1320,7 @@ impl<'a> LogicalParser<'a> {
             })?;
             if width == 0 {
                 return Err(logical_parse_diag(
-                    "C3-PARSE-LOGICAL-CAST",
+                    "EXPR-PARSE-LOGICAL-CAST",
                     "cast target width must be greater than zero",
                     token.span,
                     &["bit/logic cast widths must be positive"],
@@ -1329,7 +1329,7 @@ impl<'a> LogicalParser<'a> {
             self.index += 1;
             if !matches!(self.current().kind, LogicalTokenKind::RightBracket) {
                 return Err(logical_parse_diag(
-                    "C3-PARSE-LOGICAL-CAST",
+                    "EXPR-PARSE-LOGICAL-CAST",
                     "cast target width is missing closing ']'",
                     open,
                     &["bit/logic cast widths use [N]"],
@@ -1352,7 +1352,7 @@ impl<'a> LogicalParser<'a> {
     fn expect_right_bracket(&mut self, context: &str) -> Result<Span, ExprDiagnostic> {
         if !matches!(self.current().kind, LogicalTokenKind::RightBracket) {
             return Err(logical_parse_diag(
-                "C3-PARSE-LOGICAL-EXPECTED",
+                "EXPR-PARSE-LOGICAL-EXPECTED",
                 "missing closing ']'",
                 self.current().span,
                 &[context],
@@ -1450,7 +1450,7 @@ mod tests {
         let error = parse_event_expr_ast("(").expect_err("source should fail");
 
         assert_eq!(error.layer, DiagnosticLayer::Parse);
-        assert_eq!(error.code, "C1-PARSE-UNMATCHED-OPEN");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-OPEN");
         assert_eq!(error.primary_span.start, 0);
         assert_eq!(error.primary_span.end, 1);
     }
@@ -1460,7 +1460,7 @@ mod tests {
         let error = parse_event_expr_ast("posedge clk or , clk").expect_err("source should fail");
 
         assert_eq!(error.layer, DiagnosticLayer::Parse);
-        assert_eq!(error.code, "C1-PARSE-BROKEN-UNION");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-BROKEN-UNION");
         assert_eq!(error.primary_span.start, 15);
         assert_eq!(error.primary_span.end, 16);
     }
@@ -1491,19 +1491,19 @@ mod tests {
     }
 
     #[test]
-    fn logical_parser_accepts_c3_integral_surface_sample() {
+    fn logical_parser_accepts_integral_boolean_surface_sample() {
         parse_logical_expr_ast(
             "(signed'(a + 3) inside {[1:8], 16'hx0}) ? {2{b[3]}} : (c ==? 4'b1x0z)",
         )
-        .expect("c3 sample expression should parse");
+        .expect("integral boolean sample expression should parse");
     }
 
     #[test]
-    fn logical_parser_accepts_c4_rich_surface_sample() {
+    fn logical_parser_accepts_rich_type_surface_sample() {
         let parsed = parse_logical_expr_ast(
             "ev.triggered ? type(state)::BUSY : type(msg)'(\"idle\") == \"idle\"",
         )
-        .expect("c4 rich sample should parse");
+        .expect("rich type sample expression should parse");
 
         assert!(matches!(parsed.root, LogicalExprNode::Conditional { .. }));
     }

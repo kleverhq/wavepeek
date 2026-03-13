@@ -2,7 +2,7 @@
 source: tests/expression_parse.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-parse:C1-PARSE-UNMATCHED-CLOSE: unmatched closing parenthesis
+parse:EXPR-PARSE-EVENT-UNMATCHED-CLOSE: unmatched closing parenthesis
 --> span 11..12
 source: posedge clk)
 note: remove ')' or add a matching '(' in an iff payload

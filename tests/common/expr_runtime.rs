@@ -145,7 +145,7 @@ impl ExpressionHost for InMemoryExprHost {
         if self.trap_handles.contains(&handle) {
             return Err(ExprDiagnostic {
                 layer: DiagnosticLayer::Runtime,
-                code: "C3-RUNTIME-UNEXPECTED-SAMPLE",
+                code: "TEST-RUNTIME-UNEXPECTED-SAMPLE",
                 message: format!("signal {} was sampled unexpectedly", handle.0),
                 primary_span: Span::new(0, 0),
                 notes: vec!["short-circuited branch must not sample this signal".to_string()],

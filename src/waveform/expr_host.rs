@@ -168,7 +168,7 @@ mod tests {
         let ast = parse_logical_expr_ast("type(top.state)::BUSY").expect("expression should parse");
         let error = bind_logical_expr_ast(&ast, &host).expect_err("bind should fail");
 
-        assert_eq!(error.code, "C4-SEMANTIC-METADATA");
+        assert_eq!(error.code, "EXPR-SEMANTIC-METADATA");
     }
 
     fn fixture_path(filename: &str) -> std::path::PathBuf {

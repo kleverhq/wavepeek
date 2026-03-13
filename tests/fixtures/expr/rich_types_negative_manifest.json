@@ -5,7 +5,7 @@
       "entrypoint": "logical",
       "source": "msg + 1",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-NUMERIC",
+      "code": "EXPR-SEMANTIC-NUMERIC",
       "span": { "start": 0, "end": 3 },
       "snapshot": null
     },
@@ -14,7 +14,7 @@
       "entrypoint": "logical",
       "source": "msg && 1",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-BOOLEAN-CONTEXT",
+      "code": "EXPR-SEMANTIC-BOOLEAN-CONTEXT",
       "span": { "start": 0, "end": 3 },
       "snapshot": null
     },
@@ -23,7 +23,7 @@
       "entrypoint": "logical",
       "source": "string'(count)",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-CAST-TARGET",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
       "span": { "start": 0, "end": 14 },
       "snapshot": null
     },
@@ -32,7 +32,7 @@
       "entrypoint": "logical",
       "source": "real'(xbus)",
       "layer": "runtime",
-      "code": "C4-RUNTIME-REAL-CAST",
+      "code": "EXPR-RUNTIME-REAL-CAST",
       "span": { "start": 0, "end": 0 },
       "snapshot": "runtime_real_cast_unknown"
     },
@@ -41,7 +41,7 @@
       "entrypoint": "logical",
       "source": "1e309",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-REAL-LITERAL",
+      "code": "EXPR-SEMANTIC-REAL-LITERAL",
       "span": { "start": 0, "end": 5 },
       "snapshot": null
     },
@@ -50,7 +50,7 @@
       "entrypoint": "logical",
       "source": "bit'(ev)",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-EVENT-VALUE",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
       "span": { "start": 5, "end": 7 },
       "snapshot": null
     },
@@ -59,7 +59,7 @@
       "entrypoint": "logical",
       "source": "type(missing)'(1)",
       "layer": "semantic",
-      "code": "C3-SEMANTIC-UNKNOWN-SIGNAL",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
       "span": { "start": 5, "end": 12 },
       "snapshot": null
     },
@@ -68,7 +68,7 @@
       "entrypoint": "logical",
       "source": "type(data)::BUSY",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-ENUM-LABEL",
+      "code": "EXPR-SEMANTIC-ENUM-LABEL",
       "span": { "start": 5, "end": 9 },
       "snapshot": null
     },
@@ -77,7 +77,7 @@
       "entrypoint": "logical",
       "source": "type(state)::MISS",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-ENUM-LABEL",
+      "code": "EXPR-SEMANTIC-ENUM-LABEL",
       "span": { "start": 13, "end": 17 },
       "snapshot": null
     },
@@ -86,7 +86,7 @@
       "entrypoint": "logical",
       "source": "type(state_no_labels)::BUSY",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-METADATA",
+      "code": "EXPR-SEMANTIC-METADATA",
       "span": { "start": 23, "end": 27 },
       "snapshot": "semantic_missing_enum_metadata"
     },
@@ -95,7 +95,7 @@
       "entrypoint": "logical",
       "source": "data.triggered",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-TRIGGERED",
+      "code": "EXPR-SEMANTIC-TRIGGERED",
       "span": { "start": 0, "end": 4 },
       "snapshot": null
     },
@@ -104,7 +104,7 @@
       "entrypoint": "logical",
       "source": "ev.triggered.triggered",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-TRIGGERED",
+      "code": "EXPR-SEMANTIC-TRIGGERED",
       "span": { "start": 0, "end": 22 },
       "snapshot": null
     },
@@ -113,7 +113,7 @@
       "entrypoint": "logical",
       "source": "ev + 1",
       "layer": "semantic",
-      "code": "C4-SEMANTIC-EVENT-VALUE",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
       "span": { "start": 0, "end": 2 },
       "snapshot": null
     },
@@ -122,7 +122,7 @@
       "entrypoint": "event",
       "source": "posedge temp",
       "layer": "semantic",
-      "code": "C3-SEMANTIC-EXPECTED-INTEGRAL",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
       "span": { "start": 0, "end": 12 },
       "snapshot": null
     }

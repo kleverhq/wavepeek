@@ -205,7 +205,7 @@ fn resolve_event_signal(
 ) -> Result<SignalHandle, ExprDiagnostic> {
     host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
         layer: DiagnosticLayer::Semantic,
-        code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+        code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
         message: format!("unknown signal '{name}'"),
         primary_span: span,
         notes: if inner.message.is_empty() {
@@ -232,7 +232,7 @@ fn bind_logical_node(
         LogicalExprNode::OperandRef { name, span } => {
             let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
                 layer: DiagnosticLayer::Semantic,
-                code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
                 message: format!("unknown signal '{name}'"),
                 primary_span: *span,
                 notes: if inner.message.is_empty() {
@@ -244,7 +244,7 @@ fn bind_logical_node(
             let ty = host.signal_type(handle)?;
             if matches!(&ty.kind, ExprTypeKind::Event) {
                 return Err(sema_diag(
-                    "C4-SEMANTIC-EVENT-VALUE",
+                    "EXPR-SEMANTIC-EVENT-VALUE",
                     "raw event operands are only valid with .triggered",
                     *span,
                     &["use event_operand.triggered to read a raw event occurrence"],
@@ -283,7 +283,7 @@ fn bind_logical_node(
         LogicalExprNode::RealLiteral { literal, span } => {
             let value = literal.text.parse::<f64>().map_err(|_| {
                 sema_diag(
-                    "C4-SEMANTIC-REAL-LITERAL",
+                    "EXPR-SEMANTIC-REAL-LITERAL",
                     "invalid real literal",
                     literal.span,
                     &["real literals must parse as finite 64-bit floating-point values"],
@@ -291,7 +291,7 @@ fn bind_logical_node(
             })?;
             if !value.is_finite() {
                 return Err(sema_diag(
-                    "C4-SEMANTIC-REAL-LITERAL",
+                    "EXPR-SEMANTIC-REAL-LITERAL",
                     "real literal is outside the supported finite range",
                     literal.span,
                     &["real literals must parse as finite 64-bit floating-point values"],
@@ -321,7 +321,7 @@ fn bind_logical_node(
                 .resolve_signal(operand)
                 .map_err(|inner| ExprDiagnostic {
                     layer: DiagnosticLayer::Semantic,
-                    code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                    code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
                     message: format!("unknown signal '{operand}'"),
                     primary_span: *operand_span,
                     notes: if inner.message.is_empty() {
@@ -376,7 +376,7 @@ fn bind_logical_node(
             ensure_integral(&base.ty, base.span, "selection base")?;
             if base.ty.storage != ExprStorage::PackedVector {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-SELECTION-BASE",
+                    "EXPR-SEMANTIC-SELECTION-BASE",
                     "selection base must be a packed integral value",
                     base.span,
                     &["selection of scalar integer-like or enum-core values is invalid"],
@@ -419,7 +419,7 @@ fn bind_logical_node(
                         eval_const_i64(&width, "indexed part-select width", width.span)?;
                     let width_value = usize::try_from(width_value).map_err(|_| {
                         sema_diag(
-                            "C3-SEMANTIC-CONST-RANGE",
+                            "EXPR-SEMANTIC-CONST-RANGE",
                             "indexed part-select width must be positive",
                             width.span,
                             &["width must be a positive constant integer expression"],
@@ -427,7 +427,7 @@ fn bind_logical_node(
                     })?;
                     if width_value == 0 {
                         return Err(sema_diag(
-                            "C3-SEMANTIC-CONST-RANGE",
+                            "EXPR-SEMANTIC-CONST-RANGE",
                             "indexed part-select width must be positive",
                             width.span,
                             &["width must be a positive constant integer expression"],
@@ -457,7 +457,7 @@ fn bind_logical_node(
                         eval_const_i64(&width, "indexed part-select width", width.span)?;
                     let width_value = usize::try_from(width_value).map_err(|_| {
                         sema_diag(
-                            "C3-SEMANTIC-CONST-RANGE",
+                            "EXPR-SEMANTIC-CONST-RANGE",
                             "indexed part-select width must be positive",
                             width.span,
                             &["width must be a positive constant integer expression"],
@@ -465,7 +465,7 @@ fn bind_logical_node(
                     })?;
                     if width_value == 0 {
                         return Err(sema_diag(
-                            "C3-SEMANTIC-CONST-RANGE",
+                            "EXPR-SEMANTIC-CONST-RANGE",
                             "indexed part-select width must be positive",
                             width.span,
                             &["width must be a positive constant integer expression"],
@@ -626,7 +626,7 @@ fn bind_logical_node(
                     }
                 ) {
                     return Err(sema_diag(
-                        "C3-SEMANTIC-CONCAT-UNSIZED",
+                        "EXPR-SEMANTIC-CONCAT-UNSIZED",
                         "unsized constants are not allowed in concatenation",
                         bound.span,
                         &["cast or size constants before concatenating"],
@@ -634,7 +634,7 @@ fn bind_logical_node(
                 }
                 width_sum = width_sum.checked_add(bound.ty.width).ok_or_else(|| {
                     sema_diag(
-                        "C3-SEMANTIC-CONST-RANGE",
+                        "EXPR-SEMANTIC-CONST-RANGE",
                         "concatenation width exceeds supported range",
                         bound.span,
                         &["concatenation result width must fit in u32"],
@@ -645,7 +645,7 @@ fn bind_logical_node(
             }
             if width_sum == 0 {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-CONST-RANGE",
+                    "EXPR-SEMANTIC-CONST-RANGE",
                     "concatenation width must be greater than zero",
                     *span,
                     &["concatenation cannot produce an empty value"],
@@ -663,7 +663,7 @@ fn bind_logical_node(
             let count_value = eval_const_i64(&count, "replication multiplier", count.span)?;
             let count_value = usize::try_from(count_value).map_err(|_| {
                 sema_diag(
-                    "C3-SEMANTIC-CONST-RANGE",
+                    "EXPR-SEMANTIC-CONST-RANGE",
                     "replication multiplier must be non-negative",
                     count.span,
                     &["replication form is {N{expr}} and N must be >= 0"],
@@ -671,10 +671,10 @@ fn bind_logical_node(
             })?;
             if count_value == 0 {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-CONST-RANGE",
+                    "EXPR-SEMANTIC-CONST-RANGE",
                     "replication multiplier must be greater than zero",
                     count.span,
-                    &["replication with zero multiplier is not supported in C3"],
+                    &["replication multiplier must be greater than zero"],
                 ));
             }
 
@@ -686,7 +686,7 @@ fn bind_logical_node(
                 .checked_mul(count_value as u32)
                 .ok_or_else(|| {
                     sema_diag(
-                        "C3-SEMANTIC-CONST-RANGE",
+                        "EXPR-SEMANTIC-CONST-RANGE",
                         "replication width exceeds supported range",
                         *span,
                         &["replication result width must fit in u32"],
@@ -708,7 +708,7 @@ fn bind_logical_node(
             } => {
                 let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
                     layer: DiagnosticLayer::Semantic,
-                    code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                    code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
                     message: format!("unknown signal '{name}'"),
                     primary_span: *operand_span,
                     notes: if inner.message.is_empty() {
@@ -720,7 +720,7 @@ fn bind_logical_node(
                 let ty = host.signal_type(handle)?;
                 if !matches!(&ty.kind, ExprTypeKind::Event) {
                     return Err(sema_diag(
-                        "C4-SEMANTIC-TRIGGERED",
+                        "EXPR-SEMANTIC-TRIGGERED",
                         ".triggered requires a raw event operand",
                         *operand_span,
                         &["only operands with event type support .triggered"],
@@ -733,13 +733,13 @@ fn bind_logical_node(
                 })
             }
             LogicalExprNode::Triggered { .. } => Err(sema_diag(
-                "C4-SEMANTIC-TRIGGERED",
+                "EXPR-SEMANTIC-TRIGGERED",
                 "chained .triggered is invalid",
                 *span,
                 &["apply .triggered only once to a raw event operand reference"],
             )),
             other => Err(sema_diag(
-                "C4-SEMANTIC-TRIGGERED",
+                "EXPR-SEMANTIC-TRIGGERED",
                 ".triggered requires a raw event operand",
                 other.span(),
                 &["apply .triggered directly to an event operand reference"],
@@ -753,7 +753,7 @@ fn ensure_integral(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprD
         return Ok(());
     }
     Err(sema_diag(
-        "C3-SEMANTIC-EXPECTED-INTEGRAL",
+        "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
         "integral operand is required",
         span,
         &[context],
@@ -765,7 +765,7 @@ fn ensure_numeric(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprDi
         return Ok(());
     }
     Err(sema_diag(
-        "C4-SEMANTIC-NUMERIC",
+        "EXPR-SEMANTIC-NUMERIC",
         "numeric operand is required",
         span,
         &[context],
@@ -781,7 +781,7 @@ fn ensure_boolean_context_type(
         return Ok(());
     }
     Err(sema_diag(
-        "C4-SEMANTIC-BOOLEAN-CONTEXT",
+        "EXPR-SEMANTIC-BOOLEAN-CONTEXT",
         "logical operators require integral or real operands",
         span,
         &[context],
@@ -793,7 +793,7 @@ fn ensure_enum_type(ty: &ExprType, span: Span, context: &str) -> Result<(), Expr
         return Ok(());
     }
     Err(sema_diag(
-        "C4-SEMANTIC-ENUM-LABEL",
+        "EXPR-SEMANTIC-ENUM-LABEL",
         "enum label references require an enum-typed operand",
         span,
         &[context],
@@ -885,7 +885,7 @@ fn cast_target_type(
         CastTargetAst::Signed => {
             if !is_integral_type(source) {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-CAST-TARGET",
+                    "EXPR-SEMANTIC-CAST-TARGET",
                     "signed cast requires an integral source",
                     span,
                     &["signed'(expr) is valid only for integral expr"],
@@ -898,7 +898,7 @@ fn cast_target_type(
         CastTargetAst::Unsigned => {
             if !is_integral_type(source) {
                 return Err(sema_diag(
-                    "C3-SEMANTIC-CAST-TARGET",
+                    "EXPR-SEMANTIC-CAST-TARGET",
                     "unsigned cast requires an integral source",
                     span,
                     &["unsigned'(expr) is valid only for integral expr"],
@@ -937,7 +937,7 @@ fn cast_target_type(
         } => {
             let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
                 layer: DiagnosticLayer::Semantic,
-                code: "C3-SEMANTIC-UNKNOWN-SIGNAL",
+                code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
                 message: format!("unknown signal '{name}'"),
                 primary_span: *target_span,
                 notes: if inner.message.is_empty() {
@@ -949,7 +949,7 @@ fn cast_target_type(
             let ty = host.signal_type(handle)?;
             if matches!(&ty.kind, ExprTypeKind::Event) {
                 return Err(sema_diag(
-                    "C4-SEMANTIC-CAST-TARGET",
+                    "EXPR-SEMANTIC-CAST-TARGET",
                     "raw event operands cannot be used as cast targets",
                     *target_span,
                     &["type(event_operand_reference)'(...) is invalid"],
@@ -957,7 +957,7 @@ fn cast_target_type(
             }
             if matches!(&ty.kind, ExprTypeKind::EnumCore) && ty.enum_type_id.is_none() {
                 return Err(sema_diag(
-                    "C4-SEMANTIC-METADATA",
+                    "EXPR-SEMANTIC-METADATA",
                     "metadata for the recovered enum type is unavailable",
                     *target_span,
                     &["enum operand-type casts require recovered enum type metadata"],
@@ -987,7 +987,7 @@ fn ensure_cast_compatible(
                 return Ok(());
             }
             Err(sema_diag(
-                "C4-SEMANTIC-CAST-TARGET",
+                "EXPR-SEMANTIC-CAST-TARGET",
                 "integral cast target requires an integral or real source",
                 span,
                 &["string and raw event operands cannot be cast to integral targets"],
@@ -1002,7 +1002,7 @@ fn ensure_real_cast_source(source: &ExprType, span: Span) -> Result<(), ExprDiag
         return Ok(());
     }
     Err(sema_diag(
-        "C4-SEMANTIC-CAST-TARGET",
+        "EXPR-SEMANTIC-CAST-TARGET",
         "real cast requires an integral or real source",
         span,
         &["string and raw event operands cannot be cast to real"],
@@ -1014,7 +1014,7 @@ fn ensure_string_cast_source(source: &ExprType, span: Span) -> Result<(), ExprDi
         return Ok(());
     }
     Err(sema_diag(
-        "C4-SEMANTIC-CAST-TARGET",
+        "EXPR-SEMANTIC-CAST-TARGET",
         "string cast is supported only as string identity",
         span,
         &["string'(expr) is valid only when expr already has string type"],
@@ -1090,7 +1090,7 @@ fn conditional_result_type(
     }
 
     Err(sema_diag(
-        "C4-SEMANTIC-CONDITIONAL-TYPE",
+        "EXPR-SEMANTIC-CONDITIONAL-TYPE",
         "conditional result arms do not have a common type",
         Span::new(when_true_span.start, when_false_span.end),
         &["both result arms must be compatible integral, real, enum, or string values"],
@@ -1156,7 +1156,7 @@ fn binary_result_type(
                     return Ok(bool_result_type());
                 }
                 return Err(sema_diag(
-                    "C4-SEMANTIC-EQUALITY-TYPE",
+                    "EXPR-SEMANTIC-EQUALITY-TYPE",
                     "string equality requires string operands on both sides",
                     Span::new(left_span.start, right_span.end),
                     &["string values do not use numeric coercion"],
@@ -1204,7 +1204,7 @@ fn lookup_enum_label_bits(
 ) -> Result<String, ExprDiagnostic> {
     let labels = ty.enum_labels.as_ref().ok_or_else(|| {
         sema_diag(
-            "C4-SEMANTIC-METADATA",
+            "EXPR-SEMANTIC-METADATA",
             "metadata for enum labels is unavailable",
             span,
             &["enum label references require recovered enum label metadata"],
@@ -1216,7 +1216,7 @@ fn lookup_enum_label_bits(
         .map(|entry| entry.bits.clone())
         .ok_or_else(|| {
             sema_diag(
-                "C4-SEMANTIC-ENUM-LABEL",
+                "EXPR-SEMANTIC-ENUM-LABEL",
                 "enum label does not exist in the recovered type",
                 span,
                 &["type(enum_operand_reference)::LABEL requires a declared label"],
@@ -1235,7 +1235,7 @@ fn decode_integral_literal(
             .collect::<Option<Vec<_>>>()
             .ok_or_else(|| {
                 sema_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
                     "invalid binary integral literal",
                     literal.span,
                     &["binary literals may use 0, 1, x, z"],
@@ -1246,7 +1246,7 @@ fn decode_integral_literal(
             for ch in literal.digits.chars() {
                 push_hex_nibble(ch, &mut raw).ok_or_else(|| {
                     sema_diag(
-                        "C3-PARSE-LOGICAL-LITERAL",
+                        "EXPR-PARSE-LOGICAL-LITERAL",
                         "invalid hexadecimal integral literal",
                         literal.span,
                         &["hex literals may use 0-9, a-f, x, z"],
@@ -1259,7 +1259,7 @@ fn decode_integral_literal(
             if literal.digits.chars().all(|ch| ch.is_ascii_digit()) {
                 let value = literal.digits.parse::<u128>().map_err(|_| {
                     sema_diag(
-                        "C3-PARSE-LOGICAL-LITERAL",
+                        "EXPR-PARSE-LOGICAL-LITERAL",
                         "invalid decimal integral literal",
                         literal.span,
                         &["decimal literals must fit in the supported integer range"],
@@ -1275,8 +1275,8 @@ fn decode_integral_literal(
                 unsigned_to_bits(value, width)
             } else {
                 return Err(sema_diag(
-                    "C3-PARSE-LOGICAL-LITERAL",
-                    "decimal literals with x/z digits are not supported in C3",
+                    "EXPR-PARSE-LOGICAL-LITERAL",
+                    "decimal literals cannot use x/z digits",
                     literal.span,
                     &["use based literals for unknown digits"],
                 ));
@@ -1422,7 +1422,7 @@ fn part_select_width(msb: i64, lsb: i64, span: Span) -> Result<usize, ExprDiagno
     .and_then(|delta| delta.checked_add(1))
     .ok_or_else(|| {
         sema_diag(
-            "C3-SEMANTIC-CONST-RANGE",
+            "EXPR-SEMANTIC-CONST-RANGE",
             "part-select bounds overflow supported range",
             span,
             &["part-select bounds must stay within i64 arithmetic range"],
@@ -1431,7 +1431,7 @@ fn part_select_width(msb: i64, lsb: i64, span: Span) -> Result<usize, ExprDiagno
 
     usize::try_from(width).map_err(|_| {
         sema_diag(
-            "C3-SEMANTIC-CONST-RANGE",
+            "EXPR-SEMANTIC-CONST-RANGE",
             "part-select width exceeds supported range",
             span,
             &["part-select width must fit in usize"],
@@ -1446,7 +1446,7 @@ fn eval_const_i64(
 ) -> Result<i64, ExprDiagnostic> {
     let Some(value) = eval_const_node(node)? else {
         return Err(sema_diag(
-            "C3-SEMANTIC-CONST-REQUIRED",
+            "EXPR-SEMANTIC-CONST-REQUIRED",
             "constant integer expression is required",
             span,
             &[context],
@@ -1458,7 +1458,7 @@ fn eval_const_i64(
         .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
     {
         return Err(sema_diag(
-            "C3-SEMANTIC-CONST-REQUIRED",
+            "EXPR-SEMANTIC-CONST-REQUIRED",
             "constant integer expression must not contain x/z",
             span,
             &[context],
@@ -1466,7 +1466,7 @@ fn eval_const_i64(
     }
     bits_to_i64(&value.bits, value.signed).ok_or_else(|| {
         sema_diag(
-            "C3-SEMANTIC-CONST-RANGE",
+            "EXPR-SEMANTIC-CONST-RANGE",
             "constant integer expression is out of range",
             span,
             &["constant must fit in signed 64-bit range"],
@@ -2230,7 +2230,7 @@ mod tests {
         let host = HostStub::with_defaults();
         let error = bind_logical_expr_ast(&ast, &host).expect_err("bind should fail");
 
-        assert_eq!(error.code, "C3-SEMANTIC-CONCAT-UNSIZED");
+        assert_eq!(error.code, "EXPR-SEMANTIC-CONCAT-UNSIZED");
     }
 
     #[test]
@@ -2239,7 +2239,7 @@ mod tests {
         let host = HostStub::with_defaults();
         let error = bind_logical_expr_ast(&ast, &host).expect_err("bind should fail");
 
-        assert_eq!(error.code, "C3-SEMANTIC-CONST-REQUIRED");
+        assert_eq!(error.code, "EXPR-SEMANTIC-CONST-REQUIRED");
     }
 
     #[test]

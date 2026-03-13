@@ -23,12 +23,12 @@ This plan also does not leave behind temporary control-only artifacts. If implem
 - [x] (2026-03-13 00:00Z) Drafted this active ExecPlan with explicit naming targets, migration order, validation gates, review lanes, and commit checkpoints.
 - [x] (2026-03-13 00:00Z) Completed docs and architecture review plus a fresh control pass for the plan itself, then tightened the hygiene-guard policy to completed-history paths, added archive steps for stale active plans, and expanded the diagnostic-cleanup scope to include lexer-owned codes.
 - [x] (2026-03-13 00:00Z) Incorporated the explicit repository rule that any temporary control-only tests, files, fixtures, scripts, or helpers created during execution must be removed before the milestone or final cleanup commit unless they are intentionally promoted into permanent coverage.
-- [x] (2026-03-13 19:57Z) Added `tests/expression_hygiene.rs` repository guard that scans text files for rollout-phase tags and enforces the roadmap/history-only allowlist (plus temporary current-plan exemption while active).
+- [x] (2026-03-13 19:57Z) Added `tests/expression_hygiene.rs` repository guard that scans text files for rollout-phase tags and enforces the roadmap/history-only allowlist.
 - [x] (2026-03-13 19:34Z) Reorganized expression integration tests, fixture manifests, snapshots, and shared test helpers around feature-oriented names instead of `expression_c1` through `expression_c4`.
 - [x] (2026-03-13 19:38Z) Replaced rollout-coded expression diagnostics and helper-only trap codes with stable `EXPR-*` and `TEST-*` identifiers, and rewrote messages so they describe current behavior instead of rollout history.
 - [x] (2026-03-13 19:42Z) Renamed expression benchmark targets, scenario manifests, run artifacts, and benchmark-tool tests to the same capability-oriented taxonomy, and recaptured committed run collateral metadata under the new names.
 - [x] (2026-03-13 19:57Z) Rewrote live status/workflow docs, benchmark breadcrumb docs, CLI boundary-test names, and waveform-host fixture strings to capability-oriented wording; archived the already-complete `2026-03-12` expression plan from `active/` into completed history.
-- [ ] Run the mandatory review workflow, fix findings in follow-up commits, move this plan into `docs/exec-plans/completed/`, rerun the final validation suite, and leave the worktree clean with only roadmap/history phase references remaining.
+- [x] (2026-03-13 20:08Z) Ran focused review lanes plus a fresh control pass, landed follow-up hygiene fixes, moved this plan into `docs/exec-plans/completed/`, removed the temporary active-plan allowlist exemption, and reran the full final validation suite.
 
 ## Surprises & Discoveries
 
@@ -79,9 +79,9 @@ This plan also does not leave behind temporary control-only artifacts. If implem
 
 ## Outcomes & Retrospective
 
-Current status: planning only.
+Current status: completed.
 
-This plan captures the full cleanup scope needed to make expression work feel cohesive across code, diagnostics, tests, benchmarks, and status docs. The main risk is not semantic correctness but cross-cutting rename churn: diagnostic codes, snapshot names, benchmark artifacts, and file stems all move together. The plan therefore uses capability-oriented buckets, explicit commit checkpoints, and a final hygiene guard so the repository can end in a self-reinforcing clean state rather than in a one-time rename burst.
+The cleanup landed as a sequence of milestone-scoped commits that removed rollout-phase naming from live expression code, diagnostics, tests, fixtures, benchmark targets, benchmark artifacts, and live docs. The repository now uses the capability taxonomy (parser, event runtime, integral boolean, rich types) on live surfaces, while roadmap/history phase language remains confined to `docs/expression_roadmap.md`, `docs/ROADMAP.md`, and `docs/exec-plans/completed/**`. The hygiene guard is now strict with no active-plan exemption, and final validation plus review lanes/control pass closed without unresolved blockers.
 
 ## Context and Orientation
 

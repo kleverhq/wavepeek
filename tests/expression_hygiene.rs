@@ -121,7 +121,6 @@ fn banned_patterns() -> Vec<(Regex, &'static str)> {
 fn is_allowlisted(rel: &str) -> bool {
     rel == "docs/expression_roadmap.md"
         || rel == "docs/ROADMAP.md"
-        || rel == "docs/exec-plans/active/2026-03-13-expression-cohesion-cleanup/PLAN.md"
         || rel.starts_with("docs/exec-plans/completed/")
 }
 

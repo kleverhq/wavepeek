@@ -24,8 +24,8 @@ class CompareHelpersTest(unittest.TestCase):
         run_dir: pathlib.Path,
         scenarios: dict[str, tuple[float, float]],
         *,
-        bench_target: str = "expr_c1",
-        scenario_set_id: str = "c1_parser",
+        bench_target: str = "expr_parser",
+        scenario_set_id: str = "parser",
         extra_metadata: Mapping[str, object] | None = None,
     ) -> None:
         run_dir.mkdir(parents=True, exist_ok=True)
@@ -160,8 +160,8 @@ class CompareHelpersTest(unittest.TestCase):
                 "parse_event_union_iff": (200.0, 200.0),
                 "parse_event_malformed": (300.0, 300.0),
             }
-            self._write_summary(revised, scenarios, bench_target="expr_c2")
-            self._write_summary(golden, scenarios, bench_target="expr_c1")
+            self._write_summary(revised, scenarios, bench_target="expr_event_runtime")
+            self._write_summary(golden, scenarios, bench_target="expr_parser")
 
             with self.assertRaises(SystemExit) as error:
                 compare.main(
@@ -187,8 +187,8 @@ class CompareHelpersTest(unittest.TestCase):
                 "parse_event_union_iff": (200.0, 200.0),
                 "parse_event_malformed": (300.0, 300.0),
             }
-            self._write_summary(revised, scenarios, scenario_set_id="c2_event_runtime")
-            self._write_summary(golden, scenarios, scenario_set_id="c1_parser")
+            self._write_summary(revised, scenarios, scenario_set_id="event_runtime")
+            self._write_summary(golden, scenarios, scenario_set_id="parser")
 
             with self.assertRaises(SystemExit) as error:
                 compare.main(

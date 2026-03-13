@@ -26,7 +26,7 @@ This plan also does not leave behind temporary control-only artifacts. If implem
 - [ ] Add a repository guard that fails when expression phase tags appear outside the allowed roadmap/history paths.
 - [x] (2026-03-13 19:34Z) Reorganized expression integration tests, fixture manifests, snapshots, and shared test helpers around feature-oriented names instead of `expression_c1` through `expression_c4`.
 - [x] (2026-03-13 19:38Z) Replaced rollout-coded expression diagnostics and helper-only trap codes with stable `EXPR-*` and `TEST-*` identifiers, and rewrote messages so they describe current behavior instead of rollout history.
-- [ ] Rename expression benchmark targets, scenario manifests, run artifacts, and benchmark-tool tests to the same capability-oriented taxonomy, then recapture committed run collateral under the new names.
+- [x] (2026-03-13 19:42Z) Renamed expression benchmark targets, scenario manifests, run artifacts, and benchmark-tool tests to the same capability-oriented taxonomy, and recaptured committed run collateral metadata under the new names.
 - [ ] Rewrite live status and workflow documents, CLI boundary test names, waveform-host fixture names, and benchmark breadcrumb docs so they describe the current subsystem without phase language.
 - [ ] Run the mandatory review workflow, fix findings in follow-up commits, move this plan into `docs/exec-plans/completed/`, rerun the final validation suite, and leave the worktree clean with only roadmap/history phase references remaining.
 

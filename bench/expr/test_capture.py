@@ -89,8 +89,8 @@ class CaptureHelpersTest(unittest.TestCase):
             scenario_set.write_text(
                 json.dumps(
                     {
-                        "id": "c1_parser",
-                        "bench_target": "expr_c1",
+                        "id": "parser",
+                        "bench_target": "expr_parser",
                         "scenarios": list(self.SCENARIOS),
                     },
                     ensure_ascii=True,
@@ -123,7 +123,7 @@ class CaptureHelpersTest(unittest.TestCase):
                         "--baseline-name",
                         "wanted",
                         "--bench-target",
-                        "expr_c1",
+                        "expr_parser",
                         "--scenario-set",
                         str(scenario_set),
                         "--output",
@@ -140,8 +140,8 @@ class CaptureHelpersTest(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             summary = json.loads((output / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(summary["baseline_name"], "wanted")
-            self.assertEqual(summary["bench_target"], "expr_c1")
-            self.assertEqual(summary["scenario_set_id"], "c1_parser")
+            self.assertEqual(summary["bench_target"], "expr_parser")
+            self.assertEqual(summary["scenario_set_id"], "parser")
 
             scenarios = {row["scenario"]: row for row in summary["scenarios"]}
             self.assertEqual(set(scenarios), set(self.SCENARIOS))
@@ -160,8 +160,8 @@ class CaptureHelpersTest(unittest.TestCase):
             scenario_set.write_text(
                 json.dumps(
                     {
-                        "id": "c2_event_runtime",
-                        "bench_target": "expr_c2",
+                        "id": "event_runtime",
+                        "bench_target": "expr_event_runtime",
                         "scenarios": list(self.SCENARIOS),
                     },
                     ensure_ascii=True,
@@ -186,7 +186,7 @@ class CaptureHelpersTest(unittest.TestCase):
                         "--baseline-name",
                         "wanted",
                         "--bench-target",
-                        "expr_c1",
+                        "expr_parser",
                         "--scenario-set",
                         str(scenario_set),
                         "--output",
@@ -212,8 +212,8 @@ class CaptureHelpersTest(unittest.TestCase):
             scenario_set.write_text(
                 json.dumps(
                     {
-                        "id": "c1_parser",
-                        "bench_target": "expr_c1",
+                        "id": "parser",
+                        "bench_target": "expr_parser",
                         "scenarios": list(self.SCENARIOS),
                     },
                     ensure_ascii=True,
@@ -241,7 +241,7 @@ class CaptureHelpersTest(unittest.TestCase):
                         "--baseline-name",
                         "wanted",
                         "--bench-target",
-                        "expr_c1",
+                        "expr_parser",
                         "--scenario-set",
                         str(scenario_set),
                         "--output",
@@ -267,8 +267,8 @@ class CaptureHelpersTest(unittest.TestCase):
             scenario_set.write_text(
                 json.dumps(
                     {
-                        "id": "c1_parser",
-                        "bench_target": "expr_c1",
+                        "id": "parser",
+                        "bench_target": "expr_parser",
                         "scenarios": list(self.SCENARIOS),
                     },
                     ensure_ascii=True,
@@ -295,7 +295,7 @@ class CaptureHelpersTest(unittest.TestCase):
                         "--baseline-name",
                         "wanted",
                         "--bench-target",
-                        "expr_c1",
+                        "expr_parser",
                         "--scenario-set",
                         str(scenario_set),
                         "--output",

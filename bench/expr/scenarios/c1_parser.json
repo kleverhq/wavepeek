@@ -1,9 +1,0 @@
-{
-  "id": "c1_parser",
-  "bench_target": "expr_c1",
-  "scenarios": [
-    "tokenize_union_iff",
-    "parse_event_union_iff",
-    "parse_event_malformed"
-  ]
-}

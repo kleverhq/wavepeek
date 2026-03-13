@@ -1,0 +1,39 @@
+{
+  "baseline_name": "event-runtime-baseline",
+  "bench_target": "expr_event_runtime",
+  "cargo_version": "cargo 1.93.0 (083ac5135 2025-12-15)",
+  "criterion_version": "0.8.2",
+  "environment_note": "wavepeek devcontainer/CI image",
+  "run_name": "event-runtime-baseline",
+  "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
+  "scenario_set_id": "event_runtime",
+  "scenario_set_path": "bench/expr/scenarios/event_runtime.json",
+  "scenarios": [
+    {
+      "baseline_name": "event-runtime-baseline",
+      "mean_ns_per_iter": 733.0199252734244,
+      "median_ns_per_iter": 729.40469351149,
+      "raw_csv": "bind_event_union_iff.raw.csv",
+      "sample_count": 100,
+      "scenario": "bind_event_union_iff"
+    },
+    {
+      "baseline_name": "event-runtime-baseline",
+      "mean_ns_per_iter": 477.4596634069512,
+      "median_ns_per_iter": 476.58767459106707,
+      "raw_csv": "eval_event_union_iff_true.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_event_union_iff_true"
+    },
+    {
+      "baseline_name": "event-runtime-baseline",
+      "mean_ns_per_iter": 270.19041784459716,
+      "median_ns_per_iter": 269.6132165280709,
+      "raw_csv": "eval_event_union_iff_unknown.raw.csv",
+      "sample_count": 100,
+      "scenario": "eval_event_union_iff_unknown"
+    }
+  ],
+  "source_commit": "dc1d14160e20d69c278f3043aa59d98f1754280c",
+  "worktree_state": "dirty"
+}

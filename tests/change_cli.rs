@@ -774,7 +774,7 @@ fn change_empty_iff_stays_deferred_runtime_error() {
 }
 
 #[test]
-fn change_rich_c4_iff_payload_stays_deferred_runtime_error() {
+fn change_rich_type_iff_payload_stays_deferred_runtime_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 

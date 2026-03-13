@@ -195,7 +195,7 @@ fn property_invalid_on_expression_still_fails_as_unimplemented() {
 }
 
 #[test]
-fn property_rich_c4_surface_stays_unimplemented() {
+fn property_rich_type_surface_stays_unimplemented() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 

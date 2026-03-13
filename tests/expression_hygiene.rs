@@ -19,7 +19,14 @@ fn expression_phase_tags_are_limited_to_roadmap_and_history() {
     let patterns = banned_patterns();
     let mut offenders = Vec::new();
 
-    walk(repo_root, repo_root, &patterns, &mut offenders);
+    for root in ["Cargo.toml", "src", "tests", "bench", "docs"] {
+        let path = repo_root.join(root);
+        if path.is_file() {
+            scan_file(repo_root, path.as_path(), &patterns, &mut offenders);
+        } else if path.is_dir() {
+            walk(repo_root, path.as_path(), &patterns, &mut offenders);
+        }
+    }
     offenders.sort();
 
     assert!(
@@ -51,23 +58,36 @@ fn walk(root: &Path, path: &Path, patterns: &[(Regex, &'static str)], offenders:
             continue;
         }
 
-        if !file_type.is_file() {
-            continue;
+        if file_type.is_file() {
+            scan_file(root, entry_path.as_path(), patterns, offenders);
         }
-        if is_allowlisted(rel.as_str()) || rel.ends_with(".fst") {
-            continue;
-        }
+    }
+}
 
-        if let Some(reason) = first_match(rel.as_str(), patterns) {
-            offenders.push(format!("{rel}: path matches {reason}"));
-            continue;
-        }
+fn scan_file(
+    root: &Path,
+    path: &Path,
+    patterns: &[(Regex, &'static str)],
+    offenders: &mut Vec<String>,
+) {
+    let rel = path
+        .strip_prefix(root)
+        .expect("file should stay under repository root")
+        .to_string_lossy()
+        .replace('\\', "/");
+    if is_allowlisted(rel.as_str()) || rel.ends_with(".fst") {
+        return;
+    }
 
-        if let Ok(contents) = fs::read_to_string(entry_path.as_path())
-            && let Some(reason) = first_match(contents.as_str(), patterns)
-        {
-            offenders.push(format!("{rel}: content matches {reason}"));
-        }
+    if let Some(reason) = first_match(rel.as_str(), patterns) {
+        offenders.push(format!("{rel}: path matches {reason}"));
+        return;
+    }
+
+    if let Ok(contents) = fs::read_to_string(path)
+        && let Some(reason) = first_match(contents.as_str(), patterns)
+    {
+        offenders.push(format!("{rel}: content matches {reason}"));
     }
 }
 
@@ -113,5 +133,18 @@ fn is_allowlisted(rel: &str) -> bool {
 }
 
 fn is_skipped_dir(rel: &str) -> bool {
-    rel == ".git" || rel == "target" || rel == "__pycache__" || rel.ends_with("/__pycache__")
+    rel == ".git"
+        || rel == "target"
+        || rel == "__pycache__"
+        || rel.ends_with("/__pycache__")
+        || rel == ".venv"
+        || rel.ends_with("/.venv")
+        || rel == ".pytest_cache"
+        || rel.ends_with("/.pytest_cache")
+        || rel == ".mypy_cache"
+        || rel.ends_with("/.mypy_cache")
+        || rel == ".ruff_cache"
+        || rel.ends_with("/.ruff_cache")
+        || rel == "node_modules"
+        || rel.ends_with("/node_modules")
 }

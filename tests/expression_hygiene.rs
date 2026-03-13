@@ -19,14 +19,7 @@ fn expression_phase_tags_are_limited_to_roadmap_and_history() {
     let patterns = banned_patterns();
     let mut offenders = Vec::new();
 
-    for root in ["Cargo.toml", "src", "tests", "bench", "docs"] {
-        let path = repo_root.join(root);
-        if path.is_file() {
-            scan_file(repo_root, path.as_path(), &patterns, &mut offenders);
-        } else if path.is_dir() {
-            walk(repo_root, path.as_path(), &patterns, &mut offenders);
-        }
-    }
+    walk(repo_root, repo_root, &patterns, &mut offenders);
     offenders.sort();
 
     assert!(

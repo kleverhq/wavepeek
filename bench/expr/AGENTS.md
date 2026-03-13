@@ -1,14 +1,14 @@
 # Expression Microbench Guide
 
 This directory contains expression-engine microbenchmark helper scripts,
-scenario manifests, and committed run artifacts across expression phases.
+scenario manifests, and committed run artifacts across expression capabilities.
 
 Rust Criterion targets for this area live at:
 
-- `bench/expr/expr_c1.rs` (parser/tokenization scenarios)
-- `bench/expr/expr_c2.rs` (event-runtime scenarios)
-- `bench/expr/expr_c3.rs` (integral-core logical/event scenarios)
-- `bench/expr/expr_c4.rs` (rich-type logical/event + waveform-host scenarios)
+- `bench/expr/expr_parser.rs` (parser/tokenization scenarios)
+- `bench/expr/expr_event_runtime.rs` (event-runtime scenarios)
+- `bench/expr/expr_integral_boolean.rs` (integral-core logical/event scenarios)
+- `bench/expr/expr_rich_types.rs` (rich-type logical/event + waveform-host scenarios)
 
 All four targets are wired through `Cargo.toml` `[[bench]]` metadata and captured through
 the shared `bench/expr/capture.py` + `bench/expr/compare.py` workflow.

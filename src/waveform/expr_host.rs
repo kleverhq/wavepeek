@@ -127,11 +127,11 @@ mod tests {
         ExprValuePayload, bind_logical_expr_ast, eval_logical_expr_at, parse_logical_expr_ast,
     };
 
-    const RICH_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-c4\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var event 1 \" ev $end\n$var real 1 # temp $end\n$var string 1 $ msg $end\n$var enum 2 % state $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nr0.5 #\nsidle $\nb00 %\n#10\n1!\n1\"\nr1.5 #\nsgo $\nb01 %\n#20\n0!\nr1.5 #\nshold $\nb10 %\n";
+    const RICH_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-expr-rich-types\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var event 1 \" ev $end\n$var real 1 # temp $end\n$var string 1 $ msg $end\n$var enum 2 % state $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nr0.5 #\nsidle $\nb00 %\n#10\n1!\n1\"\nr1.5 #\nsgo $\nb01 %\n#20\n0!\nr1.5 #\nshold $\nb10 %\n";
 
     #[test]
     fn waveform_expr_host_supports_rich_vcd_values() {
-        let fixture = write_fixture(RICH_VCD, "rich-c4.vcd");
+        let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
         let host = WaveformExprHost::open(fixture.path()).expect("fixture should open");
         let ast =
             parse_logical_expr_ast("top.ev.triggered && (top.temp > 1.0) && (top.msg == \"go\")")
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn waveform_expr_host_reports_missing_enum_metadata_on_vcd() {
-        let fixture = write_fixture(RICH_VCD, "rich-c4.vcd");
+        let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
         let host = WaveformExprHost::open(fixture.path()).expect("fixture should open");
         let ast = parse_logical_expr_ast("type(top.state)::BUSY").expect("expression should parse");
         let error = bind_logical_expr_ast(&ast, &host).expect_err("bind should fail");

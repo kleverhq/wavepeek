@@ -23,11 +23,11 @@ This plan also does not leave behind temporary control-only artifacts. If implem
 - [x] (2026-03-13 00:00Z) Drafted this active ExecPlan with explicit naming targets, migration order, validation gates, review lanes, and commit checkpoints.
 - [x] (2026-03-13 00:00Z) Completed docs and architecture review plus a fresh control pass for the plan itself, then tightened the hygiene-guard policy to completed-history paths, added archive steps for stale active plans, and expanded the diagnostic-cleanup scope to include lexer-owned codes.
 - [x] (2026-03-13 00:00Z) Incorporated the explicit repository rule that any temporary control-only tests, files, fixtures, scripts, or helpers created during execution must be removed before the milestone or final cleanup commit unless they are intentionally promoted into permanent coverage.
-- [ ] Add a repository guard that fails when expression phase tags appear outside the allowed roadmap/history paths.
+- [x] (2026-03-13 19:57Z) Added `tests/expression_hygiene.rs` repository guard that scans text files for rollout-phase tags and enforces the roadmap/history-only allowlist (plus temporary current-plan exemption while active).
 - [x] (2026-03-13 19:34Z) Reorganized expression integration tests, fixture manifests, snapshots, and shared test helpers around feature-oriented names instead of `expression_c1` through `expression_c4`.
 - [x] (2026-03-13 19:38Z) Replaced rollout-coded expression diagnostics and helper-only trap codes with stable `EXPR-*` and `TEST-*` identifiers, and rewrote messages so they describe current behavior instead of rollout history.
 - [x] (2026-03-13 19:42Z) Renamed expression benchmark targets, scenario manifests, run artifacts, and benchmark-tool tests to the same capability-oriented taxonomy, and recaptured committed run collateral metadata under the new names.
-- [ ] Rewrite live status and workflow documents, CLI boundary test names, waveform-host fixture names, and benchmark breadcrumb docs so they describe the current subsystem without phase language.
+- [x] (2026-03-13 19:57Z) Rewrote live status/workflow docs, benchmark breadcrumb docs, CLI boundary-test names, and waveform-host fixture strings to capability-oriented wording; archived the already-complete `2026-03-12` expression plan from `active/` into completed history.
 - [ ] Run the mandatory review workflow, fix findings in follow-up commits, move this plan into `docs/exec-plans/completed/`, rerun the final validation suite, and leave the worktree clean with only roadmap/history phase references remaining.
 
 ## Surprises & Discoveries

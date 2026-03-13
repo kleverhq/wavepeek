@@ -27,12 +27,12 @@
 ### Legacy `change --on` parser adapter remains separate from typed parser
 
 - `src/engine/change.rs` still uses the compatibility adapter (`expr::parse_event_expr`) while strict typed parsing lives behind `wavepeek::expr::parse_event_expr_ast`.
-- This keeps C1 command behavior stable but duplicates parser ownership and can drift if follow-up integration is delayed.
+- This keeps current command behavior stable but duplicates parser ownership and can drift if follow-up integration is delayed.
 - Close when command runtime parsing converges on the typed parser boundary with explicit compatibility policy and regression coverage.
 
 ### Expression command integration and `property` runtime remain unimplemented
 
-- Standalone typed `C4` event/logical runtime is now available in `src/expr/`, including
+- Standalone typed event/logical runtime is now available in `src/expr/`, including
   rich types and full standalone `iff` semantics, but
   command wiring is still deferred: `src/engine/change.rs` keeps the legacy
   runtime path and `src/engine/property.rs` still returns `Unimplemented`.

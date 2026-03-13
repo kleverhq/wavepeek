@@ -1,7 +1,7 @@
 # Expression Scenario Manifest Guide
 
 This directory stores committed benchmark scenario manifests for expression
-microbench phases.
+microbenchmark capabilities.
 
 ## Parent Maps
 

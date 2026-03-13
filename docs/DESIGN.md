@@ -578,7 +578,7 @@ src/
 │   └── legacy.rs        # Compatibility parser path used by current command runtime
 ├── waveform/            # Thin adapter over wellen
 │   ├── mod.rs           # File loading, format detection, query helpers
-│   └── expr_host.rs     # Crate-private waveform-to-expression adapter for standalone C4 tests/benchmarks
+│   └── expr_host.rs     # Crate-private waveform-to-expression adapter for standalone expression tests/benchmarks
 ├── output.rs            # Shared output formatting (JSON + human)
 └── error.rs             # Error enum (WavepeekError)
 ```
@@ -613,7 +613,7 @@ src/
 | `predicates` | Assertion helpers for `assert_cmd` |
 | `tempfile` | Temporary file creation for tests |
 | `insta` | Snapshot assertions for deterministic diagnostics |
-| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_c1`, `cargo bench --bench expr_c2`, `cargo bench --bench expr_c3`) |
+| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_parser`, `cargo bench --bench expr_event_runtime`, `cargo bench --bench expr_integral_boolean`, `cargo bench --bench expr_rich_types`) |
 
 ### 5.5 Expression Engine
 
@@ -637,7 +637,7 @@ section describes implementation architecture only.
 
 **Implementation status:**
 
-- Typed standalone event and logical runtime for `C4` is implemented in
+- Typed standalone event and logical runtime with rich type support is implemented in
   `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/expr/host.rs` through
   public `wavepeek::expr::parse_logical_expr_ast(...)`,
   `wavepeek::expr::bind_logical_expr_ast(...)`,

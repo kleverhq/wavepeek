@@ -58,24 +58,24 @@ class CaptureHelpersTest(unittest.TestCase):
     def test_collect_raw_csv_paths_requires_exact_scenario_set(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
-            self._write_raw_csv(root / "tokenize_union_iff" / "c1" / "raw.csv", [1.0])
-            self._write_raw_csv(root / "parse_event_union_iff" / "c1" / "raw.csv", [2.0])
+            self._write_raw_csv(root / "tokenize_union_iff" / "parser" / "raw.csv", [1.0])
+            self._write_raw_csv(root / "parse_event_union_iff" / "parser" / "raw.csv", [2.0])
 
             with self.assertRaises(SystemExit) as error:
-                capture.collect_raw_csv_paths(root, "c1", self.SCENARIOS)
+                capture.collect_raw_csv_paths(root, "parser", self.SCENARIOS)
 
         self.assertIn("missing scenarios", str(error.exception))
 
     def test_collect_raw_csv_paths_rejects_duplicate_scenario_exports(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
-            self._write_raw_csv(root / "a" / "tokenize_union_iff" / "c1" / "raw.csv", [1.0])
-            self._write_raw_csv(root / "b" / "tokenize_union_iff" / "c1" / "raw.csv", [2.0])
-            self._write_raw_csv(root / "parse_event_union_iff" / "c1" / "raw.csv", [3.0])
-            self._write_raw_csv(root / "parse_event_malformed" / "c1" / "raw.csv", [4.0])
+            self._write_raw_csv(root / "a" / "tokenize_union_iff" / "parser" / "raw.csv", [1.0])
+            self._write_raw_csv(root / "b" / "tokenize_union_iff" / "parser" / "raw.csv", [2.0])
+            self._write_raw_csv(root / "parse_event_union_iff" / "parser" / "raw.csv", [3.0])
+            self._write_raw_csv(root / "parse_event_malformed" / "parser" / "raw.csv", [4.0])
 
             with self.assertRaises(SystemExit) as error:
-                capture.collect_raw_csv_paths(root, "c1", self.SCENARIOS)
+                capture.collect_raw_csv_paths(root, "parser", self.SCENARIOS)
 
         self.assertIn("duplicate raw.csv for scenario 'tokenize_union_iff'", str(error.exception))
 

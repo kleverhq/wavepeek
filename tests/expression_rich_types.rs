@@ -1,6 +1,3 @@
-use std::fs;
-use std::path::PathBuf;
-
 use serde::Deserialize;
 use wavepeek::expr::{
     DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprType, ExprValue, ExprValuePayload,
@@ -9,6 +6,7 @@ use wavepeek::expr::{
 };
 
 mod common;
+use common::expr_cases::{SpanRecord, expected_layer, load_expr_manifest};
 use common::expr_runtime::{
     InMemoryExprHost, SignalFixture, SignalSample, TypeFixture, expr_type_from_fixture,
 };
@@ -68,43 +66,16 @@ struct NegativeCase {
     timestamp: Option<u64>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SpanRecord {
-    start: usize,
-    end: usize,
-}
-
-fn fixture_expr_path(file_name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("expr")
-        .join(file_name)
-}
-
 fn load_positive_manifest() -> PositiveManifest {
-    let payload = fs::read_to_string(fixture_expr_path("c4_positive_manifest.json"))
-        .expect("c4 positive manifest should be readable");
-    serde_json::from_str(&payload).expect("c4 positive manifest should be valid JSON")
+    load_expr_manifest("rich_types_positive_manifest.json")
 }
 
 fn load_negative_manifest() -> NegativeManifest {
-    let payload = fs::read_to_string(fixture_expr_path("c4_negative_manifest.json"))
-        .expect("c4 negative manifest should be readable");
-    serde_json::from_str(&payload).expect("c4 negative manifest should be valid JSON")
-}
-
-fn expected_layer(raw: &str) -> DiagnosticLayer {
-    match raw {
-        "parse" => DiagnosticLayer::Parse,
-        "semantic" => DiagnosticLayer::Semantic,
-        "runtime" => DiagnosticLayer::Runtime,
-        other => panic!("unsupported manifest layer '{other}'"),
-    }
+    load_expr_manifest("rich_types_negative_manifest.json")
 }
 
 #[test]
-fn c4_positive_manifest_matches() {
+fn rich_types_positive_manifest_matches() {
     let manifest = load_positive_manifest();
 
     for case in manifest.logical_cases {
@@ -153,7 +124,7 @@ fn c4_positive_manifest_matches() {
 }
 
 #[test]
-fn c4_negative_manifest_matches_snapshots() {
+fn rich_types_negative_manifest_matches_snapshots() {
     let manifest = load_negative_manifest();
 
     for case in manifest.cases {
@@ -203,7 +174,7 @@ fn c4_negative_manifest_matches_snapshots() {
 }
 
 #[test]
-fn c4_triggered_and_rich_type_regressions_hold() {
+fn rich_type_and_triggered_regressions_hold() {
     let host = InMemoryExprHost::from_fixtures(default_positive_signals().as_slice());
 
     let not_temp = eval_expr_at("!temp", &host, 10).expect("real truthiness eval");
@@ -237,7 +208,7 @@ fn c4_triggered_and_rich_type_regressions_hold() {
 }
 
 #[test]
-fn c4_named_and_tracked_events_handle_rich_signal_changes() {
+fn rich_type_named_and_tracked_events_handle_signal_changes() {
     let host = InMemoryExprHost::from_fixtures(default_positive_signals().as_slice());
 
     let msg_ast = parse_event_expr_ast("msg").expect("named string event should parse");

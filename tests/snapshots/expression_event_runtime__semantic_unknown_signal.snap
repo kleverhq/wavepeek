@@ -1,8 +1,8 @@
 ---
-source: tests/expression_c2.rs
+source: tests/expression_event_runtime.rs
 expression: diagnostic.render(case.source.as_str())
 ---
-semantic:C2-SEMANTIC-UNKNOWN-SIGNAL: unknown signal 'missing_sig'
+semantic:C3-SEMANTIC-UNKNOWN-SIGNAL: unknown signal 'missing_sig'
 --> span 16..27
 source: posedge clk iff missing_sig
 note: host detail: unknown signal 'missing_sig'

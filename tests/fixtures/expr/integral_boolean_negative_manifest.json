@@ -7,7 +7,7 @@
       "layer": "semantic",
       "code": "C3-SEMANTIC-CONST-REQUIRED",
       "span": { "start": 2, "end": 5 },
-      "snapshot": "c3_semantic_const_required_part_select"
+      "snapshot": "semantic_const_required_part_select"
     },
     {
       "name": "invalid_const_indexed_width",
@@ -82,7 +82,7 @@
       "snapshot": null
     },
     {
-      "name": "event_level_grouping_stays_outside_c3",
+      "name": "event_level_grouping_remains_invalid",
       "entrypoint": "event",
       "source": "(posedge clk) or ready",
       "layer": "parse",

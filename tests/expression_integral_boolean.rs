@@ -1,14 +1,12 @@
-use std::fs;
-use std::path::PathBuf;
-
 use serde::Deserialize;
 use wavepeek::expr::{
-    DiagnosticLayer, EventEvalFrame, ExprDiagnostic, ExprType, ExprValue, ExprValuePayload,
-    bind_event_expr_ast, bind_logical_expr_ast, eval_logical_expr_at, event_matches_at,
-    parse_event_expr_ast, parse_logical_expr_ast,
+    EventEvalFrame, ExprDiagnostic, ExprType, ExprValue, ExprValuePayload, bind_event_expr_ast,
+    bind_logical_expr_ast, eval_logical_expr_at, event_matches_at, parse_event_expr_ast,
+    parse_logical_expr_ast,
 };
 
 mod common;
+use common::expr_cases::{SpanRecord, expected_layer, load_expr_manifest};
 use common::expr_runtime::{InMemoryExprHost, SignalFixture, TypeFixture, expr_type_from_fixture};
 
 #[derive(Debug, Deserialize)]
@@ -53,43 +51,16 @@ struct NegativeCase {
     snapshot: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-struct SpanRecord {
-    start: usize,
-    end: usize,
-}
-
-fn fixture_expr_path(file_name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
-        .join("fixtures")
-        .join("expr")
-        .join(file_name)
-}
-
 fn load_positive_manifest() -> PositiveManifest {
-    let payload = fs::read_to_string(fixture_expr_path("c3_positive_manifest.json"))
-        .expect("c3 positive manifest should be readable");
-    serde_json::from_str(&payload).expect("c3 positive manifest should be valid JSON")
+    load_expr_manifest("integral_boolean_positive_manifest.json")
 }
 
 fn load_negative_manifest() -> NegativeManifest {
-    let payload = fs::read_to_string(fixture_expr_path("c3_negative_manifest.json"))
-        .expect("c3 negative manifest should be readable");
-    serde_json::from_str(&payload).expect("c3 negative manifest should be valid JSON")
-}
-
-fn expected_layer(raw: &str) -> DiagnosticLayer {
-    match raw {
-        "parse" => DiagnosticLayer::Parse,
-        "semantic" => DiagnosticLayer::Semantic,
-        "runtime" => DiagnosticLayer::Runtime,
-        other => panic!("unsupported manifest layer '{other}'"),
-    }
+    load_expr_manifest("integral_boolean_negative_manifest.json")
 }
 
 #[test]
-fn c3_positive_manifest_matches() {
+fn integral_boolean_positive_manifest_matches() {
     let manifest = load_positive_manifest();
 
     for case in manifest.logical_cases {
@@ -143,7 +114,7 @@ fn c3_positive_manifest_matches() {
 }
 
 #[test]
-fn c3_negative_manifest_matches_snapshots() {
+fn integral_boolean_negative_manifest_matches_snapshots() {
     let manifest = load_negative_manifest();
     let host = InMemoryExprHost::from_fixtures(
         [
@@ -317,7 +288,7 @@ fn c3_negative_manifest_matches_snapshots() {
 }
 
 #[test]
-fn c3_unknown_flow_regressions_hold() {
+fn integral_boolean_unknown_flow_regressions_hold() {
     let host = InMemoryExprHost::from_fixtures(
         [
             SignalFixture {
@@ -412,7 +383,7 @@ fn c3_unknown_flow_regressions_hold() {
 }
 
 #[test]
-fn c3_short_circuit_preservation_holds() {
+fn integral_boolean_short_circuit_preservation_holds() {
     let mut host = InMemoryExprHost::from_fixtures(
         [
             SignalFixture {
@@ -492,7 +463,7 @@ fn c3_short_circuit_preservation_holds() {
 }
 
 #[test]
-fn c3_selection_from_derived_values_and_missing_sample_hold() {
+fn integral_boolean_selection_and_missing_sample_regressions_hold() {
     let host = InMemoryExprHost::from_fixtures(
         [
             SignalFixture {

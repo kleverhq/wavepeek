@@ -1,8 +1,0 @@
----
-source: tests/expression_c2.rs
-expression: diagnostic.render(case.source.as_str())
----
-parse:C2-PARSE-LOGICAL-UNSUPPORTED: real literals are outside the C2 iff subset
---> span 16..19
-source: posedge clk iff 1.5
-note: C2 iff supports integral literals only

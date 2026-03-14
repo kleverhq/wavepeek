@@ -10,7 +10,10 @@ Because the contract is a whitelist specification, each section should also
 spawn representative negative tests for nearby unsupported syntax or semantics,
 even when that rejection is called out only indirectly.
 
-## 1. Event Expressions
+Maintenance policy: this checklist is append-only. Preserve historical
+numbering, append new items only at the end, and use bracketed source-section
+tags such as `[2.5.3]` to locate the originating contract clause instead of
+inserting new items back into earlier chapters.
 
 1. [1.1] Wildcard event surface form
    - Assertion: `*` is a valid event expression surface form.
@@ -186,8 +189,6 @@ even when that rejection is called out only indirectly.
    - Assertion: `posedge`, `negedge`, and `edge` accept operand references only.
    - Verification: Attempt forms such as `posedge 1'b1` or `posedge (a)`.
    - Expected result: Semantic or parse validation rejects non-reference operands after edge keywords.
-
-## 2. Boolean Expressions
 
 36. [2.0] Inline vector cast targets are supported
    - Assertion: Inline cast targets like `bit[N]`, `logic[N]`, `signed logic[N]`, and related forms are part of the supported surface.
@@ -704,8 +705,6 @@ even when that rejection is called out only indirectly.
    - Verification: Parameterize concatenation and replication cases that distinguish width, 2-state/4-state, `x/z` preservation, unsized constants, negative `N`, and non-constant `N`.
    - Expected result: All valid cases match the documented width and state rules, and all invalid `N` or unsized-constant cases are rejected.
 
-## 2.6 Precedence and Associativity
-
 139. [2.6] Primary and postfix forms bind tighter than infix operators
    - Assertion: Parenthesized expressions, casts, enum labels, concatenation, replication, `.triggered`, and selection bind tighter than any infix operator.
    - Verification: Use mixed expressions where infix regrouping would change the result, such as selection or cast next to addition or equality.
@@ -770,8 +769,6 @@ even when that rejection is called out only indirectly.
    - Assertion: `type'(expr)` and `type(enum_operand_reference)::LABEL` both bind tighter than any infix operator.
    - Verification: Place each form next to additive, equality, or logical operators without extra parentheses.
    - Expected result: The cast or enum-label form groups as a primary expression.
-
-## 2.7 Parser-Level Grammar Sketch
 
 152. [2.7] Start symbol and ternary grammar
    - Assertion: The parser entry point is `expr ::= conditional_expr`, and ternary syntax is `logical_or_expr ? expr : conditional_expr`.
@@ -857,3 +854,33 @@ even when that rejection is called out only indirectly.
    - Assertion: In `type(enum_operand_reference)::LABEL`, the operand must resolve to an enum-typed reference and the label must be declared; `constant_expr` positions must later validate as constant integer expressions in the supported subset; and `inside` ranges use inclusive bounds.
    - Verification: Use valid and invalid enum-label cases, valid and invalid constant-expression positions, and `inside` range cases that touch both bounds.
    - Expected result: Enum-label validation, constant-expression validation, and inclusive range semantics all match the contract.
+
+169. [1] Event syntax rejects the outer `@(...)` wrapper
+   - Assertion: Event expressions admit only the inner clocking-event surface, not the surrounding SystemVerilog `@(...)` wrapper.
+   - Verification: Attempt forms such as `@(posedge clk)`, `@(a or b)`, and `@(*)`.
+   - Expected result: The outer wrapper is rejected in every case, while the corresponding inner event expressions remain valid.
+
+170. [2.3.13] `.triggered` follows ordinary integral cast semantics
+   - Assertion: After `.triggered`, an event operand behaves exactly like an ordinary integral `bit` under width-changing, signedness-changing, and state-domain-changing casts.
+   - Verification: Cast `event_ref.triggered` through representative integral targets and compare the results with the same casts applied to an ordinary `bit` operand carrying the same 0/1 value.
+   - Expected result: Every cast result matches ordinary integral cast rules rather than a special-case event-specific path.
+
+171. [2.4.4] Implicit integral-to-`real` promotion uses the source's self-determined value
+   - Assertion: In mixed `integral`/`real` operators, an integral operand converts to `real` from its own self-determined width, signedness, and state domain before any wider operator context is considered.
+   - Verification: Use mixed `integral`/`real` operators with integral operands whose numeric value changes with width or signedness, then compare the result with explicitly parenthesized reference cases.
+   - Expected result: Promotion to `real` reflects the integral operand's self-determined value, not a value recomputed after external coercion.
+
+172. [2.5.1] Non-whitelisted operator syntax is rejected
+   - Assertion: The expression language accepts only the operator families explicitly listed in the contract and rejects nearby unsupported operator syntax.
+   - Verification: Attempt representative non-whitelisted forms near supported families, such as `++a`, `a++`, `--a`, `a--`, and binary `a ~& b` or `a ~| b`.
+   - Expected result: Every non-whitelisted operator form is rejected instead of being parsed as an extension.
+
+173. [2.5.3] Bit-select unknown indices use the invalid-index rule
+   - Assertion: A bit-select index containing `x` or `z` is an invalid index and therefore yields `x` for a 4-state source and `0` for a 2-state source.
+   - Verification: Bit-select packed 4-state and 2-state integral sources with indices that evaluate to `x` and `z`.
+   - Expected result: Unknown indices follow the same invalid-index result rule as other invalid bit-select indices.
+
+174. [2.6] Exponentiation chains associate left-to-right
+   - Assertion: Repeated `**` chains follow the contract's general binary-infix left-to-right associativity rule.
+   - Verification: Evaluate expressions such as `a ** b ** c` and compare them with `(a ** b) ** c` and `a ** (b ** c)`.
+   - Expected result: The unparenthesized chain matches `(a ** b) ** c`.

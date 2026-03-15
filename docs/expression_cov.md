@@ -924,3 +924,48 @@ inserting new items back into earlier chapters.
     - Assertion: `x` and `z` digits are allowed only in based integral literals, not in plain unsized decimal integer forms.
     - Verification: Attempt unsized decimal integer spellings that embed `x` or `z` digits alongside valid based literal forms that use the same digits.
     - Expected result: The plain unsized decimal forms are rejected, while the corresponding based literal forms remain accepted.
+
+183. [1.4][2.7] `iff` guard rejects event-expression-only syntax
+     - Assertion: The `logical_expr` to the right of `iff` accepts only section-2 boolean-expression syntax, not event-expression-only forms such as `*`, edge keywords, event unions with `or` or `,`, or nested event `iff` forms.
+     - Verification: Attempt gated-event forms such as `posedge clk iff *`, `posedge clk iff posedge ready`, `posedge clk iff (ready or valid)`, and `posedge clk iff ready iff valid`.
+     - Expected result: Each event-only guard form is rejected, while equivalent section-2 boolean syntax such as `ready || valid` remains accepted.
+
+184. [1.4][2.4.1] `iff` guard enforces boolean-context operand restrictions
+     - Assertion: Because `iff` evaluates its guard in boolean context, operand kinds that do not implicitly convert in boolean context, such as true `string`, are invalid in `iff` guards.
+     - Verification: Attempt gated-event forms such as `posedge clk iff "go"` and `posedge clk iff string_sig`, alongside valid integral or real guard examples.
+     - Expected result: Non-boolean-context-compatible guard operands are rejected in `iff`, while valid integral and real guards use ordinary boolean conversion.
+
+185. [1.2][1.6] Edge-event operand-reference resolution matrix
+     - Assertion: `posedge`, `negedge`, and `edge` accept the full documented `operand_reference` resolution surface, including simple names, hierarchical paths, and other canonical dump-derived signal tokens.
+     - Verification: Parse and evaluate each edge keyword with representative simple, hierarchical, and non-simple canonical signal references.
+     - Expected result: All edge forms accept every documented operand-reference shape and resolve them exactly as ordinary signal references.
+
+186. [1.4][1.5] Mixed union spellings remain semantically identical in multi-term chains
+     - Assertion: Interleaved `or` and `,` remain exact semantic synonyms across longer union chains, not only in two-term unions.
+     - Verification: Evaluate equivalent multi-term expressions such as `a or b, c or d` and `a, b or c, d` over waveforms where different terms match at different and same timestamps.
+     - Expected result: Equivalent multi-term unions produce identical candidate timestamps and deduplication behavior regardless of which union spelling appears at each boundary.
+
+187. [2.3.8][2.3.12] Recovered string-type casts obey string-only identity rules
+     - Assertion: `type(string_operand_reference)'(expr)` obeys the same string-cast restriction as explicit `string'(expr)`: only string-to-string identity casts are valid.
+     - Verification: Use `type(string_ref)'("ok")`, `type(string_ref)'(non_string_expr)`, and `type(non_string_ref)'("ok")` where fixtures permit.
+     - Expected result: Only the string-to-string identity case is accepted; recovered operand-type casts do not create an alternate path for numeric/string conversion.
+
+188. [2.5.13] `inside` rejects non-integral lhs and set items
+     - Assertion: `inside` accepts only an integral left operand and integral expression or range items; non-integral lhs values and non-integral set items or bounds are invalid.
+     - Verification: Attempt cases such as `real_sig inside {1}`, `string_sig inside {"a"}`, `int_sig inside {1.5}`, and `int_sig inside {[0.5:2.5]}`.
+     - Expected result: Every non-integral lhs or set-item case is rejected, while integral-only `inside` forms remain valid.
+
+189. [2.6] Bitwise OR binds tighter than logical AND
+     - Assertion: Bitwise OR has higher precedence than logical AND in the supported precedence order.
+     - Verification: Compare `a | b && c` with `(a | b) && c` and `a | (b && c)` using operands whose results distinguish the groupings.
+     - Expected result: The unparenthesized expression matches `(a | b) && c`.
+
+190. [2.7] Semantic validation enforces packed-only selection and operator type restrictions
+     - Assertion: Some grammar-valid expression shapes remain subject to semantic validation for packed-only selection and operand-family restrictions.
+     - Verification: Parse forms such as `scalar_integral[0]`, `real_sig[0]`, `string_sig[0]`, `real_a & real_b`, and `string_a < string_b`.
+     - Expected result: Parsing may succeed at the grammar level, but semantic validation rejects each expression for the documented packed-only or operand-family restriction.
+
+191. [2.7] Brace-form grammars reject empty and malformed concatenation, replication, and `inside` sets
+     - Assertion: Brace-based grammar forms require the documented one-or-more item structure and exact replication body shape.
+     - Verification: Attempt `{}`, `{a,}`, `{2{a, b}}`, `a inside {}`, and `a inside {1,}`.
+     - Expected result: Empty or malformed concatenations, replications, and `inside` sets are rejected, while the corresponding well-formed brace forms remain accepted.

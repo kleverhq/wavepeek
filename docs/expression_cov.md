@@ -911,6 +911,16 @@ inserting new items back into earlier chapters.
     - Expected result: Event-language-only syntax is rejected by the boolean-expression parser or semantic validator.
 
 180. [2.1] Final `property` decisions are reduced to 2-state
-    - Assertion: Boolean-expression evaluation may carry 4-state values internally, but the final `property` decision is reduced to 2-state.
-    - Verification: Run `property` on expressions whose evaluation includes 4-state intermediates or final values that would be 4-state if exposed directly.
-    - Expected result: The command surface reports only a 2-state property decision, never a raw 4-state final expression value.
+     - Assertion: Boolean-expression evaluation may carry 4-state values internally, but the final `property` decision is reduced to 2-state.
+     - Verification: Run `property` on expressions whose evaluation includes 4-state intermediates or final values that would be 4-state if exposed directly.
+     - Expected result: The command surface reports only a 2-state property decision, never a raw 4-state final expression value.
+
+181. [1.4] `iff` gates event selection by boolean truth
+    - Assertion: `event iff logical_expr` selects a candidate timestamp only when the event term matches and the gate evaluates true in boolean context.
+    - Verification: Use one event source with guard values whose boolean-context result is `1`, `0`, and `x` on different matching timestamps.
+    - Expected result: Only timestamps with gate value `1` are selected; `0` and `x` suppress the event.
+
+182. [2.2.1] Plain unsized decimal integers reject `x` and `z`
+    - Assertion: `x` and `z` digits are allowed only in based integral literals, not in plain unsized decimal integer forms.
+    - Verification: Attempt unsized decimal integer spellings that embed `x` or `z` digits alongside valid based literal forms that use the same digits.
+    - Expected result: The plain unsized decimal forms are rejected, while the corresponding based literal forms remain accepted.

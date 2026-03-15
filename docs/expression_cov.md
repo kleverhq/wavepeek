@@ -881,6 +881,36 @@ inserting new items back into earlier chapters.
    - Expected result: Unknown indices follow the same invalid-index result rule as other invalid bit-select indices.
 
 174. [2.6] Exponentiation chains associate left-to-right
-   - Assertion: Repeated `**` chains follow the contract's general binary-infix left-to-right associativity rule.
-   - Verification: Evaluate expressions such as `a ** b ** c` and compare them with `(a ** b) ** c` and `a ** (b ** c)`.
-   - Expected result: The unparenthesized chain matches `(a ** b) ** c`.
+    - Assertion: Repeated `**` chains follow the contract's general binary-infix left-to-right associativity rule.
+    - Verification: Evaluate expressions such as `a ** b ** c` and compare them with `(a ** b) ** c` and `a ** (b ** c)`.
+    - Expected result: The unparenthesized chain matches `(a ** b) ** c`.
+
+175. [2.5.3] Valid selection read semantics matrix
+    - Assertion: For in-range reads, `expr[idx]` returns the addressed bit, `expr[msb:lsb]` returns the addressed slice, `expr[base +: width]` selects `width` bits upward from `base`, and `expr[base -: width]` selects `width` bits downward from `base`; valid reads preserve the source 2-state or 4-state domain.
+    - Verification: Parameterize in-range bit-select, fixed part-select, and indexed part-select cases on both 2-state and 4-state packed integral sources with distinguishable bit patterns.
+    - Expected result: Each valid selection returns the documented bits in the documented direction, and the result stays in the source state domain.
+
+176. [2.4.3] Mixed enum implicit conversions drop labels outside same-enum ternary
+    - Assertion: Outside the special case where both `?:` arms have the same enum type, mixed-type implicit conversions involving `enum` treat the value as integral and do not preserve enum labels.
+    - Verification: Use ordinary operators that force implicit conversion, such as enum mixed with integral operands under arithmetic, bitwise, equality, or ternary expressions with non-matching arm types.
+    - Expected result: The converted value participates as an integral operand, and no enum label metadata survives the conversion step.
+
+177. [2.7] `type_reference` rejects unsupported cast-target syntax
+    - Assertion: Cast-target syntax is limited to the documented `type_reference` forms; nearby unsupported targets such as `event`, packed-range spellings like `logic[7:0]`, or `type(<non-reference>)` are rejected.
+    - Verification: Attempt representative casts such as `event'(x)`, `logic[7:0]'(x)`, and `type(a + b)'(x)`.
+    - Expected result: Only the documented cast-target forms are accepted, and each unsupported target form is rejected.
+
+178. [2.7] Only exact `type(enum_operand_reference)::LABEL` scope syntax is accepted
+    - Assertion: `::` is supported only in the exact `type(enum_operand_reference)::LABEL` form, not in nearby SystemVerilog-style alternatives such as `pkg::ID`, `enum_t::LABEL`, or `type(expr)::LABEL`.
+    - Verification: Parse one valid exact form and attempt each nearby alternative.
+    - Expected result: Only the documented exact form is accepted.
+
+179. [2.7] Event-expression-only syntax is rejected in boolean expressions
+    - Assertion: Boolean expressions do not admit event-only forms such as `*`, `posedge name`, `negedge name`, `edge name`, event unions with `or` or `,`, or event `iff` gating.
+    - Verification: Attempt representative event-language forms in `expr` contexts, such as `posedge clk`, `sig_a or sig_b`, and `clk iff ready`.
+    - Expected result: Event-language-only syntax is rejected by the boolean-expression parser or semantic validator.
+
+180. [2.1] Final `property` decisions are reduced to 2-state
+    - Assertion: Boolean-expression evaluation may carry 4-state values internally, but the final `property` decision is reduced to 2-state.
+    - Verification: Run `property` on expressions whose evaluation includes 4-state intermediates or final values that would be 4-state if exposed directly.
+    - Expected result: The command surface reports only a 2-state property decision, never a raw 4-state final expression value.

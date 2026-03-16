@@ -969,3 +969,58 @@ inserting new items back into earlier chapters.
      - Assertion: Brace-based grammar forms require the documented one-or-more item structure and exact replication body shape.
      - Verification: Attempt `{}`, `{a,}`, `{2{a, b}}`, `a inside {}`, and `a inside {1,}`.
      - Expected result: Empty or malformed concatenations, replications, and `inside` sets are rejected, while the corresponding well-formed brace forms remain accepted.
+
+192. [1.4][2.1][2.2.2][2.4.1] `iff` guards reject raw events but accept `.triggered`
+     - Assertion: Because `iff` consumes a section-2 boolean expression, a raw event operand reference is invalid as a guard, while `event_ref.triggered` is valid and participates as an ordinary 1-bit 2-state integral truth value.
+     - Verification: Attempt `posedge clk iff done_ev` and compare it with `posedge clk iff done_ev.triggered` and `posedge clk iff done_ev.triggered && ready`.
+     - Expected result: The raw-event guard is rejected, while the `.triggered` forms are accepted and evaluated under ordinary boolean-context rules.
+
+193. [2.2.2][2.7] `.triggered` rejects parenthesized raw-event forms
+     - Assertion: `.triggered` is valid only on a raw event operand reference, so parenthesized broader parses do not qualify even when they contain a raw event reference.
+     - Verification: Compare `done_ev.triggered` with nearby variants such as `(done_ev).triggered` and `((done_ev)).triggered`.
+     - Expected result: The bare raw-reference form is accepted, while the parenthesized broader parsed forms are rejected during semantic validation.
+
+194. [2.2.2] Boolean-expression operand references must resolve to supported operands
+     - Assertion: A section-2 `operand reference` is valid only when it resolves to a supported signal/value operand; unresolved names or non-signal targets are errors.
+     - Verification: Evaluate standalone and embedded boolean expressions using an unknown identifier and, separately, a token that does not resolve to a supported value operand if such a fixture exists.
+     - Expected result: Semantic validation rejects every unresolved or non-value operand reference instead of inferring a default value.
+
+195. [2.2.1] Unsupported unbased unsized integral literals are rejected
+     - Assertion: The whitelist integral-literal surface excludes nearby SystemVerilog unbased unsized forms such as `'0`, `'1`, `'x`, and `'z`.
+     - Verification: Attempt representative unbased unsized literals alongside supported unsized based and sized based literals.
+     - Expected result: The unbased unsized forms are rejected, while the documented based-literal forms remain accepted.
+
+196. [2.3.8][2.3.9] `type(operand_reference)` requires a resolvable operand reference
+     - Assertion: Both `type(operand_reference)'(expr)` and `type(operand_reference)::LABEL` require a successfully resolved operand reference as the type source.
+     - Verification: Attempt a cast and an enum-label reference using an unknown operand reference, alongside equivalent cases with valid resolved references.
+     - Expected result: The unresolved-source forms are rejected before any cast conversion or enum-label lookup is attempted.
+
+197. [2.3.8][2.3.11] Recovered real-type casts obey ordinary `real`-cast `x/z` rejection
+     - Assertion: `type(real_operand_reference)'(expr)` follows the same numeric-conversion rule as `real'(expr)`: integral sources containing `x` or `z` are invalid.
+     - Verification: Use a recovered real-typed reference as the cast target with integral sources that are known, `x`-containing, and `z`-containing.
+     - Expected result: Known integral sources convert numerically to `real`, while `x`/`z` sources are rejected rather than converted through a special recovered-type path.
+
+198. [2.5.14][2.7] Unsupported brace-based expression syntax is rejected
+     - Assertion: Brace expressions are limited to ordinary concatenation `{expr {, expr}}` and replication `{constant_expr{expr}}`; nearby non-whitelisted brace syntaxes are invalid.
+     - Verification: Attempt representative unsupported forms such as `{<<{a}}`, `{>>{a}}`, `'{a, b}`, and other brace expressions that are neither documented concatenation nor documented replication.
+     - Expected result: Only the documented concatenation and replication shapes are accepted; all other brace-based expression syntaxes are rejected.
+
+199. [2.5.13][2.7] `inside` requires the exact braced set surface
+     - Assertion: The right-hand side of `inside` must use the exact `inside_set` grammar `{ inside_item { , inside_item } }`; nearby non-braced forms are invalid.
+     - Verification: Attempt forms such as `a inside 1`, `a inside [1:2]`, and `a inside (1)`, alongside valid `a inside {1}` and `a inside {[1:2]}` cases.
+     - Expected result: Only the braced `inside { ... }` surface is accepted, and non-set RHS spellings are rejected.
+
+200. [2.5.7][2.5.8] Arithmetic and exponentiation reject non-numeric operands
+     - Assertion: `**`, unary `+`/`-`, and binary `+`, `-`, `*`, `/`, `%` accept only `integral` and `real` operands; true `string` operands are invalid.
+     - Verification: Attempt representative expressions such as `"a" + 1`, `1 + "a"`, `-"a"`, and `"a" ** 2`, alongside valid integral and real cases.
+     - Expected result: Every non-numeric arithmetic or exponentiation case is rejected, while the corresponding numeric forms remain accepted.
+
+201. [2.6][2.7][2.5.3] Mixed postfix `.triggered` and selection chains obey left-to-right parsing and semantic restrictions
+     - Assertion: Postfix suffixes chain left-to-right, so mixed `.triggered`/selection forms are parsed in left-associated order and then checked against the documented selection and raw-event restrictions.
+     - Verification: Attempt `event_ref.triggered[0]` and `event_ref[0].triggered`.
+     - Expected result: The postfix chains are parsed left-to-right; `event_ref.triggered[0]` is rejected by scalar-selection rules, and `event_ref[0].triggered` is rejected because `event_ref[0]` is already an invalid selection on a raw event operand.
+
+202. [2.5.3][2.5.14][2.7] Integer-only constant-expression positions reject constant non-integer operands
+     - Assertion: Fixed part-select bounds, indexed part-select widths, and replication multipliers require constant integer expressions, not merely constant expressions of some other type.
+     - Verification: Attempt forms such as `expr[1.5:0]`, `expr[idx +: 1.5]`, and `{1.5{a}}`, plus any available string-constant variants.
+     - Expected result: Constant non-integer operands are rejected in every integer-only `constant_expr` position.

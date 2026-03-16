@@ -144,29 +144,6 @@ deterministic run-local `summary.json` + `README.md` outputs into
 `bench/expr/runs/`, including bench-target and scenario-set identity metadata
 that `bench/expr/compare.py` validates before timing-delta checks.
 
-### Run A Single Test (Rust)
-
-Prefer narrowing at the `cargo test` level rather than running everything.
-
-- Run a single unit test by name (substring match):
-  - `cargo test my_test_name`
-- Run a single test with full module path:
-  - `cargo test expr::parser::tests::parses_precedence`
-- Run one integration test file in `tests/` (file stem):
-  - `cargo test --test info_cli`
-- Run a single test inside an integration test file:
-  - `cargo test --test info_cli prints_json`
-- Show output (stdout/stderr) for a failing test:
-  - `cargo test my_test_name -- --nocapture`
-- Re-run only ignored tests:
-  - `cargo test -- --ignored`
-- Run tests for a specific package (if/when this becomes a workspace):
-  - `cargo test -p wavepeek my_test_name`
-
-If you need to profile test runtime:
-
-- `cargo test -- --test-threads=1` (more deterministic; slower)
-
 ## Pre-commit Hooks
 
 Hooks are defined in `.pre-commit-config.yaml` and installed by `make bootstrap`.

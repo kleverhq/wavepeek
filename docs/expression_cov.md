@@ -1079,3 +1079,8 @@ inserting new items back into earlier chapters.
          - Assertion: Concatenation uses self-determined operands; it does not coerce concatenation operands through a common type before packing them together.
          - Verification: Build concatenations from mixed-width integral operands whose packed bits would differ if the operands were first widened, narrowed, or common-typed before concatenation.
          - Expected result: Each concatenation operand contributes exactly its own self-determined bit pattern and width to the packed result.
+
+214. [2.5.3] Indexed part-select base is evaluated at the current sample
+         - Assertion: In `expr[base +: width]` and `expr[base -: width]`, `base` is an integral expression evaluated at the current sample for each evaluation timestamp.
+         - Verification: Use indexed part-selects whose `base` depends on another signal that changes over time, while the selected source and `width` stay fixed.
+         - Expected result: Each evaluation uses the contemporaneous sampled `base` value rather than a constant, cached, or previous-sample value.

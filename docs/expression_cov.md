@@ -1074,3 +1074,8 @@ inserting new items back into earlier chapters.
         - Assertion: Boolean-expression `operand_reference` forms accept the same non-simple canonical dump-derived signal tokens accepted by the command surface, not only simple names and hierarchical paths.
         - Verification: Parse and evaluate section-2 expressions that use representative canonical dump-derived signal tokens alongside equivalent simple or hierarchical references.
         - Expected result: Every documented canonical signal token form is accepted in value expressions and resolves to the same underlying operand as elsewhere on the command surface.
+
+213. [2.5.2][2.5.14] Concatenation operands stay self-determined before packing
+         - Assertion: Concatenation uses self-determined operands; it does not coerce concatenation operands through a common type before packing them together.
+         - Verification: Build concatenations from mixed-width integral operands whose packed bits would differ if the operands were first widened, narrowed, or common-typed before concatenation.
+         - Expected result: Each concatenation operand contributes exactly its own self-determined bit pattern and width to the packed result.

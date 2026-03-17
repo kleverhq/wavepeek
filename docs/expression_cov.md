@@ -1061,6 +1061,16 @@ inserting new items back into earlier chapters.
        - Expected result: Every malformed selection suffix is rejected, while the documented selection surfaces remain accepted.
 
 210. [2.5.13][2.7] Malformed `inside` range-item syntax is rejected
-       - Assertion: A ranged `inside` item must use the exact `[expr : expr]` surface inside the braced set.
-       - Verification: Attempt forms such as `a inside {[1:]}`, `a inside {[:2]}`, and `a inside {[1:2:3]}` alongside valid `a inside {[1:2]}`.
-       - Expected result: Only the exact two-bound inclusive range-item form is accepted; malformed range items are rejected.
+        - Assertion: A ranged `inside` item must use the exact `[expr : expr]` surface inside the braced set.
+        - Verification: Attempt forms such as `a inside {[1:]}`, `a inside {[:2]}`, and `a inside {[1:2:3]}` alongside valid `a inside {[1:2]}`.
+        - Expected result: Only the exact two-bound inclusive range-item form is accepted; malformed range items are rejected.
+
+211. [1.6][2.2.2][2.7] Section-2 operand references use shared command-specific scope handling
+        - Assertion: Boolean-expression `operand_reference` values use the same command-specific scope handling as other documented operand references rather than a separate value-expression lookup path.
+        - Verification: Evaluate the same section-2 expression reference in command contexts with distinct documented scoping behavior, including at least one case where scope handling changes which signal resolves or whether resolution succeeds.
+        - Expected result: The value-expression operand reference resolves exactly according to the active command's scope rules.
+
+212. [1.2][1.6][2.2.2][2.7] Section-2 operand references accept canonical dump-derived signal tokens
+        - Assertion: Boolean-expression `operand_reference` forms accept the same non-simple canonical dump-derived signal tokens accepted by the command surface, not only simple names and hierarchical paths.
+        - Verification: Parse and evaluate section-2 expressions that use representative canonical dump-derived signal tokens alongside equivalent simple or hierarchical references.
+        - Expected result: Every documented canonical signal token form is accepted in value expressions and resolves to the same underlying operand as elsewhere on the command surface.

@@ -1044,3 +1044,23 @@ inserting new items back into earlier chapters.
       - Assertion: Primary expressions are limited to the documented whitelist and do not include function-like or task-like call forms.
       - Verification: Attempt representative call-like expressions such as `f()`, `f(a)`, and `top.fsm.next()` alongside valid operand references and parenthesized expressions.
       - Expected result: Every call-like form is rejected, while the documented primary-expression forms remain accepted.
+
+207. [1.1][1.6] Wildcard gated-event form `* iff logical_expr`
+       - Assertion: Because `*` is a documented `basic_event`, `* iff logical_expr` is a valid gated `event_term`.
+       - Verification: Parse and evaluate `* iff ready` or `* iff ready && !stall` in a context with tracked and untracked signals, and with guard values `1`, `0`, and `x` on different tracked-signal changes.
+       - Expected result: Parsing succeeds; tracked-set changes are selected only when the guard is true; untracked-signal changes remain irrelevant.
+
+208. [2.3.6][2.3.8][2.3.10] Recovered enum casts apply state-domain rules before label resolution
+       - Assertion: Casting into a recovered enum type via `type(enum_ref)'(expr)` applies the ordinary integral 2-state/4-state conversion rules before enum-label matching on the resulting bit pattern.
+       - Verification: Cast the same integral source containing `x` or `z` into recovered 2-state and 4-state enum targets, with fixtures where the zeroed or preserved final bit pattern may or may not match a declared label.
+       - Expected result: 4-state enum targets preserve `x` and `z` and remain unlabeled unless the final pattern matches a declared label; 2-state enum targets map `x/z -> 0` before ordinary enum label lookup.
+
+209. [2.5.3][2.7] Malformed selection postfix syntax is rejected
+       - Assertion: Selection suffixes must use one of the exact documented bracket forms; malformed bracketed shapes are invalid.
+       - Verification: Attempt `a[]`, `a[1:]`, `a[:0]`, `a[+:4]`, `a[1+:]`, and `a[1-:]` alongside valid selection forms.
+       - Expected result: Every malformed selection suffix is rejected, while the documented selection surfaces remain accepted.
+
+210. [2.5.13][2.7] Malformed `inside` range-item syntax is rejected
+       - Assertion: A ranged `inside` item must use the exact `[expr : expr]` surface inside the braced set.
+       - Verification: Attempt forms such as `a inside {[1:]}`, `a inside {[:2]}`, and `a inside {[1:2:3]}` alongside valid `a inside {[1:2]}`.
+       - Expected result: Only the exact two-bound inclusive range-item form is accepted; malformed range items are rejected.

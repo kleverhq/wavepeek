@@ -1021,6 +1021,16 @@ inserting new items back into earlier chapters.
      - Expected result: The postfix chains are parsed left-to-right; `event_ref.triggered[0]` is rejected by scalar-selection rules, and `event_ref[0].triggered` is rejected because `event_ref[0]` is already an invalid selection on a raw event operand.
 
 202. [2.5.3][2.5.14][2.7] Integer-only constant-expression positions reject constant non-integer operands
-     - Assertion: Fixed part-select bounds, indexed part-select widths, and replication multipliers require constant integer expressions, not merely constant expressions of some other type.
-     - Verification: Attempt forms such as `expr[1.5:0]`, `expr[idx +: 1.5]`, and `{1.5{a}}`, plus any available string-constant variants.
-     - Expected result: Constant non-integer operands are rejected in every integer-only `constant_expr` position.
+      - Assertion: Fixed part-select bounds, indexed part-select widths, and replication multipliers require constant integer expressions, not merely constant expressions of some other type.
+      - Verification: Attempt forms such as `expr[1.5:0]`, `expr[idx +: 1.5]`, and `{1.5{a}}`, plus any available string-constant variants.
+      - Expected result: Constant non-integer operands are rejected in every integer-only `constant_expr` position.
+
+203. [1.2][1.6] Event operand references follow command-specific scope handling
+     - Assertion: Event-expression `operand_reference` resolution uses the same command-specific scope handling as other command-surface signal references.
+     - Verification: Evaluate the same event reference shape in command contexts with distinct documented scoping behavior, including at least one case where command-specific scope handling changes which signal is selected or whether resolution succeeds.
+     - Expected result: Event operand references resolve exactly according to the active command's scope rules rather than a single global name-resolution path.
+
+204. [2.3.8][2.3.13] Recovered raw `event` types are invalid cast targets
+     - Assertion: `type(event_operand_reference)'(expr)` is invalid because raw `event` is not a castable plain value type, and recovered operand-type casts must not create a loophole around that restriction.
+     - Verification: Attempt `type(event_ref)'(expr)` with a resolved raw event operand reference, and contrast it with an ordinary explicit cast applied to `event_ref.triggered`.
+     - Expected result: The recovered raw-event target cast is rejected, while the `.triggered` value remains castable only through the normal integral cast rules.

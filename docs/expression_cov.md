@@ -1034,3 +1034,13 @@ inserting new items back into earlier chapters.
      - Assertion: `type(event_operand_reference)'(expr)` is invalid because raw `event` is not a castable plain value type, and recovered operand-type casts must not create a loophole around that restriction.
      - Verification: Attempt `type(event_ref)'(expr)` with a resolved raw event operand reference, and contrast it with an ordinary explicit cast applied to `event_ref.triggered`.
      - Expected result: The recovered raw-event target cast is rejected, while the `.triggered` value remains castable only through the normal integral cast rules.
+
+205. [1.1][1.4] `property` wildcard ignores signals referenced only in the event expression or `iff` guard
+      - Assertion: In `property`, `*` denotes changes only in signals referenced by `--eval`, not extra signals mentioned only in `--on` or its `iff` guard.
+      - Verification: Run `property` with `--eval` referencing one signal and `--on` mentioning additional event-only and guard-only signals, then toggle those extra signals alone and the `--eval` signal separately.
+      - Expected result: Changes to event-only or guard-only signals do not make `*` eligible; changes to `--eval`-referenced signals do.
+
+206. [2.2.2][2.7] Non-whitelisted call-like primary syntax is rejected
+      - Assertion: Primary expressions are limited to the documented whitelist and do not include function-like or task-like call forms.
+      - Verification: Attempt representative call-like expressions such as `f()`, `f(a)`, and `top.fsm.next()` alongside valid operand references and parenthesized expressions.
+      - Expected result: Every call-like form is rejected, while the documented primary-expression forms remain accepted.

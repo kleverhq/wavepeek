@@ -1,6 +1,8 @@
 # Expression Language Coverage Checklist
 
 This checklist is derived only from `docs/expression_lang.md`.
+It targets the core expression parser/binder/evaluator API rather than CLI
+option binding.
 Each numbered point is a future test target. Many points are intentionally
 parameterized matrices that should expand into multiple concrete cases.
 Overlap is intentional where the contract states the same rule in more than one
@@ -13,11 +15,12 @@ even when that rejection is called out only indirectly.
 Maintenance policy: this checklist is append-only. Preserve historical
 numbering, append new items only at the end, and use bracketed source-section
 tags such as `[2.5.3]` to locate the originating contract clause instead of
-inserting new items back into earlier chapters.
+inserting new items back into earlier chapters. If an obsolete item is retired,
+leave a numbering gap rather than renumbering later items.
 
 1. [1.1] Wildcard event surface form
    - Assertion: `*` is a valid event expression surface form.
-   - Verification: Parse and evaluate `*` in a command context with a non-empty tracked set.
+   - Verification: Parse and evaluate `*` against an event-evaluation frame with a non-empty tracked set.
    - Expected result: Parsing succeeds, and the event is eligible whenever any tracked signal changes.
 
 2. [1.1] Named event surface form
@@ -40,15 +43,10 @@ inserting new items back into earlier chapters.
    - Verification: Parse an event term gated by a boolean expression, for example `posedge clk iff ready && !stall`.
    - Expected result: Parsing succeeds and the gate is evaluated in boolean context.
 
-6. [1.1] Wildcard tracked-set binding for `change`
-   - Assertion: In `change`, `*` denotes any change in the command-defined tracked set resolved from `--signals`.
-   - Verification: Run `change` with `--signals` naming some signals, then toggle both tracked and untracked signals.
-   - Expected result: `*` reacts only to changes in the resolved `--signals` set.
-
-7. [1.1] Wildcard tracked-set binding for `property`
-   - Assertion: In `property`, `*` denotes any change in the set of signals referenced by `--eval`.
-   - Verification: Run `property` with an `--eval` expression that references a subset of available signals, then toggle referenced and unreferenced signals.
-   - Expected result: `*` reacts only to changes in signals referenced by `--eval`.
+6. [1.1] Wildcard tracked-set binding comes from the host context
+   - Assertion: `*` ranges over the tracked set supplied by the host evaluation context rather than naming signals directly in the syntax.
+   - Verification: Evaluate the same parsed `*` event against two different tracked sets over the same waveform.
+   - Expected result: Match behavior changes with the supplied tracked set, proving that binding is external to the surface syntax.
 
 8. [1.2] Simple signal name resolution
    - Assertion: A simple signal name is a valid event operand reference when it resolves.
@@ -61,9 +59,9 @@ inserting new items back into earlier chapters.
    - Expected result: Resolution succeeds and evaluation uses that hierarchical signal.
 
 10. [1.2] Canonical dump-token resolution
-   - Assertion: Another canonical dump-derived signal token accepted by the command surface is also valid in event expressions.
-   - Verification: Use an event expression with a non-simple canonical token that the command surface already accepts.
-   - Expected result: Resolution succeeds and the token is treated exactly like any other signal reference.
+    - Assertion: Another canonical dump-derived signal token accepted by the shared operand-reference surface is also valid in event expressions.
+    - Verification: Use an event expression with a non-simple canonical token that the same host/API already accepts for operand references.
+    - Expected result: Resolution succeeds and the token is treated exactly like any other signal reference.
 
 11. [1.2] Unresolved or non-signal names are errors
    - Assertion: Names must resolve to signals; unresolved names or non-signal targets are errors.
@@ -910,15 +908,10 @@ inserting new items back into earlier chapters.
     - Verification: Attempt representative event-language forms in `expr` contexts, such as `posedge clk`, `sig_a or sig_b`, and `clk iff ready`.
     - Expected result: Event-language-only syntax is rejected by the boolean-expression parser or semantic validator.
 
-180. [2.1] Final `property` decisions are reduced to 2-state
-     - Assertion: Boolean-expression evaluation may carry 4-state values internally, but the final `property` decision is reduced to 2-state.
-     - Verification: Run `property` on expressions whose evaluation includes 4-state intermediates or final values that would be 4-state if exposed directly.
-     - Expected result: The command surface reports only a 2-state property decision, never a raw 4-state final expression value.
-
 181. [1.4] `iff` gates event selection by boolean truth
-    - Assertion: `event iff logical_expr` selects a candidate timestamp only when the event term matches and the gate evaluates true in boolean context.
-    - Verification: Use one event source with guard values whose boolean-context result is `1`, `0`, and `x` on different matching timestamps.
-    - Expected result: Only timestamps with gate value `1` are selected; `0` and `x` suppress the event.
+     - Assertion: `event iff logical_expr` selects a candidate timestamp only when the event term matches and the gate evaluates true in boolean context.
+     - Verification: Use one event source with guard values whose boolean-context result is `1`, `0`, and `x` on different matching timestamps.
+     - Expected result: Only timestamps with gate value `1` are selected; `0` and `x` suppress the event.
 
 182. [2.2.1] Plain unsized decimal integers reject `x` and `z`
     - Assertion: `x` and `z` digits are allowed only in based integral literals, not in plain unsized decimal integer forms.
@@ -1025,25 +1018,20 @@ inserting new items back into earlier chapters.
       - Verification: Attempt forms such as `expr[1.5:0]`, `expr[idx +: 1.5]`, and `{1.5{a}}`, plus any available string-constant variants.
       - Expected result: Constant non-integer operands are rejected in every integer-only `constant_expr` position.
 
-203. [1.2][1.6] Event operand references follow command-specific scope handling
-     - Assertion: Event-expression `operand_reference` resolution uses the same command-specific scope handling as other command-surface signal references.
-     - Verification: Evaluate the same event reference shape in command contexts with distinct documented scoping behavior, including at least one case where command-specific scope handling changes which signal is selected or whether resolution succeeds.
-     - Expected result: Event operand references resolve exactly according to the active command's scope rules rather than a single global name-resolution path.
+203. [1.2][1.6] Event operand references use host-provided resolution
+     - Assertion: Event-expression `operand_reference` resolution is delegated to the host API rather than hardcoded by parser syntax alone.
+     - Verification: Bind the same event reference spelling against host fixtures with different documented resolution tables, including one case where the spelling resolves differently or fails.
+     - Expected result: The bound event follows the host-provided resolution outcome.
 
 204. [2.3.8][2.3.13] Recovered raw `event` types are invalid cast targets
      - Assertion: `type(event_operand_reference)'(expr)` is invalid because raw `event` is not a castable plain value type, and recovered operand-type casts must not create a loophole around that restriction.
      - Verification: Attempt `type(event_ref)'(expr)` with a resolved raw event operand reference, and contrast it with an ordinary explicit cast applied to `event_ref.triggered`.
      - Expected result: The recovered raw-event target cast is rejected, while the `.triggered` value remains castable only through the normal integral cast rules.
 
-205. [1.1][1.4] `property` wildcard ignores signals referenced only in the event expression or `iff` guard
-      - Assertion: In `property`, `*` denotes changes only in signals referenced by `--eval`, not extra signals mentioned only in `--on` or its `iff` guard.
-      - Verification: Run `property` with `--eval` referencing one signal and `--on` mentioning additional event-only and guard-only signals, then toggle those extra signals alone and the `--eval` signal separately.
-      - Expected result: Changes to event-only or guard-only signals do not make `*` eligible; changes to `--eval`-referenced signals do.
-
 206. [2.2.2][2.7] Non-whitelisted call-like primary syntax is rejected
-      - Assertion: Primary expressions are limited to the documented whitelist and do not include function-like or task-like call forms.
-      - Verification: Attempt representative call-like expressions such as `f()`, `f(a)`, and `top.fsm.next()` alongside valid operand references and parenthesized expressions.
-      - Expected result: Every call-like form is rejected, while the documented primary-expression forms remain accepted.
+       - Assertion: Primary expressions are limited to the documented whitelist and do not include function-like or task-like call forms.
+       - Verification: Attempt representative call-like expressions such as `f()`, `f(a)`, and `top.fsm.next()` alongside valid operand references and parenthesized expressions.
+       - Expected result: Every call-like form is rejected, while the documented primary-expression forms remain accepted.
 
 207. [1.1][1.6] Wildcard gated-event form `* iff logical_expr`
        - Assertion: Because `*` is a documented `basic_event`, `* iff logical_expr` is a valid gated `event_term`.
@@ -1065,15 +1053,15 @@ inserting new items back into earlier chapters.
         - Verification: Attempt forms such as `a inside {[1:]}`, `a inside {[:2]}`, and `a inside {[1:2:3]}` alongside valid `a inside {[1:2]}`.
         - Expected result: Only the exact two-bound inclusive range-item form is accepted; malformed range items are rejected.
 
-211. [1.6][2.2.2][2.7] Section-2 operand references use shared command-specific scope handling
-        - Assertion: Boolean-expression `operand_reference` values use the same command-specific scope handling as other documented operand references rather than a separate value-expression lookup path.
-        - Verification: Evaluate the same section-2 expression reference in command contexts with distinct documented scoping behavior, including at least one case where scope handling changes which signal resolves or whether resolution succeeds.
-        - Expected result: The value-expression operand reference resolves exactly according to the active command's scope rules.
+211. [1.6][2.2.2][2.7] Section-2 operand references use shared host resolution
+        - Assertion: Boolean-expression `operand_reference` values use the same host-provided resolution contract as event expressions rather than a separate value-expression lookup path.
+        - Verification: Bind equivalent event and section-2 references against the same host fixtures, including one spelling whose resolution depends on the host mapping.
+        - Expected result: Both surfaces resolve or fail identically for the same host-provided names.
 
 212. [1.2][1.6][2.2.2][2.7] Section-2 operand references accept canonical dump-derived signal tokens
-        - Assertion: Boolean-expression `operand_reference` forms accept the same non-simple canonical dump-derived signal tokens accepted by the command surface, not only simple names and hierarchical paths.
+        - Assertion: Boolean-expression `operand_reference` forms accept the same non-simple canonical dump-derived signal tokens accepted by the shared operand-reference surface, not only simple names and hierarchical paths.
         - Verification: Parse and evaluate section-2 expressions that use representative canonical dump-derived signal tokens alongside equivalent simple or hierarchical references.
-        - Expected result: Every documented canonical signal token form is accepted in value expressions and resolves to the same underlying operand as elsewhere on the command surface.
+        - Expected result: Every documented canonical signal token form is accepted in value expressions and resolves to the same underlying operand as elsewhere in the expression API.
 
 213. [2.5.2][2.5.14] Concatenation operands stay self-determined before packing
          - Assertion: Concatenation uses self-determined operands; it does not coerce concatenation operands through a common type before packing them together.

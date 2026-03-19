@@ -26,7 +26,8 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 - [x] (2026-03-19 19:55Z) Added the shared manifest/runtime contract in `tests/common/expr_cases.rs`, `tests/common/expr_runtime.rs`, and the new `tests/expression_fixture_contract.rs`, then captured the intended red phase where the contract test rejected the old parse/event manifest shapes.
 - [x] (2026-03-19 19:55Z) Migrated `tests/expression_parse.rs`, `tests/expression_event_runtime.rs`, and their four manifests to the shared contract; removed suite-local serde structs plus the event-runtime-only signal fixtures; and restored snapshot stability through the shared assertion helper so `cargo test --test expression_parse --test expression_event_runtime --test expression_fixture_contract` now passes.
 - [x] (2026-03-19 20:06Z) Migrated `tests/expression_integral_boolean.rs`, `tests/expression_rich_types.rs`, and their four manifests to the shared contracts; widened `tests/expression_fixture_contract.rs` from the temporary allowlist to the final full-directory scan; and moved the manifest-friendly logical/event regression tables out of Rust code and into shared JSON fixtures.
-- [ ] Audit code-only expression tests and snapshots, document the remaining policy in `tests/AGENTS.md`, run full validation, and complete the required review workflow.
+- [x] (2026-03-19 20:08Z) Audited the remaining `tests/snapshots/expression_*.snap` files, kept the current set because each one still locks rendered diagnostics that structured assertions do not cover alone, documented the end-state policy in `tests/AGENTS.md`, and passed `INSTA_UPDATE=always cargo test --test expression_parse --test expression_event_runtime --test expression_integral_boolean --test expression_rich_types`, `cargo test --test expression_fixture_contract`, and `make check`.
+- [ ] Run the final multi-lane review workflow, resolve any findings, rerun the affected validation, and close the branch with `make ci`.
 
 ## Surprises & Discoveries
 
@@ -50,6 +51,9 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 
 - Observation: logical expressions involving `real` truthiness still report a four-state 1-bit result type, while `.triggered` stays two-state.
   Evidence: the first rich-type manifest migration failed on `real_truthiness_not` because the actual `ExprType` reported `is_four_state = true`, whereas the already-existing `.triggered` positive manifest rows continue to pass with `is_four_state = false`.
+
+- Observation: the post-migration snapshot set was already minimal once the structured negative assertions and full-directory snapshot reference check were in place.
+  Evidence: after the contract test began enforcing both snapshot existence and orphan detection, the remaining directory still contained only the nine long-lived `expression_*.snap` files, all referenced by the negative manifests that intentionally protect rendered notes or source echoes.
 
 ## Decision Log
 
@@ -95,9 +99,9 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 
 ## Outcomes & Retrospective
 
-Current status: milestone 3 is complete. All eight expression manifests now deserialize through the shared contracts, the four capability suites consume the shared helpers, and the branch is in the final snapshot/docs/review phase.
+Current status: implementation and pre-review validation are complete. The branch has finished the contract migration, documented the end-state testing policy, and is waiting only on the required review workflow plus final `make ci` closeout.
 
-The work so far confirms the migration shape from the plan. The full-directory contract test now catches both schema drift and stale snapshot references immediately, while the integral/rich suites no longer carry local manifest structs or duplicated eval/type helpers. The remaining manual closeout is smaller and clearer: keep only the deliberate code-only exceptions, document them in `tests/AGENTS.md`, and run the full repository validation plus review workflow.
+The work so far confirms the migration shape from the plan. The full-directory contract test now catches both schema drift and stale snapshot references immediately, the integral/rich suites no longer carry local manifest structs or duplicated eval/type helpers, and the final docs pass makes the remaining code-only exceptions explicit for the next contributor. The last remaining work is quality gating through the mandated review lanes and final CI validation.
 
 ## Context and Orientation
 

@@ -134,11 +134,11 @@ class PerfHelpersTest(unittest.TestCase):
             suite = self._suite(scenarios=["tokenize_union_iff", "parse_event_union_iff"])
 
             self._write_raw_csv(
-                criterion_root / "tokenize_union_iff" / "wanted" / "raw.csv",
+                criterion_root / "syntax__tokenize_union_iff" / "wanted" / "raw.csv",
                 [10.0, 20.0],
             )
             self._write_raw_csv(
-                criterion_root / "parse_event_union_iff" / "wanted" / "raw.csv",
+                criterion_root / "syntax__parse_event_union_iff" / "wanted" / "raw.csv",
                 [30.0, 40.0],
             )
 
@@ -160,6 +160,23 @@ class PerfHelpersTest(unittest.TestCase):
             )
             self.assertTrue((run_dir / "syntax__tokenize_union_iff.raw.csv").is_file())
             self.assertTrue((run_dir / "syntax__parse_event_union_iff.raw.csv").is_file())
+
+    def test_capture_suite_results_rejects_legacy_unprefixed_ids(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            criterion_root = root / "criterion"
+            run_dir = root / "run"
+            suite = self._suite(scenarios=["tokenize_union_iff"])
+
+            self._write_raw_csv(
+                criterion_root / "tokenize_union_iff" / "wanted" / "raw.csv",
+                [10.0, 20.0],
+            )
+
+            with self.assertRaises(SystemExit) as error:
+                perf.capture_suite_results(criterion_root, "wanted", run_dir, suite)
+
+        self.assertIn("missing scenarios", str(error.exception))
 
     def test_capture_suite_results_rejects_unexpected_prefixed_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -202,7 +219,7 @@ class PerfHelpersTest(unittest.TestCase):
                             "scenarios": [
                                 {
                                     "scenario": "tokenize_union_iff",
-                                    "criterion_benchmark_id": "tokenize_union_iff",
+                                    "criterion_benchmark_id": "syntax__tokenize_union_iff",
                                     "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                                     "sample_count": 100,
                                     "mean_ns_per_iter": 10.0,
@@ -210,7 +227,7 @@ class PerfHelpersTest(unittest.TestCase):
                                 },
                                 {
                                     "scenario": "tokenize_union_iff",
-                                    "criterion_benchmark_id": "tokenize_union_iff",
+                                    "criterion_benchmark_id": "syntax__tokenize_union_iff",
                                     "raw_csv": "syntax__tokenize_union_iff.dup.raw.csv",
                                     "sample_count": 100,
                                     "mean_ns_per_iter": 11.0,
@@ -283,6 +300,56 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertIn("catalog fingerprint mismatch", str(error.exception))
 
+    def test_cmd_run_missing_only_rejects_provenance_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            suite = {
+                "id": "syntax",
+                "bench_target": "expr_syntax",
+                "description": "suite syntax",
+                "scenarios": [],
+            }
+            self._write_summary(
+                run_dir,
+                self._summary(
+                    ["syntax"],
+                    [suite],
+                    extra_metadata={
+                        "cargo_version": "cargo 1.0",
+                        "rustc_version": "rustc 1.0",
+                        "criterion_version": "0.8.0",
+                        "source_commit": "old-commit",
+                        "worktree_state": "clean",
+                        "environment_note": "test-env",
+                    },
+                ),
+            )
+            catalog_path = root / "suites.json"
+            catalog_path.write_text(json.dumps({"suites": [self._suite()]}) + "\n", encoding="utf-8")
+            args = argparse.Namespace(
+                catalog=str(catalog_path),
+                suite=[],
+                run_dir=str(run_dir),
+                out_dir=str(root),
+                compare=None,
+                missing_only=True,
+                criterion_root=str(root / "criterion"),
+                environment_note="test-env",
+            )
+
+            with (
+                mock.patch.object(perf, "tool_version", side_effect=["cargo 1.0", "rustc 1.0"]),
+                mock.patch.object(perf, "cargo_lock_criterion_version", return_value="0.8.0"),
+                mock.patch.object(perf, "git_source_commit", return_value="new-commit"),
+                mock.patch.object(perf, "git_worktree_state", return_value="clean"),
+                mock.patch.object(perf, "catalog_fingerprint", return_value="fingerprint-a"),
+            ):
+                with self.assertRaises(SystemExit) as error:
+                    perf.cmd_run(args)
+
+        self.assertIn("source_commit mismatch", str(error.exception))
+
     def test_cmd_run_missing_only_runs_only_missing_suites(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -294,7 +361,7 @@ class PerfHelpersTest(unittest.TestCase):
                 "scenarios": [
                     {
                         "scenario": "tokenize_union_iff",
-                        "criterion_benchmark_id": "tokenize_union_iff",
+                        "criterion_benchmark_id": "syntax__tokenize_union_iff",
                         "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 10.0,
@@ -302,7 +369,21 @@ class PerfHelpersTest(unittest.TestCase):
                     }
                 ],
             }
-            self._write_summary(run_dir, self._summary(["syntax", "event"], [syntax_suite]))
+            self._write_summary(
+                run_dir,
+                self._summary(
+                    ["syntax", "event"],
+                    [syntax_suite],
+                    extra_metadata={
+                        "cargo_version": "cargo 1.0",
+                        "rustc_version": "rustc 1.0",
+                        "criterion_version": "0.8.0",
+                        "source_commit": "abc123",
+                        "worktree_state": "clean",
+                        "environment_note": "test-env",
+                    },
+                ),
+            )
             (run_dir / "syntax__tokenize_union_iff.raw.csv").write_text("csv\n", encoding="utf-8")
 
             catalog_path = root / "suites.json"
@@ -340,7 +421,7 @@ class PerfHelpersTest(unittest.TestCase):
                 "scenarios": [
                     {
                         "scenario": "bind_event_union_iff",
-                        "criterion_benchmark_id": "bind_event_union_iff",
+                        "criterion_benchmark_id": "event__bind_event_union_iff",
                         "raw_csv": "event__bind_event_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 20.0,
@@ -394,7 +475,7 @@ class PerfHelpersTest(unittest.TestCase):
                 "scenarios": [
                     {
                         "scenario": "tokenize_union_iff",
-                        "criterion_benchmark_id": "tokenize_union_iff",
+                        "criterion_benchmark_id": "syntax__tokenize_union_iff",
                         "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 10.0,
@@ -437,7 +518,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
-                            "criterion_benchmark_id": "tokenize_union_iff",
+                            "criterion_benchmark_id": "syntax__tokenize_union_iff",
                             "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 8.0,
@@ -459,6 +540,40 @@ class PerfHelpersTest(unittest.TestCase):
             readme = (revised / "README.md").read_text(encoding="utf-8")
             self.assertIn("Compare baseline", readme)
             self.assertIn("+20.00%", readme)
+
+    def test_cmd_report_uses_summary_timestamp(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            self._write_summary(
+                run_dir,
+                self._summary(
+                    ["syntax"],
+                    [
+                        {
+                            "id": "syntax",
+                            "bench_target": "expr_syntax",
+                            "description": "suite syntax",
+                            "scenarios": [
+                                {
+                                    "scenario": "tokenize_union_iff",
+                                    "criterion_benchmark_id": "syntax__tokenize_union_iff",
+                                    "raw_csv": "syntax__tokenize_union_iff.raw.csv",
+                                    "sample_count": 100,
+                                    "mean_ns_per_iter": 10.0,
+                                    "median_ns_per_iter": 10.0,
+                                }
+                            ],
+                        }
+                    ],
+                    extra_metadata={"generated_at_utc": "2026-03-20T00:00:00Z"},
+                ),
+            )
+
+            exit_code = perf.cmd_report(argparse.Namespace(run_dir=str(run_dir), compare=None))
+
+            self.assertEqual(exit_code, 0)
+            readme = (run_dir / "README.md").read_text(encoding="utf-8")
+            self.assertIn("2026-03-20T00:00:00Z", readme)
 
     def test_cmd_compare_rejects_suite_mismatch(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -496,7 +611,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
-                            "criterion_benchmark_id": "tokenize_union_iff",
+                            "criterion_benchmark_id": "syntax__tokenize_union_iff",
                             "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
@@ -513,7 +628,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "scenarios": [
                         {
                             "scenario": "parse_event_union_iff",
-                            "criterion_benchmark_id": "parse_event_union_iff",
+                            "criterion_benchmark_id": "syntax__parse_event_union_iff",
                             "raw_csv": "syntax__parse_event_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
@@ -553,7 +668,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
-                            "criterion_benchmark_id": "tokenize_union_iff",
+                            "criterion_benchmark_id": "syntax__tokenize_union_iff",
                             "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
@@ -598,7 +713,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
-                            "criterion_benchmark_id": "tokenize_union_iff",
+                            "criterion_benchmark_id": "syntax__tokenize_union_iff",
                             "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,

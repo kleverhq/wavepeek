@@ -16,5 +16,7 @@ The durable committed state in this directory is `baseline/` plus this map.
 Other run directories are temporary local or review artifacts unless a later
 plan explicitly promotes them.
 
-Run directories should keep deterministic exported `*.raw.csv`, `summary.json`,
-and a human-readable `README.md`.
+Run directories should keep namespaced exported `*.raw.csv`, one
+machine-readable `summary.json`, and a human-readable `README.md`. Scenario
+ordering and schema are stable; generation-time provenance fields can vary from
+capture to capture.

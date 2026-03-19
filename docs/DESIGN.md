@@ -462,7 +462,7 @@ wavepeek property --waves dump.vcd --from 1us --to 2us --eval "top.cpu.data == 0
 ### 4.1 Performance
 - Performance is the highest priority
 - Rust is chosen specifically for this reason
-- Benchmarks will be added as the project matures
+- Benchmarks are maintained through `bench/e2e/perf.py` for CLI scenarios and `bench/expr/perf.py` for expression microbenchmarks, with room for future expansion as the project matures
 
 ### 4.2 Compatibility
 - OS agnostic: Linux, macOS, Windows

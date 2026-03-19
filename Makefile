@@ -99,8 +99,10 @@ bench-e2e-run: check-rtl-artifacts build-release
 
 ## Refresh expression benchmark baseline artifacts
 bench-expr-update-baseline: require-container
-	rm -rf "$(BENCH_EXPR_BASELINE_DIR)"
-	$(PYTHON) bench/expr/perf.py run --run-dir "$(BENCH_EXPR_BASELINE_DIR)"
+	@tmp_parent="$$(mktemp -d)"; tmp_baseline="$$tmp_parent/baseline"; trap 'rm -rf "$$tmp_parent"' EXIT; \
+		$(PYTHON) bench/expr/perf.py run --run-dir "$$tmp_baseline" && \
+		rm -rf "$(BENCH_EXPR_BASELINE_DIR)" && \
+		mv "$$tmp_baseline" "$(BENCH_EXPR_BASELINE_DIR)"
 
 ## Run expression benchmark suite with baseline compare
 bench-expr-run: require-container

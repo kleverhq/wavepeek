@@ -131,10 +131,10 @@ The functional Rust bench targets are `expr_syntax`, `expr_logical`,
   - `python3 bench/expr/perf.py list`
 - Validate the four bench targets in test mode:
   - `cargo test --bench expr_syntax --bench expr_logical --bench expr_event --bench expr_waveform_host`
-- Capture one aggregated run directory and grouped report:
-  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/baseline`
+- Capture one aggregated run directory and grouped report in a fresh location:
+  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/<run-id>`
 - Resume the same run directory only when the catalog fingerprint and selected-suite set still match exactly:
-  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/baseline --missing-only`
+  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/<run-id> --missing-only`
 - Regenerate `README.md` from an existing run directory:
   - `python3 bench/expr/perf.py report --run-dir bench/expr/runs/baseline`
 - Compare a revised run against the maintained baseline with an explicit timing threshold:
@@ -150,6 +150,10 @@ Convenience targets mirror the new workflow:
 
 - `make bench-expr-update-baseline`
 - `make bench-expr-run`
+
+Use a fresh `<run-id>` directory for ad hoc local captures. Refresh the committed
+baseline through `make bench-expr-update-baseline` so the replace-in-place flow
+stays guarded behind one explicit target.
 
 ## Pre-commit Hooks
 

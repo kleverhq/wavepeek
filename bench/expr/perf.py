@@ -244,11 +244,8 @@ def parse_raw_csv(path: pathlib.Path) -> list[float]:
     return values
 
 
-def criterion_benchmark_candidates(suite_id: str, scenario: str) -> tuple[str, ...]:
-    prefixed = f"{suite_id}__{scenario}"
-    if prefixed == scenario:
-        return (scenario,)
-    return (prefixed, scenario)
+def criterion_benchmark_id(suite_id: str, scenario: str) -> str:
+    return f"{suite_id}__{scenario}"
 
 
 def collect_suite_raw_csv_paths(
@@ -260,22 +257,24 @@ def collect_suite_raw_csv_paths(
 
     suite_id = str(suite["id"])
     expected = {
-        scenario: set(criterion_benchmark_candidates(suite_id, scenario))
+        scenario: criterion_benchmark_id(suite_id, scenario)
         for scenario in suite["scenarios"]
     }
-    all_expected_ids = {candidate for candidates in expected.values() for candidate in candidates}
+    all_expected_ids = set(expected.values())
     selected: dict[str, tuple[str, pathlib.Path]] = {}
     extra_prefixed: list[str] = []
+    saw_baseline = False
 
     for path in sorted(criterion_root.rglob("raw.csv")):
         if path.parent.name != baseline_name:
             continue
+        saw_baseline = True
         benchmark_id = path.parent.parent.name
         if benchmark_id.startswith(f"{suite_id}__") and benchmark_id not in all_expected_ids:
             extra_prefixed.append(benchmark_id)
             continue
-        for scenario, candidate_ids in expected.items():
-            if benchmark_id not in candidate_ids:
+        for scenario, expected_id in expected.items():
+            if benchmark_id != expected_id:
                 continue
             if scenario in selected:
                 fail(
@@ -284,7 +283,7 @@ def collect_suite_raw_csv_paths(
                 )
             selected[scenario] = (benchmark_id, path)
 
-    if not selected:
+    if not selected and not saw_baseline:
         fail(
             f"requested baseline '{baseline_name}' for suite '{suite_id}' "
             f"was not found under {criterion_root}"
@@ -522,13 +521,19 @@ def load_summary(run_dir: pathlib.Path) -> dict[str, Any]:
                 )
             seen_suite_scenarios.add(suite_scenario)
 
-            criterion_benchmark_id = require_nonempty_str(
+            expected_benchmark_id = criterion_benchmark_id(suite_id, scenario)
+            benchmark_id = require_nonempty_str(
                 raw_scenario.get("criterion_benchmark_id"),
                 (
                     f"suites[{suite_index}].scenarios[{scenario_index}]"
                     ".criterion_benchmark_id"
                 ),
             )
+            if benchmark_id != expected_benchmark_id:
+                fail(
+                    f"{summary_path} suite '{suite_id}' scenario '{scenario}' must use "
+                    f"criterion benchmark id '{expected_benchmark_id}'"
+                )
             raw_csv = require_nonempty_str(
                 raw_scenario.get("raw_csv"),
                 f"suites[{suite_index}].scenarios[{scenario_index}].raw_csv",
@@ -585,7 +590,7 @@ def load_summary(run_dir: pathlib.Path) -> dict[str, Any]:
             scenarios.append(
                 {
                     "scenario": scenario,
-                    "criterion_benchmark_id": criterion_benchmark_id,
+                    "criterion_benchmark_id": benchmark_id,
                     "raw_csv": raw_csv,
                     "sample_count": sample_count,
                     "mean_ns_per_iter": mean_ns_per_iter,
@@ -623,6 +628,13 @@ def validate_resume_summary(
     catalog_path: pathlib.Path,
     catalog_fp: str,
     selected_suite_ids: list[str],
+    *,
+    cargo_version: str,
+    rustc_version: str,
+    criterion_version: str,
+    source_commit: str,
+    worktree_state: str,
+    environment_note: str,
 ) -> None:
     if str(summary["catalog_fingerprint"]) != catalog_fp:
         fail(
@@ -635,6 +647,22 @@ def validate_resume_summary(
             "selected suite mismatch for --missing-only resume: "
             f"summary={summary['selected_suite_ids']}, requested={selected_suite_ids}"
         )
+
+    expected_metadata = {
+        "cargo_version": cargo_version,
+        "rustc_version": rustc_version,
+        "criterion_version": criterion_version,
+        "source_commit": source_commit,
+        "worktree_state": worktree_state,
+        "environment_note": environment_note,
+    }
+    for field, expected_value in expected_metadata.items():
+        summary_value = str(summary[field])
+        if summary_value != expected_value:
+            fail(
+                f"{field} mismatch for --missing-only resume: "
+                f"summary={summary_value}, requested={expected_value}"
+            )
 
 
 def suite_row_map(summary: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -767,7 +795,7 @@ def render_report(
     lines = [
         f"# Expression Bench Run: {run_dir.name}",
         "",
-        f"- Generated at (UTC): {now_utc()}",
+        f"- Generated at (UTC): {summary['generated_at_utc']}",
         f"- Catalog: `{summary['catalog_path']}`",
         f"- Catalog fingerprint: `{summary['catalog_fingerprint']}`",
         f"- Selected suites: `{', '.join(summary['selected_suite_ids'])}`",
@@ -882,6 +910,12 @@ def cmd_run(args: argparse.Namespace) -> int:
         fail("no suites selected")
 
     selected_suite_ids = [str(suite["id"]) for suite in selected_suites]
+    cargo_version = tool_version(["cargo", "-V"])
+    rustc_version = tool_version(["rustc", "-V"])
+    criterion_version = cargo_lock_criterion_version()
+    source_commit = git_source_commit()
+    worktree_state = git_worktree_state()
+    environment_note = str(getattr(args, "environment_note", "wavepeek devcontainer/CI image"))
     run_dir = resolve_run_dir(
         getattr(args, "run_dir", None),
         getattr(args, "out_dir", str(DEFAULT_RUNS_DIR)),
@@ -889,20 +923,24 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
     criterion_root = normalize_path(getattr(args, "criterion_root", str(DEFAULT_CRITERION_ROOT)))
     catalog_fp = catalog_fingerprint(catalog)
-
-    cargo_version = tool_version(["cargo", "-V"])
-    rustc_version = tool_version(["rustc", "-V"])
-    criterion_version = cargo_lock_criterion_version()
-    source_commit = git_source_commit()
-    worktree_state = git_worktree_state()
-    environment_note = str(getattr(args, "environment_note", "wavepeek devcontainer/CI image"))
     compare_dir = normalize_path(args.compare) if getattr(args, "compare", None) else None
     compare_summary: dict[str, Any] | None = None
 
     suite_results: dict[str, dict[str, Any]] = {}
     if bool(getattr(args, "missing_only", False)):
         existing_summary = load_summary(run_dir)
-        validate_resume_summary(existing_summary, catalog_path, catalog_fp, selected_suite_ids)
+        validate_resume_summary(
+            existing_summary,
+            catalog_path,
+            catalog_fp,
+            selected_suite_ids,
+            cargo_version=cargo_version,
+            rustc_version=rustc_version,
+            criterion_version=criterion_version,
+            source_commit=source_commit,
+            worktree_state=worktree_state,
+            environment_note=environment_note,
+        )
         validate_existing_suite_artifacts(run_dir, existing_summary)
         suite_results = {str(suite["id"]): suite for suite in existing_summary["suites"]}
     else:

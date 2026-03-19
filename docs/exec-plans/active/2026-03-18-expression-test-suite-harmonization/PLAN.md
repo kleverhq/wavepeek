@@ -27,7 +27,7 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 - [x] (2026-03-19 19:55Z) Migrated `tests/expression_parse.rs`, `tests/expression_event_runtime.rs`, and their four manifests to the shared contract; removed suite-local serde structs plus the event-runtime-only signal fixtures; and restored snapshot stability through the shared assertion helper so `cargo test --test expression_parse --test expression_event_runtime --test expression_fixture_contract` now passes.
 - [x] (2026-03-19 20:06Z) Migrated `tests/expression_integral_boolean.rs`, `tests/expression_rich_types.rs`, and their four manifests to the shared contracts; widened `tests/expression_fixture_contract.rs` from the temporary allowlist to the final full-directory scan; and moved the manifest-friendly logical/event regression tables out of Rust code and into shared JSON fixtures.
 - [x] (2026-03-19 20:08Z) Audited the remaining `tests/snapshots/expression_*.snap` files, kept the current set because each one still locks rendered diagnostics that structured assertions do not cover alone, documented the end-state policy in `tests/AGENTS.md`, and passed `INSTA_UPDATE=always cargo test --test expression_parse --test expression_event_runtime --test expression_integral_boolean --test expression_rich_types`, `cargo test --test expression_fixture_contract`, and `make check`.
-- [ ] Run the final multi-lane review workflow, resolve any findings, rerun the affected validation, and close the branch with `make ci`.
+- [x] (2026-03-19 20:24Z) Completed the required code, architecture, and docs review lanes plus follow-up control passes; fixed the reported guardrail gaps around unsupported event-runtime negatives, suite-ownership enforcement, duplicate snapshot references, unknown-field rejection, and entrypoint-vs-layer wording; and closed validation with `cargo test --test expression_fixture_contract`, `cargo test --test expression_parse --test expression_event_runtime --test expression_integral_boolean --test expression_rich_types`, and `make ci`.
 
 ## Surprises & Discoveries
 
@@ -97,11 +97,15 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
   Rationale: the harmonized suite is more valuable when the manifests spell out the engine's actual type contract, including the non-obvious four-state result type for `real` truthiness/logical operators, rather than leaving that detail implicit in ad hoc Rust assertions.
   Date/Author: 2026-03-19 / OpenCode
 
+- Decision: keep the shared schema strict by rejecting unknown fields, enforcing suite ownership in the contract test, and explicitly rejecting unsupported `entrypoint: "event"` plus `layer: "runtime"` rows.
+  Rationale: the cleanup only delivers its intended simplicity if the new contract fails fast on drift instead of silently accepting stale keys, misplaced cases, or half-supported runtime shapes.
+  Date/Author: 2026-03-19 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: implementation and pre-review validation are complete. The branch has finished the contract migration, documented the end-state testing policy, and is waiting only on the required review workflow plus final `make ci` closeout.
+Current status: complete. The branch has finished the contract migration, documented the end-state testing policy, cleared the required review workflow, and passed the full repository CI gate.
 
-The work so far confirms the migration shape from the plan. The full-directory contract test now catches both schema drift and stale snapshot references immediately, the integral/rich suites no longer carry local manifest structs or duplicated eval/type helpers, and the final docs pass makes the remaining code-only exceptions explicit for the next contributor. The last remaining work is quality gating through the mandated review lanes and final CI validation.
+The implemented branch matches the planned end state. The full-directory contract test now catches schema drift, misplaced suite rows, stale or duplicate snapshot references, and unsupported runtime-negative shapes immediately. The four capability suites remain intact, the helper ownership split is explicit, and the only remaining Rust-only tests are the intentional generated or instrumented exceptions recorded in `tests/AGENTS.md`. Review found a handful of useful guardrail gaps, and the follow-up commits closed them without expanding the production expression surface.
 
 ## Context and Orientation
 

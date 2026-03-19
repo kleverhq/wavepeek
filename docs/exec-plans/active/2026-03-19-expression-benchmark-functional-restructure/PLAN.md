@@ -24,7 +24,7 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 - [x] (2026-03-19 21:31Z) Completed one fresh control-pass review on the revised plan; no additional substantive issues were reported.
 - [x] (2026-03-19 21:43Z) Applied follow-up review fixes to make `run --run-dir` safety explicit, add container-first command guidance, require temporary baseline capture before replacing `bench/expr/runs/baseline/`, include `docs/DESIGN.md` in the live-doc sweep, and tighten the Criterion collision story from exported-file namespacing to suite-prefixed internal benchmark IDs.
 - [x] (2026-03-19 21:49Z) Added the final compare-identity clarification after the control pass so subset-to-full comparisons are explicitly rejected unless both runs record the same selected-suite set.
-- [ ] Implement Milestone 1: add the unified expression benchmark catalog and `bench/expr/perf.py` harness while the current Rust bench targets still exist, so one-run-dir capture and reporting are proven before the suite rename lands.
+- [x] (2026-03-20 00:18Z) Implemented Milestone 1 with TDD: added `bench/expr/suites.json`, introduced the new stdlib-only `bench/expr/perf.py` harness with `list` / `run` / `report` / `compare`, added `bench/expr/test_perf.py`, kept the legacy helpers in place, and validated both the new unit tests and one real aggregated run/report over the current four Rust bench targets.
 - [ ] Implement Milestone 2: restructure the Rust bench targets into `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`, add shared bench support code, and update the catalog to the final functional suite split.
 - [ ] Implement Milestone 3: switch repository docs and helper tests to the new harness, remove `bench/expr/capture.py`, `bench/expr/compare.py`, `bench/expr/test_capture.py`, `bench/expr/test_compare.py`, and the `bench/expr/scenarios/` directory, then update the local benchmark breadcrumbs.
 - [ ] Implement Milestone 4: capture the new unified baseline in `bench/expr/runs/baseline/`, run a temporary same-commit verify compare against it, delete the thirteen current committed run directories, and close the branch with `make ci` plus the mandatory review workflow.
@@ -48,6 +48,9 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 
 - Observation: the current committed run directory is the main source of “historical feel,” not the current Rust file names alone.
   Evidence: `bench/expr/runs/` currently contains `parser-baseline`, `parser-candidate`, `parser-verify`, `event-runtime-baseline`, `event-runtime-candidate`, `event-runtime-verify`, `integral-boolean-baseline`, `integral-boolean-candidate`, `integral-boolean-verify`, `integral-boolean-carry-forward`, `rich-types-baseline`, `rich-types-candidate`, and `rich-types-verify`.
+
+- Observation: safe `--missing-only` resume required the new harness to persist partial multi-suite state after each completed suite instead of only at the very end of a full run.
+  Evidence: the resume contract in this plan requires `summary.json` to prove the catalog fingerprint and selected-suite set before any missing suites are rerun, so an interrupted aggregated capture would otherwise have nothing authoritative to validate against.
 
 ## Decision Log
 
@@ -91,11 +94,15 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
   Rationale: `make ci` already runs `test-bench-expr`, so the new harness will be covered in the repository's main quality gate. Adding another pre-commit hook would increase local hook cost without being required for the user-visible workflow change requested here.
   Date/Author: 2026-03-19 / OpenCode
 
+- Decision: `bench/expr/perf.py run` will rewrite `summary.json` and `README.md` after each completed suite capture, not only once at the end.
+  Rationale: resume mode is explicitly keyed off existing `summary.json` metadata. Persisting partial state after each suite makes interrupted multi-suite runs resumable without inventing another checkpoint format, while the final successful run still ends with one authoritative summary and one grouped report.
+  Date/Author: 2026-03-20 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: this plan has been researched, drafted, reviewed, and revised, but implementation has not started. The intended end state is now explicit enough that a stateless contributor can execute it without reading the old phase-oriented benchmark history.
+Current status: Milestone 1 is complete. The repository now has a working aggregated expression harness and catalog layered on top of the current phase-shaped Rust bench targets, so one run directory and one grouped report are already proven before the functional Rust suite rename begins.
 
-The main lesson from the planning pass is that the current pain is mostly tool and artifact shape, not missing benchmark coverage. The existing scenarios already cover the important parser, event, logical, rich-type, and waveform-host costs. The repository therefore gets the highest maintainability return from re-cutting ownership boundaries and collapsing the baseline/report workflow into one durable surface, rather than from inventing a new set of benchmark cases.
+The main lesson from the first implementation milestone is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The existing scenarios were sufficient to validate the one-run-dir workflow immediately, which reinforces the plan's strategy: keep the benchmark cases, then recut ownership boundaries and durable artifacts around them.
 
 ## Context and Orientation
 
@@ -294,3 +301,5 @@ In `bench/expr/support.rs`, define the shared benchmark support that all four su
 Replace the old helper tests with `bench/expr/test_perf.py`. These tests should cover catalog loading, run-directory validation, README generation with and without compare context, failure on non-empty fresh run directories, guarded `--missing-only` resume, stale-catalog rejection, duplicate suite-plus-scenario rejection, compare failures on missing or mismatched suites, artifact-name namespacing, and metadata-match enforcement. The goal is to prove the new harness end-to-end contract in one place rather than preserving the older `capture.py` / `compare.py` split.
 
 Revision note (2026-03-19 / OpenCode): initial plan authored from the current expression microbenchmark workflow, the existing grouped `bench/e2e/perf.py` model, and the user request to replace history-shaped benchmark artifacts with one functional baseline for the whole expression surface. Revised after focused architecture, docs, and performance review to stage the new harness before Rust suite renames, define the meaning of “one baseline” explicitly, require suite-prefixed Criterion and exported identities, make `run --run-dir` safety and resume rules explicit, update the live-doc sweep to include `docs/DESIGN.md`, keep same-commit verify runs temporary, and replace destructive baseline refresh with a temporary validated capture before the committed baseline directory is swapped.
+
+Revision note (2026-03-20 / OpenCode): updated after Milestone 1 implementation to record the completed catalog + harness + tests, capture the partial-summary requirement that fell out of the `--missing-only` contract, and mark the branch as ready to proceed to the functional Rust suite restructure.

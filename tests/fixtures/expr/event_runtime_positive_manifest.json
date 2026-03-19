@@ -1,223 +1,691 @@
 {
   "cases": [
     {
+      "kind": "event_eval",
       "name": "wildcard_any_tracked_same_timestamp_dedup",
       "source": "* or posedge clk",
-      "tracked_signals": ["clk", "data"],
+      "tracked_signals": [
+        "clk",
+        "data"
+      ],
       "signals": [
         {
           "name": "clk",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 10, "bits": "0" },
-            { "timestamp": 15, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "data",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 10, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [0, 5, 10, 15],
-      "matches": [5, 10, 15]
+      "probes": [
+        0,
+        5,
+        10,
+        15
+      ],
+      "matches": [
+        5,
+        10,
+        15
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "named_change_requires_previous_sample",
       "source": "data",
-      "tracked_signals": ["data"],
+      "tracked_signals": [
+        "data"
+      ],
       "signals": [
         {
           "name": "data",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 5, "bits": "0" },
-            { "timestamp": 10, "bits": "1" },
-            { "timestamp": 12, "bits": "1" }
-          ]
+            {
+              "timestamp": 5,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 12,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [5, 10, 12],
-      "matches": [10]
+      "probes": [
+        5,
+        10,
+        12
+      ],
+      "matches": [
+        10
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "edge_terms_use_lsb_and_xz_normalization",
       "source": "posedge clk or negedge clk or edge bus",
-      "tracked_signals": ["clk", "bus"],
+      "tracked_signals": [
+        "clk",
+        "bus"
+      ],
       "signals": [
         {
           "name": "clk",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 10, "bits": "x" },
-            { "timestamp": 15, "bits": "0" },
-            { "timestamp": 20, "bits": "z" },
-            { "timestamp": 25, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 20,
+              "bits": "z",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 25,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "bus",
-          "width": 2,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "10" },
-            { "timestamp": 5, "bits": "10" },
-            { "timestamp": 10, "bits": "11" },
-            { "timestamp": 15, "bits": "1h" },
-            { "timestamp": 20, "bits": "10" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "10",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "10",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "11",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "1h",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 20,
+              "bits": "10",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [0, 5, 10, 15, 20, 25],
-      "matches": [5, 10, 15, 20, 25]
+      "probes": [
+        0,
+        5,
+        10,
+        15,
+        20,
+        25
+      ],
+      "matches": [
+        5,
+        10,
+        15,
+        20,
+        25
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "iff_binds_only_to_preceding_term",
       "source": "posedge clk iff gate or ready",
-      "tracked_signals": ["clk", "ready"],
+      "tracked_signals": [
+        "clk",
+        "ready"
+      ],
       "signals": [
         {
           "name": "clk",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 8, "bits": "0" },
-            { "timestamp": 10, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 8,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "gate",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 10, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "ready",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 7, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 7,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [0, 5, 7, 8, 10],
-      "matches": [7, 10]
+      "probes": [
+        0,
+        5,
+        7,
+        8,
+        10
+      ],
+      "matches": [
+        7,
+        10
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "iff_bounded_ops_and_literals",
       "source": "posedge clk iff (!rstn && (count >= 8'd3) || flag == 'h1)",
-      "tracked_signals": ["clk"],
+      "tracked_signals": [
+        "clk"
+      ],
       "signals": [
         {
           "name": "clk",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 8, "bits": "0" },
-            { "timestamp": 10, "bits": "1" },
-            { "timestamp": 12, "bits": "0" },
-            { "timestamp": 15, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 8,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 12,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "rstn",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "1" },
-            { "timestamp": 10, "bits": "0" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "count",
-          "width": 8,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 8,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 10, "bits": "00000010" },
-            { "timestamp": 15, "bits": "00000011" }
-          ]
+            {
+              "timestamp": 10,
+              "bits": "00000010",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "00000011",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "flag",
-          "width": 4,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 4,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 10, "bits": "0000" },
-            { "timestamp": 15, "bits": "0001" }
-          ]
+            {
+              "timestamp": 10,
+              "bits": "0000",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 15,
+              "bits": "0001",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [0, 5, 8, 10, 12, 15],
-      "matches": [15]
+      "probes": [
+        0,
+        5,
+        8,
+        10,
+        12,
+        15
+      ],
+      "matches": [
+        15
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "iff_unknown_suppresses_event",
       "source": "posedge clk iff (a && b)",
-      "tracked_signals": ["clk"],
+      "tracked_signals": [
+        "clk"
+      ],
       "signals": [
         {
           "name": "clk",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 8, "bits": "0" },
-            { "timestamp": 10, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 8,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "a",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "x" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         },
         {
           "name": "b",
-          "width": 1,
-          "is_four_state": true,
-          "is_signed": false,
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
           "samples": [
-            { "timestamp": 0, "bits": "1" }
-          ]
+            {
+              "timestamp": 0,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
         }
       ],
-      "probes": [0, 5, 8, 10],
+      "probes": [
+        0,
+        5,
+        8,
+        10
+      ],
       "matches": []
     }
   ]

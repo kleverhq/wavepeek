@@ -2,16 +2,19 @@
   "cases": [
     {
       "name": "empty_input",
+      "entrypoint": "parse",
       "source": "",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-EMPTY",
       "span": {
         "start": 0,
         "end": 0
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "parse_unmatched_open",
+      "entrypoint": "parse",
       "source": "(",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
@@ -23,6 +26,7 @@
     },
     {
       "name": "parse_unmatched_close",
+      "entrypoint": "parse",
       "source": "posedge clk)",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-UNMATCHED-CLOSE",
@@ -34,6 +38,7 @@
     },
     {
       "name": "parse_empty_iff",
+      "entrypoint": "parse",
       "source": "posedge clk iff",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-EMPTY-IFF",
@@ -45,6 +50,7 @@
     },
     {
       "name": "parse_broken_union",
+      "entrypoint": "parse",
       "source": "posedge clk or , clk",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
@@ -56,73 +62,87 @@
     },
     {
       "name": "leading_union_separator",
+      "entrypoint": "parse",
       "source": ", clk",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
       "span": {
         "start": 0,
         "end": 1
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "trailing_union_separator",
+      "entrypoint": "parse",
       "source": "posedge clk or",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
       "span": {
         "start": 12,
         "end": 14
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "duplicated_union_separator",
+      "entrypoint": "parse",
       "source": "posedge clk or or clk",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
       "span": {
         "start": 15,
         "end": 17
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "missing_posedge_name",
+      "entrypoint": "parse",
       "source": "posedge",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-MISSING-NAME",
       "span": {
         "start": 0,
         "end": 7
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "missing_negedge_name",
+      "entrypoint": "parse",
       "source": "negedge",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-MISSING-NAME",
       "span": {
         "start": 0,
         "end": 7
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "missing_edge_name",
+      "entrypoint": "parse",
       "source": "edge",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-MISSING-NAME",
       "span": {
         "start": 0,
         "end": 4
-      }
+      },
+      "snapshot": null
     },
     {
       "name": "invalid_identifier_character",
+      "entrypoint": "parse",
       "source": "clk@",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-LEX-CHAR",
       "span": {
         "start": 3,
         "end": 4
-      }
+      },
+      "snapshot": null
     }
   ]
 }

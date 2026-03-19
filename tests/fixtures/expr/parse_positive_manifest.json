@@ -1,6 +1,7 @@
 {
   "cases": [
     {
+      "kind": "event_parse",
       "name": "wildcard_any_tracked",
       "source": "*",
       "terms": [
@@ -12,6 +13,7 @@
       ]
     },
     {
+      "kind": "event_parse",
       "name": "named_any_change",
       "source": "clk",
       "terms": [
@@ -23,6 +25,7 @@
       ]
     },
     {
+      "kind": "event_parse",
       "name": "edge_keywords",
       "source": "posedge clk or negedge rst or edge data",
       "terms": [
@@ -44,6 +47,7 @@
       ]
     },
     {
+      "kind": "event_parse",
       "name": "comma_union",
       "source": "posedge clk1, posedge clk2",
       "terms": [
@@ -60,6 +64,7 @@
       ]
     },
     {
+      "kind": "event_parse",
       "name": "iff_binds_to_preceding_term_only",
       "source": "negedge clk iff rstn or ready",
       "terms": [
@@ -76,6 +81,7 @@
       ]
     },
     {
+      "kind": "event_parse",
       "name": "iff_parenthesized_payload",
       "source": "posedge clk iff (a || b) or done",
       "terms": [

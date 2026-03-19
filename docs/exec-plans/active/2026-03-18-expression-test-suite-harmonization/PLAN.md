@@ -22,8 +22,9 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 - [x] (2026-03-18 20:09Z) Audited the current test surface and recorded the end-state policy for this cleanup: keep the four capability suites, collapse the ad hoc manifest and runtime fixture shapes into shared contracts, move only truly data-driven code checks into manifests, and keep snapshots only where rendered diagnostic text is part of the contract.
 - [x] (2026-03-18 20:22Z) Completed focused docs and architecture review lanes on the draft plan, then revised the contract-test rollout, explicit negative-case host context, runtime-negative timestamp rule, snapshot-reference checks, and final validation gates so every committed milestone stays compatible with repository hooks.
 - [x] (2026-03-18 20:22Z) Completed a fresh control pass on the revised plan; no substantive remaining issues were reported.
-- [ ] Implement the shared manifest and runtime helper contract, including a durable fixture-contract test that proves every expression manifest deserializes through the common schema.
-- [ ] Migrate the four capability suites and their JSON manifests to the shared contract, removing suite-local serde structs, event-runtime-only signal fixture types, and duplicated diagnostic assertion code.
+- [x] (2026-03-19 19:55Z) Re-ran the baseline capability suites before editing; `cargo test --test expression_parse --test expression_event_runtime --test expression_integral_boolean --test expression_rich_types` passed cleanly, so the refactor started from a green expression surface.
+- [x] (2026-03-19 19:55Z) Added the shared manifest/runtime contract in `tests/common/expr_cases.rs`, `tests/common/expr_runtime.rs`, and the new `tests/expression_fixture_contract.rs`, then captured the intended red phase where the contract test rejected the old parse/event manifest shapes.
+- [x] (2026-03-19 19:55Z) Migrated `tests/expression_parse.rs`, `tests/expression_event_runtime.rs`, and their four manifests to the shared contract; removed suite-local serde structs plus the event-runtime-only signal fixtures; and restored snapshot stability through the shared assertion helper so `cargo test --test expression_parse --test expression_event_runtime --test expression_fixture_contract` now passes.
 - [ ] Audit code-only expression tests and snapshots, move manifest-friendly cases into fixtures, document the remaining policy in `tests/AGENTS.md`, run full validation, and complete the required review workflow.
 
 ## Surprises & Discoveries
@@ -42,6 +43,9 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
 
 - Observation: snapshot usage is already intentionally sparse rather than blanket-applied.
   Evidence: there are many more negative cases than snapshots in `tests/snapshots/`, and the existing `.snap` files mostly protect rendered message and note text for parse grouping, metadata fallback, and runtime cast failures rather than generic "wrong signal" cases.
+
+- Observation: centralizing snapshot assertions changes Insta's default output path and identifier unless the helper pins both settings explicitly.
+  Evidence: the first shared-helper run created pending files under `tests/common/snapshots/` such as `expression_parse__common__expr_cases__parse_unmatched_open.snap.new` instead of reusing `tests/snapshots/expression_parse__parse_unmatched_open.snap`.
 
 ## Decision Log
 
@@ -77,11 +81,15 @@ This plan does not change any expression parsing, binding, evaluation, or CLI be
   Rationale: the main ambiguity in the current negative fixtures is hidden execution context. Making host and runtime time selection explicit removes suite-local defaults from the contract and makes the manifests self-contained.
   Date/Author: 2026-03-18 / OpenCode
 
+- Decision: route snapshot assertions through one shared helper, but pin Insta to `../snapshots` and explicit suite-prefixed snapshot identifiers.
+  Rationale: the helper should remove duplicated assertion code without renaming or relocating the committed `expression_*.snap` files that already represent the user-facing diagnostic contract.
+  Date/Author: 2026-03-19 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete; implementation not started.
+Current status: milestone 2 is complete. The shared contract exists, the parse and event-runtime suites now consume it, and the branch is ready for the logical/rich migration plus the final full-directory contract enforcement.
 
-This plan captures the intended end state and the migration order needed to reach it without semantic risk. No source or test behavior has changed yet. The main lesson from the audit is that the current confusion comes less from file names and more from duplicated serde models, duplicated host-fixture types, and missing policy for when to use fixtures versus code. The implementation should therefore optimize for explicit shared contracts and a small number of durable exceptions rather than for wholesale file renaming.
+The work so far confirms the migration shape from the plan. The new contract test catches legacy payload drift immediately, and the parse/event suites stayed capability-oriented while shedding duplicated manifest and signal models. The most notable implementation lesson is that shared snapshot assertions need explicit Insta settings to preserve existing artifact locations; without that, the cleanup would create misleading snapshot churn even when diagnostic text stayed identical.
 
 ## Context and Orientation
 
@@ -288,4 +296,4 @@ In `tests/common/expr_runtime.rs`, keep `SignalFixture`, `SignalSample`, `TypeFi
 
 In `tests/expression_parse.rs`, keep only parser-specific AST normalization and no-panic corpus generation. In `tests/expression_event_runtime.rs`, keep only event-runtime-specific evaluation, short-circuit sample-trap behavior, and legacy CLI parity. In `tests/expression_integral_boolean.rs` and `tests/expression_rich_types.rs`, keep only the suite-local behavior that cannot be expressed by the shared fixture contract after the migration. `tests/AGENTS.md` should be updated to describe exactly that split so future contributors do not recreate the current drift.
 
-Change note: initially drafted on 2026-03-18 after auditing the current expression test surface, then revised the same day after review lanes and a clean control pass. The revision clarified the staged contract-test rollout, explicit negative-case host and timestamp rules, snapshot-reference checks, and repository-aligned validation gates.
+Change note: initially drafted on 2026-03-18 after auditing the current expression test surface, then revised the same day after review lanes and a clean control pass. The revision clarified the staged contract-test rollout, explicit negative-case host and timestamp rules, snapshot-reference checks, and repository-aligned validation gates. On 2026-03-19 the plan was updated again after implementation began to record the green baseline, the deliberate red-phase contract test, the completed parse/event migration, and the shared snapshot-helper constraint needed to keep existing snapshot artifacts stable.

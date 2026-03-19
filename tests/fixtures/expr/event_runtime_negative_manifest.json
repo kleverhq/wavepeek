@@ -2,18 +2,27 @@
   "cases": [
     {
       "name": "unknown_signal_inside_iff",
+      "entrypoint": "event",
       "source": "posedge clk iff missing_sig",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-      "span": { "start": 16, "end": 27 },
-      "snapshot": "semantic_unknown_signal"
+      "span": {
+        "start": 16,
+        "end": 27
+      },
+      "snapshot": "semantic_unknown_signal",
+      "host_profile": "event_runtime_baseline"
     },
     {
       "name": "event_grouping_remains_invalid",
+      "entrypoint": "parse",
       "source": "(posedge clk) or ready",
       "layer": "parse",
       "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
-      "span": { "start": 0, "end": 1 },
+      "span": {
+        "start": 0,
+        "end": 1
+      },
       "snapshot": "parse_event_grouping_remains_invalid"
     }
   ]

@@ -1,94 +1,54 @@
-use serde::Deserialize;
 use serde_json::Value;
-use wavepeek::expr::{
-    EventEvalFrame, ExprDiagnostic, ExpressionHost, bind_event_expr_ast, event_matches_at,
-    parse_event_expr_ast,
-};
+use wavepeek::expr::{EventEvalFrame, bind_event_expr_ast, event_matches_at, parse_event_expr_ast};
 
 mod common;
-use common::expr_cases::{SpanRecord, expected_layer, load_expr_manifest};
+use common::expr_cases::{
+    ManifestEntrypoint, NegativeCase, PositiveCase, assert_negative_diagnostic,
+    load_negative_manifest, load_positive_manifest, negative_case_host,
+};
 use common::expr_runtime::{
-    InMemoryExprHost, SignalFixture as RuntimeSignalFixture, SignalSample as RuntimeSignalSample,
-    TypeFixture,
+    InMemoryExprHost, SignalFixture, SignalSample, TypeFixture, bind_event_expr,
+    collect_bound_event_matches, collect_event_matches,
 };
 use common::{fixture_path, wavepeek_cmd};
 
-#[derive(Debug, Deserialize)]
-struct PositiveManifest {
-    cases: Vec<PositiveCase>,
+fn load_positive_cases() -> Vec<common::expr_cases::EventEvalCase> {
+    load_positive_manifest("event_runtime_positive_manifest.json")
+        .cases
+        .into_iter()
+        .map(|case| match case {
+            PositiveCase::EventEval(case) => case,
+            other => panic!("event runtime suite only supports event_eval cases, got {other:?}"),
+        })
+        .collect()
 }
 
-#[derive(Debug, Deserialize)]
-struct PositiveCase {
-    name: String,
-    source: String,
-    tracked_signals: Vec<String>,
-    signals: Vec<EventRuntimeSignalFixture>,
-    probes: Vec<u64>,
-    matches: Vec<u64>,
+fn load_negative_cases() -> Vec<NegativeCase> {
+    load_negative_manifest("event_runtime_negative_manifest.json").cases
 }
 
-#[derive(Debug, Deserialize, Clone)]
-struct EventRuntimeSignalFixture {
-    name: String,
-    width: u32,
-    is_four_state: bool,
-    is_signed: bool,
-    samples: Vec<EventRuntimeSignalSample>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct EventRuntimeSignalSample {
-    timestamp: u64,
-    bits: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct NegativeManifest {
-    cases: Vec<NegativeCase>,
-}
-
-#[derive(Debug, Deserialize)]
-struct NegativeCase {
-    name: String,
-    source: String,
-    layer: String,
-    code: String,
-    span: SpanRecord,
-    snapshot: Option<String>,
-}
-
-fn load_positive_manifest() -> PositiveManifest {
-    load_expr_manifest("event_runtime_positive_manifest.json")
-}
-
-fn load_negative_manifest() -> NegativeManifest {
-    load_expr_manifest("event_runtime_negative_manifest.json")
-}
-
-fn to_runtime_signal_fixture(signal: &EventRuntimeSignalFixture) -> RuntimeSignalFixture {
-    RuntimeSignalFixture {
-        name: signal.name.clone(),
+fn bit_signal(name: &str, width: u32, samples: &[(u64, &str)]) -> SignalFixture {
+    SignalFixture {
+        name: name.to_string(),
         ty: TypeFixture {
             kind: "bit_vector".to_string(),
             integer_like_kind: None,
-            storage: if signal.width > 1 {
+            storage: if width > 1 {
                 "packed_vector".to_string()
             } else {
                 "scalar".to_string()
             },
-            width: signal.width,
-            is_four_state: signal.is_four_state,
-            is_signed: signal.is_signed,
+            width,
+            is_four_state: true,
+            is_signed: false,
             enum_type_id: None,
             enum_labels: None,
         },
-        samples: signal
-            .samples
+        samples: samples
             .iter()
-            .map(|sample| RuntimeSignalSample {
-                timestamp: sample.timestamp,
-                bits: Some(sample.bits.clone()),
+            .map(|(timestamp, bits)| SignalSample {
+                timestamp: *timestamp,
+                bits: Some((*bits).to_string()),
                 label: None,
                 real: None,
                 string: None,
@@ -98,118 +58,47 @@ fn to_runtime_signal_fixture(signal: &EventRuntimeSignalFixture) -> RuntimeSigna
     }
 }
 
-fn event_runtime_host(signals: &[EventRuntimeSignalFixture]) -> InMemoryExprHost {
-    let fixtures = signals
-        .iter()
-        .map(to_runtime_signal_fixture)
-        .collect::<Vec<_>>();
-    InMemoryExprHost::from_fixtures(fixtures.as_slice())
-}
-
-fn bit_signal(name: &str, width: u32, samples: &[(u64, &str)]) -> EventRuntimeSignalFixture {
-    EventRuntimeSignalFixture {
-        name: name.to_string(),
-        width,
-        is_four_state: true,
-        is_signed: false,
-        samples: samples
-            .iter()
-            .map(|(timestamp, bits)| EventRuntimeSignalSample {
-                timestamp: *timestamp,
-                bits: (*bits).to_string(),
-            })
-            .collect(),
-    }
-}
-
-fn bind_for_host(
-    source: &str,
-    host: &dyn ExpressionHost,
-) -> Result<wavepeek::expr::BoundEventExpr, ExprDiagnostic> {
-    let ast = parse_event_expr_ast(source)?;
-    bind_event_expr_ast(&ast, host)
-}
-
 #[test]
 fn event_runtime_positive_manifest_matches() {
-    let manifest = load_positive_manifest();
-    for case in manifest.cases {
-        let host = event_runtime_host(case.signals.as_slice());
-        let expr = bind_for_host(case.source.as_str(), &host)
-            .unwrap_or_else(|error| panic!("{} should bind: {error:?}", case.name));
-        let tracked_handles = host.tracked_handles(case.tracked_signals.as_slice());
-
-        let mut previous_timestamp = None;
-        let mut matches = Vec::new();
-        for probe in &case.probes {
-            let frame = EventEvalFrame {
-                timestamp: *probe,
-                previous_timestamp,
-                tracked_signals: tracked_handles.as_slice(),
-            };
-            let matched = event_matches_at(&expr, &host, &frame)
-                .unwrap_or_else(|error| panic!("{} should evaluate: {error:?}", case.name));
-            if matched {
-                matches.push(*probe);
-            }
-            previous_timestamp = Some(*probe);
-        }
-
+    for case in load_positive_cases() {
+        let host = InMemoryExprHost::from_fixtures(case.signals.as_slice());
+        let matches = collect_event_matches(
+            case.source.as_str(),
+            &host,
+            case.tracked_signals.as_slice(),
+            case.probes.as_slice(),
+        )
+        .unwrap_or_else(|error| panic!("{} should evaluate: {error:?}", case.name));
         assert_eq!(matches, case.matches, "case '{}'", case.name);
     }
 }
 
 #[test]
 fn event_runtime_negative_manifest_matches_snapshots() {
-    let manifest = load_negative_manifest();
-    let host = event_runtime_host(
-        [
-            bit_signal("clk", 1, &[(0, "0")]),
-            bit_signal("a", 1, &[(0, "0")]),
-            bit_signal("b", 1, &[(0, "1")]),
-            bit_signal("c", 1, &[(0, "1")]),
-            bit_signal("data", 8, &[(0, "00000000")]),
-            bit_signal("ev", 1, &[(0, "0")]),
-            bit_signal("state", 2, &[(0, "00")]),
-        ]
-        .as_slice(),
-    );
-
-    for case in manifest.cases {
-        let diagnostic = match parse_event_expr_ast(case.source.as_str()) {
-            Ok(ast) => {
-                bind_event_expr_ast(&ast, &host).expect_err(&format!("{} should fail", case.name))
+    for case in load_negative_cases() {
+        let diagnostic = match case.entrypoint {
+            ManifestEntrypoint::Parse => parse_event_expr_ast(case.source.as_str())
+                .expect_err(&format!("{} should fail", case.name)),
+            ManifestEntrypoint::Event => {
+                let host = negative_case_host(&case);
+                match parse_event_expr_ast(case.source.as_str()) {
+                    Ok(ast) => bind_event_expr_ast(&ast, &host)
+                        .expect_err(&format!("{} should fail", case.name)),
+                    Err(diagnostic) => diagnostic,
+                }
             }
-            Err(diagnostic) => diagnostic,
+            ManifestEntrypoint::Logical => {
+                panic!("event runtime negative suite does not support logical entrypoints")
+            }
         };
 
-        assert_eq!(
-            diagnostic.layer,
-            expected_layer(case.layer.as_str()),
-            "case '{}'",
-            case.name
-        );
-        assert_eq!(diagnostic.code, case.code, "case '{}'", case.name);
-        assert_eq!(
-            diagnostic.primary_span.start, case.span.start,
-            "case '{}'",
-            case.name
-        );
-        assert_eq!(
-            diagnostic.primary_span.end, case.span.end,
-            "case '{}'",
-            case.name
-        );
-
-        if let Some(snapshot_name) = case.snapshot.as_deref() {
-            insta::assert_snapshot!(snapshot_name, diagnostic.render(case.source.as_str()));
-        }
+        assert_negative_diagnostic("event_runtime_negative_manifest.json", &case, &diagnostic);
     }
 }
 
 #[test]
 fn event_runtime_short_circuit_holds() {
-    let mut host = event_runtime_host(
+    let mut host = InMemoryExprHost::from_fixtures(
         [
             bit_signal("clk", 1, &[(0, "0"), (5, "1")]),
             bit_signal("rhs_sig", 1, &[(0, "1")]),
@@ -227,7 +116,7 @@ fn event_runtime_short_circuit_holds() {
 
     let before_and = host.sample_count("rhs_sig");
     let short_and =
-        bind_for_host("posedge clk iff (0 && rhs_sig)", &host).expect("0 && rhs_sig should bind");
+        bind_event_expr("posedge clk iff (0 && rhs_sig)", &host).expect("0 && rhs_sig should bind");
     let matched =
         event_matches_at(&short_and, &host, &frame).expect("0 && rhs_sig should evaluate");
     let after_and = host.sample_count("rhs_sig");
@@ -239,7 +128,7 @@ fn event_runtime_short_circuit_holds() {
 
     let before_or = host.sample_count("rhs_sig");
     let short_or =
-        bind_for_host("posedge clk iff (1 || rhs_sig)", &host).expect("1 || rhs_sig should bind");
+        bind_event_expr("posedge clk iff (1 || rhs_sig)", &host).expect("1 || rhs_sig should bind");
     let matched = event_matches_at(&short_or, &host, &frame).expect("1 || rhs_sig should evaluate");
     let after_or = host.sample_count("rhs_sig");
     assert!(matched, "1 || rhs_sig must gate event to true");
@@ -249,17 +138,17 @@ fn event_runtime_short_circuit_holds() {
     );
 
     let x_and_zero =
-        bind_for_host("posedge clk iff (x_sig && 0)", &host).expect("x_sig && 0 should bind");
+        bind_event_expr("posedge clk iff (x_sig && 0)", &host).expect("x_sig && 0 should bind");
     let matched = event_matches_at(&x_and_zero, &host, &frame).expect("x_sig && 0 should evaluate");
     assert!(!matched, "x && 0 must evaluate to 0 and suppress event");
 
     let x_or_one =
-        bind_for_host("posedge clk iff (x_sig || 1)", &host).expect("x_sig || 1 should bind");
+        bind_event_expr("posedge clk iff (x_sig || 1)", &host).expect("x_sig || 1 should bind");
     let matched = event_matches_at(&x_or_one, &host, &frame).expect("x_sig || 1 should evaluate");
     assert!(matched, "x || 1 must evaluate to 1 and allow event");
 
     let x_and_one =
-        bind_for_host("posedge clk iff (x_sig && 1)", &host).expect("x_sig && 1 should bind");
+        bind_event_expr("posedge clk iff (x_sig && 1)", &host).expect("x_sig && 1 should bind");
     let matched = event_matches_at(&x_and_one, &host, &frame).expect("x_sig && 1 should evaluate");
     assert!(!matched, "x && 1 must evaluate to x and suppress event");
 }
@@ -269,7 +158,7 @@ fn event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface(
     let fixture = fixture_path("change_edge_cases.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    let host = event_runtime_host(
+    let host = InMemoryExprHost::from_fixtures(
         [
             bit_signal(
                 "clk",
@@ -312,21 +201,11 @@ fn event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface(
             vec!["clk1".to_string(), "clk2".to_string()],
         ),
     ] {
-        let typed = bind_for_host(source, &host).expect("typed source should bind");
+        let typed = bind_event_expr(source, &host).expect("typed source should bind");
         let tracked_handles = host.tracked_handles(tracked.as_slice());
-        let mut previous = None;
-        let mut typed_matches = Vec::new();
-        for probe in probes {
-            let frame = EventEvalFrame {
-                timestamp: probe,
-                previous_timestamp: previous,
-                tracked_signals: tracked_handles.as_slice(),
-            };
-            if event_matches_at(&typed, &host, &frame).expect("typed evaluation should succeed") {
-                typed_matches.push(probe);
-            }
-            previous = Some(probe);
-        }
+        let typed_matches =
+            collect_bound_event_matches(&typed, &host, tracked_handles.as_slice(), &probes)
+                .expect("typed evaluation should succeed");
 
         let legacy_matches = legacy_change_matches(&fixture, source, cli_signals);
         assert_eq!(typed_matches, legacy_matches, "source '{source}'");

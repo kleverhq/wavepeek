@@ -1,51 +1,26 @@
 use std::collections::BTreeSet;
 
-use serde::Deserialize;
-use wavepeek::expr::{BasicEventAst, EventExprAst, EventTermAst, Span, parse_event_expr_ast};
+use wavepeek::expr::{BasicEventAst, EventExprAst, EventTermAst, parse_event_expr_ast};
 
 mod common;
-use common::expr_cases::{SpanRecord, expected_layer, load_expr_manifest};
+use common::expr_cases::{
+    EventParseCase, NegativeCase, NormalizedTerm, PositiveCase, assert_negative_diagnostic,
+    load_negative_manifest, load_positive_manifest,
+};
 
-#[derive(Debug, Deserialize)]
-struct PositiveManifest {
-    cases: Vec<PositiveCase>,
+fn load_positive_cases() -> Vec<EventParseCase> {
+    load_positive_manifest("parse_positive_manifest.json")
+        .cases
+        .into_iter()
+        .map(|case| match case {
+            PositiveCase::EventParse(case) => case,
+            other => panic!("parse suite only supports event_parse cases, got {other:?}"),
+        })
+        .collect()
 }
 
-#[derive(Debug, Deserialize)]
-struct PositiveCase {
-    name: String,
-    source: String,
-    terms: Vec<NormalizedTerm>,
-}
-
-#[derive(Debug, Deserialize)]
-struct NegativeManifest {
-    cases: Vec<NegativeCase>,
-}
-
-#[derive(Debug, Deserialize)]
-struct NegativeCase {
-    name: String,
-    source: String,
-    layer: String,
-    code: String,
-    span: SpanRecord,
-    snapshot: Option<String>,
-}
-
-#[derive(Debug, Deserialize, PartialEq, Eq)]
-struct NormalizedTerm {
-    event: String,
-    name: Option<String>,
-    iff: Option<String>,
-}
-
-fn load_positive_manifest() -> PositiveManifest {
-    load_expr_manifest("parse_positive_manifest.json")
-}
-
-fn load_negative_manifest() -> NegativeManifest {
-    load_expr_manifest("parse_negative_manifest.json")
+fn load_negative_cases() -> Vec<NegativeCase> {
+    load_negative_manifest("parse_negative_manifest.json").cases
 }
 
 fn normalize_term(term: &EventTermAst) -> NormalizedTerm {
@@ -84,8 +59,7 @@ fn normalize_ast(ast: &EventExprAst) -> Vec<NormalizedTerm> {
 
 #[test]
 fn parse_positive_manifest_parses() {
-    let manifest = load_positive_manifest();
-    for case in manifest.cases {
+    for case in load_positive_cases() {
         let ast = parse_event_expr_ast(case.source.as_str())
             .unwrap_or_else(|error| panic!("{} should parse: {error:?}", case.name));
         assert_eq!(normalize_ast(&ast), case.terms, "case '{}'", case.name);
@@ -94,39 +68,23 @@ fn parse_positive_manifest_parses() {
 
 #[test]
 fn parse_negative_manifest_matches_snapshots() {
-    let manifest = load_negative_manifest();
-    for case in manifest.cases {
+    for case in load_negative_cases() {
         let diagnostic = parse_event_expr_ast(case.source.as_str())
             .expect_err(&format!("{} should fail", case.name));
-
-        assert_eq!(diagnostic.layer, expected_layer(case.layer.as_str()));
-        assert_eq!(diagnostic.code, case.code);
-        assert_eq!(
-            diagnostic.primary_span,
-            Span {
-                start: case.span.start,
-                end: case.span.end,
-            },
-            "case '{}'",
-            case.name
-        );
-
-        if let Some(snapshot_name) = case.snapshot.as_deref() {
-            insta::assert_snapshot!(snapshot_name, diagnostic.render(case.source.as_str()));
-        }
+        assert_negative_diagnostic("parse_negative_manifest.json", &case, &diagnostic);
     }
 }
 
 #[test]
 fn parse_no_panic_corpus_holds() {
-    let positive = load_positive_manifest();
-    let negative = load_negative_manifest();
+    let positive = load_positive_cases();
+    let negative = load_negative_cases();
 
     let mut corpus = BTreeSet::new();
-    for case in positive.cases {
+    for case in positive {
         corpus.insert(case.source);
     }
-    for case in negative.cases {
+    for case in negative {
         corpus.insert(case.source);
     }
 

@@ -1,9 +1,9 @@
 {
   "suites": [
     {
-      "bench_target": "expr_parser",
+      "bench_target": "expr_syntax",
       "description": "Lexer and parser expression microbenchmarks.",
-      "id": "parser",
+      "id": "syntax",
       "scenarios": [
         "tokenize_union_iff",
         "parse_event_union_iff",
@@ -11,37 +11,37 @@
       ]
     },
     {
-      "bench_target": "expr_event_runtime",
-      "description": "Standalone event bind and evaluation microbenchmarks.",
-      "id": "event_runtime",
-      "scenarios": [
-        "bind_event_union_iff",
-        "eval_event_union_iff_true",
-        "eval_event_union_iff_unknown"
-      ]
-    },
-    {
-      "bench_target": "expr_integral_boolean",
-      "description": "Standalone logical and event integral-core microbenchmarks.",
-      "id": "integral_boolean",
+      "bench_target": "expr_logical",
+      "description": "Standalone logical bind and evaluation microbenchmarks.",
+      "id": "logical",
       "scenarios": [
         "bind_logical_core_integral",
         "eval_logical_core_integral_true",
         "eval_logical_core_integral_unknown",
-        "eval_event_iff_core_integral"
+        "bind_logical_rich_types",
+        "eval_logical_real_mixed_numeric",
+        "eval_logical_string_equality",
+        "eval_logical_enum_label_preservation"
       ]
     },
     {
-      "bench_target": "expr_rich_types",
-      "description": "Rich-type logical, event, and waveform-host microbenchmarks.",
-      "id": "rich_types",
+      "bench_target": "expr_event",
+      "description": "Standalone event bind and match microbenchmarks.",
+      "id": "event",
       "scenarios": [
-        "bind_logical_rich_types",
+        "bind_event_union_iff",
+        "eval_event_union_iff_true",
+        "eval_event_union_iff_unknown",
+        "eval_event_iff_core_integral",
+        "eval_event_iff_triggered_rich"
+      ]
+    },
+    {
+      "bench_target": "expr_waveform_host",
+      "description": "Waveform-backed metadata bind and evaluation microbenchmarks.",
+      "id": "waveform_host",
+      "scenarios": [
         "bind_waveform_host_metadata_path",
-        "eval_logical_real_mixed_numeric",
-        "eval_logical_string_equality",
-        "eval_logical_enum_label_preservation",
-        "eval_event_iff_triggered_rich",
         "eval_waveform_host_metadata_path"
       ]
     }

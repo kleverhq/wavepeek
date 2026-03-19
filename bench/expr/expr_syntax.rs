@@ -1,10 +1,13 @@
+mod support;
+
 use std::hint::black_box;
-use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 
+use crate::support::criterion_config;
+
 fn bench_tokenize_union_iff(c: &mut Criterion) {
-    c.bench_function("tokenize_union_iff", |b| {
+    c.bench_function("syntax__tokenize_union_iff", |b| {
         b.iter(|| {
             let source = black_box("posedge clk iff (a || b) or negedge rstn");
             assert!(
@@ -16,7 +19,7 @@ fn bench_tokenize_union_iff(c: &mut Criterion) {
 }
 
 fn bench_parse_event_union_iff(c: &mut Criterion) {
-    c.bench_function("parse_event_union_iff", |b| {
+    c.bench_function("syntax__parse_event_union_iff", |b| {
         b.iter(|| {
             let source = black_box("posedge clk iff (a || b) or negedge rstn");
             assert!(
@@ -28,7 +31,7 @@ fn bench_parse_event_union_iff(c: &mut Criterion) {
 }
 
 fn bench_parse_event_malformed(c: &mut Criterion) {
-    c.bench_function("parse_event_malformed", |b| {
+    c.bench_function("syntax__parse_event_malformed", |b| {
         b.iter(|| {
             let source = black_box("posedge clk or , clk");
             assert!(
@@ -41,13 +44,7 @@ fn bench_parse_event_malformed(c: &mut Criterion) {
 
 criterion_group!(
     name = benches;
-    config = Criterion::default()
-        .sample_size(100)
-        .warm_up_time(Duration::from_secs(3))
-        .measurement_time(Duration::from_secs(5))
-        .significance_level(0.05)
-        .noise_threshold(0.01)
-        .configure_from_args();
+    config = criterion_config();
     targets = bench_tokenize_union_iff, bench_parse_event_union_iff, bench_parse_event_malformed
 );
 criterion_main!(benches);

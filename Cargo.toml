@@ -46,21 +46,21 @@ path = "src/main.rs"
 bench = false
 
 [[bench]]
-name = "expr_parser"
-path = "bench/expr/expr_parser.rs"
+name = "expr_syntax"
+path = "bench/expr/expr_syntax.rs"
 harness = false
 
 [[bench]]
-name = "expr_event_runtime"
-path = "bench/expr/expr_event_runtime.rs"
+name = "expr_logical"
+path = "bench/expr/expr_logical.rs"
 harness = false
 
 [[bench]]
-name = "expr_integral_boolean"
-path = "bench/expr/expr_integral_boolean.rs"
+name = "expr_event"
+path = "bench/expr/expr_event.rs"
 harness = false
 
 [[bench]]
-name = "expr_rich_types"
-path = "bench/expr/expr_rich_types.rs"
+name = "expr_waveform_host"
+path = "bench/expr/expr_waveform_host.rs"
 harness = false

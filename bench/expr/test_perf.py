@@ -161,6 +161,32 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertTrue((run_dir / "parser__tokenize_union_iff.raw.csv").is_file())
             self.assertTrue((run_dir / "parser__parse_event_union_iff.raw.csv").is_file())
 
+    def test_capture_suite_results_rejects_unexpected_prefixed_scenario(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            criterion_root = root / "criterion"
+            run_dir = root / "run"
+            suite = {
+                "id": "event",
+                "bench_target": "expr_event",
+                "description": "suite event",
+                "scenarios": ["bind_event_union_iff"],
+            }
+
+            self._write_raw_csv(
+                criterion_root / "event__bind_event_union_iff" / "wanted" / "raw.csv",
+                [10.0, 20.0],
+            )
+            self._write_raw_csv(
+                criterion_root / "event__unexpected_case" / "wanted" / "raw.csv",
+                [30.0, 40.0],
+            )
+
+            with self.assertRaises(SystemExit) as error:
+                perf.capture_suite_results(criterion_root, "wanted", run_dir, suite)
+
+        self.assertIn("unexpected scenarios", str(error.exception))
+
     def test_load_summary_rejects_duplicate_suite_scenario_rows(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = pathlib.Path(temp_dir)

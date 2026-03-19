@@ -263,12 +263,17 @@ def collect_suite_raw_csv_paths(
         scenario: set(criterion_benchmark_candidates(suite_id, scenario))
         for scenario in suite["scenarios"]
     }
+    all_expected_ids = {candidate for candidates in expected.values() for candidate in candidates}
     selected: dict[str, tuple[str, pathlib.Path]] = {}
+    extra_prefixed: list[str] = []
 
     for path in sorted(criterion_root.rglob("raw.csv")):
         if path.parent.name != baseline_name:
             continue
         benchmark_id = path.parent.parent.name
+        if benchmark_id.startswith(f"{suite_id}__") and benchmark_id not in all_expected_ids:
+            extra_prefixed.append(benchmark_id)
+            continue
         for scenario, candidate_ids in expected.items():
             if benchmark_id not in candidate_ids:
                 continue
@@ -286,10 +291,14 @@ def collect_suite_raw_csv_paths(
         )
 
     missing = [scenario for scenario in suite["scenarios"] if scenario not in selected]
-    if missing:
+    if missing or extra_prefixed:
+        details: list[str] = []
+        if missing:
+            details.append("missing scenarios: " + ", ".join(missing))
+        if extra_prefixed:
+            details.append("unexpected scenarios: " + ", ".join(sorted(extra_prefixed)))
         fail(
-            f"suite capture mismatch for '{suite_id}': missing scenarios: "
-            + ", ".join(missing)
+            f"suite capture mismatch for '{suite_id}': " + "; ".join(details)
         )
 
     return selected

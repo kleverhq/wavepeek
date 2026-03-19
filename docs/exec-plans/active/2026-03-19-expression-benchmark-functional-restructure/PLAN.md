@@ -25,7 +25,7 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 - [x] (2026-03-19 21:43Z) Applied follow-up review fixes to make `run --run-dir` safety explicit, add container-first command guidance, require temporary baseline capture before replacing `bench/expr/runs/baseline/`, include `docs/DESIGN.md` in the live-doc sweep, and tighten the Criterion collision story from exported-file namespacing to suite-prefixed internal benchmark IDs.
 - [x] (2026-03-19 21:49Z) Added the final compare-identity clarification after the control pass so subset-to-full comparisons are explicitly rejected unless both runs record the same selected-suite set.
 - [x] (2026-03-20 00:18Z) Implemented Milestone 1 with TDD: added `bench/expr/suites.json`, introduced the new stdlib-only `bench/expr/perf.py` harness with `list` / `run` / `report` / `compare`, added `bench/expr/test_perf.py`, kept the legacy helpers in place, and validated both the new unit tests and one real aggregated run/report over the current four Rust bench targets.
-- [ ] Implement Milestone 2: restructure the Rust bench targets into `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`, add shared bench support code, and update the catalog to the final functional suite split.
+- [x] (2026-03-20 01:25Z) Implemented Milestone 2: replaced the old phase-shaped Rust bench targets with `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`, added `bench/expr/support.rs` for shared Criterion and in-memory host helpers, rewired `bench/expr/suites.json` to the final functional suite split, and validated the renamed benches plus one real aggregated harness run over the new suite layout.
 - [ ] Implement Milestone 3: switch repository docs and helper tests to the new harness, remove `bench/expr/capture.py`, `bench/expr/compare.py`, `bench/expr/test_capture.py`, `bench/expr/test_compare.py`, and the `bench/expr/scenarios/` directory, then update the local benchmark breadcrumbs.
 - [ ] Implement Milestone 4: capture the new unified baseline in `bench/expr/runs/baseline/`, run a temporary same-commit verify compare against it, delete the thirteen current committed run directories, and close the branch with `make ci` plus the mandatory review workflow.
 
@@ -51,6 +51,9 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 
 - Observation: safe `--missing-only` resume required the new harness to persist partial multi-suite state after each completed suite instead of only at the very end of a full run.
   Evidence: the resume contract in this plan requires `summary.json` to prove the catalog fingerprint and selected-suite set before any missing suites are rerun, so an interrupted aggregated capture would otherwise have nothing authoritative to validate against.
+
+- Observation: the dump-backed waveform adapter cannot be hidden entirely inside `bench/expr/support.rs` without breaking the current private-module wiring from `src/waveform/expr_host.rs`.
+  Evidence: the included waveform adapter code still references `crate::waveform`, `crate::expr`, and `crate::error` from the bench crate root, so the final `expr_waveform_host` bench has to keep the crate-root shim and `mod waveform;` locally even after the rest of the shared scaffolding moved into `support.rs`.
 
 ## Decision Log
 
@@ -98,11 +101,15 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
   Rationale: resume mode is explicitly keyed off existing `summary.json` metadata. Persisting partial state after each suite makes interrupted multi-suite runs resumable without inventing another checkpoint format, while the final successful run still ends with one authoritative summary and one grouped report.
   Date/Author: 2026-03-20 / OpenCode
 
+- Decision: keep waveform-module inclusion local to `bench/expr/expr_waveform_host.rs` instead of moving it into `bench/expr/support.rs`.
+  Rationale: the reused adapter source under `src/waveform/` still expects crate-root `waveform`, `expr`, and `error` modules. Localizing that shim to the waveform-host bench preserves the private-module wiring that already works today and keeps the new shared support focused on truly generic helpers.
+  Date/Author: 2026-03-20 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: Milestone 1 is complete. The repository now has a working aggregated expression harness and catalog layered on top of the current phase-shaped Rust bench targets, so one run directory and one grouped report are already proven before the functional Rust suite rename begins.
+Current status: Milestones 1 and 2 are complete. The repository now has both the aggregated expression harness and the final functional Rust bench split, so the remaining work is to remove the retired helper workflow, refresh the committed baseline, and finish validation/review.
 
-The main lesson from the first implementation milestone is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The existing scenarios were sufficient to validate the one-run-dir workflow immediately, which reinforces the plan's strategy: keep the benchmark cases, then recut ownership boundaries and durable artifacts around them.
+The main lesson from the first two implementation milestones is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The benchmark cases themselves survived the ownership rewrite almost unchanged. The tricky part was the private waveform-adapter wiring, not the expression scenarios, which reinforces the plan's strategy of preserving coverage while simplifying the workflow and artifact model around it.
 
 ## Context and Orientation
 
@@ -303,3 +310,5 @@ Replace the old helper tests with `bench/expr/test_perf.py`. These tests should 
 Revision note (2026-03-19 / OpenCode): initial plan authored from the current expression microbenchmark workflow, the existing grouped `bench/e2e/perf.py` model, and the user request to replace history-shaped benchmark artifacts with one functional baseline for the whole expression surface. Revised after focused architecture, docs, and performance review to stage the new harness before Rust suite renames, define the meaning of “one baseline” explicitly, require suite-prefixed Criterion and exported identities, make `run --run-dir` safety and resume rules explicit, update the live-doc sweep to include `docs/DESIGN.md`, keep same-commit verify runs temporary, and replace destructive baseline refresh with a temporary validated capture before the committed baseline directory is swapped.
 
 Revision note (2026-03-20 / OpenCode): updated after Milestone 1 implementation to record the completed catalog + harness + tests, capture the partial-summary requirement that fell out of the `--missing-only` contract, and mark the branch as ready to proceed to the functional Rust suite restructure.
+
+Revision note (2026-03-20 / OpenCode): updated after Milestone 2 implementation to record the final functional bench target split, the new shared bench support module, and the crate-root waveform-module constraint that kept `expr_waveform_host` slightly more specialized than the other three suites.

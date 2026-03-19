@@ -12,6 +12,7 @@ use wavepeek::expr::{
 };
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SignalFixture {
     pub name: String,
     pub ty: TypeFixture,
@@ -21,6 +22,7 @@ pub struct SignalFixture {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct TypeFixture {
     pub kind: String,
     pub integer_like_kind: Option<String>,
@@ -34,12 +36,14 @@ pub struct TypeFixture {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EnumLabelFixture {
     pub name: String,
     pub bits: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SignalSample {
     pub timestamp: u64,
     pub bits: Option<String>,
@@ -52,6 +56,7 @@ pub struct SignalSample {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ExpectedValueFixture {
     pub kind: ExpectedValueKind,
     pub bits: Option<String>,

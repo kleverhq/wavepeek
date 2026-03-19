@@ -129,6 +129,66 @@ fn shared_positive_manifest_contract_accepts_tagged_cases_and_rejects_legacy_sha
         parse_positive_manifest_payload(legacy_split_roots).is_err(),
         "legacy split positive roots must be rejected"
     );
+
+    let extra_positive_field = r#"
+    {
+      "cases": [
+        {
+          "kind": "logical_eval",
+          "name": "extra_field_case",
+          "source": "count + 1",
+          "signals": [
+            {
+              "name": "count",
+              "ty": {
+                "kind": "integer_like",
+                "integer_like_kind": "int",
+                "storage": "scalar",
+                "width": 32,
+                "is_four_state": false,
+                "is_signed": true,
+                "enum_type_id": null,
+                "enum_labels": null
+              },
+              "samples": [
+                {
+                  "timestamp": 0,
+                  "bits": "00000000000000000000000000000001",
+                  "label": null,
+                  "real": null,
+                  "string": null,
+                  "width": 32
+                }
+              ],
+              "event_timestamps": []
+            }
+          ],
+          "timestamp": 0,
+          "expected_type": {
+            "kind": "integer_like",
+            "integer_like_kind": "int",
+            "storage": "scalar",
+            "width": 32,
+            "is_four_state": false,
+            "is_signed": true,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "expected_result": {
+            "kind": "integral",
+            "bits": "00000000000000000000000000000010",
+            "label": null,
+            "real": null,
+            "string": null
+          }
+        }
+      ]
+    }
+    "#;
+    assert!(
+        parse_positive_manifest_payload(extra_positive_field).is_err(),
+        "positive manifests should reject unknown nested fixture fields"
+    );
 }
 
 #[test]
@@ -152,6 +212,18 @@ fn shared_negative_manifest_contract_enforces_host_context_and_runtime_timestamp
           "layer": "semantic",
           "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
           "span": { "start": 0, "end": 7 },
+          "snapshot": null,
+          "host_profile": "integral_boolean_baseline",
+          "signals": [],
+          "timestamp": null
+        },
+        {
+          "name": "parse_layer_logical_case",
+          "entrypoint": "logical",
+          "source": "bit[0]'(a)",
+          "layer": "parse",
+          "code": "EXPR-PARSE-LOGICAL-CAST",
+          "span": { "start": 4, "end": 5 },
           "snapshot": null,
           "host_profile": "integral_boolean_baseline",
           "signals": [],
@@ -193,7 +265,7 @@ fn shared_negative_manifest_contract_enforces_host_context_and_runtime_timestamp
 
     let manifest = parse_negative_manifest_payload(inline_manifest)
         .expect("inline negative cases should match the shared contract");
-    assert_eq!(manifest.cases.len(), 3);
+    assert_eq!(manifest.cases.len(), 4);
 
     let legacy_missing_entrypoint = r#"
     {
@@ -256,6 +328,29 @@ fn shared_negative_manifest_contract_enforces_host_context_and_runtime_timestamp
     let error = parse_negative_manifest_payload(unsupported_event_runtime)
         .expect_err("event-entrypoint runtime negatives should be rejected until supported");
     assert!(error.contains("event runtime diagnostics"));
+
+    let extra_negative_field = r#"
+    {
+      "cases": [
+        {
+          "name": "negative_extra_field_case",
+          "entrypoint": "logical",
+          "source": "missing + 1",
+          "layer": "semantic",
+          "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+          "span": { "start": 0, "end": 7 },
+          "snapshot": null,
+          "host_profile": "integral_boolean_baseline",
+          "signals": [],
+          "legacy_host": true
+        }
+      ]
+    }
+    "#;
+    assert!(
+        parse_negative_manifest_payload(extra_negative_field).is_err(),
+        "negative manifests should reject unknown case fields"
+    );
 }
 
 #[test]

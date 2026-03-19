@@ -18,8 +18,9 @@ Tests should validate current contracts from those documents.
 - Capability suites stay split by engine surface in `tests/expression_parse.rs`, `tests/expression_event_runtime.rs`, `tests/expression_integral_boolean.rs`, and `tests/expression_rich_types.rs`.
 - Shared expression manifests live under `tests/fixtures/expr/` and deserialize through the common contracts in `tests/common/expr_cases.rs`.
 - Positive manifests use one tagged `cases` array with `event_parse`, `logical_eval`, and `event_eval` rows.
-- Negative manifests use one `cases` array with explicit `entrypoint`, `layer`, `code`, `span`, optional `snapshot`, required `host_profile` for non-parse cases, optional inline `signals` only for `host_profile: "custom"`, and required `timestamp` for runtime failures.
-- Parse negatives must not declare `host_profile`, inline `signals`, or `timestamp`.
+- Negative manifests use one `cases` array with explicit `entrypoint`, `layer`, `code`, `span`, optional `snapshot`, required `host_profile` for `entrypoint: "logical"` or `entrypoint: "event"`, optional inline `signals` only for `host_profile: "custom"`, and required `timestamp` for runtime failures.
+- `entrypoint: "parse"` negatives must not declare `host_profile`, inline `signals`, or `timestamp`.
+- Shared manifests currently reject `entrypoint: "event"` with `layer: "runtime"`; keep those event-runtime failures as code-only tests until the schema grows explicit event-eval frame support.
 - Shared runtime fixtures and assertion helpers live in `tests/common/expr_runtime.rs`; use `SignalFixture`, `SignalSample`, `TypeFixture`, `ExpectedValueFixture`, enum metadata (`EnumLabelFixture`, `enum_type_id`, `enum_labels`), and the named baseline host profiles there instead of suite-local host models.
 
 ## Code-Only Exceptions

@@ -16,6 +16,7 @@ use super::expr_runtime::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SpanRecord {
     pub start: usize,
     pub end: usize,
@@ -38,6 +39,7 @@ pub enum ManifestLayer {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct PositiveManifest {
     pub cases: Vec<PositiveCase>,
 }
@@ -51,6 +53,7 @@ pub enum PositiveCase {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EventParseCase {
     pub name: String,
     pub source: String,
@@ -58,6 +61,7 @@ pub struct EventParseCase {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NormalizedTerm {
     pub event: String,
     pub name: Option<String>,
@@ -65,6 +69,7 @@ pub struct NormalizedTerm {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LogicalEvalCase {
     pub name: String,
     pub source: String,
@@ -75,6 +80,7 @@ pub struct LogicalEvalCase {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct EventEvalCase {
     pub name: String,
     pub source: String,
@@ -85,11 +91,13 @@ pub struct EventEvalCase {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NegativeManifest {
     pub cases: Vec<NegativeCase>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct NegativeCase {
     pub name: String,
     pub entrypoint: ManifestEntrypoint,

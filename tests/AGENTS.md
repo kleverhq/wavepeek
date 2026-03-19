@@ -19,7 +19,8 @@ Tests should validate current contracts from those documents.
 - Shared expression manifests live under `tests/fixtures/expr/` and deserialize through the common contracts in `tests/common/expr_cases.rs`.
 - Positive manifests use one tagged `cases` array with `event_parse`, `logical_eval`, and `event_eval` rows.
 - Negative manifests use one `cases` array with explicit `entrypoint`, `layer`, `code`, `span`, optional `snapshot`, required `host_profile` for non-parse cases, optional inline `signals` only for `host_profile: "custom"`, and required `timestamp` for runtime failures.
-- Shared runtime fixtures and assertion helpers live in `tests/common/expr_runtime.rs`; use `SignalFixture`, `SignalSample`, `TypeFixture`, `ExpectedValueFixture`, and the named baseline host profiles there instead of suite-local host models.
+- Parse negatives must not declare `host_profile`, inline `signals`, or `timestamp`.
+- Shared runtime fixtures and assertion helpers live in `tests/common/expr_runtime.rs`; use `SignalFixture`, `SignalSample`, `TypeFixture`, `ExpectedValueFixture`, enum metadata (`EnumLabelFixture`, `enum_type_id`, `enum_labels`), and the named baseline host profiles there instead of suite-local host models.
 
 ## Code-Only Exceptions
 

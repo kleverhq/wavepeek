@@ -253,9 +253,9 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
    If snapshot changes occur, review every diff before accepting it. `make check` is the pre-handoff acceptance that the refactor still satisfies the repository's normal non-test quality gate.
 
-   Commit this milestone as one atomic unit. Recommended message:
+    Commit this milestone as one atomic unit. Recommended message:
 
-       test(expr): document fixture policy and prune snapshots
+        test(expr): document fixture policy and snapshot rules
 
 6. Run the mandatory review workflow and final control pass.
 

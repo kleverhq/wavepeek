@@ -396,5 +396,14 @@ fn validate_negative_case(case: &NegativeCase) -> Result<(), String> {
         ));
     }
 
+    if matches!(case.entrypoint, ManifestEntrypoint::Event)
+        && matches!(case.layer, ManifestLayer::Runtime)
+    {
+        return Err(format!(
+            "negative case '{}' uses unsupported event runtime diagnostics in shared manifests",
+            case.name
+        ));
+    }
+
     Ok(())
 }

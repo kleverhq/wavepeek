@@ -613,7 +613,7 @@ src/
 | `predicates` | Assertion helpers for `assert_cmd` |
 | `tempfile` | Temporary file creation for tests |
 | `insta` | Snapshot assertions for deterministic diagnostics |
-| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_parser`, `cargo bench --bench expr_event_runtime`, `cargo bench --bench expr_integral_boolean`, `cargo bench --bench expr_rich_types`) |
+| `criterion` | Expression microbenchmarks (`cargo bench --bench expr_syntax`, `cargo bench --bench expr_logical`, `cargo bench --bench expr_event`, `cargo bench --bench expr_waveform_host`) captured through `bench/expr/perf.py` |
 
 ### 5.5 Expression Engine
 

@@ -23,8 +23,8 @@ SPEC.loader.exec_module(perf)
 class PerfHelpersTest(unittest.TestCase):
     @staticmethod
     def _suite(
-        suite_id: str = "parser",
-        bench_target: str = "expr_parser",
+        suite_id: str = "syntax",
+        bench_target: str = "expr_syntax",
         scenarios: list[str] | None = None,
     ) -> dict[str, object]:
         return {
@@ -92,8 +92,8 @@ class PerfHelpersTest(unittest.TestCase):
                 json.dumps(
                     {
                         "suites": [
-                            self._suite("parser"),
-                            self._suite("parser", "expr_other", ["parse_event_union_iff"]),
+                            self._suite("syntax"),
+                            self._suite("syntax", "expr_other", ["parse_event_union_iff"]),
                         ]
                     }
                 ),
@@ -152,14 +152,14 @@ class PerfHelpersTest(unittest.TestCase):
             scenarios = {row["scenario"]: row for row in suite_result["scenarios"]}
             self.assertEqual(
                 scenarios["tokenize_union_iff"]["raw_csv"],
-                "parser__tokenize_union_iff.raw.csv",
+                "syntax__tokenize_union_iff.raw.csv",
             )
             self.assertEqual(
                 scenarios["parse_event_union_iff"]["raw_csv"],
-                "parser__parse_event_union_iff.raw.csv",
+                "syntax__parse_event_union_iff.raw.csv",
             )
-            self.assertTrue((run_dir / "parser__tokenize_union_iff.raw.csv").is_file())
-            self.assertTrue((run_dir / "parser__parse_event_union_iff.raw.csv").is_file())
+            self.assertTrue((run_dir / "syntax__tokenize_union_iff.raw.csv").is_file())
+            self.assertTrue((run_dir / "syntax__parse_event_union_iff.raw.csv").is_file())
 
     def test_capture_suite_results_rejects_unexpected_prefixed_scenario(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -193,17 +193,17 @@ class PerfHelpersTest(unittest.TestCase):
             self._write_summary(
                 run_dir,
                 self._summary(
-                    ["parser"],
+                    ["syntax"],
                     [
                         {
-                            "id": "parser",
-                            "bench_target": "expr_parser",
+                            "id": "syntax",
+                            "bench_target": "expr_syntax",
                             "description": "suite parser",
                             "scenarios": [
                                 {
                                     "scenario": "tokenize_union_iff",
                                     "criterion_benchmark_id": "tokenize_union_iff",
-                                    "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                                    "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                                     "sample_count": 100,
                                     "mean_ns_per_iter": 10.0,
                                     "median_ns_per_iter": 10.0,
@@ -211,7 +211,7 @@ class PerfHelpersTest(unittest.TestCase):
                                 {
                                     "scenario": "tokenize_union_iff",
                                     "criterion_benchmark_id": "tokenize_union_iff",
-                                    "raw_csv": "parser__tokenize_union_iff.dup.raw.csv",
+                                    "raw_csv": "syntax__tokenize_union_iff.dup.raw.csv",
                                     "sample_count": 100,
                                     "mean_ns_per_iter": 11.0,
                                     "median_ns_per_iter": 11.0,
@@ -258,12 +258,12 @@ class PerfHelpersTest(unittest.TestCase):
             root = pathlib.Path(temp_dir)
             run_dir = root / "run"
             suite = {
-                "id": "parser",
-                "bench_target": "expr_parser",
+                "id": "syntax",
+                "bench_target": "expr_syntax",
                 "description": "suite parser",
                 "scenarios": [],
             }
-            self._write_summary(run_dir, self._summary(["parser"], [suite]))
+            self._write_summary(run_dir, self._summary(["syntax"], [suite]))
             catalog_path = root / "suites.json"
             catalog_path.write_text(json.dumps({"suites": [self._suite()]}) + "\n", encoding="utf-8")
             args = argparse.Namespace(
@@ -287,33 +287,33 @@ class PerfHelpersTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             run_dir = root / "run"
-            parser_suite = {
-                "id": "parser",
-                "bench_target": "expr_parser",
-                "description": "suite parser",
+            syntax_suite = {
+                "id": "syntax",
+                "bench_target": "expr_syntax",
+                "description": "suite syntax",
                 "scenarios": [
                     {
                         "scenario": "tokenize_union_iff",
                         "criterion_benchmark_id": "tokenize_union_iff",
-                        "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                        "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 10.0,
                         "median_ns_per_iter": 10.0,
                     }
                 ],
             }
-            self._write_summary(run_dir, self._summary(["parser", "event_runtime"], [parser_suite]))
-            (run_dir / "parser__tokenize_union_iff.raw.csv").write_text("csv\n", encoding="utf-8")
+            self._write_summary(run_dir, self._summary(["syntax", "event"], [syntax_suite]))
+            (run_dir / "syntax__tokenize_union_iff.raw.csv").write_text("csv\n", encoding="utf-8")
 
             catalog_path = root / "suites.json"
             catalog_path.write_text(
                 json.dumps(
                     {
                         "suites": [
-                            self._suite("parser", "expr_parser", ["tokenize_union_iff"]),
+                            self._suite("syntax", "expr_syntax", ["tokenize_union_iff"]),
                             self._suite(
-                                "event_runtime",
-                                "expr_event_runtime",
+                                "event",
+                                "expr_event",
                                 ["bind_event_union_iff"],
                             ),
                         ]
@@ -334,14 +334,14 @@ class PerfHelpersTest(unittest.TestCase):
             )
 
             captured_event_suite = {
-                "id": "event_runtime",
-                "bench_target": "expr_event_runtime",
-                "description": "suite event_runtime",
+                "id": "event",
+                "bench_target": "expr_event",
+                "description": "suite event",
                 "scenarios": [
                     {
                         "scenario": "bind_event_union_iff",
                         "criterion_benchmark_id": "bind_event_union_iff",
-                        "raw_csv": "event_runtime__bind_event_union_iff.raw.csv",
+                        "raw_csv": "event__bind_event_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 20.0,
                         "median_ns_per_iter": 20.0,
@@ -363,12 +363,12 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             run_bench.assert_called_once()
             capture.assert_called_once()
-            self.assertEqual(capture.call_args.args[3]["id"], "event_runtime")
+            self.assertEqual(capture.call_args.args[3]["id"], "event")
             summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
-            self.assertEqual(summary["selected_suite_ids"], ["parser", "event_runtime"])
+            self.assertEqual(summary["selected_suite_ids"], ["syntax", "event"])
             self.assertEqual(
                 [suite["id"] for suite in summary["suites"]],
-                ["parser", "event_runtime"],
+                ["syntax", "event"],
             )
 
     def test_cmd_run_writes_summary_and_readme(self) -> None:
@@ -388,14 +388,14 @@ class PerfHelpersTest(unittest.TestCase):
                 environment_note="test-env",
             )
             captured_suite = {
-                "id": "parser",
-                "bench_target": "expr_parser",
-                "description": "suite parser",
+                "id": "syntax",
+                "bench_target": "expr_syntax",
+                "description": "suite syntax",
                 "scenarios": [
                     {
                         "scenario": "tokenize_union_iff",
                         "criterion_benchmark_id": "tokenize_union_iff",
-                        "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                        "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                         "sample_count": 100,
                         "mean_ns_per_iter": 10.0,
                         "median_ns_per_iter": 9.5,
@@ -417,10 +417,10 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             summary = json.loads((run_dir / "summary.json").read_text(encoding="utf-8"))
             self.assertEqual(summary["catalog_fingerprint"], "fingerprint-a")
-            self.assertEqual(summary["selected_suite_ids"], ["parser"])
+            self.assertEqual(summary["selected_suite_ids"], ["syntax"])
             readme = (run_dir / "README.md").read_text(encoding="utf-8")
             self.assertIn("# Expression Bench Run: run", readme)
-            self.assertIn("## parser", readme)
+            self.assertIn("## syntax", readme)
             self.assertIn("tokenize_union_iff", readme)
             self.assertNotIn("Compare baseline", readme)
 
@@ -431,14 +431,14 @@ class PerfHelpersTest(unittest.TestCase):
             golden = root / "golden"
             suite_rows = [
                 {
-                    "id": "parser",
-                    "bench_target": "expr_parser",
-                    "description": "suite parser",
+                    "id": "syntax",
+                    "bench_target": "expr_syntax",
+                    "description": "suite syntax",
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
                             "criterion_benchmark_id": "tokenize_union_iff",
-                            "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                            "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 8.0,
                             "median_ns_per_iter": 8.0,
@@ -446,11 +446,11 @@ class PerfHelpersTest(unittest.TestCase):
                     ],
                 }
             ]
-            self._write_summary(revised, self._summary(["parser"], suite_rows))
+            self._write_summary(revised, self._summary(["syntax"], suite_rows))
             golden_rows = json.loads(json.dumps(suite_rows))
             golden_rows[0]["scenarios"][0]["mean_ns_per_iter"] = 10.0
             golden_rows[0]["scenarios"][0]["median_ns_per_iter"] = 10.0
-            self._write_summary(golden, self._summary(["parser"], golden_rows))
+            self._write_summary(golden, self._summary(["syntax"], golden_rows))
 
             args = argparse.Namespace(run_dir=str(revised), compare=str(golden))
             exit_code = perf.cmd_report(args)
@@ -465,8 +465,8 @@ class PerfHelpersTest(unittest.TestCase):
             root = pathlib.Path(temp_dir)
             revised = root / "revised"
             golden = root / "golden"
-            self._write_summary(revised, self._summary(["parser"], []))
-            self._write_summary(golden, self._summary(["event_runtime"], []))
+            self._write_summary(revised, self._summary(["syntax"], []))
+            self._write_summary(golden, self._summary(["event"], []))
 
             with self.assertRaises(SystemExit) as error:
                 perf.main(
@@ -490,14 +490,14 @@ class PerfHelpersTest(unittest.TestCase):
             golden = root / "golden"
             revised_suites = [
                 {
-                    "id": "parser",
-                    "bench_target": "expr_parser",
-                    "description": "suite parser",
+                    "id": "syntax",
+                    "bench_target": "expr_syntax",
+                    "description": "suite syntax",
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
                             "criterion_benchmark_id": "tokenize_union_iff",
-                            "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                            "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
                             "median_ns_per_iter": 10.0,
@@ -507,14 +507,14 @@ class PerfHelpersTest(unittest.TestCase):
             ]
             golden_suites = [
                 {
-                    "id": "parser",
-                    "bench_target": "expr_parser",
-                    "description": "suite parser",
+                    "id": "syntax",
+                    "bench_target": "expr_syntax",
+                    "description": "suite syntax",
                     "scenarios": [
                         {
                             "scenario": "parse_event_union_iff",
                             "criterion_benchmark_id": "parse_event_union_iff",
-                            "raw_csv": "parser__parse_event_union_iff.raw.csv",
+                            "raw_csv": "syntax__parse_event_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
                             "median_ns_per_iter": 10.0,
@@ -522,8 +522,8 @@ class PerfHelpersTest(unittest.TestCase):
                     ],
                 }
             ]
-            self._write_summary(revised, self._summary(["parser"], revised_suites))
-            self._write_summary(golden, self._summary(["parser"], golden_suites))
+            self._write_summary(revised, self._summary(["syntax"], revised_suites))
+            self._write_summary(golden, self._summary(["syntax"], golden_suites))
 
             with self.assertRaises(SystemExit) as error:
                 perf.main(
@@ -547,14 +547,14 @@ class PerfHelpersTest(unittest.TestCase):
             golden = root / "golden"
             suites = [
                 {
-                    "id": "parser",
-                    "bench_target": "expr_parser",
-                    "description": "suite parser",
+                    "id": "syntax",
+                    "bench_target": "expr_syntax",
+                    "description": "suite syntax",
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
                             "criterion_benchmark_id": "tokenize_union_iff",
-                            "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                            "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
                             "median_ns_per_iter": 10.0,
@@ -563,8 +563,8 @@ class PerfHelpersTest(unittest.TestCase):
                 }
             ]
             extra = {"source_commit": "abc123"}
-            self._write_summary(revised, self._summary(["parser"], suites, extra_metadata=extra))
-            self._write_summary(golden, self._summary(["parser"], suites, extra_metadata=extra))
+            self._write_summary(revised, self._summary(["syntax"], suites, extra_metadata=extra))
+            self._write_summary(golden, self._summary(["syntax"], suites, extra_metadata=extra))
 
             stdout = io.StringIO()
             with mock.patch("sys.stdout", stdout):
@@ -592,14 +592,14 @@ class PerfHelpersTest(unittest.TestCase):
             golden = root / "golden"
             suites = [
                 {
-                    "id": "parser",
-                    "bench_target": "expr_parser",
-                    "description": "suite parser",
+                    "id": "syntax",
+                    "bench_target": "expr_syntax",
+                    "description": "suite syntax",
                     "scenarios": [
                         {
                             "scenario": "tokenize_union_iff",
                             "criterion_benchmark_id": "tokenize_union_iff",
-                            "raw_csv": "parser__tokenize_union_iff.raw.csv",
+                            "raw_csv": "syntax__tokenize_union_iff.raw.csv",
                             "sample_count": 100,
                             "mean_ns_per_iter": 10.0,
                             "median_ns_per_iter": 10.0,
@@ -609,11 +609,11 @@ class PerfHelpersTest(unittest.TestCase):
             ]
             self._write_summary(
                 revised,
-                self._summary(["parser"], suites, extra_metadata={"source_commit": "abc123"}),
+                self._summary(["syntax"], suites, extra_metadata={"source_commit": "abc123"}),
             )
             self._write_summary(
                 golden,
-                self._summary(["parser"], suites, extra_metadata={"source_commit": "def456"}),
+                self._summary(["syntax"], suites, extra_metadata={"source_commit": "def456"}),
             )
 
             with self.assertRaises(SystemExit) as error:

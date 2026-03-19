@@ -69,7 +69,7 @@ Common commands:
 - One-shot local gate:
   - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + cargo test + bench/e2e unittest + release-script unittest + cargo check)
+  - `make ci` (format-check + clippy + check-schema + cargo test + bench/e2e unittest + bench/expr unittest + release-script unittest + cargo check)
 - Cleanup:
   - `make clean`
 
@@ -122,27 +122,34 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 
 ## Expression Microbenchmarks
 
-For expression-engine microbenchmarks, use `Criterion` via `cargo bench` with
-the dedicated targets in `bench/expr/expr_parser.rs`,
-`bench/expr/expr_event_runtime.rs`, `bench/expr/expr_integral_boolean.rs`, and
-`bench/expr/expr_rich_types.rs`.
+For expression-engine microbenchmarks, use `bench/expr/perf.py` (Python stdlib
+only) together with the explicit suite catalog in `bench/expr/suites.json`.
+The functional Rust bench targets are `expr_syntax`, `expr_logical`,
+`expr_event`, and `expr_waveform_host`.
 
-Scenario sets are declared in committed manifests under
-`bench/expr/scenarios/` and must match the bench target being exported.
+- List the available expression suites:
+  - `python3 bench/expr/perf.py list`
+- Validate the four bench targets in test mode:
+  - `cargo test --bench expr_syntax --bench expr_logical --bench expr_event --bench expr_waveform_host`
+- Capture one aggregated run directory and grouped report:
+  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/baseline`
+- Resume the same run directory only when the catalog fingerprint and selected-suite set still match exactly:
+  - `python3 bench/expr/perf.py run --run-dir bench/expr/runs/baseline --missing-only`
+- Regenerate `README.md` from an existing run directory:
+  - `python3 bench/expr/perf.py report --run-dir bench/expr/runs/baseline`
+- Compare a revised run against the maintained baseline with an explicit timing threshold:
+  - `python3 bench/expr/perf.py compare --revised <dir> --golden bench/expr/runs/baseline --max-negative-delta-pct 15 --require-matching-metadata <key> [<key> ...]`
 
-- Run an expression microbench target and save a named baseline:
-  - `cargo bench --bench <bench-target> -- --save-baseline <name> --noplot`
-- Validate benchmark target in test mode:
-  - `cargo test --bench <bench-target>`
-- Export stable benchmark artifacts from `target/criterion`:
-  - `python3 bench/expr/capture.py --criterion-root target/criterion --baseline-name <name> --bench-target <bench-target> --scenario-set bench/expr/scenarios/<scenario-set>.json --output bench/expr/runs/<run-name> --source-commit "$(git rev-parse HEAD)" --worktree-state clean --environment-note "wavepeek devcontainer/CI image"`
-- Compare exported runs with explicit threshold:
-  - `python3 bench/expr/compare.py --revised bench/expr/runs/<revised> --golden bench/expr/runs/<golden> --max-negative-delta-pct 15 --require-matching-metadata <key> [<key> ...]`
+`bench/expr/perf.py` runs the selected `cargo bench --bench <target>` commands,
+consumes Criterion `raw.csv` artifacts from `target/criterion`, exports
+namespaced `*.raw.csv` files into one run directory, and writes one aggregated
+`summary.json` + `README.md`. `run --run-dir <dir>` requires `<dir>` to be empty
+unless `--missing-only` is passed.
 
-`bench/expr/capture.py` consumes only Criterion `raw.csv` artifacts and writes
-deterministic run-local `summary.json` + `README.md` outputs into
-`bench/expr/runs/`, including bench-target and scenario-set identity metadata
-that `bench/expr/compare.py` validates before timing-delta checks.
+Convenience targets mirror the new workflow:
+
+- `make bench-expr-update-baseline`
+- `make bench-expr-run`
 
 ## Pre-commit Hooks
 

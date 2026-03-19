@@ -5,6 +5,8 @@ REQUIRED_RTL_ARTIFACTS := picorv32_test_vcd.fst scr1_max_axi_coremark.fst picorv
 SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
 BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
+BENCH_EXPR_RUNS_DIR := bench/expr/runs
+BENCH_EXPR_BASELINE_DIR := $(BENCH_EXPR_RUNS_DIR)/baseline
 WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
 PYTHON := python3 -B
 
@@ -73,7 +75,7 @@ test: require-container check-rtl-artifacts
 test-bench-e2e: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
 
-## Run expression microbenchmark helper unit tests
+## Run expression microbenchmark harness unit tests
 test-bench-expr: require-container
 	$(PYTHON) -m unittest discover -s bench/expr -p "test_*.py"
 
@@ -94,6 +96,17 @@ bench-e2e-update-baseline: check-rtl-artifacts build-release
 ## Run benchmark e2e suite with baseline compare
 bench-e2e-run: check-rtl-artifacts build-release
 	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
+
+## Refresh expression benchmark baseline artifacts
+bench-expr-update-baseline: require-container
+	rm -rf "$(BENCH_EXPR_BASELINE_DIR)"
+	$(PYTHON) bench/expr/perf.py run --run-dir "$(BENCH_EXPR_BASELINE_DIR)"
+
+## Run expression benchmark suite with baseline compare
+bench-expr-run: require-container
+	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
+		$(PYTHON) bench/expr/perf.py run --run-dir "$$tmp_revised" --compare "$(BENCH_EXPR_BASELINE_DIR)" && \
+		$(PYTHON) bench/expr/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_EXPR_BASELINE_DIR)" --max-negative-delta-pct 15
 
 ## Run lightweight benchmark e2e smoke for pre-commit
 bench-e2e-smoke-commit: check-rtl-artifacts build-release

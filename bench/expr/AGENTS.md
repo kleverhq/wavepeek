@@ -1,17 +1,19 @@
 # Expression Microbench Guide
 
-This directory contains expression-engine microbenchmark helper scripts,
-scenario manifests, and committed run artifacts across expression capabilities.
+This directory contains expression-engine microbenchmark Rust targets, the
+explicit suite catalog, the unified performance harness, and committed run
+artifacts.
 
 Rust Criterion targets for this area live at:
 
-- `bench/expr/expr_parser.rs` (parser/tokenization scenarios)
-- `bench/expr/expr_event_runtime.rs` (event-runtime scenarios)
-- `bench/expr/expr_integral_boolean.rs` (integral-core logical/event scenarios)
-- `bench/expr/expr_rich_types.rs` (rich-type logical/event + waveform-host scenarios)
+- `bench/expr/expr_syntax.rs` (lexer/parser scenarios)
+- `bench/expr/expr_logical.rs` (standalone logical bind/eval scenarios)
+- `bench/expr/expr_event.rs` (standalone event bind/match scenarios)
+- `bench/expr/expr_waveform_host.rs` (waveform-backed metadata scenarios)
 
-All four targets are wired through `Cargo.toml` `[[bench]]` metadata and captured through
-the shared `bench/expr/capture.py` + `bench/expr/compare.py` workflow.
+All four targets are wired through `Cargo.toml` `[[bench]]` metadata. The
+workflow is owned by `bench/expr/suites.json` plus `bench/expr/perf.py`, which
+produce one grouped run directory such as `bench/expr/runs/baseline/`.
 
 ## Parent Maps
 
@@ -25,5 +27,4 @@ the shared `bench/expr/capture.py` + `bench/expr/compare.py` workflow.
 
 ## Child Maps
 
-- Scenario manifests: `bench/expr/scenarios/AGENTS.md`
 - Committed run artifacts: `bench/expr/runs/AGENTS.md`

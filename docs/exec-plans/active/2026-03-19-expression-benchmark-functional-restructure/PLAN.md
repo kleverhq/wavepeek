@@ -26,7 +26,7 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 - [x] (2026-03-19 21:49Z) Added the final compare-identity clarification after the control pass so subset-to-full comparisons are explicitly rejected unless both runs record the same selected-suite set.
 - [x] (2026-03-20 00:18Z) Implemented Milestone 1 with TDD: added `bench/expr/suites.json`, introduced the new stdlib-only `bench/expr/perf.py` harness with `list` / `run` / `report` / `compare`, added `bench/expr/test_perf.py`, kept the legacy helpers in place, and validated both the new unit tests and one real aggregated run/report over the current four Rust bench targets.
 - [x] (2026-03-20 01:25Z) Implemented Milestone 2: replaced the old phase-shaped Rust bench targets with `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`, added `bench/expr/support.rs` for shared Criterion and in-memory host helpers, rewired `bench/expr/suites.json` to the final functional suite split, and validated the renamed benches plus one real aggregated harness run over the new suite layout.
-- [ ] Implement Milestone 3: switch repository docs and helper tests to the new harness, remove `bench/expr/capture.py`, `bench/expr/compare.py`, `bench/expr/test_capture.py`, `bench/expr/test_compare.py`, and the `bench/expr/scenarios/` directory, then update the local benchmark breadcrumbs.
+- [x] (2026-03-20 01:58Z) Implemented Milestone 3: removed the retired helper scripts/tests and scenario manifests, updated `docs/DEVELOPMENT.md`, `docs/DESIGN.md`, `Makefile`, `bench/expr/AGENTS.md`, `bench/expr/runs/AGENTS.md`, `bench/AGENTS.md`, and `bench/expr/test_perf.py` to the unified harness contract, added the new `make bench-expr-update-baseline` / `make bench-expr-run` targets, and validated `python3 -m unittest discover -s bench/expr -p "test_*.py"`, the renamed bench targets in test mode, `python3 bench/expr/perf.py list`, and `WAVEPEEK_IN_CONTAINER=1 make check`.
 - [ ] Implement Milestone 4: capture the new unified baseline in `bench/expr/runs/baseline/`, run a temporary same-commit verify compare against it, delete the thirteen current committed run directories, and close the branch with `make ci` plus the mandatory review workflow.
 
 ## Surprises & Discoveries
@@ -54,6 +54,9 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 
 - Observation: the dump-backed waveform adapter cannot be hidden entirely inside `bench/expr/support.rs` without breaking the current private-module wiring from `src/waveform/expr_host.rs`.
   Evidence: the included waveform adapter code still references `crate::waveform`, `crate::expr`, and `crate::error` from the bench crate root, so the final `expr_waveform_host` bench has to keep the crate-root shim and `mod waveform;` locally even after the rest of the shared scaffolding moved into `support.rs`.
+
+- Observation: the last stale-name grep cannot go completely green until Milestone 4 deletes the historical committed run directories, even after Milestone 3 cleans all live workflow files.
+  Evidence: the old `parser-*`, `event-runtime-*`, `integral-boolean-*`, and `rich-types-*` run directories still contain committed `README.md` and `summary.json` files with legacy bench-target and scenario-manifest metadata, so a repository-wide search still sees those historical names until the baseline refresh lands.
 
 ## Decision Log
 
@@ -105,11 +108,15 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
   Rationale: the reused adapter source under `src/waveform/` still expects crate-root `waveform`, `expr`, and `error` modules. Localizing that shim to the waveform-host bench preserves the private-module wiring that already works today and keeps the new shared support focused on truly generic helpers.
   Date/Author: 2026-03-20 / OpenCode
 
+- Decision: treat the final stale-reference grep as a Milestone 4 closeout gate rather than a Milestone 3 blocker.
+  Rationale: once the live docs, helpers, tests, and make targets were migrated, the remaining old-name matches came only from the still-committed historical run artifacts that Milestone 4 is already responsible for replacing. Deferring the repository-wide grep until after those directories are deleted keeps the validation aligned with the actual migration order.
+  Date/Author: 2026-03-20 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: Milestones 1 and 2 are complete. The repository now has both the aggregated expression harness and the final functional Rust bench split, so the remaining work is to remove the retired helper workflow, refresh the committed baseline, and finish validation/review.
+Current status: Milestones 1 through 3 are complete. The live workflow, docs, helper tests, and make targets now point at the unified expression harness and the functional suite split. The remaining work is to capture the new durable baseline, delete the historical run directories, and finish the branch-wide validation and review cycle.
 
-The main lesson from the first two implementation milestones is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The benchmark cases themselves survived the ownership rewrite almost unchanged. The tricky part was the private waveform-adapter wiring, not the expression scenarios, which reinforces the plan's strategy of preserving coverage while simplifying the workflow and artifact model around it.
+The main lesson from the first three implementation milestones is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The benchmark cases and the Python harness both migrated cleanly once the ownership boundaries were recut. The remaining cleanup is now concentrated in committed artifacts and branch closeout rather than in executable logic.
 
 ## Context and Orientation
 
@@ -312,3 +319,5 @@ Revision note (2026-03-19 / OpenCode): initial plan authored from the current ex
 Revision note (2026-03-20 / OpenCode): updated after Milestone 1 implementation to record the completed catalog + harness + tests, capture the partial-summary requirement that fell out of the `--missing-only` contract, and mark the branch as ready to proceed to the functional Rust suite restructure.
 
 Revision note (2026-03-20 / OpenCode): updated after Milestone 2 implementation to record the final functional bench target split, the new shared bench support module, and the crate-root waveform-module constraint that kept `expr_waveform_host` slightly more specialized than the other three suites.
+
+Revision note (2026-03-20 / OpenCode): updated after Milestone 3 implementation to record the completed live-doc/helper cleanup, the new make targets, and the fact that the last repository-wide stale-name sweep remains intentionally tied to Milestone 4 because the historical run directories are still committed at this point.

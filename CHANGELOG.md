@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Replaced the per-suite expression microbenchmark capture workflow with a unified `bench/expr/perf.py` harness, a functional suite catalog in `bench/expr/suites.json`, and one maintained expression baseline directory at `bench/expr/runs/baseline/`.
+
 ## [0.3.0] - 2026-03-07
 
 ### Added

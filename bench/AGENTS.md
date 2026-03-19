@@ -15,4 +15,4 @@ repeatable performance scenarios.
 ## Child Maps
 
 - CLI end-to-end performance scenarios: `bench/e2e/AGENTS.md`
-- Parser microbenchmark helpers and runs: `bench/expr/AGENTS.md`
+- Expression microbenchmark harness and runs: `bench/expr/AGENTS.md`

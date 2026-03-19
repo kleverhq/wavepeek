@@ -139,6 +139,8 @@ The functional Rust bench targets are `expr_syntax`, `expr_logical`,
   - `python3 bench/expr/perf.py report --run-dir bench/expr/runs/baseline`
 - Compare a revised run against the maintained baseline with an explicit timing threshold:
   - `python3 bench/expr/perf.py compare --revised <dir> --golden bench/expr/runs/baseline --max-negative-delta-pct 15 --require-matching-metadata <key> [<key> ...]`
+- For same-commit verification or other provenance-sensitive checks, require the matching metadata keys explicitly:
+  - `python3 bench/expr/perf.py compare --revised <dir> --golden bench/expr/runs/baseline --max-negative-delta-pct 10 --require-matching-metadata source_commit worktree_state cargo_version rustc_version criterion_version environment_note`
 
 `bench/expr/perf.py` runs the selected `cargo bench --bench <target>` commands,
 consumes Criterion `raw.csv` artifacts from `target/criterion`, exports

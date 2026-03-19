@@ -108,7 +108,7 @@ bench-expr-update-baseline: require-container
 bench-expr-run: require-container
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
 		$(PYTHON) bench/expr/perf.py run --run-dir "$$tmp_revised" --compare "$(BENCH_EXPR_BASELINE_DIR)" && \
-		$(PYTHON) bench/expr/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_EXPR_BASELINE_DIR)" --max-negative-delta-pct 15
+		$(PYTHON) bench/expr/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_EXPR_BASELINE_DIR)" --max-negative-delta-pct 15 --require-matching-metadata cargo_version rustc_version criterion_version environment_note
 
 ## Run lightweight benchmark e2e smoke for pre-commit
 bench-e2e-smoke-commit: check-rtl-artifacts build-release

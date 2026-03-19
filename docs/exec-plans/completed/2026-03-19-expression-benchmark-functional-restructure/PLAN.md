@@ -27,7 +27,8 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 - [x] (2026-03-20 00:18Z) Implemented Milestone 1 with TDD: added `bench/expr/suites.json`, introduced the new stdlib-only `bench/expr/perf.py` harness with `list` / `run` / `report` / `compare`, added `bench/expr/test_perf.py`, kept the legacy helpers in place, and validated both the new unit tests and one real aggregated run/report over the current four Rust bench targets.
 - [x] (2026-03-20 01:25Z) Implemented Milestone 2: replaced the old phase-shaped Rust bench targets with `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`, added `bench/expr/support.rs` for shared Criterion and in-memory host helpers, rewired `bench/expr/suites.json` to the final functional suite split, and validated the renamed benches plus one real aggregated harness run over the new suite layout.
 - [x] (2026-03-20 01:58Z) Implemented Milestone 3: removed the retired helper scripts/tests and scenario manifests, updated `docs/DEVELOPMENT.md`, `docs/DESIGN.md`, `Makefile`, `bench/expr/AGENTS.md`, `bench/expr/runs/AGENTS.md`, `bench/AGENTS.md`, and `bench/expr/test_perf.py` to the unified harness contract, added the new `make bench-expr-update-baseline` / `make bench-expr-run` targets, and validated `python3 -m unittest discover -s bench/expr -p "test_*.py"`, the renamed bench targets in test mode, `python3 bench/expr/perf.py list`, and `WAVEPEEK_IN_CONTAINER=1 make check`.
-- [ ] Implement Milestone 4: capture the new unified baseline in `bench/expr/runs/baseline/`, run a temporary same-commit verify compare against it, delete the thirteen current committed run directories, and close the branch with `make ci` plus the mandatory review workflow.
+- [x] (2026-03-20 02:33Z) Implemented Milestone 4: proved the final suite split with temporary control runs, promoted one clean `bench/expr/runs/baseline/` capture from the unified harness, deleted the thirteen historical committed run directories, and revalidated the committed baseline with a fresh same-commit compare at the 10% gate.
+- [x] (2026-03-20 03:07Z) Completed Milestone 5: ran focused code, architecture, docs, and performance review lanes; fixed the reported harness provenance, strict Criterion-ID, deterministic-report, doc-contract, and baseline-refresh issues; reran the impacted validation including `python3 -m unittest bench.expr.test_perf`, fresh revised-vs-baseline compare at the 10% gate, and `WAVEPEEK_IN_CONTAINER=1 make ci`; then finished with one fresh independent control-pass review that reported the consolidated diff clean.
 
 ## Surprises & Discoveries
 
@@ -57,6 +58,9 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
 
 - Observation: the last stale-name grep cannot go completely green until Milestone 4 deletes the historical committed run directories, even after Milestone 3 cleans all live workflow files.
   Evidence: the old `parser-*`, `event-runtime-*`, `integral-boolean-*`, and `rich-types-*` run directories still contain committed `README.md` and `summary.json` files with legacy bench-target and scenario-manifest metadata, so a repository-wide search still sees those historical names until the baseline refresh lands.
+
+- Observation: once the branch started promoting the new baseline inside the repository, provenance handling had to distinguish real source-tree dirtiness from the run directory that the harness itself was creating or resuming.
+  Evidence: the first review pass caught that `--missing-only` resume could invalidate itself on `worktree_state` when the run directory lived under `bench/expr/runs/`, which led to the final fix that captures git cleanliness with the target run directory excluded.
 
 ## Decision Log
 
@@ -112,11 +116,17 @@ This plan does not change `src/expr/` parser, binder, evaluator, or waveform-hos
   Rationale: once the live docs, helpers, tests, and make targets were migrated, the remaining old-name matches came only from the still-committed historical run artifacts that Milestone 4 is already responsible for replacing. Deferring the repository-wide grep until after those directories are deleted keeps the validation aligned with the actual migration order.
   Date/Author: 2026-03-20 / OpenCode
 
+- Decision: keep the general `compare` subcommand flexible across code revisions, but require toolchain and environment metadata in the default `make bench-expr-run` path and document the stricter same-commit provenance flags separately.
+  Rationale: contributors still need to compare changed code against the maintained baseline, so `source_commit` cannot be a mandatory default compare key. Tightening the default make target around `cargo_version`, `rustc_version`, `criterion_version`, and `environment_note`, while documenting the stricter same-commit flag set for verification workflows, preserves that flexibility without leaving the common path provenance-blind.
+  Date/Author: 2026-03-20 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: Milestones 1 through 3 are complete. The live workflow, docs, helper tests, and make targets now point at the unified expression harness and the functional suite split. The remaining work is to capture the new durable baseline, delete the historical run directories, and finish the branch-wide validation and review cycle.
+Current status: all five milestones are complete. The repository now has one expression benchmark harness, one functional suite catalog, one maintained committed baseline under `bench/expr/runs/baseline/`, updated docs and make targets, and no remaining live helper workflow from the retired per-suite export path.
 
-The main lesson from the first three implementation milestones is that the current pain is still mostly tool and artifact shape, not missing benchmark coverage. The benchmark cases and the Python harness both migrated cleanly once the ownership boundaries were recut. The remaining cleanup is now concentrated in committed artifacts and branch closeout rather than in executable logic.
+The main lesson from the full implementation is that the current pain was still mostly tool and artifact shape, not missing benchmark coverage. Once the harness, suite ownership, and artifact model were aligned, the remaining work collapsed to provenance hardening and baseline promotion mechanics rather than new benchmark logic.
+
+The review cycle also confirmed that benchmark tooling needs provenance semantics just as much as benchmark scenarios do. The last real defects were not in the expression cases themselves; they were in how resume, report regeneration, and baseline promotion described what had been captured. Tightening those contracts made the final baseline and compare workflow trustworthy enough to keep as the new durable surface.
 
 ## Context and Orientation
 
@@ -321,3 +331,7 @@ Revision note (2026-03-20 / OpenCode): updated after Milestone 1 implementation 
 Revision note (2026-03-20 / OpenCode): updated after Milestone 2 implementation to record the final functional bench target split, the new shared bench support module, and the crate-root waveform-module constraint that kept `expr_waveform_host` slightly more specialized than the other three suites.
 
 Revision note (2026-03-20 / OpenCode): updated after Milestone 3 implementation to record the completed live-doc/helper cleanup, the new make targets, and the fact that the last repository-wide stale-name sweep remains intentionally tied to Milestone 4 because the historical run directories are still committed at this point.
+
+Revision note (2026-03-20 / OpenCode): updated after Milestone 4 implementation to record the promoted clean `baseline/` run, the deletion of the thirteen historical run directories, and the remaining review-only status for branch closeout.
+
+Revision note (2026-03-20 / OpenCode): updated after Milestone 5 completion to record the review-lane findings, the provenance and determinism fixes applied in response, the fresh clean baseline recapture from the post-review code state, and the final clean control-pass review.

@@ -368,10 +368,26 @@ def git_source_commit() -> str:
     return tool_version(["git", "rev-parse", "HEAD"])
 
 
-def git_worktree_state() -> str:
+def git_worktree_state(ignore_path: pathlib.Path | None = None) -> str:
+    command = ["git", "status", "--short"]
+    if ignore_path is not None:
+        try:
+            relative_path = ignore_path.resolve().relative_to(REPO_ROOT)
+        except ValueError:
+            relative_path = None
+        if relative_path is not None and str(relative_path):
+            relative_text = str(relative_path)
+            command.extend(
+                [
+                    "--",
+                    ".",
+                    f":(exclude){relative_text}",
+                    f":(exclude){relative_text}/**",
+                ]
+            )
     try:
         output = subprocess.check_output(
-            ["git", "status", "--short"],
+            command,
             cwd=REPO_ROOT,
             text=True,
         )
@@ -914,10 +930,12 @@ def cmd_run(args: argparse.Namespace) -> int:
     rustc_version = tool_version(["rustc", "-V"])
     criterion_version = cargo_lock_criterion_version()
     source_commit = git_source_commit()
-    worktree_state = git_worktree_state()
+    run_dir_arg = getattr(args, "run_dir", None)
+    ignored_worktree_path = normalize_path(run_dir_arg) if run_dir_arg is not None else None
+    worktree_state = git_worktree_state(ignore_path=ignored_worktree_path)
     environment_note = str(getattr(args, "environment_note", "wavepeek devcontainer/CI image"))
     run_dir = resolve_run_dir(
-        getattr(args, "run_dir", None),
+        run_dir_arg,
         getattr(args, "out_dir", str(DEFAULT_RUNS_DIR)),
         missing_only=bool(getattr(args, "missing_only", False)),
     )

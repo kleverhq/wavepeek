@@ -1,50 +1,50 @@
 # Expression Bench Run: baseline
 
-- Generated at (UTC): 2026-03-19T21:35:55Z
+- Generated at (UTC): 2026-03-19T21:48:39Z
 - Catalog: `bench/expr/suites.json`
 - Catalog fingerprint: `6a02342ef1b6f7e299d2764f5c628b42fa39c79359e5e416c7d24bec4621703d`
 - Selected suites: `syntax, logical, event, waveform_host`
 - cargo -V: `cargo 1.93.0 (083ac5135 2025-12-15)`
 - rustc -V: `rustc 1.93.0 (254b59607 2026-01-19)`
 - criterion crate version: `0.8.2`
-- Source commit: `cc4400144309545387e2f7444ff7ffc66bfdd9d3`
-- Worktree state: `dirty`
+- Source commit: `c83774c0889617a5f55157e6dfe4121780499dc9`
+- Worktree state: `clean`
 - Environment note: wavepeek devcontainer/CI image
 
 ## syntax
 
 | scenario | mean ns/iter | median ns/iter |
 | --- | --- | --- |
-| tokenize_union_iff | 208.676272 | 206.544200 |
-| parse_event_union_iff | 301.388392 | 293.489139 |
-| parse_event_malformed | 158.782964 | 158.772894 |
+| tokenize_union_iff | 208.575168 | 207.908818 |
+| parse_event_union_iff | 298.436541 | 297.354259 |
+| parse_event_malformed | 158.073094 | 157.593576 |
 
 ## logical
 
 | scenario | mean ns/iter | median ns/iter |
 | --- | --- | --- |
-| bind_logical_core_integral | 551.301559 | 546.880903 |
-| eval_logical_core_integral_true | 778.552632 | 777.538181 |
-| eval_logical_core_integral_unknown | 503.206384 | 501.231935 |
-| bind_logical_rich_types | 1145.299775 | 1139.378441 |
-| eval_logical_real_mixed_numeric | 412.406661 | 412.018633 |
-| eval_logical_string_equality | 252.741910 | 253.930715 |
-| eval_logical_enum_label_preservation | 316.305936 | 314.527828 |
+| bind_logical_core_integral | 543.561565 | 541.353426 |
+| eval_logical_core_integral_true | 767.210212 | 765.092051 |
+| eval_logical_core_integral_unknown | 502.821634 | 500.406254 |
+| bind_logical_rich_types | 1124.436740 | 1117.914749 |
+| eval_logical_real_mixed_numeric | 416.061654 | 413.864182 |
+| eval_logical_string_equality | 253.985846 | 253.042029 |
+| eval_logical_enum_label_preservation | 326.030488 | 324.389047 |
 
 ## event
 
 | scenario | mean ns/iter | median ns/iter |
 | --- | --- | --- |
-| bind_event_union_iff | 1963.193545 | 1961.044602 |
-| eval_event_union_iff_true | 890.291221 | 889.577226 |
-| eval_event_union_iff_unknown | 502.916253 | 499.122603 |
-| eval_event_iff_core_integral | 526.724938 | 520.896580 |
-| eval_event_iff_triggered_rich | 984.138145 | 981.674698 |
+| bind_event_union_iff | 1940.133167 | 1937.790204 |
+| eval_event_union_iff_true | 872.338561 | 869.543715 |
+| eval_event_union_iff_unknown | 490.548806 | 490.232190 |
+| eval_event_iff_core_integral | 502.650967 | 501.720804 |
+| eval_event_iff_triggered_rich | 976.245898 | 966.623768 |
 
 ## waveform_host
 
 | scenario | mean ns/iter | median ns/iter |
 | --- | --- | --- |
-| bind_waveform_host_metadata_path | 22527.428658 | 22444.622540 |
-| eval_waveform_host_metadata_path | 211.461320 | 210.985881 |
+| bind_waveform_host_metadata_path | 22592.087255 | 22379.254985 |
+| eval_waveform_host_metadata_path | 214.167659 | 212.334320 |
 

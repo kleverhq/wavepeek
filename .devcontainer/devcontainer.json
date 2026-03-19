@@ -39,7 +39,9 @@
                 "sst-dev.opencode",
                 "github.vscode-github-actions",
                 "github.vscode-pull-request-github",
-                "d-koppenhagen.vscode-code-review"
+                "d-koppenhagen.vscode-code-review",
+                "mhutchie.git-graph",
+                "bierner.markdown-mermaid"
             ]
         }
     }

@@ -139,7 +139,7 @@ ENV SURFER_INSTALL=/opt/surfer
 COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INSTALL}
 
 # Install OpenCode
-ENV OPENCODE_VERSION=1.1.53
+ENV OPENCODE_VERSION=1.2.27
 RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
 
 # Prefer X11 backend in devcontainer GUI sessions.

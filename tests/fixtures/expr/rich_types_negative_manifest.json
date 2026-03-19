@@ -6,8 +6,12 @@
       "source": "msg + 1",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-NUMERIC",
-      "span": { "start": 0, "end": 3 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_string_boolean_context",
@@ -15,8 +19,12 @@
       "source": "msg && 1",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-BOOLEAN-CONTEXT",
-      "span": { "start": 0, "end": 3 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_string_cast_from_integral",
@@ -24,8 +32,12 @@
       "source": "string'(count)",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-CAST-TARGET",
-      "span": { "start": 0, "end": 14 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_real_cast_from_unknown_bits",
@@ -33,8 +45,13 @@
       "source": "real'(xbus)",
       "layer": "runtime",
       "code": "EXPR-RUNTIME-REAL-CAST",
-      "span": { "start": 0, "end": 0 },
-      "snapshot": "runtime_real_cast_unknown"
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": "runtime_real_cast_unknown",
+      "host_profile": "rich_types_baseline",
+      "timestamp": 10
     },
     {
       "name": "invalid_nonfinite_real_literal",
@@ -42,8 +59,12 @@
       "source": "1e309",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-REAL-LITERAL",
-      "span": { "start": 0, "end": 5 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_event_cast",
@@ -51,8 +72,12 @@
       "source": "bit'(ev)",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-EVENT-VALUE",
-      "span": { "start": 5, "end": 7 },
-      "snapshot": null
+      "span": {
+        "start": 5,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_recovered_type_unknown_signal",
@@ -60,8 +85,12 @@
       "source": "type(missing)'(1)",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-      "span": { "start": 5, "end": 12 },
-      "snapshot": null
+      "span": {
+        "start": 5,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_enum_label_on_non_enum",
@@ -69,8 +98,12 @@
       "source": "type(data)::BUSY",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-ENUM-LABEL",
-      "span": { "start": 5, "end": 9 },
-      "snapshot": null
+      "span": {
+        "start": 5,
+        "end": 9
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_missing_enum_label",
@@ -78,8 +111,12 @@
       "source": "type(state)::MISS",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-ENUM-LABEL",
-      "span": { "start": 13, "end": 17 },
-      "snapshot": null
+      "span": {
+        "start": 13,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_missing_enum_metadata",
@@ -87,8 +124,12 @@
       "source": "type(state_no_labels)::BUSY",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-METADATA",
-      "span": { "start": 23, "end": 27 },
-      "snapshot": "semantic_missing_enum_metadata"
+      "span": {
+        "start": 23,
+        "end": 27
+      },
+      "snapshot": "semantic_missing_enum_metadata",
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_triggered_on_non_event",
@@ -96,8 +137,12 @@
       "source": "data.triggered",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-TRIGGERED",
-      "span": { "start": 0, "end": 4 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_chained_triggered",
@@ -105,8 +150,12 @@
       "source": "ev.triggered.triggered",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-TRIGGERED",
-      "span": { "start": 0, "end": 22 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 22
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_raw_event_value_use",
@@ -114,8 +163,12 @@
       "source": "ev + 1",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-EVENT-VALUE",
-      "span": { "start": 0, "end": 2 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_edge_on_real_signal",
@@ -123,8 +176,26 @@
       "source": "posedge temp",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
-      "span": { "start": 0, "end": 12 },
-      "snapshot": null
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_nonfinite_real_division",
+      "entrypoint": "logical",
+      "source": "1.0 / 0.0",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-NONFINITE",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 10
     }
   ]
 }

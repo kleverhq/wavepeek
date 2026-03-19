@@ -5,7 +5,10 @@ use std::path::PathBuf;
 
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
-use wavepeek::expr::{DiagnosticLayer, ExprDiagnostic, Span};
+use wavepeek::expr::{
+    DiagnosticLayer, ExprDiagnostic, Span, bind_event_expr_ast, bind_logical_expr_ast,
+    eval_logical_expr_at, parse_event_expr_ast, parse_logical_expr_ast,
+};
 
 use super::expr_runtime::{
     ExpectedValueFixture, InMemoryExprHost, SignalFixture, TypeFixture, host_from_profile,
@@ -277,6 +280,35 @@ pub fn negative_case_host(case: &NegativeCase) -> InMemoryExprHost {
 pub fn negative_case_runtime_timestamp(case: &NegativeCase) -> u64 {
     case.timestamp
         .unwrap_or_else(|| panic!("case '{}' must declare runtime timestamp", case.name))
+}
+
+pub fn run_negative_case(case: &NegativeCase) -> ExprDiagnostic {
+    match case.entrypoint {
+        ManifestEntrypoint::Parse => parse_event_expr_ast(case.source.as_str())
+            .expect_err(&format!("{} should fail", case.name)),
+        ManifestEntrypoint::Logical => {
+            let host = negative_case_host(case);
+            match parse_logical_expr_ast(case.source.as_str()) {
+                Ok(ast) => match bind_logical_expr_ast(&ast, &host) {
+                    Ok(bound) if matches!(case.layer, ManifestLayer::Runtime) => {
+                        eval_logical_expr_at(&bound, &host, negative_case_runtime_timestamp(case))
+                            .expect_err(&format!("{} should fail at runtime", case.name))
+                    }
+                    Ok(_) => panic!("{} should fail", case.name),
+                    Err(diagnostic) => diagnostic,
+                },
+                Err(diagnostic) => diagnostic,
+            }
+        }
+        ManifestEntrypoint::Event => {
+            let host = negative_case_host(case);
+            match parse_event_expr_ast(case.source.as_str()) {
+                Ok(ast) => bind_event_expr_ast(&ast, &host)
+                    .expect_err(&format!("{} should fail", case.name)),
+                Err(diagnostic) => diagnostic,
+            }
+        }
+    }
 }
 
 impl SpanRecord {

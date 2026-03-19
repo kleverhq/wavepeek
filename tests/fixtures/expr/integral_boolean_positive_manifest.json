@@ -1,11 +1,11 @@
 {
-  "logical_cases": [
+  "cases": [
     {
+      "kind": "logical_eval",
       "name": "precedence_and_associativity_core",
       "source": "1 + 2 * 3 < 8 && 4'b1010[1] == 1",
       "signals": [],
       "timestamp": 0,
-      "expected_bits": "1",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -14,14 +14,21 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "integral_cast_integer_like_target",
       "source": "int'(signed'(8'hff))",
       "signals": [],
       "timestamp": 0,
-      "expected_bits": "11111111111111111111111111111111",
       "expected_type": {
         "kind": "integer_like",
         "integer_like_kind": "int",
@@ -30,14 +37,21 @@
         "is_four_state": false,
         "is_signed": true,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "11111111111111111111111111111111",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "integral_cast_bit_logic_variants",
       "source": "logic[4]'(bit[4]'(4'b10xz))",
       "signals": [],
       "timestamp": 0,
-      "expected_bits": "1000",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -46,9 +60,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1000",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "dynamic_bit_select_valid",
       "source": "data[idx]",
       "signals": [
@@ -64,7 +86,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "1010" }
+            {
+              "timestamp": 0,
+              "bits": "1010"
+            }
           ]
         },
         {
@@ -79,12 +104,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "01" }
+            {
+              "timestamp": 0,
+              "bits": "01"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "1",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -93,9 +120,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "dynamic_bit_select_out_of_range",
       "source": "data[idx]",
       "signals": [
@@ -111,7 +146,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "10" }
+            {
+              "timestamp": 0,
+              "bits": "10"
+            }
           ]
         },
         {
@@ -126,12 +164,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "010" }
+            {
+              "timestamp": 0,
+              "bits": "010"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "x",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -140,9 +180,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "x",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "dynamic_bit_select_unknown_index",
       "source": "data[idx]",
       "signals": [
@@ -158,7 +206,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "0011" }
+            {
+              "timestamp": 0,
+              "bits": "0011"
+            }
           ]
         },
         {
@@ -173,12 +224,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "x1" }
+            {
+              "timestamp": 0,
+              "bits": "x1"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "x",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -187,9 +240,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "x",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "part_select_and_indexed_part_select",
       "source": "(data[3:1] == 3'b010) && (data[base +: 3] == 3'b010)",
       "signals": [
@@ -205,7 +266,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "110101" }
+            {
+              "timestamp": 0,
+              "bits": "110101"
+            }
           ]
         },
         {
@@ -220,12 +284,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "001" }
+            {
+              "timestamp": 0,
+              "bits": "001"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "1",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -234,9 +300,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "concat_replication_inside_conditional",
       "source": "(sel ? {2{a}} : {a,b}) inside {[4'd9:4'd10], 4'b1111}",
       "signals": [
@@ -252,7 +326,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "0" }
+            {
+              "timestamp": 0,
+              "bits": "0"
+            }
           ]
         },
         {
@@ -267,7 +344,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "10" }
+            {
+              "timestamp": 0,
+              "bits": "10"
+            }
           ]
         },
         {
@@ -282,12 +362,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "01" }
+            {
+              "timestamp": 0,
+              "bits": "01"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "1",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -296,9 +378,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "wildcard_and_case_equality",
       "source": "(lhs ==? rhs) && (lhs !== rhs)",
       "signals": [
@@ -314,7 +404,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "01" }
+            {
+              "timestamp": 0,
+              "bits": "01"
+            }
           ]
         },
         {
@@ -329,12 +422,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "x1" }
+            {
+              "timestamp": 0,
+              "bits": "x1"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "1",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -343,9 +438,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "enum_conditional_preserves_identity",
       "source": "cond ? enum_a : enum_b",
       "signals": [
@@ -361,7 +464,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "x" }
+            {
+              "timestamp": 0,
+              "bits": "x"
+            }
           ]
         },
         {
@@ -376,7 +482,10 @@
             "enum_type_id": "fsm_state"
           },
           "samples": [
-            { "timestamp": 0, "bits": "01" }
+            {
+              "timestamp": 0,
+              "bits": "01"
+            }
           ]
         },
         {
@@ -391,12 +500,14 @@
             "enum_type_id": "fsm_state"
           },
           "samples": [
-            { "timestamp": 0, "bits": "00" }
+            {
+              "timestamp": 0,
+              "bits": "00"
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "0x",
       "expected_type": {
         "kind": "enum_core",
         "integer_like_kind": null,
@@ -405,9 +516,17 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": "fsm_state"
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "0x",
+        "label": null,
+        "real": null,
+        "string": null
       }
     },
     {
+      "kind": "logical_eval",
       "name": "unknown_sample_defaults_to_all_x",
       "source": "data + 1",
       "signals": [
@@ -423,12 +542,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": null }
+            {
+              "timestamp": 0,
+              "bits": null
+            }
           ]
         }
       ],
       "timestamp": 0,
-      "expected_bits": "xxxx",
       "expected_type": {
         "kind": "bit_vector",
         "integer_like_kind": null,
@@ -437,14 +558,22 @@
         "is_four_state": true,
         "is_signed": false,
         "enum_type_id": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "xxxx",
+        "label": null,
+        "real": null,
+        "string": null
       }
-    }
-  ],
-  "event_cases": [
+    },
     {
+      "kind": "event_eval",
       "name": "iff_arithmetic_and_cast_in_event_engine",
       "source": "posedge clk iff (int'(count + 1) == 32'd4)",
-      "tracked_signals": ["clk"],
+      "tracked_signals": [
+        "clk"
+      ],
       "signals": [
         {
           "name": "clk",
@@ -458,10 +587,22 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 5, "bits": "1" },
-            { "timestamp": 8, "bits": "0" },
-            { "timestamp": 10, "bits": "1" }
+            {
+              "timestamp": 0,
+              "bits": "0"
+            },
+            {
+              "timestamp": 5,
+              "bits": "1"
+            },
+            {
+              "timestamp": 8,
+              "bits": "0"
+            },
+            {
+              "timestamp": 10,
+              "bits": "1"
+            }
           ]
         },
         {
@@ -476,18 +617,34 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 5, "bits": "00000010" },
-            { "timestamp": 10, "bits": "00000011" }
+            {
+              "timestamp": 5,
+              "bits": "00000010"
+            },
+            {
+              "timestamp": 10,
+              "bits": "00000011"
+            }
           ]
         }
       ],
-      "probes": [0, 5, 8, 10],
-      "matches": [10]
+      "probes": [
+        0,
+        5,
+        8,
+        10
+      ],
+      "matches": [
+        10
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "iff_inside_and_concatenation",
       "source": "posedge clk iff ({a,b}[3:0] inside {[4'd9:4'd10]})",
-      "tracked_signals": ["clk"],
+      "tracked_signals": [
+        "clk"
+      ],
       "signals": [
         {
           "name": "clk",
@@ -501,10 +658,22 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 4, "bits": "1" },
-            { "timestamp": 7, "bits": "0" },
-            { "timestamp": 9, "bits": "1" }
+            {
+              "timestamp": 0,
+              "bits": "0"
+            },
+            {
+              "timestamp": 4,
+              "bits": "1"
+            },
+            {
+              "timestamp": 7,
+              "bits": "0"
+            },
+            {
+              "timestamp": 9,
+              "bits": "1"
+            }
           ]
         },
         {
@@ -519,8 +688,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 4, "bits": "10" },
-            { "timestamp": 9, "bits": "11" }
+            {
+              "timestamp": 4,
+              "bits": "10"
+            },
+            {
+              "timestamp": 9,
+              "bits": "11"
+            }
           ]
         },
         {
@@ -535,18 +710,34 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 4, "bits": "01" },
-            { "timestamp": 9, "bits": "11" }
+            {
+              "timestamp": 4,
+              "bits": "01"
+            },
+            {
+              "timestamp": 9,
+              "bits": "11"
+            }
           ]
         }
       ],
-      "probes": [0, 4, 7, 9],
-      "matches": [4]
+      "probes": [
+        0,
+        4,
+        7,
+        9
+      ],
+      "matches": [
+        4
+      ]
     },
     {
+      "kind": "event_eval",
       "name": "iff_dynamic_selection_and_conditional",
       "source": "posedge clk iff ((data[idx] ? {4{one}} : data[3:0]) == 4'b1111)",
-      "tracked_signals": ["clk"],
+      "tracked_signals": [
+        "clk"
+      ],
       "signals": [
         {
           "name": "clk",
@@ -560,10 +751,22 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "0" },
-            { "timestamp": 3, "bits": "1" },
-            { "timestamp": 6, "bits": "0" },
-            { "timestamp": 8, "bits": "1" }
+            {
+              "timestamp": 0,
+              "bits": "0"
+            },
+            {
+              "timestamp": 3,
+              "bits": "1"
+            },
+            {
+              "timestamp": 6,
+              "bits": "0"
+            },
+            {
+              "timestamp": 8,
+              "bits": "1"
+            }
           ]
         },
         {
@@ -578,8 +781,14 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 3, "bits": "1011" },
-            { "timestamp": 8, "bits": "1111" }
+            {
+              "timestamp": 3,
+              "bits": "1011"
+            },
+            {
+              "timestamp": 8,
+              "bits": "1111"
+            }
           ]
         },
         {
@@ -594,7 +803,10 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "01" }
+            {
+              "timestamp": 0,
+              "bits": "01"
+            }
           ]
         },
         {
@@ -609,12 +821,523 @@
             "enum_type_id": null
           },
           "samples": [
-            { "timestamp": 0, "bits": "1" }
+            {
+              "timestamp": 0,
+              "bits": "1"
+            }
           ]
         }
       ],
-      "probes": [0, 3, 6, 8],
-      "matches": [3, 8]
+      "probes": [
+        0,
+        3,
+        6,
+        8
+      ],
+      "matches": [
+        3,
+        8
+      ]
+    },
+    {
+      "kind": "logical_eval",
+      "name": "conditional_unknown_condition_merges_bits",
+      "source": "x_cond ? 4'b1010 : 4'b1001",
+      "signals": [
+        {
+          "name": "x_cond",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 4,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "10xx",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "wildcard_equality_matches_unknown_bits",
+      "source": "lhs ==? rhs",
+      "signals": [
+        {
+          "name": "lhs",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "01",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "rhs",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "x1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "case_equality_distinguishes_unknown_bits",
+      "source": "lhs === rhs",
+      "signals": [
+        {
+          "name": "lhs",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "01",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "rhs",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "x1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "0",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "inside_returns_unknown_for_unknown_membership",
+      "source": "2'b1x inside {2'b10, 2'b11}",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "x",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "signed_division_preserves_twos_complement_result",
+      "source": "signed'(8'hfc) / signed'(8'h02)",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": true,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "11111110",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "signed_modulo_preserves_twos_complement_result",
+      "source": "signed'(8'hfb) % signed'(8'h02)",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": true,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "11111111",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "zero_to_negative_power_returns_unknown",
+      "source": "signed'(8'h00) ** signed'(8'hff)",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": true,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "xxxxxxxx",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "nonzero_to_negative_power_rounds_to_zero",
+      "source": "signed'(8'h02) ** signed'(8'hff)",
+      "signals": [],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 8,
+        "is_four_state": true,
+        "is_signed": true,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "00000000",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "concatenation_select_uses_derived_width",
+      "source": "{a,b}[3:1]",
+      "signals": [
+        {
+          "name": "a",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "10",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "b",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "01",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "packed_vector",
+        "width": 3,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "100",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "replication_select_indexes_replicated_bits",
+      "source": "{2{a}}[2]",
+      "signals": [
+        {
+          "name": "a",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "10",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "0",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "missing_sample_defaults_selected_bit_to_unknown",
+      "source": "data[idx]",
+      "signals": [
+        {
+          "name": "data",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 4,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": null,
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "idx",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "packed_vector",
+            "width": 2,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "01",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 0,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "x",
+        "label": null,
+        "real": null,
+        "string": null
+      }
     }
   ]
 }

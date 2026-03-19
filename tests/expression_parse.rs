@@ -5,7 +5,7 @@ use wavepeek::expr::{BasicEventAst, EventExprAst, EventTermAst, parse_event_expr
 mod common;
 use common::expr_cases::{
     EventParseCase, NegativeCase, NormalizedTerm, PositiveCase, assert_negative_diagnostic,
-    load_negative_manifest, load_positive_manifest,
+    load_negative_manifest, load_positive_manifest, run_negative_case,
 };
 
 fn load_positive_cases() -> Vec<EventParseCase> {
@@ -69,8 +69,7 @@ fn parse_positive_manifest_parses() {
 #[test]
 fn parse_negative_manifest_matches_snapshots() {
     for case in load_negative_cases() {
-        let diagnostic = parse_event_expr_ast(case.source.as_str())
-            .expect_err(&format!("{} should fail", case.name));
+        let diagnostic = run_negative_case(&case);
         assert_negative_diagnostic("parse_negative_manifest.json", &case, &diagnostic);
     }
 }

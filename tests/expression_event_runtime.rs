@@ -1,10 +1,10 @@
 use serde_json::Value;
-use wavepeek::expr::{EventEvalFrame, bind_event_expr_ast, event_matches_at, parse_event_expr_ast};
+use wavepeek::expr::{EventEvalFrame, event_matches_at};
 
 mod common;
 use common::expr_cases::{
     ManifestEntrypoint, NegativeCase, PositiveCase, assert_negative_diagnostic,
-    load_negative_manifest, load_positive_manifest, negative_case_host,
+    load_negative_manifest, load_positive_manifest, run_negative_case,
 };
 use common::expr_runtime::{
     InMemoryExprHost, SignalFixture, SignalSample, TypeFixture, bind_event_expr,
@@ -76,21 +76,10 @@ fn event_runtime_positive_manifest_matches() {
 #[test]
 fn event_runtime_negative_manifest_matches_snapshots() {
     for case in load_negative_cases() {
-        let diagnostic = match case.entrypoint {
-            ManifestEntrypoint::Parse => parse_event_expr_ast(case.source.as_str())
-                .expect_err(&format!("{} should fail", case.name)),
-            ManifestEntrypoint::Event => {
-                let host = negative_case_host(&case);
-                match parse_event_expr_ast(case.source.as_str()) {
-                    Ok(ast) => bind_event_expr_ast(&ast, &host)
-                        .expect_err(&format!("{} should fail", case.name)),
-                    Err(diagnostic) => diagnostic,
-                }
-            }
-            ManifestEntrypoint::Logical => {
-                panic!("event runtime negative suite does not support logical entrypoints")
-            }
+        if matches!(case.entrypoint, ManifestEntrypoint::Logical) {
+            panic!("event runtime negative suite does not support logical entrypoints");
         };
+        let diagnostic = run_negative_case(&case);
 
         assert_negative_diagnostic("event_runtime_negative_manifest.json", &case, &diagnostic);
     }

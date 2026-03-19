@@ -1,16 +1,10 @@
 mod common;
 
 use common::expr_cases::{
-    expression_snapshot_path, load_negative_manifest, load_positive_manifest,
-    parse_negative_manifest_payload, parse_positive_manifest_payload, snapshot_file_name,
+    expression_manifest_file_names, expression_snapshot_file_names, expression_snapshot_path,
+    load_negative_manifest, load_positive_manifest, parse_negative_manifest_payload,
+    parse_positive_manifest_payload, snapshot_file_name,
 };
-
-const ALLOWLIST: &[&str] = &[
-    "event_runtime_negative_manifest.json",
-    "event_runtime_positive_manifest.json",
-    "parse_negative_manifest.json",
-    "parse_positive_manifest.json",
-];
 
 #[test]
 fn shared_positive_manifest_contract_accepts_tagged_cases_and_rejects_legacy_shapes() {
@@ -242,16 +236,16 @@ fn shared_negative_manifest_contract_enforces_host_context_and_runtime_timestamp
 }
 
 #[test]
-fn allowlisted_expression_manifests_deserialize_through_the_shared_contract() {
-    for file_name in ALLOWLIST {
+fn all_expression_manifests_deserialize_through_the_shared_contract() {
+    for file_name in expression_manifest_file_names() {
         if file_name.ends_with("positive_manifest.json") {
-            let manifest = load_positive_manifest(file_name);
+            let manifest = load_positive_manifest(file_name.as_str());
             assert!(
                 !manifest.cases.is_empty(),
                 "manifest '{file_name}' should keep at least one case"
             );
         } else {
-            let manifest = load_negative_manifest(file_name);
+            let manifest = load_negative_manifest(file_name.as_str());
             assert!(
                 !manifest.cases.is_empty(),
                 "manifest '{file_name}' should keep at least one case"
@@ -261,24 +255,36 @@ fn allowlisted_expression_manifests_deserialize_through_the_shared_contract() {
 }
 
 #[test]
-fn allowlisted_negative_manifest_snapshots_exist() {
-    for file_name in ALLOWLIST {
+fn negative_manifest_snapshots_exist_and_no_expression_snapshots_are_orphaned() {
+    let mut referenced_snapshots = Vec::new();
+
+    for file_name in expression_manifest_file_names() {
         if !file_name.ends_with("negative_manifest.json") {
             continue;
         }
 
-        let manifest = load_negative_manifest(file_name);
+        let manifest = load_negative_manifest(file_name.as_str());
         for case in manifest.cases {
             if let Some(snapshot_name) = case.snapshot.as_deref() {
-                let path =
-                    expression_snapshot_path(snapshot_file_name(file_name, snapshot_name).as_str());
+                let referenced = snapshot_file_name(file_name.as_str(), snapshot_name);
+                let path = expression_snapshot_path(referenced.as_str());
                 assert!(
                     path.is_file(),
                     "snapshot '{}' referenced by '{}' should exist",
                     snapshot_name,
-                    file_name
+                    case.name
                 );
+                referenced_snapshots.push(referenced);
             }
         }
     }
+
+    referenced_snapshots.sort();
+    referenced_snapshots.dedup();
+
+    assert_eq!(
+        expression_snapshot_file_names(),
+        referenced_snapshots,
+        "every expression snapshot should be referenced exactly once by the current manifests"
+    );
 }

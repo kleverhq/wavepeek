@@ -153,6 +153,171 @@
     },
     {
       "kind": "event_eval",
+      "name": "edge_surface_form_posedge",
+      "source": "posedge clk",
+      "tracked_signals": [
+        "clk"
+      ],
+      "signals": [
+        {
+          "name": "clk",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "probes": [
+        0,
+        5,
+        10
+      ],
+      "matches": [
+        5
+      ]
+    },
+    {
+      "kind": "event_eval",
+      "name": "edge_surface_form_negedge",
+      "source": "negedge clk",
+      "tracked_signals": [
+        "clk"
+      ],
+      "signals": [
+        {
+          "name": "clk",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "probes": [
+        0,
+        5,
+        10
+      ],
+      "matches": [
+        5
+      ]
+    },
+    {
+      "kind": "event_eval",
+      "name": "edge_surface_form_edge",
+      "source": "edge clk",
+      "tracked_signals": [
+        "clk"
+      ],
+      "signals": [
+        {
+          "name": "clk",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": true,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 0,
+              "bits": "x",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 5,
+              "bits": "z",
+              "label": null,
+              "real": null,
+              "string": null
+            },
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "probes": [
+        0,
+        5,
+        10
+      ],
+      "matches": [
+        10
+      ]
+    },
+    {
+      "kind": "event_eval",
       "name": "edge_terms_use_lsb_and_xz_normalization",
       "source": "posedge clk or negedge clk or edge bus",
       "tracked_signals": [

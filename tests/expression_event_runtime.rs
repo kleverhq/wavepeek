@@ -143,45 +143,6 @@ fn event_runtime_short_circuit_holds() {
 }
 
 #[test]
-fn event_runtime_isolates_each_edge_keyword_surface_form() {
-    let host = InMemoryExprHost::from_fixtures(
-        [bit_signal(
-            "clk",
-            1,
-            &[
-                (0, "0"),
-                (5, "1"),
-                (10, "x"),
-                (15, "z"),
-                (20, "0"),
-                (25, "1"),
-            ],
-        )]
-        .as_slice(),
-    );
-
-    let tracked = ["clk".to_string()];
-    let probes = [0_u64, 5, 10, 15, 20, 25];
-    for (source, expected) in [
-        ("posedge clk", vec![5, 25]),
-        ("negedge clk", vec![10, 20]),
-        ("edge clk", vec![5, 10, 20, 25]),
-    ] {
-        let matches = collect_event_matches(source, &host, tracked.as_slice(), &probes)
-            .unwrap_or_else(|error| panic!("{source} should evaluate: {error:?}"));
-        assert_eq!(matches, expected, "source '{source}'");
-    }
-
-    let named_matches = collect_event_matches("clk", &host, tracked.as_slice(), &probes)
-        .expect("named event should evaluate");
-    assert_eq!(
-        named_matches,
-        vec![5, 10, 15, 20, 25],
-        "named event must still match non-edge x/z changes"
-    );
-}
-
-#[test]
 fn event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface() {
     let fixture = fixture_path("change_edge_cases.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

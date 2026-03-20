@@ -71,16 +71,10 @@ check-build: require-container
 test: require-container check-rtl-artifacts
 	cargo test -q
 
-## Run benchmark harness unit tests
-test-bench-e2e: require-container
+## Run auxiliary Python/unit test suites
+test-aux: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
-
-## Run expression microbenchmark harness unit tests
-test-bench-expr: require-container
 	$(PYTHON) -m unittest discover -s bench/expr -p "test_*.py"
-
-## Run release helper script unit tests
-test-scripts: require-container
 	$(PYTHON) -m unittest scripts/test_extract_release_notes.py
 
 ## Build release binary
@@ -128,7 +122,7 @@ check-commit: require-container
 check: format-check lint check-schema check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema test test-bench-e2e test-bench-expr test-scripts check-build
+ci: format-check lint check-schema test test-aux check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

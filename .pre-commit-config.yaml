@@ -42,10 +42,10 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
-      - id: bench-e2e-test
-        name: Benchmark E2E harness testing
-        description: Run bench/e2e harness unit tests
-        entry: make test-bench-e2e
+      - id: aux-test
+        name: Auxiliary test suites
+        description: Run bench/e2e, bench/expr, and release-helper unit tests
+        entry: make test-aux
         language: system
         pass_filenames: false
         stages: [pre-commit]

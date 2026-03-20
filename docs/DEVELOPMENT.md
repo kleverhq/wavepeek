@@ -60,8 +60,7 @@ Common commands:
   - `make check-build` (cargo check)
 - Tests:
   - `make test`
-  - `make test-bench-e2e`
-  - `make test-bench-expr`
+  - `make test-aux`
 - Run all pre-commit hooks locally:
   - `make pre-commit`
 - Validate commit message (commit-msg hook runs this):
@@ -69,7 +68,7 @@ Common commands:
 - One-shot local gate:
   - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + cargo test + bench/e2e unittest + bench/expr unittest + release-script unittest + cargo check)
+  - `make ci` (format-check + clippy + check-schema + cargo test + auxiliary Python unit tests + cargo check)
 - Cleanup:
   - `make clean`
 
@@ -160,7 +159,7 @@ stays guarded behind one explicit target.
 ## Pre-commit Hooks
 
 Hooks are defined in `.pre-commit-config.yaml` and installed by `make bootstrap`.
-Current hooks run (pre-commit): rustfmt, clippy, cargo check, schema contract, cargo test, bench/e2e harness unit tests, and the bench/e2e smoke run+compare catalog.
+Current hooks run (pre-commit): rustfmt, clippy, cargo check, schema contract, cargo test, auxiliary Python unit tests, and the bench/e2e smoke run+compare catalog.
 Commit messages are validated (commit-msg) via `commitizen` (`cz check`).
 
 Notes for agents:

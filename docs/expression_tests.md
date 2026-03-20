@@ -85,7 +85,7 @@ runner for the corresponding file.
 | ID | Checklist point | Status | Current tests | Notes |
 | --- | --- | --- | --- | --- |
 | 1 | `[1.1] Wildcard event surface form` | done | `PP:wildcard_any_tracked`, `ERP:wildcard_any_tracked_same_timestamp_dedup`, `RTP:wildcard_tracks_string_and_event_changes`, `parse_event_expr_wrapper_supports_any_tracked` | - |
-| 2 | `[1.1] Named event surface form` | covered | `PP:named_any_change`, `ERP:named_change_requires_previous_sample`, `RTP:named_string_event_matches_signal_change`, `RTP:named_event_operand_matches_raw_event_timestamp` | - |
+| 2 | `[1.1] Named event surface form` | done | `PP:named_any_change`, `ERP:named_change_requires_previous_sample`, `RTP:named_string_event_matches_signal_change`, `RTP:named_event_operand_matches_raw_event_timestamp` | - |
 | 3 | `[1.1] Edge event surface forms` | partial | `PP:edge_keywords`, `ERP:edge_terms_use_lsb_and_xz_normalization`, `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface` | Surface is covered, but keyword-specific runtime behavior is not isolated per form. |
 | 4 | `[1.1] Union surface forms` | covered | `PP:comma_union`, `ERP:wildcard_any_tracked_same_timestamp_dedup`, `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface`, `event_expr_accepts_comma_union` | - |
 | 5 | `[1.1] Gated event surface form` | covered | `PP:iff_binds_to_preceding_term_only`, `PP:iff_parenthesized_payload`, `ERP:iff_bounded_ops_and_literals`, `RTP:rich_iff_with_triggered_real_and_string` | - |

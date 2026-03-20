@@ -31,6 +31,7 @@ Manifest-backed suites:
   - runners: `event_runtime_positive_manifest_matches`,
     `event_runtime_negative_manifest_matches_snapshots`
   - code-only: `event_runtime_short_circuit_holds`,
+    `event_runtime_isolates_each_edge_keyword_surface_form`,
     `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface`
   - manifests: `ERP` = `event_runtime_positive_manifest.json` (6 cases), `ERN`
     = `event_runtime_negative_manifest.json` (2 cases)
@@ -86,7 +87,7 @@ runner for the corresponding file.
 | --- | --- | --- | --- | --- |
 | 1 | `[1.1] Wildcard event surface form` | done | `PP:wildcard_any_tracked`, `ERP:wildcard_any_tracked_same_timestamp_dedup`, `RTP:wildcard_tracks_string_and_event_changes`, `parse_event_expr_wrapper_supports_any_tracked` | - |
 | 2 | `[1.1] Named event surface form` | done | `PP:named_any_change`, `ERP:named_change_requires_previous_sample`, `RTP:named_string_event_matches_signal_change`, `RTP:named_event_operand_matches_raw_event_timestamp` | - |
-| 3 | `[1.1] Edge event surface forms` | partial | `PP:edge_keywords`, `ERP:edge_terms_use_lsb_and_xz_normalization`, `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface` | Surface is covered, but keyword-specific runtime behavior is not isolated per form. |
+| 3 | `[1.1] Edge event surface forms` | done | `PP:edge_keywords`, `event_runtime_isolates_each_edge_keyword_surface_form`, `ERP:edge_terms_use_lsb_and_xz_normalization`, `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface` | - |
 | 4 | `[1.1] Union surface forms` | covered | `PP:comma_union`, `ERP:wildcard_any_tracked_same_timestamp_dedup`, `event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface`, `event_expr_accepts_comma_union` | - |
 | 5 | `[1.1] Gated event surface form` | covered | `PP:iff_binds_to_preceding_term_only`, `PP:iff_parenthesized_payload`, `ERP:iff_bounded_ops_and_literals`, `RTP:rich_iff_with_triggered_real_and_string` | - |
 | 6 | `[1.1] Wildcard tracked-set binding comes from the host context` | partial | `ERP:wildcard_any_tracked_same_timestamp_dedup`, `RTP:wildcard_tracks_string_and_event_changes` | No test reuses the same parsed `*` against two different tracked sets. |

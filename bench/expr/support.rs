@@ -64,7 +64,7 @@ impl BenchHost {
 impl ExpressionHost for BenchHost {
     fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
         self.handles.get(name).copied().ok_or_else(|| {
-            semantic_diagnostic("BENCH-UNKNOWN-SIGNAL", format!("unknown signal '{name}'"))
+            semantic_diagnostic("HOST-UNKNOWN-SIGNAL", format!("unknown signal '{name}'"))
         })
     }
 
@@ -74,7 +74,7 @@ impl ExpressionHost for BenchHost {
             .map(|signal| signal.ty.clone())
             .ok_or_else(|| {
                 semantic_diagnostic(
-                    "BENCH-UNKNOWN-TYPE",
+                    "HOST-UNKNOWN-TYPE",
                     format!("unknown signal handle {}", handle.0),
                 )
             })

@@ -48,6 +48,9 @@ This plan does not add general function-call or method-call syntax to the logica
 - Observation: the waveform-backed collision proof does not require any host redesign; a nested VCD scope named `ev` under `top` naturally yields the ordinary signal path `top.ev.triggered` alongside the raw event `top.ev`.
   Evidence: `src/waveform/expr_host.rs` now exercises a temp VCD where `top.ev` is declared as an event and `top.ev.triggered` is declared as a wire inside `$scope module ev`, and one logical expression distinguishes the two at timestamp `10`.
 
+- Observation: the expression microbench host had drifted from the shared binder contract by returning benchmark-only unknown-signal codes, which made the logical bind benchmark panic before compare could even run.
+  Evidence: `bench/expr/support.rs` returned `BENCH-UNKNOWN-SIGNAL`, while `src/expr/sema.rs::try_bind_canonical_signal_selection(...)` only treats `HOST-UNKNOWN-SIGNAL` as recoverable; `make bench-expr-run` failed in `logical__bind_logical_core_integral` until those codes were aligned.
+
 ## Decision Log
 
 - Decision: raw-event access will use `event_operand.triggered()` with an empty argument list, and bare `.triggered` will lose all special meaning.
@@ -68,6 +71,10 @@ This plan does not add general function-call or method-call syntax to the logica
 
 - Decision: refresh the committed expression microbenchmark baseline after the final accepted implementation commit.
   Rationale: the `expr_event` benchmark source string changes from `ev.triggered` to `ev.triggered()`, so the maintained baseline should reflect the shipped workload rather than historical syntax.
+  Date/Author: 2026-03-28 / OpenCode
+
+- Decision: benchmark-only hosts should use the same recoverable unknown-signal diagnostic codes as production hosts when they implement the shared `ExpressionHost` trait.
+  Rationale: binder fallback logic is keyed off host-level diagnostic contracts, so benchmark-only code names silently diverging from runtime hosts create false benchmark failures instead of measuring the intended workload.
   Date/Author: 2026-03-28 / OpenCode
 
 ## Outcomes & Retrospective

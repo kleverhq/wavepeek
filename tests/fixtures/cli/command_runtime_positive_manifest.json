@@ -1,0 +1,87 @@
+{
+  "cases": [
+    {
+      "name": "change_iff_json_m2_core",
+      "command": "change",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk",
+        "--on",
+        "posedge clk iff data == 8'h00",
+        "--json"
+      ],
+      "output_mode": "json",
+      "exit_code": 0,
+      "expected_data": [
+        {
+          "time": "5ns",
+          "signals": [
+            {
+              "path": "top.data",
+              "value": "8'h00"
+            },
+            {
+              "path": "top.clk",
+              "value": "1'h1"
+            }
+          ]
+        }
+      ],
+      "expected_warnings": []
+    },
+    {
+      "name": "property_match_json_m2_core",
+      "command": "property",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--eval",
+        "data == 8'h00",
+        "--capture",
+        "match",
+        "--json"
+      ],
+      "output_mode": "json",
+      "exit_code": 0,
+      "expected_data": [
+        {
+          "time": "5ns",
+          "kind": "match"
+        }
+      ],
+      "expected_warnings": []
+    },
+    {
+      "name": "property_switch_json_m2_core",
+      "command": "property",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--scope",
+        "top",
+        "--eval",
+        "data == 8'h0f",
+        "--capture",
+        "switch",
+        "--json"
+      ],
+      "output_mode": "json",
+      "exit_code": 0,
+      "expected_data": [
+        {
+          "time": "10ns",
+          "kind": "assert"
+        }
+      ],
+      "expected_warnings": []
+    }
+  ]
+}

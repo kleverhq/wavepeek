@@ -1,0 +1,8 @@
+---
+source: tests/common/command_cases.rs
+expression: stderr
+---
+error: expr: semantic:EXPR-SEMANTIC-UNKNOWN-SIGNAL: unknown signal 'top.clk'
+--> span 0..15
+source: posedge top.clk
+note: host detail: unknown signal 'top.clk'

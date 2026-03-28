@@ -344,14 +344,10 @@ wavepeek change --waves <file> [--from <time>] [--to <time>] [--scope <path>] --
 - Non-edge: `*` (any change in resolved `--signals`) and `<name>` (any change of that signal)
 - Edge: `posedge <name>`, `negedge <name>`, `edge <name>`
 - Union: `event or event`, `event, event` (exact synonyms)
-- Optional staged clause: `event iff logical_expr`
+- Optional `iff` clause: `event iff logical_expr`
 
 Formal event-expression grammar, precedence, and semantics are defined in
 `docs/expression_lang.md` (Event Expressions).
-
-Current delivery parses `iff` and preserves its binding (`iff` applies to the immediately preceding event term),
-but runtime evaluation of `logical_expr` is intentionally deferred and returns
-`error: args: iff logical expressions are not implemented yet`.
 
 **Behavior:**
 - Name resolution follows `value`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
@@ -420,19 +416,15 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
 - Name/scope resolution follows `value` and `change`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
 - Time boundaries are inclusive (`--from`, `--to`), and time tokens require explicit units aligned to dump precision.
 - Candidate timestamps come from `--on`.
-- Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval` to avoid per-time-unit output spam.
+- Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval`, including raw-event handles referenced through `.triggered()`, to avoid per-time-unit output spam.
 - Supported `--on` forms match `change`: `*`, `<name>`, `posedge <name>`, `negedge <name>`, `edge <name>`, and union forms via `or`/`,`.
 - `--eval` is evaluated on each candidate timestamp with 4-state semantics and 2-state final decision (`1` is true; `0`/`x` are false).
 - `match`: emit every event timestamp where `--eval` is true.
-- `switch`: emit only transitions (`assert` on `0->1`, `deassert` on `1->0`).
+- `switch`: emit only transitions (`assert` on `0->1`, `deassert` on `1->0`) after initializing baseline state from the inclusive range start.
 - `assert`: emit only `0->1` transitions.
 - `deassert`: emit only `1->0` transitions.
 - Human output target is compact and action-oriented: `@123ns assert`, `@1234ns deassert`, or `@1223ps match`.
 - JSON output uses deterministic ordering and a strict envelope contract under `--json`.
-
-**Implementation status:**
-- Runtime evaluation/capture execution is not implemented yet.
-- Current runtime behavior is deterministic: `error: unimplemented: \`property\` command execution is not implemented yet`.
 
 **Expression language contract:**
 - `--on` and `--eval` syntax/semantics are defined in `docs/expression_lang.md`.
@@ -441,8 +433,6 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
   contract.
 
 **Examples:**
-
-Examples below reflect the target command contract; runtime execution remains unimplemented.
 
 ```bash
 # Basic property check on clock edges

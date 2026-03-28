@@ -4,6 +4,11 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
+use crate::engine::expr_runtime::{
+    SharedWaveform, bind_waveform_event_expr, candidate_sources_for_handles,
+    event_candidate_handles, event_expr_contains_wildcard, event_expr_is_any_tracked_only,
+    event_expr_is_edge_only, event_expr_matches, open_shared_waveform,
+};
 use crate::engine::time::{
     DumpTimeContext, ParsedTime, TimeValidationError, format_raw_timestamp,
     parse_dump_time_context, validate_time_token_to_raw,
@@ -11,10 +16,10 @@ use crate::engine::time::{
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
-use crate::expr::{EventKind, EventTerm, parse_event_expr};
+use crate::expr::{BoundEventExpr, EventEvalFrame, ExpressionHost, SignalHandle};
 use crate::waveform::{
-    ChangeCandidateCollectionMode, EdgeClassification, ResolvedSignal, SampledSignalState,
-    SignalOffsetData, Waveform, classify_edge, should_emit_delta_and_update_baseline,
+    ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
+    SignalOffsetData, Waveform, expr_host::WaveformExprHost, should_emit_delta_and_update_baseline,
 };
 
 const EMPTY_WARNING: &str = "no signal changes found in selected time range";
@@ -51,21 +56,6 @@ struct RequestedSignal {
     path: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum ResolvedEventKind {
-    AnyTracked,
-    AnyChange(String),
-    Posedge(String),
-    Negedge(String),
-    Edge(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ResolvedEventTerm {
-    event: ResolvedEventKind,
-    iff_expr: Option<String>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ChangeEngineMode {
     Baseline,
@@ -87,43 +77,13 @@ struct RollingSignalState {
 
 #[derive(Default)]
 struct SampleCache {
-    entries: HashMap<(wellen::SignalRef, u64), SampledSignalState>,
     requested_batches: HashMap<u64, Vec<SampledSignalState>>,
 }
 
 impl SampleCache {
-    fn sample(
-        &mut self,
-        waveform: &mut Waveform,
-        resolved_by_path: &HashMap<String, ResolvedSignal>,
-        path: &str,
-        raw_time: u64,
-    ) -> Result<SampledSignalState, WavepeekError> {
-        let resolved = resolved_by_path.get(path).ok_or_else(|| {
-            WavepeekError::Internal(format!("internal resolved signal is missing for '{path}'"))
-        })?;
-
-        let key = (resolved.signal_ref, raw_time);
-        if let Some(existing) = self.entries.get(&key) {
-            return Ok(existing.clone());
-        }
-
-        let sampled = waveform
-            .sample_resolved_optional(std::slice::from_ref(resolved), raw_time)?
-            .pop()
-            .ok_or_else(|| {
-                WavepeekError::Internal(
-                    "waveform backend returned no samples for requested signal".to_string(),
-                )
-            })?;
-
-        self.entries.insert(key, sampled.clone());
-        Ok(sampled)
-    }
-
     fn sample_requested_batch(
         &mut self,
-        waveform: &mut Waveform,
+        waveform: &SharedWaveform,
         resolved: &[ResolvedSignal],
         raw_time: u64,
     ) -> Result<Vec<SampledSignalState>, WavepeekError> {
@@ -131,13 +91,9 @@ impl SampleCache {
             return Ok(existing.clone());
         }
 
-        let sampled = waveform.sample_resolved_optional(resolved, raw_time)?;
-        for (resolved_signal, sampled_signal) in resolved.iter().zip(sampled.iter()) {
-            self.entries.insert(
-                (resolved_signal.signal_ref, raw_time),
-                sampled_signal.clone(),
-            );
-        }
+        let sampled = waveform
+            .borrow_mut()
+            .sample_resolved_optional(resolved, raw_time)?;
         self.requested_batches.insert(raw_time, sampled.clone());
         Ok(sampled)
     }
@@ -184,26 +140,17 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         warnings.push("limit disabled: --max=unlimited".to_string());
     }
 
-    let mut waveform = Waveform::open(args.waves.as_path())?;
-    let metadata = waveform.metadata()?;
+    let waveform = open_shared_waveform(args.waves.as_path())?;
+    let metadata = waveform.borrow().metadata()?;
 
-    let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
+    let requested_signals = {
+        let waveform_ref = waveform.borrow();
+        resolve_requested_signals(&waveform_ref, args.scope.as_deref(), &args)?
+    };
 
     let event_expr_source = args.on.as_deref().unwrap_or("*");
-    let event_expr = parse_event_expr(event_expr_source)?;
-
-    if event_expr.terms.iter().any(|term| term.iff_expr.is_some()) {
-        return Err(WavepeekError::Args(
-            "iff logical expressions are not implemented yet".to_string(),
-        ));
-    }
-
-    let resolved_event_terms = event_expr
-        .terms
-        .iter()
-        .map(|term| resolve_event_term(term, args.scope.as_deref()))
-        .collect::<Result<Vec<_>, _>>()?;
-    let event_signal_paths = collect_event_signal_paths(resolved_event_terms.as_slice());
+    let (host, bound_event) =
+        bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
 
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
@@ -232,80 +179,58 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         .iter()
         .map(|signal| signal.path.clone())
         .collect::<Vec<_>>();
-    let requested_paths = requested_signals
+    let requested_resolved = waveform.borrow().resolve_signals(&requested_paths_owned)?;
+    let requested_expr_sources = waveform
+        .borrow()
+        .resolve_expr_signals(&requested_paths_owned)?;
+    let tracked_signal_handles = requested_paths_owned
         .iter()
-        .map(|signal| signal.path.as_str())
-        .collect::<Vec<_>>();
-    let requested_resolved = waveform.resolve_signals(&requested_paths_owned)?;
+        .map(|path| {
+            host.resolve_signal(path.as_str())
+                .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-    let mut resolved_by_path = HashMap::new();
-    for signal in &requested_resolved {
-        resolved_by_path.insert(signal.path.clone(), signal.clone());
+    let mut candidate_sources = Vec::new();
+    if event_expr_contains_wildcard(&bound_event) {
+        candidate_sources.extend(requested_expr_sources.iter().cloned());
     }
-
-    let unresolved_event_paths = event_signal_paths
-        .iter()
-        .filter(|path| !resolved_by_path.contains_key(path.as_str()))
-        .cloned()
-        .collect::<Vec<_>>();
-    if !unresolved_event_paths.is_empty() {
-        let extra_resolved = waveform.resolve_signals(unresolved_event_paths.as_slice())?;
-        for signal in extra_resolved {
-            resolved_by_path.insert(signal.path.clone(), signal);
-        }
-    }
-
-    let mut candidate_resolved = Vec::new();
-    if resolved_event_terms
-        .iter()
-        .any(|term| matches!(term.event, ResolvedEventKind::AnyTracked))
-    {
-        candidate_resolved.extend(requested_resolved.iter().cloned());
-    }
-    for path in &event_signal_paths {
-        if let Some(signal) = resolved_by_path.get(path.as_str()) {
-            candidate_resolved.push(signal.clone());
-        }
-    }
+    let event_sources =
+        candidate_sources_for_handles(&host, &event_candidate_handles(&bound_event))?;
+    candidate_sources.extend(event_sources);
     let mut seen = HashSet::new();
-    candidate_resolved.retain(|signal| seen.insert(signal.signal_ref));
-    let requested_index_by_path =
-        requested_resolved
-            .iter()
-            .enumerate()
-            .fold(HashMap::new(), |mut acc, (index, signal)| {
-                acc.entry(signal.path.clone()).or_insert(index);
-                acc
-            });
+    candidate_sources.retain(|signal| seen.insert(signal.signal_ref));
 
     let candidate_mode = map_candidate_mode(args.tune_candidates);
-    let window_timestamp_count =
-        time_window_indices(waveform.timestamps_raw_slice(), from_raw, to_raw)
+    let window_timestamp_count = {
+        let waveform_ref = waveform.borrow();
+        time_window_indices(waveform_ref.timestamps_raw_slice(), from_raw, to_raw)
             .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
-            .unwrap_or(0);
+            .unwrap_or(0)
+    };
     let estimated_work = estimate_auto_dispatch_work(
         window_timestamp_count,
-        candidate_resolved.len(),
+        candidate_sources.len(),
         requested_resolved.len(),
     );
     let engine_mode = select_engine_mode(
         args.tune_engine,
-        resolved_event_terms.as_slice(),
+        event_expr_is_any_tracked_only(&bound_event),
+        event_expr_is_edge_only(&bound_event),
         requested_resolved.len(),
         estimated_work,
     );
 
     let run_output = match engine_mode {
         ChangeEngineMode::Baseline => run_baseline(
-            &mut waveform,
+            &waveform,
+            &host,
+            event_expr_source,
+            &bound_event,
+            tracked_signal_handles.as_slice(),
             requested_signals.as_slice(),
             requested_resolved.as_slice(),
-            resolved_by_path,
-            resolved_event_terms.as_slice(),
-            event_signal_paths.as_slice(),
-            requested_paths.as_slice(),
-            &requested_index_by_path,
-            candidate_resolved.as_slice(),
+            candidate_sources.as_slice(),
             from_raw,
             to_raw,
             baseline_raw,
@@ -315,13 +240,14 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             None,
         )?,
         ChangeEngineMode::Fused => run_fused(
-            &mut waveform,
+            &waveform,
+            &host,
+            event_expr_source,
+            &bound_event,
+            tracked_signal_handles.as_slice(),
             requested_signals.as_slice(),
             requested_resolved.as_slice(),
-            resolved_by_path,
-            resolved_event_terms.as_slice(),
-            event_signal_paths.as_slice(),
-            candidate_resolved.as_slice(),
+            candidate_sources.as_slice(),
             from_raw,
             to_raw,
             baseline_raw,
@@ -330,15 +256,14 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             candidate_mode,
         )?,
         ChangeEngineMode::EdgeFast => run_edge_fast(
-            &mut waveform,
+            &waveform,
+            &host,
+            event_expr_source,
+            &bound_event,
+            tracked_signal_handles.as_slice(),
             requested_signals.as_slice(),
             requested_resolved.as_slice(),
-            resolved_by_path,
-            resolved_event_terms.as_slice(),
-            event_signal_paths.as_slice(),
-            requested_paths.as_slice(),
-            &requested_index_by_path,
-            candidate_resolved.as_slice(),
+            candidate_sources.as_slice(),
             from_raw,
             to_raw,
             baseline_raw,
@@ -387,7 +312,8 @@ fn map_candidate_mode(mode: TuneChangeCandidateMode) -> ChangeCandidateCollectio
 
 fn select_engine_mode(
     mode: TuneChangeEngineMode,
-    resolved_event_terms: &[ResolvedEventTerm],
+    any_tracked_only: bool,
+    edge_only: bool,
     requested_signal_count: usize,
     estimated_work: AutoDispatchWorkEstimate,
 ) -> ChangeEngineMode {
@@ -396,12 +322,6 @@ fn select_engine_mode(
         TuneChangeEngineMode::Fused => ChangeEngineMode::Fused,
         TuneChangeEngineMode::EdgeFast => ChangeEngineMode::EdgeFast,
         TuneChangeEngineMode::Auto => {
-            let any_tracked_only = !resolved_event_terms.is_empty()
-                && resolved_event_terms
-                    .iter()
-                    .all(|term| matches!(term.event, ResolvedEventKind::AnyTracked));
-            let edge_only = is_edge_only_terms(resolved_event_terms);
-
             let route_fused_for_any_tracked = any_tracked_only
                 && requested_signal_count > 0
                 && (requested_signal_count >= AUTO_FUSED_WIDE_SIGNAL_CUTOFF
@@ -438,29 +358,16 @@ fn estimate_auto_dispatch_work(
     }
 }
 
-fn is_edge_only_terms(terms: &[ResolvedEventTerm]) -> bool {
-    !terms.is_empty()
-        && terms.iter().all(|term| {
-            matches!(
-                term.event,
-                ResolvedEventKind::Posedge(_)
-                    | ResolvedEventKind::Negedge(_)
-                    | ResolvedEventKind::Edge(_)
-            )
-        })
-}
-
 #[allow(clippy::too_many_arguments)]
 fn run_baseline(
-    waveform: &mut Waveform,
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
     requested_signals: &[RequestedSignal],
     requested_resolved: &[ResolvedSignal],
-    resolved_by_path: HashMap<String, ResolvedSignal>,
-    resolved_event_terms: &[ResolvedEventTerm],
-    event_signal_paths: &[String],
-    requested_paths: &[&str],
-    requested_index_by_path: &HashMap<String, usize>,
-    candidate_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
     from_raw: u64,
     to_raw: u64,
     baseline_raw: u64,
@@ -472,21 +379,22 @@ fn run_baseline(
     let candidate_times = if let Some(precomputed_candidate_times) = precomputed_candidate_times {
         precomputed_candidate_times
     } else {
-        waveform.collect_change_times_with_mode(
-            candidate_resolved,
-            from_raw,
-            to_raw,
-            candidate_mode,
-        )?
+        waveform
+            .borrow_mut()
+            .collect_expr_candidate_times_with_mode(
+                candidate_sources,
+                from_raw,
+                to_raw,
+                candidate_mode,
+            )?
     };
-    let candidate_schedule =
-        build_candidate_schedule(waveform.timestamps_raw_slice(), &candidate_times)?;
+    let candidate_schedule = {
+        let waveform_ref = waveform.borrow();
+        build_candidate_schedule(waveform_ref.timestamps_raw_slice(), &candidate_times)?
+    };
 
     let mut sample_cache = SampleCache::default();
     sample_cache.sample_requested_batch(waveform, requested_resolved, baseline_raw)?;
-    for path in event_signal_paths {
-        sample_cache.sample(waveform, &resolved_by_path, path.as_str(), baseline_raw)?;
-    }
 
     let mut snapshots = Vec::new();
     let mut truncated = false;
@@ -506,29 +414,6 @@ fn run_baseline(
                 .collect::<Vec<_>>()
         };
 
-        let event_eval = EventEvaluation {
-            resolved_by_path: &resolved_by_path,
-            requested_index_by_path,
-            current_requested: current_samples.as_slice(),
-            previous_requested: previous_samples.as_slice(),
-            previous_timestamp,
-            timestamp,
-        };
-
-        let event_fired = resolved_event_terms.iter().try_fold(false, |fired, term| {
-            if fired {
-                return Ok(true);
-            }
-
-            evaluate_event_term(
-                waveform,
-                &mut sample_cache,
-                term,
-                requested_paths,
-                &event_eval,
-            )
-        })?;
-
         if timestamp <= baseline_raw {
             continue;
         }
@@ -544,7 +429,16 @@ fn run_baseline(
 
         let should_emit =
             should_emit_delta_and_update_baseline(&mut previous_values, &current_values);
-        if !event_fired || !should_emit {
+        if !should_emit {
+            continue;
+        }
+
+        let frame = EventEvalFrame {
+            timestamp,
+            previous_timestamp,
+            tracked_signals: tracked_signal_handles,
+        };
+        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
             continue;
         }
 
@@ -571,15 +465,14 @@ fn run_baseline(
 
 #[allow(clippy::too_many_arguments)]
 fn run_edge_fast(
-    waveform: &mut Waveform,
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
     requested_signals: &[RequestedSignal],
     requested_resolved: &[ResolvedSignal],
-    resolved_by_path: HashMap<String, ResolvedSignal>,
-    resolved_event_terms: &[ResolvedEventTerm],
-    event_signal_paths: &[String],
-    requested_paths: &[&str],
-    requested_index_by_path: &HashMap<String, usize>,
-    candidate_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
     from_raw: u64,
     to_raw: u64,
     baseline_raw: u64,
@@ -588,17 +481,16 @@ fn run_edge_fast(
     candidate_mode: ChangeCandidateCollectionMode,
     force_edge_fast: bool,
 ) -> Result<ChangeRunOutput, WavepeekError> {
-    if !is_edge_only_terms(resolved_event_terms) {
+    if !event_expr_is_edge_only(bound_event) {
         return run_baseline(
             waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
             requested_signals,
             requested_resolved,
-            resolved_by_path,
-            resolved_event_terms,
-            event_signal_paths,
-            requested_paths,
-            requested_index_by_path,
-            candidate_resolved,
+            candidate_sources,
             from_raw,
             to_raw,
             baseline_raw,
@@ -609,12 +501,14 @@ fn run_edge_fast(
         );
     }
 
-    let candidate_times = waveform.collect_change_times_with_mode(
-        candidate_resolved,
-        from_raw,
-        to_raw,
-        candidate_mode,
-    )?;
+    let candidate_times = waveform
+        .borrow_mut()
+        .collect_expr_candidate_times_with_mode(
+            candidate_sources,
+            from_raw,
+            to_raw,
+            candidate_mode,
+        )?;
     if !force_edge_fast
         && candidate_times
             .len()
@@ -623,14 +517,13 @@ fn run_edge_fast(
     {
         return run_baseline(
             waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
             requested_signals,
             requested_resolved,
-            resolved_by_path,
-            resolved_event_terms,
-            event_signal_paths,
-            requested_paths,
-            requested_index_by_path,
-            candidate_resolved,
+            candidate_sources,
             from_raw,
             to_raw,
             baseline_raw,
@@ -642,7 +535,8 @@ fn run_edge_fast(
     }
 
     let candidate_indices = {
-        let time_table = waveform.timestamps_raw_slice();
+        let waveform_ref = waveform.borrow();
+        let time_table = waveform_ref.timestamps_raw_slice();
         candidate_times_to_indices(time_table, candidate_times.as_slice())?
     };
 
@@ -650,16 +544,13 @@ fn run_edge_fast(
         .iter()
         .map(|signal| signal.signal_ref)
         .collect::<HashSet<_>>();
-    for path in event_signal_paths {
-        let resolved = resolved_by_path.get(path).ok_or_else(|| {
-            WavepeekError::Internal(format!(
-                "internal resolved signal is missing for event path '{path}'"
-            ))
-        })?;
-        loaded_signal_refs.insert(resolved.signal_ref);
+    for signal in candidate_sources {
+        loaded_signal_refs.insert(signal.signal_ref);
     }
     let loaded_signal_refs = loaded_signal_refs.into_iter().collect::<Vec<_>>();
-    waveform.ensure_signals_loaded(loaded_signal_refs.as_slice());
+    waveform
+        .borrow_mut()
+        .ensure_signals_loaded(loaded_signal_refs.as_slice());
 
     let mut decode_cache = IndexDecodeCache::default();
     let mut snapshots = Vec::new();
@@ -673,21 +564,6 @@ fn run_edge_fast(
             .checked_sub(1)
             .and_then(|idx| u32::try_from(idx).ok());
 
-        let event_fired = resolved_event_terms.iter().try_fold(false, |fired, term| {
-            if fired {
-                return Ok(true);
-            }
-
-            evaluate_edge_event_term_fast(
-                waveform,
-                &mut decode_cache,
-                &resolved_by_path,
-                term,
-                candidate_index_u32,
-                previous_index,
-            )
-        })?;
-
         if timestamp <= baseline_raw {
             continue;
         }
@@ -695,32 +571,50 @@ fn run_edge_fast(
         let mut any_requested_offset_changed = false;
         let mut delta_confirmed = false;
 
-        for resolved in requested_resolved {
-            let current_offset =
-                waveform.signal_offset_at_index(resolved.signal_ref, candidate_index_u32);
-            let previous_offset = previous_index
-                .and_then(|idx| waveform.signal_offset_at_index(resolved.signal_ref, idx));
-            if current_offset == previous_offset {
-                continue;
-            }
+        {
+            let waveform_ref = waveform.borrow();
+            for resolved in requested_resolved {
+                let current_offset =
+                    waveform_ref.signal_offset_at_index(resolved.signal_ref, candidate_index_u32);
+                let previous_offset = previous_index
+                    .and_then(|idx| waveform_ref.signal_offset_at_index(resolved.signal_ref, idx));
+                if current_offset == previous_offset {
+                    continue;
+                }
 
-            any_requested_offset_changed = true;
-            let current_bits = decode_cache.bits(waveform, resolved, candidate_index_u32)?;
-            let previous_bits = previous_index
-                .map(|idx| decode_cache.bits(waveform, resolved, idx))
-                .transpose()?
-                .flatten();
+                any_requested_offset_changed = true;
+                let current_bits =
+                    decode_cache.bits(&waveform_ref, resolved, candidate_index_u32)?;
+                let previous_bits = previous_index
+                    .map(|idx| decode_cache.bits(&waveform_ref, resolved, idx))
+                    .transpose()?
+                    .flatten();
 
-            if let (Some(previous_bits), Some(current_bits)) =
-                (previous_bits.as_ref(), current_bits.as_ref())
-                && previous_bits != current_bits
-            {
-                delta_confirmed = true;
-                break;
+                if let (Some(previous_bits), Some(current_bits)) =
+                    (previous_bits.as_ref(), current_bits.as_ref())
+                    && previous_bits != current_bits
+                {
+                    delta_confirmed = true;
+                    break;
+                }
             }
         }
 
-        if !event_fired || !any_requested_offset_changed || !delta_confirmed {
+        if !any_requested_offset_changed || !delta_confirmed {
+            continue;
+        }
+
+        let previous_timestamp = if candidate_index == 0 {
+            None
+        } else {
+            Some(waveform.borrow().timestamps_raw_slice()[candidate_index - 1])
+        };
+        let frame = EventEvalFrame {
+            timestamp,
+            previous_timestamp,
+            tracked_signals: tracked_signal_handles,
+        };
+        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
             continue;
         }
 
@@ -734,10 +628,11 @@ fn run_edge_fast(
         let current_samples = requested_resolved
             .iter()
             .map(|resolved| {
+                let waveform_ref = waveform.borrow();
                 Ok(SampledSignalState {
                     path: resolved.path.clone(),
                     width: resolved.width,
-                    bits: decode_cache.bits(waveform, resolved, candidate_index_u32)?,
+                    bits: decode_cache.bits(&waveform_ref, resolved, candidate_index_u32)?,
                 })
             })
             .collect::<Result<Vec<_>, WavepeekError>>()?;
@@ -757,13 +652,14 @@ fn run_edge_fast(
 
 #[allow(clippy::too_many_arguments)]
 fn run_fused(
-    waveform: &mut Waveform,
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
     requested_signals: &[RequestedSignal],
     requested_resolved: &[ResolvedSignal],
-    resolved_by_path: HashMap<String, ResolvedSignal>,
-    resolved_event_terms: &[ResolvedEventTerm],
-    event_signal_paths: &[String],
-    candidate_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
     from_raw: u64,
     to_raw: u64,
     baseline_raw: u64,
@@ -776,14 +672,13 @@ fn run_fused(
         .iter()
         .map(|signal| signal.signal_ref)
         .collect::<HashSet<_>>();
-    for path in event_signal_paths {
-        let signal = resolved_by_path.get(path).ok_or_else(|| {
-            WavepeekError::Internal(format!(
-                "internal resolved signal is missing for event path '{path}'"
-            ))
-        })?;
+    for signal in candidate_sources {
         if tracked_seen.insert(signal.signal_ref) {
-            tracked_resolved.push(signal.clone());
+            tracked_resolved.push(ResolvedSignal {
+                path: signal.path.clone(),
+                signal_ref: signal.signal_ref,
+                width: signal.expr_type.width.max(1),
+            });
         }
     }
 
@@ -791,11 +686,6 @@ fn run_fused(
         .iter()
         .enumerate()
         .map(|(index, signal)| (signal.signal_ref, index))
-        .collect::<HashMap<_, _>>();
-    let tracked_index_by_path = tracked_resolved
-        .iter()
-        .enumerate()
-        .map(|(index, signal)| (signal.path.clone(), index))
         .collect::<HashMap<_, _>>();
     let requested_tracked_indices = requested_resolved
         .iter()
@@ -820,7 +710,7 @@ fn run_fused(
         }
         slots
     };
-    let candidate_tracked_indices = candidate_resolved
+    let candidate_tracked_indices = candidate_sources
         .iter()
         .map(|signal| {
             tracked_index_by_ref
@@ -839,31 +729,42 @@ fn run_fused(
         .iter()
         .map(|signal| signal.signal_ref)
         .collect::<Vec<_>>();
-    waveform.ensure_signals_loaded(all_signal_refs.as_slice());
+    waveform
+        .borrow_mut()
+        .ensure_signals_loaded(all_signal_refs.as_slice());
 
     let stream_candidate_times = if should_use_stream_candidates_in_fused(candidate_mode) {
-        Some(waveform.collect_change_times_with_mode(
-            candidate_resolved,
-            from_raw,
-            to_raw,
-            ChangeCandidateCollectionMode::Stream,
-        )?)
+        Some(
+            waveform
+                .borrow_mut()
+                .collect_expr_candidate_times_with_mode(
+                    candidate_sources,
+                    from_raw,
+                    to_raw,
+                    ChangeCandidateCollectionMode::Stream,
+                )?,
+        )
     } else {
         None
     };
 
-    let time_table = waveform.timestamps_raw_slice();
-    let Some((start_idx, end_idx_exclusive)) = time_window_indices(time_table, from_raw, to_raw)
-    else {
-        return Ok(ChangeRunOutput {
-            snapshots: Vec::new(),
-            truncated: false,
-        });
+    let (start_idx, end_idx_exclusive) = {
+        let waveform_ref = waveform.borrow();
+        let Some(window) =
+            time_window_indices(waveform_ref.timestamps_raw_slice(), from_raw, to_raw)
+        else {
+            return Ok(ChangeRunOutput {
+                snapshots: Vec::new(),
+                truncated: false,
+            });
+        };
+        window
     };
 
     let stream_candidate_indices = if let Some(stream_times) = stream_candidate_times {
+        let waveform_ref = waveform.borrow();
         Some(candidate_times_to_indices(
-            time_table,
+            waveform_ref.timestamps_raw_slice(),
             stream_times.as_slice(),
         )?)
     } else {
@@ -883,9 +784,12 @@ fn run_fused(
         let previous_idx = u32::try_from(start_idx - 1).map_err(|_| {
             WavepeekError::Internal("time table index exceeds u32 range".to_string())
         })?;
+        let waveform_ref = waveform.borrow();
         for signal in &tracked_resolved {
-            let offset = waveform.signal_offset_at_index(signal.signal_ref, previous_idx);
-            let bits = waveform.decode_signal_at_index(signal, previous_idx)?.bits;
+            let offset = waveform_ref.signal_offset_at_index(signal.signal_ref, previous_idx);
+            let bits = waveform_ref
+                .decode_signal_at_index(signal, previous_idx)?
+                .bits;
             rolling.push(RollingSignalState { offset, bits });
         }
     }
@@ -896,13 +800,8 @@ fn run_fused(
     let mut truncated = false;
     let mut stream_cursor = 0usize;
 
-    for (idx, timestamp) in time_table
-        .iter()
-        .copied()
-        .enumerate()
-        .take(end_idx_exclusive)
-        .skip(start_idx)
-    {
+    for idx in start_idx..end_idx_exclusive {
+        let timestamp = waveform.borrow().timestamps_raw_slice()[idx];
         changed_offsets.fill(false);
         previous_bits.fill(None);
 
@@ -913,26 +812,31 @@ fn run_fused(
         let mut any_requested_offset_changed = false;
         let mut delta_confirmed = false;
 
-        for (tracked_index, signal) in tracked_resolved.iter().enumerate() {
-            let current_offset = waveform.signal_offset_at_index(signal.signal_ref, idx_u32);
-            if current_offset == rolling[tracked_index].offset {
-                continue;
-            }
+        {
+            let waveform_ref = waveform.borrow();
+            for (tracked_index, signal) in tracked_resolved.iter().enumerate() {
+                let current_offset =
+                    waveform_ref.signal_offset_at_index(signal.signal_ref, idx_u32);
+                if current_offset == rolling[tracked_index].offset {
+                    continue;
+                }
 
-            changed_offsets[tracked_index] = true;
-            let previous = rolling[tracked_index].bits.clone();
-            previous_bits[tracked_index] = Some(previous.clone());
+                changed_offsets[tracked_index] = true;
+                let previous = rolling[tracked_index].bits.clone();
+                previous_bits[tracked_index] = Some(previous.clone());
 
-            rolling[tracked_index].offset = current_offset;
-            rolling[tracked_index].bits = waveform.decode_signal_at_index(signal, idx_u32)?.bits;
+                rolling[tracked_index].offset = current_offset;
+                rolling[tracked_index].bits =
+                    waveform_ref.decode_signal_at_index(signal, idx_u32)?.bits;
 
-            if requested_slot_by_tracked[tracked_index].is_some() {
-                any_requested_offset_changed = true;
-                if let (Some(previous), Some(current)) =
-                    (previous.as_ref(), rolling[tracked_index].bits.as_ref())
-                    && previous != current
-                {
-                    delta_confirmed = true;
+                if requested_slot_by_tracked[tracked_index].is_some() {
+                    any_requested_offset_changed = true;
+                    if let (Some(previous), Some(current)) =
+                        (previous.as_ref(), rolling[tracked_index].bits.as_ref())
+                        && previous != current
+                    {
+                        delta_confirmed = true;
+                    }
                 }
             }
         }
@@ -953,33 +857,25 @@ fn run_fused(
                 .iter()
                 .any(|candidate_index| changed_offsets[*candidate_index])
         };
-        if !is_candidate {
+        if !is_candidate
+            || timestamp <= baseline_raw
+            || !any_requested_offset_changed
+            || !delta_confirmed
+        {
             continue;
         }
 
-        if timestamp <= baseline_raw {
-            continue;
-        }
-
-        let event_fired = resolved_event_terms.iter().try_fold(false, |fired, term| {
-            if fired {
-                return Ok(true);
-            }
-
-            evaluate_event_term_fused(
-                term,
-                &tracked_index_by_path,
-                changed_offsets.as_slice(),
-                previous_bits.as_slice(),
-                rolling.as_slice(),
-                any_requested_offset_changed,
-            )
-        })?;
-        if !event_fired {
-            continue;
-        }
-
-        if !any_requested_offset_changed || !delta_confirmed {
+        let previous_timestamp = if idx == 0 {
+            None
+        } else {
+            Some(waveform.borrow().timestamps_raw_slice()[idx - 1])
+        };
+        let frame = EventEvalFrame {
+            timestamp,
+            previous_timestamp,
+            tracked_signals: tracked_signal_handles,
+        };
+        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
             continue;
         }
 
@@ -1067,116 +963,6 @@ fn candidate_times_to_indices(
         .collect()
 }
 
-fn evaluate_edge_event_term_fast(
-    waveform: &Waveform,
-    decode_cache: &mut IndexDecodeCache,
-    resolved_by_path: &HashMap<String, ResolvedSignal>,
-    term: &ResolvedEventTerm,
-    current_index: u32,
-    previous_index: Option<u32>,
-) -> Result<bool, WavepeekError> {
-    let Some(previous_index) = previous_index else {
-        return Ok(false);
-    };
-
-    let path = match &term.event {
-        ResolvedEventKind::Posedge(path)
-        | ResolvedEventKind::Negedge(path)
-        | ResolvedEventKind::Edge(path) => path,
-        _ => {
-            return Err(WavepeekError::Internal(
-                "edge-fast engine encountered a non-edge event term".to_string(),
-            ));
-        }
-    };
-    let resolved = resolved_by_path.get(path).ok_or_else(|| {
-        WavepeekError::Internal(format!(
-            "internal resolved signal is missing for event path '{path}'"
-        ))
-    })?;
-
-    let current_offset = waveform.signal_offset_at_index(resolved.signal_ref, current_index);
-    let previous_offset = waveform.signal_offset_at_index(resolved.signal_ref, previous_index);
-    if current_offset == previous_offset {
-        return Ok(false);
-    }
-
-    let previous_bits = decode_cache.bits(waveform, resolved, previous_index)?;
-    let current_bits = decode_cache.bits(waveform, resolved, current_index)?;
-    let Some(previous_bits) = previous_bits.as_ref() else {
-        return Ok(false);
-    };
-    let Some(current_bits) = current_bits.as_ref() else {
-        return Ok(false);
-    };
-
-    let edge = classify_edge(previous_bits.as_str(), current_bits.as_str());
-    match &term.event {
-        ResolvedEventKind::Posedge(_) => Ok(edge.posedge),
-        ResolvedEventKind::Negedge(_) => Ok(edge.negedge),
-        ResolvedEventKind::Edge(_) => Ok(edge.edge()),
-        _ => Ok(false),
-    }
-}
-
-fn evaluate_event_term_fused(
-    term: &ResolvedEventTerm,
-    tracked_index_by_path: &HashMap<String, usize>,
-    changed_offsets: &[bool],
-    previous_bits: &[Option<Option<String>>],
-    rolling: &[RollingSignalState],
-    any_requested_offset_changed: bool,
-) -> Result<bool, WavepeekError> {
-    match &term.event {
-        ResolvedEventKind::AnyTracked => Ok(any_requested_offset_changed),
-        ResolvedEventKind::AnyChange(path) => {
-            let tracked_index = tracked_index_by_path.get(path).copied().ok_or_else(|| {
-                WavepeekError::Internal(format!(
-                    "event signal '{path}' is missing from fused tracking state"
-                ))
-            })?;
-            if !changed_offsets[tracked_index] {
-                return Ok(false);
-            }
-            let previous = previous_bits[tracked_index].as_ref();
-            let Some(previous) = previous else {
-                return Ok(false);
-            };
-            Ok(previous != &rolling[tracked_index].bits)
-        }
-        ResolvedEventKind::Posedge(path)
-        | ResolvedEventKind::Negedge(path)
-        | ResolvedEventKind::Edge(path) => {
-            let tracked_index = tracked_index_by_path.get(path).copied().ok_or_else(|| {
-                WavepeekError::Internal(format!(
-                    "event signal '{path}' is missing from fused tracking state"
-                ))
-            })?;
-            if !changed_offsets[tracked_index] {
-                return Ok(false);
-            }
-            let previous = previous_bits[tracked_index]
-                .as_ref()
-                .and_then(|value| value.as_ref());
-            let current = rolling[tracked_index].bits.as_ref();
-            let Some(previous) = previous else {
-                return Ok(false);
-            };
-            let Some(current) = current else {
-                return Ok(false);
-            };
-
-            let edge = classify_edge(previous.as_str(), current.as_str());
-            match &term.event {
-                ResolvedEventKind::Posedge(_) => Ok(edge.posedge),
-                ResolvedEventKind::Negedge(_) => Ok(edge.negedge),
-                ResolvedEventKind::Edge(_) => Ok(edge.edge()),
-                _ => Ok(false),
-            }
-        }
-    }
-}
-
 fn time_window_indices(time_table: &[u64], from_raw: u64, to_raw: u64) -> Option<(usize, usize)> {
     if time_table.is_empty() || from_raw > to_raw {
         return None;
@@ -1195,28 +981,6 @@ fn time_window_indices(time_table: &[u64], from_raw: u64, to_raw: u64) -> Option
     }
 
     Some((start_idx, end_idx_exclusive))
-}
-
-fn collect_event_signal_paths(terms: &[ResolvedEventTerm]) -> Vec<String> {
-    let mut paths = Vec::new();
-
-    for term in terms {
-        let maybe_path = match &term.event {
-            ResolvedEventKind::AnyTracked => None,
-            ResolvedEventKind::AnyChange(path)
-            | ResolvedEventKind::Posedge(path)
-            | ResolvedEventKind::Negedge(path)
-            | ResolvedEventKind::Edge(path) => Some(path.clone()),
-        };
-
-        if let Some(path) = maybe_path
-            && !paths.contains(&path)
-        {
-            paths.push(path);
-        }
-    }
-
-    paths
 }
 
 fn resolve_requested_signals(
@@ -1245,47 +1009,6 @@ fn resolve_requested_signals(
     }
 
     Ok(resolved)
-}
-
-fn resolve_event_term(
-    term: &EventTerm,
-    scope: Option<&str>,
-) -> Result<ResolvedEventTerm, WavepeekError> {
-    let event = match &term.event {
-        EventKind::AnyTracked => ResolvedEventKind::AnyTracked,
-        EventKind::AnyChange(name) => {
-            let path = validate_event_name(name.as_str())?;
-            ResolvedEventKind::AnyChange(resolve_token_to_path(path, scope)?)
-        }
-        EventKind::Posedge(name) => {
-            let path = validate_event_name(name.as_str())?;
-            ResolvedEventKind::Posedge(resolve_token_to_path(path, scope)?)
-        }
-        EventKind::Negedge(name) => {
-            let path = validate_event_name(name.as_str())?;
-            ResolvedEventKind::Negedge(resolve_token_to_path(path, scope)?)
-        }
-        EventKind::Edge(name) => {
-            let path = validate_event_name(name.as_str())?;
-            ResolvedEventKind::Edge(resolve_token_to_path(path, scope)?)
-        }
-    };
-
-    Ok(ResolvedEventTerm {
-        event,
-        iff_expr: term.iff_expr.clone(),
-    })
-}
-
-fn validate_event_name(name: &str) -> Result<&str, WavepeekError> {
-    let name = name.trim();
-    if name.is_empty() {
-        return Err(WavepeekError::Args(
-            "invalid --on expression: missing signal name. See 'wavepeek change --help'."
-                .to_string(),
-        ));
-    }
-    Ok(name)
 }
 
 fn resolve_token_to_path(token: &str, scope: Option<&str>) -> Result<String, WavepeekError> {
@@ -1325,110 +1048,6 @@ fn build_candidate_schedule(
         .collect()
 }
 
-struct EventEvaluation<'a> {
-    resolved_by_path: &'a HashMap<String, ResolvedSignal>,
-    requested_index_by_path: &'a HashMap<String, usize>,
-    current_requested: &'a [SampledSignalState],
-    previous_requested: &'a [SampledSignalState],
-    previous_timestamp: Option<u64>,
-    timestamp: u64,
-}
-
-fn evaluate_event_term(
-    waveform: &mut Waveform,
-    cache: &mut SampleCache,
-    term: &ResolvedEventTerm,
-    tracked_paths: &[&str],
-    eval: &EventEvaluation<'_>,
-) -> Result<bool, WavepeekError> {
-    match &term.event {
-        ResolvedEventKind::AnyTracked => {
-            for path in tracked_paths {
-                let Some(&index) = eval.requested_index_by_path.get(*path) else {
-                    return Err(WavepeekError::Internal(format!(
-                        "tracked signal '{path}' is missing from requested sample map"
-                    )));
-                };
-                if eval.current_requested[index].bits != eval.previous_requested[index].bits {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
-        }
-        ResolvedEventKind::AnyChange(path) => {
-            let (previous_bits, current_bits) =
-                sample_event_bits(waveform, cache, path.as_str(), eval)?;
-            Ok(current_bits != previous_bits)
-        }
-        ResolvedEventKind::Posedge(path) => {
-            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
-            Ok(edge.posedge)
-        }
-        ResolvedEventKind::Negedge(path) => {
-            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
-            Ok(edge.negedge)
-        }
-        ResolvedEventKind::Edge(path) => {
-            let edge = signal_edge(waveform, cache, path.as_str(), eval)?;
-            Ok(edge.edge())
-        }
-    }
-}
-
-fn sample_event_bits(
-    waveform: &mut Waveform,
-    cache: &mut SampleCache,
-    path: &str,
-    eval: &EventEvaluation<'_>,
-) -> Result<(Option<String>, Option<String>), WavepeekError> {
-    if let Some(&index) = eval.requested_index_by_path.get(path) {
-        return Ok((
-            eval.previous_requested[index].bits.clone(),
-            eval.current_requested[index].bits.clone(),
-        ));
-    }
-
-    let current = cache.sample(waveform, eval.resolved_by_path, path, eval.timestamp)?;
-    let previous = eval
-        .previous_timestamp
-        .map(|previous_timestamp| {
-            cache.sample(waveform, eval.resolved_by_path, path, previous_timestamp)
-        })
-        .transpose()?;
-
-    Ok((previous.and_then(|sample| sample.bits), current.bits))
-}
-
-fn signal_edge(
-    waveform: &mut Waveform,
-    cache: &mut SampleCache,
-    path: &str,
-    eval: &EventEvaluation<'_>,
-) -> Result<EdgeClassification, WavepeekError> {
-    let Some(_) = eval.previous_timestamp else {
-        return Ok(EdgeClassification {
-            posedge: false,
-            negedge: false,
-        });
-    };
-
-    let (previous_bits, current_bits) = sample_event_bits(waveform, cache, path, eval)?;
-    let Some(previous_bits) = previous_bits else {
-        return Ok(EdgeClassification {
-            posedge: false,
-            negedge: false,
-        });
-    };
-    let Some(current_bits) = current_bits else {
-        return Ok(EdgeClassification {
-            posedge: false,
-            negedge: false,
-        });
-    };
-
-    Ok(classify_edge(previous_bits.as_str(), current_bits.as_str()))
-}
-
 fn parse_bound_time(
     token: &str,
     arg_name: &str,
@@ -1465,28 +1084,20 @@ fn parse_bound_time(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        AutoDispatchWorkEstimate, ChangeEngineMode, ResolvedEventKind, ResolvedEventTerm,
-        select_engine_mode,
-    };
+    use super::{AutoDispatchWorkEstimate, ChangeEngineMode, select_engine_mode};
     use crate::cli::change::TuneChangeEngineMode;
 
-    fn term(event: ResolvedEventKind) -> ResolvedEventTerm {
-        ResolvedEventTerm {
-            event,
-            iff_expr: None,
-        }
-    }
-
     fn select_auto_mode_for_profile(
-        terms: &[ResolvedEventTerm],
+        any_tracked_only: bool,
+        edge_only: bool,
         requested_signal_count: usize,
         fused_work: usize,
         edge_work: usize,
     ) -> ChangeEngineMode {
         select_engine_mode(
             TuneChangeEngineMode::Auto,
-            terms,
+            any_tracked_only,
+            edge_only,
             requested_signal_count,
             AutoDispatchWorkEstimate {
                 fused_work,
@@ -1497,90 +1108,70 @@ mod tests {
 
     #[test]
     fn auto_engine_mode_uses_fused_for_wide_any_tracked_only() {
-        let terms = vec![term(ResolvedEventKind::AnyTracked)];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 64, 500_000, 0);
+        let selected = select_auto_mode_for_profile(true, false, 64, 500_000, 0);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
     fn auto_engine_mode_uses_fused_for_mid_any_tracked_only() {
-        let terms = vec![term(ResolvedEventKind::AnyTracked)];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 250_000, 0);
+        let selected = select_auto_mode_for_profile(true, false, 10, 250_000, 0);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
     fn auto_engine_mode_uses_fused_for_wide_selective_edge_events() {
-        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 128, 0, 1_500_000);
+        let selected = select_auto_mode_for_profile(false, true, 128, 0, 1_500_000);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
     fn auto_engine_mode_uses_edge_fast_for_ultra_wide_selective_edge_events() {
-        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 128, 0, 2_500_000);
+        let selected = select_auto_mode_for_profile(false, true, 128, 0, 2_500_000);
 
         assert_eq!(selected, ChangeEngineMode::EdgeFast);
     }
 
     #[test]
     fn auto_engine_mode_uses_fused_for_mid_edge_only_terms() {
-        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 0, 1_500_000);
+        let selected = select_auto_mode_for_profile(false, true, 10, 0, 1_500_000);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }
 
     #[test]
     fn auto_engine_mode_keeps_baseline_for_narrow_selective_edge_events() {
-        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 16, 2_000, 2_000);
+        let selected = select_auto_mode_for_profile(false, true, 16, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
     fn auto_engine_mode_keeps_baseline_for_low_signal_count_edge_only_terms() {
-        let terms = vec![term(ResolvedEventKind::Posedge("top.clk".to_string()))];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 1, 0, 2_000_000);
+        let selected = select_auto_mode_for_profile(false, true, 1, 0, 2_000_000);
 
         assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
     fn auto_engine_mode_keeps_baseline_for_low_work_any_tracked_only() {
-        let terms = vec![term(ResolvedEventKind::AnyTracked)];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 10, 2_000, 2_000);
+        let selected = select_auto_mode_for_profile(true, false, 10, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
     fn auto_engine_mode_keeps_baseline_below_fused_threshold() {
-        let terms = vec![term(ResolvedEventKind::AnyTracked)];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 31, 2_000, 2_000);
+        let selected = select_auto_mode_for_profile(true, false, 31, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Baseline);
     }
 
     #[test]
     fn auto_engine_mode_uses_fused_at_threshold_for_any_tracked() {
-        let terms = vec![term(ResolvedEventKind::AnyTracked)];
-
-        let selected = select_auto_mode_for_profile(terms.as_slice(), 32, 2_000, 2_000);
+        let selected = select_auto_mode_for_profile(true, false, 32, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
     }

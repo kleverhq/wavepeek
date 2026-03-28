@@ -11,7 +11,7 @@ use crate::waveform::{ExprResolvedSignal, Waveform};
 
 #[derive(Debug)]
 pub(crate) struct WaveformExprHost {
-    waveform: RefCell<Waveform>,
+    waveform: Rc<RefCell<Waveform>>,
     handles_by_name: RefCell<HashMap<String, SignalHandle>>,
     signals_by_handle: RefCell<HashMap<SignalHandle, Rc<ExprResolvedSignal>>>,
     next_handle: Cell<u32>,
@@ -19,13 +19,17 @@ pub(crate) struct WaveformExprHost {
 
 impl WaveformExprHost {
     pub(crate) fn open(path: &Path) -> Result<Self, WavepeekError> {
-        let waveform = Waveform::open(path)?;
-        Ok(Self::new(waveform))
+        let waveform = Rc::new(RefCell::new(Waveform::open(path)?));
+        Ok(Self::from_shared(waveform))
     }
 
     pub(crate) fn new(waveform: Waveform) -> Self {
+        Self::from_shared(Rc::new(RefCell::new(waveform)))
+    }
+
+    pub(crate) fn from_shared(waveform: Rc<RefCell<Waveform>>) -> Self {
         Self {
-            waveform: RefCell::new(waveform),
+            waveform,
             handles_by_name: RefCell::new(HashMap::new()),
             signals_by_handle: RefCell::new(HashMap::new()),
             next_handle: Cell::new(1),
@@ -47,6 +51,16 @@ impl WaveformExprHost {
                 primary_span: Span::new(0, 0),
                 notes: vec![],
             })
+    }
+
+    pub(crate) fn resolved_signal_for_handle(
+        &self,
+        handle: SignalHandle,
+    ) -> Result<ExprResolvedSignal, WavepeekError> {
+        Ok((*self
+            .resolved_signal(handle)
+            .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))?)
+        .clone())
     }
 }
 

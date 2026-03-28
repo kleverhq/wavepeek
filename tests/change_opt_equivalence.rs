@@ -4,7 +4,7 @@ use serde_json::{Value, json};
 use tempfile::NamedTempFile;
 
 mod common;
-use common::wavepeek_cmd;
+use common::{fixture_path, wavepeek_cmd};
 
 fn parse_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("stdout should be valid json")
@@ -263,6 +263,38 @@ fn change_redundant_same_value_dump_does_not_emit_row() {
                 "time": "10ns",
                 "signals": [
                     {"path": "top.sig", "value": "4'h1"}
+                ]
+            }
+        ])
+    );
+}
+
+#[test]
+fn change_typed_iff_matches_between_modes() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let value = run_change_json_with_modes(
+        fixture.as_str(),
+        &[
+            "--scope",
+            "top",
+            "--signals",
+            "data,clk",
+            "--on",
+            "posedge clk iff data == 8'h00",
+        ],
+    );
+
+    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(
+        value["data"],
+        json!([
+            {
+                "time": "5ns",
+                "signals": [
+                    {"path": "top.data", "value": "8'h00"},
+                    {"path": "top.clk", "value": "1'h1"}
                 ]
             }
         ])

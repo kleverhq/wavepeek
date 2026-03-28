@@ -270,6 +270,16 @@ impl Waveform {
         })
     }
 
+    pub(crate) fn resolve_expr_signals(
+        &self,
+        canonical_paths: &[String],
+    ) -> Result<Vec<ExprResolvedSignal>, WavepeekError> {
+        canonical_paths
+            .iter()
+            .map(|path| self.resolve_expr_signal(path.as_str()))
+            .collect()
+    }
+
     pub fn sample_resolved_optional(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -519,6 +529,76 @@ impl Waveform {
                     changed.insert(*timestamp);
                 }
                 previous_offset = current_offset;
+            }
+        }
+
+        Ok(changed.into_iter().collect())
+    }
+
+    pub(crate) fn collect_expr_candidate_times_with_mode(
+        &mut self,
+        resolved: &[ExprResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+        mode: ChangeCandidateCollectionMode,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if resolved.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut value_sources = Vec::new();
+        let mut event_sources = Vec::new();
+        for signal in resolved {
+            if matches!(signal.expr_type.kind, ExprTypeKind::Event) {
+                event_sources.push(signal.clone());
+            } else {
+                value_sources.push(ResolvedSignal {
+                    path: signal.path.clone(),
+                    signal_ref: signal.signal_ref,
+                    width: signal.expr_type.width.max(1),
+                });
+            }
+        }
+
+        let mut changed = BTreeSet::new();
+        if !value_sources.is_empty() {
+            changed.extend(self.collect_change_times_with_mode(
+                value_sources.as_slice(),
+                from_raw,
+                to_raw,
+                mode,
+            )?);
+        }
+
+        if !event_sources.is_empty() {
+            let Some((start_idx, end_idx_exclusive)) =
+                time_window_indices(self.inner.time_table(), from_raw, to_raw)
+            else {
+                return Ok(changed.into_iter().collect());
+            };
+
+            let signal_refs = event_sources
+                .iter()
+                .map(|signal| signal.signal_ref)
+                .collect::<Vec<_>>();
+            self.ensure_signals_loaded(signal_refs.as_slice());
+            let time_table = self.inner.time_table();
+
+            for signal in &event_sources {
+                let loaded = self.inner.get_signal(signal.signal_ref).ok_or_else(|| {
+                    WavepeekError::Internal(format!(
+                        "signal '{}' could not be loaded from waveform backend",
+                        signal.path
+                    ))
+                })?;
+
+                for raw_index in loaded.time_indices() {
+                    let idx = *raw_index as usize;
+                    if idx < start_idx || idx >= end_idx_exclusive {
+                        continue;
+                    }
+                    changed.insert(time_table[idx]);
+                }
             }
         }
 
@@ -1112,18 +1192,21 @@ fn scope_type_alias(scope_type: ScopeType) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct EdgeClassification {
     pub posedge: bool,
     pub negedge: bool,
 }
 
+#[allow(dead_code)]
 impl EdgeClassification {
     pub(crate) fn edge(self) -> bool {
         self.posedge || self.negedge
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn classify_edge(previous_bits: &str, current_bits: &str) -> EdgeClassification {
     let Some(previous_lsb) = previous_bits.chars().last() else {
         return EdgeClassification {
@@ -1176,6 +1259,7 @@ pub(crate) fn should_emit_delta_and_update_baseline(
     changed
 }
 
+#[allow(dead_code)]
 fn normalize_to_four_state(bit: char) -> char {
     match bit.to_ascii_lowercase() {
         '0' => '0',

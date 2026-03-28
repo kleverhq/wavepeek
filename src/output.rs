@@ -121,6 +121,11 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
+        CommandData::Property(rows) => rows
+            .iter()
+            .map(|row| format!("@{} {}", row.time, row.kind))
+            .collect::<Vec<_>>()
+            .join("\n"),
     }
 }
 
@@ -254,6 +259,25 @@ mod tests {
         assert_eq!(value["data"][0]["path"], "top.cpu");
         assert_eq!(value["data"][0]["depth"], 1);
         assert_eq!(value["data"][0]["kind"], "module");
+    }
+
+    #[test]
+    fn property_rows_render_as_time_and_kind_lines() {
+        let rendered = render_human(
+            &CommandData::Property(vec![
+                crate::engine::property::PropertyCaptureRow {
+                    time: "10ns".to_string(),
+                    kind: crate::engine::property::PropertyResultKind::Assert,
+                },
+                crate::engine::property::PropertyCaptureRow {
+                    time: "25ns".to_string(),
+                    kind: crate::engine::property::PropertyResultKind::Deassert,
+                },
+            ]),
+            HumanRenderOptions::default(),
+        );
+
+        assert_eq!(rendered, "@10ns assert\n@25ns deassert");
     }
 
     #[test]

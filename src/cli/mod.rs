@@ -107,24 +107,24 @@ Behavior:
 - Candidate timestamps come from `--on` triggers; omitted `--on` behaves as wildcard (`*`).
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result and truncation conditions may emit warnings.
-- `iff` clauses are parsed, but logical-condition execution for `iff` is deferred in the current release.
+- Event triggers may use typed `iff` logical expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to inspect value transitions over bounded time windows."#
     )]
     Change(change::ChangeArgs),
     #[command(
-        about = "Check property over event triggers (not implemented yet)",
+        about = "Check property over event triggers",
         long_about = r#"Check property over event triggers.
 
 Behavior:
-- Intended semantics: evaluate `--eval` on timestamps selected by `--on`.
+- Evaluate `--eval` on timestamps selected by `--on`.
 - `--capture` controls reporting mode (`match`, `switch`, `assert`, `deassert`).
 - Omitted `--on` behaves as wildcard (`*`).
-- Execution is not implemented yet.
+- `switch` emits `assert` and `deassert` rows only for state transitions after the range-start baseline probe.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this help as the parse/contract reference until runtime execution is implemented."#
+Use this command to check event-driven property matches and transitions over bounded time windows."#
     )]
     Property(property::PropertyArgs),
     #[command(

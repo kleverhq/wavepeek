@@ -162,7 +162,7 @@ fn top_level_help_documents_general_conventions() {
 }
 
 #[test]
-fn top_level_help_marks_unimplemented_subcommands() {
+fn top_level_help_describes_shipped_subcommands_without_unimplemented_markers() {
     let mut command = wavepeek_cmd();
 
     command
@@ -185,8 +185,12 @@ fn top_level_help_marks_unimplemented_subcommands() {
                 .not(),
         )
         .stdout(predicate::str::contains(
-            "Check property over event triggers (not implemented yet)",
-        ));
+            "Check property over event triggers",
+        ))
+        .stdout(
+            predicate::str::contains("Check property over event triggers (not implemented yet)")
+                .not(),
+        );
 }
 
 #[test]
@@ -378,8 +382,7 @@ fn subcommand_short_help_includes_long_help_contract_markers() {
         (
             "property",
             &[
-                "Intended semantics",
-                "Execution is not implemented yet",
+                "`switch` emits `assert` and `deassert` rows",
                 "--capture",
                 "wavepeek schema",
             ],
@@ -455,7 +458,7 @@ fn shipped_commands_help_is_self_descriptive() {
                 "Range boundaries are inclusive",
                 "omitted `--on` behaves as wildcard",
                 "Empty-result and truncation conditions may emit warnings",
-                "logical-condition execution for `iff` is deferred",
+                "Candidate timestamps come from `--on` triggers",
                 "wavepeek schema",
             ],
         ),
@@ -463,9 +466,9 @@ fn shipped_commands_help_is_self_descriptive() {
             "property",
             &[
                 "Check property over event triggers",
-                "Intended semantics",
+                "Evaluate `--eval` on timestamps selected by `--on`",
                 "--capture",
-                "Execution is not implemented yet",
+                "`switch` emits `assert` and `deassert` rows",
                 "wavepeek schema",
             ],
         ),
@@ -535,7 +538,9 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         .args(["property", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Intended semantics"))
+        .stdout(predicate::str::contains(
+            "`switch` emits `assert` and `deassert` rows",
+        ))
         .stdout(predicate::str::contains("--capture"));
 }
 
@@ -586,11 +591,11 @@ fn help_documents_unlimited_limit_literals_for_all_affected_commands() {
 }
 
 #[test]
-fn property_accepts_capture_flag_in_cli_then_fails_as_unimplemented() {
+fn property_accepts_capture_flag_in_cli_then_runs() {
     let fixture = common::fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    wavepeek_cmd()
+    let output = wavepeek_cmd()
         .args([
             "property",
             "--waves",
@@ -601,15 +606,21 @@ fn property_accepts_capture_flag_in_cli_then_fails_as_unimplemented() {
             "1",
             "--capture",
             "switch",
+            "--json",
         ])
-        .assert()
-        .failure()
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: unimplemented:"))
-        .stderr(predicate::str::contains("error: args:").not())
-        .stderr(predicate::str::contains(
-            "`property` command execution is not implemented yet",
-        ));
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let value: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("stdout should be valid json");
+    assert_eq!(value["command"], "property");
+    assert!(
+        value["data"].is_array(),
+        "property json output should use an array payload"
+    );
 }
 
 #[test]
@@ -633,9 +644,7 @@ fn unimplemented_subcommands_disclose_status_in_help() {
         .args(["property", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains(
-            "Execution is not implemented yet.",
-        ));
+        .stdout(predicate::str::contains("Execution is not implemented yet.").not());
 }
 
 #[test]

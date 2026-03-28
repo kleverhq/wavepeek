@@ -106,6 +106,28 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
 }
 
 #[test]
+fn change_vcd_and_fst_payloads_match_for_typed_iff_trigger() {
+    let vcd_fixture = fixture_path("m2_core.vcd");
+    let vcd_fixture = vcd_fixture.to_string_lossy().into_owned();
+    let fst_fixture = fixture_path("m2_core.fst");
+    let fst_fixture = fst_fixture.to_string_lossy().into_owned();
+
+    let args = [
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk",
+        "--on",
+        "posedge clk iff data == 8'h00",
+    ];
+    let vcd_json = run_change_json(vcd_fixture.as_str(), &args);
+    let fst_json = run_change_json(fst_fixture.as_str(), &args);
+
+    assert_eq!(vcd_json["data"], fst_json["data"]);
+    assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+}
+
+#[test]
 fn change_fst_stream_candidate_path_matches_random_access_path() {
     let fst_fixture = fixture_path("m2_core.fst");
     let fst_fixture = fst_fixture.to_string_lossy().into_owned();

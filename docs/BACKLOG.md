@@ -18,25 +18,4 @@
 
 ## Tech Debt
 
-### `change --on`: deferred `iff logical_expr` execution
-
-- Event terms with `iff` are parsed but intentionally rejected at runtime with `error: args: iff logical expressions are not implemented yet`.
-- This was introduced in the staged trigger rollout as a delivery compromise.
-- Close when `change --on "... iff ..."` is evaluated end-to-end (true/false branches), and the hard-fail path is removed.
-
-### Legacy `change --on` parser adapter remains separate from typed parser
-
-- `src/engine/change.rs` still uses the compatibility adapter (`expr::parse_event_expr`) while strict typed parsing lives behind `wavepeek::expr::parse_event_expr_ast`.
-- This keeps current command behavior stable but duplicates parser ownership and can drift if follow-up integration is delayed.
-- Close when command runtime parsing converges on the typed parser boundary with explicit compatibility policy and regression coverage.
-
-### Expression command integration and `property` runtime remain unimplemented
-
-- Standalone typed event/logical runtime is now available in `src/expr/`, including
-  rich types and full standalone `iff` semantics, but
-  command wiring is still deferred: `src/engine/change.rs` keeps the legacy
-  runtime path and `src/engine/property.rs` still returns `Unimplemented`.
-- This leaves end-to-end `property` execution and shared command/runtime
-  convergence for `change` as explicit remaining debt.
-- Close when `property` runs end to end on the shared evaluator path and
-  `change` converges to the same typed runtime with CLI/integration coverage.
+No open command-integration debt is tracked here right now.

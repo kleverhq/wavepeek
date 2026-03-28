@@ -1,4 +1,5 @@
 pub mod change;
+mod expr_runtime;
 pub mod info;
 pub mod property;
 pub mod schema;
@@ -27,13 +28,13 @@ pub enum Command {
 #[allow(dead_code)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CommandName {
-    // `property` intentionally omitted while runtime remains unimplemented.
     Schema,
     Info,
     Scope,
     Signal,
     Value,
     Change,
+    Property,
 }
 
 impl CommandName {
@@ -45,6 +46,7 @@ impl CommandName {
             Self::Signal => "signal",
             Self::Value => "value",
             Self::Change => "change",
+            Self::Property => "property",
         }
     }
 }
@@ -59,13 +61,13 @@ pub struct HumanRenderOptions {
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum CommandData {
-    // `property` intentionally omitted while runtime remains unimplemented.
     Schema(String),
     Info(info::InfoData),
     Scope(Vec<scope::ScopeEntry>),
     Signal(Vec<signal::SignalEntry>),
     Value(value::ValueData),
     Change(Vec<change::ChangeSnapshot>),
+    Property(Vec<property::PropertyCaptureRow>),
 }
 
 #[derive(Debug, Serialize)]

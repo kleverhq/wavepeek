@@ -35,7 +35,7 @@ pub struct PropertyArgs {
     /// Capture mode (`match`, `switch`, `assert`, `deassert`)
     #[arg(long, value_enum, default_value_t = CaptureMode::Switch, value_name = "MODE")]
     pub capture: CaptureMode,
-    /// Machine-readable JSON output (contract: see `wavepeek schema`; runtime remains unimplemented)
+    /// Machine-readable JSON output (contract: see `wavepeek schema`)
     #[arg(long)]
     pub json: bool,
 }

@@ -12,6 +12,8 @@ pub enum WavepeekError {
     Scope(String),
     #[error("error: signal: {0}")]
     Signal(String),
+    #[error("error: expr: {0}")]
+    Expr(String),
     #[error("error: internal: {0}")]
     Internal(String),
     #[error("error: unimplemented: {0}")]
@@ -25,6 +27,7 @@ impl WavepeekError {
             Self::Args(_)
             | Self::Scope(_)
             | Self::Signal(_)
+            | Self::Expr(_)
             | Self::Internal(_)
             | Self::Unimplemented(_) => 1,
         }
@@ -54,6 +57,17 @@ mod tests {
         assert_eq!(
             signal.to_string(),
             "error: signal: signal 'top.cpu.clk' not found"
+        );
+    }
+
+    #[test]
+    fn expr_errors_use_exit_code_one() {
+        let error = WavepeekError::Expr("parse:EXPR-PARSE-LOGICAL-UNMATCHED-OPEN".to_string());
+
+        assert_eq!(error.exit_code(), 1);
+        assert_eq!(
+            error.to_string(),
+            "error: expr: parse:EXPR-PARSE-LOGICAL-UNMATCHED-OPEN"
         );
     }
 }

@@ -42,9 +42,8 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 ### Query Engine (→ v0.4.0)
 
 - Delivery is phased by `docs/expression_roadmap.md`: `C2` through `C4` are
-  standalone expression-engine milestones, while shared typed-engine
-  convergence for existing `change` behavior and end-to-end `property` runtime
-  remain gated on `C5`.
+  standalone expression-engine milestones, while the final typed command
+  integration boundary is owned by `C5`.
 - `C3` scope includes the standalone core integral boolean contract (logical
   parse/bind/eval APIs and event `iff` reuse in the standalone engine), while
   command runtime routing remains deferred.
@@ -59,9 +58,9 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Query Engine Enhancements (→ v0.5.0)
 
-- Post-standalone command integration: route `change` and `property` runtime
-  execution through the typed expression engine (`C5`) and close legacy runtime
-  split debt.
+- Typed command integration hardening: route `change --on` and `property`
+  runtime execution through the typed expression engine, ship `property`
+  JSON/human output contracts, and extend command-level parity/benchmark gates.
 
 ### MCP Server (→ v0.6.0)
 

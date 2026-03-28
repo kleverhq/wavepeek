@@ -1,0 +1,8 @@
+---
+source: tests/common/command_cases.rs
+expression: stderr
+---
+error: expr: parse:EXPR-PARSE-EVENT-UNMATCHED-OPEN: unmatched opening parenthesis
+--> span 8..9
+source: posedge (
+note: event-level grouping is not supported; use parentheses only inside iff

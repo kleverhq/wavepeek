@@ -50,3 +50,30 @@ fn schema_command_output_is_deterministic_across_runs() {
     assert_eq!(first.stdout, second.stdout);
     assert_eq!(first.stderr, second.stderr);
 }
+
+#[test]
+fn schema_command_includes_property_command_branch() {
+    let mut command = wavepeek_cmd();
+    let assert = command.args(["schema"]).assert().success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let value: Value = serde_json::from_str(&stdout).expect("schema output should be valid json");
+
+    let commands = value["properties"]["command"]["enum"]
+        .as_array()
+        .expect("command enum should be array");
+    assert!(
+        commands.iter().any(|entry| entry == "property"),
+        "schema command enum should include property"
+    );
+
+    let data_variants = value["properties"]["data"]["oneOf"]
+        .as_array()
+        .expect("data variants should be array");
+    assert!(
+        data_variants
+            .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/propertyData"),
+        "schema data variants should include propertyData"
+    );
+}

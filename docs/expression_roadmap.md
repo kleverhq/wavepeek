@@ -236,8 +236,7 @@ Traceability:
 Contract scope at phase exit:
 
 - Shared expression engine is the only runtime path for command consumers:
-  - `change` expression surfaces (`--on`, `--eval`) use unified expression
-    runtime,
+  - `change --on` uses the unified expression runtime,
   - `property --eval` runtime is implemented end-to-end with capture modes.
 - Command behavior remains deterministic in human/json modes.
 - JSON/schema artifacts are updated to reflect implemented property behavior.

@@ -6,6 +6,10 @@ This directory contains integration and fixture-driven tests.
 
 - Repository agent map: `../AGENTS.md`
 
+## Child Maps
+
+- Command-runtime fixture manifests: `tests/fixtures/cli/AGENTS.md`
+
 ## Source of Truth
 
 - Testing workflow and conventions: `docs/DEVELOPMENT.md`

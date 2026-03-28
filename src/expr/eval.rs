@@ -1774,9 +1774,11 @@ fn signal_changed(
             };
             let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
             let current_bits = sample_signal_bits(host, handle, current_timestamp, cache)?;
-            Ok(
-                matches!((previous_bits, current_bits), (Some(previous), Some(current)) if previous != current),
-            )
+            Ok(match (previous_bits, current_bits) {
+                (None, Some(_)) => true,
+                (Some(previous), Some(current)) => previous != current,
+                _ => false,
+            })
         }
         ExprTypeKind::Real => {
             let Some(previous_timestamp) = previous_timestamp else {
@@ -1784,9 +1786,11 @@ fn signal_changed(
             };
             let previous = sample_real_value(host, handle, previous_timestamp, cache)?;
             let current = sample_real_value(host, handle, current_timestamp, cache)?;
-            Ok(
-                matches!((previous, current), (Some(previous), Some(current)) if previous != current),
-            )
+            Ok(match (previous, current) {
+                (None, Some(_)) => true,
+                (Some(previous), Some(current)) => previous != current,
+                _ => false,
+            })
         }
         ExprTypeKind::String => {
             let Some(previous_timestamp) = previous_timestamp else {
@@ -1794,9 +1798,11 @@ fn signal_changed(
             };
             let previous = sample_string_value(host, handle, previous_timestamp, cache)?;
             let current = sample_string_value(host, handle, current_timestamp, cache)?;
-            Ok(
-                matches!((previous, current), (Some(previous), Some(current)) if previous != current),
-            )
+            Ok(match (previous, current) {
+                (None, Some(_)) => true,
+                (Some(previous), Some(current)) => previous != current,
+                _ => false,
+            })
         }
         ExprTypeKind::Event => cache.event_occurred(host, handle, current_timestamp),
     }

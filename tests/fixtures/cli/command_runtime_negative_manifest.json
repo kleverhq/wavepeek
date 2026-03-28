@@ -1,0 +1,53 @@
+{
+  "cases": [
+    {
+      "name": "change_invalid_on_expr",
+      "command": "change",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--on",
+        "posedge ("
+      ],
+      "exit_code": 1,
+      "stderr_prefix": "error: expr:",
+      "stderr_snapshot": "expr_runtime_invalid_on"
+    },
+    {
+      "name": "property_invalid_eval_expr",
+      "command": "property",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--on",
+        "posedge top.clk",
+        "--eval",
+        "("
+      ],
+      "exit_code": 1,
+      "stderr_prefix": "error: expr:",
+      "stderr_snapshot": "expr_runtime_invalid_eval"
+    },
+    {
+      "name": "property_scoped_dotted_on_expr",
+      "command": "property",
+      "args": [
+        "--waves",
+        "tests/fixtures/hand/m2_core.vcd",
+        "--scope",
+        "top",
+        "--on",
+        "posedge top.clk",
+        "--eval",
+        "data == 8'h00"
+      ],
+      "exit_code": 1,
+      "stderr_prefix": "error: expr:",
+      "stderr_snapshot": "expr_runtime_scoped_dotted_on"
+    }
+  ]
+}

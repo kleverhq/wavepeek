@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
+pub mod command_cases;
 pub mod expr_cases;
 pub mod expr_runtime;
 

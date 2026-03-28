@@ -1,90 +1,226 @@
+use std::fs;
+
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
+use serde_json::{Value, json};
+use tempfile::NamedTempFile;
 
 mod common;
 use common::{fixture_path, wavepeek_cmd};
 
-#[test]
-fn property_accepts_capture_flag_but_is_unimplemented() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
+fn parse_json(stdout: &[u8]) -> Value {
+    serde_json::from_slice(stdout).expect("stdout should be valid json")
+}
 
-    for capture in ["match", "switch", "assert", "deassert"] {
-        wavepeek_cmd()
-            .args([
-                "property",
-                "--waves",
-                fixture.as_str(),
-                "--scope",
-                "top",
-                "--on",
-                "posedge clk",
-                "--eval",
-                "1",
-                "--capture",
-                capture,
-            ])
-            .assert()
-            .failure()
-            .code(1)
-            .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::starts_with("error: unimplemented:"))
-            .stderr(predicate::str::contains("error: args:").not())
-            .stderr(predicate::str::contains(
-                "`property` command execution is not implemented yet",
-            ));
-    }
+fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+    let fixture = NamedTempFile::with_suffix(suffix).expect("temp fixture should create");
+    fs::write(fixture.path(), contents).expect("fixture should write");
+    fixture
 }
 
 #[test]
-fn property_defaults_capture_to_switch() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
+fn property_switch_capture_reports_transitions() {
+    let fixture = write_fixture(
+        "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 1 \" sig $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n#5\n1!\n#10\n0!\n1\"\n#15\n1!\n#20\n0!\n0\"\n#25\n1!\n",
+        "property-switch.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
 
-    let default_output = wavepeek_cmd()
+    let json_output = wavepeek_cmd()
         .args([
             "property",
             "--waves",
             fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "25ns",
             "--scope",
             "top",
             "--on",
             "posedge clk",
             "--eval",
-            "1",
+            "sig",
+            "--capture",
+            "switch",
+            "--json",
         ])
         .output()
-        .expect("property with default capture should execute");
-    let switch_output = wavepeek_cmd()
+        .expect("property should execute");
+    let human_output = wavepeek_cmd()
         .args([
             "property",
             "--waves",
             fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "25ns",
             "--scope",
             "top",
             "--on",
             "posedge clk",
             "--eval",
-            "1",
+            "sig",
             "--capture",
             "switch",
         ])
         .output()
-        .expect("property with explicit switch capture should execute");
+        .expect("property should execute");
 
-    assert!(!default_output.status.success());
-    assert!(!switch_output.status.success());
-    assert!(default_output.stdout.is_empty());
-    assert!(switch_output.stdout.is_empty());
-    assert_eq!(default_output.stderr, switch_output.stderr);
-    assert!(
-        String::from_utf8_lossy(&default_output.stderr)
-            .contains("error: unimplemented: `property` command execution is not implemented yet")
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(json_output.stderr.is_empty());
+    assert!(human_output.stderr.is_empty());
+
+    let json = parse_json(&json_output.stdout);
+    assert_eq!(json["command"], "property");
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(
+        json["data"],
+        json!([
+            {"time": "15ns", "kind": "assert"},
+            {"time": "25ns", "kind": "deassert"}
+        ])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stdout).trim(),
+        "@15ns assert\n@25ns deassert"
     );
 }
 
 #[test]
-fn property_rejects_legacy_when_surface_flags() {
+fn property_invalid_eval_reports_expr_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--on",
+            "posedge top.clk",
+            "--eval",
+            "(",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-LOGICAL-EXPECTED"));
+}
+
+#[test]
+fn property_omitted_on_tracks_eval_signal_changes() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--eval",
+            "data == 8'h0f",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["data"], json!([{"time": "10ns", "kind": "match"}]));
+}
+
+#[test]
+fn property_omitted_on_tracks_raw_event_handles_from_eval() {
+    let fixture = write_fixture(
+        "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var event 1 ! ev $end\n$scope module ev $end\n$var wire 1 \" triggered $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0\"\n#5\n1!\n1\"\n#10\n0\"\n#20\n1!\n1\"\n#25\n0\"\n",
+        "property-event-track.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--eval",
+            "ev.triggered()",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(
+        json["data"],
+        json!([
+            {"time": "5ns", "kind": "match"},
+            {"time": "20ns", "kind": "match"}
+        ])
+    );
+}
+
+#[test]
+fn property_wildcard_without_referenced_signals_requires_explicit_on() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args(["property", "--waves", fixture.as_str(), "--eval", "1"])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("pass --on explicitly"));
+}
+
+#[test]
+fn property_scope_rejects_dotted_names_in_scoped_mode() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge top.clk",
+            "--eval",
+            "data == 8'h00",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("unknown signal 'top.clk'"));
+}
+
+#[test]
+fn property_rejects_legacy_surface_flags() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -123,6 +259,24 @@ fn property_rejects_legacy_when_surface_flags() {
         .stderr(predicate::str::starts_with("error: args:"))
         .stderr(predicate::str::contains("unexpected argument '--cond'"))
         .stderr(predicate::str::contains("See 'wavepeek property --help'."));
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--when",
+            "posedge top.clk",
+            "--eval",
+            "1",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--when'"))
+        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
 }
 
 #[test]
@@ -145,77 +299,20 @@ fn property_requires_eval_flag() {
 }
 
 #[test]
-fn property_rejects_legacy_when_flag_name() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
+fn property_runtime_manifest_cases_pass() {
+    let positive =
+        common::command_cases::load_positive_manifest("command_runtime_positive_manifest.json");
+    for case in &positive.cases {
+        if case.command == common::command_cases::CommandCaseCommand::Property {
+            common::command_cases::assert_positive_case(case);
+        }
+    }
 
-    wavepeek_cmd()
-        .args([
-            "property",
-            "--waves",
-            fixture.as_str(),
-            "--when",
-            "posedge top.clk",
-            "--eval",
-            "1",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("unexpected argument '--when'"))
-        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
-}
-
-#[test]
-fn property_invalid_on_expression_still_fails_as_unimplemented() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .args([
-            "property",
-            "--waves",
-            fixture.as_str(),
-            "--on",
-            "posedge (",
-            "--eval",
-            "1",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: unimplemented:"))
-        .stderr(predicate::str::contains("error: args:").not())
-        .stderr(predicate::str::contains(
-            "`property` command execution is not implemented yet",
-        ));
-}
-
-#[test]
-fn property_rich_type_surface_stays_unimplemented() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
-
-    wavepeek_cmd()
-        .args([
-            "property",
-            "--waves",
-            fixture.as_str(),
-            "--on",
-            "posedge top.clk iff top.ev.triggered()",
-            "--eval",
-            "type(top.data)'(3) == 8'h03 ? real'(1) > 0.5 : \"go\" == \"go\"",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: unimplemented:"))
-        .stderr(predicate::str::contains("error: args:").not())
-        .stderr(predicate::str::contains(
-            "`property` command execution is not implemented yet",
-        ));
+    let negative =
+        common::command_cases::load_negative_manifest("command_runtime_negative_manifest.json");
+    for case in &negative.cases {
+        if case.command == common::command_cases::CommandCaseCommand::Property {
+            common::command_cases::assert_negative_case(case);
+        }
+    }
 }

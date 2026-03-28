@@ -22,7 +22,8 @@
         "scope",
         "signal",
         "value",
-        "change"
+        "change",
+        "property"
       ]
     },
     "data": {
@@ -41,6 +42,9 @@
         },
         {
           "$ref": "#/$defs/changeData"
+        },
+        {
+          "$ref": "#/$defs/propertyData"
         }
       ]
     },
@@ -143,6 +147,25 @@
         "properties": {
           "data": {
             "$ref": "#/$defs/changeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "property"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/propertyData"
           }
         }
       }
@@ -283,6 +306,30 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "propertyData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "time",
+          "kind"
+        ],
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "match",
+              "assert",
+              "deassert"
+            ]
           }
         }
       }

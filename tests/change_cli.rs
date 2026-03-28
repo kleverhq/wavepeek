@@ -1,12 +1,21 @@
+use std::fs;
+
 use assert_cmd::prelude::*;
 use predicates::prelude::*;
 use serde_json::{Value, json};
+use tempfile::NamedTempFile;
 
 mod common;
 use common::{expected_schema_url, fixture_path, wavepeek_cmd};
 
 fn parse_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("stdout should be valid json")
+}
+
+fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+    let fixture = NamedTempFile::with_suffix(suffix).expect("temp fixture should create");
+    fs::write(fixture.path(), contents).expect("fixture should write");
+    fixture
 }
 
 #[test]
@@ -622,11 +631,11 @@ fn change_edge_wiring_is_end_to_end() {
 }
 
 #[test]
-fn change_iff_is_recognized_but_runtime_is_deferred() {
+fn change_iff_executes_end_to_end() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    wavepeek_cmd()
+    let json_output = wavepeek_cmd()
         .args([
             "change",
             "--waves",
@@ -634,43 +643,55 @@ fn change_iff_is_recognized_but_runtime_is_deferred() {
             "--scope",
             "top",
             "--signals",
-            "data",
+            "data,clk",
             "--on",
-            "negedge clk iff rstn",
+            "posedge clk iff data == 8'h00",
+            "--json",
         ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "iff logical expressions are not implemented yet",
-        ));
+        .output()
+        .expect("json change run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data,clk",
+            "--on",
+            "posedge clk iff data == 8'h00",
+        ])
+        .output()
+        .expect("human change run should execute");
 
-    wavepeek_cmd()
-        .args([
-            "change",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--signals",
-            "data",
-            "--on",
-            "posedge clk iff (",
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(json_output.stderr.is_empty());
+    assert!(human_output.stderr.is_empty());
+
+    let json = parse_json(&json_output.stdout);
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(
+        json["data"],
+        json!([
+            {
+                "time": "5ns",
+                "signals": [
+                    {"path": "top.data", "value": "8'h00"},
+                    {"path": "top.clk", "value": "1'h1"}
+                ]
+            }
         ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "iff logical expressions are not implemented yet",
-        ));
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stdout).trim(),
+        "@5ns data=8'h00 clk=1'h1"
+    );
 }
 
 #[test]
-fn change_rejects_unmatched_open_parenthesis_with_legacy_error() {
+fn change_invalid_on_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -690,13 +711,13 @@ fn change_rejects_unmatched_open_parenthesis_with_legacy_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with(
-            "error: args: invalid --on expression 'posedge ('. See 'wavepeek change --help'.",
-        ));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-OPEN"))
+        .stderr(predicate::str::contains("source: posedge ("));
 }
 
 #[test]
-fn change_rejects_unmatched_close_parenthesis_with_legacy_error() {
+fn change_unmatched_close_parenthesis_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -716,13 +737,13 @@ fn change_rejects_unmatched_close_parenthesis_with_legacy_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with(
-            "error: args: invalid --on expression 'posedge clk)'. See 'wavepeek change --help'.",
-        ));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-CLOSE"))
+        .stderr(predicate::str::contains("source: posedge clk)"));
 }
 
 #[test]
-fn change_rejects_broken_union_with_legacy_error() {
+fn change_broken_union_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -742,13 +763,13 @@ fn change_rejects_broken_union_with_legacy_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with(
-            "error: args: invalid --on expression 'posedge clk or , clk'. See 'wavepeek change --help'.",
-        ));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-EVENT-BROKEN-UNION"))
+        .stderr(predicate::str::contains("source: posedge clk or , clk"));
 }
 
 #[test]
-fn change_empty_iff_stays_deferred_runtime_error() {
+fn change_empty_iff_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -768,17 +789,17 @@ fn change_empty_iff_stays_deferred_runtime_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with(
-            "error: args: iff logical expressions are not implemented yet",
-        ));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY-IFF"))
+        .stderr(predicate::str::contains("source: posedge clk iff"));
 }
 
 #[test]
-fn change_rich_type_iff_payload_stays_deferred_runtime_error() {
+fn change_rich_type_iff_payload_executes() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    wavepeek_cmd()
+    let output = wavepeek_cmd()
         .args([
             "change",
             "--waves",
@@ -786,26 +807,41 @@ fn change_rich_type_iff_payload_stays_deferred_runtime_error() {
             "--scope",
             "top",
             "--signals",
-            "data",
+            "data,clk",
             "--on",
-            "posedge clk iff (type(data)'(3) == 8'h03 && real'(1) > 0.5 && \"go\" == \"go\")",
+            "posedge clk iff (type(data)'(0) == 8'h00 && real'(1) > 0.5 && \"go\" == \"go\")",
+            "--json",
         ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "iff logical expressions are not implemented yet",
-        ));
+        .output()
+        .expect("change should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(
+        json["data"],
+        json!([
+            {
+                "time": "5ns",
+                "signals": [
+                    {"path": "top.data", "value": "8'h00"},
+                    {"path": "top.clk", "value": "1'h1"}
+                ]
+            }
+        ])
+    );
 }
 
 #[test]
-fn change_triggered_iff_payload_stays_deferred_runtime_error() {
-    let fixture = fixture_path("m2_core.vcd");
-    let fixture = fixture.to_string_lossy().into_owned();
+fn change_triggered_iff_payload_executes() {
+    let fixture = write_fixture(
+        "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 1 \" sig $end\n$var event 1 # ev $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n#5\n1!\n1#\n#10\n0!\n#15\n1!\n",
+        "change-triggered-iff.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
 
-    wavepeek_cmd()
+    let output = wavepeek_cmd()
         .args([
             "change",
             "--waves",
@@ -813,18 +849,30 @@ fn change_triggered_iff_payload_stays_deferred_runtime_error() {
             "--scope",
             "top",
             "--signals",
-            "data",
+            "sig,clk",
             "--on",
             "posedge clk iff ev.triggered()",
+            "--json",
         ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains(
-            "iff logical expressions are not implemented yet",
-        ));
+        .output()
+        .expect("change should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(
+        json["data"],
+        json!([
+            {
+                "time": "5ns",
+                "signals": [
+                    {"path": "top.sig", "value": "1'h0"},
+                    {"path": "top.clk", "value": "1'h1"}
+                ]
+            }
+        ])
+    );
 }
 
 #[test]
@@ -1480,7 +1528,8 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("unknown signal 'nope'"));
 
     wavepeek_cmd()
         .args([
@@ -1543,7 +1592,7 @@ fn change_decimal_time_token_is_rejected_as_args_error() {
 }
 
 #[test]
-fn change_empty_on_expression_is_rejected_as_args_error() {
+fn change_empty_on_expression_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -1561,9 +1610,8 @@ fn change_empty_on_expression_is_rejected_as_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
-        .stderr(predicate::str::contains("--on expression cannot be empty"))
-        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY"));
 }
 
 #[test]
@@ -1641,7 +1689,8 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("unknown signal 'top.nope'"));
 
     wavepeek_cmd()
         .args([
@@ -1663,7 +1712,8 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("unknown signal 'nope'"));
 }
 
 #[test]
@@ -1703,5 +1753,25 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::contains("unknown signal 'top.clk'"));
+}
+
+#[test]
+fn change_runtime_manifest_cases_pass() {
+    let positive =
+        common::command_cases::load_positive_manifest("command_runtime_positive_manifest.json");
+    for case in &positive.cases {
+        if case.command == common::command_cases::CommandCaseCommand::Change {
+            common::command_cases::assert_positive_case(case);
+        }
+    }
+
+    let negative =
+        common::command_cases::load_negative_manifest("command_runtime_negative_manifest.json");
+    for case in &negative.cases {
+        if case.command == common::command_cases::CommandCaseCommand::Change {
+            common::command_cases::assert_negative_case(case);
+        }
+    }
 }

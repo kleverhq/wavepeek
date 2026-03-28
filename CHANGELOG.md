@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Breaking rename for point-in-time sampling surface: removed `at` command and `--time` flag, and replaced them with `value` and `--at`.
 - Breaking rename for event/property surface: removed `when` command and `change --when` flag, and replaced them with `property` and `change --on` (no compatibility aliases).
+- Breaking expression syntax change: standalone raw-event occurrence now requires `event.triggered()`, while bare `.triggered` resolves as an ordinary signal path suffix and no longer acts as shorthand event syntax.
 - Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--on`/`--abs` behavior; `property` remains explicitly unimplemented.
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
 - Simplified `value` human output to compact form: `@<time>` header and `<display> <value>` signal lines.

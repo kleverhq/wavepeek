@@ -156,8 +156,8 @@ VCD/FST waveform dumps.
   - modeled as a sequence of 8-bit bytes
 
 - `event`
-  - `event` - not a plain value operand; available only through `.triggered`
-  - `event.triggered` - integral `bit` (width `1`, sign `unsigned`, states `2-state`)
+  - `event` - not a plain value operand; available only through `.triggered()`
+  - `event.triggered()` - integral `bit` (width `1`, sign `unsigned`, states `2-state`)
   - raw `event` is not a value expression and does not
     participate directly in casts, implicit conversions, operators, selection,
     concatenation, or replication
@@ -218,10 +218,11 @@ This section lists the leaf forms that can appear as direct operands.
 - `replication`
   - `{N{expr}}`
 
-- `member-like primary`
-  - `.triggered` is the only supported member-like primary form
+- `method-like primary`
+  - `.triggered()` is the only supported method-like primary form
   - valid only when applied to a raw event operand reference
-  - chaining `.triggered` is invalid
+  - chaining `.triggered()` is invalid
+  - bare `.triggered` remains part of ordinary operand references and is not reserved syntax
 
 ### 2.3 Type Casts
 
@@ -316,7 +317,7 @@ Explicit string casts are intentionally narrow in this contract:
 #### 2.3.13 Event Casts
 
 By the operand rules above, raw `event` is not castable as a plain value. After
-`.triggered`, the result is a `bit` and follows the ordinary integral cast
+`.triggered()`, the result is a `bit` and follows the ordinary integral cast
 rules of this section.
 
 ### 2.4 Implicit Conversions and Common-Type Rules
@@ -561,7 +562,7 @@ From highest precedence to lowest precedence:
    - `type(enum_operand_reference)::LABEL`
    - concatenation: `{...}`
    - replication: `{N{...}}`
-   - `.triggered`
+   - `.triggered()`
    - bit-select and part-select: `[]`, `[msb:lsb]`, `[base +: width]`,
      `[base -: width]`
 2. unary prefix operators
@@ -609,7 +610,8 @@ Guidance:
   infix operator.
 - `type(enum_operand_reference)::LABEL` is treated as a primary expression and
   binds tighter than any infix operator.
-- `.triggered` is treated as a dedicated postfix/member form with the same
+- `.triggered()` is treated as a dedicated postfix/member-call form with the
+  same
   tight binding as other primary postfix operations.
 
 ### 2.7 Parser-Level Grammar Sketch
@@ -653,7 +655,7 @@ postfix_suffix ::= "[" expr "]"
                  | "[" constant_expr ":" constant_expr "]"
                  | "[" expr "+:" constant_expr "]"
                  | "[" expr "-:" constant_expr "]"
-                 | ".triggered"
+                 | ".triggered" "(" ")"
 
 primary_expr ::= operand_reference
                | literal
@@ -696,9 +698,9 @@ integer_like_type ::= "byte"
 Notes:
 
 - `operand_reference` may be hierarchical, for example `top.cpu.data`.
-- A trailing `.triggered` is a reserved postfix form and is not part of an
-  operand reference.
-- `.triggered` is semantically valid only on a raw event operand reference;
+- An operand reference may end in `.triggered`; that suffix is ordinary name
+  text unless it is immediately followed by `()`.
+- `.triggered()` is semantically valid only on a raw event operand reference;
   broader parses are rejected during semantic validation.
 - In `type(enum_operand_reference)::LABEL`, `enum_operand_reference` must
   resolve to an enum-typed operand reference and `LABEL` must be one of its

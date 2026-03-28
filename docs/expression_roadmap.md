@@ -174,12 +174,12 @@ Out of scope:
 - Full `string` semantics.
 - Enum label-introspection semantics requiring full metadata pipeline
   (`type(enum_operand_reference)::LABEL`).
-- Event-member primary `.triggered` semantics.
+- Raw-event `triggered()` semantics.
 
 Boundary invariants (must still fail deterministically):
 
 - Any rich-type feature deferred to C4.
-- `.triggered` semantics.
+- `triggered()` semantics.
 
 Exit criteria:
 
@@ -203,7 +203,7 @@ Contract scope at phase exit:
   - `type(enum_operand_reference)::LABEL`,
   - `real` semantics and mixed numeric pathways,
   - `string` semantics and restrictions,
-  - `.triggered` member-like primary semantics.
+  - `.triggered()` raw-event method-like semantics.
 - Full parser grammar surface in Section `2.7` is implemented.
 - Full `iff logical_expr` surface is available because full Section `2` parsing
   and semantics are now implemented.

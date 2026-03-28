@@ -644,7 +644,7 @@ section describes implementation architecture only.
   `wavepeek::expr::eval_logical_expr_at(...)`, plus event
   `bind_event_expr_ast(...)` and `event_matches_at(...)` with `iff` payload
   reuse. That standalone surface now includes `real`, `string`, operand-type
-  casts, enum-label references, and raw-event `.triggered`.
+  casts, enum-label references, and raw-event `.triggered()`.
 - Dump-backed rich metadata is bridged through the crate-private
   `src/waveform/expr_host.rs` adapter plus crate-private lookup/decode helpers
   in `src/waveform/mod.rs`, so standalone tests and benchmarks can bind/evaluate

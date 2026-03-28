@@ -53,7 +53,7 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 - Standalone typed expression engine foundation (`C2`-`C4`) with strict parser,
   typed binder, deterministic diagnostics, and standalone event/logical eval APIs.
 - `C4` standalone surface closes the remaining rich-type scope: `real`,
-  `string`, enum-label references, operand-type casts, raw-event `.triggered`,
+  `string`, enum-label references, operand-type casts, raw-event `.triggered()`,
   and full logical `iff` support in standalone evaluation.
 - Deferred runtime command integration remains explicit until `C5`.
 

@@ -4,7 +4,7 @@
   "catalog_path": "bench/expr/suites.json",
   "criterion_version": "0.8.2",
   "environment_note": "wavepeek devcontainer/CI image",
-  "generated_at_utc": "2026-03-19T22:09:20Z",
+  "generated_at_utc": "2026-03-28T17:34:15Z",
   "run_name": "baseline",
   "rustc_version": "rustc 1.93.0 (254b59607 2026-01-19)",
   "selected_suite_ids": [
@@ -13,7 +13,7 @@
     "event",
     "waveform_host"
   ],
-  "source_commit": "b5aa5d13b1d3bf80baae11819f334487d5d916b7",
+  "source_commit": "ca8e0ad0e69a937a255693663650c04d24361079",
   "suites": [
     {
       "bench_target": "expr_syntax",
@@ -22,24 +22,24 @@
       "scenarios": [
         {
           "criterion_benchmark_id": "syntax__tokenize_union_iff",
-          "mean_ns_per_iter": 216.989015790426,
-          "median_ns_per_iter": 214.13398855023382,
+          "mean_ns_per_iter": 215.01228356721683,
+          "median_ns_per_iter": 213.40097521107336,
           "raw_csv": "syntax__tokenize_union_iff.raw.csv",
           "sample_count": 100,
           "scenario": "tokenize_union_iff"
         },
         {
           "criterion_benchmark_id": "syntax__parse_event_union_iff",
-          "mean_ns_per_iter": 298.0073219057932,
-          "median_ns_per_iter": 294.0872655655521,
+          "mean_ns_per_iter": 304.25296580633864,
+          "median_ns_per_iter": 303.30748565929537,
           "raw_csv": "syntax__parse_event_union_iff.raw.csv",
           "sample_count": 100,
           "scenario": "parse_event_union_iff"
         },
         {
           "criterion_benchmark_id": "syntax__parse_event_malformed",
-          "mean_ns_per_iter": 158.6505255297701,
-          "median_ns_per_iter": 157.68544941115414,
+          "mean_ns_per_iter": 164.74808107838717,
+          "median_ns_per_iter": 165.00587183078906,
           "raw_csv": "syntax__parse_event_malformed.raw.csv",
           "sample_count": 100,
           "scenario": "parse_event_malformed"
@@ -53,56 +53,56 @@
       "scenarios": [
         {
           "criterion_benchmark_id": "logical__bind_logical_core_integral",
-          "mean_ns_per_iter": 543.3773127074293,
-          "median_ns_per_iter": 543.2756428082484,
+          "mean_ns_per_iter": 709.2559080262643,
+          "median_ns_per_iter": 706.9018443539323,
           "raw_csv": "logical__bind_logical_core_integral.raw.csv",
           "sample_count": 100,
           "scenario": "bind_logical_core_integral"
         },
         {
           "criterion_benchmark_id": "logical__eval_logical_core_integral_true",
-          "mean_ns_per_iter": 777.1882844004477,
-          "median_ns_per_iter": 771.7342203548086,
+          "mean_ns_per_iter": 772.6660557212327,
+          "median_ns_per_iter": 771.8965290386982,
           "raw_csv": "logical__eval_logical_core_integral_true.raw.csv",
           "sample_count": 100,
           "scenario": "eval_logical_core_integral_true"
         },
         {
           "criterion_benchmark_id": "logical__eval_logical_core_integral_unknown",
-          "mean_ns_per_iter": 502.2401564072797,
-          "median_ns_per_iter": 502.3371348433918,
+          "mean_ns_per_iter": 503.30549698675577,
+          "median_ns_per_iter": 499.3292668485251,
           "raw_csv": "logical__eval_logical_core_integral_unknown.raw.csv",
           "sample_count": 100,
           "scenario": "eval_logical_core_integral_unknown"
         },
         {
           "criterion_benchmark_id": "logical__bind_logical_rich_types",
-          "mean_ns_per_iter": 1030.5475356080374,
-          "median_ns_per_iter": 1026.252783700545,
+          "mean_ns_per_iter": 1140.3943475209378,
+          "median_ns_per_iter": 1136.6893264295772,
           "raw_csv": "logical__bind_logical_rich_types.raw.csv",
           "sample_count": 100,
           "scenario": "bind_logical_rich_types"
         },
         {
           "criterion_benchmark_id": "logical__eval_logical_real_mixed_numeric",
-          "mean_ns_per_iter": 420.96433629256063,
-          "median_ns_per_iter": 420.6846199073898,
+          "mean_ns_per_iter": 418.17174453343665,
+          "median_ns_per_iter": 416.09307091101914,
           "raw_csv": "logical__eval_logical_real_mixed_numeric.raw.csv",
           "sample_count": 100,
           "scenario": "eval_logical_real_mixed_numeric"
         },
         {
           "criterion_benchmark_id": "logical__eval_logical_string_equality",
-          "mean_ns_per_iter": 256.31097395433835,
-          "median_ns_per_iter": 255.6747249129542,
+          "mean_ns_per_iter": 255.06328335581333,
+          "median_ns_per_iter": 254.27781338847248,
           "raw_csv": "logical__eval_logical_string_equality.raw.csv",
           "sample_count": 100,
           "scenario": "eval_logical_string_equality"
         },
         {
           "criterion_benchmark_id": "logical__eval_logical_enum_label_preservation",
-          "mean_ns_per_iter": 319.17928313994304,
-          "median_ns_per_iter": 317.45442220267347,
+          "mean_ns_per_iter": 318.39097933641455,
+          "median_ns_per_iter": 318.19610635651856,
           "raw_csv": "logical__eval_logical_enum_label_preservation.raw.csv",
           "sample_count": 100,
           "scenario": "eval_logical_enum_label_preservation"
@@ -116,40 +116,40 @@
       "scenarios": [
         {
           "criterion_benchmark_id": "event__bind_event_union_iff",
-          "mean_ns_per_iter": 1920.0313050009875,
-          "median_ns_per_iter": 1913.945858184228,
+          "mean_ns_per_iter": 1900.0951016684046,
+          "median_ns_per_iter": 1898.0208928963866,
           "raw_csv": "event__bind_event_union_iff.raw.csv",
           "sample_count": 100,
           "scenario": "bind_event_union_iff"
         },
         {
           "criterion_benchmark_id": "event__eval_event_union_iff_true",
-          "mean_ns_per_iter": 889.5459346503717,
-          "median_ns_per_iter": 888.8015815893938,
+          "mean_ns_per_iter": 868.2737697886952,
+          "median_ns_per_iter": 864.6939733743725,
           "raw_csv": "event__eval_event_union_iff_true.raw.csv",
           "sample_count": 100,
           "scenario": "eval_event_union_iff_true"
         },
         {
           "criterion_benchmark_id": "event__eval_event_union_iff_unknown",
-          "mean_ns_per_iter": 496.07071644297923,
-          "median_ns_per_iter": 495.6649698912807,
+          "mean_ns_per_iter": 487.86697822802955,
+          "median_ns_per_iter": 481.58649574448185,
           "raw_csv": "event__eval_event_union_iff_unknown.raw.csv",
           "sample_count": 100,
           "scenario": "eval_event_union_iff_unknown"
         },
         {
           "criterion_benchmark_id": "event__eval_event_iff_core_integral",
-          "mean_ns_per_iter": 525.4536057528447,
-          "median_ns_per_iter": 524.3481266582737,
+          "mean_ns_per_iter": 498.57984169154906,
+          "median_ns_per_iter": 498.2544623598261,
           "raw_csv": "event__eval_event_iff_core_integral.raw.csv",
           "sample_count": 100,
           "scenario": "eval_event_iff_core_integral"
         },
         {
           "criterion_benchmark_id": "event__eval_event_iff_triggered_rich",
-          "mean_ns_per_iter": 1008.0558689984751,
-          "median_ns_per_iter": 1006.5787449659999,
+          "mean_ns_per_iter": 958.6870685804312,
+          "median_ns_per_iter": 955.7445096732702,
           "raw_csv": "event__eval_event_iff_triggered_rich.raw.csv",
           "sample_count": 100,
           "scenario": "eval_event_iff_triggered_rich"
@@ -163,16 +163,16 @@
       "scenarios": [
         {
           "criterion_benchmark_id": "waveform_host__bind_waveform_host_metadata_path",
-          "mean_ns_per_iter": 22598.160751872914,
-          "median_ns_per_iter": 22404.27832674572,
+          "mean_ns_per_iter": 22257.36782261852,
+          "median_ns_per_iter": 22218.034775828462,
           "raw_csv": "waveform_host__bind_waveform_host_metadata_path.raw.csv",
           "sample_count": 100,
           "scenario": "bind_waveform_host_metadata_path"
         },
         {
           "criterion_benchmark_id": "waveform_host__eval_waveform_host_metadata_path",
-          "mean_ns_per_iter": 212.45832792875729,
-          "median_ns_per_iter": 211.30048026481245,
+          "mean_ns_per_iter": 210.44133795614337,
+          "median_ns_per_iter": 210.24260273538908,
           "raw_csv": "waveform_host__eval_waveform_host_metadata_path.raw.csv",
           "sample_count": 100,
           "scenario": "eval_waveform_host_metadata_path"

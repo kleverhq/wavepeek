@@ -27,7 +27,7 @@ This plan does not add general function-call or method-call syntax to the logica
 - [x] (2026-03-28 17:07Z) Added the red parser/lexer/manifest coverage first, captured expected failures (`EXPR-PARSE-LOGICAL-TRAILING` for `ev.triggered()` and suffix-stealing assertions for `top.dut.triggered`), then removed logical suffix reservation and whitelisted only `.triggered()` in the lexer/parser.
 - [x] (2026-03-28 17:10Z) Updated semantic diagnostics, deferred-runtime CLI assertions, waveform-host collision coverage, and the `expr_event` benchmark source so every remaining standalone execution surface now uses `triggered()` and bare `.triggered` resolves through ordinary signal lookup.
 - [x] (2026-03-28 17:27Z) Addressed collateral review feedback by fixing the last stale roadmap references and upgrading dump-backed collision coverage to a checked-in VCD/FST fixture pair, then reran `cargo test waveform::expr_host::tests`, `make check`, and `make ci` successfully.
-- [ ] Run focused/full validation, complete the mandatory review workflow, refresh the maintained benchmark baseline on the accepted final diff, and record the final evidence in this plan.
+- [x] (2026-03-28 17:37Z) Completed the review workflow (parser lane clean, collateral lane fixed then clean, fresh control pass clean), refreshed `bench/expr/runs/baseline/`, reran `make bench-expr-run` to a green compare, and recorded the final evidence in this plan.
 
 ## Surprises & Discoveries
 
@@ -80,11 +80,13 @@ This plan does not add general function-call or method-call syntax to the logica
 
 ## Outcomes & Retrospective
 
-Current status: implementation largely complete; validation, review, and baseline refresh remain.
+Current status: complete.
 
-The contract docs are updated, the red phase is captured, the lexer/parser now preserve bare `.triggered` signal names while routing only `.triggered()` into raw-event syntax, and the remaining collateral now matches that contract. Remaining work is the final validation/review cycle and the benchmark-baseline refresh.
+The contract docs are updated, the red phase is captured, the lexer/parser preserve bare `.triggered` signal names while routing only `.triggered()` into raw-event syntax, the CLI and waveform-backed collateral match that contract, and the maintained benchmark baseline is refreshed to the accepted reviewed diff.
 
-This plan still gives a stateless implementer a concrete route to finish the contract correction, preserve raw-event semantics through `triggered()`, unblock signal names ending in `.triggered`, and update every affected test, benchmark, and documentation surface. The draft itself already passed focused review lanes plus a fresh clean control pass, and the execution notes above now record the first completed implementation milestones.
+This plan delivered the intended standalone contract correction end-to-end. Bare signal names such as `ev.triggered` and `top.dut.triggered` now bind as ordinary operand references, raw event occurrence survives only as `event.triggered()`, deferred command-runtime boundaries remain unchanged, dump-backed waveform coverage now proves the same collision on both VCD and FST fixtures, and the benchmark workflow is back to a green post-refresh state.
+
+The main lesson from execution is that benchmark-only helpers must obey the same recoverable-host diagnostic contract as runtime hosts. The feature code itself was localized to lexer/parser syntax recognition and existing binder/evaluator semantics, but benchmark and waveform collateral needed just as much attention as the production parser to close the change safely.
 
 ## Context and Orientation
 
@@ -316,12 +318,35 @@ Expected modified files for this plan:
 - `bench/expr/expr_event.rs`
 - `bench/expr/runs/baseline/`
 
-Before closing this plan, record these evidence excerpts here:
+Recorded evidence excerpts:
 
-- Red phase from the first failing test after the new syntax is introduced but before parser changes are complete. A representative example should show `ev.triggered()` still failing to parse.
-- Green phase from `INSTA_UPDATE=no cargo test --test expression_rich_types`.
-- Green phase from `make bench-expr-run`.
-- Green phase from `make ci`.
-- Short review notes summarizing each focused lane and the fresh control pass.
+- Red phase before parser changes:
 
-Revision note: 2026-03-28 / Progress updated after docs, red tests, and lexer-parser implementation landed; remaining scope narrowed to semantic/collateral alignment, validation, review, and baseline refresh.
+      thread 'expr::parser::tests::logical_parser_accepts_triggered_call_with_optional_space_before_parens' ...
+      source should parse: ExprDiagnostic { layer: Parse, code: "EXPR-PARSE-LOGICAL-TRAILING", ... }
+
+- Green phase from `INSTA_UPDATE=no cargo test --test expression_rich_types`:
+
+      running 2 tests
+      test rich_types_positive_manifest_matches ... ok
+      test rich_types_negative_manifest_matches_snapshots ... ok
+
+- Green phase from `make bench-expr-run` after baseline refresh:
+
+      ok: run: captured 4 suites into /tmp/tmp.vnIFeXn5X5 (catalog fingerprint 6a02342ef1b6f7e299d2764f5c628b42fa39c79359e5e416c7d24bec4621703d)
+      ok: no suite scenario exceeded 15.00% negative delta in mean or median
+
+- Green phase from `make ci`:
+
+      running 95 tests
+      ....................................................................................... 87/95
+      ........
+      test result: ok. 95 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+- Review notes:
+
+      Parser/semantics lane: clean on the first focused pass; no substantive correctness issues found.
+      Collateral lane: flagged two medium issues (two stale roadmap references and VCD-only collision proof); both were fixed by updating `docs/expression_roadmap.md` and adding checked-in `expr_triggered_collision.{vcd,fst}` coverage.
+      Fresh control pass: clean after the review fixes; no remaining substantive issues before baseline refresh.
+
+Revision note: 2026-03-28 / Final execution update recorded validation, review outcomes, waveform-fixture follow-up, and benchmark-baseline refresh for the completed `triggered()` contract correction.

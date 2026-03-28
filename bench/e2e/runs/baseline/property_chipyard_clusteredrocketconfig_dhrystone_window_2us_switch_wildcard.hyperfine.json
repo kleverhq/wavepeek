@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "command": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_switch_wildcard",
+      "mean": 0.1395894126,
+      "stddev": 0.001093741476933792,
+      "median": 0.13976027300000002,
+      "user": 0.0691608,
+      "system": 0.05004460000000001,
+      "min": 0.138457417,
+      "max": 0.14085630200000002,
+      "times": [
+        0.13976027300000002,
+        0.138481883,
+        0.14085630200000002,
+        0.138457417,
+        0.140391188
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

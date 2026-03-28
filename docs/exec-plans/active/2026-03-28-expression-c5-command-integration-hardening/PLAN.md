@@ -27,7 +27,7 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 - [x] (2026-03-29 00:57Z) Routed `change` through typed event binding/evaluation, added shared command expression-runtime helpers, preserved deterministic payload/warning behavior, and kept tune-mode equivalence coverage green.
 - [x] (2026-03-29 00:57Z) Implemented `property` end to end with capture modes, wildcard tracking from `--eval`, human/json rendering, schema support, manifest-backed command fixtures, and `error: expr:` command diagnostics.
 - [x] (2026-03-29 00:57Z) Extended parity, schema, benchmark, and collateral coverage; added `property` entries to `bench/e2e/tests.json` and median-aware compare gating, but baseline refresh remains pending until after review completion.
-- [ ] Run mandatory review lanes plus a fresh control pass, apply any follow-up fixes in separate commits, and close the plan with final validation evidence.
+- [x] (2026-03-29 02:04Z) Ran mandatory review lanes (code semantics, architecture/performance, docs/schema), fixed follow-up issues in a separate review-fix commit, reran impacted tests/gates, refreshed `bench/e2e` baseline, and completed a clean fresh control pass.
 
 ## Surprises & Discoveries
 
@@ -101,9 +101,9 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 
 ## Outcomes & Retrospective
 
-Current status: implementation complete; review, final benchmark baseline refresh, and closeout remain in progress.
+Current status: complete.
 
-The branch now routes `change` and `property` through the shared typed expression runtime, ships `property` JSON/human output plus schema support, and locks the new command behavior with CLI fixtures, parity tests, and help/schema contract coverage. Repository gates (`cargo test`, `python3 scripts/check_schema_contract.py`, `make check`, `make ci`) are green. The remaining work is mandatory review, any follow-up fixes, a post-review `bench/e2e` baseline refresh, and final closeout notes.
+The branch now routes `change` and `property` through the shared typed expression runtime, ships `property` JSON/human output plus schema support, locks the new command behavior with CLI fixtures/parity/help/schema coverage, and extends the CLI benchmark harness with `property` scenarios plus mean+median compare gating. Repository gates (`cargo test`, `python3 scripts/check_schema_contract.py`, `make check`, `make ci`) are green, review lanes are clean, and the maintained `bench/e2e` baseline has been refreshed after review.
 
 ## Context and Orientation
 
@@ -537,14 +537,14 @@ Before closing this plan, record these evidence excerpts here:
       stderr: error: unimplemented: `property` command execution is not implemented yet
 
 - Green phase from `cargo test --test property_cli` after implementation:
-      running ... tests
+      running 12 tests
       test result: ok.
 
 - Green parity evidence from `cargo test --test property_vcd_fst_parity`:
       test result: ok.
 
 - Benchmark compare evidence:
-      ok: compare: all checks passed (use --verbose for detailed logs)
+      info: compare: all checks passed
 
 - Review outcome:
       focused review lanes ran for code semantics, architecture/performance, and docs/schema

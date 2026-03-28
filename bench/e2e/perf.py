@@ -24,6 +24,7 @@ README_NAME = "README.md"
 WAVEPEEK_BIN_ENV = "WAVEPEEK_BIN"
 EMOJI_THRESHOLD_PCT = 3.0
 METRICS = ("mean", "stddev", "median", "min", "max")
+COMPARE_TIMING_METRICS = ("mean", "median")
 HYPERFINE_SUFFIX = ".hyperfine.json"
 WAVEPEEK_SUFFIX = ".wavepeek.json"
 FUNCTIONAL_MATCH_MARKER = "✅"
@@ -797,17 +798,18 @@ def cmd_compare(args: argparse.Namespace) -> int:
         revised_row = revised[test_name]
         golden_row = golden[test_name]
 
-        delta = delta_pct(float(revised_row["mean"]), float(golden_row["mean"]))
-        if delta is not None and delta < -threshold:
-            speed = format_speed_factor(
-                float(revised_row["mean"]),
-                float(golden_row["mean"]),
-            )
-            timing_failures.append(
-                f"{test_name}: mean revised={float(revised_row['mean']):.6f}s, "
-                f"golden={float(golden_row['mean']):.6f}s, "
-                f"delta={delta:+.2f}%, speed={speed}"
-            )
+        for metric in COMPARE_TIMING_METRICS:
+            delta = delta_pct(float(revised_row[metric]), float(golden_row[metric]))
+            if delta is not None and delta < -threshold:
+                speed = format_speed_factor(
+                    float(revised_row[metric]),
+                    float(golden_row[metric]),
+                )
+                timing_failures.append(
+                    f"{test_name}: {metric} revised={float(revised_row[metric]):.6f}s, "
+                    f"golden={float(golden_row[metric]):.6f}s, "
+                    f"delta={delta:+.2f}%, speed={speed}"
+                )
 
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(
             revised_dir,
@@ -863,7 +865,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
         if timing_failures:
             print(
-                "error: compare: mean regression exceeds allowed negative delta "
+                "error: compare: mean/median regression exceeds allowed negative delta "
                 f"({threshold:.2f}%):",
                 file=sys.stderr,
             )
@@ -950,7 +952,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         required=True,
         type=float,
-        help="fail when mean delta goes below negative threshold",
+        help="fail when mean or median delta goes below negative threshold",
     )
     compare_parser.add_argument(
         "-v",

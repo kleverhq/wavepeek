@@ -22,7 +22,10 @@ SPEC.loader.exec_module(perf)
 
 class PerfHelpersTest(unittest.TestCase):
     @staticmethod
-    def _write_hyperfine_artifact(path: pathlib.Path, mean: float) -> None:
+    def _write_hyperfine_artifact(
+        path: pathlib.Path, mean: float, median: float | None = None
+    ) -> None:
+        metric_median = mean if median is None else median
         path.write_text(
             json.dumps(
                 {
@@ -31,7 +34,7 @@ class PerfHelpersTest(unittest.TestCase):
                             "command": "wavepeek change --json",
                             "mean": mean,
                             "stddev": 0.0,
-                            "median": mean,
+                            "median": metric_median,
                             "min": mean,
                             "max": mean,
                         }
@@ -297,6 +300,20 @@ class PerfHelpersTest(unittest.TestCase):
             },
         )
 
+    def test_tests_json_contains_property_benchmarks(self) -> None:
+        payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
+        property_tests = {
+            test["name"]: test for test in payload["tests"] if test["category"] == "property"
+        }
+
+        self.assertEqual(
+            set(property_tests),
+            {
+                "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk",
+                "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_switch_wildcard",
+            },
+        )
+
     def test_tests_commit_catalog_commands_match_tests_json(self) -> None:
         full_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
         commit_payload = json.loads(
@@ -550,6 +567,42 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("sample: mean revised=2.000000s", stderr.getvalue())
+
+    def test_cmd_compare_fails_on_median_regression(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json", mean=1.0, median=2.0
+            )
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json", mean=1.0, median=1.0
+            )
+            (revised / "sample.wavepeek.json").write_text(
+                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                encoding="utf-8",
+            )
+            (golden / "sample.wavepeek.json").write_text(
+                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                encoding="utf-8",
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
 
     def test_cmd_compare_non_verbose_success_has_concise_ok_line(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

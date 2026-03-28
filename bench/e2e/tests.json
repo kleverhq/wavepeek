@@ -3592,6 +3592,66 @@
         "signal_count": 1,
         "trigger": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
       }
+    },
+    {
+      "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk",
+      "category": "property",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--from",
+        "800000000ps",
+        "--to",
+        "802000000ps",
+        "--on",
+        "posedge TOP.TestDriver.clock",
+        "--eval",
+        "TOP.TestDriver.testHarness.io_success == 1'b1",
+        "--capture",
+        "match",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "2us",
+        "capture": "match",
+        "trigger": "posedge TOP.TestDriver.clock",
+        "eval": "TOP.TestDriver.testHarness.io_success == 1'b1"
+      }
+    },
+    {
+      "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_switch_wildcard",
+      "category": "property",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--from",
+        "800000000ps",
+        "--to",
+        "802000000ps",
+        "--eval",
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid == 1'b1",
+        "--capture",
+        "switch",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "2us",
+        "capture": "switch",
+        "trigger": "*",
+        "eval": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid == 1'b1"
+      }
     }
   ]
 }

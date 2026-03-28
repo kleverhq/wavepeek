@@ -11,8 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added fully functional `value` command for deterministic point-in-time signal sampling on both VCD and FST dumps, including scope-relative and full-path signal resolution.
 - Added `value --abs` for canonical-path rendering in human mode while keeping compact default display based on requested `--signals` tokens.
 - Added strict `value` JSON contract in `schema/wavepeek.json` with compact `valueData` payload (`time`, ordered `signals[{path,value}]`) and conditional command-to-data validation.
-- Added fully functional `change` command with unified `--on` event expressions (`*`, named, `posedge`/`negedge`/`edge`, `or`/`,` unions), deterministic delta snapshots, and staged `iff` parsing with explicit deferred-runtime error.
+- Added end-to-end typed expression runtime integration for `change --on ... iff ...` and the `property` command across human and JSON output modes on both VCD and FST inputs.
 - Added new change-focused fixtures and integration coverage for baseline checkpoint semantics, union deduplication, warning parity, duplicate signal ordering, and default `--max=50` truncation behavior.
+- Added command-runtime manifests, deterministic `error: expr:` snapshots, `property` VCD/FST parity coverage, and `property` benchmark scenarios in the CLI E2E harness.
 - Added a new hyperfine-backed CLI E2E benchmark harness (`bench/e2e/perf.py`) with `run`/`list`/`report`/`compare` modes, a flat explicit test catalog (`bench/e2e/tests.json`), per-test JSON artifacts, and Markdown run reports.
 - Added recursive signal listing via `wavepeek signal --recursive` with optional `--max-depth`, deterministic depth-first traversal, depth-0 parity with non-recursive mode, and relative-path human rendering scoped to `--scope`.
 - Added recursive `signal` benchmark catalog coverage for SCR1 (`all`, `filter valid`, `max-depth 2`) in `bench/e2e/tests.json`.
@@ -24,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Breaking rename for point-in-time sampling surface: removed `at` command and `--time` flag, and replaced them with `value` and `--at`.
 - Breaking rename for event/property surface: removed `when` command and `change --when` flag, and replaced them with `property` and `change --on` (no compatibility aliases).
 - Breaking expression syntax change: standalone raw-event occurrence now requires `event.triggered()`, while bare `.triggered` resolves as an ordinary signal path suffix and no longer acts as shorthand event syntax.
-- Updated CLI help/contracts and JSON schema so `change` is no longer marked as unimplemented and now documents `--on`/`--abs` behavior; `property` remains explicitly unimplemented.
+- Updated CLI help/contracts and JSON schema so `change` and `property` both document the shipped typed-expression runtime, property capture semantics, and `property` JSON payload shape.
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
 - Simplified `value` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
 - Updated JSON envelope `$schema` URLs from GitHub blob pages to `raw.githubusercontent.com` so schema links resolve as directly consumable raw JSON.

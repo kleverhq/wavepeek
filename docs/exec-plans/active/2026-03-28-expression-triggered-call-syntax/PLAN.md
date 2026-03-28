@@ -23,9 +23,10 @@ This plan does not add general function-call or method-call syntax to the logica
 - [x] (2026-03-28 13:26Z) Ran focused review lanes on the plan and revised it for same-prefix collision coverage, waveform-host collision coverage, manifest-contract validation, phase mapping, and supported benchmark commands.
 - [x] (2026-03-28 13:29Z) Ran a fresh control review pass and revised the benchmark workflow so committed baseline collateral is captured only after the review-clean final diff.
 - [x] (2026-03-28 13:31Z) Completed the final control review pass with no substantive remaining issues.
-- [ ] Implement the contract update in docs and changelog, then add the red tests that prove `ev.triggered` can be an ordinary signal reference while `ev.triggered()` is the only raw-event form.
-- [ ] Update lexer, parser, binder diagnostics, tests, waveform-host coverage, and benchmark sources so the code matches the new contract.
-- [ ] Run focused validation, refresh benchmark baseline collateral if the final diff is accepted, complete the mandatory review workflow, and record the final evidence in this plan.
+- [x] (2026-03-28 17:07Z) Updated `docs/expression_lang.md`, `docs/expression_roadmap.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, and `CHANGELOG.md` so the standalone contract now names `triggered()` as the only raw-event form and records the breaking shorthand removal.
+- [x] (2026-03-28 17:07Z) Added the red parser/lexer/manifest coverage first, captured expected failures (`EXPR-PARSE-LOGICAL-TRAILING` for `ev.triggered()` and suffix-stealing assertions for `top.dut.triggered`), then removed logical suffix reservation and whitelisted only `.triggered()` in the lexer/parser.
+- [x] (2026-03-28 17:10Z) Updated semantic diagnostics, deferred-runtime CLI assertions, waveform-host collision coverage, and the `expr_event` benchmark source so every remaining standalone execution surface now uses `triggered()` and bare `.triggered` resolves through ordinary signal lookup.
+- [ ] Run focused/full validation, complete the mandatory review workflow, refresh the maintained benchmark baseline on the accepted final diff, and record the final evidence in this plan.
 
 ## Surprises & Discoveries
 
@@ -40,6 +41,12 @@ This plan does not add general function-call or method-call syntax to the logica
 
 - Observation: the shared fixture host already supports dotted signal names, so the collision fix does not require schema or helper redesign.
   Evidence: `tests/common/expr_runtime.rs` resolves signal fixtures by full `name: String` keys and does not special-case dot segments.
+
+- Observation: the existing parser already gives the right malformed-call failure shape once the lexer stops stealing bare suffixes; the main parser work is consuming an empty `()` and improving member-suffix notes.
+  Evidence: after the red test edit but before the parser change, `ev.triggered()` failed as `EXPR-PARSE-LOGICAL-TRAILING` at the opening `(`, which confirmed that generic call syntax stayed closed and only the postfix whitelist needed to move.
+
+- Observation: the waveform-backed collision proof does not require any host redesign; a nested VCD scope named `ev` under `top` naturally yields the ordinary signal path `top.ev.triggered` alongside the raw event `top.ev`.
+  Evidence: `src/waveform/expr_host.rs` now exercises a temp VCD where `top.ev` is declared as an event and `top.ev.triggered` is declared as a wire inside `$scope module ev`, and one logical expression distinguishes the two at timestamp `10`.
 
 ## Decision Log
 
@@ -65,9 +72,11 @@ This plan does not add general function-call or method-call syntax to the logica
 
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation largely complete; validation, review, and baseline refresh remain.
 
-This plan now gives a stateless implementer a concrete route to correct the contract, preserve raw-event semantics through `triggered()`, unblock signal names ending in `.triggered`, and update every affected test, benchmark, and documentation surface. The draft itself already passed focused review lanes plus a fresh clean control pass. The remaining work is execution: red tests, parser/binder updates, collateral refresh, implementation review, and final baseline capture.
+The contract docs are updated, the red phase is captured, the lexer/parser now preserve bare `.triggered` signal names while routing only `.triggered()` into raw-event syntax, and the remaining collateral now matches that contract. Remaining work is the final validation/review cycle and the benchmark-baseline refresh.
+
+This plan still gives a stateless implementer a concrete route to finish the contract correction, preserve raw-event semantics through `triggered()`, unblock signal names ending in `.triggered`, and update every affected test, benchmark, and documentation surface. The draft itself already passed focused review lanes plus a fresh clean control pass, and the execution notes above now record the first completed implementation milestones.
 
 ## Context and Orientation
 
@@ -307,4 +316,4 @@ Before closing this plan, record these evidence excerpts here:
 - Green phase from `make ci`.
 - Short review notes summarizing each focused lane and the fresh control pass.
 
-Revision note: 2026-03-28 / Initial draft created to drive the breaking contract correction from bare `.triggered` to explicit `.triggered()` so signal paths ending in `.triggered` become addressable.
+Revision note: 2026-03-28 / Progress updated after docs, red tests, and lexer-parser implementation landed; remaining scope narrowed to semantic/collateral alignment, validation, review, and baseline refresh.

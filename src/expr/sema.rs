@@ -706,9 +706,9 @@ fn bind_logical_node(
                 if !matches!(&ty.kind, ExprTypeKind::Event) {
                     return Err(sema_diag(
                         "EXPR-SEMANTIC-TRIGGERED",
-                        ".triggered requires a raw event operand",
+                        ".triggered() requires a raw event operand",
                         *operand_span,
-                        &["only operands with event type support .triggered"],
+                        &["only operands with event type support .triggered()"],
                     ));
                 }
                 Ok(BoundLogicalNode {
@@ -719,27 +719,27 @@ fn bind_logical_node(
             }
             LogicalExprNode::Triggered { .. } => Err(sema_diag(
                 "EXPR-SEMANTIC-TRIGGERED",
-                "chained .triggered is invalid",
+                "chained .triggered() is invalid",
                 *span,
-                &["apply .triggered only once to a raw event operand reference"],
+                &["apply .triggered() only once to a raw event operand reference"],
             )),
             other => {
                 if matches!(other, LogicalExprNode::Selection { .. }) {
                     return match bind_logical_node(other, host) {
                         Ok(_) => Err(sema_diag(
                             "EXPR-SEMANTIC-TRIGGERED",
-                            ".triggered requires a raw event operand",
+                            ".triggered() requires a raw event operand",
                             other.span(),
-                            &["apply .triggered directly to an event operand reference"],
+                            &["apply .triggered() directly to an event operand reference"],
                         )),
                         Err(err) => Err(err),
                     };
                 }
                 Err(sema_diag(
                     "EXPR-SEMANTIC-TRIGGERED",
-                    ".triggered requires a raw event operand",
+                    ".triggered() requires a raw event operand",
                     other.span(),
-                    &["apply .triggered directly to an event operand reference"],
+                    &["apply .triggered() directly to an event operand reference"],
                 ))
             }
         },
@@ -774,9 +774,9 @@ fn bind_resolved_logical_signal(
     if matches!(&ty.kind, ExprTypeKind::Event) {
         return Err(sema_diag(
             "EXPR-SEMANTIC-EVENT-VALUE",
-            "raw event operands are only valid with .triggered",
+            "raw event operands are only valid with .triggered()",
             span,
-            &["use event_operand.triggered to read a raw event occurrence"],
+            &["use event_operand.triggered() to read a raw event occurrence"],
         ));
     }
     Ok(BoundLogicalNode {

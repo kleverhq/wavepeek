@@ -666,7 +666,40 @@ impl<'a> LogicalParser<'a> {
                     match token.kind {
                         LogicalTokenKind::Identifier(ref name) if name == "triggered" => {
                             self.index += 1;
-                            let span = Span::new(node.span().start, token.span.end);
+                            if !matches!(self.current().kind, LogicalTokenKind::LeftParen) {
+                                return Err(logical_parse_diag(
+                                    "EXPR-PARSE-LOGICAL-EXPECTED",
+                                    "unsupported member-like suffix",
+                                    dot_span,
+                                    &["only .triggered() is supported as a member-like suffix"],
+                                ));
+                            }
+                            let open = self.current().span;
+                            self.index += 1;
+                            let close = match self.current().kind {
+                                LogicalTokenKind::RightParen => {
+                                    let close = self.current().span;
+                                    self.index += 1;
+                                    close
+                                }
+                                LogicalTokenKind::Eof => {
+                                    return Err(logical_parse_diag(
+                                        "EXPR-PARSE-LOGICAL-EXPECTED",
+                                        "triggered() is missing closing ')'",
+                                        open,
+                                        &["only .triggered() is supported as a member-like suffix"],
+                                    ));
+                                }
+                                _ => {
+                                    return Err(logical_parse_diag(
+                                        "EXPR-PARSE-LOGICAL-EXPECTED",
+                                        "triggered() does not take arguments",
+                                        self.current().span,
+                                        &["only .triggered() is supported as a member-like suffix"],
+                                    ));
+                                }
+                            };
+                            let span = Span::new(node.span().start, close.end);
                             node = LogicalExprNode::Triggered {
                                 expr: Box::new(node),
                                 span,
@@ -677,7 +710,7 @@ impl<'a> LogicalParser<'a> {
                                 "EXPR-PARSE-LOGICAL-EXPECTED",
                                 "unsupported member-like suffix",
                                 dot_span,
-                                &["only .triggered is supported as a member-like suffix"],
+                                &["only .triggered() is supported as a member-like suffix"],
                             ));
                         }
                     }
@@ -1504,11 +1537,60 @@ mod tests {
     #[test]
     fn logical_parser_accepts_rich_type_surface_sample() {
         let parsed = parse_logical_expr_ast(
-            "ev.triggered ? type(state)::BUSY : type(msg)'(\"idle\") == \"idle\"",
+            "ev.triggered() ? type(state)::BUSY : type(msg)'(\"idle\") == \"idle\"",
         )
         .expect("rich type sample expression should parse");
 
         assert!(matches!(parsed.root, LogicalExprNode::Conditional { .. }));
+    }
+
+    #[test]
+    fn logical_parser_keeps_triggered_suffix_signal_names_as_operand_refs() {
+        let parsed = parse_logical_expr_ast("top.dut.triggered").expect("source should parse");
+
+        assert!(matches!(
+            parsed.root,
+            LogicalExprNode::OperandRef { ref name, .. } if name == "top.dut.triggered"
+        ));
+
+        let parsed = parse_logical_expr_ast("top.dut.triggered[0]").expect("source should parse");
+
+        match parsed.root {
+            LogicalExprNode::Selection { base, .. } => assert!(matches!(
+                base.as_ref(),
+                LogicalExprNode::OperandRef { name, .. } if name == "top.dut.triggered"
+            )),
+            other => panic!("expected selection rooted at operand reference, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn logical_parser_accepts_triggered_call_with_optional_space_before_parens() {
+        for source in ["ev.triggered()", "ev.triggered ()"] {
+            let parsed = parse_logical_expr_ast(source).expect("source should parse");
+
+            match parsed.root {
+                LogicalExprNode::Triggered { expr, span } => {
+                    assert_eq!(span.start, 0);
+                    assert_eq!(span.end, source.len());
+                    assert!(matches!(
+                        expr.as_ref(),
+                        LogicalExprNode::OperandRef { name, .. } if name == "ev"
+                    ));
+                }
+                other => panic!("expected triggered node, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn logical_parser_rejects_triggered_call_arguments_and_missing_close_paren() {
+        for source in ["ev.triggered(1)", "ev.triggered("] {
+            let error = parse_logical_expr_ast(source).expect_err("source should fail");
+
+            assert_eq!(error.layer, DiagnosticLayer::Parse);
+            assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+        }
     }
 
     #[test]

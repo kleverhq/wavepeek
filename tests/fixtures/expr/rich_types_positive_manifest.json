@@ -2956,7 +2956,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_logical_primary",
-      "source": "ev.triggered",
+      "source": "ev.triggered()",
       "signals": [
         {
           "name": "ev",
@@ -2997,8 +2997,73 @@
     },
     {
       "kind": "logical_eval",
+      "name": "triggered_signal_suffix_wins_over_raw_event_call_syntax",
+      "source": "!ev.triggered && ev.triggered()",
+      "signals": [
+        {
+          "name": "ev",
+          "ty": {
+            "kind": "event",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [],
+          "event_timestamps": [
+            10
+          ]
+        },
+        {
+          "name": "ev.triggered",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 10,
+              "bits": "0",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        }
+      ],
+      "timestamp": 10,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
       "name": "postfix_suffix_grammar_matrix_accepts_all_documented_forms",
-      "source": "ev.triggered && data[idx] && (data[3:1] == 3'b010) && (data[base_up +: 3] == 3'b010) && (data[base_down -: 3] == 3'b010)",
+      "source": "ev.triggered() && data[idx] && (data[3:1] == 3'b010) && (data[base_up +: 3] == 3'b010) && (data[base_down -: 3] == 3'b010)",
       "signals": [
         {
           "name": "ev",
@@ -3132,7 +3197,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_postfix_binds_before_unary_not",
-      "source": "!ev.triggered",
+      "source": "!ev.triggered()",
       "signals": [
         {
           "name": "ev",
@@ -3174,7 +3239,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_postfix_unary_not_matches_parenthesized_operand",
-      "source": "!(ev.triggered)",
+      "source": "!(ev.triggered())",
       "signals": [
         {
           "name": "ev",
@@ -3216,7 +3281,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_postfix_binds_before_equality",
-      "source": "ev.triggered == 1'b1",
+      "source": "ev.triggered() == 1'b1",
       "signals": [
         {
           "name": "ev",
@@ -3258,7 +3323,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_postfix_equality_matches_parenthesized_operand",
-      "source": "(ev.triggered) == 1'b1",
+      "source": "(ev.triggered()) == 1'b1",
       "signals": [
         {
           "name": "ev",
@@ -3300,7 +3365,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_int_cast_primary",
-      "source": "int'(ev.triggered)",
+      "source": "int'(ev.triggered())",
       "signals": [
         {
           "name": "ev",
@@ -3342,7 +3407,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_cast_semantics_match_ordinary_bit",
-      "source": "(bit[3]'(ev.triggered) === bit[3]'(flag_bit)) && (logic[3]'(ev.triggered) === logic[3]'(flag_bit)) && (int'(signed'(ev.triggered)) === int'(signed'(flag_bit)))",
+      "source": "(bit[3]'(ev.triggered()) === bit[3]'(flag_bit)) && (logic[3]'(ev.triggered()) === logic[3]'(flag_bit)) && (int'(signed'(ev.triggered())) === int'(signed'(flag_bit)))",
       "signals": [
         {
           "name": "ev",
@@ -3383,6 +3448,71 @@
             }
           ],
           "event_timestamps": []
+        }
+      ],
+      "timestamp": 10,
+      "expected_type": {
+        "kind": "bit_vector",
+        "integer_like_kind": null,
+        "storage": "scalar",
+        "width": 1,
+        "is_four_state": true,
+        "is_signed": false,
+        "enum_type_id": null,
+        "enum_labels": null
+      },
+      "expected_result": {
+        "kind": "integral",
+        "bits": "1",
+        "label": null,
+        "real": null,
+        "string": null
+      }
+    },
+    {
+      "kind": "logical_eval",
+      "name": "hierarchical_triggered_signal_suffix_stays_ordinary_operand",
+      "source": "(top.dut.triggered == 1'b1) && ev.triggered()",
+      "signals": [
+        {
+          "name": "top.dut.triggered",
+          "ty": {
+            "kind": "bit_vector",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 1,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [
+            {
+              "timestamp": 10,
+              "bits": "1",
+              "label": null,
+              "real": null,
+              "string": null
+            }
+          ],
+          "event_timestamps": []
+        },
+        {
+          "name": "ev",
+          "ty": {
+            "kind": "event",
+            "integer_like_kind": null,
+            "storage": "scalar",
+            "width": 0,
+            "is_four_state": false,
+            "is_signed": false,
+            "enum_type_id": null,
+            "enum_labels": null
+          },
+          "samples": [],
+          "event_timestamps": [
+            10
+          ]
         }
       ],
       "timestamp": 10,
@@ -3599,7 +3729,7 @@
     {
       "kind": "event_eval",
       "name": "rich_iff_with_triggered_real_and_string",
-      "source": "posedge clk iff (ev.triggered && (temp > 1.0) && (msg == \"go\"))",
+      "source": "posedge clk iff (ev.triggered() && (temp > 1.0) && (msg == \"go\"))",
       "tracked_signals": [
         "clk"
       ],
@@ -4200,7 +4330,7 @@
     {
       "kind": "logical_eval",
       "name": "triggered_logical_clears_after_event_timestamp",
-      "source": "ev.triggered",
+      "source": "ev.triggered()",
       "signals": [
         {
           "name": "ev",

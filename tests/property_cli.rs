@@ -205,7 +205,7 @@ fn property_rich_type_surface_stays_unimplemented() {
             "--waves",
             fixture.as_str(),
             "--on",
-            "posedge top.clk iff top.ev.triggered",
+            "posedge top.clk iff top.ev.triggered()",
             "--eval",
             "type(top.data)'(3) == 8'h03 ? real'(1) > 0.5 : \"go\" == \"go\"",
         ])

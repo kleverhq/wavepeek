@@ -127,15 +127,50 @@ mod tests {
         ExprValuePayload, bind_logical_expr_ast, eval_logical_expr_at, parse_logical_expr_ast,
     };
 
-    const RICH_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-expr-rich-types\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var event 1 \" ev $end\n$var real 1 # temp $end\n$var string 1 $ msg $end\n$var enum 2 % state $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nr0.5 #\nsidle $\nb00 %\n#10\n1!\n1\"\nr1.5 #\nsgo $\nb01 %\n#20\n0!\nr1.5 #\nshold $\nb10 %\n";
+    const RICH_VCD: &str = concat!(
+        "$date\n  today\n$end\n",
+        "$version\n  wavepeek-expr-rich-types\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var wire 1 ! clk $end\n",
+        "$var event 1 \" ev $end\n",
+        "$scope module ev $end\n",
+        "$var wire 1 & triggered $end\n",
+        "$upscope $end\n",
+        "$var real 1 # temp $end\n",
+        "$var string 1 $ msg $end\n",
+        "$var enum 2 % state $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "0!\n",
+        "1&\n",
+        "r0.5 #\n",
+        "sidle $\n",
+        "b00 %\n",
+        "#10\n",
+        "1!\n",
+        "1\"\n",
+        "0&\n",
+        "r1.5 #\n",
+        "sgo $\n",
+        "b01 %\n",
+        "#20\n",
+        "0!\n",
+        "1&\n",
+        "r1.5 #\n",
+        "shold $\n",
+        "b10 %\n",
+    );
 
     #[test]
-    fn waveform_expr_host_supports_rich_vcd_values() {
+    fn waveform_expr_host_distinguishes_triggered_signal_suffix_from_raw_event_call() {
         let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
         let host = WaveformExprHost::open(fixture.path()).expect("fixture should open");
-        let ast =
-            parse_logical_expr_ast("top.ev.triggered && (top.temp > 1.0) && (top.msg == \"go\")")
-                .expect("expression should parse");
+        let ast = parse_logical_expr_ast(
+            "!top.ev.triggered && top.ev.triggered() && (top.temp > 1.0) && (top.msg == \"go\")",
+        )
+        .expect("expression should parse");
         let bound = bind_logical_expr_ast(&ast, &host).expect("expression should bind");
         let value = eval_logical_expr_at(&bound, &host, 10).expect("expression should evaluate");
 

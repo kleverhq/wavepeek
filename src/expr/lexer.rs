@@ -244,7 +244,7 @@ impl<'a> LogicalLexer<'a> {
                 let start = self.index;
                 self.bump_char();
                 while let Some(next) = self.peek_char() {
-                    if next == '.' && self.peek_reserved_triggered_suffix() {
+                    if next == '.' && self.peek_triggered_call_suffix() {
                         break;
                     }
                     if logical_identifier_char(next) {
@@ -700,15 +700,28 @@ impl<'a> LogicalLexer<'a> {
         }
     }
 
-    fn peek_reserved_triggered_suffix(&self) -> bool {
+    fn peek_triggered_call_suffix(&self) -> bool {
         let tail = &self.source[self.index..];
         if !tail.starts_with(".triggered") {
             return false;
         }
-        !matches!(
-            tail[".triggered".len()..].chars().next(),
-            Some(next) if next.is_ascii_alphanumeric() || matches!(next, '_' | '$')
-        )
+
+        let mut remainder = &tail[".triggered".len()..];
+        if matches!(
+            remainder.chars().next(),
+            Some(next) if next.is_ascii_alphanumeric() || matches!(next, '_' | '$' | '.')
+        ) {
+            return false;
+        }
+
+        while let Some(ch) = remainder.chars().next() {
+            if !ch.is_whitespace() {
+                break;
+            }
+            remainder = &remainder[ch.len_utf8()..];
+        }
+
+        matches!(remainder.chars().next(), Some('('))
     }
 
     fn span(&self, start: usize, end: usize) -> Span {
@@ -779,8 +792,19 @@ mod tests {
     }
 
     #[test]
-    fn lex_logical_expr_reserves_triggered_suffix() {
+    fn lex_logical_expr_keeps_triggered_suffix_inside_identifier_without_call() {
         let tokens = lex_logical_expr("top.ev.triggered", 0).expect("lexes");
+
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "top.ev.triggered"
+        ));
+        assert!(matches!(tokens[1].kind, super::LogicalTokenKind::Eof));
+    }
+
+    #[test]
+    fn lex_logical_expr_splits_triggered_call_suffix() {
+        let tokens = lex_logical_expr("top.ev.triggered ()", 0).expect("lexes");
 
         assert!(matches!(
             tokens[0].kind,
@@ -790,6 +814,49 @@ mod tests {
         assert!(matches!(
             tokens[2].kind,
             super::LogicalTokenKind::Identifier(ref name) if name == "triggered"
+        ));
+        assert!(matches!(tokens[3].kind, super::LogicalTokenKind::LeftParen));
+        assert!(matches!(
+            tokens[4].kind,
+            super::LogicalTokenKind::RightParen
+        ));
+    }
+
+    #[test]
+    fn lex_logical_expr_splits_triggered_call_before_arguments() {
+        let tokens = lex_logical_expr("ev.triggered(1)", 0).expect("lexes");
+
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "ev"
+        ));
+        assert!(matches!(tokens[1].kind, super::LogicalTokenKind::Dot));
+        assert!(matches!(
+            tokens[2].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "triggered"
+        ));
+        assert!(matches!(tokens[3].kind, super::LogicalTokenKind::LeftParen));
+        assert!(matches!(
+            tokens[4].kind,
+            super::LogicalTokenKind::IntegralLiteral(_)
+        ));
+        assert!(matches!(
+            tokens[5].kind,
+            super::LogicalTokenKind::RightParen
+        ));
+    }
+
+    #[test]
+    fn lex_logical_expr_keeps_triggered_signal_base_for_selection() {
+        let tokens = lex_logical_expr("top.dut.triggered[0]", 0).expect("lexes");
+
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "top.dut.triggered"
+        ));
+        assert!(matches!(
+            tokens[1].kind,
+            super::LogicalTokenKind::LeftBracket
         ));
     }
 

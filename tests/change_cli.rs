@@ -815,7 +815,7 @@ fn change_triggered_iff_payload_stays_deferred_runtime_error() {
             "--signals",
             "data",
             "--on",
-            "posedge clk iff ev.triggered",
+            "posedge clk iff ev.triggered()",
         ])
         .assert()
         .failure()

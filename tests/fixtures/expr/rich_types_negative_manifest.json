@@ -1166,7 +1166,7 @@
     {
       "name": "invalid_triggered_on_non_event",
       "entrypoint": "logical",
-      "source": "data.triggered",
+      "source": "data.triggered()",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-TRIGGERED",
       "span": {
@@ -1179,7 +1179,7 @@
     {
       "name": "invalid_triggered_on_parenthesized_event",
       "entrypoint": "logical",
-      "source": "(ev).triggered",
+      "source": "(ev).triggered()",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-TRIGGERED",
       "span": {
@@ -1203,24 +1203,11 @@
       "host_profile": "rich_types_baseline"
     },
     {
-      "name": "invalid_chained_triggered",
+      "name": "invalid_bare_triggered_shorthand_is_unknown_signal",
       "entrypoint": "logical",
-      "source": "ev.triggered.triggered",
+      "source": "ev.triggered",
       "layer": "semantic",
-      "code": "EXPR-SEMANTIC-TRIGGERED",
-      "span": {
-        "start": 0,
-        "end": 22
-      },
-      "snapshot": null,
-      "host_profile": "rich_types_baseline"
-    },
-    {
-      "name": "invalid_selection_on_triggered_scalar",
-      "entrypoint": "logical",
-      "source": "ev.triggered[0]",
-      "layer": "semantic",
-      "code": "EXPR-SEMANTIC-SELECTION-BASE",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
       "span": {
         "start": 0,
         "end": 12
@@ -1229,9 +1216,35 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_chained_triggered",
+      "entrypoint": "logical",
+      "source": "ev.triggered().triggered()",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-TRIGGERED",
+      "span": {
+        "start": 0,
+        "end": 26
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_selection_on_triggered_scalar",
+      "entrypoint": "logical",
+      "source": "ev.triggered()[0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-SELECTION-BASE",
+      "span": {
+        "start": 0,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_triggered_after_raw_event_selection",
       "entrypoint": "logical",
-      "source": "ev[0].triggered",
+      "source": "ev[0].triggered()",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-EVENT-VALUE",
       "span": {

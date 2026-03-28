@@ -191,7 +191,7 @@ fn bench_eval_event_iff_core_integral(c: &mut Criterion) {
 }
 
 fn bench_eval_event_iff_triggered_rich(c: &mut Criterion) {
-    let source = "posedge clk iff (ev.triggered && (temp > 1.0) && (msg == \"go\"))";
+    let source = "posedge clk iff (ev.triggered() && (temp > 1.0) && (msg == \"go\"))";
     let host = event_host();
     let ast = parse_event_expr_ast(source).expect("event bench source should parse");
     let bound = bind_event_expr_ast(&ast, &host).expect("event bench source should bind");

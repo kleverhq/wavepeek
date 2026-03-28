@@ -16,6 +16,8 @@ This plan also resolves one stale contract mismatch before implementation starts
 
 This plan does not add any language feature beyond `docs/expression_lang.md`. It does not add temporal property operators, implication, coverage syntax, streaming JSON, or any new command surface outside the already documented `change` and `property` flags. It does not keep the legacy `change --on` parser or runtime as a supported fallback once `C5` is complete, and it does not introduce a public `change --eval` flag. It does not redesign the `bench/e2e` harness, and it does not require expression microbenchmark workflow changes outside small collateral updates that may be needed if waveform-host hot paths move.
 
+Implementation naming rule: the roadmap label `C5` is temporary planning terminology only. Do not introduce `C5` into new or updated files under `tests/`, `src/`, `schema/`, `bench/`, or live docs such as `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, `docs/DEVELOPMENT.md`, or `CHANGELOG.md`. It is acceptable for this ExecPlan and the temporary roadmap documents to use the label for phase mapping, but shipped artifacts must use stable descriptive names instead.
+
 ## Progress
 
 - [x] (2026-03-28 19:20Z) Reviewed `docs/expression_roadmap.md`, `docs/expression_lang.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, the completed `C1` through `C4` expression ExecPlans, current `src/engine/`, `src/expr/`, `src/output.rs`, `schema/wavepeek.json`, and the current `tests/` plus `bench/e2e/` coverage.
@@ -78,12 +80,12 @@ This plan does not add any language feature beyond `docs/expression_lang.md`. It
   Rationale: both `change` and `property` need direct waveform access for candidate collection and typed host access for expression binding/evaluation. Making both paths share one opened dump avoids hidden double-open cost and keeps the benchmark story honest.
   Date/Author: 2026-03-28 / OpenCode
 
-- Decision: use the existing full-surface expression manifests `tests/fixtures/expr/rich_types_positive_manifest.json` and `tests/fixtures/expr/rich_types_negative_manifest.json` as the locked phase manifests for language semantics, and add C5-specific command behaviors through code-level integration tests.
+- Decision: use the existing full-surface expression manifests `tests/fixtures/expr/rich_types_positive_manifest.json` and `tests/fixtures/expr/rich_types_negative_manifest.json` as the locked phase manifests for language semantics, and add phase-local command behaviors through code-level integration tests.
   Rationale: `C5` does not expand the standalone language contract; it wires the already locked `C4` surface into commands. Reusing the existing manifests avoids inventing a second fixture schema for semantics that are already covered, while command output and capture behavior remain clearer as CLI tests.
   Date/Author: 2026-03-28 / OpenCode
 
-- Decision: satisfy the phase-gate artifact rule with small C5-specific CLI manifests and snapshots in addition to the carried-forward rich-type manifests.
-  Rationale: `C5` changes command behavior rather than standalone language semantics, so the plan needs one phase-local positive/negative artifact set for CLI contracts and deterministic `error: expr:` text even though the standalone language manifests are still reused.
+- Decision: satisfy the phase-gate artifact rule with small phase-local CLI manifests and snapshots in addition to the carried-forward rich-type manifests.
+  Rationale: `C5` changes command behavior rather than standalone language semantics, so the plan needs one phase-local positive/negative artifact set for CLI contracts and deterministic `error: expr:` text even though the standalone language manifests are still reused. Those artifact names must stay descriptive and must not encode the temporary roadmap label.
   Date/Author: 2026-03-28 / OpenCode
 
 - Decision: extend `bench/e2e/tests.json` with `property` scenarios and use the existing `bench/e2e/perf.py` compare flow as the C5 performance gate.
@@ -122,7 +124,7 @@ Milestone 2 moves `change` onto the typed event path while preserving the curren
 
 Milestone 3 implements `property` end to end on top of the same typed host and evaluation flow. The command should parse and bind `--on` and `--eval`, derive the tracked set for wildcard terms from the bound logical expression, evaluate `--eval` at candidate timestamps through `eval_logical_expr_at(...)`, reduce the result to the documented two-state decision (`1` true, `0/x` false), apply capture-mode filtering, and emit deterministic human or JSON rows. This milestone also adds the missing `property` command data model, human renderer branch, JSON schema branch, and command help text.
 
-Milestone 4 hardens parity, diagnostics, and collateral. Add VCD/FST parity coverage for both commands, add schema and output tests for `property`, add docs and backlog updates that describe `C5` as shipped behavior rather than deferred debt, and add `bench/e2e` `property` scenarios so command-level performance plus JSON `data` parity stay guarded after the runtime swap. Keep `warnings` parity enforced by the Rust integration tests rather than by the benchmark harness.
+Milestone 4 hardens parity, diagnostics, and collateral. Add VCD/FST parity coverage for both commands, add schema and output tests for `property`, add docs and backlog updates that describe the shipped command-integration behavior in stable user-facing terms rather than deferred debt, and add `bench/e2e` `property` scenarios so command-level performance plus JSON `data` parity stay guarded after the runtime swap. Keep `warnings` parity enforced by the Rust integration tests rather than by the benchmark harness.
 
 Milestone 5 closes validation and review. Run the carried-forward standalone expression manifests to prove the language engine still behaves the same, then run the new command integration tests, schema tests, parity tests, and benchmark compare gates. After the diff is green, run the mandatory review lanes for code semantics, architecture/performance, and docs/schema, apply any fixes in separate commits, rerun the impacted gates, refresh the maintained `bench/e2e` baseline, and only then close the plan.
 
@@ -143,7 +145,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
    Required alignment rules for this early pass:
 
    - remove or rewrite stale mentions of `change --eval` so the command contract is `change --on` plus `property --eval`;
-   - keep the roadmap explicit that `C5` is command integration and hardening, not new language design;
+   - keep the roadmap wording explicit that command integration and hardening is the remaining work, not new language design, without propagating the temporary phase label into live docs;
    - do not yet claim that `property` runtime is implemented or that backlog debt is closed; those shipped-status updates belong to the later green collateral milestone.
 
 1. Add red-first command integration tests before changing runtime code.
@@ -161,9 +163,9 @@ Run all commands from `/workspaces/feat-cmd-property`.
     - `tests/command_fixture_contract.rs`
     - `tests/AGENTS.md` so the new `tests/fixtures/cli/` breadcrumb is discoverable from the parent map
     - `tests/fixtures/cli/AGENTS.md`
-    - `tests/fixtures/cli/c5_command_positive_manifest.json`
-    - `tests/fixtures/cli/c5_command_negative_manifest.json`
-    - `tests/snapshots/property_cli__c5_*.snap` and `tests/snapshots/change_cli__c5_*.snap` as needed for deterministic command-facing `error: expr:` text
+    - `tests/fixtures/cli/command_runtime_positive_manifest.json`
+    - `tests/fixtures/cli/command_runtime_negative_manifest.json`
+    - `tests/snapshots/property_cli__expr_runtime_*.snap` and `tests/snapshots/change_cli__expr_runtime_*.snap` as needed for deterministic command-facing `error: expr:` text
     - `src/output.rs` unit tests as needed for renderer coverage
 
    Keep the carried-forward semantic manifests locked and green throughout the phase:
@@ -186,7 +188,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
     - `property --help` and top-level help no longer advertise the command as unimplemented;
     - `wavepeek schema` output now includes a `property` command branch.
 
-   The new C5 command manifests must be phase-local artifacts, not ad hoc helper files. If `tests/fixtures/cli/` does not already exist, add `tests/fixtures/cli/AGENTS.md` that links back to `tests/AGENTS.md` and names the new command-manifest contract, then update `tests/AGENTS.md` so the new child map is discoverable from the parent breadcrumb. Keep the manifests small and explicit. Add one shared loader under `tests/common/command_cases.rs` so `tests/command_fixture_contract.rs` and the command-specific suites validate the same rows through the same code path. Treat `tests/command_fixture_contract.rs` as an independent required gate, not as an ordering guarantee. A positive row should identify the command (`change` or `property`), the exact argument vector, the output mode (`human` or `json`), the expected exit code, and either the expected JSON `data` plus `warnings` payload or a snapshot name for human stdout. A negative row should identify the command, exact argument vector, expected exit code, expected stderr prefix (`error: expr:` or `error: args:`), and optional snapshot name when the full rendered message text is part of the contract.
+   The new command-runtime manifests must be phase-local artifacts, not ad hoc helper files. If `tests/fixtures/cli/` does not already exist, add `tests/fixtures/cli/AGENTS.md` that links back to `tests/AGENTS.md` and names the new command-manifest contract, then update `tests/AGENTS.md` so the new child map is discoverable from the parent breadcrumb. Keep the manifests small and explicit. Add one shared loader under `tests/common/command_cases.rs` so `tests/command_fixture_contract.rs` and the command-specific suites validate the same rows through the same code path. Treat `tests/command_fixture_contract.rs` as an independent required gate, not as an ordering guarantee. A positive row should identify the command (`change` or `property`), the exact argument vector, the output mode (`human` or `json`), the expected exit code, and either the expected JSON `data` plus `warnings` payload or a snapshot name for human stdout. A negative row should identify the command, exact argument vector, expected exit code, expected stderr prefix (`error: expr:` or `error: args:`), and optional snapshot name when the full rendered message text is part of the contract. Use descriptive names such as `command_runtime_*` and `expr_runtime_*`, not roadmap labels.
 
    Red-phase commands:
 
@@ -331,7 +333,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
     - `tests/change_vcd_fst_parity.rs` must cover at least one typed `iff` request on the checked-in `m2_core.vcd` / `m2_core.fst` pair.
     - `tests/property_vcd_fst_parity.rs` must compare JSON `data` and `warnings` for at least one `match` request and one transition-style request on the same VCD/FST pair.
-    - the C5 command manifests and command snapshots must stay in sync through `tests/command_fixture_contract.rs` so the phase has explicit locked positive and negative artifacts.
+    - the command-runtime manifests and snapshots must stay in sync through `tests/command_fixture_contract.rs` so the phase has explicit locked positive and negative artifacts.
     - keep output ordering deterministic; if no rows match, the command should emit an empty `data` array and a warning only when the existing command contract calls for one.
 
    Only after runtime, schema, and help updates are green should this milestone update shipped-status docs and release collateral. That includes removing unimplemented wording from `docs/DESIGN.md`, closing the relevant backlog debt in `docs/BACKLOG.md`, updating `docs/ROADMAP.md` milestone wording, and adding the user-visible result to `CHANGELOG.md`.
@@ -350,8 +352,8 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
    Pre-review benchmark gate:
 
-       WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/c5-candidate --compare bench/e2e/runs/baseline
-       python3 bench/e2e/perf.py compare --revised bench/e2e/runs/c5-candidate --golden bench/e2e/runs/baseline --max-negative-delta-pct 15
+       WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/command-integration-candidate --compare bench/e2e/runs/baseline
+       python3 bench/e2e/perf.py compare --revised bench/e2e/runs/command-integration-candidate --golden bench/e2e/runs/baseline --max-negative-delta-pct 15
 
    Final baseline refresh after review:
 
@@ -363,8 +365,8 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
    Suggested commit split:
 
-       git add docs/expression_lang.md docs/expression_roadmap.md docs/DESIGN.md docs/ROADMAP.md docs/BACKLOG.md tests/change_cli.rs tests/property_cli.rs tests/change_vcd_fst_parity.rs tests/property_vcd_fst_parity.rs tests/change_opt_equivalence.rs tests/cli_contract.rs tests/schema_cli.rs tests/common/command_cases.rs tests/common/mod.rs tests/command_fixture_contract.rs tests/AGENTS.md tests/fixtures/cli/AGENTS.md tests/fixtures/cli tests/snapshots/change_cli__c5_*.snap tests/snapshots/property_cli__c5_*.snap
-       git commit -m "test(expr): lock c5 command integration contract"
+       git add docs/expression_lang.md docs/expression_roadmap.md docs/DESIGN.md docs/ROADMAP.md docs/BACKLOG.md tests/change_cli.rs tests/property_cli.rs tests/change_vcd_fst_parity.rs tests/property_vcd_fst_parity.rs tests/change_opt_equivalence.rs tests/cli_contract.rs tests/schema_cli.rs tests/common/command_cases.rs tests/common/mod.rs tests/command_fixture_contract.rs tests/AGENTS.md tests/fixtures/cli/AGENTS.md tests/fixtures/cli tests/snapshots/change_cli__expr_runtime_*.snap tests/snapshots/property_cli__expr_runtime_*.snap
+       git commit -m "test(expr): lock command integration contract"
 
        git add src/error.rs src/engine/mod.rs src/engine/expr_runtime.rs
        git commit -m "refactor(engine): add typed expression command helpers"
@@ -379,7 +381,7 @@ Run all commands from `/workspaces/feat-cmd-property`.
        git commit -m "bench(e2e): add property integration coverage"
 
        git add bench/e2e/runs/baseline
-       git commit -m "bench(e2e): refresh baseline after c5 integration"
+       git commit -m "bench(e2e): refresh baseline after command integration"
 
    If review finds issues, fix them in separate follow-up commits. Do not amend history.
 
@@ -409,8 +411,8 @@ Run all commands from `/workspaces/feat-cmd-property`.
 
         make check
         make ci
-        WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/c5-candidate --compare bench/e2e/runs/baseline
-        WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py compare --revised bench/e2e/runs/c5-candidate --golden bench/e2e/runs/baseline --max-negative-delta-pct 15
+        WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/command-integration-candidate --compare bench/e2e/runs/baseline
+        WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py compare --revised bench/e2e/runs/command-integration-candidate --golden bench/e2e/runs/baseline --max-negative-delta-pct 15
         make bench-e2e-run
 
    Expected success signature after implementation is complete:
@@ -455,7 +457,8 @@ Acceptance is complete only when all of the conditions below are true together:
 - `tests/property_cli.rs` proves default wildcard tracking from `--eval`, all capture modes, and the range-start baseline rule for `switch`/`assert`/`deassert`.
 - `tests/change_cli.rs` and `tests/property_cli.rs` both prove scoped short-name expressions under `--scope` and wildcard unions containing `*`.
 - `tests/cli_contract.rs`, `src/cli/mod.rs`, and `src/cli/property.rs` no longer describe `property` as unimplemented.
-- `tests/fixtures/cli/c5_command_positive_manifest.json`, `tests/fixtures/cli/c5_command_negative_manifest.json`, and `tests/command_fixture_contract.rs` exist and lock the C5 command contract, including representative `error: expr:` snapshots.
+- `tests/fixtures/cli/command_runtime_positive_manifest.json`, `tests/fixtures/cli/command_runtime_negative_manifest.json`, and `tests/command_fixture_contract.rs` exist and lock the command integration contract, including representative `error: expr:` snapshots.
+- New or updated files under `tests/`, `src/`, `schema/`, `bench/`, and live docs use descriptive names and prose and do not introduce the temporary roadmap label `C5`.
 - `bench/e2e/tests.json` contains property scenarios, `make bench-e2e-run` passes, and the compare gate reports no matched mean or median regression worse than the 15% phase default.
 - `make check` and `make ci` pass after the last review-fix commit.
 - Mandatory review lanes and the fresh control pass are clean, or all findings were fixed and rechecked.
@@ -508,9 +511,9 @@ Expected modified or added files for `C5` implementation:
 - `tests/command_fixture_contract.rs`
 - `tests/schema_cli.rs`
 - `tests/fixtures/cli/AGENTS.md`
-- `tests/fixtures/cli/c5_command_positive_manifest.json`
-- `tests/fixtures/cli/c5_command_negative_manifest.json`
-- `tests/snapshots/change_cli__c5_*.snap` and `tests/snapshots/property_cli__c5_*.snap`
+- `tests/fixtures/cli/command_runtime_positive_manifest.json`
+- `tests/fixtures/cli/command_runtime_negative_manifest.json`
+- `tests/snapshots/change_cli__expr_runtime_*.snap` and `tests/snapshots/property_cli__expr_runtime_*.snap`
 - `bench/e2e/tests.json`
 - `bench/e2e/perf.py`
 - `bench/e2e/test_perf.py`

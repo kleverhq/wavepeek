@@ -7,7 +7,6 @@ This file is a local navigation map for the `docs/` directory.
 - Product requirements and contracts: `docs/DESIGN.md`
 - Expression language target semantics: `docs/expression_lang.md`
 - Expression implementation phases and coverage: `docs/expression_roadmap.md`
-- Current expression test-to-checklist map: `docs/expression_tests.md`
 - Delivery milestones and target versions: `docs/ROADMAP.md`
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`
 - Release checklist and rollback notes: `docs/RELEASE.md`

@@ -1,0 +1,21 @@
+$date
+  today
+$end
+$version
+  wavepeek-expr-triggered-collision
+$end
+$timescale 1ns $end
+$scope module top $end
+$var event 1 ! ev $end
+$scope module ev $end
+$var wire 1 " triggered $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+1"
+#10
+1!
+0"
+#20
+1"

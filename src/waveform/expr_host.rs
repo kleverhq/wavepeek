@@ -165,19 +165,23 @@ mod tests {
 
     #[test]
     fn waveform_expr_host_distinguishes_triggered_signal_suffix_from_raw_event_call() {
-        let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
-        let host = WaveformExprHost::open(fixture.path()).expect("fixture should open");
-        let ast = parse_logical_expr_ast(
-            "!top.ev.triggered && top.ev.triggered() && (top.temp > 1.0) && (top.msg == \"go\")",
-        )
-        .expect("expression should parse");
-        let bound = bind_logical_expr_ast(&ast, &host).expect("expression should bind");
-        let value = eval_logical_expr_at(&bound, &host, 10).expect("expression should evaluate");
+        for filename in [
+            "expr_triggered_collision.vcd",
+            "expr_triggered_collision.fst",
+        ] {
+            let host =
+                WaveformExprHost::open(&fixture_path(filename)).expect("fixture should open");
+            let ast = parse_logical_expr_ast("!top.ev.triggered && top.ev.triggered()")
+                .expect("expression should parse");
+            let bound = bind_logical_expr_ast(&ast, &host).expect("expression should bind");
+            let value =
+                eval_logical_expr_at(&bound, &host, 10).expect("expression should evaluate");
 
-        assert!(matches!(
-            value.payload,
-            ExprValuePayload::Integral { ref bits, .. } if bits == "1"
-        ));
+            assert!(matches!(
+                value.payload,
+                ExprValuePayload::Integral { ref bits, .. } if bits == "1"
+            ));
+        }
     }
 
     #[test]

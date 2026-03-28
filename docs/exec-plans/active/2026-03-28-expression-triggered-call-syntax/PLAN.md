@@ -26,6 +26,7 @@ This plan does not add general function-call or method-call syntax to the logica
 - [x] (2026-03-28 17:07Z) Updated `docs/expression_lang.md`, `docs/expression_roadmap.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, and `CHANGELOG.md` so the standalone contract now names `triggered()` as the only raw-event form and records the breaking shorthand removal.
 - [x] (2026-03-28 17:07Z) Added the red parser/lexer/manifest coverage first, captured expected failures (`EXPR-PARSE-LOGICAL-TRAILING` for `ev.triggered()` and suffix-stealing assertions for `top.dut.triggered`), then removed logical suffix reservation and whitelisted only `.triggered()` in the lexer/parser.
 - [x] (2026-03-28 17:10Z) Updated semantic diagnostics, deferred-runtime CLI assertions, waveform-host collision coverage, and the `expr_event` benchmark source so every remaining standalone execution surface now uses `triggered()` and bare `.triggered` resolves through ordinary signal lookup.
+- [x] (2026-03-28 17:27Z) Addressed collateral review feedback by fixing the last stale roadmap references and upgrading dump-backed collision coverage to a checked-in VCD/FST fixture pair, then reran `cargo test waveform::expr_host::tests`, `make check`, and `make ci` successfully.
 - [ ] Run focused/full validation, complete the mandatory review workflow, refresh the maintained benchmark baseline on the accepted final diff, and record the final evidence in this plan.
 
 ## Surprises & Discoveries
@@ -45,8 +46,8 @@ This plan does not add general function-call or method-call syntax to the logica
 - Observation: the existing parser already gives the right malformed-call failure shape once the lexer stops stealing bare suffixes; the main parser work is consuming an empty `()` and improving member-suffix notes.
   Evidence: after the red test edit but before the parser change, `ev.triggered()` failed as `EXPR-PARSE-LOGICAL-TRAILING` at the opening `(`, which confirmed that generic call syntax stayed closed and only the postfix whitelist needed to move.
 
-- Observation: the waveform-backed collision proof does not require any host redesign; a nested VCD scope named `ev` under `top` naturally yields the ordinary signal path `top.ev.triggered` alongside the raw event `top.ev`.
-  Evidence: `src/waveform/expr_host.rs` now exercises a temp VCD where `top.ev` is declared as an event and `top.ev.triggered` is declared as a wire inside `$scope module ev`, and one logical expression distinguishes the two at timestamp `10`.
+- Observation: the waveform-backed collision proof does not require any host redesign; a nested scope named `ev` under `top` naturally yields the ordinary signal path `top.ev.triggered` alongside the raw event `top.ev`, and that shape survives both VCD and FST fixtures.
+  Evidence: `tests/fixtures/hand/expr_triggered_collision.vcd` declares `top.ev` as an event plus `top.ev.triggered` as a nested wire, its generated sibling `tests/fixtures/hand/expr_triggered_collision.fst` is now checked in, and `src/waveform/expr_host.rs` runs the same collision assertion against both files.
 
 - Observation: the expression microbench host had drifted from the shared binder contract by returning benchmark-only unknown-signal codes, which made the logical bind benchmark panic before compare could even run.
   Evidence: `bench/expr/support.rs` returned `BENCH-UNKNOWN-SIGNAL`, while `src/expr/sema.rs::try_bind_canonical_signal_selection(...)` only treats `HOST-UNKNOWN-SIGNAL` as recoverable; `make bench-expr-run` failed in `logical__bind_logical_core_integral` until those codes were aligned.

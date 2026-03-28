@@ -130,7 +130,7 @@ Contract scope at phase exit:
 Out of scope:
 
 - Full Section `2` operator/type surface.
-- Rich type domains (`enum`, `real`, `string`, `.triggered`).
+- Rich type domains (`enum`, `real`, `string`, `triggered()`).
 - Command integration.
 
 Boundary invariants (must still fail deterministically):
@@ -273,7 +273,7 @@ Traceability:
 | Section 2.1 operand types (`bit-vector`, `integer-like`, `enum` core value semantics) | 3 |
 | Section 2.1 operand types (`real`, `string`, `event`) | 4 |
 | Section 2.2 operand forms (integral forms) | 3 |
-| Section 2.2 enum-label, rich-type, `.triggered` forms | 4 |
+| Section 2.2 enum-label, rich-type, `.triggered()` forms | 4 |
 | Section 2.3 casts (integral core) | 3 |
 | Section 2.3 rich casts/introspection (`type(...)`, enum labels, real/string/event details) | 4 |
 | Section 2.4 implicit conversions (integral/common-type core) | 3 |

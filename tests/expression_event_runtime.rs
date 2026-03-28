@@ -74,6 +74,46 @@ fn event_runtime_positive_manifest_matches() {
 }
 
 #[test]
+fn wildcard_tracked_set_binding_comes_from_host_context() {
+    let host = InMemoryExprHost::from_fixtures(
+        [
+            bit_signal("clk", 1, &[(0, "0"), (5, "1"), (10, "1"), (15, "0")]),
+            bit_signal("data", 1, &[(0, "0"), (5, "0"), (10, "1"), (15, "1")]),
+        ]
+        .as_slice(),
+    );
+    let expr = bind_event_expr("*", &host).expect("wildcard should bind once");
+    let probes = [0_u64, 5, 10, 15];
+
+    let clk_only = host.tracked_handles(&["clk".to_string()]);
+    let clk_matches = collect_bound_event_matches(&expr, &host, clk_only.as_slice(), &probes)
+        .expect("wildcard should evaluate for clk-only tracked set");
+    assert_eq!(
+        clk_matches,
+        vec![5, 15],
+        "clk-only tracked set should see clk changes"
+    );
+
+    let data_only = host.tracked_handles(&["data".to_string()]);
+    let data_matches = collect_bound_event_matches(&expr, &host, data_only.as_slice(), &probes)
+        .expect("wildcard should evaluate for data-only tracked set");
+    assert_eq!(
+        data_matches,
+        vec![10],
+        "data-only tracked set should see data changes"
+    );
+
+    let both = host.tracked_handles(&["clk".to_string(), "data".to_string()]);
+    let both_matches = collect_bound_event_matches(&expr, &host, both.as_slice(), &probes)
+        .expect("wildcard should evaluate for combined tracked set");
+    assert_eq!(
+        both_matches,
+        vec![5, 10, 15],
+        "combined tracked set should see both changes"
+    );
+}
+
+#[test]
 fn event_runtime_negative_manifest_matches_snapshots() {
     for case in load_negative_cases() {
         if matches!(case.entrypoint, ManifestEntrypoint::Logical) {

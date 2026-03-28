@@ -188,7 +188,9 @@ pub fn bind_event_expr_ast(
 
         let iff = if let Some(iff) = &term.iff {
             let logical_ast = parse_logical_expr_with_offset(iff.source.as_str(), iff.span.start)?;
-            Some(bind_logical_expr_ast(&logical_ast, host)?)
+            let bound = bind_logical_expr_ast(&logical_ast, host)?;
+            ensure_boolean_context_type(&bound.root.ty, bound.root.span, "iff guard")?;
+            Some(bound)
         } else {
             None
         };
@@ -229,33 +231,7 @@ fn bind_logical_node(
     host: &dyn ExpressionHost,
 ) -> Result<BoundLogicalNode, ExprDiagnostic> {
     match node {
-        LogicalExprNode::OperandRef { name, span } => {
-            let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
-                layer: DiagnosticLayer::Semantic,
-                code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
-                message: format!("unknown signal '{name}'"),
-                primary_span: *span,
-                notes: if inner.message.is_empty() {
-                    vec![]
-                } else {
-                    vec![format!("host detail: {}", inner.message)]
-                },
-            })?;
-            let ty = host.signal_type(handle)?;
-            if matches!(&ty.kind, ExprTypeKind::Event) {
-                return Err(sema_diag(
-                    "EXPR-SEMANTIC-EVENT-VALUE",
-                    "raw event operands are only valid with .triggered",
-                    *span,
-                    &["use event_operand.triggered to read a raw event occurrence"],
-                ));
-            }
-            Ok(BoundLogicalNode {
-                ty,
-                span: *span,
-                kind: BoundLogicalKind::SignalRef { handle },
-            })
-        }
+        LogicalExprNode::OperandRef { name, span } => bind_logical_operand_ref(name, *span, host),
         LogicalExprNode::IntegralLiteral { literal, span } => {
             let value = decode_integral_literal(literal)?;
             let is_four_state = match literal.base {
@@ -372,6 +348,11 @@ fn bind_logical_node(
             selection,
             span,
         } => {
+            if let Some(bound) = try_bind_canonical_signal_selection(base, selection, *span, host)?
+            {
+                return Ok(bound);
+            }
+
             let base = bind_logical_node(base, host)?;
             ensure_integral(&base.ty, base.span, "selection base")?;
             if base.ty.storage != ExprStorage::PackedVector {
@@ -400,12 +381,14 @@ fn bind_logical_node(
                     let msb_value = eval_const_i64(&msb, "part-select msb", msb.span)?;
                     let lsb_value = eval_const_i64(&lsb, "part-select lsb", lsb.span)?;
                     let width = part_select_width(msb_value, lsb_value, *span)?;
+                    let is_four_state =
+                        invalid_part_select_forces_four_state(&base.ty, msb_value, lsb_value);
                     (
                         BoundSelection::Part {
                             msb: msb_value,
                             lsb: lsb_value,
                         },
-                        bit_vector_type(width as u32, base.ty.is_four_state, false, width > 1),
+                        bit_vector_type(width as u32, is_four_state, false, width > 1),
                     )
                 }
                 SelectionKindAst::IndexedUp {
@@ -433,17 +416,18 @@ fn bind_logical_node(
                             &["width must be a positive constant integer expression"],
                         ));
                     }
+                    let is_four_state = indexed_part_select_may_produce_x(
+                        &base.ty,
+                        &index_base,
+                        width_value,
+                        true,
+                    )?;
                     (
                         BoundSelection::IndexedUp {
                             base: Box::new(index_base),
                             width: width_value,
                         },
-                        bit_vector_type(
-                            width_value as u32,
-                            base.ty.is_four_state,
-                            false,
-                            width_value > 1,
-                        ),
+                        bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
                     )
                 }
                 SelectionKindAst::IndexedDown {
@@ -471,17 +455,18 @@ fn bind_logical_node(
                             &["width must be a positive constant integer expression"],
                         ));
                     }
+                    let is_four_state = indexed_part_select_may_produce_x(
+                        &base.ty,
+                        &index_base,
+                        width_value,
+                        false,
+                    )?;
                     (
                         BoundSelection::IndexedDown {
                             base: Box::new(index_base),
                             width: width_value,
                         },
-                        bit_vector_type(
-                            width_value as u32,
-                            base.ty.is_four_state,
-                            false,
-                            width_value > 1,
-                        ),
+                        bit_vector_type(width_value as u32, is_four_state, false, width_value > 1),
                     )
                 }
             };
@@ -738,14 +723,107 @@ fn bind_logical_node(
                 *span,
                 &["apply .triggered only once to a raw event operand reference"],
             )),
-            other => Err(sema_diag(
-                "EXPR-SEMANTIC-TRIGGERED",
-                ".triggered requires a raw event operand",
-                other.span(),
-                &["apply .triggered directly to an event operand reference"],
-            )),
+            other => {
+                if matches!(other, LogicalExprNode::Selection { .. }) {
+                    return match bind_logical_node(other, host) {
+                        Ok(_) => Err(sema_diag(
+                            "EXPR-SEMANTIC-TRIGGERED",
+                            ".triggered requires a raw event operand",
+                            other.span(),
+                            &["apply .triggered directly to an event operand reference"],
+                        )),
+                        Err(err) => Err(err),
+                    };
+                }
+                Err(sema_diag(
+                    "EXPR-SEMANTIC-TRIGGERED",
+                    ".triggered requires a raw event operand",
+                    other.span(),
+                    &["apply .triggered directly to an event operand reference"],
+                ))
+            }
         },
     }
+}
+
+fn bind_logical_operand_ref(
+    name: &str,
+    span: Span,
+    host: &dyn ExpressionHost,
+) -> Result<BoundLogicalNode, ExprDiagnostic> {
+    let handle = host.resolve_signal(name).map_err(|inner| ExprDiagnostic {
+        layer: DiagnosticLayer::Semantic,
+        code: "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+        message: format!("unknown signal '{name}'"),
+        primary_span: span,
+        notes: if inner.message.is_empty() {
+            vec![]
+        } else {
+            vec![format!("host detail: {}", inner.message)]
+        },
+    })?;
+    bind_resolved_logical_signal(handle, span, host)
+}
+
+fn bind_resolved_logical_signal(
+    handle: SignalHandle,
+    span: Span,
+    host: &dyn ExpressionHost,
+) -> Result<BoundLogicalNode, ExprDiagnostic> {
+    let ty = host.signal_type(handle)?;
+    if matches!(&ty.kind, ExprTypeKind::Event) {
+        return Err(sema_diag(
+            "EXPR-SEMANTIC-EVENT-VALUE",
+            "raw event operands are only valid with .triggered",
+            span,
+            &["use event_operand.triggered to read a raw event occurrence"],
+        ));
+    }
+    Ok(BoundLogicalNode {
+        ty,
+        span,
+        kind: BoundLogicalKind::SignalRef { handle },
+    })
+}
+
+fn try_bind_canonical_signal_selection(
+    base: &LogicalExprNode,
+    selection: &SelectionKindAst,
+    span: Span,
+    host: &dyn ExpressionHost,
+) -> Result<Option<BoundLogicalNode>, ExprDiagnostic> {
+    let Some(name) = canonical_signal_name_from_selection(base, selection) else {
+        return Ok(None);
+    };
+    match host.resolve_signal(name.as_str()) {
+        Ok(handle) => bind_resolved_logical_signal(handle, span, host).map(Some),
+        Err(err) if err.code == "HOST-UNKNOWN-SIGNAL" => Ok(None),
+        Err(err) => Err(err),
+    }
+}
+
+fn canonical_signal_name_from_selection(
+    base: &LogicalExprNode,
+    selection: &SelectionKindAst,
+) -> Option<String> {
+    let base_name = match base {
+        LogicalExprNode::OperandRef { name, .. } => name,
+        _ => return None,
+    };
+    let index = match selection {
+        SelectionKindAst::Bit { index } => match index.as_ref() {
+            LogicalExprNode::IntegralLiteral { literal, .. }
+                if literal.width.is_none()
+                    && literal.base == IntegralBase::Decimal
+                    && literal.digits.chars().all(|ch| ch.is_ascii_digit()) =>
+            {
+                literal.digits.as_str()
+            }
+            _ => return None,
+        },
+        _ => return None,
+    };
+    Some(format!("{base_name}[{index}]"))
 }
 
 fn ensure_integral(ty: &ExprType, span: Span, context: &str) -> Result<(), ExprDiagnostic> {
@@ -1439,6 +1517,40 @@ fn part_select_width(msb: i64, lsb: i64, span: Span) -> Result<usize, ExprDiagno
     })
 }
 
+fn invalid_part_select_forces_four_state(base_ty: &ExprType, msb: i64, lsb: i64) -> bool {
+    base_ty.is_four_state || !selection_range_is_in_bounds(base_ty.width, msb, lsb)
+}
+
+fn indexed_part_select_may_produce_x(
+    base_ty: &ExprType,
+    index_base: &BoundLogicalNode,
+    width: usize,
+    up: bool,
+) -> Result<bool, ExprDiagnostic> {
+    if base_ty.is_four_state {
+        return Ok(true);
+    }
+
+    let Some(start) = try_eval_const_i64(index_base)? else {
+        return Ok(true);
+    };
+    let delta = width as i64 - 1;
+    let Some(end) = (if up {
+        start.checked_add(delta)
+    } else {
+        start.checked_sub(delta)
+    }) else {
+        return Ok(true);
+    };
+
+    Ok(!selection_range_is_in_bounds(base_ty.width, start, end))
+}
+
+fn selection_range_is_in_bounds(base_width: u32, first: i64, last: i64) -> bool {
+    let upper_bound = i64::from(base_width);
+    first >= 0 && last >= 0 && first < upper_bound && last < upper_bound
+}
+
 fn eval_const_i64(
     node: &BoundLogicalNode,
     context: &str,
@@ -1472,6 +1584,21 @@ fn eval_const_i64(
             &["constant must fit in signed 64-bit range"],
         )
     })
+}
+
+fn try_eval_const_i64(node: &BoundLogicalNode) -> Result<Option<i64>, ExprDiagnostic> {
+    let Some(value) = eval_const_node(node)? else {
+        return Ok(None);
+    };
+    if value
+        .bits
+        .iter()
+        .any(|bit| matches!(bit, BoundBit::X | BoundBit::Z))
+    {
+        return Ok(None);
+    }
+
+    Ok(bits_to_i64(&value.bits, value.signed))
 }
 
 fn eval_const_node(node: &BoundLogicalNode) -> Result<Option<BoundIntegralValue>, ExprDiagnostic> {

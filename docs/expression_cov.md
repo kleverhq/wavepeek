@@ -699,8 +699,8 @@ leave a numbering gap rather than renumbering later items.
    - Expected result: Only integral operands are accepted, result identity is plain unsigned bit-vector, and later selection is allowed.
 
 138. [2.5.14] Concatenation and replication width/state/value rules matrix
-   - Assertion: Concatenation width is the sum of operand widths; replication width is `N * operand_width`; the result is 4-state if any operand is 4-state, otherwise 2-state; `x` and `z` are preserved; unsized constants are not allowed in integral concatenation; and replication multiplier `N` must be a non-negative constant integer expression.
-   - Verification: Parameterize concatenation and replication cases that distinguish width, 2-state/4-state, `x/z` preservation, unsized constants, negative `N`, and non-constant `N`.
+   - Assertion: Concatenation width is the sum of operand widths; replication width is `N * operand_width`; the result is 4-state if any operand is 4-state, otherwise 2-state; `x` and `z` are preserved; unsized constants are not allowed in integral concatenation; and replication multiplier `N` must be a positive constant integer expression.
+   - Verification: Parameterize concatenation and replication cases that distinguish width, 2-state/4-state, `x/z` preservation, unsized constants, zero or negative `N`, and non-constant `N`.
    - Expected result: All valid cases match the documented width and state rules, and all invalid `N` or unsized-constant cases are rejected.
 
 139. [2.6] Primary and postfix forms bind tighter than infix operators

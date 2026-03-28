@@ -61,6 +61,42 @@
       "snapshot": "parse_broken_union"
     },
     {
+      "name": "parenthesized_event_union_remains_invalid",
+      "entrypoint": "parse",
+      "source": "(posedge clk or ready)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null
+    },
+    {
+      "name": "event_level_word_operator_remains_invalid",
+      "entrypoint": "parse",
+      "source": "posedge clk and ready",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
+      "span": {
+        "start": 12,
+        "end": 15
+      },
+      "snapshot": null
+    },
+    {
+      "name": "event_level_symbolic_operator_remains_invalid",
+      "entrypoint": "parse",
+      "source": "clk && ready",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-BROKEN-UNION",
+      "span": {
+        "start": 4,
+        "end": 6
+      },
+      "snapshot": null
+    },
+    {
       "name": "leading_union_separator",
       "entrypoint": "parse",
       "source": ", clk",
@@ -129,6 +165,114 @@
       "span": {
         "start": 0,
         "end": 4
+      },
+      "snapshot": null
+    },
+    {
+      "name": "posedge_literal_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "posedge 1'b1",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 9,
+        "end": 10
+      },
+      "snapshot": null
+    },
+    {
+      "name": "posedge_parenthesized_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "posedge (a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
+      "span": {
+        "start": 8,
+        "end": 9
+      },
+      "snapshot": null
+    },
+    {
+      "name": "negedge_literal_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "negedge 1'b0",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 9,
+        "end": 10
+      },
+      "snapshot": null
+    },
+    {
+      "name": "negedge_parenthesized_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "negedge (a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
+      "span": {
+        "start": 8,
+        "end": 9
+      },
+      "snapshot": null
+    },
+    {
+      "name": "edge_literal_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "edge 1'b0",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 6,
+        "end": 7
+      },
+      "snapshot": null
+    },
+    {
+      "name": "edge_parenthesized_operand_remains_invalid",
+      "entrypoint": "parse",
+      "source": "edge (a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-UNMATCHED-OPEN",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "snapshot": null
+    },
+    {
+      "name": "outer_at_wrapper_rejects_posedge_form",
+      "entrypoint": "parse",
+      "source": "@(posedge clk)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null
+    },
+    {
+      "name": "outer_at_wrapper_rejects_union_form",
+      "entrypoint": "parse",
+      "source": "@(a or b)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null
+    },
+    {
+      "name": "outer_at_wrapper_rejects_wildcard_form",
+      "entrypoint": "parse",
+      "source": "@(*)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-EVENT-LEX-CHAR",
+      "span": {
+        "start": 0,
+        "end": 1
       },
       "snapshot": null
     },

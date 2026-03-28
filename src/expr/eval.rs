@@ -423,11 +423,12 @@ fn eval_selection(
             let index_base_ty = index_base.ty.clone();
             let index_base = coerce_runtime_to_type(index_base, &index_base_ty)?;
             let (index_bits, _) = expect_integral_bits(&index_base)?;
-            let bits = if let Some(start) = runtime_index_to_i64(index_bits) {
-                indexed_part_select_bits(base_bits, start, *width, true, base.ty.is_four_state)
-            } else {
-                vec![BoundBit::X; *width]
-            };
+            let bits =
+                if let Some(start) = runtime_index_to_i64(index_bits, index_base.ty.is_signed) {
+                    indexed_part_select_bits(base_bits, start, *width, true, base.ty.is_four_state)
+                } else {
+                    vec![BoundBit::X; *width]
+                };
             RuntimeValue {
                 ty: result_ty.clone(),
                 payload: RuntimeValuePayload::Integral { bits, label: None },
@@ -441,11 +442,12 @@ fn eval_selection(
             let index_base_ty = index_base.ty.clone();
             let index_base = coerce_runtime_to_type(index_base, &index_base_ty)?;
             let (index_bits, _) = expect_integral_bits(&index_base)?;
-            let bits = if let Some(start) = runtime_index_to_i64(index_bits) {
-                indexed_part_select_bits(base_bits, start, *width, false, base.ty.is_four_state)
-            } else {
-                vec![BoundBit::X; *width]
-            };
+            let bits =
+                if let Some(start) = runtime_index_to_i64(index_bits, index_base.ty.is_signed) {
+                    indexed_part_select_bits(base_bits, start, *width, false, base.ty.is_four_state)
+                } else {
+                    vec![BoundBit::X; *width]
+                };
             RuntimeValue {
                 ty: result_ty.clone(),
                 payload: RuntimeValuePayload::Integral { bits, label: None },
@@ -728,10 +730,15 @@ fn eval_conditional(
                     .zip(rhs_bits.iter())
                     .map(|(lhs, rhs)| if lhs == rhs { *lhs } else { BoundBit::X })
                     .collect::<Vec<_>>();
+                let label = if matches!(result_ty.kind, ExprTypeKind::EnumCore) {
+                    enum_label_for_bits(result_ty, bits.as_slice())
+                } else {
+                    None
+                };
                 coerce_runtime_to_type(
                     RuntimeValue {
                         ty: result_ty.clone(),
-                        payload: RuntimeValuePayload::Integral { bits, label: None },
+                        payload: RuntimeValuePayload::Integral { bits, label },
                     },
                     result_ty,
                 )
@@ -1372,8 +1379,8 @@ fn runtime_index_to_usize(bits: &[BoundBit]) -> Option<usize> {
     bits_to_u128(bits).and_then(|value| usize::try_from(value).ok())
 }
 
-fn runtime_index_to_i64(bits: &[BoundBit]) -> Option<i64> {
-    bits_to_u128(bits).and_then(|value| i64::try_from(value).ok())
+fn runtime_index_to_i64(bits: &[BoundBit], signed: bool) -> Option<i64> {
+    bits_to_i128(bits, signed).and_then(|value| i64::try_from(value).ok())
 }
 
 fn bits_to_u128(bits: &[BoundBit]) -> Option<u128> {
@@ -1725,7 +1732,7 @@ fn edge_event_matches(
     frame: &EventEvalFrame<'_>,
     cache: &mut EvalCache,
 ) -> Result<(bool, bool), ExprDiagnostic> {
-    let Some(previous_timestamp) = frame.previous_timestamp else {
+    let Some(previous_sample_timestamp) = frame.timestamp.checked_sub(1) else {
         return Ok((false, false));
     };
 
@@ -1740,7 +1747,7 @@ fn edge_event_matches(
         ));
     }
 
-    let previous_bits = sample_signal_bits(host, handle, previous_timestamp, cache)?;
+    let previous_bits = sample_signal_bits(host, handle, previous_sample_timestamp, cache)?;
     let current_bits = sample_signal_bits(host, handle, frame.timestamp, cache)?;
     let (Some(previous_bits), Some(current_bits)) = (previous_bits, current_bits) else {
         return Ok((false, false));

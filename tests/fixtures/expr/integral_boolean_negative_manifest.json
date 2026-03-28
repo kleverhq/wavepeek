@@ -14,6 +14,19 @@
       "host_profile": "integral_boolean_baseline"
     },
     {
+      "name": "invalid_const_part_select_lsb",
+      "entrypoint": "logical",
+      "source": "a[0:idx]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
       "name": "invalid_const_indexed_width",
       "entrypoint": "logical",
       "source": "a[0 +: idx]",
@@ -21,6 +34,32 @@
       "code": "EXPR-SEMANTIC-CONST-REQUIRED",
       "span": {
         "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_const_indexed_down_width",
+      "entrypoint": "logical",
+      "source": "a[0 -: idx]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "indexed_part_select_width_must_be_positive",
+      "entrypoint": "logical",
+      "source": "a[idx +: 0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-RANGE",
+      "span": {
+        "start": 9,
         "end": 10
       },
       "snapshot": null,
@@ -40,6 +79,175 @@
       "host_profile": "integral_boolean_baseline"
     },
     {
+      "name": "invalid_real_const_part_select_msb",
+      "entrypoint": "logical",
+      "source": "a[1.5:0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 2,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_real_const_part_select_lsb",
+      "entrypoint": "logical",
+      "source": "a[0:1.5]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_string_const_part_select_msb",
+      "entrypoint": "logical",
+      "source": "a[\"hi\":0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 2,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_string_const_part_select_lsb",
+      "entrypoint": "logical",
+      "source": "a[0:\"hi\"]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 4,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_real_const_indexed_width",
+      "entrypoint": "logical",
+      "source": "a[0 +: 1.5]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_real_const_indexed_down_width",
+      "entrypoint": "logical",
+      "source": "a[0 -: 1.5]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_string_const_indexed_width",
+      "entrypoint": "logical",
+      "source": "a[0 +: \"hi\"]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 7,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_string_const_indexed_down_width",
+      "entrypoint": "logical",
+      "source": "a[0 -: \"hi\"]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 7,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_real_const_replication_multiplier",
+      "entrypoint": "logical",
+      "source": "{1.5{a}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_string_const_replication_multiplier",
+      "entrypoint": "logical",
+      "source": "{\"hi\"{a}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "replication_rejects_negative_multiplier",
+      "entrypoint": "logical",
+      "source": "{(-1){a}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-RANGE",
+      "span": {
+        "start": 1,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "replication_rejects_zero_multiplier",
+      "entrypoint": "logical",
+      "source": "{0{a}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONST-RANGE",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "concat_rejects_unsized_literal_operand",
+      "entrypoint": "logical",
+      "source": "{1, a}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONCAT-UNSIZED",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
       "name": "invalid_selection_base_scalar_integer_like",
       "entrypoint": "logical",
       "source": "count[0]",
@@ -48,6 +256,110 @@
       "span": {
         "start": 0,
         "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_part_select_base_scalar_integer_like",
+      "entrypoint": "logical",
+      "source": "count[1:0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-SELECTION-BASE",
+      "span": {
+        "start": 0,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_empty_brackets",
+      "entrypoint": "logical",
+      "source": "a[]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 2,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_part_select_lsb",
+      "entrypoint": "logical",
+      "source": "a[1:]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 4,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_part_select_msb",
+      "entrypoint": "logical",
+      "source": "a[:0]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 2,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_indexed_up_base",
+      "entrypoint": "logical",
+      "source": "a[+:4]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 2,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_indexed_down_base",
+      "entrypoint": "logical",
+      "source": "a[-:4]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 2,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_indexed_up_width",
+      "entrypoint": "logical",
+      "source": "a[1+:]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_selection_missing_indexed_down_width",
+      "entrypoint": "logical",
+      "source": "a[1-:]",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 5,
+        "end": 6
       },
       "snapshot": null,
       "host_profile": "integral_boolean_baseline"
@@ -66,9 +378,282 @@
       "host_profile": "integral_boolean_baseline"
     },
     {
+      "name": "invalid_cast_target_event_keyword",
+      "entrypoint": "logical",
+      "source": "event'(a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_cast_target_logic_packed_range",
+      "entrypoint": "logical",
+      "source": "logic[7:0]'(a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-CAST",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_cast_target_recovered_type_expression",
+      "entrypoint": "logical",
+      "source": "type(a + idx)'(a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-CAST",
+      "span": {
+        "start": 4,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_enum_label_pkg_scope",
+      "entrypoint": "logical",
+      "source": "pkg::ID",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 3,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_enum_label_named_type_scope",
+      "entrypoint": "logical",
+      "source": "enum_t::LABEL",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 6,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "invalid_enum_label_recovered_type_expression_scope",
+      "entrypoint": "logical",
+      "source": "type(a + idx)::BUSY",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-CAST",
+      "span": {
+        "start": 4,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_wildcard_logical_expr",
+      "entrypoint": "logical",
+      "source": "*",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_posedge_logical_expr",
+      "entrypoint": "logical",
+      "source": "posedge clk",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 8,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_negedge_logical_expr",
+      "entrypoint": "logical",
+      "source": "negedge clk",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 8,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_edge_logical_expr",
+      "entrypoint": "logical",
+      "source": "edge clk",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 5,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_or_union_logical_expr",
+      "entrypoint": "logical",
+      "source": "sig_a or sig_b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 6,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_comma_union_logical_expr",
+      "entrypoint": "logical",
+      "source": "sig_a, sig_b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 5,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_event_iff_logical_expr",
+      "entrypoint": "logical",
+      "source": "clk iff ready",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "plain_decimal_literal_rejects_x_digit",
+      "entrypoint": "logical",
+      "source": "1x",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "plain_decimal_literal_rejects_z_digit",
+      "entrypoint": "logical",
+      "source": "1z",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unbased_unsized_literal_rejects_zero",
+      "entrypoint": "logical",
+      "source": "'0",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unbased_unsized_literal_rejects_one",
+      "entrypoint": "logical",
+      "source": "'1",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unbased_unsized_literal_rejects_x",
+      "entrypoint": "logical",
+      "source": "'x",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unbased_unsized_literal_rejects_z",
+      "entrypoint": "logical",
+      "source": "'z",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
       "name": "unresolved_signal_logical",
       "entrypoint": "logical",
       "source": "missing + 1",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unresolved_signal_boolean_primary",
+      "entrypoint": "logical",
+      "source": "missing",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "unresolved_signal_logical_and_operand",
+      "entrypoint": "logical",
+      "source": "missing && 1",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
       "span": {
@@ -92,9 +677,139 @@
       "host_profile": "integral_boolean_baseline"
     },
     {
+      "name": "empty_concatenation",
+      "entrypoint": "logical",
+      "source": "{}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_non_braced_rhs",
+      "entrypoint": "logical",
+      "source": "a inside 4'd1",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 9,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
       "name": "malformed_inside_set",
       "entrypoint": "logical",
       "source": "a inside {}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 10,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_inside_range_missing_upper_bound",
+      "entrypoint": "logical",
+      "source": "a inside {[1:]}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 13,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_inside_range_missing_lower_bound",
+      "entrypoint": "logical",
+      "source": "a inside {[:2]}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 11,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_inside_range_extra_colon",
+      "entrypoint": "logical",
+      "source": "a inside {[1:2:3]}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 14,
+        "end": 15
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_open_range_dollar_bound",
+      "entrypoint": "logical",
+      "source": "a inside {[$:4'd3]}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": {
+        "start": 11,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_plus_minus_tolerance_item",
+      "entrypoint": "logical",
+      "source": "a inside {4'd3 +/- 4'd1}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 16,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_plus_percent_minus_tolerance_item",
+      "entrypoint": "logical",
+      "source": "a inside {4'd10 +%- 4'd5}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 17,
+        "end": 18
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_unpacked_array_assignment_pattern_item",
+      "entrypoint": "logical",
+      "source": "a inside {'{4'd1, 4'd2}}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 10,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "inside_rejects_scan_order_dependent_aggregate_form",
+      "entrypoint": "logical",
+      "source": "a inside {'{4'b1x, 4'b10}}",
       "layer": "parse",
       "code": "EXPR-PARSE-LOGICAL-EXPECTED",
       "span": {
@@ -113,6 +828,214 @@
       "span": {
         "start": 3,
         "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_replication_missing_inner_close",
+      "entrypoint": "logical",
+      "source": "{a{b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 4,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "malformed_replication_missing_outer_close",
+      "entrypoint": "logical",
+      "source": "{a{b}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 5,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_streaming_concatenation_left_to_right",
+      "entrypoint": "logical",
+      "source": "{<<{a}}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_streaming_concatenation_right_to_left",
+      "entrypoint": "logical",
+      "source": "{>>{a}}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_assignment_pattern_expression_primary",
+      "entrypoint": "logical",
+      "source": "'{a, b}",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 0,
+        "end": 1
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_prefix_increment",
+      "entrypoint": "logical",
+      "source": "++a",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_postfix_increment",
+      "entrypoint": "logical",
+      "source": "a++",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_adjacent_increment_operands",
+      "entrypoint": "logical",
+      "source": "a++b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_prefix_decrement",
+      "entrypoint": "logical",
+      "source": "--a",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_postfix_decrement",
+      "entrypoint": "logical",
+      "source": "a--",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_adjacent_decrement_operands",
+      "entrypoint": "logical",
+      "source": "a--b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TOKEN",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_binary_nand",
+      "entrypoint": "logical",
+      "source": "a ~& b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 2,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_binary_nor",
+      "entrypoint": "logical",
+      "source": "a ~| b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 2,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_call_like_empty_args",
+      "entrypoint": "logical",
+      "source": "f()",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_call_like_single_arg",
+      "entrypoint": "logical",
+      "source": "f(a)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 1,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "integral_boolean_baseline"
+    },
+    {
+      "name": "rejects_non_whitelisted_call_like_hierarchical_empty_args",
+      "entrypoint": "logical",
+      "source": "top.fsm.next()",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 12,
+        "end": 13
       },
       "snapshot": null,
       "host_profile": "integral_boolean_baseline"

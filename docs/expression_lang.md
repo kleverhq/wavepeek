@@ -545,7 +545,7 @@ identity. Concatenation result width is the sum of operand widths;
 replication result width is `N * operand_width`. The result is `4-state` if any
 operand is `4-state`; otherwise it is `2-state`. `x` and `z` bits are
 preserved. Unsized constants are not allowed in integral concatenation.
-Replication multiplier `N` must be a non-negative constant integer expression.
+Replication multiplier `N` must be a positive constant integer expression.
 Concatenation and replication results may themselves be selected.
 
 ### 2.6 Precedence and Associativity

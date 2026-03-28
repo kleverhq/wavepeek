@@ -1,6 +1,19 @@
 {
   "cases": [
     {
+      "name": "unknown_signal_named_event",
+      "entrypoint": "event",
+      "source": "missing",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": {
+        "start": 0,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
       "name": "unknown_signal_inside_iff",
       "entrypoint": "event",
       "source": "posedge clk iff missing_sig",
@@ -11,6 +24,97 @@
         "end": 27
       },
       "snapshot": "semantic_unknown_signal",
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_wildcard",
+      "entrypoint": "event",
+      "source": "posedge clk iff *",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 16,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_posedge",
+      "entrypoint": "event",
+      "source": "posedge clk iff posedge a",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 24,
+        "end": 25
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_negedge",
+      "entrypoint": "event",
+      "source": "posedge clk iff negedge a",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 24,
+        "end": 25
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_edge",
+      "entrypoint": "event",
+      "source": "posedge clk iff edge a",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 21,
+        "end": 22
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_or_union",
+      "entrypoint": "event",
+      "source": "posedge clk iff (a or b)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN",
+      "span": {
+        "start": 16,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_event_comma_union",
+      "entrypoint": "event",
+      "source": "posedge clk iff (a, b)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN",
+      "span": {
+        "start": 16,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "event_runtime_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_nested_event_iff",
+      "entrypoint": "event",
+      "source": "posedge clk iff a iff b",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 18,
+        "end": 21
+      },
+      "snapshot": null,
       "host_profile": "event_runtime_baseline"
     },
     {

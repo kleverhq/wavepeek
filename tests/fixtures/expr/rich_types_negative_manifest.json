@@ -14,6 +14,123 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_add_rhs_string",
+      "entrypoint": "logical",
+      "source": "1 + msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_sub_lhs_string",
+      "entrypoint": "logical",
+      "source": "msg - 1",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_mul_rhs_string",
+      "entrypoint": "logical",
+      "source": "2 * msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_div_lhs_string",
+      "entrypoint": "logical",
+      "source": "msg / 2",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_mod_rhs_string",
+      "entrypoint": "logical",
+      "source": "2 % msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 4,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_unary_plus_operand_string",
+      "entrypoint": "logical",
+      "source": "+msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 1,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_unary_minus_operand_string",
+      "entrypoint": "logical",
+      "source": "-msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 1,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_power_lhs_string",
+      "entrypoint": "logical",
+      "source": "msg ** 2",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_power_rhs_string",
+      "entrypoint": "logical",
+      "source": "2 ** msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 5,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_string_boolean_context",
       "entrypoint": "logical",
       "source": "msg && 1",
@@ -22,6 +139,97 @@
       "span": {
         "start": 0,
         "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_string_signal_boolean_context",
+      "entrypoint": "event",
+      "source": "posedge clk iff msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-BOOLEAN-CONTEXT",
+      "span": {
+        "start": 16,
+        "end": 19
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_string_literal_boolean_context",
+      "entrypoint": "event",
+      "source": "posedge clk iff \"go\"",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-BOOLEAN-CONTEXT",
+      "span": {
+        "start": 16,
+        "end": 20
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "iff_guard_rejects_raw_event_value_use",
+      "entrypoint": "event",
+      "source": "posedge clk iff ev",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 16,
+        "end": 18
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_string_conditional_mixed_integral_arms",
+      "entrypoint": "logical",
+      "source": "sel ? msg : data",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONDITIONAL-TYPE",
+      "span": {
+        "start": 6,
+        "end": 16
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_string_conditional_mixed_real_arms",
+      "entrypoint": "logical",
+      "source": "sel ? msg : temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONDITIONAL-TYPE",
+      "span": {
+        "start": 6,
+        "end": 16
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_conditional_mixed_integral_string_arms",
+      "entrypoint": "logical",
+      "source": "sel ? data : msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONDITIONAL-TYPE",
+      "span": {
+        "start": 6,
+        "end": 16
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_conditional_mixed_real_string_arms",
+      "entrypoint": "logical",
+      "source": "sel ? temp : msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CONDITIONAL-TYPE",
+      "span": {
+        "start": 6,
+        "end": 16
       },
       "snapshot": null,
       "host_profile": "rich_types_baseline"
@@ -40,6 +248,266 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_recovered_string_cast_from_integral",
+      "entrypoint": "logical",
+      "source": "type(msg)'(count)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 17
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_string_cast_from_real",
+      "entrypoint": "logical",
+      "source": "string'(temp)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_recovered_integer_like_cast_from_string_literal",
+      "entrypoint": "logical",
+      "source": "type(count)'(\"ok\")",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 18
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_real_cast_from_string",
+      "entrypoint": "logical",
+      "source": "real'(msg)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_int_cast_from_string",
+      "entrypoint": "logical",
+      "source": "int'(msg)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 9
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bit_select_base_real",
+      "entrypoint": "logical",
+      "source": "temp[0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_part_select_base_real",
+      "entrypoint": "logical",
+      "source": "temp[1:0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bit_select_base_string",
+      "entrypoint": "logical",
+      "source": "msg[0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_part_select_base_string",
+      "entrypoint": "logical",
+      "source": "msg[1:0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bitwise_and_lhs_real",
+      "entrypoint": "logical",
+      "source": "temp & count",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bitwise_and_real_operands",
+      "entrypoint": "logical",
+      "source": "temp & temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bitwise_or_rhs_string",
+      "entrypoint": "logical",
+      "source": "count | msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 8,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_bitwise_not_operand_real",
+      "entrypoint": "logical",
+      "source": "~temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_reduction_and_operand_real",
+      "entrypoint": "logical",
+      "source": "&temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_reduction_xor_operand_string",
+      "entrypoint": "logical",
+      "source": "^msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_shift_lhs_real",
+      "entrypoint": "logical",
+      "source": "temp << count",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_shift_rhs_string",
+      "entrypoint": "logical",
+      "source": "count >> msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 9,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_comparison_rhs_string",
+      "entrypoint": "logical",
+      "source": "temp < msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_comparison_lhs_string",
+      "entrypoint": "logical",
+      "source": "msg < temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_comparison_string_operands",
+      "entrypoint": "logical",
+      "source": "msg < msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_real_cast_from_unknown_bits",
       "entrypoint": "logical",
       "source": "real'(xbus)",
@@ -52,6 +520,453 @@
       "snapshot": "runtime_real_cast_unknown",
       "host_profile": "rich_types_baseline",
       "timestamp": 10
+    },
+    {
+      "name": "invalid_real_cast_from_z_bits",
+      "entrypoint": "logical",
+      "source": "real'(1'bz)",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-CAST",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 0
+    },
+    {
+      "name": "invalid_recovered_real_cast_from_unknown_bits",
+      "entrypoint": "logical",
+      "source": "type(temp)'(xbus)",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-CAST",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 10
+    },
+    {
+      "name": "invalid_recovered_real_cast_from_z_bits",
+      "entrypoint": "logical",
+      "source": "type(temp)'(1'bz)",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-CAST",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 0
+    },
+    {
+      "name": "implicit_real_promotion_rejects_x_bits_in_addition",
+      "entrypoint": "logical",
+      "source": "temp + xbus",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-CAST",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 0
+    },
+    {
+      "name": "implicit_real_promotion_rejects_z_bits_in_comparison",
+      "entrypoint": "logical",
+      "source": "1'bz < temp",
+      "layer": "runtime",
+      "code": "EXPR-RUNTIME-REAL-CAST",
+      "span": {
+        "start": 0,
+        "end": 0
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline",
+      "timestamp": 0
+    },
+    {
+      "name": "implicit_real_string_numeric_mixture_is_invalid",
+      "entrypoint": "logical",
+      "source": "temp + msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-NUMERIC",
+      "span": {
+        "start": 7,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_real_string_equality_mixture_is_invalid",
+      "entrypoint": "logical",
+      "source": "msg == temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_real_string_equality_mixture_is_invalid_reversed",
+      "entrypoint": "logical",
+      "source": "temp == msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_integral_string_equality_mixture_is_invalid",
+      "entrypoint": "logical",
+      "source": "count == msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_integral_string_equality_mixture_is_invalid_reversed",
+      "entrypoint": "logical",
+      "source": "msg == count",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_equality_rejects_real_operands",
+      "entrypoint": "logical",
+      "source": "temp === 1.5",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_equality_rejects_string_operands",
+      "entrypoint": "logical",
+      "source": "msg === \"go\"",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_inequality_rejects_string_operands",
+      "entrypoint": "logical",
+      "source": "msg !== \"go\"",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_inequality_rejects_real_operands",
+      "entrypoint": "logical",
+      "source": "temp !== 1.5",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_equality_rejects_real_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 === temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_equality_rejects_string_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 === msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_inequality_rejects_string_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 !== msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "case_inequality_rejects_real_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 !== temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_equality_rejects_real_operands",
+      "entrypoint": "logical",
+      "source": "temp ==? 1.5",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_equality_rejects_string_operands",
+      "entrypoint": "logical",
+      "source": "msg ==? \"go\"",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_inequality_rejects_string_operands",
+      "entrypoint": "logical",
+      "source": "msg !=? \"go\"",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_inequality_rejects_real_operands",
+      "entrypoint": "logical",
+      "source": "temp !=? 1.5",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_equality_rejects_real_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 ==? temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_equality_rejects_string_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 ==? msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_inequality_rejects_string_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 !=? msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "wildcard_inequality_rejects_real_rhs",
+      "entrypoint": "logical",
+      "source": "2'b01 !=? temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 10,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_real_string_inequality_mixture_is_invalid",
+      "entrypoint": "logical",
+      "source": "msg != temp",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_real_string_inequality_mixture_is_invalid_reversed",
+      "entrypoint": "logical",
+      "source": "temp != msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 11
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_integral_string_inequality_mixture_is_invalid",
+      "entrypoint": "logical",
+      "source": "count != msg",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "implicit_integral_string_inequality_mixture_is_invalid_reversed",
+      "entrypoint": "logical",
+      "source": "msg != count",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EQUALITY-TYPE",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_inside_lhs_real",
+      "entrypoint": "logical",
+      "source": "temp inside {count}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_inside_item_real",
+      "entrypoint": "logical",
+      "source": "count inside {temp}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 14,
+        "end": 18
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_inside_range_lower_bound_real",
+      "entrypoint": "logical",
+      "source": "count inside {[temp:count]}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 15,
+        "end": 19
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_inside_range_upper_bound_real",
+      "entrypoint": "logical",
+      "source": "count inside {[count:temp]}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 21,
+        "end": 25
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
     },
     {
       "name": "invalid_nonfinite_real_literal",
@@ -80,9 +995,113 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_signed_cast_from_real",
+      "entrypoint": "logical",
+      "source": "signed'(temp)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 13
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_unsigned_cast_from_real",
+      "entrypoint": "logical",
+      "source": "unsigned'(temp)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 15
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_signed_cast_from_string",
+      "entrypoint": "logical",
+      "source": "signed'(msg)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_unsigned_cast_from_string",
+      "entrypoint": "logical",
+      "source": "unsigned'(msg)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 0,
+        "end": 14
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_signed_cast_from_event",
+      "entrypoint": "logical",
+      "source": "signed'(ev)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 8,
+        "end": 10
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_unsigned_cast_from_event",
+      "entrypoint": "logical",
+      "source": "unsigned'(ev)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 10,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_recovered_event_cast_target",
+      "entrypoint": "logical",
+      "source": "type(ev)'(1)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-CAST-TARGET",
+      "span": {
+        "start": 5,
+        "end": 7
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_recovered_type_unknown_signal",
       "entrypoint": "logical",
       "source": "type(missing)'(1)",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
+      "span": {
+        "start": 5,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_enum_label_unknown_signal",
+      "entrypoint": "logical",
+      "source": "type(missing)::BUSY",
       "layer": "semantic",
       "code": "EXPR-SEMANTIC-UNKNOWN-SIGNAL",
       "span": {
@@ -119,6 +1138,19 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_enum_label_cast_target",
+      "entrypoint": "logical",
+      "source": "type(state)::BUSY'(2'b00)",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-TRAILING",
+      "span": {
+        "start": 17,
+        "end": 18
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_missing_enum_metadata",
       "entrypoint": "logical",
       "source": "type(state_no_labels)::BUSY",
@@ -145,6 +1177,32 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_triggered_on_parenthesized_event",
+      "entrypoint": "logical",
+      "source": "(ev).triggered",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-TRIGGERED",
+      "span": {
+        "start": 0,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_non_triggered_member_suffix",
+      "entrypoint": "logical",
+      "source": "(ev).foo",
+      "layer": "parse",
+      "code": "EXPR-PARSE-LOGICAL-EXPECTED",
+      "span": {
+        "start": 4,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_chained_triggered",
       "entrypoint": "logical",
       "source": "ev.triggered.triggered",
@@ -158,6 +1216,32 @@
       "host_profile": "rich_types_baseline"
     },
     {
+      "name": "invalid_selection_on_triggered_scalar",
+      "entrypoint": "logical",
+      "source": "ev.triggered[0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-SELECTION-BASE",
+      "span": {
+        "start": 0,
+        "end": 12
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_triggered_after_raw_event_selection",
+      "entrypoint": "logical",
+      "source": "ev[0].triggered",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
       "name": "invalid_raw_event_value_use",
       "entrypoint": "logical",
       "source": "ev + 1",
@@ -166,6 +1250,136 @@
       "span": {
         "start": 0,
         "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_boolean_primary",
+      "entrypoint": "logical",
+      "source": "ev",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_logical_and_operand",
+      "entrypoint": "logical",
+      "source": "ev && 1",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_implicit_conversion",
+      "entrypoint": "logical",
+      "source": "sel ? ev : data",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 6,
+        "end": 8
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_selection",
+      "entrypoint": "logical",
+      "source": "ev[0]",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 0,
+        "end": 2
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_concatenation",
+      "entrypoint": "logical",
+      "source": "{ev, data}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 1,
+        "end": 3
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_raw_event_replication",
+      "entrypoint": "logical",
+      "source": "{2{ev}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-EVENT-VALUE",
+      "span": {
+        "start": 3,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_real_concatenation_operand",
+      "entrypoint": "logical",
+      "source": "{temp, data}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 5
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_string_concatenation_operand",
+      "entrypoint": "logical",
+      "source": "{msg, data}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 1,
+        "end": 4
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_string_replication_operand",
+      "entrypoint": "logical",
+      "source": "{2{msg}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 3,
+        "end": 6
+      },
+      "snapshot": null,
+      "host_profile": "rich_types_baseline"
+    },
+    {
+      "name": "invalid_real_replication_operand",
+      "entrypoint": "logical",
+      "source": "{2{temp}}",
+      "layer": "semantic",
+      "code": "EXPR-SEMANTIC-INTEGRAL-REQUIRED",
+      "span": {
+        "start": 3,
+        "end": 7
       },
       "snapshot": null,
       "host_profile": "rich_types_baseline"

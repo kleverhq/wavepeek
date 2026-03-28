@@ -26,6 +26,54 @@
     },
     {
       "kind": "event_parse",
+      "name": "named_event_iff_gate",
+      "source": "a iff cond",
+      "terms": [
+        {
+          "event": "named",
+          "name": "a",
+          "iff": "cond"
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "wildcard_any_tracked_iff_gate",
+      "source": "* iff gate",
+      "terms": [
+        {
+          "event": "any_tracked",
+          "name": null,
+          "iff": "gate"
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "hierarchical_named_any_change",
+      "source": "top.cpu.clk",
+      "terms": [
+        {
+          "event": "named",
+          "name": "top.cpu.clk",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "canonical_token_named_any_change",
+      "source": "top.cpu.data[0]",
+      "terms": [
+        {
+          "event": "named",
+          "name": "top.cpu.data[0]",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
       "name": "edge_keywords",
       "source": "posedge clk or negedge rst or edge data",
       "terms": [
@@ -42,6 +90,89 @@
         {
           "event": "edge",
           "name": "data",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "posedge_operand_reference_resolution_matrix",
+      "source": "posedge clk or posedge top.cpu.clk or posedge top.cpu.data[0]",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "top.cpu.clk",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "top.cpu.data[0]",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "negedge_operand_reference_resolution_matrix",
+      "source": "negedge clk or negedge top.cpu.clk or negedge top.cpu.data[0]",
+      "terms": [
+        {
+          "event": "negedge",
+          "name": "clk",
+          "iff": null
+        },
+        {
+          "event": "negedge",
+          "name": "top.cpu.clk",
+          "iff": null
+        },
+        {
+          "event": "negedge",
+          "name": "top.cpu.data[0]",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "edge_operand_reference_resolution_matrix",
+      "source": "edge clk or edge top.cpu.clk or edge top.cpu.data[0]",
+      "terms": [
+        {
+          "event": "edge",
+          "name": "clk",
+          "iff": null
+        },
+        {
+          "event": "edge",
+          "name": "top.cpu.clk",
+          "iff": null
+        },
+        {
+          "event": "edge",
+          "name": "top.cpu.data[0]",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "or_union",
+      "source": "posedge clk1 or posedge clk2",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk1",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "clk2",
           "iff": null
         }
       ]
@@ -65,6 +196,55 @@
     },
     {
       "kind": "event_parse",
+      "name": "mixed_union_left_to_right_chain",
+      "source": "posedge clk1 or posedge clk2, posedge clk3",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk1",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "clk2",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "clk3",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "mixed_union_four_term_chain",
+      "source": "posedge clk1 or negedge rst, edge data or ready",
+      "terms": [
+        {
+          "event": "posedge",
+          "name": "clk1",
+          "iff": null
+        },
+        {
+          "event": "negedge",
+          "name": "rst",
+          "iff": null
+        },
+        {
+          "event": "edge",
+          "name": "data",
+          "iff": null
+        },
+        {
+          "event": "named",
+          "name": "ready",
+          "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
       "name": "iff_binds_to_preceding_term_only",
       "source": "negedge clk iff rstn or ready",
       "terms": [
@@ -77,6 +257,23 @@
           "event": "named",
           "name": "ready",
           "iff": null
+        }
+      ]
+    },
+    {
+      "kind": "event_parse",
+      "name": "rhs_iff_binds_tighter_than_union",
+      "source": "ready or posedge clk iff gate",
+      "terms": [
+        {
+          "event": "named",
+          "name": "ready",
+          "iff": null
+        },
+        {
+          "event": "posedge",
+          "name": "clk",
+          "iff": "gate"
         }
       ]
     },

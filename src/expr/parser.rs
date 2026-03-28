@@ -1443,7 +1443,10 @@ fn logical_parse_diag(
 #[cfg(test)]
 mod tests {
     use super::{parse_event_expr_ast, parse_logical_expr_ast};
-    use crate::expr::{BasicEventAst, DiagnosticLayer, ast::LogicalExprNode};
+    use crate::expr::{
+        BasicEventAst, DiagnosticLayer,
+        ast::{IntegralBase, LogicalExprNode, UnaryOpAst},
+    };
 
     #[test]
     fn typed_parser_rejects_unmatched_open_parenthesis() {
@@ -1506,5 +1509,71 @@ mod tests {
         .expect("rich type sample expression should parse");
 
         assert!(matches!(parsed.root, LogicalExprNode::Conditional { .. }));
+    }
+
+    #[test]
+    fn logical_parser_keeps_unary_minus_separate_from_integral_literals() {
+        let parsed = parse_logical_expr_ast("-12").expect("source should parse");
+
+        match parsed.root {
+            LogicalExprNode::Unary {
+                op: UnaryOpAst::Minus,
+                expr,
+                span,
+            } => {
+                assert_eq!(span.start, 0);
+                assert_eq!(span.end, 3);
+                match expr.as_ref() {
+                    LogicalExprNode::IntegralLiteral { literal, span } => {
+                        assert_eq!(span.start, 1);
+                        assert_eq!(span.end, 3);
+                        assert_eq!(literal.span.start, 1);
+                        assert_eq!(literal.span.end, 3);
+                        assert_eq!(literal.width, None);
+                        assert!(literal.signed);
+                        assert_eq!(literal.base, IntegralBase::Decimal);
+                        assert_eq!(literal.digits, "12");
+                    }
+                    other => panic!("expected integral literal operand, got {other:?}"),
+                }
+            }
+            other => panic!("expected unary minus root, got {other:?}"),
+        }
+
+        let parenthesized = parse_logical_expr_ast("-(12)").expect("source should parse");
+
+        match parenthesized.root {
+            LogicalExprNode::Unary {
+                op: UnaryOpAst::Minus,
+                expr,
+                span,
+            } => {
+                assert_eq!(span.start, 0);
+                assert_eq!(span.end, 5);
+                match expr.as_ref() {
+                    LogicalExprNode::Parenthesized { expr, span } => {
+                        assert_eq!(span.start, 1);
+                        assert_eq!(span.end, 5);
+                        match expr.as_ref() {
+                            LogicalExprNode::IntegralLiteral { literal, span } => {
+                                assert_eq!(span.start, 2);
+                                assert_eq!(span.end, 4);
+                                assert_eq!(literal.span.start, 2);
+                                assert_eq!(literal.span.end, 4);
+                                assert_eq!(literal.width, None);
+                                assert!(literal.signed);
+                                assert_eq!(literal.base, IntegralBase::Decimal);
+                                assert_eq!(literal.digits, "12");
+                            }
+                            other => panic!(
+                                "expected integral literal inside parentheses, got {other:?}"
+                            ),
+                        }
+                    }
+                    other => panic!("expected parenthesized operand, got {other:?}"),
+                }
+            }
+            other => panic!("expected unary minus root, got {other:?}"),
+        }
     }
 }

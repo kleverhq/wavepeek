@@ -268,6 +268,18 @@ impl<'a> LogicalLexer<'a> {
             }
 
             let start = self.index;
+            if self.source[self.index..].starts_with("++")
+                || self.source[self.index..].starts_with("--")
+            {
+                self.index += 2;
+                return Err(self.parse_diag(
+                    "EXPR-PARSE-LOGICAL-TOKEN",
+                    "unsupported token in logical expression",
+                    self.span(start, self.index),
+                    &["'++' and '--' are not supported operators in this logical expression surface"],
+                ));
+            }
+
             let kind = match ch {
                 '(' => {
                     self.bump_char();

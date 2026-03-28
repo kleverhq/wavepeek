@@ -16,7 +16,9 @@ use crate::engine::time::{
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
-use crate::expr::{BoundEventExpr, EventEvalFrame, ExpressionHost, SignalHandle};
+use crate::expr::{
+    BoundEventExpr, EventEvalFrame, ExprTypeKind, ExpressionHost, SampledValue, SignalHandle,
+};
 use crate::waveform::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
     SignalOffsetData, Waveform, expr_host::WaveformExprHost, should_emit_delta_and_update_baseline,
@@ -73,6 +75,53 @@ struct ChangeRunOutput {
 struct RollingSignalState {
     offset: Option<SignalOffsetData>,
     bits: Option<String>,
+}
+
+#[derive(Clone)]
+struct CachedEventSamples {
+    current: SampledValue,
+    previous: SampledValue,
+}
+
+struct FastEventEvalHost<'a> {
+    base: &'a WaveformExprHost,
+    current_timestamp: u64,
+    cached: HashMap<SignalHandle, CachedEventSamples>,
+}
+
+impl ExpressionHost for FastEventEvalHost<'_> {
+    fn resolve_signal(&self, name: &str) -> Result<SignalHandle, crate::expr::ExprDiagnostic> {
+        self.base.resolve_signal(name)
+    }
+
+    fn signal_type(
+        &self,
+        handle: SignalHandle,
+    ) -> Result<crate::expr::ExprType, crate::expr::ExprDiagnostic> {
+        self.base.signal_type(handle)
+    }
+
+    fn sample_value(
+        &self,
+        handle: SignalHandle,
+        timestamp: u64,
+    ) -> Result<SampledValue, crate::expr::ExprDiagnostic> {
+        if let Some(cached) = self.cached.get(&handle) {
+            if timestamp >= self.current_timestamp {
+                return Ok(cached.current.clone());
+            }
+            return Ok(cached.previous.clone());
+        }
+        self.base.sample_value(handle, timestamp)
+    }
+
+    fn event_occurred(
+        &self,
+        handle: SignalHandle,
+        timestamp: u64,
+    ) -> Result<bool, crate::expr::ExprDiagnostic> {
+        self.base.event_occurred(handle, timestamp)
+    }
 }
 
 #[derive(Default)]
@@ -551,6 +600,10 @@ fn run_edge_fast(
     waveform
         .borrow_mut()
         .ensure_signals_loaded(loaded_signal_refs.as_slice());
+    let cached_sources = cached_event_sources(
+        host,
+        cached_event_handles(bound_event, tracked_signal_handles).as_slice(),
+    )?;
 
     let mut decode_cache = IndexDecodeCache::default();
     let mut snapshots = Vec::new();
@@ -609,12 +662,24 @@ fn run_edge_fast(
         } else {
             Some(waveform.borrow().timestamps_raw_slice()[candidate_index - 1])
         };
+        let fast_host = {
+            let waveform_ref = waveform.borrow();
+            build_edge_fast_event_eval_host(
+                host,
+                timestamp,
+                candidate_index_u32,
+                previous_index,
+                &waveform_ref,
+                &mut decode_cache,
+                cached_sources.as_slice(),
+            )?
+        };
         let frame = EventEvalFrame {
             timestamp,
             previous_timestamp,
             tracked_signals: tracked_signal_handles,
         };
-        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
+        if !event_expr_matches(event_expr_source, bound_event, &fast_host, &frame)? {
             continue;
         }
 
@@ -747,6 +812,10 @@ fn run_fused(
     } else {
         None
     };
+    let cached_sources = cached_event_sources(
+        host,
+        cached_event_handles(bound_event, tracked_signal_handles).as_slice(),
+    )?;
 
     let (start_idx, end_idx_exclusive) = {
         let waveform_ref = waveform.borrow();
@@ -870,12 +939,20 @@ fn run_fused(
         } else {
             Some(waveform.borrow().timestamps_raw_slice()[idx - 1])
         };
+        let fast_host = build_fused_event_eval_host(
+            host,
+            timestamp,
+            cached_sources.as_slice(),
+            &tracked_index_by_ref,
+            rolling.as_slice(),
+            previous_bits.as_slice(),
+        );
         let frame = EventEvalFrame {
             timestamp,
             previous_timestamp,
             tracked_signals: tracked_signal_handles,
         };
-        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
+        if !event_expr_matches(event_expr_source, bound_event, &fast_host, &frame)? {
             continue;
         }
 
@@ -1046,6 +1123,107 @@ fn build_candidate_schedule(
             Ok((*timestamp, previous))
         })
         .collect()
+}
+
+fn cached_event_handles(
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+) -> Vec<SignalHandle> {
+    let mut handles = event_candidate_handles(bound_event);
+    let mut seen = handles.iter().copied().collect::<HashSet<_>>();
+    for handle in tracked_signal_handles {
+        if seen.insert(*handle) {
+            handles.push(*handle);
+        }
+    }
+    handles
+}
+
+fn cached_event_sources(
+    host: &WaveformExprHost,
+    handles: &[SignalHandle],
+) -> Result<Vec<(SignalHandle, ExprResolvedSignal)>, WavepeekError> {
+    handles
+        .iter()
+        .map(|handle| Ok((*handle, host.resolved_signal_for_handle(*handle)?)))
+        .collect()
+}
+
+fn cached_sample_value(signal: &ExprResolvedSignal, bits: Option<String>) -> Option<SampledValue> {
+    match signal.expr_type.kind {
+        ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+            Some(SampledValue::Integral { bits, label: None })
+        }
+        _ => None,
+    }
+}
+
+fn build_fused_event_eval_host<'a>(
+    host: &'a WaveformExprHost,
+    current_timestamp: u64,
+    cached_sources: &[(SignalHandle, ExprResolvedSignal)],
+    tracked_index_by_ref: &HashMap<wellen::SignalRef, usize>,
+    rolling: &[RollingSignalState],
+    previous_bits: &[Option<Option<String>>],
+) -> FastEventEvalHost<'a> {
+    let mut cached = HashMap::new();
+    for (handle, signal) in cached_sources {
+        let Some(&tracked_index) = tracked_index_by_ref.get(&signal.signal_ref) else {
+            continue;
+        };
+        let current_bits = rolling[tracked_index].bits.clone();
+        let previous = previous_bits[tracked_index]
+            .clone()
+            .unwrap_or_else(|| current_bits.clone());
+        let Some(current) = cached_sample_value(signal, current_bits) else {
+            continue;
+        };
+        let Some(previous) = cached_sample_value(signal, previous) else {
+            continue;
+        };
+        cached.insert(*handle, CachedEventSamples { current, previous });
+    }
+    FastEventEvalHost {
+        base: host,
+        current_timestamp,
+        cached,
+    }
+}
+
+fn build_edge_fast_event_eval_host<'a>(
+    host: &'a WaveformExprHost,
+    current_timestamp: u64,
+    current_index: u32,
+    previous_index: Option<u32>,
+    waveform: &Waveform,
+    decode_cache: &mut IndexDecodeCache,
+    cached_sources: &[(SignalHandle, ExprResolvedSignal)],
+) -> Result<FastEventEvalHost<'a>, WavepeekError> {
+    let mut cached = HashMap::new();
+    for (handle, signal) in cached_sources {
+        let resolved = ResolvedSignal {
+            path: signal.path.clone(),
+            signal_ref: signal.signal_ref,
+            width: signal.expr_type.width.max(1),
+        };
+        let current_bits = decode_cache.bits(waveform, &resolved, current_index)?;
+        let previous_bits = previous_index
+            .map(|index| decode_cache.bits(waveform, &resolved, index))
+            .transpose()?
+            .flatten();
+        let Some(current) = cached_sample_value(signal, current_bits) else {
+            continue;
+        };
+        let Some(previous) = cached_sample_value(signal, previous_bits) else {
+            continue;
+        };
+        cached.insert(*handle, CachedEventSamples { current, previous });
+    }
+    Ok(FastEventEvalHost {
+        base: host,
+        current_timestamp,
+        cached,
+    })
 }
 
 fn parse_bound_time(

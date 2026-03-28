@@ -416,7 +416,7 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
 - Name/scope resolution follows `value` and `change`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
 - Time boundaries are inclusive (`--from`, `--to`), and time tokens require explicit units aligned to dump precision.
 - Candidate timestamps come from `--on`.
-- Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval`, including raw-event handles referenced through `.triggered()`, to avoid per-time-unit output spam.
+- Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval`, including raw-event handles referenced through `.triggered()`, to avoid per-time-unit output spam. If `--eval` references no signals or raw events, users must pass `--on` explicitly.
 - Supported `--on` forms match `change`: `*`, `<name>`, `posedge <name>`, `negedge <name>`, `edge <name>`, and union forms via `or`/`,`.
 - `--eval` is evaluated on each candidate timestamp with 4-state semantics and 2-state final decision (`1` is true; `0`/`x` are false).
 - `match`: emit every event timestamp where `--eval` is true.
@@ -498,7 +498,7 @@ shared output module renders those results for stdout.
    `value`, `change`, `property`, `schema`. Operates on waveform abstractions, returns structured
    results. It is clap-free in behavior, but currently receives CLI-owned argument structs from
    `src/cli/`. Contains shared time validation/normalization utilities, shared value-formatting
-   utilities, standalone expression evaluator (`property` command runtime still deferred), and the `change` multi-engine
+   utilities, shared expression-runtime helpers, and the `change` multi-engine
    dispatcher described in [5.7 Change Command Execution Architecture](#57-change-command-execution-architecture).
 
 3. **Waveform Layer** (`wellen`) — Thin adapter over wellen. Handles file opening,
@@ -553,11 +553,11 @@ src/
 │   ├── change.rs        # Value change tracking (`--on` event triggers, see 5.7)
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
-│   ├── property.rs      # Property runtime entrypoint (currently unimplemented)
+│   ├── property.rs      # Property runtime entrypoint and capture-mode execution
 │   └── schema.rs        # JSON schema export
 ├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
 ├── expr/                # Expression engine foundation (shared by `change`/`property`)
-│   ├── mod.rs           # Public typed facade + crate-private legacy adapter
+│   ├── mod.rs           # Public typed facade + crate-private legacy compatibility parser
 │   ├── ast.rs           # Spanned expression AST types
 │   ├── diagnostic.rs    # Parse/semantic/runtime diagnostic contract
 │   ├── lexer.rs         # Spanned tokenizer for event-expression parsing
@@ -565,7 +565,7 @@ src/
 │   ├── host.rs          # Host trait + signal/type/value bridge types
 │   ├── sema.rs          # Typed event/logical binder (`bind_event_expr_ast`, `bind_logical_expr_ast`)
 │   ├── eval.rs          # Typed event matcher + standalone logical evaluator (`event_matches_at`, `eval_logical_expr_at`)
-│   └── legacy.rs        # Compatibility parser path used by current command runtime
+│   └── legacy.rs        # Compatibility parser kept only for non-production/test-only parity helpers
 ├── waveform/            # Thin adapter over wellen
 │   ├── mod.rs           # File loading, format detection, query helpers
 │   └── expr_host.rs     # Crate-private waveform-to-expression adapter for standalone expression tests/benchmarks
@@ -607,8 +607,8 @@ src/
 
 ### 5.5 Expression Engine
 
-The planned `property` command requires evaluating boolean expressions against signal values
-at event-selected timestamps.
+The `property` command evaluates boolean expressions against signal values at
+event-selected timestamps.
 
 Language syntax and semantics are specified in `docs/expression_lang.md`; this
 section describes implementation architecture only.
@@ -639,13 +639,13 @@ section describes implementation architecture only.
   `src/waveform/expr_host.rs` adapter plus crate-private lookup/decode helpers
   in `src/waveform/mod.rs`, so standalone tests and benchmarks can bind/evaluate
   against VCD/FST metadata without widening the public `wavepeek::expr` facade.
-- Current `change` runtime remains intentionally compatibility-preserving and
-  still uses the crate-private legacy adapter path in `src/expr/legacy.rs`
-  (via `parse_event_expr(...)` facade) until later integration phases.
-- Default `change --on "... iff ..."` execution remains deferred and still
-  returns `error: args: iff logical expressions are not implemented yet`.
-- `property` runtime execution remains deferred and deterministically returns
-  `error: unimplemented: \`property\` command execution is not implemented yet`.
+- The production `change` and `property` runtimes now bind expressions through
+  the shared typed parser/binder/evaluator path and use a shared command-owned
+  waveform handle bridged through `src/engine/expr_runtime.rs` plus
+  `src/waveform/expr_host.rs`.
+- `src/expr/legacy.rs` remains available only as a compatibility parser for
+  older internal parity helpers and tests; production command execution no
+  longer depends on it.
 
 ### 5.6 Error Handling Strategy
 

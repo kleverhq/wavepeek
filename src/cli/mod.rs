@@ -120,7 +120,7 @@ Use this command to inspect value transitions over bounded time windows."#
 Behavior:
 - Evaluate `--eval` on timestamps selected by `--on`.
 - `--capture` controls reporting mode (`match`, `switch`, `assert`, `deassert`).
-- Omitted `--on` behaves as wildcard (`*`).
+- Omitted `--on` behaves as wildcard (`*`) when `--eval` references at least one signal or raw event.
 - `switch` emits `assert` and `deassert` rows only for state transitions after the range-start baseline probe.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 

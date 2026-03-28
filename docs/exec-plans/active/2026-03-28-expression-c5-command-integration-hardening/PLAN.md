@@ -23,10 +23,10 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 - [x] (2026-03-28 19:20Z) Reviewed `docs/expression_roadmap.md`, `docs/expression_lang.md`, `docs/DESIGN.md`, `docs/ROADMAP.md`, `docs/BACKLOG.md`, the completed `C1` through `C4` expression ExecPlans, current `src/engine/`, `src/expr/`, `src/output.rs`, `schema/wavepeek.json`, and the current `tests/` plus `bench/e2e/` coverage.
 - [x] (2026-03-28 19:20Z) Drafted the active `C5` ExecPlan with explicit scope, command-surface decisions, integration test strategy, schema/output contract, parity requirements, and command-level performance gates.
 - [x] (2026-03-28 19:20Z) Completed focused plan review lanes and revised the plan to define scope-aware typed binding, wildcard tracking for any `*` term including raw-event references, phase-local CLI contract artifacts, truthful doc-update sequencing, shared waveform ownership, and explicit tune-mode validation.
-- [ ] Implement red-first command integration tests and contract-alignment doc edits.
-- [ ] Route `change` through typed event binding and evaluation while preserving deterministic output and command-level performance gates.
-- [ ] Implement `property` runtime, capture-mode semantics, human/json rendering, and schema support.
-- [ ] Extend parity, schema, benchmark, and collateral coverage; refresh the committed `bench/e2e` baseline after review.
+- [x] (2026-03-29 00:57Z) Added red-first command integration coverage and contract-alignment docs, captured failing evidence for `change --on ... iff ...`, `property`, help text, and schema gaps, then drove the implementation green on the same branch.
+- [x] (2026-03-29 00:57Z) Routed `change` through typed event binding/evaluation, added shared command expression-runtime helpers, preserved deterministic payload/warning behavior, and kept tune-mode equivalence coverage green.
+- [x] (2026-03-29 00:57Z) Implemented `property` end to end with capture modes, wildcard tracking from `--eval`, human/json rendering, schema support, manifest-backed command fixtures, and `error: expr:` command diagnostics.
+- [x] (2026-03-29 00:57Z) Extended parity, schema, benchmark, and collateral coverage; added `property` entries to `bench/e2e/tests.json` and median-aware compare gating, but baseline refresh remains pending until after review completion.
 - [ ] Run mandatory review lanes plus a fresh control pass, apply any follow-up fixes in separate commits, and close the plan with final validation evidence.
 
 ## Surprises & Discoveries
@@ -45,6 +45,9 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 
 - Observation: the command-level performance harness already covers large `change` workloads, but it has no `property` scenarios yet.
   Evidence: `bench/e2e/tests.json` contains many `category: "change"` cases and no `category: "property"` entries.
+
+- Observation: the old committed `bench/e2e` baseline appears to have broad environment drift relative to the current container image, including unchanged `info`/`value` scenarios, so pre-refresh compare failures are not isolated to the new command-integration code.
+  Evidence: repeated `python3 bench/e2e/perf.py compare --revised ... --golden bench/e2e/runs/baseline --max-negative-delta-pct 15 --verbose` runs reported mean/median regressions for unchanged commands such as `info_scr1`, `signal_scr1_top_recursive_depth2_json`, and `value_chipyard_clusteredrocketconfig_dhrystone_signals_10` in addition to some `change` scenarios.
 
 ## Decision Log
 
@@ -92,11 +95,15 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
   Rationale: `C5` exit criteria are command-level, not library-microbenchmark-level. The repository already has a maintained CLI benchmark harness that captures timing plus JSON `data` parity, while dedicated Rust tests already cover `warnings` parity more precisely. To stay aligned with the roadmap default benchmark gate, `C5` must extend that harness so compare-time failure checks both mean and median regression at the same threshold.
   Date/Author: 2026-03-28 / OpenCode
 
+- Decision: `property --eval` final truth reduction follows the same boolean-context rules as the typed expression engine: any integral payload containing `1` is true, non-zero `real` is true, and string/unknown final values reduce to false for capture output.
+  Rationale: the shared typed engine already defines boolean-context truth reduction for `iff`, and command integration must not invent a narrower rule such as `bits == "1"` for `property`.
+  Date/Author: 2026-03-29 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning complete, implementation not started.
+Current status: implementation complete; review, final benchmark baseline refresh, and closeout remain in progress.
 
-This plan is ready for execution. It defines the `C5` boundary, resolves the stale `change --eval` ambiguity, names the command/runtime/schema/docs/benchmark files that must change, and fixes the missing command-level contracts that previously blocked implementation planning: property JSON shape, capture baseline semantics, expression-error category mapping, and benchmark scope. The remaining work is implementation, validation, review, and baseline refresh.
+The branch now routes `change` and `property` through the shared typed expression runtime, ships `property` JSON/human output plus schema support, and locks the new command behavior with CLI fixtures, parity tests, and help/schema contract coverage. Repository gates (`cargo test`, `python3 scripts/check_schema_contract.py`, `make check`, `make ci`) are green. The remaining work is mandatory review, any follow-up fixes, a post-review `bench/e2e` baseline refresh, and final closeout notes.
 
 ## Context and Orientation
 

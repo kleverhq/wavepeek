@@ -58,9 +58,10 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Query Engine Enhancements (→ v0.5.0)
 
-- Typed command integration hardening: route `change --on` and `property`
-  runtime execution through the typed expression engine, ship `property`
-  JSON/human output contracts, and extend command-level parity/benchmark gates.
+- Post-integration hardening after typed command convergence: keep `change`
+  and `property` on the shared typed runtime, maintain the shipped `property`
+  JSON/human contracts, and extend parity/benchmark guardrails for follow-on
+  optimization work.
 
 ### MCP Server (→ v0.6.0)
 

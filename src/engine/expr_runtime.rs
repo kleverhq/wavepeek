@@ -86,25 +86,22 @@ pub(crate) fn bind_waveform_logical_expr(
 pub(crate) fn eval_bound_logical_truth(
     source: &str,
     expr: &BoundLogicalExpr,
-    host: &WaveformExprHost,
+    host: &dyn ExpressionHost,
     timestamp: u64,
 ) -> Result<bool, WavepeekError> {
     let value = eval_logical_expr_at(expr, host, timestamp)
         .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
     match value.payload {
-        ExprValuePayload::Integral { bits, .. } => Ok(bits == "1"),
-        ExprValuePayload::Real { .. } | ExprValuePayload::String { .. } => {
-            Err(WavepeekError::Expr(format!(
-                "runtime:EXPR-RUNTIME-NON-INTEGRAL-TRUTH\n--> span 0..0\nsource: {source}"
-            )))
-        }
+        ExprValuePayload::Integral { bits, .. } => Ok(bits.chars().any(|bit| bit == '1')),
+        ExprValuePayload::Real { value } => Ok(value != 0.0),
+        ExprValuePayload::String { .. } => Ok(false),
     }
 }
 
 pub(crate) fn event_expr_matches(
     source: &str,
     expr: &BoundEventExpr,
-    host: &WaveformExprHost,
+    host: &dyn ExpressionHost,
     frame: &EventEvalFrame<'_>,
 ) -> Result<bool, WavepeekError> {
     event_matches_at(expr, host, frame).map_err(|diagnostic| expr_diagnostic(source, diagnostic))

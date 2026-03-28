@@ -4,7 +4,8 @@ use crate::cli::property::{CaptureMode, PropertyArgs};
 use crate::engine::expr_runtime::{
     bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
     eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
-    event_expr_matches, open_shared_waveform, referenced_signal_handles,
+    event_expr_is_any_tracked_only, event_expr_matches, open_shared_waveform,
+    referenced_signal_handles,
 };
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
@@ -71,7 +72,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
 
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
         let handles = referenced_signal_handles(&bound_eval);
-        if handles.is_empty() {
+        if handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
             return Err(WavepeekError::Args(
                 "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
                     .to_string(),

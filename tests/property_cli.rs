@@ -90,6 +90,124 @@ fn property_switch_capture_reports_transitions() {
 }
 
 #[test]
+fn property_assert_and_deassert_capture_filters() {
+    let fixture = write_fixture(
+        "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 1 \" sig $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n0\"\n#5\n1!\n#10\n0!\n1\"\n#15\n1!\n#20\n0!\n0\"\n#25\n1!\n",
+        "property-capture-filter.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let assert_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "25ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "assert",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let deassert_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "25ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "deassert",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(assert_output.status.success());
+    assert!(deassert_output.status.success());
+    assert_eq!(
+        parse_json(&assert_output.stdout)["data"],
+        json!([{"time": "15ns", "kind": "assert"}])
+    );
+    assert_eq!(
+        parse_json(&deassert_output.stdout)["data"],
+        json!([{"time": "25ns", "kind": "deassert"}])
+    );
+}
+
+#[test]
+fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
+    let fixture = write_fixture(
+        "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 2 \" data $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00 \"\n#5\n1!\nb10 \"\n",
+        "property-truthiness.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let multibit_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "data",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let real_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "real'(1)",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(multibit_output.status.success());
+    assert!(real_output.status.success());
+    assert_eq!(
+        parse_json(&multibit_output.stdout)["data"],
+        json!([{"time": "5ns", "kind": "match"}])
+    );
+    assert_eq!(
+        parse_json(&real_output.stdout)["data"],
+        json!([{"time": "5ns", "kind": "match"}])
+    );
+}
+
+#[test]
 fn property_invalid_eval_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
@@ -176,6 +294,36 @@ fn property_omitted_on_tracks_raw_event_handles_from_eval() {
             {"time": "5ns", "kind": "match"},
             {"time": "20ns", "kind": "match"}
         ])
+    );
+}
+
+#[test]
+fn property_mixed_wildcard_union_runs_with_signal_free_eval() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "* or posedge clk",
+            "--eval",
+            "1",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert_eq!(
+        parse_json(&output.stdout)["data"],
+        json!([{"time": "5ns", "kind": "match"}])
     );
 }
 

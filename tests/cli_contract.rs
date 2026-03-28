@@ -467,6 +467,7 @@ fn shipped_commands_help_is_self_descriptive() {
             &[
                 "Check property over event triggers",
                 "Evaluate `--eval` on timestamps selected by `--on`",
+                "when `--eval` references at least one signal or raw event",
                 "--capture",
                 "`switch` emits `assert` and `deassert` rows",
                 "wavepeek schema",

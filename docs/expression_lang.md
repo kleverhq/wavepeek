@@ -1,8 +1,8 @@
 # Expression Language Contract
 
 This document captures the intended end-state semantics of the `wavepeek`
-expression language used by `property --eval` and by `change --on`. It
-describes the target contract, not rollout order.
+expression language used by `property --on` / `property --eval` and by
+`change --on`. It describes the target contract, not rollout order.
 
 The contract is based on IEEE 1800-2023 SystemVerilog and aims to preserve
 SystemVerilog-compatible syntax and semantics wherever practical for dump-based
@@ -28,7 +28,8 @@ Event expressions support these forms:
 
 `*` denotes any change in the command-defined tracked set. `change` binds that
 set to the resolved `--signals`; `property` binds it to the signals referenced
-by `--eval`.
+by `--eval`. If `property --eval` references no signals or raw-event handles,
+the command rejects omitted `--on` and requires an explicit trigger.
 
 ### 1.2 Names and Resolution
 

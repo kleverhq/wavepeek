@@ -4,6 +4,8 @@ This ExecPlan is a living document. The sections `Progress`, `Surprises & Discov
 
 Note that this document must be maintained in accordance with `exec-plan` skill.
 
+Historical note: `docs/expression_roadmap.md` was retired after this plan completed. References in this archived plan to that roadmap are preserved as historical phase-planning context; use `docs/ROADMAP.md` plus `docs/expression_lang.md` for current canonical context.
+
 ## Purpose / Big Picture
 
 After this plan is implemented, `wavepeek` will finally reach the `C5` boundary from `docs/expression_roadmap.md`: the typed expression engine in `src/expr/` will stop being a standalone-only capability and will become the real runtime path for waveform commands. Users will be able to run `wavepeek change --on "posedge clk iff valid && ready" ...` and get real snapshots instead of the current hard failure, and they will be able to run `wavepeek property --eval "valid && ready"` end to end in both human and `--json` modes with deterministic capture results across VCD and FST.

@@ -41,20 +41,14 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ### Query Engine (→ v0.4.0)
 
-- Delivery is phased by `docs/expression_roadmap.md`: `C2` through `C4` are
-  standalone expression-engine milestones, while the final typed command
-  integration boundary is owned by `C5`.
-- `C3` scope includes the standalone core integral boolean contract (logical
-  parse/bind/eval APIs and event `iff` reuse in the standalone engine), while
-  command runtime routing remains deferred.
-- Public `property` command runtime integration (§3.2.6) lands with `C5`
-  command wiring, not with the standalone `C2`-`C4` engine milestones.
-- Standalone typed expression engine foundation (`C2`-`C4`) with strict parser,
-  typed binder, deterministic diagnostics, and standalone event/logical eval APIs.
-- `C4` standalone surface closes the remaining rich-type scope: `real`,
-  `string`, enum-label references, operand-type casts, raw-event `.triggered()`,
-  and full logical `iff` support in standalone evaluation.
-- Deferred runtime command integration remains explicit until `C5`.
+- Standalone typed expression engine foundation with strict parser, typed
+  binder, deterministic diagnostics, and standalone event/logical eval APIs.
+- Standalone rich-type surface closure for `real`, `string`, enum-label
+  references, operand-type casts, raw-event `triggered()`, and full logical
+  `iff` support in standalone evaluation.
+- Shared typed command runtime for `change` and `property`, including the public
+  `property` runtime (§3.2.6) and schema/output parity on top of the same
+  expression engine.
 
 ### Query Engine Enhancements (→ v0.5.0)
 

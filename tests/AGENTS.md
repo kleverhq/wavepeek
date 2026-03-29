@@ -30,7 +30,7 @@ Tests should validate current contracts from those documents.
 ## Code-Only Exceptions
 
 - Keep generated or instrumented checks in Rust when JSON would hide the reason the test exists.
-- Current intentional code-only exceptions are the parser no-panic corpus in `tests/expression_parse.rs`, the event short-circuit and legacy CLI parity checks in `tests/expression_event_runtime.rs`, and the logical short-circuit sample-trap check in `tests/expression_integral_boolean.rs`.
+- Current intentional code-only exceptions are the parser no-panic corpus in `tests/expression_parse.rs`, the event short-circuit and change-command parity checks in `tests/expression_event_runtime.rs`, and the logical short-circuit sample-trap check in `tests/expression_integral_boolean.rs`.
 
 ## Snapshot Policy
 

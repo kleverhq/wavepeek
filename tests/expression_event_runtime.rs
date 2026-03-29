@@ -183,7 +183,7 @@ fn event_runtime_short_circuit_holds() {
 }
 
 #[test]
-fn event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface() {
+fn event_runtime_shadow_parity_matches_change_cli_for_non_iff_surface() {
     let fixture = fixture_path("change_edge_cases.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -236,12 +236,12 @@ fn event_runtime_shadow_parity_matches_legacy_event_matches_for_non_iff_surface(
             collect_bound_event_matches(&typed, &host, tracked_handles.as_slice(), &probes)
                 .expect("typed evaluation should succeed");
 
-        let legacy_matches = legacy_change_matches(&fixture, source, cli_signals);
-        assert_eq!(typed_matches, legacy_matches, "source '{source}'");
+        let cli_matches = change_cli_matches(&fixture, source, cli_signals);
+        assert_eq!(typed_matches, cli_matches, "source '{source}'");
     }
 }
 
-fn legacy_change_matches(fixture: &str, source: &str, signals: &str) -> Vec<u64> {
+fn change_cli_matches(fixture: &str, source: &str, signals: &str) -> Vec<u64> {
     let output = wavepeek_cmd()
         .args([
             "change",
@@ -262,28 +262,28 @@ fn legacy_change_matches(fixture: &str, source: &str, signals: &str) -> Vec<u64>
             "--json",
         ])
         .output()
-        .expect("legacy change command should execute");
+        .expect("change command should execute");
 
     assert!(
         output.status.success(),
-        "legacy change command must succeed for source '{source}'"
+        "change command must succeed for source '{source}'"
     );
 
     let payload: Value = serde_json::from_slice(output.stdout.as_slice())
-        .expect("legacy output should be valid JSON");
+        .expect("change output should be valid JSON");
     payload["data"]
         .as_array()
-        .expect("legacy data must be an array")
+        .expect("change data must be an array")
         .iter()
         .map(|row| {
             let token = row["time"]
                 .as_str()
-                .expect("legacy row time must be string");
+                .expect("change row time must be string");
             token
                 .strip_suffix("ns")
                 .unwrap_or(token)
                 .parse::<u64>()
-                .expect("legacy row time must be integer dump ticks")
+                .expect("change row time must be integer dump ticks")
         })
         .collect()
 }

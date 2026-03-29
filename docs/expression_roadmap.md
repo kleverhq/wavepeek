@@ -1,10 +1,12 @@
 # Expression Implementation Roadmap
 
-This document defines phased delivery from the current partially implemented
-expression surface to full implementation of `docs/expression_lang.md`.
+This document records the phased delivery that took the expression surface from
+partial implementation to the full `docs/expression_lang.md` contract now
+shipped in the repository.
 
 It is a sequencing plan, not a language-spec replacement. Source-of-truth
-syntax and semantics remain in `docs/expression_lang.md`.
+syntax and semantics remain in `docs/expression_lang.md`, and the phase
+breakdown below is retained as rollout history.
 
 ## Purpose
 
@@ -13,20 +15,20 @@ syntax and semantics remain in `docs/expression_lang.md`.
 - End point: full expression-language contract implemented, validated, and
   integrated in command runtimes with deterministic behavior.
 
-## Current Baseline (post-C2 standalone engine)
+## Current Baseline (post-C5 integration)
 
 Current implementation snapshot:
 
-- Standalone typed runtime in `src/expr/` supports C2 event forms plus bounded
-  `iff` subset (`bind_event_expr_ast(...)`, `event_matches_at(...)`).
-- `change --on` default runtime remains on legacy compatibility path, so
-  `... iff ...` is still intentionally rejected at runtime.
-- `property` runtime path remains unimplemented.
-- Full Section `2` logical surface and command integration remain deferred to
-  later phases.
+- Standalone typed runtime in `src/expr/` supports the full delivered event and
+  logical expression surface (`parse_*_ast(...)`, `bind_*_ast(...)`,
+  `event_matches_at(...)`, `eval_logical_expr_at(...)`).
+- `change --on` and `property` both execute through the shared typed command
+  runtime path.
+- Schema, parity, and benchmark gates cover the command-integrated surface.
+- The phase breakdown below remains the historical rollout plan for how that
+  boundary was reached.
 
-Current delivered boundary is `C2` for standalone engine work, with command
-integration still pending toward `C5`.
+Current delivered boundary is `C5`.
 
 ## Final Target (C5)
 

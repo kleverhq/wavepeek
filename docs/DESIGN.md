@@ -557,15 +557,14 @@ src/
 │   └── schema.rs        # JSON schema export
 ├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
 ├── expr/                # Expression engine foundation (shared by `change`/`property`)
-│   ├── mod.rs           # Public typed facade + crate-private legacy compatibility parser
+│   ├── mod.rs           # Public typed facade for parsing/binding/evaluation
 │   ├── ast.rs           # Spanned expression AST types
 │   ├── diagnostic.rs    # Parse/semantic/runtime diagnostic contract
 │   ├── lexer.rs         # Spanned tokenizer for event-expression parsing
 │   ├── parser.rs        # Strict typed parser (`parse_event_expr_ast`, `parse_logical_expr_ast`)
 │   ├── host.rs          # Host trait + signal/type/value bridge types
 │   ├── sema.rs          # Typed event/logical binder (`bind_event_expr_ast`, `bind_logical_expr_ast`)
-│   ├── eval.rs          # Typed event matcher + standalone logical evaluator (`event_matches_at`, `eval_logical_expr_at`)
-│   └── legacy.rs        # Compatibility parser kept only for non-production/test-only parity helpers
+│   └── eval.rs          # Typed event matcher + standalone logical evaluator (`event_matches_at`, `eval_logical_expr_at`)
 ├── waveform/            # Thin adapter over wellen
 │   ├── mod.rs           # File loading, format detection, query helpers
 │   └── expr_host.rs     # Crate-private waveform-to-expression adapter for standalone expression tests/benchmarks
@@ -643,9 +642,9 @@ section describes implementation architecture only.
   the shared typed parser/binder/evaluator path and use a shared command-owned
   waveform handle bridged through `src/engine/expr_runtime.rs` plus
   `src/waveform/expr_host.rs`.
-- `src/expr/legacy.rs` remains available only as a compatibility parser for
-  older internal parity helpers and tests; production command execution no
-  longer depends on it.
+- The transitional compatibility parser has been retired; `src/expr/` now
+  exposes only the typed parser, binder, and evaluator surface used by
+  standalone tests, benchmarks, and production commands.
 
 ### 5.6 Error Handling Strategy
 

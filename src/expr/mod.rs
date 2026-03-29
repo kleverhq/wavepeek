@@ -4,7 +4,6 @@ pub mod ast;
 pub mod diagnostic;
 pub(crate) mod eval;
 pub(crate) mod host;
-mod legacy;
 mod lexer;
 mod parser;
 pub(crate) mod sema;
@@ -61,41 +60,4 @@ pub fn event_matches_at(
     frame: &EventEvalFrame<'_>,
 ) -> Result<bool, ExprDiagnostic> {
     eval::event_matches_at(expr, host, frame)
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum EventKind {
-    AnyTracked,
-    AnyChange(String),
-    Posedge(String),
-    Negedge(String),
-    Edge(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct EventTerm {
-    pub event: EventKind,
-    pub iff_expr: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct EventExpr {
-    pub terms: Vec<EventTerm>,
-}
-
-pub(crate) fn parse_event_expr(source: &str) -> Result<EventExpr, crate::error::WavepeekError> {
-    legacy::parse_event_expr(source)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{EventKind, parse_event_expr};
-
-    #[test]
-    fn parse_event_expr_wrapper_supports_any_tracked() {
-        let expr = parse_event_expr("*").expect("event expression should parse");
-
-        assert_eq!(expr.terms.len(), 1);
-        assert!(matches!(expr.terms[0].event, EventKind::AnyTracked));
-    }
 }

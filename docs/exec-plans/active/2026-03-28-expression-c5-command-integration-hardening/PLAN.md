@@ -28,6 +28,7 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 - [x] (2026-03-29 00:57Z) Implemented `property` end to end with capture modes, wildcard tracking from `--eval`, human/json rendering, schema support, manifest-backed command fixtures, and `error: expr:` command diagnostics.
 - [x] (2026-03-29 00:57Z) Extended parity, schema, benchmark, and collateral coverage; added `property` entries to `bench/e2e/tests.json` and median-aware compare gating, but baseline refresh remains pending until after review completion.
 - [x] (2026-03-29 02:04Z) Ran mandatory review lanes (code semantics, architecture/performance, docs/schema), fixed follow-up issues in a separate review-fix commit, reran impacted tests/gates, refreshed `bench/e2e` baseline, and completed a clean fresh control pass.
+- [x] (2026-03-29 09:30Z) Removed the retired `src/expr/legacy.rs` compatibility parser, deleted its dead adapter surface from `src/expr/mod.rs`, and updated tests/docs collateral that still described the already-shipped typed command runtime as legacy-backed.
 
 ## Surprises & Discoveries
 
@@ -103,9 +104,11 @@ Implementation naming rule: the roadmap label `C5` is temporary planning termino
 
 Current status: complete.
 
-The branch now routes `change` and `property` through the shared typed expression runtime, ships `property` JSON/human output plus schema support, locks the new command behavior with CLI fixtures/parity/help/schema coverage, and extends the CLI benchmark harness with `property` scenarios plus mean+median compare gating. Repository gates (`cargo test`, `python3 scripts/check_schema_contract.py`, `make check`, `make ci`) are green, review lanes are clean, and the maintained `bench/e2e` baseline has been refreshed after review.
+The branch now routes `change` and `property` through the shared typed expression runtime, ships `property` JSON/human output plus schema support, locks the new command behavior with CLI fixtures/parity/help/schema coverage, extends the CLI benchmark harness with `property` scenarios plus mean+median compare gating, and removes the retired `src/expr/legacy.rs` compatibility parser plus its stale collateral references. Repository gates (`cargo test`, `python3 scripts/check_schema_contract.py`, `make check`, `make ci`) are green, review lanes are clean, and the maintained `bench/e2e` baseline has been refreshed after review.
 
 ## Context and Orientation
+
+This section captures the pre-implementation starting point for the plan; the completed branch state is described in `Progress` and `Outcomes & Retrospective`. Remaining references below to the removed `src/expr/legacy.rs` file are historical plan context, not current repository structure.
 
 `wavepeek` is a single-crate Rust CLI. The typed expression engine lives in `src/expr/`, the waveform adapter layer lives in `src/waveform/`, command runtimes live in `src/engine/`, and stdout rendering lives in `src/output.rs`. After `C4`, the standalone engine is already functionally complete for the language described in `docs/expression_lang.md`: `src/expr/mod.rs` exports `parse_logical_expr_ast(...)`, `bind_logical_expr_ast(...)`, `eval_logical_expr_at(...)`, `parse_event_expr_ast(...)`, `bind_event_expr_ast(...)`, and `event_matches_at(...)`, while `src/waveform/expr_host.rs` bridges real waveform dumps into that API through `WaveformExprHost`.
 

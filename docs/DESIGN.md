@@ -412,13 +412,13 @@ wavepeek property --waves <file> [--from <time>] [--to <time>] [--scope <path>] 
 | `--capture <mode>` | `switch` | Capture mode: `match`, `switch`, `assert`, `deassert` |
 | `--json` | off | Strict JSON envelope output |
 
-**Behavior (design target):**
+**Behavior:**
 - Name/scope resolution follows `value` and `change`: without `--scope`, tokens are canonical paths; with `--scope`, tokens are short names relative to that scope.
 - Time boundaries are inclusive (`--from`, `--to`), and time tokens require explicit units aligned to dump precision.
 - Candidate timestamps come from `--on`.
 - Default `--on` is `*` and is interpreted as any change among signals referenced by `--eval`, including raw-event handles referenced through `.triggered()`, to avoid per-time-unit output spam. If `--eval` references no signals or raw events, users must pass `--on` explicitly.
 - Supported `--on` forms match `change`: `*`, `<name>`, `posedge <name>`, `negedge <name>`, `edge <name>`, and union forms via `or`/`,`.
-- `--eval` is evaluated on each candidate timestamp with 4-state semantics and 2-state final decision (`1` is true; `0`/`x` are false).
+- `--eval` is evaluated on each candidate timestamp with 4-state semantics. Final capture decisions are command-level: integral results count as true when any bit is `1` and false otherwise, real results count as true when non-zero and false otherwise, and string results count as false.
 - `match`: emit every event timestamp where `--eval` is true.
 - `switch`: emit only transitions (`assert` on `0->1`, `deassert` on `1->0`) after initializing baseline state from the inclusive range start.
 - `assert`: emit only `0->1` transitions.
@@ -551,6 +551,7 @@ src/
 │   ├── signal.rs        # Signal listing within scope
 │   ├── value.rs         # Value extraction at time point
 │   ├── change.rs        # Value change tracking (`--on` event triggers, see 5.7)
+│   ├── expr_runtime.rs  # Shared typed-expression binding/evaluation helpers for command runtimes
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint and capture-mode execution
@@ -606,14 +607,15 @@ src/
 
 ### 5.5 Expression Engine
 
-The `property` command evaluates boolean expressions against signal values at
-event-selected timestamps.
+The `property` command evaluates typed logical expressions against signal values
+at event-selected timestamps and then reduces the result to command-level
+capture truth.
 
 Language syntax and semantics are specified in `docs/expression_lang.md`; this
 section describes implementation architecture only.
 
-**Pipeline:** Input string → Lexer → Token stream → Parser → AST → Evaluator (+ signal values at current time point)
-→ 4-state boolean (`0`/`1`/`x`) → 2-state match (`x` counts as false)
+**Pipeline:** Input string → Lexer → Token stream → Parser → AST → Typed evaluator (+ signal values at current time point)
+→ typed result (`integral`/`real`/`string`) → command-level truth reduction (`integral`: any `1`, `real`: non-zero, `string`: false)
 
 **Components:**
 

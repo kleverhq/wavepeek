@@ -86,7 +86,7 @@ Note: an MCP server for tool-native agent integration is not available yet, but 
 | `signal` | available | List signals in a scope with metadata |
 | `value` | available | Signal values at a specific time |
 | `change` | available | Delta snapshots over a time range with `--on` event triggers |
-| `property` | available (runtime unimplemented) | Property checks over event triggers |
+| `property` | available | Property checks over event triggers with capture modes |
 | `schema` | available | Print canonical JSON schema used by `--json` output |
 
 Use progressive disclosure via built-in help: `wavepeek -h`, then `wavepeek <command> --help`.

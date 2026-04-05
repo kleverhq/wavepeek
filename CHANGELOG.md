@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-04-05
+
 ### Added
 - Implemented the `property` command end to end, with `match`/`switch`/`assert`/`deassert` capture modes plus human and `--json` output.
 
@@ -83,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.2.0
 [0.1.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.1.0

@@ -43,11 +43,11 @@ The primary users are LLM-driven debugging workflows and other automation that n
 
 Start here when you need the design overview and navigation map. The design corpus is intentionally split by ownership:
 
-- `architecture.md` — internal engineering architecture, dependencies, execution strategy, and testing strategy.
-- `open_questions.md` — unresolved design questions that are intentionally kept out of the stable contracts.
-- `contracts/command_model.md` — **normative** cross-cutting command semantics such as time normalization, name resolution, bounded output, ordering, and output-mode rules.
-- `contracts/machine_output.md` — **normative** stdout/stderr, JSON envelope, schema-linkage, warning, and exit-code contracts.
-- `contracts/expression_lang.md` — **normative** expression-language syntax and semantics for `change --on` and `property --on` / `property --eval`.
-- `reference/cli.md` — **derived** operator guide for the command families. It explains when to use each command but deliberately avoids duplicating flag tables.
+- [`architecture.md`](architecture.md) — internal engineering architecture, dependencies, execution strategy, and testing strategy.
+- [`open_questions.md`](open_questions.md) — unresolved design questions that are intentionally kept out of the stable contracts.
+- [`contracts/command_model.md`](contracts/command_model.md) — **normative** cross-cutting command semantics such as time normalization, name resolution, bounded output, ordering, and output-mode rules.
+- [`contracts/machine_output.md`](contracts/machine_output.md) — **normative** stdout/stderr, JSON envelope, schema-linkage, warning, and exit-code contracts.
+- [`contracts/expression_lang.md`](contracts/expression_lang.md) — **normative** expression-language syntax and semantics for `change --on` and `property --on` / `property --eval`.
+- [`reference/cli.md`](reference/cli.md) — **derived** operator guide for the command families. It explains when to use each command but deliberately avoids duplicating flag tables.
 
-The exact CLI surface is code-first. Command names, flags, defaults, requiredness, and help examples are authoritative in `src/cli/`, `wavepeek --help`, `wavepeek <command> --help`, and `wavepeek schema`. The documents under `contracts/` remain authoritative only for semantics that code alone does not express clearly enough.
+The exact CLI surface is code-first. Command names, flags, defaults, requiredness, and help examples are authoritative in [`src/cli/`](../../src/cli/), `wavepeek --help`, `wavepeek <command> --help`, and `wavepeek schema`. The documents under [`contracts/`](contracts/) remain authoritative only for semantics that code alone does not express clearly enough.

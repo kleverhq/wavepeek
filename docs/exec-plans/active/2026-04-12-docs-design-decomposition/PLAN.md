@@ -48,6 +48,9 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - Observation: the expression-language move was safest as a literal path move plus stub, not a rewrite.
   Evidence: `docs/expression_lang.md` was already a standalone contract with no decomposition needed, so moving it intact to `docs/design/contracts/expression_lang.md` preserved the reviewed text while keeping the compatibility pointer tiny.
 
+- Observation: the new design breadcrumbs needed real markdown links, not just code-styled path text.
+  Evidence: the acceptance criteria require readers to follow prominent links from `docs/design/index.md` and the new `AGENTS.md` files in the repository viewer, so bare backticked paths would not have been sufficient.
+
 ## Decision Log
 
 - Decision: `docs/design/index.md` will become the canonical design entrypoint.
@@ -294,4 +297,4 @@ At the end of the implementation, these repository paths must exist and have sta
 
 The live breadcrumb files that currently reference the old paths are also part of the required surface and must be updated in the same change: `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any live `CHANGELOG.md` path references that still point to the old canonical locations.
 
-Revision note: updated again on 2026-04-12 after collapsing `docs/DESIGN.md` into a compatibility stub, repointing the live breadcrumb network to the new canonical files, and narrowing the remaining work to validation and review.
+Revision note: updated again on 2026-04-12 after collapsing `docs/DESIGN.md` into a compatibility stub, repointing the live breadcrumb network to the new canonical files, converting the new design breadcrumbs to real markdown links, and narrowing the remaining work to validation and review.

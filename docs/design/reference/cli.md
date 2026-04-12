@@ -6,10 +6,10 @@ For exact command syntax, defaults, requiredness, and help examples, use:
 
 - `wavepeek --help`
 - `wavepeek <command> --help`
-- `src/cli/`
+- [`src/cli/`](../../../src/cli/)
 - `wavepeek schema` for the `--json` contract
 
-For normative semantics that code alone does not explain clearly enough, use `../contracts/command_model.md`, `../contracts/machine_output.md`, and `../contracts/expression_lang.md`.
+For normative semantics that code alone does not explain clearly enough, use [`../contracts/command_model.md`](../contracts/command_model.md), [`../contracts/machine_output.md`](../contracts/machine_output.md), and [`../contracts/expression_lang.md`](../contracts/expression_lang.md).
 
 ## `schema`
 
@@ -33,7 +33,7 @@ Use `value` for exact point-in-time sampling. It is the most direct command when
 
 ## `change`
 
-Use `change` to inspect value transitions across a bounded time range. Trigger selection comes from `--on`, and the expression language for that trigger lives in `../contracts/expression_lang.md`.
+Use `change` to inspect value transitions across a bounded time range. Trigger selection comes from `--on`, and the expression language for that trigger lives in [`../contracts/expression_lang.md`](../contracts/expression_lang.md).
 
 ## `property`
 
@@ -41,4 +41,4 @@ Use `property` when you want to evaluate a logical expression on event-selected 
 
 ## Which Document Is Normative?
 
-Use this guide to choose the right command family quickly. When exact flags matter, defer to help text and `src/cli/`. When behavioral semantics matter, defer to the contracts under `../contracts/`.
+Use this guide to choose the right command family quickly. When exact flags matter, defer to help text and [`src/cli/`](../../../src/cli/). When behavioral semantics matter, defer to the contracts under [`../contracts/`](../contracts/).

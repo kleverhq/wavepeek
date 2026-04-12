@@ -23,6 +23,7 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - [x] (2026-04-12 19:57Z) Mapped live references to `docs/DESIGN.md` and `docs/expression_lang.md` across breadcrumbs, docs, and support files to define the migration and compatibility-stub strategy.
 - [x] (2026-04-12 19:57Z) Drafted this active ExecPlan with the target `docs/design/` tree, the code-first CLI documentation model, the normative contract split, and the compatibility strategy for old paths.
 - [x] (2026-04-12 20:03Z) Ran focused docs and architecture review lanes on the plan, then revised it to add explicit remap targets, correct the compatibility-stub link semantics, exclude exec-plan files from the validation sweep, and keep the suggested commit split internally complete.
+- [x] (2026-04-12 20:08Z) Ran a fresh control review pass on the consolidated diff; no substantive issues remained, so the plan is now ready for execution.
 - [ ] Create `docs/design/`, `docs/design/contracts/`, and `docs/design/reference/` with local `AGENTS.md` breadcrumbs that match the repository breadcrumb policy.
 - [ ] Move and rewrite the current design material into `index.md`, `architecture.md`, `open_questions.md`, `contracts/command_model.md`, `contracts/machine_output.md`, `contracts/expression_lang.md`, and `reference/cli.md`.
 - [ ] Replace `docs/DESIGN.md` and `docs/expression_lang.md` with thin compatibility stubs after the new canonical files are in place.
@@ -71,11 +72,11 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 
 ## Outcomes & Retrospective
 
-Current status: planning and review preparation in progress; implementation has not started yet.
+Current status: planning is complete and review is clean; the plan is ready for execution, and implementation has not started yet.
 
 This plan resolves the main design ambiguity before any file moves happen. The repository will treat `src/cli/` plus `wavepeek --help` and `wavepeek schema` as the authoritative command surface, while `docs/design/contracts/` will remain authoritative for semantics that cannot be inferred safely from code alone. If the plan is executed successfully, the design docs will become easier to navigate, less repetitive, and safer to evolve without silently drifting from the implementation.
 
-The main lesson from the planning pass is that this work is more about ownership boundaries than about writing new content. The hard part is drawing a stable line between normative semantics and derived command reference, then migrating breadcrumbs without breaking historical context.
+The main lesson from the planning pass is that this work is more about ownership boundaries than about writing new content. The hard part is drawing a stable line between normative semantics and derived command reference, then migrating breadcrumbs without breaking historical context. The review cycle confirmed that the risky parts were the migration edges: link semantics for compatibility stubs, exact remap targets for old references, and validation commands that exclude the plan files themselves.
 
 ## Context and Orientation
 

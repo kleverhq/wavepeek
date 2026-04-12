@@ -17,14 +17,14 @@ produce one grouped run directory such as `bench/expr/runs/baseline/`.
 
 ## Parent Maps
 
-- Performance map: `bench/AGENTS.md`
-- Repository map: `AGENTS.md`
+- Performance map: [`../AGENTS.md`](../AGENTS.md)
+- Repository map: [`../../AGENTS.md`](../../AGENTS.md)
 
 ## Source of Truth
 
-- Benchmark workflow and command contracts: `docs/DEVELOPMENT.md`
-- Expression semantics and shipped rollout context: `docs/design/contracts/expression_lang.md`, `docs/ROADMAP.md`
+- Benchmark workflow and command contracts: [`../../docs/DEVELOPMENT.md`](../../docs/DEVELOPMENT.md)
+- Expression semantics and shipped rollout context: [`../../docs/design/contracts/expression_lang.md`](../../docs/design/contracts/expression_lang.md), [`../../docs/ROADMAP.md`](../../docs/ROADMAP.md)
 
 ## Child Maps
 
-- Committed run artifacts: `bench/expr/runs/AGENTS.md`
+- Committed run artifacts: [`runs/AGENTS.md`](runs/AGENTS.md)

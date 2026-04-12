@@ -4,17 +4,17 @@ This directory contains integration and fixture-driven tests.
 
 ## Parent Map
 
-- Repository agent map: `../AGENTS.md`
+- Repository agent map: [`../AGENTS.md`](../AGENTS.md)
 
 ## Child Maps
 
-- Command-runtime fixture manifests: `tests/fixtures/cli/AGENTS.md`
+- Command-runtime fixture manifests: [`fixtures/cli/AGENTS.md`](fixtures/cli/AGENTS.md)
 
 ## Source of Truth
 
-- Testing workflow and conventions: `docs/DEVELOPMENT.md`
-- Product behavior and output contracts: `docs/design/contracts/command_model.md`, `docs/design/contracts/machine_output.md`
-- Expression behavior for trigger and eval surfaces: `docs/design/contracts/expression_lang.md`
+- Testing workflow and conventions: [`../docs/DEVELOPMENT.md`](../docs/DEVELOPMENT.md)
+- Product behavior and output contracts: [`../docs/design/contracts/command_model.md`](../docs/design/contracts/command_model.md), [`../docs/design/contracts/machine_output.md`](../docs/design/contracts/machine_output.md)
+- Expression behavior for trigger and eval surfaces: [`../docs/design/contracts/expression_lang.md`](../docs/design/contracts/expression_lang.md)
 
 Tests should validate current contracts from those documents.
 

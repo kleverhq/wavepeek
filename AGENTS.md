@@ -5,27 +5,27 @@ then follow links to deeper docs.
 
 ## Start Here
 
-- Product design entrypoint and contracts: `docs/design/index.md`
-- Delivery milestones and versions: `docs/ROADMAP.md`
-- Development workflow and coding conventions: `docs/DEVELOPMENT.md`
-- Release checklist and rollback notes: `docs/RELEASE.md`
-- Active backlog and tech debt: `docs/BACKLOG.md`
-- Execution plans (active/completed): `docs/exec-plans/`
-- Actual shipped changes by release: `CHANGELOG.md`
+- Product design entrypoint and contracts: [`docs/design/index.md`](docs/design/index.md)
+- Delivery milestones and versions: [`docs/ROADMAP.md`](docs/ROADMAP.md)
+- Development workflow and coding conventions: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
+- Release checklist and rollback notes: [`docs/RELEASE.md`](docs/RELEASE.md)
+- Active backlog and tech debt: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Execution plans (active/completed): [`docs/exec-plans/`](docs/exec-plans/)
+- Actual shipped changes by release: [`CHANGELOG.md`](CHANGELOG.md)
 
-For docs-local navigation, read `docs/AGENTS.md`.
+For docs-local navigation, read [`docs/AGENTS.md`](docs/AGENTS.md).
 
 ## Child Maps
 
-- Devcontainer setup notes: `.devcontainer/AGENTS.md`
-- GitHub automation assets: `.github/AGENTS.md`
-- OpenCode assets: `.opencode/AGENTS.md`
-- Performance and benchmark work: `bench/AGENTS.md`
-- Documentation map: `docs/AGENTS.md`
-- Schema contract assets: `schema/AGENTS.md`
-- Release/support scripts: `scripts/AGENTS.md`
-- Source code: `src/AGENTS.md`
-- Test suites: `tests/AGENTS.md`
+- Devcontainer setup notes: [`.devcontainer/AGENTS.md`](.devcontainer/AGENTS.md)
+- GitHub automation assets: [`.github/AGENTS.md`](.github/AGENTS.md)
+- OpenCode assets: [`.opencode/AGENTS.md`](.opencode/AGENTS.md)
+- Performance and benchmark work: [`bench/AGENTS.md`](bench/AGENTS.md)
+- Documentation map: [`docs/AGENTS.md`](docs/AGENTS.md)
+- Schema contract assets: [`schema/AGENTS.md`](schema/AGENTS.md)
+- Release/support scripts: [`scripts/AGENTS.md`](scripts/AGENTS.md)
+- Source code: [`src/AGENTS.md`](src/AGENTS.md)
+- Test suites: [`tests/AGENTS.md`](tests/AGENTS.md)
 
 ## Breadcrumb Policy (`AGENTS.md` Network)
 
@@ -67,4 +67,4 @@ For docs-local navigation, read `docs/AGENTS.md`.
 ## Devcontainer Notes
 
 For non-obvious container decisions, fixture provisioning, and environment
-rationale, see `.devcontainer/AGENTS.md`.
+rationale, see [`.devcontainer/AGENTS.md`](.devcontainer/AGENTS.md).

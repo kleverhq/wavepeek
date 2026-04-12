@@ -29,6 +29,8 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - [x] (2026-04-12 20:49Z) Replaced `docs/DESIGN.md` with a thin compatibility stub after the new canonical design corpus was populated.
 - [x] (2026-04-12 20:38Z) Replaced `docs/expression_lang.md` with a thin compatibility stub after moving the full canonical contract to `docs/design/contracts/expression_lang.md`.
 - [x] (2026-04-12 20:49Z) Updated live breadcrumbs and live docs so they point directly at `docs/design/index.md`, `docs/design/contracts/*`, or `docs/design/reference/cli.md` instead of the retired canonical paths.
+- [x] (2026-04-12 21:02Z) Ran focused docs and architecture review lanes on the implementation diff; both lanes were mostly clean, but they found two follow-up issues: top-level breadcrumb entrypoints were still non-clickable path text, and several docs overstated `wavepeek schema` as authority for the general CLI surface instead of the machine-output contract only.
+- [x] (2026-04-12 21:07Z) Fixed the review findings by converting the root and docs breadcrumb entrypoints to real markdown links, adding the missing parent breadcrumb in `docs/AGENTS.md`, and narrowing the `wavepeek schema` authority statements to the machine-output contract.
 - [ ] Run validation, perform focused review lanes, fix findings in follow-up commits, and finish with a clean control review pass.
 
 ## Surprises & Discoveries
@@ -50,6 +52,9 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 
 - Observation: the new design breadcrumbs needed real markdown links, not just code-styled path text.
   Evidence: the acceptance criteria require readers to follow prominent links from `docs/design/index.md` and the new `AGENTS.md` files in the repository viewer, so bare backticked paths would not have been sufficient.
+
+- Observation: it is easy to over-ascribe `wavepeek schema` when describing the code-first documentation model.
+  Evidence: the first architecture review pass flagged that `wavepeek schema` is authoritative for the machine-readable output contract, but not for general command names, flags, defaults, or help examples, which remain owned by `src/cli/` and `wavepeek --help`.
 
 ## Decision Log
 
@@ -77,13 +82,17 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
   Rationale: an explicit file makes the decomposition easier to scan and keeps unresolved design issues out of the stable architecture and contract documents. If it later proves too small to justify its own file, it can be folded back after the decomposition settles.
   Date/Author: 2026-04-12 / OpenCode
 
+- Decision: describe `wavepeek schema` as the machine-output authority, not as the general CLI-surface authority.
+  Rationale: the schema command is authoritative for JSON payload shape and schema linkage, but exact command names, flags, defaults, and help examples remain owned by `src/cli/` plus the generated help text. Keeping those buckets separate prevents future docs from blurring command-surface ownership with machine-output ownership.
+  Date/Author: 2026-04-12 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: the new canonical `docs/design/` tree is in place, both legacy top-level docs are now compatibility stubs, and the remaining work is validation plus the mandatory review cycle.
+Current status: the new canonical `docs/design/` tree is in place, both legacy top-level docs are now compatibility stubs, focused review findings have been fixed, and the remaining work is a final validation pass plus the mandatory clean control review.
 
 Implementation so far confirms the source-of-truth split works in practice. The repository now has a dedicated design entrypoint, a separate architecture note, explicit open questions, normative contracts under `docs/design/contracts/`, and a thin CLI-family guide under `docs/design/reference/`. The old `docs/DESIGN.md` and `docs/expression_lang.md` paths are compatibility pointers only, while the live breadcrumb network now points at the new canonical locations.
 
-The main lesson so far is that the decomposition is straightforward once the ownership boundaries are explicit. The migration remained low risk as long as each old link was repointed to the most specific new authority instead of treating `docs/design/index.md` as a universal replacement. The remaining work is verification rather than content extraction.
+The main lesson so far is that the decomposition is straightforward once the ownership boundaries are explicit, but the wording around those boundaries matters. The review pass confirmed two subtle failure modes: navigation can still regress if breadcrumbs are not real markdown links, and the code-first model becomes ambiguous if `wavepeek schema` is described as a catch-all CLI authority instead of the more precise machine-output authority. The remaining work is final verification rather than content extraction.
 
 ## Context and Orientation
 
@@ -297,4 +306,4 @@ At the end of the implementation, these repository paths must exist and have sta
 
 The live breadcrumb files that currently reference the old paths are also part of the required surface and must be updated in the same change: `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any live `CHANGELOG.md` path references that still point to the old canonical locations.
 
-Revision note: updated again on 2026-04-12 after collapsing `docs/DESIGN.md` into a compatibility stub, repointing the live breadcrumb network to the new canonical files, converting the new design breadcrumbs to real markdown links, and narrowing the remaining work to validation and review.
+Revision note: updated again on 2026-04-12 after fixing review findings from the implementation diff, specifically by making the top-level breadcrumb entrypoints clickable and clarifying that `wavepeek schema` is authoritative for machine output, not for the entire command-line surface.

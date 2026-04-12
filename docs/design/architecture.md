@@ -206,6 +206,7 @@ Runtime test execution does not fetch those larger fixtures dynamically; they ar
 
 The architectural split matters for docs maintenance:
 
-- `src/cli/`, `wavepeek --help`, and `wavepeek schema` are the exact CLI surface authority.
+- `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help` are the exact CLI surface authority.
+- `schema/wavepeek.json` and `wavepeek schema` are the machine-readable output authority.
 - `contracts/` documents the semantics that code and schema alone do not explain well enough.
 - this file documents internals that help contributors change implementation safely without regrowing the old monolithic design doc.

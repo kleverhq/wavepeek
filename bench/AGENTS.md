@@ -10,7 +10,7 @@ repeatable performance scenarios.
 ## Source of Truth
 
 - Container-first workflow and commands: `docs/DEVELOPMENT.md`
-- Runtime and output contracts to preserve while optimizing: `docs/DESIGN.md`
+- Runtime and output contracts to preserve while optimizing: `docs/design/contracts/command_model.md`, `docs/design/contracts/machine_output.md`
 
 ## Child Maps
 

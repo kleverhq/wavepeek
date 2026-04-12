@@ -26,9 +26,9 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - [x] (2026-04-12 20:08Z) Ran a fresh control review pass on the consolidated diff; no substantive issues remained, so the plan is now ready for execution.
 - [x] (2026-04-12 20:38Z) Created `docs/design/`, `docs/design/contracts/`, and `docs/design/reference/` with local `AGENTS.md` breadcrumbs that follow the repository breadcrumb policy and point to the new ownership split.
 - [x] (2026-04-12 20:38Z) Split the monolith into `docs/design/index.md`, `docs/design/architecture.md`, `docs/design/open_questions.md`, `docs/design/contracts/command_model.md`, `docs/design/contracts/machine_output.md`, `docs/design/contracts/expression_lang.md`, and `docs/design/reference/cli.md`, keeping the CLI surface code-first and the semantics docs prose-first.
-- [ ] Replace `docs/DESIGN.md` with a thin compatibility stub now that the new canonical files exist.
+- [x] (2026-04-12 20:49Z) Replaced `docs/DESIGN.md` with a thin compatibility stub after the new canonical design corpus was populated.
 - [x] (2026-04-12 20:38Z) Replaced `docs/expression_lang.md` with a thin compatibility stub after moving the full canonical contract to `docs/design/contracts/expression_lang.md`.
-- [ ] Update all live breadcrumbs and live docs that currently point at the old paths so they point at the new canonical files.
+- [x] (2026-04-12 20:49Z) Updated live breadcrumbs and live docs so they point directly at `docs/design/index.md`, `docs/design/contracts/*`, or `docs/design/reference/cli.md` instead of the retired canonical paths.
 - [ ] Run validation, perform focused review lanes, fix findings in follow-up commits, and finish with a clean control review pass.
 
 ## Surprises & Discoveries
@@ -76,11 +76,11 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 
 ## Outcomes & Retrospective
 
-Current status: the new canonical `docs/design/` tree is in place, the expression-language contract has been moved to `docs/design/contracts/expression_lang.md`, and the remaining work is the old-design stub swap, breadcrumb repointing, validation, and review.
+Current status: the new canonical `docs/design/` tree is in place, both legacy top-level docs are now compatibility stubs, and the remaining work is validation plus the mandatory review cycle.
 
-Implementation so far confirms the source-of-truth split works in practice. The repository now has a dedicated design entrypoint, a separate architecture note, explicit open questions, normative contracts under `docs/design/contracts/`, and a thin CLI-family guide under `docs/design/reference/`. The repository still needs the old `docs/DESIGN.md` path to collapse into a compatibility pointer and the live breadcrumb network to be repointed before the migration is complete.
+Implementation so far confirms the source-of-truth split works in practice. The repository now has a dedicated design entrypoint, a separate architecture note, explicit open questions, normative contracts under `docs/design/contracts/`, and a thin CLI-family guide under `docs/design/reference/`. The old `docs/DESIGN.md` and `docs/expression_lang.md` paths are compatibility pointers only, while the live breadcrumb network now points at the new canonical locations.
 
-The main lesson so far is that the decomposition is straightforward once the ownership boundaries are explicit. The remaining risk is still concentrated in migration edges: choosing the right canonical replacement for each old breadcrumb, keeping the compatibility stubs unmistakably small, and validating only the live docs rather than rewriting historical plan records.
+The main lesson so far is that the decomposition is straightforward once the ownership boundaries are explicit. The migration remained low risk as long as each old link was repointed to the most specific new authority instead of treating `docs/design/index.md` as a universal replacement. The remaining work is verification rather than content extraction.
 
 ## Context and Orientation
 
@@ -294,4 +294,4 @@ At the end of the implementation, these repository paths must exist and have sta
 
 The live breadcrumb files that currently reference the old paths are also part of the required surface and must be updated in the same change: `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any live `CHANGELOG.md` path references that still point to the old canonical locations.
 
-Revision note: updated on 2026-04-12 after creating the new `docs/design/` tree, moving the canonical expression-language contract into `docs/design/contracts/`, and recording that the remaining work is the old-design stub swap plus breadcrumb migration, validation, and review.
+Revision note: updated again on 2026-04-12 after collapsing `docs/DESIGN.md` into a compatibility stub, repointing the live breadcrumb network to the new canonical files, and narrowing the remaining work to validation and review.

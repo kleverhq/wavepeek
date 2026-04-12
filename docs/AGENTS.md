@@ -4,13 +4,18 @@ This file is a local navigation map for the `docs/` directory.
 
 ## Canonical Docs
 
-- Product requirements and contracts: `docs/DESIGN.md`
-- Expression language target semantics: `docs/expression_lang.md`
+- Product requirements and design entrypoint: `docs/design/index.md`
+- Expression language target semantics: `docs/design/contracts/expression_lang.md`
 - Delivery milestones and target versions: `docs/ROADMAP.md`
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`
 - Release checklist and rollback notes: `docs/RELEASE.md`
 - Active backlog and tech debt tracking: `docs/BACKLOG.md`
 - Actual shipped release history: `CHANGELOG.md`
+
+## Child Maps
+
+- Design corpus: `docs/design/AGENTS.md`
+- Execution plans: `docs/exec-plans/AGENTS.md`
 
 ## Execution Plans
 

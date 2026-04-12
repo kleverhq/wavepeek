@@ -5,7 +5,7 @@ then follow links to deeper docs.
 
 ## Start Here
 
-- Product design and contracts: `docs/DESIGN.md`
+- Product design entrypoint and contracts: `docs/design/index.md`
 - Delivery milestones and versions: `docs/ROADMAP.md`
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`
 - Release checklist and rollback notes: `docs/RELEASE.md`

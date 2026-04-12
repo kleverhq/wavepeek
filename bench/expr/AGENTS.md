@@ -23,7 +23,7 @@ produce one grouped run directory such as `bench/expr/runs/baseline/`.
 ## Source of Truth
 
 - Benchmark workflow and command contracts: `docs/DEVELOPMENT.md`
-- Expression semantics and shipped rollout context: `docs/expression_lang.md`, `docs/ROADMAP.md`
+- Expression semantics and shipped rollout context: `docs/design/contracts/expression_lang.md`, `docs/ROADMAP.md`
 
 ## Child Maps
 

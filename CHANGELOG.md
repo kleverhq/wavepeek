@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Simplified `value` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
 - Updated JSON envelope `$schema` URLs from GitHub blob pages to `raw.githubusercontent.com` so schema links resolve as directly consumable raw JSON.
 - Unified help ergonomics so `-h` and `--help` both render detailed help across all shipped commands; `wavepeek` with no args now follows the same render path as `wavepeek --help` and is byte-identical.
-- Expanded command help text to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes without requiring `docs/DESIGN.md` for day-to-day usage.
+- Expanded command help text to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes without requiring `docs/design/reference/cli.md` for day-to-day usage.
 - Accelerated `change` stateless execution with resolved-handle sampling, persistent signal-load caching, timestamp-slice iteration, and candidate-timestamp reduction while preserving strict pre-candidate baseline semantics.
 - Added a multi-engine dispatcher for dense and sparse `change` workloads so large dump/window scenarios now complete around ~0.5s in the benchmark matrix while keeping payload parity.
 - Added an FST streaming-capable candidate-time path (`wellen::stream` filter pushdown with fallback heuristic) and dense edge-trigger fast path internals while preserving existing `change` contract behavior and output parity.

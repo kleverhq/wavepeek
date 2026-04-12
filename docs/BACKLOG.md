@@ -14,7 +14,7 @@
 - Add an opt-in streaming mode via `--jsonl` (NDJSON) for high-volume/long-running commands, while keeping current `--json` contract unchanged.
 - Define a dedicated stream schema (for example, `schema/wavepeek-stream-v1.json`) with deterministic record ordering and explicit terminal summary.
 - Suggested stream record kinds: `begin`, `item` (command-specific payload), `warning`, `end` (with counters and truncation flags).
-- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help + `docs/DESIGN.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
+- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/design/reference/cli.md` and `docs/design/contracts/machine_output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
 
 ## Tech Debt
 

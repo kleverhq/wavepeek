@@ -8,7 +8,7 @@ Note that this document must be maintained in accordance with `exec-plan` skill.
 
 After this change, readers will start at `docs/design/index.md` instead of opening one oversized `docs/DESIGN.md`. The design material will be split into three clearly named layers: rationale and navigation in `docs/design/index.md` plus nearby design notes, normative contracts in `docs/design/contracts/`, and a thin code-first CLI reference in `docs/design/reference/`. Someone new to the repository will be able to answer three practical questions quickly: what wavepeek is for, which documents are normative, and where the command-line surface is actually defined.
 
-The visible proof is straightforward. Opening `docs/design/index.md` must give a compact overview, scope, design principles, and links to architecture, contracts, and reference material. The expression-language contract must live under `docs/design/contracts/expression_lang.md`. The repository breadcrumbs in `AGENTS.md` files must point to the new canonical locations. The old paths `docs/DESIGN.md` and `docs/expression_lang.md` must remain as thin compatibility stubs so historical plans and old links do not break.
+The visible proof is straightforward. Opening `docs/design/index.md` must give a compact overview, scope, design principles, and links to architecture, contracts, and reference material. The expression-language contract must live under `docs/design/contracts/expression_lang.md`. The repository breadcrumbs in `AGENTS.md` files must point to the new canonical locations. The old paths `docs/DESIGN.md` and `docs/expression_lang.md` must remain as thin compatibility stubs with prominent working links to the new files so historical plans and old links do not break.
 
 This plan also resolves the source-of-truth question for CLI documentation. The full command-line surface, including flags, defaults, requiredness, and examples, will be treated as code-first and machine-checked through `src/cli/`, `wavepeek --help`, and `wavepeek schema`. The new docs should preserve only the semantics that code alone does not explain well, such as time normalization rules, naming and resolution rules, output contracts, and the meaning of the command families.
 
@@ -22,6 +22,7 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - [x] (2026-04-12 19:57Z) Reviewed `src/cli/mod.rs`, `src/cli/change.rs`, and `src/cli/property.rs` to confirm that the CLI help surface is already rich enough to serve as the source of truth for flag-level command reference.
 - [x] (2026-04-12 19:57Z) Mapped live references to `docs/DESIGN.md` and `docs/expression_lang.md` across breadcrumbs, docs, and support files to define the migration and compatibility-stub strategy.
 - [x] (2026-04-12 19:57Z) Drafted this active ExecPlan with the target `docs/design/` tree, the code-first CLI documentation model, the normative contract split, and the compatibility strategy for old paths.
+- [x] (2026-04-12 20:03Z) Ran focused docs and architecture review lanes on the plan, then revised it to add explicit remap targets, correct the compatibility-stub link semantics, exclude exec-plan files from the validation sweep, and keep the suggested commit split internally complete.
 - [ ] Create `docs/design/`, `docs/design/contracts/`, and `docs/design/reference/` with local `AGENTS.md` breadcrumbs that match the repository breadcrumb policy.
 - [ ] Move and rewrite the current design material into `index.md`, `architecture.md`, `open_questions.md`, `contracts/command_model.md`, `contracts/machine_output.md`, `contracts/expression_lang.md`, and `reference/cli.md`.
 - [ ] Replace `docs/DESIGN.md` and `docs/expression_lang.md` with thin compatibility stubs after the new canonical files are in place.
@@ -106,9 +107,9 @@ Milestone 1 creates the new documentation skeleton and the navigation contract b
 
 Milestone 2 performs the actual decomposition of `docs/DESIGN.md` into the new tree. Move Overview, Scope, and the design principles into `docs/design/index.md`. Move the architecture, dependency, error-handling, change-execution, and testing sections into `docs/design/architecture.md`. Move the current open questions into `docs/design/open_questions.md`. Rebuild the functional-requirements section rather than copying it verbatim: extract only the cross-cutting semantics into `docs/design/contracts/command_model.md` and `docs/design/contracts/machine_output.md`, and write `docs/design/reference/cli.md` as a thin guide that names the command families and points to `wavepeek --help` and `wavepeek schema` for exact surface details.
 
-Milestone 3 moves the expression-language contract and stabilizes compatibility. Copy the full current content of `docs/expression_lang.md` into `docs/design/contracts/expression_lang.md`, then update all live documentation and breadcrumb links to point at the new canonical location. Only after the new files are complete should `docs/DESIGN.md` and `docs/expression_lang.md` be rewritten into thin compatibility stubs. This copy-then-trim order matters because it prevents temporary information loss and gives reviewers a clean diff showing the new canonical files before the old files collapse to redirects.
+Milestone 3 moves the expression-language contract and stabilizes compatibility. Copy the full current content of `docs/expression_lang.md` into `docs/design/contracts/expression_lang.md`, then update all live documentation and breadcrumb links to point at the new canonical location. Only after the new files are complete should `docs/DESIGN.md` and `docs/expression_lang.md` be rewritten into thin compatibility stubs. This copy-then-trim order matters because it prevents temporary information loss and gives reviewers a clean diff showing the new canonical files before the old files collapse to compatibility pointers.
 
-Milestone 4 finishes the migration and hardens the new source-of-truth story. Update live breadcrumbs and support docs that still mention the old canonical paths, including `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any current `CHANGELOG.md` references. Make sure `docs/design/index.md` explicitly states that exact CLI surface truth lives in `src/cli/`, `wavepeek --help`, and `wavepeek schema`, while the contracts under `docs/design/contracts/` define normative semantics that code alone does not express clearly enough. Leave historical completed plans untouched unless a tiny wording fix is truly required, because the compatibility stubs already preserve usability.
+Milestone 4 finishes the migration and hardens the new source-of-truth story. Update live breadcrumbs and support docs that still mention the old canonical paths, including `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any current `CHANGELOG.md` references. Make sure `docs/design/index.md` explicitly states that exact CLI surface truth lives in `src/cli/`, `wavepeek --help`, and `wavepeek schema`, while the contracts under `docs/design/contracts/` define normative semantics that code alone does not express clearly enough. Do not repoint everything mechanically to `docs/design/index.md`. High-level product and navigation references should point to `docs/design/index.md`; architecture and testing references should point to `docs/design/architecture.md`; expression-language references should point to `docs/design/contracts/expression_lang.md`; output-contract references should point to `docs/design/contracts/machine_output.md`; cross-cutting command semantics such as time and resolution should point to `docs/design/contracts/command_model.md`; and operator-facing command inventory references should point to `docs/design/reference/cli.md`. Leave historical completed plans untouched unless a tiny wording fix is truly required, because the compatibility stubs already preserve usability.
 
 Milestone 5 is validation and review. Because this is a docs-only change, test-driven development is not the right tool here; instead, the implementation should use documentation-first migration with command-level verification and repository quality checks. Validate that the new docs point to real command surfaces by running representative help and schema commands. Validate that live breadcrumbs now point at the new canonical files and that only the intended compatibility stubs remain at the old paths. Then run focused review lanes in parallel: one docs lane for wording, navigation, and contract clarity, and one architecture lane for ownership boundaries, source-of-truth consistency, and breadcrumb completeness. After fixing any findings in follow-up commits, run one fresh control pass on the consolidated diff and close the plan only when the review comes back clean.
 
@@ -175,15 +176,15 @@ Run all commands from `/workspaces/wavepeek`.
 
 5. Move the expression-language contract and then collapse the old files to compatibility stubs.
 
-   Copy the full content of `docs/expression_lang.md` into `docs/design/contracts/expression_lang.md`, adjust local links if needed, and only then replace `docs/expression_lang.md` with a short compatibility notice that links to the new canonical file. Apply the same pattern to `docs/DESIGN.md`, replacing the large monolith with a short compatibility notice that points to `docs/design/index.md`. The stubs should be intentionally small enough that future readers cannot mistake them for the canonical content.
+   Copy the full content of `docs/expression_lang.md` into `docs/design/contracts/expression_lang.md`, adjust local links if needed, and only then replace `docs/expression_lang.md` with a short compatibility notice whose markdown link target is `[design/contracts/expression_lang.md](design/contracts/expression_lang.md)`. Apply the same pattern to `docs/DESIGN.md`, replacing the large monolith with a short compatibility notice whose markdown link target is `[design/index.md](design/index.md)`. The stubs should be intentionally small enough that future readers cannot mistake them for the canonical content.
 
 6. Update all live breadcrumbs and live docs that reference the old canonical paths.
 
    Search commands:
 
-       rg -n "docs/DESIGN\.md|docs/expression_lang\.md" AGENTS.md docs bench src tests schema CHANGELOG.md
+       rg -n "docs/DESIGN\.md|docs/expression_lang\.md" AGENTS.md docs/AGENTS.md docs/BACKLOG.md docs/design bench src tests schema CHANGELOG.md
 
-   Update every live hit so it points at the new canonical path unless the hit is inside `docs/DESIGN.md` or `docs/expression_lang.md` themselves as part of the compatibility stub text, or inside `docs/exec-plans/completed/` as a preserved historical record.
+   Update every live hit so it points at the new canonical path unless the hit is inside `docs/DESIGN.md` or `docs/expression_lang.md` themselves as part of the compatibility stub text. Do not edit this active ExecPlan or any file under `docs/exec-plans/completed/` just to satisfy this search; those files are intentionally outside the validation sweep.
 
 7. Validate the new navigation and the claimed CLI authorities.
 
@@ -193,8 +194,17 @@ Run all commands from `/workspaces/wavepeek`.
        cargo run -- info --help
        cargo run -- schema > /tmp/wavepeek-schema.json
        python3 -m json.tool /tmp/wavepeek-schema.json > /dev/null
-       rg -n "docs/DESIGN\.md|docs/expression_lang\.md" AGENTS.md docs bench src tests schema CHANGELOG.md
+       rg -n "docs/DESIGN\.md|docs/expression_lang\.md" AGENTS.md docs/AGENTS.md docs/BACKLOG.md docs/design bench src tests schema CHANGELOG.md
        make check
+
+   Then manually open these files in the repository viewer or your editor and follow each prominent markdown link once:
+
+   - `docs/design/index.md`
+   - `docs/DESIGN.md`
+   - `docs/expression_lang.md`
+   - `docs/design/AGENTS.md`
+   - `docs/design/contracts/AGENTS.md`
+   - `docs/design/reference/AGENTS.md`
 
    Expected signatures:
 
@@ -206,16 +216,16 @@ Run all commands from `/workspaces/wavepeek`.
        {
          "$schema": "https://json-schema.org/draft/2020-12/schema",
 
-   The final `rg` output should show only the intentional compatibility stubs and any preserved historical references under `docs/exec-plans/completed/`.
+   The final `rg` output should be empty. If it is not empty, either a live breadcrumb still points at an old canonical path or one of the new canonical docs still mentions the retired path names.
 
 8. Commit the work in atomic units without rewriting history.
 
    Suggested split:
 
-       git add docs/design/AGENTS.md docs/design/index.md docs/design/architecture.md docs/design/open_questions.md docs/design/contracts/AGENTS.md docs/design/contracts/command_model.md docs/design/contracts/machine_output.md docs/design/reference/AGENTS.md docs/design/reference/cli.md
+       git add docs/design/AGENTS.md docs/design/index.md docs/design/architecture.md docs/design/open_questions.md docs/design/contracts/AGENTS.md docs/design/contracts/command_model.md docs/design/contracts/machine_output.md docs/design/contracts/expression_lang.md docs/design/reference/AGENTS.md docs/design/reference/cli.md
        git commit -m "docs(design): create decomposed design doc tree"
 
-       git add docs/design/contracts/expression_lang.md docs/DESIGN.md docs/expression_lang.md AGENTS.md docs/AGENTS.md src/AGENTS.md tests/AGENTS.md schema/AGENTS.md bench/AGENTS.md bench/e2e/AGENTS.md bench/expr/AGENTS.md docs/BACKLOG.md CHANGELOG.md
+       git add docs/DESIGN.md docs/expression_lang.md AGENTS.md docs/AGENTS.md src/AGENTS.md tests/AGENTS.md schema/AGENTS.md bench/AGENTS.md bench/e2e/AGENTS.md bench/expr/AGENTS.md docs/BACKLOG.md CHANGELOG.md
        git commit -m "docs(design): repoint breadcrumbs to canonical paths"
 
    If review finds issues, fix them in one or more follow-up commits. Do not amend or squash.
@@ -233,9 +243,9 @@ Run all commands from `/workspaces/wavepeek`.
 
 The implementation is successful when a new reader can start at `docs/design/index.md` and navigate the entire design corpus without needing `docs/DESIGN.md` as a monolith. `docs/design/index.md` must clearly identify `docs/design/contracts/` as the normative semantics layer and `docs/design/reference/cli.md` as a thin guide, not the authoritative flag-by-flag CLI contract.
 
-The change must preserve two compatibility behaviors. Opening `docs/DESIGN.md` must immediately redirect a reader to `docs/design/index.md`, and opening `docs/expression_lang.md` must immediately redirect a reader to `docs/design/contracts/expression_lang.md`. Live breadcrumbs must point directly at the new canonical files rather than relying on the stubs.
+The change must preserve two compatibility behaviors. Opening `docs/DESIGN.md` must immediately show a prominent compatibility pointer with a working relative markdown link to `design/index.md`, and opening `docs/expression_lang.md` must immediately show a prominent compatibility pointer with a working relative markdown link to `design/contracts/expression_lang.md`. Live breadcrumbs must point directly at the new canonical files rather than relying on the stubs.
 
-The change must also make the new source-of-truth story observable. Running `cargo run -- --help` and `cargo run -- info --help` must still show the authoritative CLI help surface, and `cargo run -- schema` must still emit valid JSON. `make check` must pass, proving the repository remains healthy after the docs-only reorganization.
+The change must also make the new source-of-truth story observable. Running `cargo run -- --help` and `cargo run -- info --help` must still show the authoritative CLI help surface, and `cargo run -- schema` must still emit valid JSON. The prominent links from `docs/design/index.md`, the two compatibility stubs, and the three new `AGENTS.md` files must each resolve to the intended target when opened in the normal repository viewer. `make check` must pass, proving the repository remains healthy after the docs-only reorganization.
 
 ### Idempotence and Recovery
 
@@ -249,7 +259,7 @@ Use small, obvious compatibility stubs. A good stub for `docs/DESIGN.md` looks l
 
     # Design Documentation Moved
 
-    The canonical design entrypoint is now `docs/design/index.md`.
+    The canonical design entrypoint is now [`design/index.md`](design/index.md).
     This file remains only as a compatibility pointer for older links.
 
 The new index should include a short map that makes the ownership split impossible to miss. A concise example is:

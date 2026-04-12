@@ -33,7 +33,7 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 - [x] (2026-04-12 21:07Z) Fixed the review findings by converting the root and docs breadcrumb entrypoints to real markdown links, adding the missing parent breadcrumb in `docs/AGENTS.md`, and narrowing the `wavepeek schema` authority statements to the machine-output contract.
 - [x] (2026-04-12 21:18Z) Ran a fresh control review pass on the consolidated diff; it found one remaining migration issue: several touched `AGENTS.md` files under `src/`, `tests/`, `schema/`, and `bench/` were still using non-clickable path text instead of real markdown links.
 - [x] (2026-04-12 21:22Z) Fixed the control-pass finding by converting the touched `AGENTS.md` files in `src/`, `tests/`, `schema/`, `bench/`, `bench/e2e/`, and `bench/expr/` to real markdown links and by narrowing `bench/e2e/AGENTS.md` back to normative contract links only.
-- [ ] Run validation, perform focused review lanes, fix findings in follow-up commits, and finish with a clean control review pass.
+- [x] (2026-04-12 21:31Z) Reran validation after the last review-fix commits (`make check` plus the retired-path `rg` sweep) and got a clean final control review pass on the consolidated implementation diff.
 
 ## Surprises & Discoveries
 
@@ -93,11 +93,11 @@ This plan does not change any Rust behavior, JSON schema behavior, CLI flags, co
 
 ## Outcomes & Retrospective
 
-Current status: the new canonical `docs/design/` tree is in place, both legacy top-level docs are now compatibility stubs, focused review findings and the first control-pass finding have been fixed, and the remaining work is the final validation rerun plus a clean confirming control review.
+Current status: complete. The new canonical `docs/design/` tree is in place, both legacy top-level docs are compatibility stubs only, live breadcrumbs point to the new canonical files, validation is clean, and the focused review lanes plus final control pass are clean.
 
-Implementation so far confirms the source-of-truth split works in practice. The repository now has a dedicated design entrypoint, a separate architecture note, explicit open questions, normative contracts under `docs/design/contracts/`, and a thin CLI-family guide under `docs/design/reference/`. The old `docs/DESIGN.md` and `docs/expression_lang.md` paths are compatibility pointers only, while the live breadcrumb network now points at the new canonical locations.
+The implementation completed the intended source-of-truth split. The repository now has a dedicated design entrypoint, a separate architecture note, explicit open questions, normative contracts under `docs/design/contracts/`, and a thin CLI-family guide under `docs/design/reference/`. The old `docs/DESIGN.md` and `docs/expression_lang.md` paths are compatibility pointers only, while the live breadcrumb network points at the new canonical locations.
 
-The main lesson so far is that the decomposition is straightforward once the ownership boundaries are explicit, but both wording and link mechanics matter. The review cycle exposed three subtle failure modes: navigation can regress if breadcrumbs are not real markdown links, authority boundaries become ambiguous if `wavepeek schema` is described as a catch-all CLI authority instead of the more precise machine-output authority, and touched legacy breadcrumb files need the same link-quality treatment as the new maps. The remaining work is final verification rather than content extraction.
+The main lesson from the implementation is that the decomposition itself is straightforward once the ownership boundaries are explicit, but both wording and link mechanics matter. The review cycle exposed three subtle failure modes: navigation regresses if breadcrumbs are not real markdown links, authority boundaries blur if `wavepeek schema` is described as a catch-all CLI authority instead of the more precise machine-output authority, and touched legacy breadcrumb files need the same link-quality treatment as the new maps. Capturing those points in the final docs and in this completed plan should make future documentation refactors lower risk.
 
 ## Context and Orientation
 
@@ -311,4 +311,4 @@ At the end of the implementation, these repository paths must exist and have sta
 
 The live breadcrumb files that currently reference the old paths are also part of the required surface and must be updated in the same change: `AGENTS.md`, `docs/AGENTS.md`, `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, `bench/expr/AGENTS.md`, `docs/BACKLOG.md`, and any live `CHANGELOG.md` path references that still point to the old canonical locations.
 
-Revision note: updated again on 2026-04-12 after fixing the first control-pass finding, specifically by converting the touched legacy breadcrumb maps in `src/`, `tests/`, `schema/`, and `bench/` to real markdown links and keeping `bench/e2e/AGENTS.md` aligned to normative contract sources only.
+Revision note: finalized on 2026-04-12 after rerunning validation, recording the clean final control pass, and moving the completed plan to `docs/exec-plans/completed/`.

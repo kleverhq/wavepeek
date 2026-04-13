@@ -161,6 +161,11 @@ Notes for agents:
   ad-hoc headings.
 - Add user-visible changes to `## [Unreleased]` as part of normal feature/fix
   work.
+- Treat published version sections as immutable historical release records. Do
+  not retroactively rewrite shipped scope or behavior in old release sections.
+- If a factual correction is needed after a release, record it in
+  `## [Unreleased]` or a later release instead of rewriting the old shipped
+  section.
 - During release prep, move `Unreleased` items into a versioned heading
   `## [X.Y.Z] - YYYY-MM-DD`, then create a new empty `Unreleased` section.
 - GitHub Release notes are published from the matching version section in

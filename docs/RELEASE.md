@@ -16,6 +16,11 @@ This runbook covers the production release flow for `wavepeek`.
     - move finalized entries from `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`;
     - keep a fresh `## [Unreleased]` section for future changes;
     - update bottom links for `Unreleased` and the new version tag.
+    - treat existing released sections as immutable historical records; do not
+      retroactively rewrite older shipped scope while preparing a new release.
+    - if a factual correction is needed after release, record it in
+      `## [Unreleased]` or a later release instead of editing the old shipped
+      section.
    The GitHub Release body is published from the `CHANGELOG.md` section for
    `X.Y.Z`, so only shipped notes for that version should remain in that section.
 3. Reconcile `docs/ROADMAP.md` with actual shipped scope:

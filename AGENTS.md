@@ -9,7 +9,7 @@ then follow links to deeper docs.
 - Delivery milestones and versions: [`docs/ROADMAP.md`](docs/ROADMAP.md)
 - Development workflow and coding conventions: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
 - Release checklist and rollback notes: [`docs/RELEASE.md`](docs/RELEASE.md)
-- Active backlog and tech debt: [`docs/BACKLOG.md`](docs/BACKLOG.md)
+- Active backlog, open design questions, and tech debt: [`docs/BACKLOG.md`](docs/BACKLOG.md)
 - Execution plans (active/completed): [`docs/exec-plans/`](docs/exec-plans/)
 - Actual shipped changes by release: [`CHANGELOG.md`](CHANGELOG.md)
 

@@ -1,5 +1,29 @@
 # Backlog
 
+## Open Design Questions
+
+These unresolved design questions stay here so they remain visible without
+polluting the stable design contracts.
+
+Stable design contracts and the design corpus entrypoint live under
+[`docs/design/`](design/), starting from [`docs/design/index.md`](design/index.md).
+
+1. **Scope and path canonicalization.** What is the canonical path syntax and
+   escaping policy for VCD escaped identifiers and other unusual names across
+   formats?
+2. **Warnings as codes versus free text.** Should warnings remain free-form
+   strings, or should wavepeek eventually introduce stable warning codes for
+   promote/suppress flows?
+3. **Value radix options.** Should a future release add `--radix` (for example
+   `hex`, `bin`, `dec`, `auto`), and if so what default policy should replace
+   or complement Verilog-literal output?
+4. **Schema evolution policy.** Should the project keep one canonical schema
+   forever, or eventually split machine contracts into per-command schemas?
+5. **Signal metadata schema.** Which JSON fields beyond `kind` and `width`
+   should be part of the stable `signal` machine contract across dump formats?
+6. **GHW support scope.** If GHW support is added after MVP, what acceptance
+   criteria and priority should gate that work?
+
 ## Issues
 
 ### Post-MVP: temporal property language extensions

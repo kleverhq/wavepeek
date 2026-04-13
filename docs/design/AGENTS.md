@@ -10,7 +10,7 @@ This directory is the canonical entrypoint for product design documentation.
 
 - Design entrypoint and document map: [`index.md`](index.md)
 - Internal architecture and testing strategy: [`architecture.md`](architecture.md)
-- Open design questions: [`open_questions.md`](open_questions.md)
+- Open design questions, backlog, and tech debt: [`../BACKLOG.md`](../BACKLOG.md)
 
 ## Child Maps
 

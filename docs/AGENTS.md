@@ -13,7 +13,7 @@ This file is a local navigation map for the `docs/` directory.
 - Delivery milestones and target versions: [`ROADMAP.md`](ROADMAP.md)
 - Development workflow and coding conventions: [`DEVELOPMENT.md`](DEVELOPMENT.md)
 - Release checklist and rollback notes: [`RELEASE.md`](RELEASE.md)
-- Active backlog and tech debt tracking: [`BACKLOG.md`](BACKLOG.md)
+- Active backlog, open design questions, and tech debt tracking: [`BACKLOG.md`](BACKLOG.md)
 - Actual shipped release history: [`../CHANGELOG.md`](../CHANGELOG.md)
 
 ## Child Maps

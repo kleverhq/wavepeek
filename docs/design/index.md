@@ -44,7 +44,7 @@ The primary users are LLM-driven debugging workflows and other automation that n
 Start here when you need the design overview and navigation map. The design corpus is intentionally split by ownership:
 
 - [`architecture.md`](architecture.md) — internal engineering architecture, dependencies, execution strategy, and testing strategy.
-- [`open_questions.md`](open_questions.md) — unresolved design questions that are intentionally kept out of the stable contracts.
+- [`../BACKLOG.md`](../BACKLOG.md) — open design questions, active backlog items, and tracked tech debt that stay outside the stable contracts.
 - [`contracts/command_model.md`](contracts/command_model.md) — **normative** cross-cutting command semantics such as time normalization, name resolution, bounded output, ordering, and output-mode rules.
 - [`contracts/machine_output.md`](contracts/machine_output.md) — **normative** stdout/stderr, JSON envelope, schema-linkage, warning, and exit-code contracts.
 - [`contracts/expression_lang.md`](contracts/expression_lang.md) — **normative** expression-language syntax and semantics for `change --on` and `property --on` / `property --eval`.

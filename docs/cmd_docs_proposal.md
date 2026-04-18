@@ -240,17 +240,11 @@ JSON envelope contract:
 Options:
 
 - `--summary`: prints the summary for the selected topic instead of the full body.
-- `--format markdown|text`: default `markdown`.
-
-Flag interaction rules:
-
-- `--summary` is mutually exclusive with `--format`.
 - `docs show --summary` always prints the stored summary text only.
 
 Contract details:
 
-- `markdown` prints the embedded Markdown body exactly as stored for that topic.
-- `text` may normalize presentation for terminals, but must not add pager behavior or ANSI-heavy formatting.
+- Without `--summary`, `show` prints the Markdown body exactly as stored for that topic, excluding YAML front matter.
 - `show --summary` is topic-local: it summarizes only the requested topic.
 - If the topic is unknown, the command must return a non-zero exit code and suggest close matches when available.
 
@@ -418,18 +412,18 @@ This command exists because the skill is part of the product ergonomics, but it 
 
 ## `--json` Support Matrix for `docs`
 
-In v1, `--json` support is intentionally limited.
+`--json` support is intentionally limited.
 
 - `wavepeek docs topics --json`: supported.
 - `wavepeek docs search --json`: supported.
-- `wavepeek docs show --json`: not supported in v1.
-- `wavepeek docs skill --json`: not supported in v1.
-- `wavepeek docs export --json`: not supported in v1.
+- `wavepeek docs show --json`: not supported.
+- `wavepeek docs skill --json`: not supported.
+- `wavepeek docs export --json`: not supported.
 
 Rejection contract for unsupported cases:
 
 - Unsupported `--json` combinations must fail as argument errors with a non-zero exit code.
-- Implementations must not silently reinterpret `--json` as `--format text` or `--format markdown`.
+- Implementations must not silently reinterpret `--json` as a human-readable output mode.
 
 ## Topic Model
 
@@ -453,10 +447,11 @@ Each topic should have stable metadata:
 
 Source format contract:
 
-- Topic body text is stored as Markdown.
-- Topic metadata is stored separately from the body text in a manifest or equivalent structured source.
-- `wavepeek docs show --format markdown` prints the body Markdown only, not the metadata representation.
-- `wavepeek docs export` writes the body Markdown files plus a manifest that carries the structured metadata.
+- Each topic is stored as one Markdown file with YAML front matter followed by the Markdown body.
+- The YAML front matter is the canonical source for topic metadata.
+- The Markdown body must begin with a visible top-level heading that matches the canonical `title` metadata.
+- `wavepeek docs show` prints only the Markdown body, not the YAML front matter.
+- `wavepeek docs export` writes the Markdown topic files with their YAML front matter intact, plus the export-root manifest used for discovery and overwrite safety.
 
 The topic metadata should drive:
 
@@ -486,7 +481,6 @@ These rules apply to the full self-documenting surface.
 - Errors go to `stderr` and use non-zero exit codes.
 - Output must be deterministic for the same command, docs corpus, and version.
 - Structured machine-oriented output must be explicit via `--json`.
-- Non-structured rendering choices for narrative docs may use `--format` when needed, for example `markdown` vs `text`.
 - Raw Markdown output is preferred over decorative rendering for agent-facing paths.
 
 For `docs export`, this determinism rule means the default exported tree and manifest should be byte-stable for the same CLI version and docs corpus. Runtime wall-clock timestamps are therefore out of scope for the base export contract unless added later behind an explicit opt-in flag.
@@ -514,7 +508,7 @@ The intended ownership split is:
 | Concern | Primary owner |
 | --- | --- |
 | Exact command names, flags, aliases, defaults, requiredness, and rendered help output | CLI code, help text, and CLI contract tests |
-| Narrative concepts, workflows, examples, troubleshooting, and topic metadata | Embedded Markdown topics plus structured manifest data |
+| Narrative concepts, workflows, examples, troubleshooting, and topic metadata | Embedded Markdown topics with YAML front matter |
 | Agent routing guidance | Installed `wavepeek` skill |
 | Human-oriented repo summaries and operator guides | Derived docs under `docs/design/` |
 
@@ -533,7 +527,7 @@ The following may be added later, but are not required to satisfy this proposal:
 ## Implementation Notes
 
 - TDD is not applicable for this document-only change; implementation work that follows should add CLI contract tests before code changes.
-- The likely storage model is embedded Markdown plus metadata manifest, not hardcoded prose strings.
+- The likely storage model is embedded Markdown files with YAML front matter, plus the export-root manifest used by `docs export`.
 - The likely command ownership split is:
   - `-h`: compact lookup,
   - `--help` / `help`: full command reference,

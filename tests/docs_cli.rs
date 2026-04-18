@@ -196,6 +196,13 @@ fn docs_search_counts_distinct_query_tokens_only_once() {
 }
 
 #[test]
+fn docs_search_json_normalizes_internal_whitespace() {
+    let value = successful_json(&["docs", "search", "find   first change", "--json"]);
+
+    assert_eq!(value["data"]["query"], "find first change");
+}
+
+#[test]
 fn docs_search_empty_query_is_argument_error() {
     let output = wavepeek_cmd()
         .args(["docs", "search", "   "])

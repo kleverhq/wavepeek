@@ -157,6 +157,9 @@ fn top_level_help_documents_general_conventions() {
         .success()
         .stdout(predicate::str::contains("General conventions:"))
         .stdout(predicate::str::contains("No positional command arguments"))
+        .stdout(predicate::str::contains(
+            "`schema`, `docs`, and `help` are the non-waveform surfaces",
+        ))
         .stdout(predicate::str::contains("Output is bounded by default"))
         .stdout(predicate::str::contains("Default output is human-readable"))
         .stdout(predicate::str::contains(

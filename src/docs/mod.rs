@@ -412,12 +412,16 @@ fn canonical_source_relpath(id: &str) -> String {
 }
 
 fn normalize_query(query: &str) -> Result<String, WavepeekError> {
-    let normalized = query.trim().to_ascii_lowercase();
-    if tokenize(&normalized).is_empty() {
+    let normalized_parts = query
+        .split_whitespace()
+        .map(|token| token.to_ascii_lowercase())
+        .collect::<Vec<_>>();
+    if normalized_parts.is_empty() {
         return Err(WavepeekError::Args(
             "query must contain at least one non-whitespace token".to_string(),
         ));
     }
+    let normalized = normalized_parts.join(" ");
     Ok(normalized)
 }
 

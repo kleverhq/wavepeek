@@ -170,7 +170,7 @@ fn docs_search_ranks_matches_deterministically() {
             "troubleshooting/empty-results"
         ]
     );
-    assert_eq!(match_kinds, vec!["id_prefix", "id_prefix", "heading"]);
+    assert_eq!(match_kinds, vec!["title_exact", "id_prefix", "heading"]);
 }
 
 #[test]
@@ -200,6 +200,17 @@ fn docs_search_json_normalizes_internal_whitespace() {
     let value = successful_json(&["docs", "search", "find   first change", "--json"]);
 
     assert_eq!(value["data"]["query"], "find first change");
+}
+
+#[test]
+fn docs_search_preserves_exact_title_match_kind() {
+    let value = successful_json(&["docs", "search", "Change command", "--json"]);
+
+    let matches = value["data"]["matches"]
+        .as_array()
+        .expect("docs search payload should expose a matches array");
+    assert_eq!(matches[0]["topic"]["id"], "commands/change");
+    assert_eq!(matches[0]["match_kind"], "title_exact");
 }
 
 #[test]

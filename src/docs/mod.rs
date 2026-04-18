@@ -463,7 +463,8 @@ fn search_match(
     let mut matched_tokens = 0;
     let mut best_kind = None;
 
-    if normalized_title == normalized_query {
+    let title_exact = normalized_title == normalized_query;
+    if title_exact {
         best_kind = Some(
             best_kind.map_or(MatchKind::TitleExact, |current: MatchKind| {
                 if MatchKind::TitleExact.rank() < current.rank() {
@@ -506,7 +507,15 @@ fn search_match(
         }
     }
 
-    best_kind.map(|match_kind| SearchMatch {
+    let match_kind = best_kind.map(|current| {
+        if title_exact && current != MatchKind::IdExact {
+            MatchKind::TitleExact
+        } else {
+            current
+        }
+    })?;
+
+    Some(SearchMatch {
         topic: record.summary.clone(),
         match_kind,
         matched_tokens,
@@ -691,7 +700,7 @@ mod tests {
         let matches = search_topics("find first change", false).expect("search should succeed");
 
         assert_eq!(matches[0].topic.id, "workflows/find-first-change");
-        assert_eq!(matches[0].match_kind, MatchKind::IdPrefix);
+        assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
         assert_eq!(matches[1].topic.id, "commands/change");
         assert_eq!(matches[1].match_kind, MatchKind::IdPrefix);
         assert_eq!(matches[2].topic.id, "troubleshooting/empty-results");
@@ -719,6 +728,14 @@ mod tests {
         let matches = search_topics("change change", false).expect("search should succeed");
 
         assert_eq!(matches[0].matched_tokens, 1);
+    }
+
+    #[test]
+    fn search_preserves_exact_title_match_kind() {
+        let matches = search_topics("Change command", false).expect("search should succeed");
+
+        assert_eq!(matches[0].topic.id, "commands/change");
+        assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
     }
 
     #[test]

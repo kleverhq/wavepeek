@@ -422,11 +422,14 @@ fn normalize_query(query: &str) -> Result<String, WavepeekError> {
 }
 
 fn tokenize(query: &str) -> Vec<String> {
-    query
-        .split_whitespace()
-        .map(str::to_string)
-        .filter(|token| !token.is_empty())
-        .collect()
+    let mut tokens = Vec::new();
+    for token in query.split_whitespace() {
+        if token.is_empty() || tokens.iter().any(|existing| existing == token) {
+            continue;
+        }
+        tokens.push(token.to_string());
+    }
+    tokens
 }
 
 fn search_match(
@@ -704,6 +707,13 @@ mod tests {
 
         assert_eq!(matches[0].topic.id, "troubleshooting/empty-results");
         assert_eq!(matches[0].match_kind, MatchKind::IdPrefix);
+        assert_eq!(matches[0].matched_tokens, 1);
+    }
+
+    #[test]
+    fn search_counts_distinct_query_tokens_only_once() {
+        let matches = search_topics("change change", false).expect("search should succeed");
+
         assert_eq!(matches[0].matched_tokens, 1);
     }
 

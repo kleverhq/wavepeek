@@ -186,6 +186,16 @@ fn docs_search_matches_topic_id_tokens_by_default() {
 }
 
 #[test]
+fn docs_search_counts_distinct_query_tokens_only_once() {
+    let value = successful_json(&["docs", "search", "change", "change", "--json"]);
+
+    let matches = value["data"]["matches"]
+        .as_array()
+        .expect("docs search payload should expose a matches array");
+    assert_eq!(matches[0]["matched_tokens"], 1);
+}
+
+#[test]
 fn docs_search_empty_query_is_argument_error() {
     let output = wavepeek_cmd()
         .args(["docs", "search", "   "])

@@ -39,6 +39,8 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
 - [x] (2026-04-18 13:41Z) Validated the implementation slice with `cargo test docs:: --lib`, `cargo test --test cli_contract`, `cargo test --test docs_cli`, and `cargo test --test schema_cli`; all targeted suites are now green.
 - [x] (2026-04-18 13:50Z) Migrated the accepted semantics into canonical docs by adding `docs/design/contracts/documentation_surface.md`, updating the related design/reference breadcrumbs, refreshing README/development/changelog wording, and shrinking `docs/cmd_docs_proposal.md` into a historical pointer.
 - [x] (2026-04-18 13:50Z) Ran full validation after the docs migration: `cargo test -q`, `make check`, and `make ci` all passed, and the manual smoke commands for layered help, docs JSON, docs search, and docs export produced the expected signatures and export manifest.
+- [x] (2026-04-18 14:23Z) Ran the mandatory multi-lane review workflow: docs, code, and architecture lanes in parallel, followed by two fresh independent control passes. The first lane round and first control pass found stale packaged guidance plus subtle docs-search contract mismatches; those fixes landed in follow-up commits without rewriting history.
+- [x] (2026-04-18 14:23Z) Re-ran the impacted review lanes after the fix commits, then ran a final fresh control pass on the consolidated `HEAD~7..HEAD` diff; the docs lane, code lane, architecture lane, and final control pass all returned clean.
 - [ ] Implement the milestones below, keeping this plan updated after every milestone, review pass, and follow-up fix.
 
 ## Surprises & Discoveries
@@ -66,6 +68,9 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
 
 - Observation: the only full-gate validation blocker after implementation was unrelated pre-existing formatting drift in `tests/common/expr_cases.rs` and `tests/common/expr_runtime.rs`, which had to be temporarily stashed so `make check` / `make ci` could evaluate the current feature work without rewriting someone else's unstaged changes.
   Evidence: the first direct `make check` run failed at `cargo fmt -- --check` on those two unstaged files only, while the rerun with those paths temporarily stashed completed successfully through both `make check` and `make ci`.
+
+- Observation: the review cycle surfaced several non-obvious search-contract edges that were easy to miss while implementing the happy path: topic-ID token matching, repeated-token scoring, canonical normalized `data.query`, exact-title `match_kind` precedence, and referential integrity for `see_also` links.
+  Evidence: the code lane and successive control passes each found one of those cases in `src/docs/mod.rs`, and each issue became a targeted regression test in `tests/docs_cli.rs` or `src/docs/mod.rs` before the final clean control pass.
 
 ## Decision Log
 
@@ -101,13 +106,21 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
   Rationale: removing the old global `HelpLong` override restored the native split cleanly, and targeted `after_help` text covered the remaining contract-sensitive navigation cues without introducing a custom help renderer.
   Date/Author: 2026-04-18 / OpenCode
 
+- Decision: treat docs-search token scoring as distinct-token scoring, canonicalize the reported JSON `query` by lowercasing and collapsing internal whitespace, allow topic-ID token matching in the default search scope, and preserve `title_exact` as the strongest non-ID-exact bucket when the whole normalized query matches the title exactly.
+  Rationale: the review cycle showed that search behavior needed a sharper separation between overall whole-query buckets and per-token coverage to stay deterministic, schema-valid, and aligned with the documented ranking contract.
+  Date/Author: 2026-04-18 / OpenCode
+
+- Decision: validate cross-topic `see_also` references during catalog load and fail fast on unknown targets.
+  Rationale: once `see_also` is exposed through JSON output and exported manifests, dead references become shipped contract drift rather than harmless prose mistakes, so referential integrity belongs in the loader guardrails.
+  Date/Author: 2026-04-18 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: the full planned implementation is complete. Packaged docs assets, embedded docs runtime, layered clap help, `help`/`docs` CLI wiring, engine/output integration, schema support, canonical-doc migration, and packaged skill synchronization are all implemented and validated. The remaining work is to finish the remaining commit(s) and the mandatory review/follow-up cycle.
+Current status: the full planned implementation is complete and the mandatory review workflow is clean. Packaged docs assets, embedded docs runtime, layered clap help, `help`/`docs` CLI wiring, engine/output integration, schema support, canonical-doc migration, packaged skill synchronization, follow-up review fixes, and the fresh final control pass are all done. Only final reporting remains.
 
-The main outcome so far is that the implementation path is now both explicit and executable. The planning work fixed three repo-specific gaps that would otherwise cause drift during implementation: it states that the real command inventory comes from `src/cli/`, it assigns a package-safe home for shipped Markdown and skill assets, and it introduces a new canonical design-contract file so the accepted semantics do not remain trapped in `docs/cmd_docs_proposal.md`. The TDD suites then converted those decisions into guardrails across help rendering, docs runtime behavior, export safety, skill synchronization, and schema coverage, and the implementation has now satisfied those guardrails across both code and prose collateral.
+The main outcome is that the installed binary is now the version-matched offline documentation entry point the proposal described. The planning work fixed three repo-specific gaps that would otherwise cause drift during implementation: it states that the real command inventory comes from `src/cli/`, it assigns a package-safe home for shipped Markdown and skill assets, and it introduces a new canonical design-contract file so the accepted semantics do not remain trapped in `docs/cmd_docs_proposal.md`. The TDD suites then converted those decisions into guardrails across help rendering, docs runtime behavior, export safety, skill synchronization, and schema coverage, and the implementation now satisfies those guardrails across both code and prose collateral.
 
-The final review rounds tightened three details that are easy to miss in a plan of this scope: `command_model.md` and `machine_output.md` both need migration work so the canonical docs stay internally consistent, `docs export` must preserve original authored Markdown bytes while still excluding the separately routed skill asset, and the TDD step list must cover the full contract-sensitive surface before implementation begins. The implementation validated those points end to end: the tests initially failed exactly where the repo was incomplete, they now pass after the runtime and CLI work landed, the canonical docs now own the accepted semantics, and the manual smoke runs confirm the installed binary now behaves as the primary offline docs surface. The main remaining risk is no longer feature completeness but only post-implementation quality gates: review findings or follow-up wording drift. The change spans clap help rendering, embedded Markdown assets, JSON schema, exported files, docs/design contracts, README wording, and the shipped OpenCode skill, so the final step is the mandatory review closure.
+The review cycle added value beyond merely signing off. It exposed subtle search-contract edges that the initial happy-path tests did not cover: topic-ID token matching, distinct-token scoring, canonical normalized `data.query`, exact-title precedence, and `see_also` referential integrity. Each of those cases is now covered by a regression test or loader guardrail. The implementation validated the broader design end to end: the tests initially failed exactly where the repo was incomplete, they now pass after the runtime and CLI work landed, the canonical docs now own the accepted semantics, and the manual smoke runs confirm the installed binary behaves as the primary offline docs surface. The main residual risk is outside this change set: unrelated unstaged formatting-only drift in `tests/common/*.rs`, which required temporary stashing for `make check` / `make ci` but was deliberately left untouched.
 
 ## Context and Orientation
 
@@ -489,3 +502,5 @@ Revision Note: 2026-04-18 / OpenCode - Updated after TDD contract capture to rec
 Revision Note: 2026-04-18 / OpenCode - Updated after the first implementation slice to record the new packaged docs corpus, embedded runtime, layered help wiring, schema/output integration, targeted validation success, and the clap-specific short-help discovery that required explicit compact-shape guidance in `after_help`.
 
 Revision Note: 2026-04-18 / OpenCode - Updated after canonical-doc migration and full validation to record the new documentation-surface contract, the successful full-gate/manual verification pass, and the temporary stash workaround used to avoid rewriting unrelated unstaged formatting-only changes during `make check` / `make ci`.
+
+Revision Note: 2026-04-18 / OpenCode - Updated after the mandatory review workflow to record the lane findings, the follow-up fix commits for docs-search and guidance edge cases, and the final clean control pass.

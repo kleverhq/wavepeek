@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, export, and the shipped agent skill.
+
 ### Changed
 <<<<<<< HEAD
 - Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
 - Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
 =======
 - Moved open design questions into `docs/BACKLOG.md` and removed the separate `docs/design/open_questions.md` entrypoint.
+- Superseded the temporary universal `-h == --help` help model with layered help and a packaged narrative-doc surface.
 
 ### Removed
 - Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/design/index.md` and `docs/design/contracts/expression_lang.md` instead.
@@ -51,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Aligned design documentation wording from `time_precision` to `time_unit` for normalized timestamp fields.
 - Simplified `value` human output to compact form: `@<time>` header and `<display> <value>` signal lines.
 - Updated JSON envelope `$schema` URLs from GitHub blob pages to `raw.githubusercontent.com` so schema links resolve as directly consumable raw JSON.
-- Unified help ergonomics so `-h` and `--help` both render detailed help across all shipped commands; `wavepeek` with no args now follows the same render path as `wavepeek --help` and is byte-identical.
+- At this release, help ergonomics were temporarily unified so `-h` and `--help` both rendered the detailed layer everywhere; later work replaced that temporary model with layered help and embedded local docs.
 - Expanded command help text to include semantics, defaults/requiredness, boundary rules, normalized error-guidance wording, and output-shape notes without requiring `docs/design/reference/cli.md` for day-to-day usage.
 - Accelerated `change` stateless execution with resolved-handle sampling, persistent signal-load caching, timestamp-slice iteration, and candidate-timestamp reduction while preserving strict pre-candidate baseline semantics.
 - Added a multi-engine dispatcher for dense and sparse `change` workloads so large dump/window scenarios now complete around ~0.5s in the benchmark matrix while keeping payload parity.

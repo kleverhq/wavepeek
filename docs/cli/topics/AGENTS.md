@@ -8,8 +8,8 @@ This directory contains the Markdown topic corpus embedded into `wavepeek docs`.
 
 ## Source of Truth
 
-- Topic metadata and runtime behavior: [`../../exec-plans/active/2026-04-18-self-documenting-cli-docs/PLAN.md`](../../exec-plans/active/2026-04-18-self-documenting-cli-docs/PLAN.md)
-- Exact command reference: [`../../../src/cli/`](../../../src/cli/), `wavepeek --help`, and `wavepeek <command> --help`
+- Topic metadata and runtime behavior: [`../../design/contracts/documentation_surface.md`](../../design/contracts/documentation_surface.md)
+- Exact command reference: [`../../../src/cli/`](../../../src/cli/), `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
 ## Child Maps
 

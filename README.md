@@ -88,8 +88,15 @@ Note: an MCP server for tool-native agent integration is not available yet, but 
 | `change` | available | Delta snapshots over a time range with `--on` event triggers |
 | `property` | available | Property checks over event triggers with capture modes |
 | `schema` | available | Print canonical JSON schema used by `--json` output |
+| `docs` | available | Browse embedded narrative docs, search topics, export Markdown, and print the packaged skill |
+| `help` | available | Print detailed long help for top-level or nested command paths |
 
-Use progressive disclosure via built-in help: `wavepeek -h`, then `wavepeek <command> --help`.
+Use progressive disclosure via built-in help and docs:
+
+- `wavepeek -h` for compact lookup help
+- `wavepeek --help` for detailed top-level reference help
+- `wavepeek help <command-path...>` for nested long-help aliases
+- `wavepeek docs` for embedded concepts, workflows, troubleshooting, export, and skill text
 
 ## Development
 

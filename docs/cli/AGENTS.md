@@ -10,8 +10,8 @@ the canonical packaged source for the shipped OpenCode skill text.
 ## Canonical Sources
 
 - Product design entrypoint: [`../design/index.md`](../design/index.md)
-- Active implementation plan for this surface: [`../exec-plans/active/2026-04-18-self-documenting-cli-docs/PLAN.md`](../exec-plans/active/2026-04-18-self-documenting-cli-docs/PLAN.md)
-- Exact CLI surface and help text: [`../../src/cli/`](../../src/cli/), `wavepeek --help`, and `wavepeek <command> --help`
+- Documentation/help and embedded-doc semantics: [`../design/contracts/documentation_surface.md`](../design/contracts/documentation_surface.md)
+- Exact CLI surface and help text: [`../../src/cli/`](../../src/cli/), `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
 ## Child Maps
 

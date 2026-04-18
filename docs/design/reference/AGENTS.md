@@ -10,5 +10,6 @@ This directory holds the thin operator-facing CLI guide.
 ## Source of Truth
 
 - Derived command-family guide: [`cli.md`](cli.md)
-- Exact command names, flags, defaults, and examples: [`src/cli/`](../../../src/cli/), `wavepeek --help`, and `wavepeek <command> --help`
+- Documentation/help semantics: [`../contracts/documentation_surface.md`](../contracts/documentation_surface.md)
+- Exact command names, flags, defaults, and examples: [`src/cli/`](../../../src/cli/), `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 - Machine-readable output contract: [`schema/wavepeek.json`](../../../schema/wavepeek.json) and `wavepeek schema`

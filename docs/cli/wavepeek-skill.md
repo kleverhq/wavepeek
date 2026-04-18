@@ -14,7 +14,7 @@ Use `wavepeek` as a deterministic workflow: establish dump bounds, discover hier
 - `.fst` files are binary; never read them directly as text or with generic read tools.
 - Even `.vcd` files should be inspected through `wavepeek`, not by reading the raw dump.
 - Confirm the waveform path, analysis goal, known scope or signals, and any target time window.
-- Use help for command/flag discovery only when needed: `wavepeek -h`, then `wavepeek <command> --help`.
+- Use layered help for command/flag discovery only when needed: `wavepeek -h` for compact lookup, `wavepeek --help` or `wavepeek help <command-path...>` for the detailed reference layer, and `wavepeek docs` for narrative guidance.
 - Prefer deterministic execution: `info` -> `scope`/`signal` -> `value`/`change` -> `--json` post-processing.
 - If the user asks for analysis, return the findings first; include exact commands only when they help.
 

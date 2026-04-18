@@ -4,12 +4,25 @@ This file is a thin operator guide to the shipped command families. It is intent
 
 For exact command syntax, defaults, requiredness, and help examples, use:
 
+- `wavepeek -h`
 - `wavepeek --help`
+- `wavepeek help <command-path...>`
 - `wavepeek <command> --help`
 - [`src/cli/`](../../../src/cli/)
 - `wavepeek schema` for the `--json` contract
 
-For normative semantics that code alone does not explain clearly enough, use [`../contracts/command_model.md`](../contracts/command_model.md), [`../contracts/machine_output.md`](../contracts/machine_output.md), and [`../contracts/expression_lang.md`](../contracts/expression_lang.md).
+For normative semantics that code alone does not explain clearly enough, use [`../contracts/documentation_surface.md`](../contracts/documentation_surface.md), [`../contracts/command_model.md`](../contracts/command_model.md), [`../contracts/machine_output.md`](../contracts/machine_output.md), and [`../contracts/expression_lang.md`](../contracts/expression_lang.md).
+
+## `help`
+
+Use `help` when you want the detailed reference layer directly, especially for
+nested paths such as `wavepeek help docs show`.
+
+## `docs`
+
+Use `docs` when command reference is not enough. It is the packaged narrative
+surface for concepts, workflows, troubleshooting, topic discovery, export, and
+the shipped agent skill.
 
 ## `schema`
 

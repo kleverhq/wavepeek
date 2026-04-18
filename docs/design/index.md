@@ -45,9 +45,10 @@ Start here when you need the design overview and navigation map. The design corp
 
 - [`architecture.md`](architecture.md) — internal engineering architecture, dependencies, execution strategy, and testing strategy.
 - [`../BACKLOG.md`](../BACKLOG.md) — open design questions, active backlog items, and tracked tech debt that stay outside the stable contracts.
+- [`contracts/documentation_surface.md`](contracts/documentation_surface.md) — **normative** layered-help semantics, embedded-doc topic rules, docs search/export behavior, packaged skill ownership, and the source-of-truth split for the documentation surface.
 - [`contracts/command_model.md`](contracts/command_model.md) — **normative** cross-cutting command semantics such as time normalization, name resolution, bounded output, ordering, and output-mode rules.
 - [`contracts/machine_output.md`](contracts/machine_output.md) — **normative** stdout/stderr, JSON envelope, schema-linkage, warning, and exit-code contracts.
 - [`contracts/expression_lang.md`](contracts/expression_lang.md) — **normative** expression-language syntax and semantics for `change --on` and `property --on` / `property --eval`.
 - [`reference/cli.md`](reference/cli.md) — **derived** operator guide for the command families. It explains when to use each command but deliberately avoids duplicating flag tables.
 
-The exact command-line surface is code-first. Command names, flags, defaults, requiredness, and help examples are authoritative in [`src/cli/`](../../src/cli/), `wavepeek --help`, and `wavepeek <command> --help`. The machine-readable output contract is authoritative in [`schema/wavepeek.json`](../../schema/wavepeek.json) and `wavepeek schema`. The documents under [`contracts/`](contracts/) remain authoritative only for semantics that code or schema do not express clearly enough.
+The exact command-line surface is code-first. Command names, flags, defaults, requiredness, and help examples are authoritative in [`src/cli/`](../../src/cli/), `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`. The machine-readable output contract is authoritative in [`schema/wavepeek.json`](../../schema/wavepeek.json) and `wavepeek schema`. The documents under [`contracts/`](contracts/) remain authoritative only for semantics that code or schema do not express clearly enough.

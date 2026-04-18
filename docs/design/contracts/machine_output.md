@@ -12,9 +12,9 @@ On success, a command writes its main payload to stdout.
 
 On error, stdout is empty. Errors are reported on stderr only.
 
-## 2. JSON Envelope for `--json`
+## 2. JSON Envelope for Stable `--json` Commands
 
-When a waveform command succeeds under `--json`, it emits one JSON object with this shape:
+When a stable JSON-producing command succeeds under `--json`, it emits one JSON object with this shape:
 
 ```json
 {
@@ -33,6 +33,11 @@ The semantics of the envelope fields are:
 - `warnings` is an array of free-form warning strings in deterministic order.
 
 The exact JSON shapes for every command are defined by `schema/wavepeek.json` and by `wavepeek schema`.
+
+The stable JSON-producing commands currently include the waveform-inspection
+commands plus `docs topics --json` and `docs search --json`. Other `docs`
+subcommands do not silently change output modes; unsupported `--json`
+combinations fail as argument errors and leave stdout empty.
 
 ## 3. `schema` Command Behavior
 

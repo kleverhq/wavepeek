@@ -1,12 +1,12 @@
 # Command Model Contract
 
-This document is normative for the cross-cutting command semantics shared across the shipped waveform commands. It intentionally avoids repeating exact flag lists and defaults. For the precise command-line surface, follow `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help`.
+This document is normative for the cross-cutting semantics shared across the shipped waveform-inspection commands. It intentionally avoids repeating exact flag lists and defaults. Layered help, the visible `help` subcommand, the `docs` command family, embedded topic rules, and docs export/search behavior are governed by `documentation_surface.md` instead. For the precise command-line surface, follow `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help`.
 
 ## 1. Waveform Input Model
 
 wavepeek is a stateless CLI. Each invocation opens one waveform dump when needed, executes one command, writes its result, and exits.
 
-All waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The shipped exception is `schema`, which does not read a waveform dump and therefore accepts no waveform-input flag.
+All waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. Non-waveform surfaces such as `schema`, `help`, and `docs` are outside this document's scope and follow `documentation_surface.md` plus the exact CLI/help surface.
 
 The supported dump formats are VCD (Value Change Dump) and FST (Fast Signal Trace).
 
@@ -49,7 +49,7 @@ Waveform commands default to human-readable output. Machine-readable output is e
 
 Human-readable output is optimized for compact operator use and may vary when formatting improvements are made. Machine-readable output is strict and versioned through the JSON schema contract described in `machine_output.md` and exposed by `wavepeek schema`.
 
-`schema` is a special case: it always prints one JSON Schema document to stdout and never wraps that payload in the normal command envelope.
+`schema` is a special case: it always prints one JSON Schema document to stdout and never wraps that payload in the normal command envelope. The non-waveform `docs` command family has its own help and narrative-doc semantics in `documentation_surface.md`; only `docs topics --json` and `docs search --json` participate in the stable JSON envelope.
 
 ## 6. Bounded Output and Warning Semantics
 

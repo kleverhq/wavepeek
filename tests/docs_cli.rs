@@ -170,10 +170,19 @@ fn docs_search_ranks_matches_deterministically() {
             "troubleshooting/empty-results"
         ]
     );
-    assert_eq!(
-        match_kinds,
-        vec!["title_exact", "title_or_summary", "heading"]
-    );
+    assert_eq!(match_kinds, vec!["id_prefix", "id_prefix", "heading"]);
+}
+
+#[test]
+fn docs_search_matches_topic_id_tokens_by_default() {
+    let value = successful_json(&["docs", "search", "empty-results", "--json"]);
+
+    let matches = value["data"]["matches"]
+        .as_array()
+        .expect("docs search payload should expose a matches array");
+    assert_eq!(matches[0]["topic"]["id"], "troubleshooting/empty-results");
+    assert_eq!(matches[0]["match_kind"], "id_prefix");
+    assert_eq!(matches[0]["matched_tokens"], 1);
 }
 
 #[test]
@@ -378,4 +387,14 @@ fn packaged_skill_source_stays_synced_with_opencode_skill() {
     let opencode = fs::read(opencode_skill_path()).expect("opencode skill should be readable");
 
     assert_eq!(packaged, opencode);
+}
+
+#[test]
+fn packaged_skill_guidance_matches_current_runtime_capabilities() {
+    let packaged =
+        fs::read_to_string(canonical_skill_path()).expect("packaged skill should be readable");
+
+    assert!(packaged.contains("wavepeek help <command-path...>"));
+    assert!(!packaged.contains("parsed but not executed in `change`"));
+    assert!(!packaged.contains("parse-level only; runtime execution is not implemented"));
 }

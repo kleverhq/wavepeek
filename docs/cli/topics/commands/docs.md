@@ -20,3 +20,5 @@ search <query>` when you only remember part of the topic name or heading.
 
 Use `wavepeek docs export <OUT_DIR>` only when you need the authored Markdown on
 disk. Routine reading and discovery should stay inside the installed binary.
+
+For exact syntax and flags, use `wavepeek help docs`.

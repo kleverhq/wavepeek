@@ -20,3 +20,5 @@ Use `wavepeek help` when you want the detailed reference form directly.
 `wavepeek help <command-path...>` follows nested command paths. This is useful
 for commands such as `wavepeek help docs show` where the path is longer than one
 token.
+
+For exact syntax and flags, use `wavepeek help help`.

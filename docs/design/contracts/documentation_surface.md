@@ -69,7 +69,8 @@ The `commands/*` topic family is narrative-only. Those files may explain
 concepts, workflows, caveats, or longer examples, but they must not become a
 second authoritative command-reference surface. Exact syntax, defaults,
 requiredness, and flag tables remain code-first in `src/cli/` and generated
-help.
+help. Narrative command topics should point readers back to `wavepeek help
+<command-path...>` for exact syntax.
 
 The canonical packaged skill source lives at `docs/cli/wavepeek-skill.md`.
 `.opencode/skills/wavepeek/SKILL.md` is a derived runtime copy that must stay in

@@ -66,8 +66,8 @@ wavepeek value --waves <FILE> --at 100ns --signals "$signals" --json
 - Preserve user signal order; `value` follows input `--signals` order.
 - Prefer canonical signal paths when names are ambiguous; use `--scope` only for short names.
 - Explain that `--on` uses SystemVerilog-style event control syntax such as `*`, `posedge clk`, or `posedge clk or negedge rst_n`.
-- `iff` clauses are parsed but not executed in `change`; avoid suggesting `iff` in production guidance.
-- Warn that `property` is parse-level only; runtime execution is not implemented.
+- `change` supports typed `iff` expressions in `--on`, but simple triggers remain easier to explain and audit.
+- Use `property` capture modes intentionally: `match` keeps every match, while `switch`, `assert`, and `deassert` narrow assertion-style reports.
 - When analysis requires chaining or filtering, default to `--json` plus `jq` rather than ad-hoc text parsing.
 - Do not rely on raw dump reads for analysis; use `wavepeek` commands for both `.vcd` and `.fst` inputs.
 

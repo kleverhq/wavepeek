@@ -117,8 +117,8 @@ pub fn embedded_catalog() -> Result<&'static DocsCatalog, WavepeekError> {
     }
 }
 
-pub fn lookup_topic(id: &str) -> Option<&'static TopicRecord> {
-    embedded_catalog().ok()?.topics.get(id)
+pub fn lookup_topic(id: &str) -> Result<Option<&'static TopicRecord>, WavepeekError> {
+    Ok(embedded_catalog()?.topics.get(id))
 }
 
 pub fn list_topics() -> Result<Vec<TopicSummary>, WavepeekError> {
@@ -345,7 +345,17 @@ fn parse_topic_file(file: &File<'_>) -> Result<TopicRecord, String> {
 
     let headings = extract_headings(body);
     let body = body.to_string();
-    let source_relpath = file.path().to_string_lossy().replace('\\', "/");
+    let expected_relpath = canonical_source_relpath(&metadata.id);
+    let actual_relpath = file.path().to_string_lossy().replace('\\', "/");
+    if actual_relpath != expected_relpath {
+        return Err(format!(
+            "docs topic '{}' declares id '{}' but lives at '{}'; expected '{}'",
+            file.path().display(),
+            metadata.id,
+            actual_relpath,
+            expected_relpath
+        ));
+    }
 
     Ok(TopicRecord {
         summary: TopicSummary {
@@ -358,7 +368,7 @@ fn parse_topic_file(file: &File<'_>) -> Result<TopicRecord, String> {
         raw_markdown,
         body,
         headings,
-        source_relpath,
+        source_relpath: expected_relpath,
     })
 }
 
@@ -395,6 +405,10 @@ fn extract_headings(body: &str) -> Vec<String> {
             }
         })
         .collect()
+}
+
+fn canonical_source_relpath(id: &str) -> String {
+    format!("{id}.md")
 }
 
 fn normalize_query(query: &str) -> Result<String, WavepeekError> {
@@ -442,21 +456,22 @@ fn search_match(
     let mut matched_tokens = 0;
     let mut best_kind = None;
 
-    if normalized_id.starts_with(normalized_query) {
-        best_kind = Some(MatchKind::IdPrefix);
-    }
     if normalized_title == normalized_query {
-        best_kind = Some(best_kind.map_or(MatchKind::TitleExact, |current| {
-            if MatchKind::TitleExact.rank() < current.rank() {
-                MatchKind::TitleExact
-            } else {
-                current
-            }
-        }));
+        best_kind = Some(
+            best_kind.map_or(MatchKind::TitleExact, |current: MatchKind| {
+                if MatchKind::TitleExact.rank() < current.rank() {
+                    MatchKind::TitleExact
+                } else {
+                    current
+                }
+            }),
+        );
     }
 
     for token in tokens {
-        let token_kind = if normalized_title.contains(token) || normalized_summary.contains(token) {
+        let token_kind = if id_matches_token(&normalized_id, token) {
+            Some(MatchKind::IdPrefix)
+        } else if normalized_title.contains(token) || normalized_summary.contains(token) {
             Some(MatchKind::TitleOrSummary)
         } else if normalized_headings
             .iter()
@@ -474,7 +489,7 @@ fn search_match(
 
         if let Some(kind) = token_kind {
             matched_tokens += 1;
-            best_kind = Some(best_kind.map_or(kind, |current| {
+            best_kind = Some(best_kind.map_or(kind, |current: MatchKind| {
                 if kind.rank() < current.rank() {
                     kind
                 } else {
@@ -489,6 +504,16 @@ fn search_match(
         match_kind,
         matched_tokens,
     })
+}
+
+fn id_matches_token(normalized_id: &str, token: &str) -> bool {
+    normalized_id.starts_with(token)
+        || normalized_id.split('/').any(|segment| {
+            segment.starts_with(token)
+                || segment
+                    .split('-')
+                    .any(|chunk| !chunk.is_empty() && chunk.starts_with(token))
+        })
 }
 
 fn validate_export_target(out_dir: &Path, force: bool) -> Result<(), WavepeekError> {
@@ -646,7 +671,9 @@ mod tests {
 
     #[test]
     fn lookup_topic_preserves_raw_markdown_and_body_split() {
-        let topic = lookup_topic("commands/change").expect("topic should exist");
+        let topic = lookup_topic("commands/change")
+            .expect("lookup should succeed")
+            .expect("topic should exist");
 
         assert!(topic.raw_markdown.starts_with("---\nid: commands/change\n"));
         assert!(topic.body.starts_with("# Change command\n"));
@@ -657,9 +684,9 @@ mod tests {
         let matches = search_topics("find first change", false).expect("search should succeed");
 
         assert_eq!(matches[0].topic.id, "workflows/find-first-change");
-        assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
+        assert_eq!(matches[0].match_kind, MatchKind::IdPrefix);
         assert_eq!(matches[1].topic.id, "commands/change");
-        assert_eq!(matches[1].match_kind, MatchKind::TitleOrSummary);
+        assert_eq!(matches[1].match_kind, MatchKind::IdPrefix);
         assert_eq!(matches[2].topic.id, "troubleshooting/empty-results");
         assert_eq!(matches[2].match_kind, MatchKind::Heading);
     }
@@ -669,6 +696,24 @@ mod tests {
         let suggestions = suggest_topics("commands/cha", 3);
 
         assert_eq!(suggestions[0].id, "commands/change");
+    }
+
+    #[test]
+    fn search_matches_topic_id_tokens_by_default() {
+        let matches = search_topics("empty-results", false).expect("search should succeed");
+
+        assert_eq!(matches[0].topic.id, "troubleshooting/empty-results");
+        assert_eq!(matches[0].match_kind, MatchKind::IdPrefix);
+        assert_eq!(matches[0].matched_tokens, 1);
+    }
+
+    #[test]
+    fn all_topic_paths_match_canonical_ids() {
+        let topic = lookup_topic("commands/change")
+            .expect("lookup should succeed")
+            .expect("topic should exist");
+
+        assert_eq!(topic.source_relpath, "commands/change.md");
     }
 
     #[test]

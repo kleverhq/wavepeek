@@ -26,3 +26,5 @@ too large, tighten the trigger, shrink the range, or lower `--max`.
 
 If you are hunting for the earliest interesting transition, use the workflow in
 `workflows/find-first-change` after confirming the signal set.
+
+For exact syntax and flags, use `wavepeek help change`.

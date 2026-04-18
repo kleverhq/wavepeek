@@ -21,3 +21,5 @@ the scope and expression names.
 
 `match` keeps every matching timestamp, while `switch`, `assert`, and
 `deassert` narrow the report to assertion-style state observations.
+
+For exact syntax and flags, use `wavepeek help property`.

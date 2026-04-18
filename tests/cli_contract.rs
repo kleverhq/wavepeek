@@ -156,7 +156,9 @@ fn top_level_help_documents_general_conventions() {
         .assert()
         .success()
         .stdout(predicate::str::contains("General conventions:"))
-        .stdout(predicate::str::contains("No positional command arguments"))
+        .stdout(predicate::str::contains(
+            "Waveform-inspection commands keep their primary inputs as named flags",
+        ))
         .stdout(predicate::str::contains(
             "`schema`, `docs`, and `help` are the non-waveform surfaces",
         ))
@@ -232,7 +234,7 @@ fn top_level_short_help_is_compact_and_points_to_next_layers() {
 
     assert!(short_help.contains("Usage: wavepeek"));
     assert!(short_help.contains("wavepeek --help"));
-    assert!(short_help.contains("wavepeek help <command>"));
+    assert!(short_help.contains("wavepeek help <command-path...>"));
     assert!(short_help.contains("wavepeek docs"));
     assert!(
         !short_help.contains("General conventions:"),
@@ -260,7 +262,7 @@ fn top_level_long_help_describes_help_and_docs_entrypoints() {
     let long_help = successful_stdout_text(&["--help"]);
 
     assert!(long_help.contains("General conventions:"));
-    assert!(long_help.contains("wavepeek help <command>"));
+    assert!(long_help.contains("wavepeek help <command-path...>"));
     assert!(long_help.contains("wavepeek docs topics"));
     assert!(long_help.contains("wavepeek docs show <topic>"));
     assert!(long_help.contains("wavepeek docs skill"));

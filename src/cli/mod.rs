@@ -25,7 +25,7 @@ use crate::output;
 It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
 
 General conventions:
-- No positional command arguments: after choosing a subcommand, inputs are named flags.
+- Waveform-inspection commands keep their primary inputs as named flags after the command name; the visible `help` and `docs` surfaces intentionally use positional paths, topic IDs, queries, and export paths for offline navigation.
 - Waveform-inspection commands require `--waves <FILE>`; `schema`, `docs`, and `help` are the non-waveform surfaces.
 - Output is bounded by default (for example with `--max` or finite command shape) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
@@ -33,8 +33,8 @@ General conventions:
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Errors follow `error: <category>: <message>`.
 
-Use `wavepeek <command> --help` for full command reference help, `wavepeek help <command>` for nested help-path aliases, and `wavepeek docs` for packaged narrative guidance."#,
-    after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command>\n  wavepeek docs",
+Use `wavepeek <command> --help` for full command reference help, `wavepeek help <command-path...>` for nested help-path aliases, and `wavepeek docs` for packaged narrative guidance."#,
+    after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs",
     after_long_help = "Examples:\n  wavepeek help change\n  wavepeek docs topics\n  wavepeek docs show <topic>\n  wavepeek docs skill"
 )]
 pub struct Cli {

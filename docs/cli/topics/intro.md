@@ -14,7 +14,7 @@ see_also:
 ## Start with help
 
 Use `wavepeek -h` when you need a compact syntax reminder. Use `wavepeek --help`
-or `wavepeek help <command>` when you need the fuller command reference.
+or `wavepeek help <command-path...>` when you need the fuller command reference.
 
 ## Use local docs for narrative guidance
 

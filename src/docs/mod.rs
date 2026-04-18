@@ -298,6 +298,16 @@ fn load_catalog() -> Result<DocsCatalog, String> {
         }
     }
 
+    for (topic_id, record) in &topics {
+        for target in &record.summary.see_also {
+            if !topics.contains_key(target) {
+                return Err(format!(
+                    "docs topic '{topic_id}' references unknown see_also target '{target}'"
+                ));
+            }
+        }
+    }
+
     Ok(DocsCatalog { topics })
 }
 
@@ -745,6 +755,22 @@ mod tests {
             .expect("topic should exist");
 
         assert_eq!(topic.source_relpath, "commands/change.md");
+    }
+
+    #[test]
+    fn all_see_also_targets_resolve_to_known_topics() {
+        let topic = lookup_topic("commands/change")
+            .expect("lookup should succeed")
+            .expect("topic should exist");
+
+        for target in &topic.summary.see_also {
+            assert!(
+                lookup_topic(target)
+                    .expect("lookup should succeed")
+                    .is_some(),
+                "see_also target {target} should resolve"
+            );
+        }
     }
 
     #[test]

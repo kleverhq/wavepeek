@@ -77,3 +77,40 @@ fn schema_command_includes_property_command_branch() {
         "schema data variants should include propertyData"
     );
 }
+
+#[test]
+fn schema_command_includes_docs_command_branches() {
+    let mut command = wavepeek_cmd();
+    let assert = command.args(["schema"]).assert().success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let value: Value = serde_json::from_str(&stdout).expect("schema output should be valid json");
+
+    let commands = value["properties"]["command"]["enum"]
+        .as_array()
+        .expect("command enum should be array");
+    assert!(
+        commands.iter().any(|entry| entry == "docs topics"),
+        "schema command enum should include docs topics"
+    );
+    assert!(
+        commands.iter().any(|entry| entry == "docs search"),
+        "schema command enum should include docs search"
+    );
+
+    let data_variants = value["properties"]["data"]["oneOf"]
+        .as_array()
+        .expect("data variants should be array");
+    assert!(
+        data_variants
+            .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/docsTopicsData"),
+        "schema data variants should include docsTopicsData"
+    );
+    assert!(
+        data_variants
+            .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/docsSearchData"),
+        "schema data variants should include docsSearchData"
+    );
+}

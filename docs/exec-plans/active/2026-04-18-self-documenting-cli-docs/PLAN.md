@@ -31,6 +31,12 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
 - [x] (2026-04-18 12:52Z) Ran two fresh control reviews on the revised plan; they surfaced remaining gaps in canonical contract migration, export completeness, TDD step ordering, explicit `wavepeek help` coverage, subcommand layered-help regression checks, and living-plan bookkeeping.
 - [x] (2026-04-18 12:52Z) Applied the control-pass fixes by extending the canonical-doc migration to `command_model.md`, requiring export to preserve original Markdown bytes and explicitly exclude the skill from `docs export`, moving the remaining contract tests into the TDD step list, and recording the final review round in the living-plan sections.
 - [x] (2026-04-18 12:57Z) Ran a fresh final control review on the fully revised plan; it returned clean with no remaining substantive issues.
+- [x] (2026-04-18 13:26Z) Reconfirmed the legacy baseline with the existing targeted tests: the top-level and per-command parity tests still pass, `help`/`docs` are absent from the shipped surface, and `wavepeek schema` still exposes only the pre-docs JSON branches.
+- [x] (2026-04-18 13:26Z) Completed the TDD contract-capture step by rewriting `tests/cli_contract.rs`, adding `tests/docs_cli.rs`, extending `tests/schema_cli.rs`, and running those suites to confirm the new contract fails on the legacy implementation for the expected reasons: missing `help`/`docs` commands, unchanged short-vs-long help behavior, absent packaged docs assets, and missing schema branches.
+- [x] (2026-04-18 13:41Z) Created the packaged docs source tree under `docs/cli/`, added the required breadcrumb `AGENTS.md` files, added the seed Markdown corpus plus canonical packaged skill source, and synchronized `.opencode/skills/wavepeek/SKILL.md` to the packaged skill text.
+- [x] (2026-04-18 13:41Z) Implemented the embedded docs runtime in `src/docs/` with YAML front-matter parsing, H1/title validation, deterministic indexing, deterministic search and suggestions, and managed-root export that preserves authored Markdown bytes.
+- [x] (2026-04-18 13:41Z) Reworked clap help handling to restore native short-vs-long help, exposed the built-in `help` subcommand, added the `docs` command family, generalized nested parse-error help hints, and wired the docs surface through engine dispatch, output rendering, and the schema contract.
+- [x] (2026-04-18 13:41Z) Validated the implementation slice with `cargo test docs:: --lib`, `cargo test --test cli_contract`, `cargo test --test docs_cli`, and `cargo test --test schema_cli`; all targeted suites are now green.
 - [ ] Implement the milestones below, keeping this plan updated after every milestone, review pass, and follow-up fix.
 
 ## Surprises & Discoveries
@@ -49,6 +55,12 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
 
 - Observation: the current machine-output schema and engine command model have no room for docs-command JSON branches.
   Evidence: `schema/wavepeek.json` enumerates only `info`, `scope`, `signal`, `value`, `change`, and `property`, while `src/engine/mod.rs` defines no docs-related `Command`, `CommandName`, or `CommandData` variants.
+
+- Observation: the TDD-first docs integration tests currently fail not only on missing CLI surface, but also on missing packaged source assets, which usefully proves the test suite will guard the package-safe docs-tree requirement from the start.
+  Evidence: the first `cargo test --test docs_cli` run failed both on `unrecognized subcommand 'docs'` and on missing `docs/cli/wavepeek-skill.md`, matching the intended milestone ordering.
+
+- Observation: clap's native short-help usage lines keep `[OPTIONS]` ahead of positional arguments even after layered help is restored, so exact short-help guidance for `docs show <TOPIC>` is most reliable when included explicitly in `after_help` text rather than inferred from the usage line alone.
+  Evidence: `cargo run -- docs show -h` prints `Usage: wavepeek docs show [OPTIONS] <TOPIC>`, while the compact next-step guidance added through `after_help` can still expose the simpler `wavepeek docs show <TOPIC>` shape required by the contract tests.
 
 ## Decision Log
 
@@ -80,13 +92,17 @@ This plan does not treat `docs/cmd_docs_proposal.md` as a new permanent source o
   Rationale: the first stable export layout needs a concrete version marker so later implementations can refuse unknown roots instead of guessing overwrite compatibility.
   Date/Author: 2026-04-18 / OpenCode
 
+- Decision: implement layered help with clap's native short-help and long-help support plus `after_help` / `after_long_help` guidance strings, while keeping the built-in `help` subcommand visible and authoritative.
+  Rationale: removing the old global `HelpLong` override restored the native split cleanly, and targeted `after_help` text covered the remaining contract-sensitive navigation cues without introducing a custom help renderer.
+  Date/Author: 2026-04-18 / OpenCode
+
 ## Outcomes & Retrospective
 
-Current status: planning is complete, the final control review is clean, and implementation has not started yet. This plan is ready to execute without needing the proposal file as hidden context.
+Current status: the implementation slice for packaged docs assets, embedded docs runtime, layered clap help, `help`/`docs` CLI wiring, engine/output integration, skill synchronization, and schema support is complete and validated by the targeted suites. The remaining work is the canonical-doc migration, full-repo validation, commits, and the mandatory review/follow-up cycle.
 
-The main outcome of the planning work is that the implementation path is now explicit instead of aspirational. The plan fixes three repo-specific gaps that would otherwise cause drift during implementation: it states that the real command inventory comes from `src/cli/`, it assigns a package-safe home for shipped Markdown and skill assets, and it introduces a new canonical design-contract file so the accepted semantics do not remain trapped in `docs/cmd_docs_proposal.md`.
+The main outcome so far is that the implementation path is now both explicit and executable. The planning work fixed three repo-specific gaps that would otherwise cause drift during implementation: it states that the real command inventory comes from `src/cli/`, it assigns a package-safe home for shipped Markdown and skill assets, and it introduces a new canonical design-contract file so the accepted semantics do not remain trapped in `docs/cmd_docs_proposal.md`. The new TDD suites then converted those decisions into guardrails across help rendering, docs runtime behavior, export safety, skill synchronization, and schema coverage, and the first implementation slice has now satisfied those guardrails.
 
-The final review rounds tightened three details that are easy to miss in a plan of this scope: `command_model.md` and `machine_output.md` both need migration work so the canonical docs stay internally consistent, `docs export` must preserve original authored Markdown bytes while still excluding the separately routed skill asset, and the TDD step list must cover the full contract-sensitive surface before implementation begins. The main remaining risk during implementation is still cross-surface drift. The change spans clap help rendering, embedded Markdown assets, JSON schema, exported files, docs/design contracts, README wording, and the shipped OpenCode skill. The milestones below therefore keep tests first, require atomic commits, and end with focused review lanes plus a fresh control pass.
+The final review rounds tightened three details that are easy to miss in a plan of this scope: `command_model.md` and `machine_output.md` both need migration work so the canonical docs stay internally consistent, `docs export` must preserve original authored Markdown bytes while still excluding the separately routed skill asset, and the TDD step list must cover the full contract-sensitive surface before implementation begins. The first implementation-time result validated that emphasis: the new tests initially failed exactly where the repo was incomplete, including missing package-safe assets and the still-legacy clap help model, and they now pass after the runtime and CLI work landed. The main remaining risk is still cross-surface drift in the prose and release collateral. The change spans clap help rendering, embedded Markdown assets, JSON schema, exported files, docs/design contracts, README wording, and the shipped OpenCode skill. The remaining milestones therefore focus on canonical migration, full validation, and review closure.
 
 ## Context and Orientation
 
@@ -462,3 +478,7 @@ Revision Note: 2026-04-18 / OpenCode - Updated after review to keep the canonica
 Revision Note: 2026-04-18 / OpenCode - Updated after the final control review to make bare `wavepeek help` an explicit tested alias, add direct subcommand layered-help regression checks, and require the docs catalog to retain original Markdown bytes so export can preserve front matter verbatim.
 
 Revision Note: 2026-04-18 / OpenCode - Updated after the follow-up control review to move the remaining docs contract checks into the TDD-first step list, clarify that `docs export` excludes the skill asset, and record the last review round in `Progress` and `Outcomes & Retrospective`.
+
+Revision Note: 2026-04-18 / OpenCode - Updated after TDD contract capture to record the baseline confirmation runs, the newly failing layered-help/docs/schema tests, and the discovery that the package-safe docs asset requirement is already enforced by the new integration suite.
+
+Revision Note: 2026-04-18 / OpenCode - Updated after the first implementation slice to record the new packaged docs corpus, embedded runtime, layered help wiring, schema/output integration, targeted validation success, and the clap-specific short-help discovery that required explicit compact-shape guidance in `after_help`.

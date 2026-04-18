@@ -55,6 +55,7 @@ fn render_json(result: CommandResult) -> Result<String, WavepeekError> {
 fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
     match data {
         CommandData::Schema(schema) => schema.clone(),
+        CommandData::Text(text) => text.clone(),
         CommandData::Info(info) => {
             let mut lines = Vec::new();
             lines.push(format!("time_unit: {}", info.time_unit));
@@ -124,6 +125,18 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
         CommandData::Property(rows) => rows
             .iter()
             .map(|row| format!("@{} {}", row.time, row.kind))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        CommandData::DocsTopics(data) => data
+            .topics
+            .iter()
+            .map(|topic| format!("{}  {} — {}", topic.id, topic.title, topic.summary))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        CommandData::DocsSearch(data) => data
+            .matches
+            .iter()
+            .map(|entry| format!("{}  {}", entry.topic.id, entry.topic.summary))
             .collect::<Vec<_>>()
             .join("\n"),
     }
@@ -259,6 +272,32 @@ mod tests {
         assert_eq!(value["data"][0]["path"], "top.cpu");
         assert_eq!(value["data"][0]["depth"], 1);
         assert_eq!(value["data"][0]["kind"], "module");
+    }
+
+    #[test]
+    fn docs_topics_json_envelope_uses_nested_topics_payload() {
+        let result = CommandResult {
+            command: CommandName::DocsTopics,
+            json: true,
+            human_options: HumanRenderOptions::default(),
+            data: CommandData::DocsTopics(crate::engine::DocsTopicsData {
+                topics: vec![crate::docs::TopicSummary {
+                    id: "intro".to_string(),
+                    title: "Introduction".to_string(),
+                    summary: "Start here.".to_string(),
+                    section: "intro".to_string(),
+                    see_also: vec!["commands/help".to_string()],
+                }],
+            }),
+            warnings: vec![],
+        };
+
+        let json = render_json(result).expect("json serialization should succeed");
+        let value: Value = serde_json::from_str(&json).expect("json should parse");
+
+        assert_eq!(value["command"], "docs topics");
+        assert_eq!(value["data"]["topics"][0]["id"], "intro");
+        assert_eq!(value["data"]["topics"][0]["see_also"][0], "commands/help");
     }
 
     #[test]

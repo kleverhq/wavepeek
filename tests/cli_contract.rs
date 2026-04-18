@@ -4,8 +4,8 @@ use predicates::prelude::*;
 mod common;
 use common::wavepeek_cmd;
 
-const SHIPPED_COMMANDS: [&str; 7] = [
-    "info", "scope", "signal", "value", "change", "property", "schema",
+const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 9] = [
+    "info", "scope", "signal", "value", "change", "property", "schema", "docs", "help",
 ];
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
@@ -23,6 +23,13 @@ fn successful_stdout(args: &[&str]) -> Vec<u8> {
 
 fn successful_stdout_text(args: &[&str]) -> String {
     String::from_utf8(successful_stdout(args)).expect("stdout should be UTF-8")
+}
+
+fn assert_same_stdout(left_args: &[&str], right_args: &[&str], label: &str) {
+    let left = successful_stdout(left_args);
+    let right = successful_stdout(right_args);
+
+    assert_eq!(left, right, "{label}");
 }
 
 fn command_names_from_top_level_help(help: &str) -> Vec<String> {
@@ -135,7 +142,9 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("change"))
         .stdout(predicate::str::contains("\n  changes\n").not())
         .stdout(predicate::str::contains("property"))
-        .stdout(predicate::str::contains("\n  help\n").not());
+        .stdout(predicate::str::contains("schema"))
+        .stdout(predicate::str::contains("docs"))
+        .stdout(predicate::str::contains("\n  help"));
 }
 
 #[test]
@@ -214,16 +223,22 @@ fn help_lists_schema_after_waveform_commands() {
 }
 
 #[test]
-fn short_help_flag_matches_long_help_behavior() {
-    let mut command = wavepeek_cmd();
+fn top_level_short_help_is_compact_and_points_to_next_layers() {
+    let short_help = successful_stdout_text(&["-h"]);
+    let long_help = successful_stdout_text(&["--help"]);
 
-    command
-        .arg("-h")
-        .assert()
-        .success()
-        .stdout(predicate::str::contains("Usage: wavepeek"))
-        .stdout(predicate::str::contains("Options:"))
-        .stderr(predicate::str::is_empty());
+    assert!(short_help.contains("Usage: wavepeek"));
+    assert!(short_help.contains("wavepeek --help"));
+    assert!(short_help.contains("wavepeek help <command>"));
+    assert!(short_help.contains("wavepeek docs"));
+    assert!(
+        !short_help.contains("General conventions:"),
+        "top-level short help should stay compact and omit long-form conventions"
+    );
+    assert!(
+        short_help.len() < long_help.len(),
+        "top-level short help should be materially shorter than long help"
+    );
 }
 
 #[test]
@@ -238,31 +253,42 @@ fn no_args_help_matches_long_help_output() {
 }
 
 #[test]
-fn top_level_short_and_long_help_are_identical() {
-    let short_help = successful_stdout(&["-h"]);
-    let long_help = successful_stdout(&["--help"]);
+fn top_level_long_help_describes_help_and_docs_entrypoints() {
+    let long_help = successful_stdout_text(&["--help"]);
 
-    assert_eq!(
-        short_help, long_help,
-        "wavepeek -h output must match wavepeek --help byte-for-byte"
+    assert!(long_help.contains("General conventions:"));
+    assert!(long_help.contains("wavepeek help <command>"));
+    assert!(long_help.contains("wavepeek docs topics"));
+    assert!(long_help.contains("wavepeek docs show <topic>"));
+    assert!(long_help.contains("wavepeek docs skill"));
+}
+
+#[test]
+fn help_subcommand_matches_top_level_long_help() {
+    assert_same_stdout(
+        &["help"],
+        &["--help"],
+        "wavepeek help output must match wavepeek --help byte-for-byte",
     );
 }
 
 #[test]
-fn short_and_long_help_are_identical_for_shipped_commands() {
-    for command_name in SHIPPED_COMMANDS {
-        let short_help = successful_stdout(&[command_name, "-h"]);
-        let long_help = successful_stdout(&[command_name, "--help"]);
-        assert_eq!(
-            short_help, long_help,
-            "wavepeek {command_name} -h output must match wavepeek {command_name} --help"
-        );
-    }
+fn help_subcommand_aliases_nested_long_help() {
+    assert_same_stdout(
+        &["help", "change"],
+        &["change", "--help"],
+        "wavepeek help change must match wavepeek change --help byte-for-byte",
+    );
+    assert_same_stdout(
+        &["help", "docs", "show"],
+        &["docs", "show", "--help"],
+        "wavepeek help docs show must match wavepeek docs show --help byte-for-byte",
+    );
 }
 
 #[test]
 fn shipped_commands_list_matches_top_level_help_surface() {
-    let expected: Vec<String> = SHIPPED_COMMANDS
+    let expected: Vec<String> = VISIBLE_TOP_LEVEL_COMMANDS
         .iter()
         .map(|command_name| command_name.to_string())
         .collect();
@@ -270,7 +296,7 @@ fn shipped_commands_list_matches_top_level_help_surface() {
 
     assert_eq!(
         actual, expected,
-        "top-level help command list changed; update SHIPPED_COMMANDS and help contract tests"
+        "top-level help command list changed; update VISIBLE_TOP_LEVEL_COMMANDS and help contract tests"
     );
 }
 
@@ -337,75 +363,77 @@ fn waveform_help_avoids_literal_error_or_warning_message_bodies() {
 }
 
 #[test]
-fn subcommand_short_help_includes_long_help_contract_markers() {
-    let command_markers: [(&str, &[&str]); 7] = [
-        (
-            "info",
-            &["Reports dump metadata", "time_unit", "wavepeek schema"],
-        ),
-        (
-            "scope",
-            &[
-                "deterministic hierarchy traversal",
-                "pre-order depth-first",
-                "Truncation and disabled-limit conditions emit warnings",
-                "wavepeek schema",
-            ],
-        ),
-        (
-            "signal",
-            &[
-                "scope-local signal listing",
-                "depth-first in stable lexicographic order",
-                "applies only in recursive mode",
-                "wavepeek schema",
-            ],
-        ),
-        (
-            "value",
-            &[
-                "point-in-time sampling",
-                "input order from `--signals`",
-                "Verilog literals",
-                "wavepeek schema",
-            ],
-        ),
-        (
-            "change",
-            &[
-                "range-based delta snapshots",
-                "Range boundaries are inclusive",
-                "Empty-result and truncation conditions may emit warnings",
-                "wavepeek schema",
-            ],
-        ),
-        (
-            "property",
-            &[
-                "`switch` emits `assert` and `deassert` rows",
-                "--capture",
-                "wavepeek schema",
-            ],
-        ),
-        (
-            "schema",
-            &[
-                "canonical JSON schema document",
-                "schema/wavepeek.json",
-                "source of truth for all `--json` command outputs",
-            ],
-        ),
-    ];
+fn change_help_is_layered_and_links_to_docs() {
+    let short_help = successful_stdout_text(&["change", "-h"]);
+    let long_help = successful_stdout_text(&["change", "--help"]);
 
-    for (command_name, markers) in command_markers {
-        let short_help = successful_stdout_text(&[command_name, "-h"]);
-        for marker in markers {
-            assert!(
-                short_help.contains(marker),
-                "short help for {command_name} must include marker `{marker}`"
-            );
-        }
-    }
+    assert!(short_help.contains("Usage: wavepeek change"));
+    assert!(short_help.contains("wavepeek change --help"));
+    assert!(short_help.contains("wavepeek docs show commands/change"));
+    assert!(
+        !short_help.contains("Examples:"),
+        "change -h should stay compact and avoid long-form examples"
+    );
+    assert!(long_help.contains("Examples:"));
+    assert!(long_help.contains("See also:"));
+    assert!(long_help.contains("wavepeek docs show commands/change"));
+    assert!(
+        short_help.len() < long_help.len(),
+        "change -h should be materially shorter than change --help"
+    );
+}
+
+#[test]
+fn docs_command_help_is_layered() {
+    let short_help = successful_stdout_text(&["docs", "-h"]);
+    let long_help = successful_stdout_text(&["docs", "--help"]);
+
+    assert!(short_help.contains("Usage: wavepeek docs"));
+    assert!(short_help.contains("wavepeek docs --help"));
+    assert!(short_help.contains("wavepeek docs topics"));
+    assert!(
+        !short_help.contains("wavepeek docs export <OUT_DIR>"),
+        "docs -h should stay compact and defer full command-family detail"
+    );
+    assert!(long_help.contains("wavepeek docs show <TOPIC>"));
+    assert!(long_help.contains("wavepeek docs export <OUT_DIR>"));
+    assert!(long_help.contains("wavepeek docs skill"));
+    assert!(
+        short_help.len() < long_help.len(),
+        "docs -h should be materially shorter than docs --help"
+    );
+}
+
+#[test]
+fn docs_show_help_is_layered() {
+    let short_help = successful_stdout_text(&["docs", "show", "-h"]);
+    let long_help = successful_stdout_text(&["docs", "show", "--help"]);
+
+    assert!(short_help.contains("Usage: wavepeek docs show <TOPIC>"));
+    assert!(short_help.contains("wavepeek docs show --help"));
+    assert!(
+        !short_help.contains("excluding YAML front matter"),
+        "docs show -h should stay compact"
+    );
+    assert!(long_help.contains("excluding YAML front matter"));
+    assert!(long_help.contains("raw Markdown"));
+    assert!(long_help.contains("--summary"));
+    assert!(
+        short_help.len() < long_help.len(),
+        "docs show -h should be materially shorter than docs show --help"
+    );
+}
+
+#[test]
+fn nested_parse_errors_point_to_full_help_path() {
+    wavepeek_cmd()
+        .args(["docs", "show", "intro", "--wat"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unexpected argument '--wat'"))
+        .stderr(predicate::str::contains("See 'wavepeek docs show --help'."));
 }
 
 #[test]

@@ -1,4 +1,5 @@
 pub mod change;
+pub mod docs;
 pub mod info;
 pub mod limits;
 pub mod property;
@@ -9,7 +10,7 @@ pub mod value;
 
 use clap::error::ErrorKind;
 use clap::parser::ValueSource;
-use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
@@ -32,8 +33,9 @@ General conventions:
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Errors follow `error: <category>: <message>`.
 
-Use `wavepeek <command> --help` (or `-h`) for detailed command behavior and examples."#,
-    disable_help_subcommand = true
+Use `wavepeek <command> --help` for full command reference help, `wavepeek help <command>` for nested help-path aliases, and `wavepeek docs` for packaged narrative guidance."#,
+    after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command>\n  wavepeek docs",
+    after_long_help = "Examples:\n  wavepeek help change\n  wavepeek docs topics\n  wavepeek docs show <topic>\n  wavepeek docs skill"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -110,7 +112,9 @@ Behavior:
 - Event triggers may use typed `iff` logical expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command to inspect value transitions over bounded time windows."#
+Use this command to inspect value transitions over bounded time windows."#,
+        after_help = "Next steps:\n  wavepeek change --help\n  wavepeek docs show commands/change",
+        after_long_help = "Examples:\n  wavepeek change --waves dump.vcd --signals top.clk\n  wavepeek change --waves dump.vcd --from 0ns --to 50ns --scope top.cpu --signals clk,state --on 'posedge clk'\n\nSee also:\n  wavepeek docs show commands/change\n  wavepeek docs show workflows/find-first-change\n  wavepeek docs show troubleshooting/empty-results"
     )]
     Change(change::ChangeArgs),
     #[command(
@@ -124,7 +128,9 @@ Behavior:
 - `switch` emits `assert` and `deassert` rows only for state transitions after the range-start baseline probe.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command to check event-driven property matches and transitions over bounded time windows."#
+Use this command to check event-driven property matches and transitions over bounded time windows."#,
+        after_help = "Next steps:\n  wavepeek property --help\n  wavepeek docs show commands/property",
+        after_long_help = "See also:\n  wavepeek docs show commands/property\n  wavepeek docs show concepts/time\n  wavepeek docs show concepts/selectors"
     )]
     Property(property::PropertyArgs),
     #[command(
@@ -140,6 +146,7 @@ Behavior:
 Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
     )]
     Schema(schema::SchemaArgs),
+    Docs(docs::DocsArgs),
 }
 
 pub fn run() -> Result<(), WavepeekError> {
@@ -190,28 +197,8 @@ fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {
     matches!(matches.value_source(arg), Some(ValueSource::CommandLine))
 }
 
-fn disable_default_help_flags_recursively(command: &mut clap::Command) {
-    *command = std::mem::take(command)
-        .disable_help_flag(true)
-        .mut_subcommands(|subcommand| {
-            let mut subcommand = subcommand;
-            disable_default_help_flags_recursively(&mut subcommand);
-            subcommand
-        });
-}
-
 fn build_cli_command() -> clap::Command {
-    let mut command = Cli::command();
-    disable_default_help_flags_recursively(&mut command);
-
-    command.arg(
-        clap::Arg::new("help")
-            .short('h')
-            .long("help")
-            .global(true)
-            .help("Print help")
-            .action(ArgAction::HelpLong),
-    )
+    Cli::command()
 }
 
 fn handle_parse_error(error: clap::Error) -> Result<(), WavepeekError> {
@@ -306,15 +293,19 @@ fn help_hint_for_rendered_clap_error(rendered: &str) -> String {
         return "See 'wavepeek --help'.".to_string();
     }
 
-    let Some(next_token) = parts.next() else {
-        return "See 'wavepeek --help'.".to_string();
-    };
+    let mut path_tokens = Vec::new();
+    for token in parts {
+        if token.starts_with('[') || token.starts_with('<') || token.starts_with('-') {
+            break;
+        }
+        path_tokens.push(token);
+    }
 
-    if next_token.starts_with('[') || next_token.starts_with('<') || next_token.starts_with('-') {
+    if path_tokens.is_empty() {
         return "See 'wavepeek --help'.".to_string();
     }
 
-    format!("See 'wavepeek {next_token} --help'.")
+    format!("See 'wavepeek {} --help'.", path_tokens.join(" "))
 }
 
 fn dispatch(command: Command) -> Result<(), WavepeekError> {
@@ -333,6 +324,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
         Command::Value(args) => EngineCommand::Value(args),
         Command::Change(args) => EngineCommand::Change(args),
         Command::Property(args) => EngineCommand::Property(args),
+        Command::Docs(args) => EngineCommand::Docs(args),
     }
 }
 

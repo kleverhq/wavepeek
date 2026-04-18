@@ -23,7 +23,9 @@
         "signal",
         "value",
         "change",
-        "property"
+        "property",
+        "docs topics",
+        "docs search"
       ]
     },
     "data": {
@@ -45,6 +47,12 @@
         },
         {
           "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/docsTopicsData"
+        },
+        {
+          "$ref": "#/$defs/docsSearchData"
         }
       ]
     },
@@ -166,6 +174,44 @@
         "properties": {
           "data": {
             "$ref": "#/$defs/propertyData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs topics"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsTopicsData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs search"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsSearchData"
           }
         }
       }
@@ -330,6 +376,103 @@
               "assert",
               "deassert"
             ]
+          }
+        }
+      }
+    },
+    "topicSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "section"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "see_also": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "docsTopicsData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topics"
+      ],
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/topicSummary"
+          }
+        }
+      }
+    },
+    "docsSearchMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "match_kind",
+        "matched_tokens"
+      ],
+      "properties": {
+        "topic": {
+          "$ref": "#/$defs/topicSummary"
+        },
+        "match_kind": {
+          "type": "string",
+          "enum": [
+            "id_exact",
+            "id_prefix",
+            "title_exact",
+            "title_or_summary",
+            "heading",
+            "body"
+          ]
+        },
+        "matched_tokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "docsSearchData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "full_text",
+        "matches"
+      ],
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "full_text": {
+          "type": "boolean"
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/docsSearchMatch"
           }
         }
       }

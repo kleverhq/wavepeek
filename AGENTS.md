@@ -18,6 +18,7 @@ For docs-local navigation, read `docs/AGENTS.md`.
 ## Child Maps
 
 - Devcontainer setup notes: `.devcontainer/AGENTS.md`
+- FSDB lazy-load demo: `fsdb_demo/AGENTS.md`
 - GitHub automation assets: `.github/AGENTS.md`
 - OpenCode assets: `.opencode/AGENTS.md`
 - Performance and benchmark work: `bench/AGENTS.md`

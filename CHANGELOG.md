@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `fsdb_demo/`, a standalone Verdi/FsdbReader lazy-loading probe that can be copied to a licensed host to validate the FSDB bridge feasibility hypothesis.
+
+
 ## [0.4.0] - 2026-04-05
 
 ### Added

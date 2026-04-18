@@ -1,0 +1,14 @@
+[package]
+name = "fsdb_demo"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+clap = { version = "~4", features = ["derive"] }
+libloading = "~0.8"
+thiserror = "~2"
+
+[dev-dependencies]
+assert_cmd = "~2"
+predicates = "~3"

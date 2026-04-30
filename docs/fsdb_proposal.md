@@ -2,11 +2,12 @@
 
 ## Status
 
-Draft. Unapproved.
+Draft. Unapproved. The standalone feasibility gate for lazy Verdi loading has
+positive evidence, but this RFC is still not approved for product implementation.
 
 This work should remain in `docs/ROADMAP.md` under `Unmapped` until it is approved.
-Approval should create a separate execution plan; this document is the architecture
-and product-contract RFC, not the delivery plan.
+Approval should create a separate execution plan; this document is the
+architecture and product-contract RFC, not the delivery plan.
 
 ## Summary
 
@@ -25,6 +26,13 @@ The selected direction is:
    the runtime is unavailable.
 6. Licensed development and validation require a private wrapper repo that pins
    the public `wavepeek` repo and carries private infrastructure.
+
+The main update since the initial draft is that a standalone validation build has
+shown the lazy-loading shape is plausible on Linux with two Verdi releases. The
+validated demo binary had no startup dependency on Verdi reader/writer libraries,
+loaded the reader bridge only on the FSDB path, generated real FSDB fixtures with
+FsdbWriter, and opened them through FsdbReader. This is strong feasibility
+evidence, not final product acceptance for `wavepeek`.
 
 Partial FSDB support is acceptable. The feature may ship command-by-command as
 long as supported and unsupported cases are explicit and deterministic.
@@ -49,6 +57,18 @@ FSDB is not just another parser backend:
 - the reader API is C/C++ oriented
 - build and runtime behavior depend on host ABI and toolchain compatibility
 - redistribution of vendor assets should be assumed off-limits in the public repo
+
+Standalone validation added these concrete implementation facts:
+
+- real Verdi reader headers may not define `TRUE` / `FALSE`; bridge code should
+  use `bool_T` values directly instead of assuming those macros exist
+- `str_T` is mutable `char *`, so the narrow bridge boundary must handle const
+  correctness explicitly when passing Rust-owned paths to FsdbReader
+- `FsdbWriter` can generate tiny real FSDB fixtures for licensed validation, but
+  that writer dependency should remain validation/tooling-only unless a separate
+  product requirement says otherwise
+- newer readers can open older generated FSDBs with warnings, while older readers
+  may reject newer FSDB file versions outright
 
 ## Decision Drivers
 
@@ -113,6 +133,23 @@ At minimum it should record:
 The matrix is needed because FSDB support depends on ABI and vendor-runtime
 compatibility, not only on the presence of `VERDI_HOME`.
 
+The current feasibility baseline is:
+
+- Ubuntu 24.04 x86_64 with glibc 2.39
+- GCC/G++ 13.3
+- Rust/Cargo 1.93
+- Verdi `T-2022.06`
+- Verdi `X-2025.06`
+- expected reader files under `VERDI_HOME`: `share/FsdbReader/ffrAPI.h`,
+  `share/FsdbReader/linux64/libnffr.so`, and
+  `share/FsdbReader/linux64/libnsys.so`
+- optional validation writer files under `VERDI_HOME`:
+  `share/FsdbWriter/ffwAPI.h` and `share/FsdbWriter/linux64/libnffw.so`
+
+This baseline should be treated as feasibility evidence only. The first product
+release that advertises FSDB support must define its own release-specific matrix
+after the same checks are repeated against the actual `wavepeek` binary.
+
 If a release advertises FSDB support, public docs must expose a public
 compatibility summary for that release, including at least a matrix identifier
 and the supported host/toolchain/Verdi tuple. The private wrapper repo may keep
@@ -151,16 +188,32 @@ Requirements:
 - all unsafe FFI stays behind one internal FSDB module
 - the rest of the program uses Rust-native request/response types
 - the bridge is built from public sources by `build.rs`
+- the bridge should be loadable through an explicit lazy boundary, for example a
+  shared object loaded only when an FSDB command path is selected
 - proprietary headers and libraries are not checked into the public repo
+- any FsdbWriter-based fixture generator is validation tooling, not part of the
+  normal `wavepeek` runtime contract
 
 ### Lazy Loading Is a Gating Requirement
 
 This design is viable only if an `fsdb`-enabled binary can avoid unconditional
 Verdi loader dependencies at process startup.
 
-That requirement is not proven yet.
+The standalone feasibility validation has positive evidence for this shape.
 
-A feasibility check must demonstrate both:
+Observed validation signals:
+
+- the main Rust binary recorded no ELF `NEEDED` entries for `libnffr.so`,
+  `libnsys.so`, or `libnffw.so`
+- the reader bridge did record dependencies on `libnffr.so` and `libnsys.so`
+- a separate fixture writer recorded its dependency on `libnffw.so`
+- a non-FSDB command executed successfully with `VERDI_HOME` and
+  `LD_LIBRARY_PATH` unset
+- the FSDB command path loaded the reader bridge lazily and opened real generated
+  FSDB files for both validated Verdi releases
+
+This downgrades the risk from "unknown feasibility" to "must preserve this shape
+in product integration". The product implementation still must demonstrate both:
 
 1. the bridge can isolate vendor runtime loading until the FSDB path is taken
 2. a binary built with `--features fsdb` still runs VCD/FST commands on a host
@@ -170,8 +223,16 @@ Acceptable evidence includes both artifact inspection and runtime proof, for
 example dependency inspection showing no unconditional vendor startup dependency
 and a successful VCD/FST command on a host without Verdi runtime libraries.
 
-If that cannot be demonstrated, this RFC must be revisited before further FSDB
-implementation proceeds.
+The standalone result is not enough by itself because the final binary, feature
+layout, error surfaces, and command paths will differ from the feasibility demo.
+If equivalent proof fails in the product integration, this RFC must be revisited
+before FSDB support is advertised.
+
+The negative-control validation should be interpreted carefully. Running with
+loader environment variables removed proves the main binary has no startup-time
+Verdi requirement. A stronger release sign-off should also test a VCD/FST command
+in an environment where Verdi runtime libraries are physically absent or otherwise
+unresolvable by the dynamic loader.
 
 ### Backend-Neutral Engine Contract
 
@@ -204,9 +265,14 @@ Unsupported FSDB cases must fail deterministically and distinguish among:
 - binary built without `fsdb`
 - binary built with `fsdb`, but Verdi runtime unavailable
 - FSDB path available, but the requested command is not implemented yet
+- FSDB file version newer than the validated reader can open
 
 These unsupported states must remain distinguishable through stable stderr error
 classification and stable exit-code behavior.
+
+Version compatibility must be part of the user-facing support statement. A reader
+that can open one FSDB fixture is not evidence that it can open dumps produced by
+newer simulators or newer Verdi writers.
 
 ### Format Detection and Remediation
 
@@ -263,6 +329,7 @@ Its role is to carry licensed infrastructure that cannot live in the public repo
 including as needed:
 
 - private fixtures or fixture manifests
+- licensed fixture-generation jobs, possibly using FsdbWriter when available
 - private CI definitions
 - container or environment wiring
 - validated-matrix records
@@ -298,6 +365,8 @@ This RFC is satisfied only if the following can be demonstrated.
 - `cargo install wavepeek --features fsdb` fails clearly when `VERDI_HOME` or the
   validated matrix prerequisites are not satisfied
 - the public repo does not redistribute proprietary Verdi/FsdbReader assets
+- validation-only FsdbWriter tooling, if used, is not required for normal user
+  installation unless explicitly documented for a licensed validation lane
 
 ### Linkage Isolation
 
@@ -307,12 +376,16 @@ This RFC is satisfied only if the following can be demonstrated.
   unavailable at runtime
 - those claims are backed by repeatable dependency inspection and runtime checks
   on the validated matrix
+- the above checks are repeated on the actual `wavepeek` binary, not only on a
+  standalone feasibility executable
 
 ### Runtime Behavior
 
 - VCD/FST behavior remains compatible with the existing public contracts
 - supported FSDB commands succeed on the validated matrix
 - unsupported FSDB commands fail with deterministic, actionable errors
+- FSDB reader/file-version mismatches are detected and reported as compatibility
+  failures, not as generic parse errors
 
 ### Semantics
 
@@ -321,7 +394,9 @@ This RFC is satisfied only if the following can be demonstrated.
   changes them
 - per-command FSDB support is documented and repeated in each
   release that claims FSDB support
-- the three unsupported FSDB states remain distinguishable via stable stderr
+- supported FSDB producer/reader version expectations are documented for each
+  release that claims FSDB support
+- the enumerated unsupported FSDB states remain distinguishable via stable stderr
   classification and exit-code behavior
 
 ### Validation Governance
@@ -339,20 +414,23 @@ The following belong in the future execution plan, not in this RFC:
 - detailed file-by-file repository changes
 - phased rollout and task sequencing
 - fixture generation or storage workflow details
+- exact FsdbWriter fixture-generation command and source layout
 - wrapper-repo automation details
 - schedule and engineering estimates
 - benchmark strategy and performance targets beyond the core runtime constraint
 
 ## Risks
 
-1. Lazy runtime isolation may prove harder than expected or infeasible on the
-   target Verdi/toolchain combination.
+1. Lazy runtime isolation is feasible in a standalone demo, but may still be
+   accidentally broken when integrated into the real `wavepeek` build graph.
 2. Backend abstraction may be incomplete if it models metadata queries well but
    does not close `change` and `property` semantics.
 3. ABI drift across compiler, libstdc++, loader, and Verdi versions may narrow
    the supported matrix more than expected.
 4. Partial command support may create user confusion unless release notes and
    errors are explicit about what is supported.
+5. FSDB file-version drift can make older validated readers reject dumps produced
+   by newer tools, so support cannot be described by reader version alone.
 
 ## References
 

@@ -9,6 +9,8 @@ This directory is designed so local development and CI share one foundation whil
 ## Non-obvious decisions
 - The workspace mounts the repository parent into `/workspaces` (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
 - OpenCode state is bind-mounted from the host and created in `initializeCommand` so auth/session state survives container recreation and first-run mount failures are avoided.
+- Local sessions always bind-mount a managed host proxy path to `/opt/verdi`; `initializeCommand` points that proxy at host `VERDI_HOME` when available, otherwise it creates an empty directory so ordinary devcontainers still start.
+- `VERDI_HOME` is exported inside shell sessions only when `/opt/verdi/share/FsdbReader/ffrAPI.h` exists, keeping default public workflows Verdi-free.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
 - `postStartCommand: make bootstrap` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.

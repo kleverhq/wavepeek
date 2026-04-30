@@ -8,14 +8,15 @@
         "WAVEPEEK_IN_CONTAINER": "1"
     },
     "runArgs": ["--network=host"],
-    "initializeCommand": "sh -lc 'mkdir -p \"$HOME/.config/opencode\" \"$HOME/.local/share/opencode\" \"$HOME/.cache/opencode\" \"$HOME/.config/gh\"'",
+    "initializeCommand": "sh \"${localWorkspaceFolder}/.devcontainer/initialize-host.sh\"",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
     "mounts": [
         "source=${localEnv:HOME}/.config/opencode,target=/home/ubuntu/.config/opencode,type=bind",
         "source=${localEnv:HOME}/.config/gh,target=/home/ubuntu/.config/gh,type=bind",
         "source=${localEnv:HOME}/.local/share/opencode,target=/home/ubuntu/.local/share/opencode,type=bind",
-        "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind"
+        "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind",
+        "source=${localEnv:HOME}/.cache/wavepeek-devcontainer/verdi,target=/opt/verdi,type=bind,readonly"
     ],
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,

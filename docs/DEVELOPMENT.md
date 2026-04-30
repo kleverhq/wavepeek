@@ -13,6 +13,11 @@ with CI.
 - Automation and CI use `.devcontainer/.devcontainer.json` (`ci` target).
 - Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in image build,
   so tests do not fetch fixtures at runtime.
+- If the host process that starts the devcontainer has `VERDI_HOME` pointing at a
+  Verdi install, the local devcontainer mounts it read-only at `/opt/verdi` and
+  shell sessions export `VERDI_HOME=/opt/verdi` when the expected FsdbReader
+  layout is present. Without host `VERDI_HOME`, `/opt/verdi` is an empty no-op
+  mount and default workflows remain unchanged.
 
 For rationale and non-obvious container decisions, see `.devcontainer/AGENTS.md`.
 

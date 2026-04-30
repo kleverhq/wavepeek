@@ -94,6 +94,22 @@ RUN install -d -m 0755 -o ubuntu -g ubuntu \
 # Ensure /workspaces exists and is writable
 RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /workspaces
 
+# Optional local Verdi mount. Local devcontainer sessions may bind-mount Verdi at
+# /opt/verdi; public/CI lanes leave VERDI_HOME unset.
+RUN printf '%s\n' \
+    'if [ -f /opt/verdi/share/FsdbReader/ffrAPI.h ]; then' \
+    '    export VERDI_HOME=/opt/verdi' \
+    'fi' \
+    > /etc/profile.d/wavepeek-verdi.sh && \
+    chmod 0644 /etc/profile.d/wavepeek-verdi.sh && \
+    printf '%s\n' \
+    '' \
+    '# Source optional Verdi mount environment for interactive bash shells.' \
+    'if [ -f /etc/profile.d/wavepeek-verdi.sh ]; then' \
+    '    . /etc/profile.d/wavepeek-verdi.sh' \
+    'fi' \
+    >> /etc/bash.bashrc
+
 # Provision pinned RTL fixtures for tests
 COPY --from=rtl_artifacts /opt/rtl-artifacts /opt/rtl-artifacts
 

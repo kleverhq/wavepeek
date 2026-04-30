@@ -43,14 +43,14 @@ bool_T tree_callback(fsdbTreeCBType cb_type, void *client_data, void *tree_cb_da
 
     TreeStats *stats = static_cast<TreeStats *>(client_data);
     if (stats == nullptr) {
-        return FALSE;
+        return static_cast<bool_T>(0);
     }
 
     if (cb_type == FSDB_TREE_CBT_VAR) {
         stats->signal_count += 1;
     }
 
-    return TRUE;
+    return static_cast<bool_T>(1);
 }
 
 std::string scale_unit_from(ffrObject *fsdb_obj) {
@@ -105,13 +105,14 @@ extern "C" int32_t fsdb_probe_file(const char *path, FsdbProbeResult *result) {
         return result->code;
     }
 
-    if (ffrObject::ffrIsFSDB(path) == FALSE) {
+    str_T fsdb_path = const_cast<str_T>(path);
+    if (ffrObject::ffrIsFSDB(fsdb_path) == static_cast<bool_T>(0)) {
         result->code = -3;
         copy_into(result->message, sizeof(result->message), "path is not recognized as FSDB by FsdbReader");
         return result->code;
     }
 
-    ffrObject *fsdb_obj = ffrObject::ffrOpen3(path);
+    ffrObject *fsdb_obj = ffrObject::ffrOpen3(fsdb_path);
     if (fsdb_obj == nullptr) {
         result->code = -4;
         copy_into(result->message, sizeof(result->message), "ffrOpen3 returned null");

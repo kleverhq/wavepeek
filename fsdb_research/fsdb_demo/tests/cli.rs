@@ -20,7 +20,8 @@ fn build_info_reports_mock_bridge_path() {
         .assert()
         .success()
         .stdout(predicate::str::contains("mock-bridge-path: "))
-        .stdout(predicate::str::contains("verdi-bridge-status: "));
+        .stdout(predicate::str::contains("verdi-bridge-status: "))
+        .stdout(predicate::str::contains("fsdb-writer-path: "));
 }
 
 #[test]

@@ -8,6 +8,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=FSDB_DEMO_EXTRA_CXXFLAGS");
     println!("cargo:rerun-if-env-changed=FSDB_DEMO_EXTRA_LDFLAGS");
     println!("cargo:rerun-if-changed=native/bridge_api.h");
+    println!("cargo:rerun-if-changed=native/fsdb_fixture_writer.cpp");
     println!("cargo:rerun-if-changed=native/mock_bridge.cpp");
     println!("cargo:rerun-if-changed=native/verdi_bridge.cpp");
 
@@ -24,12 +25,25 @@ fn main() {
     );
 
     match env::var_os("VERDI_HOME") {
-        None => emit_verdi_bridge_env("skipped-no-verdi-home", None, None),
-        Some(verdi_home) => build_verdi_bridge(&native_dir, &out_dir, &PathBuf::from(verdi_home)),
+        None => emit_verdi_env("skipped-no-verdi-home", None, None, None),
+        Some(verdi_home) => {
+            build_verdi_artifacts(&native_dir, &out_dir, &PathBuf::from(verdi_home))
+        }
     }
 }
 
-fn build_verdi_bridge(native_dir: &Path, out_dir: &Path, verdi_home: &Path) {
+fn build_verdi_artifacts(native_dir: &Path, out_dir: &Path, verdi_home: &Path) {
+    let bridge_path = build_verdi_bridge(native_dir, out_dir, verdi_home);
+    let writer_path = build_fsdb_fixture_writer(native_dir, out_dir, verdi_home);
+    emit_verdi_env(
+        "built",
+        Some(&bridge_path),
+        Some(&writer_path),
+        Some(verdi_home),
+    );
+}
+
+fn build_verdi_bridge(native_dir: &Path, out_dir: &Path, verdi_home: &Path) -> PathBuf {
     let include_dir = verdi_home.join("share/FsdbReader");
     let library_dir = include_dir.join("linux64");
     let header_path = include_dir.join("ffrAPI.h");
@@ -99,7 +113,67 @@ fn build_verdi_bridge(native_dir: &Path, out_dir: &Path, verdi_home: &Path) {
         );
     }
 
-    emit_verdi_bridge_env("built", Some(&bridge_path), Some(verdi_home));
+    bridge_path
+}
+
+fn build_fsdb_fixture_writer(native_dir: &Path, out_dir: &Path, verdi_home: &Path) -> PathBuf {
+    let include_dir = verdi_home.join("share/FsdbWriter");
+    let library_dir = include_dir.join("linux64");
+    let header_path = include_dir.join("ffwAPI.h");
+    let nffw_path = library_dir.join("libnffw.so");
+
+    if !header_path.exists() {
+        panic!(
+            "VERDI_HOME is set to '{}' but '{}' is missing",
+            verdi_home.display(),
+            header_path.display()
+        );
+    }
+    if !nffw_path.exists() {
+        panic!(
+            "VERDI_HOME is set to '{}' but '{}' is missing",
+            verdi_home.display(),
+            nffw_path.display()
+        );
+    }
+
+    let writer_path = out_dir.join("fsdb_fixture_writer");
+    let compiler = cxx_compiler();
+    let mut command = Command::new(&compiler);
+    command
+        .arg("-std=c++11")
+        .arg("-I")
+        .arg(&include_dir)
+        .arg("-o")
+        .arg(&writer_path)
+        .arg(native_dir.join("fsdb_fixture_writer.cpp"))
+        .arg("-L")
+        .arg(&library_dir)
+        .arg("-lnffw")
+        .arg(format!("-Wl,-rpath,{}", library_dir.display()));
+
+    push_extra_flags(&mut command, "FSDB_DEMO_EXTRA_CXXFLAGS");
+    push_extra_flags(&mut command, "FSDB_DEMO_EXTRA_LDFLAGS");
+
+    let output = command.output().unwrap_or_else(|error| {
+        panic!(
+            "failed to spawn '{}' while building the FSDB fixture writer: {error}",
+            compiler.display()
+        )
+    });
+
+    if !output.status.success() {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        panic!(
+            "failed to build the FSDB fixture writer with '{}'.\nstdout:\n{}\nstderr:\n{}\nHint: adjust FSDB_DEMO_EXTRA_CXXFLAGS / FSDB_DEMO_EXTRA_LDFLAGS if your Verdi toolchain needs extra ABI flags.",
+            compiler.display(),
+            stdout.trim_end(),
+            stderr.trim_end()
+        );
+    }
+
+    writer_path
 }
 
 fn compile_mock_bridge(native_dir: &Path, bridge_path: &Path) {
@@ -133,11 +207,20 @@ fn compile_mock_bridge(native_dir: &Path, bridge_path: &Path) {
     }
 }
 
-fn emit_verdi_bridge_env(status: &str, bridge_path: Option<&Path>, verdi_home: Option<&Path>) {
+fn emit_verdi_env(
+    status: &str,
+    bridge_path: Option<&Path>,
+    writer_path: Option<&Path>,
+    verdi_home: Option<&Path>,
+) {
     println!("cargo:rustc-env=FSDB_DEMO_VERDI_BRIDGE_STATUS={status}");
     println!(
         "cargo:rustc-env=FSDB_DEMO_VERDI_BRIDGE_PATH={}",
         bridge_path.map_or_else(String::new, |path| path.display().to_string())
+    );
+    println!(
+        "cargo:rustc-env=FSDB_DEMO_FSDB_WRITER_PATH={}",
+        writer_path.map_or_else(String::new, |path| path.display().to_string())
     );
     println!(
         "cargo:rustc-env=FSDB_DEMO_VERDI_HOME={}",

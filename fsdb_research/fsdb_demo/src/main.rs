@@ -2,8 +2,8 @@ use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 use fsdb_demo::{
-    BuildInfo, DisplayPath, default_verdi_bridge_path, format_key_value_lines,
-    probe_with_bridge_path,
+    BuildInfo, DisplayPath, default_fsdb_writer_path, default_verdi_bridge_path,
+    format_key_value_lines, generate_fsdb_fixture, probe_with_bridge_path,
 };
 
 fn main() {
@@ -13,6 +13,7 @@ fn main() {
     let outcome = match cli.command {
         Command::BuildInfo => build_info_output(&build_info),
         Command::Noop => noop_output(&build_info),
+        Command::Generate { out, writer } => generate_output(&build_info, &out, writer.as_deref()),
         Command::Probe { waves, bridge } => probe_output(&build_info, &waves, bridge.as_deref()),
     };
 
@@ -41,6 +42,16 @@ enum Command {
     BuildInfo,
     /// Prove the binary starts without touching the Verdi bridge.
     Noop,
+    /// Generate a tiny FSDB fixture using the separately built FsdbWriter tool.
+    Generate {
+        /// Path where the generated FSDB file should be written.
+        #[arg(long)]
+        out: PathBuf,
+
+        /// Optional explicit writer path. Useful for manual experiments.
+        #[arg(long)]
+        writer: Option<PathBuf>,
+    },
     /// Load a bridge lazily and probe one FSDB file.
     Probe {
         /// Path to the waveform file that the bridge should probe.
@@ -68,6 +79,10 @@ fn build_info_output(build_info: &BuildInfo) -> Result<String, String> {
             DisplayPath(&build_info.verdi_bridge_path).to_string(),
         ),
         (
+            "fsdb-writer-path",
+            DisplayPath(&build_info.fsdb_writer_path).to_string(),
+        ),
+        (
             "verdi-home",
             DisplayPath(&build_info.verdi_home).to_string(),
         ),
@@ -82,6 +97,25 @@ fn noop_output(build_info: &BuildInfo) -> Result<String, String> {
             "verdi-bridge-status",
             build_info.verdi_bridge_status.clone(),
         ),
+    ]))
+}
+
+fn generate_output(
+    build_info: &BuildInfo,
+    out: &Path,
+    explicit_writer: Option<&Path>,
+) -> Result<String, String> {
+    let writer_path = match explicit_writer {
+        Some(path) => path.to_path_buf(),
+        None => default_fsdb_writer_path(build_info).map_err(|error| error.to_string())?,
+    };
+
+    let output_path =
+        generate_fsdb_fixture(out, &writer_path).map_err(|error| error.to_string())?;
+    Ok(format_key_value_lines(&[
+        ("writer-path", writer_path.display().to_string()),
+        ("output-path", output_path.display().to_string()),
+        ("status", "ok".to_string()),
     ]))
 }
 

@@ -2,6 +2,7 @@ use std::ffi::{CStr, CString, c_char};
 use std::fmt;
 use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use libloading::Library;
 use thiserror::Error;
@@ -14,6 +15,7 @@ pub struct BuildInfo {
     pub mock_bridge_path: PathBuf,
     pub verdi_bridge_status: String,
     pub verdi_bridge_path: Option<PathBuf>,
+    pub fsdb_writer_path: Option<PathBuf>,
     pub verdi_home: Option<PathBuf>,
 }
 
@@ -24,6 +26,7 @@ impl BuildInfo {
             mock_bridge_path: PathBuf::from(env_or_empty("FSDB_DEMO_MOCK_BRIDGE_PATH")),
             verdi_bridge_status: env_or_empty("FSDB_DEMO_VERDI_BRIDGE_STATUS"),
             verdi_bridge_path: optional_path("FSDB_DEMO_VERDI_BRIDGE_PATH"),
+            fsdb_writer_path: optional_path("FSDB_DEMO_FSDB_WRITER_PATH"),
             verdi_home: optional_path("FSDB_DEMO_VERDI_HOME"),
         }
     }
@@ -66,6 +69,23 @@ pub enum ProbeError {
     NullBridgeKind { path: PathBuf },
 }
 
+#[derive(Debug, Error)]
+pub enum GenerateError {
+    #[error("no FSDB fixture writer was built for this crate (build status: {status})")]
+    NoBuiltWriter { status: String },
+    #[error("failed to run FSDB fixture writer '{path}': {error}")]
+    RunWriter {
+        path: PathBuf,
+        error: std::io::Error,
+    },
+    #[error("FSDB fixture writer '{path}' failed with status {status}: {stderr}")]
+    WriterFailed {
+        path: PathBuf,
+        status: std::process::ExitStatus,
+        stderr: String,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(C)]
 struct FsdbProbeResult {
@@ -90,6 +110,38 @@ pub fn default_verdi_bridge_path(build_info: &BuildInfo) -> Result<PathBuf, Prob
         .ok_or_else(|| ProbeError::NoBuiltVerdiBridge {
             status: build_info.verdi_bridge_status.clone(),
         })
+}
+
+pub fn default_fsdb_writer_path(build_info: &BuildInfo) -> Result<PathBuf, GenerateError> {
+    build_info
+        .fsdb_writer_path
+        .clone()
+        .ok_or_else(|| GenerateError::NoBuiltWriter {
+            status: build_info.verdi_bridge_status.clone(),
+        })
+}
+
+pub fn generate_fsdb_fixture(
+    output_path: &Path,
+    writer_path: &Path,
+) -> Result<PathBuf, GenerateError> {
+    let output = Command::new(writer_path)
+        .arg(output_path)
+        .output()
+        .map_err(|error| GenerateError::RunWriter {
+            path: writer_path.to_path_buf(),
+            error,
+        })?;
+
+    if !output.status.success() {
+        return Err(GenerateError::WriterFailed {
+            path: writer_path.to_path_buf(),
+            status: output.status,
+            stderr: String::from_utf8_lossy(&output.stderr).trim().to_string(),
+        });
+    }
+
+    Ok(output_path.to_path_buf())
 }
 
 pub fn probe_with_bridge_path(
@@ -183,6 +235,9 @@ fn env_or_empty(name: &str) -> String {
             .unwrap_or_default()
             .to_string(),
         "FSDB_DEMO_VERDI_BRIDGE_PATH" => option_env!("FSDB_DEMO_VERDI_BRIDGE_PATH")
+            .unwrap_or_default()
+            .to_string(),
+        "FSDB_DEMO_FSDB_WRITER_PATH" => option_env!("FSDB_DEMO_FSDB_WRITER_PATH")
             .unwrap_or_default()
             .to_string(),
         "FSDB_DEMO_VERDI_HOME" => option_env!("FSDB_DEMO_VERDI_HOME")

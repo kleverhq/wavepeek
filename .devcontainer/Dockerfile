@@ -126,7 +126,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nano openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
-    jq ripgrep gh \
+    jq ripgrep ugrep poppler-utils fd-find tree gh \
     perl-doc z3 gtkwave \
     python3 pipx \
     && apt-get clean \
@@ -139,7 +139,7 @@ ENV SURFER_INSTALL=/opt/surfer
 COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INSTALL}
 
 # Install OpenCode
-ENV OPENCODE_VERSION=1.2.27
+ENV OPENCODE_VERSION=1.14.30
 RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
 
 # Prefer X11 backend in devcontainer GUI sessions.

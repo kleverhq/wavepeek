@@ -70,6 +70,11 @@ Standalone validation added these concrete implementation facts:
 - newer readers can open older generated FSDBs with warnings, while older readers
   may reject newer FSDB file versions outright
 
+A Verdi `T-2022.06` API exploration in `docs/verdi_2022_api_explore.md` maps the
+current `wavepeek` command surface to the FSDB Reader APIs needed for each
+command. It is feasibility research for a future execution plan, not approval to
+implement FSDB support.
+
 ## Decision Drivers
 
 The design must satisfy these constraints:
@@ -445,6 +450,7 @@ The following belong in the future execution plan, not in this RFC:
 - `src/waveform/mod.rs`
 - `src/waveform/expr_host.rs`
 - `src/engine/expr_runtime.rs`
+- `docs/verdi_2022_api_explore.md`
 - `tests/change_vcd_fst_parity.rs`
 - `tests/property_vcd_fst_parity.rs`
 

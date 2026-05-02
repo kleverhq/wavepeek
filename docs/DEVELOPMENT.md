@@ -16,23 +16,6 @@ with CI.
 
 For rationale and non-obvious container decisions, see `.devcontainer/AGENTS.md`.
 
-## Agent-Assisted Coding (OpenCode)
-
-OpenCode is the primary agent toolchain for this repository.
-
-- Runtime settings and command permissions: `opencode.json`
-- Custom agents: `.opencode/agent/`
-- Custom skills: `.opencode/skills/`
-- Complex features/refactors: use `exec-plan`
-- Implementation review: use `ask-review` with the `review` agent
-- Periodic repository cleanup/simplification: use `repo-gc`
-
-Operational policy:
-
-- Keep agent-facing source of truth in `docs/` and `AGENTS.md` breadcrumbs.
-- Do not store separate process documentation under `.opencode/`; keep only
-  runnable agent/skill assets there.
-
 ## Debug Mode
 
 Debug mode is a repository-wide internal contract enabled only with `DEBUG=1`.

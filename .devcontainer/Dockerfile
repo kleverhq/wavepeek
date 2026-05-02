@@ -145,7 +145,7 @@ COPY --from=node_toolchain /usr/local/ /usr/local/
 # Install development-only dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    nano openssh-client bash-completion \
+    nano tmux openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
     jq ripgrep ugrep pdfgrep poppler-utils fd-find tree gh \
     perl-doc z3 gtkwave \

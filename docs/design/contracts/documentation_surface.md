@@ -72,9 +72,8 @@ requiredness, and flag tables remain code-first in `src/cli/` and generated
 help. Narrative command topics should point readers back to `wavepeek help
 <command-path...>` for exact syntax.
 
-The canonical packaged skill source lives at `docs/cli/wavepeek-skill.md`.
-`.opencode/skills/wavepeek/SKILL.md` is a derived runtime copy that must stay in
-sync with the packaged source.
+The canonical packaged skill source lives at `docs/cli/wavepeek-skill.md` and
+is emitted verbatim by `wavepeek docs skill`.
 
 ## 4. Docs Search Semantics
 

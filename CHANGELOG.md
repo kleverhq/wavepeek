@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Superseded the temporary universal `-h == --help` help model with layered help and a packaged narrative-doc surface.
 
 ### Removed
+- Removed project-local OpenCode config/skills.
 - Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/design/index.md` and `docs/design/contracts/expression_lang.md` instead.
 
 ## [0.4.0] - 2026-04-05

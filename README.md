@@ -61,19 +61,19 @@ wavepeek signal --waves "$WAVES" --scope "$scope" --json | jq '.data[:5]'
 
 ## Agentic Flows
 
-`wavepeek` ships with a ready-to-install skill:
+`wavepeek` ships with a ready-to-install agent skill:
 
-- Skill folder (repo): `https://github.com/kleverhq/wavepeek/tree/main/.opencode/skills/wavepeek`
+- Packaged source (repo): `docs/cli/wavepeek-skill.md`
+- CLI export: `wavepeek docs skill`
 
 Install via your agent:
 
-- Ask your coding agent to install the skill from the repository path above (for example, with a skill-installer workflow if your harness supports one).
+- Ask your coding agent to install the skill from `docs/cli/wavepeek-skill.md` or from the output of `wavepeek docs skill`.
 
-Manual install (copy the `.opencode/skills/wavepeek` folder):
+Manual install examples:
 
-- Codex CLI: `~/.codex/skills/wavepeek`
-- Claude Code: `~/.claude/skills/wavepeek`
-- OpenCode (project-local): `<your-project>/.opencode/skills/wavepeek`
+- Codex CLI: `~/.codex/skills/wavepeek/SKILL.md`
+- Claude Code: `~/.claude/skills/wavepeek/SKILL.md`
 
 Note: an MCP server for tool-native agent integration is not available yet, but is planned.
 

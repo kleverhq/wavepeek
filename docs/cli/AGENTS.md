@@ -1,7 +1,7 @@
 # CLI Docs Guide
 
 This directory contains the packaged Markdown source for `wavepeek docs` and
-the canonical packaged source for the shipped OpenCode skill text.
+the canonical packaged source for the shipped agent skill text.
 
 ## Parent Map
 

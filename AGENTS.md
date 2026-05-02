@@ -18,7 +18,6 @@ For docs-local navigation, read `docs/AGENTS.md`.
 ## Child Maps
 
 - Devcontainer setup notes: `.devcontainer/AGENTS.md`
-- OpenCode assets: `.opencode/AGENTS.md`
 - Performance and benchmark work: `bench/AGENTS.md`
 - Documentation map: `docs/AGENTS.md`
 - Schema contract assets: `schema/AGENTS.md`
@@ -51,16 +50,6 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - Use repository-root `tmp/` for scratch files, ad hoc outputs, logs, and other disposable artifacts; it is git-ignored and may be created/used freely.
 - Do not bypass hooks unless the user explicitly requests it.
 - GitHub Actions workflows live under `.github/workflows/`; use `docs/DEVELOPMENT.md` for workflow gates and `docs/RELEASE.md` for release process context.
-
-## Agent-Assisted Coding
-
-- OpenCode is the primary agent toolchain for this repository.
-- OpenCode runtime settings and command permissions are in `opencode.json`.
-- Custom OpenCode agents live in `.opencode/agent/`.
-- Custom OpenCode skills live in `.opencode/skills/`.
-- Complex features/refactors should use `exec-plan` skill.
-- Implementation review should use `ask-review` skill with the `review` agent.
-- Periodic repository cleanup and simplification should use `repo-gc` skill.
 
 ## Critical Tool Safety Rule
 

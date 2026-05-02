@@ -19,5 +19,6 @@ This directory stores execution plans used for complex features and refactors.
 - Treat completed plans as historical records; they may retain references to
   retired planning docs that are no longer canonical.
 
-For writing standards, use `../../.opencode/skills/exec-plan/SKILL.md` and
-`../../.opencode/skills/exec-plan/references/plan-template.md`.
+For writing standards, keep plans self-contained, linearly executable, and
+validated against the current repository docs rather than retired tool-local
+skill copies.

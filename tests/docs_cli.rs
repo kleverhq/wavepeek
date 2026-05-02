@@ -33,14 +33,6 @@ fn canonical_skill_path() -> PathBuf {
     docs_root().join("wavepeek-skill.md")
 }
 
-fn opencode_skill_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(".opencode")
-        .join("skills")
-        .join("wavepeek")
-        .join("SKILL.md")
-}
-
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
     let mut command = wavepeek_cmd();
     let assert = command.args(args).assert().success();
@@ -407,14 +399,6 @@ fn docs_skill_prints_packaged_skill_markdown() {
     let actual = successful_stdout(&["docs", "skill"]);
 
     assert_eq!(actual, expected);
-}
-
-#[test]
-fn packaged_skill_source_stays_synced_with_opencode_skill() {
-    let packaged = fs::read(canonical_skill_path()).expect("packaged skill should be readable");
-    let opencode = fs::read(opencode_skill_path()).expect("opencode skill should be readable");
-
-    assert_eq!(packaged, opencode);
 }
 
 #[test]

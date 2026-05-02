@@ -2,10 +2,14 @@
 
 This directory stores execution plans used for complex features and refactors.
 
+## Parent Map
+
+- Documentation map: `../AGENTS.md`
+
 ## Layout
 
-- In-progress work: `docs/exec-plans/active/`
-- Completed plans: `docs/exec-plans/completed/`
+- In-progress work: `active/`
+- Completed plans: `completed/`
 
 ## Conventions
 
@@ -15,5 +19,5 @@ This directory stores execution plans used for complex features and refactors.
 - Treat completed plans as historical records; they may retain references to
   retired planning docs that are no longer canonical.
 
-For writing standards, use `.opencode/skills/exec-plan/SKILL.md` and
-`.opencode/skills/exec-plan/references/plan-template.md`.
+For writing standards, use `../../.opencode/skills/exec-plan/SKILL.md` and
+`../../.opencode/skills/exec-plan/references/plan-template.md`.

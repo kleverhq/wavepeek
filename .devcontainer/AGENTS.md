@@ -2,25 +2,29 @@
 
 This directory is designed so local development and CI share one foundation while paying different runtime costs.
 
+## Parent Map
+
+- Repository map: `../AGENTS.md`
+
 ## Why this layout exists
-- `.devcontainer/Dockerfile` uses multi-stage targets to separate heavy tool builds, a shared base layer, and final `ci`/`dev` profiles. This keeps CI and local environments aligned while preserving layer reuse and rebuild speed.
-- `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json` intentionally point to different targets in the same Dockerfile. Local sessions use `dev` (interactive + GUI tools), while automation uses `ci` (lean, predictable runtime) to avoid maintaining two drifting images.
+- `Dockerfile` uses multi-stage targets to separate heavy tool builds, a shared base layer, and final `ci`/`dev` profiles. This keeps CI and local environments aligned while preserving layer reuse and rebuild speed.
+- `devcontainer.json` and `devcontainer.ci.json` intentionally point to different targets in the same Dockerfile. Local sessions use `dev` (interactive + GUI tools), while automation uses `ci` (lean, predictable runtime) to avoid maintaining two drifting images.
 
 ## Non-obvious decisions
-- The workspace mounts the repository parent into `/workspaces` (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
-- OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `.devcontainer/initialize.sh` to create mount sources before container startup.
+- The workspace mounts the repository parent as the container workspace root (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
+- OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `initialize.sh` to create mount sources before container startup.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
 - `postStartCommand: make bootstrap` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
 - CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.
-- GitHub Actions creates a transient `.devcontainer/.devcontainer.json` symlink to `.devcontainer/devcontainer.ci.json` because newer `devcontainer up` validates the config filename even though the canonical CI config keeps its clearer name.
+- GitHub Actions creates a transient `.devcontainer.json` symlink to `devcontainer.ci.json` because newer `devcontainer up` validates the config filename even though the canonical CI config keeps its clearer name.
 
 ## RTL fixture provisioning
-- Large waveform fixtures are baked into the image at build time under `/opt/rtl-artifacts` by a dedicated Docker stage (`rtl_artifacts`).
-- Fixture payload is controlled by `RTL_ARTIFACTS_VERSION` in `.devcontainer/Dockerfile` and is shared by both `ci` and `dev` targets through the common `base` stage.
+- Large waveform fixtures are baked into the image at build time by a dedicated Docker stage (`rtl_artifacts`).
+- Fixture payload is controlled by `RTL_ARTIFACTS_VERSION` in `Dockerfile` and is shared by both `ci` and `dev` targets through the common `base` stage.
 - Test/runtime commands never download fixtures from the network; `make ci`/`make pre-commit` assert the local fixture payload is present.
 
 ## Bumping fixture version
-1. Update `RTL_ARTIFACTS_VERSION` in `.devcontainer/Dockerfile` (`rtl_artifacts` stage).
+1. Update `RTL_ARTIFACTS_VERSION` in `Dockerfile` (`rtl_artifacts` stage).
 2. Rebuild both container targets and run `make ci` + `make pre-commit` inside container to verify payload and tests.

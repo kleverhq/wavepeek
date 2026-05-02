@@ -5,13 +5,13 @@ repository.
 
 ## Parent Map
 
-- Repository map: [`../AGENTS.md`](../AGENTS.md)
+- Repository map: `../AGENTS.md`
 
 ## Source of Truth
 
-- Schema generation and validation entrypoints: [`../Makefile`](../Makefile) (`update-schema`, `check-schema`)
-- Schema contract checker: [`../scripts/check_schema_contract.py`](../scripts/check_schema_contract.py)
-- CLI schema command and JSON envelope contract: [`../docs/design/contracts/machine_output.md`](../docs/design/contracts/machine_output.md)
+- Schema generation and validation entrypoints: `../Makefile` (`update-schema`, `check-schema`)
+- Schema contract checker: `../scripts/check_schema_contract.py`
+- CLI schema command and JSON envelope contract: `../docs/design/contracts/machine_output.md`
 
 Prefer updating schema artifacts via `make update-schema` and validating with
 `make check-schema`.

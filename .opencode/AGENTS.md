@@ -1,6 +1,6 @@
 # OpenCode Assets Guide
 
-This file is a local navigation map for `.opencode/`.
+This file is a local navigation map for this directory.
 
 ## Parent Map
 

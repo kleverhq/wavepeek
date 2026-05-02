@@ -13,7 +13,6 @@ fn command_runtime_manifests_and_snapshots_follow_shared_contract() {
     assert_eq!(
         command_manifest_file_names(),
         vec![
-            "AGENTS.md".to_string(),
             "command_runtime_negative_manifest.json".to_string(),
             "command_runtime_positive_manifest.json".to_string(),
         ]

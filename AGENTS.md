@@ -1,44 +1,46 @@
 # Agent Guide (wavepeek)
 
 This file is a repository map for coding agents. Use it as the first entry point,
-then follow links to deeper docs.
+then follow referenced paths to deeper docs.
 
 ## Start Here
 
-- Product design entrypoint and contracts: [`docs/design/index.md`](docs/design/index.md)
-- Delivery milestones and versions: [`docs/ROADMAP.md`](docs/ROADMAP.md)
-- Development workflow and coding conventions: [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)
-- Release checklist and rollback notes: [`docs/RELEASE.md`](docs/RELEASE.md)
-- Active backlog, open design questions, and tech debt: [`docs/BACKLOG.md`](docs/BACKLOG.md)
-- Execution plans (active/completed): [`docs/exec-plans/`](docs/exec-plans/)
-- Actual shipped changes by release: [`CHANGELOG.md`](CHANGELOG.md)
+- Product design entrypoint and contracts: `docs/design/index.md`
+- Delivery milestones and versions: `docs/ROADMAP.md`
+- Development workflow and coding conventions: `docs/DEVELOPMENT.md`
+- Release checklist and rollback notes: `docs/RELEASE.md`
+- Active backlog, open design questions, and tech debt: `docs/BACKLOG.md`
+- Execution plans (active/completed): `docs/exec-plans/`
+- Actual shipped changes by release: `CHANGELOG.md`
 
-For docs-local navigation, read [`docs/AGENTS.md`](docs/AGENTS.md).
+For docs-local navigation, read `docs/AGENTS.md`.
 
 ## Child Maps
 
-- Devcontainer setup notes: [`.devcontainer/AGENTS.md`](.devcontainer/AGENTS.md)
-- GitHub automation assets: [`.github/AGENTS.md`](.github/AGENTS.md)
-- OpenCode assets: [`.opencode/AGENTS.md`](.opencode/AGENTS.md)
-- Performance and benchmark work: [`bench/AGENTS.md`](bench/AGENTS.md)
-- Documentation map: [`docs/AGENTS.md`](docs/AGENTS.md)
-- Schema contract assets: [`schema/AGENTS.md`](schema/AGENTS.md)
-- Release/support scripts: [`scripts/AGENTS.md`](scripts/AGENTS.md)
-- Source code: [`src/AGENTS.md`](src/AGENTS.md)
-- Test suites: [`tests/AGENTS.md`](tests/AGENTS.md)
+- Devcontainer setup notes: `.devcontainer/AGENTS.md`
+- OpenCode assets: `.opencode/AGENTS.md`
+- Performance and benchmark work: `bench/AGENTS.md`
+- Documentation map: `docs/AGENTS.md`
+- Schema contract assets: `schema/AGENTS.md`
+- Release/support scripts: `scripts/AGENTS.md`
+- Source code: `src/AGENTS.md`
+- Test suites: `tests/AGENTS.md`
 
 ## Breadcrumb Policy (`AGENTS.md` Network)
 
 - Treat each `AGENTS.md` as a local map, not a full manual.
 - Keep this root file short; canonical policy and product details live in `docs/`.
-- When creating a new durable directory with tracked files or directory-specific workflow rules, add a local `AGENTS.md` in the same change.
-- Each local `AGENTS.md` should link:
+- Add a local `AGENTS.md` only for key navigation nodes or when a directory needs ad hoc agent guidance that is not obvious from its parent map.
+- Do not create `AGENTS.md` files just because a directory has tracked files; prefer the nearest parent map unless a local file materially improves navigation or workflow safety.
+- Each local `AGENTS.md` that exists should include paths:
   - back to the nearest parent map (or root `AGENTS.md`),
   - sideways to canonical source-of-truth docs/files for that area,
   - forward to child directories that also define `AGENTS.md`.
-- Keep breadcrumbs concise and non-duplicative; prefer cross-links over copied guidance.
-- Update breadcrumb cross-links whenever directories are added, moved, or repurposed.
-- Skip one-off/generated/vendor-style leaf directories unless a local map materially improves navigation.
+- Write file and directory paths as plain code spans, for example `docs/AGENTS.md`; do not use full Markdown links.
+- Resolve every path relative to the `AGENTS.md` file that contains it, not relative to the repository root.
+- Keep breadcrumbs concise and non-duplicative; prefer path references over copied guidance.
+- Update breadcrumb paths whenever directories with local maps are added, moved, repurposed, or removed.
+- Skip leaf, one-off, generated, vendor-style, or self-evident directories unless a local map materially improves navigation or workflow safety.
 
 ## Core Workflow
 
@@ -47,6 +49,7 @@ For docs-local navigation, read [`docs/AGENTS.md`](docs/AGENTS.md).
 - Local pre-handoff gate: `make check` (format/lint/schema/build + commit-msg check).
 - Test-inclusive gate: `make ci` (same checks + `cargo test`).
 - Do not bypass hooks unless the user explicitly requests it.
+- GitHub Actions workflows live under `.github/workflows/`; use `docs/DEVELOPMENT.md` for workflow gates and `docs/RELEASE.md` for release process context.
 
 ## Agent-Assisted Coding
 
@@ -67,4 +70,4 @@ For docs-local navigation, read [`docs/AGENTS.md`](docs/AGENTS.md).
 ## Devcontainer Notes
 
 For non-obvious container decisions, fixture provisioning, and environment
-rationale, see [`.devcontainer/AGENTS.md`](.devcontainer/AGENTS.md).
+rationale, see `.devcontainer/AGENTS.md`.

@@ -10,7 +10,7 @@ with CI.
 
 - `make` targets enforce container execution via `WAVEPEEK_IN_CONTAINER=1`.
 - Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target).
-- Automation and CI use `.devcontainer/.devcontainer.json` (`ci` target).
+- Automation and CI use `.devcontainer/devcontainer.ci.json` (`ci` target).
 - Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in image build,
   so tests do not fetch fixtures at runtime.
 

@@ -11,16 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, export, and the shipped agent skill.
 
 ### Changed
-<<<<<<< HEAD
 - Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
 - Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
-=======
 - Moved open design questions into `docs/BACKLOG.md` and removed the separate `docs/design/open_questions.md` entrypoint.
 - Superseded the temporary universal `-h == --help` help model with layered help and a packaged narrative-doc surface.
 
 ### Removed
 - Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/design/index.md` and `docs/design/contracts/expression_lang.md` instead.
->>>>>>> fa84440 (docs: tighten changelog policy and retire legacy doc entrypoints)
 
 ## [0.4.0] - 2026-04-05
 

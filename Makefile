@@ -37,12 +37,18 @@ update-schema: require-container
 check-schema: require-container
 	@$(PYTHON) scripts/check_schema_contract.py "$(SCHEMA_PATH)"
 
+## Lint GitHub Actions workflows
+check-actions: require-container
+	actionlint .github/workflows/*.yml
+
 ## Bootstrap project env
 bootstrap: require-container
 	rustup show >/dev/null
 	cargo --version
 	cargo fmt --version
 	cargo clippy --version
+	actionlint -version
+	devcontainer --version
 	gtkwave --version
 	surfer --version
 	pre-commit install --hook-type commit-msg --hook-type pre-commit
@@ -119,10 +125,10 @@ check-commit: require-container
 	cz check --commit-msg-file "$$(git rev-parse --git-path COMMIT_EDITMSG)"
 
 ## Check everything
-check: format-check lint check-schema check-build check-commit
+check: format-check lint check-schema check-actions check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema test test-aux check-build
+ci: format-check lint check-schema check-actions test test-aux check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

@@ -34,6 +34,15 @@ repos:
         pass_filenames: false
         stages: [pre-commit]
 
+      - id: github-actions-lint
+        name: GitHub Actions lint
+        description: Run actionlint on GitHub Actions workflows
+        entry: make check-actions
+        language: system
+        files: ^\.github/workflows/.*\.ya?ml$
+        pass_filenames: false
+        stages: [pre-commit]
+
       - id: rust-test
         name: Rust testing
         description: Run cargo tests

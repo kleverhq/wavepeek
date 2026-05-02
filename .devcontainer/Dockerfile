@@ -66,6 +66,9 @@ FROM node:24-bookworm AS node_toolchain
 # ---- Base Image --------------------------------------------------------------
 FROM ubuntu:24.04 AS base
 
+ARG TARGETARCH
+ARG ACTIONLINT_VERSION=1.7.12
+
 # Install necessary system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -78,6 +81,19 @@ RUN apt-get update && \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install GitHub Actions workflow linter for hooks and CI checks.
+RUN arch="${TARGETARCH:-amd64}" && \
+    case "$arch" in \
+        amd64|arm64) actionlint_arch="$arch" ;; \
+        *) printf '%s\n' "unsupported actionlint architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    tmp_dir="$(mktemp -d)" && \
+    curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
+        "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz" && \
+    tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint && \
+    install -m 0755 "$tmp_dir/actionlint" /usr/local/bin/actionlint && \
+    rm -rf "$tmp_dir"
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
@@ -145,7 +161,9 @@ COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INST
 
 # Install latest npm-based coding agents
 ENV NPM_CONFIG_PREFIX=/home/ubuntu/.local
+ENV DEVCONTAINERS_CLI_VERSION=0.86.0
 RUN npm install -g \
+    @devcontainers/cli@${DEVCONTAINERS_CLI_VERSION} \
     @openai/codex \
     @mariozechner/pi-coding-agent
 

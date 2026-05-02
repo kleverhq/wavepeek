@@ -14,6 +14,7 @@ This directory is designed so local development and CI share one foundation whil
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
 - CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.
+- GitHub Actions creates a transient `.devcontainer/.devcontainer.json` symlink to `.devcontainer/devcontainer.ci.json` because newer `devcontainer up` validates the config filename even though the canonical CI config keeps its clearer name.
 
 ## RTL fixture provisioning
 - Large waveform fixtures are baked into the image at build time under `/opt/rtl-artifacts` by a dedicated Docker stage (`rtl_artifacts`).

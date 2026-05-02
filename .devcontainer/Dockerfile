@@ -60,6 +60,9 @@ RUN mkdir -p ${RTL_ARTIFACTS_DIR} && \
     curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_ClusteredRocketConfig_mt-memcpy.fst \
       https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_ClusteredRocketConfig_mt-memcpy.fst
 
+# ---- Node Toolchain ----------------------------------------------------------
+FROM node:24-bookworm AS node_toolchain
+
 # ---- Base Image --------------------------------------------------------------
 FROM ubuntu:24.04 AS base
 
@@ -121,12 +124,14 @@ FROM base AS dev
 
 USER root
 
+COPY --from=node_toolchain /usr/local/ /usr/local/
+
 # Install development-only dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nano openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
-    jq ripgrep ugrep poppler-utils fd-find tree gh \
+    jq ripgrep ugrep pdfgrep poppler-utils fd-find tree gh \
     perl-doc z3 gtkwave \
     python3 pipx \
     && apt-get clean \
@@ -138,9 +143,18 @@ USER ubuntu
 ENV SURFER_INSTALL=/opt/surfer
 COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INSTALL}
 
-# Install OpenCode
-ENV OPENCODE_VERSION=1.14.30
-RUN curl -fsSL https://opencode.ai/install | bash -s -- --version ${OPENCODE_VERSION}
+# Install latest npm-based coding agents
+ENV NPM_CONFIG_PREFIX=/home/ubuntu/.local
+RUN npm install -g \
+    @openai/codex \
+    @mariozechner/pi-coding-agent
+
+# Install latest OpenCode
+RUN curl -fsSL https://opencode.ai/install | bash && \
+    ln -s /home/ubuntu/.opencode/bin/opencode /home/ubuntu/.local/bin/opencode
+
+# Install latest Claude Code
+RUN curl -fsSL https://claude.ai/install.sh | bash
 
 # Prefer X11 backend in devcontainer GUI sessions.
 ENV WINIT_UNIX_BACKEND=x11

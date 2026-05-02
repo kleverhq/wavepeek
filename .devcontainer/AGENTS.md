@@ -8,7 +8,7 @@ This directory is designed so local development and CI share one foundation whil
 
 ## Non-obvious decisions
 - The workspace mounts the repository parent into `/workspaces` (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
-- OpenCode state is bind-mounted from the host and created in `initializeCommand` so auth/session state survives container recreation and first-run mount failures are avoided.
+- OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `.devcontainer/initialize.sh` to create mount sources before container startup.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
 - `postStartCommand: make bootstrap` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.

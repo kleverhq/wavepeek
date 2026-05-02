@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
+- Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
 
 ## [0.4.0] - 2026-04-05
 

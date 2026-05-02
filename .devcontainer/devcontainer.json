@@ -8,14 +8,18 @@
         "WAVEPEEK_IN_CONTAINER": "1"
     },
     "runArgs": ["--network=host"],
-    "initializeCommand": "sh -lc 'mkdir -p \"$HOME/.config/opencode\" \"$HOME/.local/share/opencode\" \"$HOME/.cache/opencode\" \"$HOME/.config/gh\"'",
+    "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/initialize.sh\"",
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
     "mounts": [
         "source=${localEnv:HOME}/.config/opencode,target=/home/ubuntu/.config/opencode,type=bind",
         "source=${localEnv:HOME}/.config/gh,target=/home/ubuntu/.config/gh,type=bind",
         "source=${localEnv:HOME}/.local/share/opencode,target=/home/ubuntu/.local/share/opencode,type=bind",
-        "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind"
+        "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind",
+        "source=${localEnv:HOME}/.claude,target=/home/ubuntu/.claude,type=bind",
+        "source=${localEnv:HOME}/.claude.json,target=/home/ubuntu/.claude.json,type=bind",
+        "source=${localEnv:HOME}/.codex,target=/home/ubuntu/.codex,type=bind",
+        "source=${localEnv:HOME}/.pi,target=/home/ubuntu/.pi,type=bind"
     ],
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,

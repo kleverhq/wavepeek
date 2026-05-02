@@ -30,8 +30,14 @@
             "settings": {
                 "files.trimTrailingWhitespace": true,
                 "extensions.verifySignature": false,
+                "terminal.integrated.sendKeybindingsToShell": true,
                 "terminal.integrated.commandsToSkipShell": [
-                    "-workbench.action.quickOpen"
+                    "-workbench.action.quickOpen",
+                    "-workbench.action.showCommands",
+                    "-workbench.action.toggleSidebarVisibility",
+                    "-workbench.action.files.save",
+                    "-workbench.action.closeActiveEditor",
+                    "-workbench.action.terminal.focusFind"
                 ]
             },
             "extensions": [
@@ -45,7 +51,8 @@
                 "github.vscode-pull-request-github",
                 "d-koppenhagen.vscode-code-review",
                 "mhutchie.git-graph",
-                "bierner.markdown-mermaid"
+                "bierner.markdown-mermaid",
+                "tomoki1207.pdf"
             ]
         }
     }

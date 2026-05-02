@@ -48,6 +48,7 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - Standard quality gate: `make ci`.
 - Local pre-handoff gate: `make check` (format/lint/schema/build + commit-msg check).
 - Test-inclusive gate: `make ci` (same checks + `cargo test`).
+- Use repository-root `tmp/` for scratch files, ad hoc outputs, logs, and other disposable artifacts; it is git-ignored and may be created/used freely.
 - Do not bypass hooks unless the user explicitly requests it.
 - GitHub Actions workflows live under `.github/workflows/`; use `docs/DEVELOPMENT.md` for workflow gates and `docs/RELEASE.md` for release process context.
 

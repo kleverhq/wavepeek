@@ -16,6 +16,14 @@ with CI.
 
 For rationale and non-obvious container decisions, see `.devcontainer/AGENTS.md`.
 
+## Temporary Files
+
+Use the repository-root `tmp/` directory for scratch files, intermediate outputs,
+ad hoc logs, temporary benchmark captures, and other disposable working artifacts.
+`tmp/` is ignored by git; create it as needed and use it freely during local or
+agent-assisted work. Do not promote files from `tmp/` into durable repository
+state unless they are intentionally reviewed and moved to a tracked location.
+
 ## Debug Mode
 
 Debug mode is a repository-wide internal contract enabled only with `DEBUG=1`.

@@ -423,6 +423,28 @@ fn docs_command_help_is_layered() {
 }
 
 #[test]
+fn info_help_uses_aligned_summary_and_simple_option_docs() {
+    let short_help = successful_stdout_text(&["info", "-h"]);
+    let long_help = successful_stdout_text(&["info", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "info"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Reports metadata for the selected waveform dump.")
+        );
+    }
+
+    assert!(long_help.contains("Behavior:\n- Prints available metadata (e.g. time unit, start/end times, etc.) in free form\n- `--json` uses the machine contract defined by `wavepeek schema`."));
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
+}
+
+#[test]
 fn docs_show_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "show", "-h"]);
     let long_help = successful_stdout_text(&["docs", "show", "--help"]);
@@ -460,10 +482,9 @@ fn shipped_commands_help_is_self_descriptive() {
         (
             "info",
             &[
-                "Reports dump metadata",
-                "Human-readable output is the default terminal mode",
-                "time_unit",
-                "time_start",
+                "Reports metadata for the selected waveform dump.",
+                "Prints available metadata",
+                "time unit, start/end times",
                 "wavepeek schema",
             ],
         ),

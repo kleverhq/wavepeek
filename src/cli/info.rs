@@ -4,10 +4,10 @@ use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct InfoArgs {
-    /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
+    /// Path to VCD/FST waveform file
     #[arg(long, value_name = "FILE")]
     pub waves: PathBuf,
-    /// Machine-readable JSON output (contract: see `wavepeek schema`)
+    /// Machine-readable JSON output
     #[arg(long)]
     pub json: bool,
 }

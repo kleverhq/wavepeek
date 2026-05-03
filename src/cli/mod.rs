@@ -59,15 +59,12 @@ enum Command {
 #[derive(Debug, Subcommand)]
 enum WaveformCommand {
     #[command(
-        about = "Show waveform metadata",
-        long_about = r#"Reports dump metadata for the selected waveform dump.
+        about = "Reports metadata for the selected waveform dump.",
+        long_about = r#"Reports metadata for the selected waveform dump.
 
 Behavior:
-- Prints `time_unit`, `time_start`, and `time_end`.
-- Human-readable output is the default terminal mode.
-- `--json` uses the machine contract defined by `wavepeek schema`.
-
-Use this command first to confirm dump bounds before time-window queries."#
+- Prints available metadata (e.g. time unit, start/end times, etc.) in free form
+- `--json` uses the machine contract defined by `wavepeek schema`."#
     )]
     Info(info::InfoArgs),
     #[command(

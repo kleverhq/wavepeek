@@ -10,7 +10,7 @@ pub mod value;
 
 use clap::error::ErrorKind;
 use clap::parser::ValueSource;
-use clap::{CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
@@ -19,33 +19,47 @@ use crate::output;
 #[derive(Debug, Parser)]
 #[command(
     name = "wavepeek",
-    version,
-    about = "wavepeek is a command-line tool for RTL waveform inspection.\nIt provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.",
-    long_about = r#"wavepeek is a command-line tool for RTL waveform inspection.
-It provides deterministic, machine-friendly output and a minimal set of primitives that compose into repeatable debug recipes.
+    disable_version_flag = true,
+    about = "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.\nSee more with '--help'",
+    long_about = r#"wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.
+See more with '--help'
 
 General conventions:
-- Waveform-inspection commands keep their primary inputs as named flags after the command name; the visible `help` and `docs` surfaces intentionally use positional paths, topic IDs, queries, and export paths for offline navigation.
-- Waveform-inspection commands require `--waves <FILE>`; `schema`, `docs`, and `help` are the non-waveform surfaces.
-- Output is bounded by default (for example with `--max` or finite command shape) and recursive traversals are depth-bounded.
+- Waveform-inspection commands require `--waves <FILE>`.
+- Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Errors follow `error: <category>: <message>`.
 
-Use `wavepeek <command> --help` for full command reference help, `wavepeek help <command-path...>` for nested help-path aliases, and `wavepeek docs` for packaged narrative guidance."#,
+Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, and `wavepeek docs` for guidance."#,
     after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs",
-    after_long_help = "Examples:\n  wavepeek help change\n  wavepeek docs topics\n  wavepeek docs show <topic>\n  wavepeek docs skill"
+    after_long_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs",
+    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
 )]
 pub struct Cli {
+    /// Print semver version
+    #[arg(short = 'V', action = ArgAction::SetTrue)]
+    version_semver: bool,
+    /// Print full version
+    #[arg(long = "version", action = ArgAction::SetTrue)]
+    version_full: bool,
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    #[command(flatten, next_help_heading = "Waveform commands")]
+    Waveform(WaveformCommand),
+    #[command(flatten, next_help_heading = "Helper commands")]
+    Helper(HelperCommand),
+}
+
+#[derive(Debug, Subcommand)]
+enum WaveformCommand {
     #[command(
-        about = "Show dump metadata (time unit and bounds)",
+        about = "Show waveform metadata",
         long_about = r#"Reports dump metadata for the selected waveform dump.
 
 Behavior:
@@ -57,7 +71,7 @@ Use this command first to confirm dump bounds before time-window queries."#
     )]
     Info(info::InfoArgs),
     #[command(
-        about = "List hierarchy scopes (deterministic DFS)",
+        about = "Explore hierarchy scopes",
         long_about = r#"Provides deterministic hierarchy traversal over scope paths.
 
 Behavior:
@@ -71,7 +85,7 @@ Use this command to explore hierarchy shape before narrowing to signal-level que
     )]
     Scope(scope::ScopeArgs),
     #[command(
-        about = "List signals in scope with metadata",
+        about = "Explore signals within scope",
         long_about = r#"Provides scope-local signal listing with deterministic ordering.
 
 Behavior:
@@ -101,7 +115,7 @@ Use this command for deterministic spot checks at a specific timestamp."#
     )]
     Value(value::ValueArgs),
     #[command(
-        about = "Get value snapshots over a time range",
+        about = "List signal changes over a time range",
         long_about = r#"Provides range-based delta snapshots for selected signals.
 
 Behavior:
@@ -118,7 +132,7 @@ Use this command to inspect value transitions over bounded time windows."#,
     )]
     Change(change::ChangeArgs),
     #[command(
-        about = "Check property over event triggers",
+        about = "Evaluate properties over a time range",
         long_about = r#"Check property over event triggers.
 
 Behavior:
@@ -133,6 +147,10 @@ Use this command to check event-driven property matches and transitions over bou
         after_long_help = "See also:\n  wavepeek docs show commands/property\n  wavepeek docs show concepts/time\n  wavepeek docs show concepts/selectors"
     )]
     Property(property::PropertyArgs),
+}
+
+#[derive(Debug, Subcommand)]
+enum HelperCommand {
     #[command(
         about = "Print canonical JSON schema contract",
         long_about = r#"Prints the canonical JSON schema document for wavepeek machine output contracts.
@@ -152,7 +170,7 @@ Use this command to fetch the machine-readable contract consumed by JSON-mode cl
 pub fn run() -> Result<(), WavepeekError> {
     let argv: Vec<_> = std::env::args_os().collect();
     let parse_argv = if argv.len() == 1 {
-        vec![argv[0].clone(), "--help".into()]
+        vec![argv[0].clone(), "-h".into()]
     } else {
         argv
     };
@@ -174,7 +192,21 @@ pub fn run() -> Result<(), WavepeekError> {
         Err(error) => return handle_parse_error(error),
     };
 
-    dispatch(cli.command)
+    if cli.version_semver {
+        println!(env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    if cli.version_full {
+        println!("wavepeek v{}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    let Some(command) = cli.command else {
+        return Ok(());
+    };
+
+    dispatch(command)
 }
 
 fn is_debug_mode_enabled() -> bool {
@@ -198,7 +230,11 @@ fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {
 }
 
 fn build_cli_command() -> clap::Command {
-    Cli::command()
+    let mut command = Cli::command();
+    if let Some(help) = command.find_subcommand_mut("help") {
+        *help = help.clone().about("Show help for the given subcommand(s)");
+    }
+    command
 }
 
 fn handle_parse_error(error: clap::Error) -> Result<(), WavepeekError> {
@@ -317,14 +353,18 @@ fn dispatch(command: Command) -> Result<(), WavepeekError> {
 
 fn into_engine_command(command: Command) -> EngineCommand {
     match command {
-        Command::Schema(args) => EngineCommand::Schema(args),
-        Command::Info(args) => EngineCommand::Info(args),
-        Command::Scope(args) => EngineCommand::Scope(args),
-        Command::Signal(args) => EngineCommand::Signal(args),
-        Command::Value(args) => EngineCommand::Value(args),
-        Command::Change(args) => EngineCommand::Change(args),
-        Command::Property(args) => EngineCommand::Property(args),
-        Command::Docs(args) => EngineCommand::Docs(args),
+        Command::Waveform(command) => match command {
+            WaveformCommand::Info(args) => EngineCommand::Info(args),
+            WaveformCommand::Scope(args) => EngineCommand::Scope(args),
+            WaveformCommand::Signal(args) => EngineCommand::Signal(args),
+            WaveformCommand::Value(args) => EngineCommand::Value(args),
+            WaveformCommand::Change(args) => EngineCommand::Change(args),
+            WaveformCommand::Property(args) => EngineCommand::Property(args),
+        },
+        Command::Helper(command) => match command {
+            HelperCommand::Schema(args) => EngineCommand::Schema(args),
+            HelperCommand::Docs(args) => EngineCommand::Docs(args),
+        },
     }
 }
 
@@ -351,7 +391,7 @@ mod tests {
             "--json",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Info(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -378,7 +418,7 @@ mod tests {
             "--json",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Scope(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -405,7 +445,7 @@ mod tests {
             "unlimited",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Scope(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -436,7 +476,7 @@ mod tests {
             "--json",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Signal(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -469,7 +509,7 @@ mod tests {
             "--json",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Value(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -506,7 +546,7 @@ mod tests {
             "--json",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Change(args) => {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
@@ -536,7 +576,7 @@ mod tests {
             "1",
         ]);
 
-        let command = into_engine_command(cli.command);
+        let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Property(args) => {
                 assert_eq!(args.on.as_deref(), Some("posedge top.clk"));

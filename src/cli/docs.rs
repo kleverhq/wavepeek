@@ -4,7 +4,7 @@ use clap::{Args, Subcommand};
 
 #[derive(Debug, Args)]
 #[command(
-    about = "Browse embedded narrative docs",
+    about = "Browse embedded documentation",
     long_about = r#"Browse the embedded narrative docs packaged with this wavepeek build.
 
 Behavior:

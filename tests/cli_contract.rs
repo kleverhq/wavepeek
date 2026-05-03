@@ -37,7 +37,11 @@ fn command_names_from_top_level_help(help: &str) -> Vec<String> {
     let mut in_commands = false;
 
     for line in help.lines() {
-        if line.trim() == "Commands:" {
+        let trimmed_line = line.trim();
+        if matches!(
+            trimmed_line,
+            "Commands:" | "Waveform commands:" | "Helper commands:"
+        ) {
             in_commands = true;
             continue;
         }
@@ -46,11 +50,11 @@ fn command_names_from_top_level_help(help: &str) -> Vec<String> {
             continue;
         }
 
-        if line.trim() == "Options:" {
+        if trimmed_line == "Options:" {
             break;
         }
 
-        if line.trim().is_empty() {
+        if trimmed_line.is_empty() {
             continue;
         }
 
@@ -114,7 +118,7 @@ fn no_args_prints_top_level_help_and_exits_zero() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a command-line tool for RTL waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
         ))
         .stdout(predicate::str::contains("Usage: wavepeek"))
         .stderr(predicate::str::is_empty());
@@ -129,7 +133,7 @@ fn help_lists_expected_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a command-line tool for RTL waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
         ))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("info"))
@@ -157,11 +161,18 @@ fn top_level_help_documents_general_conventions() {
         .success()
         .stdout(predicate::str::contains("General conventions:"))
         .stdout(predicate::str::contains(
-            "Waveform-inspection commands keep their primary inputs as named flags",
+            "Waveform-inspection commands require `--waves <FILE>`.",
         ))
-        .stdout(predicate::str::contains(
-            "`schema`, `docs`, and `help` are the non-waveform surfaces",
-        ))
+        .stdout(
+            predicate::str::contains(
+                "Waveform-inspection commands keep their primary inputs as named flags",
+            )
+            .not(),
+        )
+        .stdout(
+            predicate::str::contains("`schema`, `docs`, and `help` are the non-waveform surfaces")
+                .not(),
+        )
         .stdout(predicate::str::contains("Output is bounded by default"))
         .stdout(predicate::str::contains("Default output is human-readable"))
         .stdout(predicate::str::contains(
@@ -192,17 +203,17 @@ fn top_level_help_describes_shipped_subcommands_without_unimplemented_markers() 
             ),
         )
         .stdout(predicate::str::contains(
-            "Get value snapshots over a time range",
+            "List signal changes over a time range",
         ))
         .stdout(
-            predicate::str::contains("Get value snapshots over a time range (not implemented yet)")
+            predicate::str::contains("List signal changes over a time range (not implemented yet)")
                 .not(),
         )
         .stdout(predicate::str::contains(
-            "Check property over event triggers",
+            "Evaluate properties over a time range",
         ))
         .stdout(
-            predicate::str::contains("Check property over event triggers (not implemented yet)")
+            predicate::str::contains("Evaluate properties over a time range (not implemented yet)")
                 .not(),
         );
 }
@@ -247,13 +258,13 @@ fn top_level_short_help_is_compact_and_points_to_next_layers() {
 }
 
 #[test]
-fn no_args_help_matches_long_help_output() {
+fn no_args_help_matches_short_help_output() {
     let no_args = successful_stdout(&[]);
-    let long_help = successful_stdout(&["--help"]);
+    let short_help = successful_stdout(&["-h"]);
 
     assert_eq!(
-        no_args, long_help,
-        "wavepeek (no args) output must match wavepeek --help byte-for-byte"
+        no_args, short_help,
+        "wavepeek (no args) output must match wavepeek -h byte-for-byte"
     );
 }
 
@@ -263,9 +274,11 @@ fn top_level_long_help_describes_help_and_docs_entrypoints() {
 
     assert!(long_help.contains("General conventions:"));
     assert!(long_help.contains("wavepeek help <command-path...>"));
-    assert!(long_help.contains("wavepeek docs topics"));
-    assert!(long_help.contains("wavepeek docs show <topic>"));
-    assert!(long_help.contains("wavepeek docs skill"));
+    assert!(long_help.contains("wavepeek docs"));
+    assert!(long_help.contains("Next steps:"));
+    assert!(!long_help.contains("wavepeek docs topics"));
+    assert!(!long_help.contains("wavepeek docs show <topic>"));
+    assert!(!long_help.contains("wavepeek docs skill"));
 }
 
 #[test]
@@ -537,7 +550,7 @@ fn version_flags_print_version_to_stdout() {
         .arg("-V")
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("wavepeek "))
+        .stdout(predicate::str::is_match(r"^\d+\.\d+\.\d+\n$").unwrap())
         .stderr(predicate::str::is_empty());
 
     let mut long_command = wavepeek_cmd();
@@ -546,7 +559,7 @@ fn version_flags_print_version_to_stdout() {
         .arg("--version")
         .assert()
         .success()
-        .stdout(predicate::str::starts_with("wavepeek "))
+        .stdout(predicate::str::is_match(r"^wavepeek v\d+\.\d+\.\d+\n$").unwrap())
         .stderr(predicate::str::is_empty());
 }
 

@@ -68,13 +68,14 @@ Behavior:
     )]
     Info(info::InfoArgs),
     #[command(
-        about = "Explore hierarchy scopes",
+        about = "Provides deterministic hierarchy traversal over scope paths.",
         long_about = r#"Provides deterministic hierarchy traversal over scope paths.
 
 Behavior:
+- Finds all scopes matching `--filter` and displays scope name, depth, and kind.
 - Traversal order is stable: pre-order depth-first, with lexicographic child ordering.
 - Includes parser-native scope kinds from hierarchy data (not only modules).
-- `--tree` switches human output from flat list to visual hierarchy rendering.
+- `--tree` switches from flat list to visual hierarchy rendering.
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 

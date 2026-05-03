@@ -445,6 +445,40 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
 }
 
 #[test]
+fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
+    let short_help = successful_stdout_text(&["scope", "-h"]);
+    let long_help = successful_stdout_text(&["scope", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "scope"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Provides deterministic hierarchy traversal over scope paths.")
+        );
+    }
+
+    assert!(long_help.contains(
+        "Behavior:\n- Finds all scopes matching `--filter` and displays scope name, depth, and kind."
+    ));
+    assert!(!long_help.contains("human output"));
+
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains(
+            "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
+        ));
+        assert!(help.contains("Maximum traversal depth (`unlimited` disables depth truncation)"));
+        assert!(help.contains("Regex filter for full scope path"));
+        assert!(help.contains("Render hierarchy as an indented tree"));
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("(default:"));
+        assert!(!help.contains("invalid regex is rejected as an argument error"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
+}
+
+#[test]
 fn docs_show_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "show", "-h"]);
     let long_help = successful_stdout_text(&["docs", "show", "--help"]);

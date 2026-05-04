@@ -40,6 +40,12 @@ Stable design contracts and the design corpus entrypoint live under
 - Suggested stream record kinds: `begin`, `item` (command-specific payload), `warning`, `end` (with counters and truncation flags).
 - Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/design/reference/cli.md` and `docs/design/contracts/machine_output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
 
+### Typed stdin projection from wavepeek JSON
+
+- Consider allowing selected consumer arguments to use `-` as a typed stdin source from another `wavepeek --json` command instead of adding a separate chaining output mode.
+- Example: `scope --json | signal --scope -` projects exactly one `scope.data[].path`; `signal --json | value --signals -` projects one or more `signal.data[].path` values.
+- Keep compatibility explicit per argument/producer pair, preserve upstream warnings, reject ambiguous multi-stdin usage, and fail fast on wrong producer command or invalid cardinality.
+
 ## Tech Debt
 
 No open command-integration debt is tracked here right now.

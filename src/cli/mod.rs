@@ -83,14 +83,14 @@ Use this command to explore hierarchy shape before narrowing to signal-level que
     )]
     Scope(scope::ScopeArgs),
     #[command(
-        about = "Explore signals within scope",
-        long_about = r#"Provides scope-local signal listing with deterministic ordering.
+        about = "Provides scope-local signal listings.",
+        long_about = r#"Provides scope-local signal listings.
 
 Behavior:
+- Finds all signals matching `--filter` within the selected scope and displays name, kind, and available metadata (for example width).
 - Default mode lists only direct signals in the selected scope.
-- Recursive mode walks child scopes depth-first in stable lexicographic order.
-- Human output uses short names in non-recursive mode and scope-relative display in recursive mode; `--abs` always shows canonical paths.
-- `--max-depth` applies only in recursive mode.
+- Recursive mode walks child scopes depth-first in stable lexicographic order; `--max-depth` limits recursion when set.
+- Includes parser-native signal kinds (not only wires).
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
@@ -480,7 +480,7 @@ mod tests {
                 assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
                 assert_eq!(args.scope, "top.cpu");
                 assert!(args.recursive);
-                assert_eq!(args.max_depth, Some(LimitArg::Numeric(3)));
+                assert_eq!(args.max_depth, LimitArg::Numeric(3));
                 assert_eq!(args.max, LimitArg::Numeric(7));
                 assert_eq!(args.filter, ".*clk.*");
                 assert!(args.abs);

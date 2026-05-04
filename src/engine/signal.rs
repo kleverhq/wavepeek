@@ -17,8 +17,6 @@ pub struct SignalEntry {
     pub width: Option<u32>,
 }
 
-const DEFAULT_RECURSIVE_MAX_DEPTH: usize = 5;
-
 pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
     let SignalArgs {
         waves,
@@ -37,12 +35,6 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
-    if max_depth.is_some() && !recursive {
-        return Err(WavepeekError::Args(
-            "--max-depth requires --recursive. See 'wavepeek signal --help'.".to_string(),
-        ));
-    }
-
     let filter = Regex::new(filter.as_str()).map_err(|error| {
         WavepeekError::Args(format!(
             "invalid regex '{}': {error}. See 'wavepeek signal --help'.",
@@ -54,14 +46,13 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
     if max.is_unlimited() {
         warnings.push("limit disabled: --max=unlimited".to_string());
     }
-    if max_depth == Some(LimitArg::Unlimited) {
+    if max_depth == LimitArg::Unlimited {
         warnings.push("limit disabled: --max-depth=unlimited".to_string());
     }
 
     let effective_max_depth = match max_depth {
-        Some(LimitArg::Numeric(value)) => Some(value),
-        Some(LimitArg::Unlimited) => None,
-        None => Some(DEFAULT_RECURSIVE_MAX_DEPTH),
+        LimitArg::Numeric(value) => Some(value),
+        LimitArg::Unlimited => None,
     };
     let scope_prefix = format!("{scope}.");
 

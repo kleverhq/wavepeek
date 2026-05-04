@@ -479,6 +479,49 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
 }
 
 #[test]
+fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
+    let short_help = successful_stdout_text(&["signal", "-h"]);
+    let long_help = successful_stdout_text(&["signal", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "signal"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Provides scope-local signal listings.")
+        );
+    }
+
+    assert!(long_help.contains(
+        "Behavior:\n- Finds all signals matching `--filter` within the selected scope and displays name, kind, and available metadata (for example width)."
+    ));
+    assert!(long_help.contains("Recursive mode walks child scopes depth-first in stable lexicographic order; `--max-depth` limits recursion when set."));
+    assert!(long_help.contains("Includes parser-native signal kinds (not only wires)."));
+    assert!(!long_help.contains("human output"));
+
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Exact scope path (e.g. top.cpu)"));
+        assert!(help.contains(
+            "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
+        ));
+        assert!(help.contains("Regex filter for signal name"));
+        assert!(
+            help.contains(
+                "Maximum recursion depth below --scope (`unlimited` disables this limit)"
+            )
+        );
+        assert!(help.contains("[default: 5]"));
+        assert!(help.contains("Show canonical signal paths"));
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("`--scope` is required"));
+        assert!(!help.contains("(default:"));
+        assert!(!help.contains("invalid regex is rejected as an argument error"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
+}
+
+#[test]
 fn docs_show_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "show", "-h"]);
     let long_help = successful_stdout_text(&["docs", "show", "--help"]);
@@ -535,10 +578,10 @@ fn shipped_commands_help_is_self_descriptive() {
         (
             "signal",
             &[
-                "scope-local signal listing",
-                "Default mode lists only direct signals",
+                "Provides scope-local signal listings.",
+                "Finds all signals matching `--filter`",
                 "depth-first in stable lexicographic order",
-                "applies only in recursive mode",
+                "Includes parser-native signal kinds",
                 "wavepeek schema",
             ],
         ),
@@ -656,7 +699,7 @@ fn signal_help_documents_recursive_and_max_depth_flags() {
         .success()
         .stdout(predicate::str::contains("--recursive"))
         .stdout(predicate::str::contains("--max-depth"))
-        .stdout(predicate::str::contains("requires --recursive"));
+        .stdout(predicate::str::contains("limits recursion when set"));
 }
 
 #[test]

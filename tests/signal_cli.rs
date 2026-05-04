@@ -542,8 +542,9 @@ fn signal_max_depth_requires_recursive_flag() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with(
-            "error: args: --max-depth requires --recursive",
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains(
+            "the following required arguments were not provided: --recursive",
         ))
         .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 }

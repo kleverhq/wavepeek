@@ -437,6 +437,9 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
 
     assert!(long_help.contains("Behavior:\n- Prints available metadata (e.g. time unit, start/end times, etc.) in free form\n- `--json` uses the machine contract defined by `wavepeek schema`."));
     for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
         assert!(help.contains("Path to VCD/FST waveform file"));
         assert!(help.contains("Machine-readable JSON output"));
         assert!(!help.contains("(`--waves <FILE>` is required)"));
@@ -463,6 +466,10 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
     assert!(!long_help.contains("human output"));
 
     for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Selection options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
         assert!(help.contains("Path to VCD/FST waveform file"));
         assert!(help.contains(
             "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
@@ -499,6 +506,10 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
     assert!(!long_help.contains("human output"));
 
     for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Selection options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
         assert!(help.contains("Path to VCD/FST waveform file"));
         assert!(help.contains("Exact scope path (e.g. top.cpu)"));
         assert!(help.contains(

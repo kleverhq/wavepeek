@@ -10,7 +10,7 @@ pub mod value;
 
 use clap::error::ErrorKind;
 use clap::parser::ValueSource;
-use clap::{ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
+use clap::{Arg, ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
@@ -232,7 +232,31 @@ fn build_cli_command() -> clap::Command {
     if let Some(help) = command.find_subcommand_mut("help") {
         *help = help.clone().about("Show help for the given subcommand(s)");
     }
+    for command_name in ["info", "scope", "signal"] {
+        if let Some(subcommand) = command.find_subcommand_mut(command_name) {
+            *subcommand = with_other_help_options(subcommand.clone());
+        }
+    }
     command
+}
+
+fn with_other_help_options(command: clap::Command) -> clap::Command {
+    command
+        .disable_help_flag(true)
+        .arg(
+            Arg::new("help_short")
+                .short('h')
+                .action(ArgAction::HelpShort)
+                .help("Print help (see more with '--help')")
+                .help_heading("Other options"),
+        )
+        .arg(
+            Arg::new("help_long")
+                .long("help")
+                .action(ArgAction::HelpLong)
+                .help("Print help (see a summary with '-h')")
+                .help_heading("Other options"),
+        )
 }
 
 fn handle_parse_error(error: clap::Error) -> Result<(), WavepeekError> {

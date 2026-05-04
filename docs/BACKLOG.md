@@ -26,6 +26,14 @@ Stable design contracts and the design corpus entrypoint live under
 
 ## Issues
 
+### JSON schema data-field detail hardening
+
+- Tighten schema coverage for `data` payload fields that currently validate only as generic strings.
+- Add explicit enum definitions for enumeration-like fields such as `scope.data[].kind` and `signal.data[].kind`, sourced from the stable aliases emitted by the waveform adapter.
+- Add concise `description` text for command payload fields so `wavepeek schema` is more self-documenting for machine clients and agent workflows.
+- Include drift protection so Rust-side emitted aliases and schema enum values stay in sync.
+- Close when `schema/wavepeek.json`, `wavepeek schema`, schema checks, and relevant contract tests cover the richer field metadata without changing existing JSON output bytes except for the schema document itself.
+
 ### Post-MVP: temporal property language extensions
 
 - Track follow-up evolution toward richer assertion/cover-like checks (temporal operators, implication, multi-event relations).

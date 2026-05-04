@@ -98,15 +98,18 @@ Use this command after `scope` to inspect available signals in a target scope."#
     )]
     Signal(signal::SignalArgs),
     #[command(
-        about = "Get signal values at a specific time point",
+        about = "Provides point-in-time sampling for selected signals.",
         long_about = r#"Provides point-in-time sampling for selected signals.
 
 Behavior:
-- Supports canonical names without `--scope` and scope-relative names with `--scope`.
+- Prints values for the requested signals at the selected time point.
+- By default, signal names are top-related canonical paths (e.g. `top.cpu.state`).
+- For deep hierarchies, set `--scope` once with a canonical scope path and use shorter scope-relative names in `--signals`.
+- Do not mix top-related canonical names and scope-relative names in one request.
 - Output preserves the input order from `--signals`.
 - Time tokens must include explicit units and align to dump precision.
 - Values are emitted as Verilog literals (`<width>'h<digits>` with `x`/`z` support).
-- Fails fast if any requested signal cannot be resolved.
+- Fails fast if any requested signal cannot be resolved or if the selected time point is more precise than dump resolution.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command for deterministic spot checks at a specific timestamp."#
@@ -232,7 +235,7 @@ fn build_cli_command() -> clap::Command {
     if let Some(help) = command.find_subcommand_mut("help") {
         *help = help.clone().about("Show help for the given subcommand(s)");
     }
-    for command_name in ["info", "scope", "signal"] {
+    for command_name in ["info", "scope", "signal", "value"] {
         if let Some(subcommand) = command.find_subcommand_mut(command_name) {
             *subcommand = with_other_help_options(subcommand.clone());
         }

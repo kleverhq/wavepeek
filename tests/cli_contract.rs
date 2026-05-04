@@ -533,6 +533,53 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
 }
 
 #[test]
+fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
+    let short_help = successful_stdout_text(&["value", "-h"]);
+    let long_help = successful_stdout_text(&["value", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "value"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Provides point-in-time sampling for selected signals.")
+        );
+    }
+
+    for fragment in [
+        "Prints values for the requested signals at the selected time point.",
+        "By default, signal names are top-related canonical paths",
+        "set `--scope` once with a canonical scope path",
+        "Do not mix top-related canonical names and scope-relative names",
+        "more precise than dump resolution",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "value long help should contain `{fragment}`"
+        );
+    }
+
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Selection options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Time point with explicit units (e.g. 1337ns)"));
+        assert!(help.contains("Canonical scope path for scope-relative signal names"));
+        assert!(help.contains(
+            "Comma-separated top-related signal paths, or scope-relative names when --scope is set"
+        ));
+        assert!(help.contains("Show canonical signal paths"));
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("for example"));
+        assert!(!help.contains("bare numbers are rejected as argument errors"));
+        assert!(!help.contains("human output"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
+}
+
+#[test]
 fn docs_show_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "show", "-h"]);
     let long_help = successful_stdout_text(&["docs", "show", "--help"]);

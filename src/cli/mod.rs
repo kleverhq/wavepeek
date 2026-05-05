@@ -116,20 +116,18 @@ Use this command for deterministic spot checks at a specific timestamp."#
     )]
     Value(value::ValueArgs),
     #[command(
-        about = "List signal changes over a time range",
+        about = "Provides range-based delta snapshots for selected signals.",
         long_about = r#"Provides range-based delta snapshots for selected signals.
 
 Behavior:
+- Prints requested signal values for each `--on` trigger firing when at least one value changed since the previous firing.
+- Similar to a modified SystemVerilog `$monitor`, but with print trigger control instead of printing at every timestamp.
 - Range boundaries are inclusive; baseline state is initialized at range start.
-- Candidate timestamps come from `--on` triggers; omitted `--on` behaves as wildcard (`*`).
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result and truncation conditions may emit warnings.
-- Event triggers may use typed `iff` logical expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command to inspect value transitions over bounded time windows."#,
-        after_help = "Next steps:\n  wavepeek change --help\n  wavepeek docs show commands/change",
-        after_long_help = "Examples:\n  wavepeek change --waves dump.vcd --signals top.clk\n  wavepeek change --waves dump.vcd --from 0ns --to 50ns --scope top.cpu --signals clk,state --on 'posedge clk'\n\nSee also:\n  wavepeek docs show commands/change\n  wavepeek docs show workflows/find-first-change\n  wavepeek docs show troubleshooting/empty-results"
+Use this command to inspect value transitions over bounded time windows."#
     )]
     Change(change::ChangeArgs),
     #[command(
@@ -235,7 +233,7 @@ fn build_cli_command() -> clap::Command {
     if let Some(help) = command.find_subcommand_mut("help") {
         *help = help.clone().about("Show help for the given subcommand(s)");
     }
-    for command_name in ["info", "scope", "signal", "value"] {
+    for command_name in ["info", "scope", "signal", "value", "change"] {
         if let Some(subcommand) = command.find_subcommand_mut(command_name) {
             *subcommand = with_other_help_options(subcommand.clone());
         }

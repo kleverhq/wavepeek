@@ -381,24 +381,72 @@ fn waveform_help_avoids_literal_error_or_warning_message_bodies() {
 }
 
 #[test]
-fn change_help_is_layered_and_links_to_docs() {
+fn change_help_is_layered_without_examples_or_see_also() {
     let short_help = successful_stdout_text(&["change", "-h"]);
     let long_help = successful_stdout_text(&["change", "--help"]);
 
     assert!(short_help.contains("Usage: wavepeek change"));
-    assert!(short_help.contains("wavepeek change --help"));
-    assert!(short_help.contains("wavepeek docs show commands/change"));
-    assert!(
-        !short_help.contains("Examples:"),
-        "change -h should stay compact and avoid long-form examples"
-    );
-    assert!(long_help.contains("Examples:"));
-    assert!(long_help.contains("See also:"));
-    assert!(long_help.contains("wavepeek docs show commands/change"));
+    assert!(!short_help.contains("Examples:"));
+    assert!(!short_help.contains("See also:"));
+    assert!(!long_help.contains("Examples:"));
+    assert!(!long_help.contains("See also:"));
     assert!(
         short_help.len() < long_help.len(),
         "change -h should be materially shorter than change --help"
     );
+}
+
+#[test]
+fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
+    let short_help = successful_stdout_text(&["change", "-h"]);
+    let long_help = successful_stdout_text(&["change", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "change"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Provides range-based delta snapshots for selected signals.")
+        );
+    }
+
+    for fragment in [
+        "Prints requested signal values for each `--on` trigger firing",
+        "Similar to a modified SystemVerilog `$monitor`",
+        "Range boundaries are inclusive",
+        "Rows are emitted only when sampled signal values changed",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "change long help should contain `{fragment}`"
+        );
+    }
+    assert!(!long_help.contains("omitted `--on` behaves as wildcard"));
+    assert!(!long_help.contains("Event triggers may use typed `iff` logical expressions."));
+
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Selection options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(
+            help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
+        );
+        assert!(help.contains("End of inclusive time range (e.g. 1234ns; omitted means dump end)"));
+        assert!(help.contains("Canonical scope path for scope-relative signal and trigger names"));
+        assert!(help.contains(
+            "Comma-separated top-related signal paths, or scope-relative names when --scope is set"
+        ));
+        assert!(help.contains(
+            "Maximum number of snapshot rows (`unlimited` disables truncation, value must be > 0)"
+        ));
+        assert!(help.contains("Print canonical paths"));
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("(default: 50,"));
+        assert!(!help.contains("human output"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
 }
 
 #[test]
@@ -657,10 +705,9 @@ fn shipped_commands_help_is_self_descriptive() {
             "change",
             &[
                 "range-based delta snapshots",
-                "Range boundaries are inclusive",
-                "omitted `--on` behaves as wildcard",
+                "Prints requested signal values for each `--on` trigger firing",
+                "Similar to a modified SystemVerilog `$monitor`",
                 "Empty-result and truncation conditions may emit warnings",
-                "Candidate timestamps come from `--on` triggers",
                 "wavepeek schema",
             ],
         ),

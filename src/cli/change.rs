@@ -25,32 +25,38 @@ pub enum TuneChangeCandidateMode {
 
 #[derive(Debug, Args)]
 pub struct ChangeArgs {
-    /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
-    #[arg(long, value_name = "FILE")]
+    /// Path to VCD/FST waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// Start of inclusive time range (explicit units required)
-    #[arg(long)]
+    /// Start of inclusive time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
     pub from: Option<String>,
-    /// End of inclusive time range (explicit units required)
-    #[arg(long)]
+    /// End of inclusive time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
     pub to: Option<String>,
-    /// Scope for short signal and trigger names
-    #[arg(long)]
+    /// Canonical scope path for scope-relative signal and trigger names
+    #[arg(long, help_heading = "Selection options")]
     pub scope: Option<String>,
-    /// Comma-separated signal names (`--signals` is required)
-    #[arg(long, value_delimiter = ',', num_args = 1.., required = true)]
+    /// Comma-separated top-related signal paths, or scope-relative names when --scope is set
+    #[arg(
+        long,
+        value_delimiter = ',',
+        num_args = 1..,
+        required = true,
+        help_heading = "Selection options"
+    )]
     pub signals: Vec<String>,
     /// Event trigger expression (default: `*` when omitted)
-    #[arg(long)]
+    #[arg(long, help_heading = "Selection options")]
     pub on: Option<String>,
-    /// Maximum number of snapshot rows (default: 50, `unlimited` disables truncation, value must be > 0)
-    #[arg(long, default_value = "50")]
+    /// Maximum number of snapshot rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
     pub max: LimitArg,
-    /// Print canonical paths in human output
-    #[arg(long)]
+    /// Print canonical paths
+    #[arg(long, help_heading = "Output options")]
     pub abs: bool,
-    /// Machine-readable JSON output (contract: see `wavepeek schema`)
-    #[arg(long)]
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
     pub json: bool,
     /// Unstable internal performance control (requires DEBUG=1).
     #[arg(

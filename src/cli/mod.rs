@@ -131,19 +131,17 @@ Use this command to inspect value transitions over bounded time windows."#
     )]
     Change(change::ChangeArgs),
     #[command(
-        about = "Evaluate properties over a time range",
-        long_about = r#"Check property over event triggers.
+        about = "Provides timestamps where the specified property holds over event triggers.",
+        long_about = r#"Provides timestamps where the specified property holds over event triggers.
 
 Behavior:
-- Evaluate `--eval` on timestamps selected by `--on`.
-- `--capture` controls reporting mode (`match`, `switch`, `assert`, `deassert`).
-- Omitted `--on` behaves as wildcard (`*`) when `--eval` references at least one signal or raw event.
-- `switch` emits `assert` and `deassert` rows only for state transitions after the range-start baseline probe.
+- Evaluates `--eval` at timestamps selected by `--on` and prints time plus metadata when the property holds.
+- Level capture (`--capture match`) reports a match at every selected timestamp where the property holds.
+- Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.
+- Remotely similar to a SystemVerilog assert, but without temporal expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command to check event-driven property matches and transitions over bounded time windows."#,
-        after_help = "Next steps:\n  wavepeek property --help\n  wavepeek docs show commands/property",
-        after_long_help = "See also:\n  wavepeek docs show commands/property\n  wavepeek docs show concepts/time\n  wavepeek docs show concepts/selectors"
+Use this command to check event-driven property matches and transitions over bounded time windows."#
     )]
     Property(property::PropertyArgs),
 }
@@ -233,7 +231,7 @@ fn build_cli_command() -> clap::Command {
     if let Some(help) = command.find_subcommand_mut("help") {
         *help = help.clone().about("Show help for the given subcommand(s)");
     }
-    for command_name in ["info", "scope", "signal", "value", "change"] {
+    for command_name in ["info", "scope", "signal", "value", "change", "property"] {
         if let Some(subcommand) = command.find_subcommand_mut(command_name) {
             *subcommand = with_other_help_options(subcommand.clone());
         }

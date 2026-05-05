@@ -450,6 +450,57 @@ fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
 }
 
 #[test]
+fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
+    let short_help = successful_stdout_text(&["property", "-h"]);
+    let long_help = successful_stdout_text(&["property", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "property"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Provides timestamps where the specified property holds over event triggers.")
+        );
+    }
+
+    for fragment in [
+        "Evaluates `--eval` at timestamps selected by `--on`",
+        "Level capture (`--capture match`) reports a match at every selected timestamp",
+        "Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.",
+        "Remotely similar to a SystemVerilog assert, but without temporal expressions.",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "property long help should contain `{fragment}`"
+        );
+    }
+    assert!(!long_help.contains("Omitted `--on` behaves as wildcard"));
+    assert!(!long_help.contains("See also:"));
+
+    for help in [&short_help, &long_help] {
+        assert!(help.contains("Input options:"));
+        assert!(help.contains("Selection options:"));
+        assert!(help.contains("Output options:"));
+        assert!(help.contains("Other options:"));
+        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(
+            help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
+        );
+        assert!(help.contains("End of inclusive time range (e.g. 1234ns; omitted means dump end)"));
+        assert!(help.contains("Canonical scope path for scope-relative signal and event names"));
+        assert!(help.contains("Logical expression evaluated at selected event timestamps"));
+        assert!(
+            help.contains("Capture mode: level (`match`) or edge (`switch`, `assert`, `deassert`)")
+        );
+        assert!(help.contains("Machine-readable JSON output"));
+        assert!(!help.contains("(`--waves <FILE>` is required)"));
+        assert!(!help.contains("(`--eval` is required)"));
+        assert!(!help.contains("Capture mode (`match`, `switch`, `assert`, `deassert`)"));
+        assert!(!help.contains("Capture mode: match, switch, assert, or deassert"));
+        assert!(!help.contains("(contract: see `wavepeek schema`)"));
+    }
+}
+
+#[test]
 fn docs_command_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "-h"]);
     let long_help = successful_stdout_text(&["docs", "--help"]);
@@ -714,11 +765,10 @@ fn shipped_commands_help_is_self_descriptive() {
         (
             "property",
             &[
-                "Check property over event triggers",
-                "Evaluate `--eval` on timestamps selected by `--on`",
-                "when `--eval` references at least one signal or raw event",
-                "--capture",
-                "`switch` emits `assert` and `deassert` rows",
+                "specified property holds over event triggers",
+                "Evaluates `--eval` at timestamps selected by `--on`",
+                "Level capture (`--capture match`) reports a match",
+                "Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions",
                 "wavepeek schema",
             ],
         ),
@@ -789,7 +839,7 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "`switch` emits `assert` and `deassert` rows",
+            "Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions",
         ))
         .stdout(predicate::str::contains("--capture"));
 }

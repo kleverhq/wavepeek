@@ -14,28 +14,34 @@ pub enum CaptureMode {
 
 #[derive(Debug, Args)]
 pub struct PropertyArgs {
-    /// Path to VCD/FST waveform file (`--waves <FILE>` is required)
-    #[arg(long, value_name = "FILE")]
+    /// Path to VCD/FST waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// Start of inclusive time range (explicit units required)
-    #[arg(long)]
+    /// Start of inclusive time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
     pub from: Option<String>,
-    /// End of inclusive time range (explicit units required)
-    #[arg(long)]
+    /// End of inclusive time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
     pub to: Option<String>,
-    /// Scope for short signal and event names
-    #[arg(long)]
+    /// Canonical scope path for scope-relative signal and event names
+    #[arg(long, help_heading = "Selection options")]
     pub scope: Option<String>,
     /// Event trigger expression (default: `*` when omitted)
-    #[arg(long)]
+    #[arg(long, help_heading = "Selection options")]
     pub on: Option<String>,
-    /// Logical expression evaluated at event timestamps (`--eval` is required)
-    #[arg(long)]
+    /// Logical expression evaluated at selected event timestamps
+    #[arg(long, help_heading = "Selection options")]
     pub eval: String,
-    /// Capture mode (`match`, `switch`, `assert`, `deassert`)
-    #[arg(long, value_enum, default_value_t = CaptureMode::Switch, value_name = "MODE")]
+    /// Capture mode: level (`match`) or edge (`switch`, `assert`, `deassert`)
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = CaptureMode::Switch,
+        value_name = "MODE",
+        help_heading = "Output options"
+    )]
     pub capture: CaptureMode,
-    /// Machine-readable JSON output (contract: see `wavepeek schema`)
-    #[arg(long)]
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
     pub json: bool,
 }

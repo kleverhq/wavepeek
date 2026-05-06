@@ -81,6 +81,27 @@ impl DocsCatalog {
             .map(|record| record.summary.clone())
             .collect()
     }
+
+    fn logical_topic_summaries(&self) -> Vec<TopicSummary> {
+        let mut summaries = self.topic_summaries();
+        summaries.sort_by(|left, right| {
+            topic_section_rank(&left.section)
+                .cmp(&topic_section_rank(&right.section))
+                .then_with(|| left.id.cmp(&right.id))
+        });
+        summaries
+    }
+}
+
+fn topic_section_rank(section: &str) -> usize {
+    match section {
+        "intro" => 0,
+        "concepts" => 1,
+        "commands" => 2,
+        "workflows" => 3,
+        "troubleshooting" => 4,
+        _ => 5,
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -122,7 +143,7 @@ pub fn lookup_topic(id: &str) -> Result<Option<&'static TopicRecord>, WavepeekEr
 }
 
 pub fn list_topics() -> Result<Vec<TopicSummary>, WavepeekError> {
-    Ok(embedded_catalog()?.topic_summaries())
+    Ok(embedded_catalog()?.logical_topic_summaries())
 }
 
 pub fn normalize_search_query(query: &str) -> Result<String, WavepeekError> {
@@ -203,7 +224,7 @@ pub fn export_catalog(out_dir: &Path, force: bool) -> Result<ExportSummary, Wave
     let catalog = embedded_catalog()?;
     validate_export_target(out_dir, force)?;
 
-    let topics = catalog.topic_summaries();
+    let topics = catalog.logical_topic_summaries();
     let manifest = ExportManifest {
         kind: EXPORT_KIND.to_string(),
         export_format_version: EXPORT_FORMAT_VERSION,

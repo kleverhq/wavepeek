@@ -130,7 +130,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
         CommandData::DocsTopics(data) => data
             .topics
             .iter()
-            .map(|topic| format!("{}  {} — {}", topic.id, topic.title, topic.summary))
+            .map(|topic| format!("{} — {}", topic.id, topic.summary))
             .collect::<Vec<_>>()
             .join("\n"),
         CommandData::DocsSearch(data) => data

@@ -39,19 +39,11 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
         });
     }
 
-    let rendered = if args.summary {
-        topics
-            .iter()
-            .map(|topic| format!("{}  {}", topic.id, topic.summary))
-            .collect::<Vec<_>>()
-            .join("\n")
-    } else {
-        topics
-            .iter()
-            .map(|topic| format!("{}  {} — {}", topic.id, topic.title, topic.summary))
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
+    let rendered = topics
+        .iter()
+        .map(|topic| format!("{} — {}", topic.id, topic.summary))
+        .collect::<Vec<_>>()
+        .join("\n");
 
     Ok(text_result(CommandName::DocsTopics, rendered))
 }

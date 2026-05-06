@@ -16,13 +16,11 @@ pub struct DocsArgs {
 #[derive(Debug, Subcommand)]
 pub enum DocsCommand {
     #[command(
-        about = "List embedded documentation topics",
-        long_about = r#"List the embedded documentation topics shipped with this wavepeek build.
+        about = "List embedded documentation topics.",
+        long_about = r#"List embedded documentation topics.
 
 Behavior:
-- Results are ordered lexicographically by stable topic ID.
-- Default text output prints topic ID, title, and summary.
-- `--summary` keeps the output list-oriented but omits titles.
+- Prints each stable topic ID and summary.
 - `--json` emits the standard machine-readable envelope for docs topic metadata."#
     )]
     Topics(DocsTopicsArgs),
@@ -75,11 +73,8 @@ Behavior:
 
 #[derive(Debug, Args)]
 pub struct DocsTopicsArgs {
-    /// Print only topic IDs and summaries
-    #[arg(long, conflicts_with = "json")]
-    pub summary: bool,
     /// Machine-readable JSON output
-    #[arg(long, conflicts_with = "summary")]
+    #[arg(long)]
     pub json: bool,
 }
 

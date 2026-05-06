@@ -8,15 +8,15 @@ mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
 const TOPIC_IDS: [&str; 9] = [
+    "intro",
+    "concepts/selectors",
+    "concepts/time",
     "commands/change",
     "commands/docs",
     "commands/help",
     "commands/property",
-    "concepts/selectors",
-    "concepts/time",
-    "intro",
-    "troubleshooting/empty-results",
     "workflows/find-first-change",
+    "troubleshooting/empty-results",
 ];
 
 fn docs_root() -> PathBuf {
@@ -78,7 +78,7 @@ fn export_to(out_dir: &Path) {
 }
 
 #[test]
-fn docs_topics_are_sorted_lexicographically() {
+fn docs_topics_use_logical_section_order() {
     let output = successful_stdout_text(&["docs", "topics"]);
 
     assert_eq!(topic_ids_from_listing(&output), TOPIC_IDS);
@@ -122,9 +122,9 @@ fn docs_topics_json_uses_standard_envelope() {
         .collect();
 
     assert_eq!(ids, TOPIC_IDS);
-    assert_eq!(topics[0]["id"], "commands/change");
-    assert_eq!(topics[0]["title"], "Change command");
-    assert_eq!(topics[0]["section"], "commands");
+    assert_eq!(topics[0]["id"], "intro");
+    assert_eq!(topics[0]["title"], "Introduction");
+    assert_eq!(topics[0]["section"], "intro");
     assert!(topics[0]["summary"].is_string());
     assert!(topics[0]["see_also"].is_array());
 }

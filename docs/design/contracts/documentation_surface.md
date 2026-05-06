@@ -29,8 +29,8 @@ Long help is expected to include those details, plus cross-links into
 help alias.
 
 - `wavepeek docs` prints a short orientation index.
-- `wavepeek docs topics` lists packaged topic metadata in lexicographic topic-ID
-  order.
+- `wavepeek docs topics` lists packaged topic IDs and summaries in logical
+  section order: intro, concepts, commands, workflows, troubleshooting.
 - `wavepeek docs show <topic>` prints one topic body as raw Markdown with YAML
   front matter removed.
 - `wavepeek docs show <topic> --summary` prints only the stored summary text.
@@ -113,8 +113,8 @@ including YAML front matter formatting. It also writes a deterministic
 - `cli_version`
 - `topics`
 
-`topics` is ordered lexicographically by topic ID and uses the same metadata
-shape as `docs topics --json`.
+`topics` uses the same metadata shape and logical section order as
+`docs topics --json`.
 
 `docs export` does not export the packaged skill Markdown. That asset remains
 available only through `wavepeek docs skill`.

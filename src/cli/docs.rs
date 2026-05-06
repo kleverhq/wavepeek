@@ -4,20 +4,9 @@ use clap::{Args, Subcommand};
 
 #[derive(Debug, Args)]
 #[command(
-    about = "Browse embedded documentation",
-    long_about = r#"Browse the embedded narrative docs packaged with this wavepeek build.
-
-Behavior:
-- `wavepeek docs` prints the local docs index instead of clap help output.
-- `topics` lists stable topic IDs and packaged metadata.
-- `show` prints one topic body or just its stored summary.
-- `search` ranks matching topics deterministically and can emit JSON.
-- `export` writes the authored Markdown corpus to a managed output directory.
-- `skill` prints the packaged agent skill Markdown.
-
-Use this command family when you need concepts, workflows, troubleshooting, or agent guidance that complements command reference help."#,
-    after_help = "Next steps:\n  wavepeek docs --help\n  wavepeek docs topics\n  wavepeek docs show intro",
-    after_long_help = "Examples:\n  wavepeek docs\n  wavepeek docs topics\n  wavepeek docs show <TOPIC>\n  wavepeek docs show intro\n  wavepeek docs search transitions\n  wavepeek docs export <OUT_DIR>\n  wavepeek docs skill"
+    about = "Browse the embedded documentation packaged with this build.",
+    long_about = "Browse the embedded documentation packaged with this build.\n\nUse this command family when you need concepts, workflows, troubleshooting, or agent guidance that complements command reference help.",
+    arg_required_else_help = true
 )]
 pub struct DocsArgs {
     #[command(subcommand)]

@@ -501,24 +501,48 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
 }
 
 #[test]
-fn docs_command_help_is_layered() {
+fn docs_command_help_is_direct_and_omits_examples() {
+    let no_args = successful_stdout_text(&["docs"]);
     let short_help = successful_stdout_text(&["docs", "-h"]);
     let long_help = successful_stdout_text(&["docs", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "docs"]);
 
-    assert!(short_help.contains("Usage: wavepeek docs"));
-    assert!(short_help.contains("wavepeek docs --help"));
-    assert!(short_help.contains("wavepeek docs topics"));
-    assert!(
-        !short_help.contains("wavepeek docs export <OUT_DIR>"),
-        "docs -h should stay compact and defer full command-family detail"
-    );
-    assert!(long_help.contains("wavepeek docs show <TOPIC>"));
-    assert!(long_help.contains("wavepeek docs export <OUT_DIR>"));
-    assert!(long_help.contains("wavepeek docs skill"));
+    for help in [&no_args, &short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Browse the embedded documentation packaged with this build.")
+        );
+        assert!(help.contains("Usage: wavepeek docs"));
+        assert!(!help.contains("Behavior:"));
+        assert!(!help.contains("Examples:"));
+        assert!(!help.contains("wavepeek docs export <OUT_DIR>"));
+    }
+
+    assert_eq!(no_args, short_help, "wavepeek docs should show short help");
     assert!(
         short_help.len() < long_help.len(),
         "docs -h should be materially shorter than docs --help"
     );
+}
+
+#[test]
+fn schema_help_uses_aligned_summary_and_trimmed_behavior() {
+    let short_help = successful_stdout_text(&["schema", "-h"]);
+    let long_help = successful_stdout_text(&["schema", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "schema"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Print canonical JSON schema contract.")
+        );
+    }
+
+    assert!(long_help.contains("Behavior:"));
+    assert!(long_help.contains("Prints exactly one deterministic schema document to stdout."));
+    assert!(long_help.contains("source of truth for all `--json` command outputs"));
+    assert!(!long_help.contains("Accepts no command-specific"));
+    assert!(!long_help.contains("Output bytes match"));
 }
 
 #[test]
@@ -775,10 +799,8 @@ fn shipped_commands_help_is_self_descriptive() {
         (
             "schema",
             &[
-                "canonical JSON schema document",
-                "Accepts no command-specific flags or positional arguments",
+                "Print canonical JSON schema contract.",
                 "Prints exactly one deterministic schema document",
-                "schema/wavepeek.json",
                 "source of truth for all `--json` command outputs",
             ],
         ),

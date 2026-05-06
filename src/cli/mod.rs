@@ -149,13 +149,11 @@ Use this command to check event-driven property matches and transitions over bou
 #[derive(Debug, Subcommand)]
 enum HelperCommand {
     #[command(
-        about = "Print canonical JSON schema contract",
-        long_about = r#"Prints the canonical JSON schema document for wavepeek machine output contracts.
+        about = "Print canonical JSON schema contract.",
+        long_about = r#"Print canonical JSON schema contract.
 
 Behavior:
-- Accepts no command-specific flags or positional arguments.
 - Prints exactly one deterministic schema document to stdout.
-- Output bytes match the canonical artifact `schema/wavepeek.json`.
 - This is the source of truth for all `--json` command outputs.
 
 Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
@@ -168,6 +166,8 @@ pub fn run() -> Result<(), WavepeekError> {
     let argv: Vec<_> = std::env::args_os().collect();
     let parse_argv = if argv.len() == 1 {
         vec![argv[0].clone(), "-h".into()]
+    } else if argv.len() == 2 && argv[1] == std::ffi::OsStr::new("docs") {
+        vec![argv[0].clone(), "docs".into(), "-h".into()]
     } else {
         argv
     };

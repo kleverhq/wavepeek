@@ -85,16 +85,19 @@ fn docs_topics_are_sorted_lexicographically() {
 }
 
 #[test]
-fn docs_command_prints_orientation_index() {
+fn docs_command_without_subcommand_prints_help() {
     let output = successful_stdout_text(&["docs"]);
 
-    assert!(output.contains("wavepeek local docs"));
-    assert!(output.contains("Start here when you need more than command syntax."));
-    assert!(output.contains("wavepeek docs topics"));
-    assert!(output.contains("wavepeek docs show intro"));
-    assert!(output.contains("wavepeek docs search transitions"));
-    assert!(output.contains("wavepeek docs skill"));
-    assert!(output.contains("wavepeek docs export /tmp/wavepeek-docs"));
+    assert!(output.starts_with("Browse the embedded documentation packaged with this build."));
+    assert!(output.contains("Usage: wavepeek docs"));
+    assert!(output.contains("Commands:"));
+    assert!(output.contains("topics"));
+    assert!(output.contains("show"));
+    assert!(output.contains("search"));
+    assert!(output.contains("export"));
+    assert!(output.contains("skill"));
+    assert!(!output.contains("wavepeek local docs"));
+    assert!(!output.contains("Try:"));
 }
 
 #[test]

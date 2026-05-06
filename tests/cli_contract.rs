@@ -707,15 +707,20 @@ fn docs_show_help_is_layered() {
     let short_help = successful_stdout_text(&["docs", "show", "-h"]);
     let long_help = successful_stdout_text(&["docs", "show", "--help"]);
 
-    assert!(short_help.contains("Usage: wavepeek docs show <TOPIC>"));
-    assert!(short_help.contains("wavepeek docs show --help"));
+    assert!(short_help.contains("Usage: wavepeek docs show [OPTIONS] <TOPIC>"));
+    assert!(short_help.contains("Slash-separated topic ID (see 'wavepeek docs topics')"));
+    assert!(short_help.contains("Print only the summary text"));
     assert!(
         !short_help.contains("excluding YAML front matter"),
         "docs show -h should stay compact"
     );
-    assert!(long_help.contains("excluding YAML front matter"));
-    assert!(long_help.contains("raw Markdown"));
     assert!(long_help.contains("--summary"));
+    assert!(!long_help.contains("Behavior:"));
+    assert!(!long_help.contains("raw Markdown"));
+    assert!(!long_help.contains("excluding YAML front matter"));
+    assert!(!long_help.contains("`--summary` prints only the summary text."));
+    assert!(!long_help.contains("Unknown topic IDs fail"));
+    assert!(!long_help.contains("Examples:"));
     assert!(
         short_help.len() < long_help.len(),
         "docs show -h should be materially shorter than docs show --help"

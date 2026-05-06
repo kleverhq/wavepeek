@@ -25,16 +25,8 @@ Behavior:
     )]
     Topics(DocsTopicsArgs),
     #[command(
-        about = "Show one embedded documentation topic",
-        long_about = r#"Show one embedded documentation topic by stable topic ID.
-
-Behavior:
-- The topic argument is a slash-separated topic ID, not a filesystem path.
-- Default output prints the raw Markdown body exactly as authored, excluding YAML front matter.
-- `--summary` prints only the stored summary text.
-- Unknown topic IDs fail with deterministic close-match suggestions when available."#,
-        after_help = "Quick shape:\n  Usage: wavepeek docs show <TOPIC>\n\nNext steps:\n  wavepeek docs show <TOPIC>\n  wavepeek docs show --help\n  wavepeek docs topics\n  wavepeek docs search <QUERY>",
-        after_long_help = "Examples:\n  wavepeek docs show intro\n  wavepeek docs show commands/change\n  wavepeek docs show commands/change --summary"
+        about = "Print one embedded documentation topic to output.",
+        long_about = "Print one embedded documentation topic to output."
     )]
     Show(DocsShowArgs),
     #[command(
@@ -80,10 +72,10 @@ pub struct DocsTopicsArgs {
 
 #[derive(Debug, Args)]
 pub struct DocsShowArgs {
-    /// Stable slash-separated topic ID
+    /// Slash-separated topic ID (see 'wavepeek docs topics')
     #[arg(value_name = "TOPIC")]
     pub topic: String,
-    /// Print only the stored summary text
+    /// Print only the summary text
     #[arg(long)]
     pub summary: bool,
 }

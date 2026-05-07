@@ -27,9 +27,10 @@ This plan does not update historical completed execution plans unless a future m
 - [x] (2026-05-06 21:09Z) Read the current documentation map, embedded docs implementation, docs tests, schema artifact, README, changelog, and the scratch TODO at `tmp/docs_todo.md` to capture the desired reorganization.
 - [x] (2026-05-06 21:09Z) Resolved the core source-of-truth decision for this plan: `docs/public/` will become the normal embedded topic corpus, `docs/skills/wavepeek.md` will become the packaged skill source, and internal contributor material will live outside the public corpus.
 - [x] (2026-05-06 21:09Z) Created this active ExecPlan at `docs/exec-plans/active/2026-05-06-docs-public-rework/PLAN.md` as the first implementation artifact.
-- [ ] Commit the initial ExecPlan draft as an intermediate checkpoint.
-- [ ] Run focused read-only subagent reviews of this plan before implementation, with at least docs, code/tests, and architecture/link-integrity lanes.
-- [ ] Revise this plan from review findings and commit the reviewed plan as a second checkpoint.
+- [x] (2026-05-06 21:12Z) Committed the initial ExecPlan draft as commit `3c67a30` (`docs: plan public documentation rework`); pre-commit hooks passed.
+- [x] (2026-05-06 21:16Z) Ran focused read-only subagent reviews of this plan in docs, code/tests, and architecture/link-integrity lanes.
+- [x] (2026-05-06 21:25Z) Revised this plan from review findings: added a documentation-surface mapping, required front matter for moved topics, clarified non-placeholder help/docs topics, fixed concrete copy/test/search/stale-reference steps, and kept maintainer rules out of `AGENTS.md`.
+- [x] (2026-05-06 21:30Z) Committed the reviewed plan as the second checkpoint after incorporating the docs, code/tests, and architecture review findings.
 - [ ] Implement the documentation tree migration and embedded-doc runtime path changes.
 - [ ] Update live links, breadcrumbs, tests, and changelog.
 - [ ] Run full validation and a final multi-lane subagent review on the implementation diff.
@@ -48,6 +49,15 @@ This plan does not update historical completed execution plans unless a future m
 
 - Observation: the current packaged skill source is embedded from `docs/cli/wavepeek-skill.md` and contains detailed command recipes and rules that duplicate material better suited for docs topics.
   Evidence: `src/docs/mod.rs` uses `include_str!(... "/docs/cli/wavepeek-skill.md")`, and `docs/cli/wavepeek-skill.md` includes long recipe, rules, and failure-recovery sections.
+
+- Observation: plan review found that copying design/reference files into `docs/public/` is not enough, because the embedded topic loader requires YAML front matter before every topic body.
+  Evidence: the code/tests review lane noted that copied reference docs currently start with `# ...` and would fail catalog load unless `id`, `title`, `summary`, `section`, optional `see_also`, and matching H1 headings are added.
+
+- Observation: plan review found that maintainer rules should not be moved into `AGENTS.md` files as canonical content.
+  Evidence: the docs review lane pointed out that this repository's breadcrumb policy treats `AGENTS.md` files as concise navigation maps, so maintainer rules from `documentation_surface.md` belong in `docs/DEVELOPMENT.md` or another prose doc, with AGENTS files linking to them.
+
+- Observation: plan review found additional live references outside the first search scope.
+  Evidence: the architecture/link-integrity lane found references under `bench/`, such as `bench/AGENTS.md` and `bench/expr/AGENTS.md`, so stale-reference searches must include the whole live repository instead of only `docs`, `src`, `tests`, `schema`, and root prose files.
 
 ## Decision Log
 
@@ -79,9 +89,19 @@ This plan does not update historical completed execution plans unless a future m
   Rationale: the skill has a different front matter shape (`name` and `description`) from normal docs topics (`id`, `title`, `summary`, `section`). Keeping it outside `docs/public/` prevents the topic loader from treating it as a normal topic while preserving `wavepeek docs skill` as the command that prints it verbatim.
   Date/Author: 2026-05-06 / Pi
 
+- Decision: make `commands/help` and `commands/docs` real user-facing guide topics, not placeholders.
+  Rationale: those two topics are the public destination for most user-visible behavior currently documented in `documentation_surface.md`. Placeholder-only files would lose layered-help, docs search, docs export, and docs JSON-mode semantics when `docs/design/` is removed.
+  Date/Author: 2026-05-06 / Pi
+
+- Decision: store maintainer-only documentation surface rules in `docs/DEVELOPMENT.md`, not in `AGENTS.md` breadcrumbs.
+  Rationale: repository policy defines `AGENTS.md` files as concise navigation maps. Topic metadata, source layout, and ownership rules are durable contributor guidance and need a prose home that breadcrumbs can point to.
+  Date/Author: 2026-05-06 / Pi
+
 ## Outcomes & Retrospective
 
 No implementation outcome exists yet. The current outcome is a reviewed planning target: move public user-facing docs into `docs/public/`, move internal architecture to `docs/ARCHITECTURE.md`, move the packaged skill to `docs/skills/wavepeek.md`, and update code/tests/links so the installed `wavepeek docs` surface exposes the richer public corpus without duplicating it.
+
+The first plan review cycle produced substantive findings and those findings are now incorporated into the plan. The main corrections are that moved topics must gain proper YAML front matter, `documentation_surface.md` needs an explicit section-by-section destination map, `commands/help` and `commands/docs` must carry real user-facing semantics rather than placeholder-only content, maintainer rules must live in contributor prose docs rather than AGENTS breadcrumbs, and stale-reference sweeps must include `bench/` while excluding execution-plan history.
 
 ## Context and Orientation
 
@@ -95,7 +115,7 @@ The current internal architecture document is `docs/design/architecture.md`. It 
 
 The current command-family guide is `docs/design/reference/cli.md`. It is explicitly derived documentation and says that exact command syntax, defaults, requiredness, and examples are authoritative in generated help and `src/cli/`. It should become a user-facing overview topic under `commands/overview`, not a reference contract.
 
-The current documentation-surface contract is `docs/design/contracts/documentation_surface.md`. It defines layered help, the `docs` command family, topic metadata, docs search, docs export, and ownership split. Its user-facing content belongs in public command/help topics, while its maintainer-only source-of-truth rules belong in contributor docs or breadcrumbs.
+The current documentation-surface contract is `docs/design/contracts/documentation_surface.md`. It defines layered help, the `docs` command family, topic metadata, docs search, docs export, and ownership split. Its user-facing content belongs in public command/help topics, while its maintainer-only source-of-truth rules belong in contributor prose documentation such as `docs/DEVELOPMENT.md`. `AGENTS.md` breadcrumb files may link to those maintainer rules, but they must not become the canonical home for the rules themselves.
 
 The important implementation files are:
 
@@ -115,10 +135,25 @@ The important live documentation files that contain links to current paths are:
 - `CHANGELOG.md`, especially the unreleased entries that mention `docs/design/index.md` and `docs/design/contracts/expression_lang.md`.
 - `docs/DEVELOPMENT.md`, which contains CLI help and docs maintenance guidance.
 - `docs/BACKLOG.md`, which contains references to `docs/design/` and related contracts.
+- `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, and `bench/expr/AGENTS.md`, which may point at old contract paths and must be included in live stale-reference cleanup.
+
+## Documentation-Surface Migration Map
+
+`docs/design/contracts/documentation_surface.md` must be split deliberately rather than deleted after a mechanical move. Its current section 1, Layered Help Model, becomes user-facing content in `docs/public/commands/help.md` and the `Getting help` section of `docs/public/intro.md`. Any maintainer obligation to keep short help compact, long help detailed, and `wavepeek help <command-path...>` aligned with nested long help belongs in a new `docs/DEVELOPMENT.md` subsection about maintaining the public docs and help surface.
+
+Its current section 2, `docs` Command Family, becomes real user-facing content in `docs/public/commands/docs.md`. That topic must cover `wavepeek docs`, `docs topics`, `docs show`, `docs search`, `docs export`, and `docs skill` at the behavior level, while still pointing to `wavepeek docs --help` for exact syntax. The `--json` support matrix for `docs topics --json` and `docs search --json`, plus unsupported JSON modes for `docs show`, `docs export`, and `docs skill`, should be described there because users and agents need it.
+
+Its current section 3, Topic Source and Metadata, is mostly maintainer-facing. The user-visible idea that topic IDs are stable slash-separated names can appear in `docs/public/commands/docs.md`; the required front-matter keys, H1 validation rule, `see_also` integrity, and source layout rules belong in `docs/DEVELOPMENT.md`. Local `AGENTS.md` files should link to that maintainer guidance, not duplicate it.
+
+Its current section 4, Docs Search Semantics, becomes user-facing content in `docs/public/commands/docs.md`. Keep the deterministic, case-insensitive, tokenized search behavior and the default versus `--full-text` scope visible enough that users can understand surprising search results. If the full ranking details make `commands/docs` too dense, keep a compact explanation there and place detailed maintainer wording in `docs/DEVELOPMENT.md`, but do not leave the semantics only in a deleted design file.
+
+Its current section 5, Docs Export Contract, also belongs primarily in `docs/public/commands/docs.md` because export behavior and safety rules are visible to users. The managed export root means a directory containing a `manifest.json` with `kind = "wavepeek-docs-export"` and a recognized `export_format_version`; that definition should remain available in public docs or help. Maintainer notes about preserving authored Markdown bytes and excluding the skill from export belong in `docs/DEVELOPMENT.md` as tests and maintenance rules.
+
+Its current section 6, Ownership Split, becomes maintainer-facing content in `docs/DEVELOPMENT.md`. The public docs can say that exact flags live in help and exact JSON shapes live in `wavepeek schema`, but source-of-truth file ownership, package-safe source layout, and breadcrumb policy are contributor guidance. `docs/public/AGENTS.md`, `docs/public/commands/AGENTS.md`, `docs/public/reference/AGENTS.md`, and `docs/skills/AGENTS.md` should stay concise navigation maps that point back to `docs/DEVELOPMENT.md` for maintenance rules.
 
 ## Open Questions
 
-No blocking product decision remains for starting implementation. The plan chooses `reference` rather than `concepts` for semantic contracts, keeps command topics as placeholders until they are useful, and keeps the skill outside the topic corpus.
+No blocking product decision remains for starting implementation. The plan chooses `reference` rather than `concepts` for semantic contracts, keeps most command topics as placeholders until they are useful, requires real content for `commands/help` and `commands/docs`, and keeps the skill outside the topic corpus.
 
 One implementation detail must be verified during the test update: whether `docs topics` should list `reference` before or after `commands`. This plan chooses the order `intro`, `commands`, `workflows`, `troubleshooting`, `reference`, because users should see practical docs first and normative reference material last. If review finds that reference should appear earlier, update the Decision Log, `topic_section_rank()`, `docs/design`-to-public migration text, and tests together.
 
@@ -128,15 +163,15 @@ Another detail is whether to leave tiny compatibility stubs under `docs/design/`
 
 Milestone 1 commits and reviews this plan. The plan itself is part of the work because this refactor touches embedded assets, tests, schemas, breadcrumbs, README, and many links. First commit this plan as an intermediate checkpoint. Then run read-only subagent reviews with focused lanes for docs/link integrity, code/tests/runtime behavior, and architecture/source-of-truth boundaries. Apply review feedback by editing this plan, updating the living sections, and committing the reviewed plan. This milestone is complete when the plan has at least one clean review cycle recorded in `Progress`, `Surprises & Discoveries`, and `Decision Log`.
 
-Milestone 2 builds the new public documentation tree while keeping tests and code temporarily able to fail. Create `docs/public/` as the new embedded topic root. Move and rewrite `docs/design/index.md` into `docs/public/intro.md` as a user-facing entrypoint. The new intro should explain what wavepeek is, scope, principles, public topic groups, and getting help through `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, `wavepeek docs --help`, `wavepeek docs topics`, and optionally `wavepeek docs search <query>`. Move the semantic contracts into `docs/public/reference/command-model.md`, `docs/public/reference/machine-output.md`, and `docs/public/reference/expression-language.md`, adjusting headings, links, and references to say that they are public reference topics while exact flags remain code-first. Convert `docs/design/reference/cli.md` into `docs/public/commands/overview.md` as a guide for choosing command families.
+Milestone 2 builds the new public documentation tree while keeping tests and code temporarily able to fail. Create `docs/public/` as the new embedded topic root. Move and rewrite `docs/design/index.md` into `docs/public/intro.md` as a user-facing entrypoint. The new intro should explain what wavepeek is, scope, principles, public topic groups, and getting help through `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, `wavepeek docs --help`, `wavepeek docs topics`, and optionally `wavepeek docs search <query>`. Move the semantic contracts into `docs/public/reference/command-model.md`, `docs/public/reference/machine-output.md`, and `docs/public/reference/expression-language.md`, adjusting headings, links, and references to say that they are public reference topics while exact flags remain code-first. Convert `docs/design/reference/cli.md` into `docs/public/commands/overview.md` as a guide for choosing command families. Every moved public topic, including `intro`, `commands/overview`, and all `reference/*` topics, must gain valid topic front matter with `id`, `title`, `summary`, `section`, optional `see_also`, and an H1 that exactly matches the `title`.
 
-Milestone 3 replaces the old command and concept topics. Remove the old `concepts/time` and `concepts/selectors` topics entirely. Create one topic file per top-level command under `docs/public/commands/`: `help.md`, `docs.md`, `schema.md`, `info.md`, `scope.md`, `signal.md`, `value.md`, `change.md`, and `property.md`, plus the `overview.md` from Milestone 2. For now, each per-command topic should have valid topic front matter, an H1, a clear `Detailed guide coming soon` notice, and a pointer to the authoritative help command. For example, `commands/info` should tell the reader to run `wavepeek help info`; `commands/docs` should tell the reader to run `wavepeek docs --help`; and `commands/help` should explain the layered help model. Do not create separate nested topics for `docs` subcommands. Update workflow and troubleshooting topics so their `see_also` links no longer point to removed `concepts` topics; use `reference/command-model` and command topics instead.
+Milestone 3 replaces the old command and concept topics. Remove the old `concepts/time` and `concepts/selectors` topics entirely. Create one topic file per top-level command under `docs/public/commands/`: `help.md`, `docs.md`, `schema.md`, `info.md`, `scope.md`, `signal.md`, `value.md`, `change.md`, and `property.md`, plus the `overview.md` from Milestone 2. Most per-command topics should have valid topic front matter, an H1, a clear `Detailed guide coming soon` notice, and a pointer to the authoritative help command. For example, `commands/info` should tell the reader to run `wavepeek help info`. Two command topics must not be placeholder-only: `commands/help` must explain the layered help model, and `commands/docs` must explain the docs command family, topic listing/show/search/export/skill behavior, the docs JSON support matrix, search behavior, and export safety at a user-facing level. Do not create separate nested topics for `docs` subcommands. Update workflow and troubleshooting topics so their `see_also` links no longer point to removed `concepts` topics; use `reference/command-model` and command topics instead.
 
-Milestone 4 moves internal and skill documentation to their new homes. Move `docs/design/architecture.md` to `docs/ARCHITECTURE.md` and update its internal links from old contract paths to public reference topic paths or other internal paths as appropriate. Split `docs/design/contracts/documentation_surface.md`: move user-facing behavior into `docs/public/commands/help.md`, `docs/public/commands/docs.md`, and `docs/public/intro.md`; move maintainer-only source-of-truth rules into `docs/DEVELOPMENT.md` and local `AGENTS.md` breadcrumbs. Move `docs/cli/wavepeek-skill.md` to `docs/skills/wavepeek.md` and rewrite it as a short agent router. The skill should preserve critical safety rules, especially that waveform files should be treated as CLI inputs and `.fst` files must not be read directly, but it should point to `wavepeek help`, `wavepeek docs topics`, `reference/command-model`, `reference/machine-output`, and `reference/expression-language` instead of copying detailed command recipes and semantic rules.
+Milestone 4 moves internal and skill documentation to their new homes. Move `docs/design/architecture.md` to `docs/ARCHITECTURE.md` and update its internal links from old contract paths to public reference topic paths or other internal paths as appropriate. Split `docs/design/contracts/documentation_surface.md` according to the Documentation-Surface Migration Map in this plan: move user-facing behavior into `docs/public/commands/help.md`, `docs/public/commands/docs.md`, and `docs/public/intro.md`; move maintainer-only source-of-truth, topic metadata, package layout, and ownership rules into a new or existing `docs/DEVELOPMENT.md` subsection. Local `AGENTS.md` files should link to those rules but must remain navigation maps, not canonical manuals. Move `docs/cli/wavepeek-skill.md` to `docs/skills/wavepeek.md` and rewrite it as a short agent router. The skill should preserve critical safety rules, especially that waveform files should be treated as CLI inputs and `.fst` files must not be read directly, but it should point to `wavepeek help`, `wavepeek docs topics`, `reference/command-model`, `reference/machine-output`, and `reference/expression-language` instead of copying detailed command recipes and semantic rules.
 
-Milestone 5 updates code and tests to embed the new tree. In `src/docs/mod.rs`, change the topic embed root from `docs/cli/topics` to `docs/public`, and change the skill include path from `docs/cli/wavepeek-skill.md` to `docs/skills/wavepeek.md`. Update `topic_section_rank()` so the logical order is `intro`, `commands`, `workflows`, `troubleshooting`, and `reference`; remove the special `concepts` rank. If any unit tests inside `src/docs/mod.rs` assert old topic counts, paths, or topic IDs, update them to the new topic set. In `tests/docs_cli.rs`, change the canonical docs root helper from `docs/cli` to `docs/public`, add a separate canonical skill helper for `docs/skills/wavepeek.md`, update `TOPIC_IDS`, update topic summary expectations, and keep tests that assert export preserves front matter and excludes the skill. In `tests/cli_contract.rs`, update any strings that mention concepts or old docs descriptions if the public docs wording changes. `schema/wavepeek.json` should not need a semantic schema change, because `docs topics` and `docs search` already expose generic topic metadata, but run schema checks to prove it.
+Milestone 5 updates code and tests to embed the new tree. In `src/docs/mod.rs`, change the topic embed root from `docs/cli/topics` to `docs/public`, and change the skill include path from `docs/cli/wavepeek-skill.md` to `docs/skills/wavepeek.md`. Update `topic_section_rank()` so the logical order is `intro`, `commands`, `workflows`, `troubleshooting`, and `reference`; remove the special `concepts` rank. Update `src/cli/docs.rs` help text so it no longer describes the corpus as `concepts`-based and instead mentions command guidance, workflows, troubleshooting, reference topics, and agent guidance. If any unit tests inside `src/docs/mod.rs` assert old topic counts, paths, or topic IDs, update them to the new topic set. In `tests/docs_cli.rs`, change the canonical docs root helper from `docs/cli` to `docs/public`, remove the hard-coded `topics/` segment from `canonical_topic_path()` so it joins `{topic_id}.md` directly under `docs/public`, add a separate canonical skill helper for `docs/skills/wavepeek.md`, update `TOPIC_IDS`, update topic summary expectations, and keep tests that assert export preserves front matter and excludes the skill. Because the larger corpus can change deterministic search results, update exact search-ranking tests to use narrow stable queries or to assert ordered prefixes rather than old full result lists that were tailored to the nine-topic corpus. In `tests/cli_contract.rs`, update any strings that mention concepts or old docs descriptions, and add or adjust a contract assertion that executable docs help no longer advertises a `concepts` section. `schema/wavepeek.json` should not need a semantic schema change, because `docs topics` and `docs search` already expose generic topic metadata, but run schema checks to prove it.
 
-Milestone 6 updates live breadcrumbs and non-embedded docs. Update `docs/AGENTS.md` so canonical user docs point to `public/intro.md`, embedded public docs point to `public/AGENTS.md`, the skill path points to `skills/wavepeek.md`, and internal architecture points to `ARCHITECTURE.md`. Remove child-map references to deleted `docs/cli/` and `docs/design/`. Add or update concise `AGENTS.md` files for durable documentation nodes where they materially improve navigation, especially `docs/public/AGENTS.md`, `docs/public/commands/AGENTS.md`, `docs/public/reference/AGENTS.md`, and `docs/skills/AGENTS.md`. Update `src/AGENTS.md`, `tests/AGENTS.md`, and `schema/AGENTS.md` so they point to `docs/public/reference/...` and `docs/public/` instead of old design or cli paths. Update `README.md` so the Agentic Flows section points to `docs/skills/wavepeek.md`, and update any instructions that describe embedded docs as `concepts`-based. Update `CHANGELOG.md` with an Unreleased Changed entry for the public docs corpus reorganization. Update `docs/BACKLOG.md` and `docs/DEVELOPMENT.md` to remove live references to `docs/design/` and `docs/cli/` as canonical locations.
+Milestone 6 updates live breadcrumbs and non-embedded docs. Update root `AGENTS.md` and `docs/AGENTS.md` so canonical user docs point to `docs/public/intro.md`, embedded public docs point to `docs/public/AGENTS.md`, the skill path points to `docs/skills/wavepeek.md`, and internal architecture points to `docs/ARCHITECTURE.md`. Remove child-map references to deleted `docs/cli/` and `docs/design/`. Add or update concise `AGENTS.md` files for durable documentation nodes where they materially improve navigation, especially `docs/public/AGENTS.md`, `docs/public/commands/AGENTS.md`, `docs/public/reference/AGENTS.md`, and `docs/skills/AGENTS.md`. Update `src/AGENTS.md`, `tests/AGENTS.md`, `schema/AGENTS.md`, and bench breadcrumbs such as `bench/AGENTS.md`, `bench/e2e/AGENTS.md`, and `bench/expr/AGENTS.md` so they point to `docs/public/reference/...` and `docs/public/` instead of old design or cli paths. Update `README.md` so the Agentic Flows section points to `docs/skills/wavepeek.md`, and update any instructions that describe embedded docs as `concepts`-based. Update `CHANGELOG.md` with an Unreleased Changed entry for the public docs corpus reorganization. Update `docs/BACKLOG.md` and `docs/DEVELOPMENT.md` to remove live references to `docs/design/` and `docs/cli/` as canonical locations.
 
 Milestone 7 removes retired paths and validates the repository. Delete `docs/cli/` and `docs/design/` after their content has been moved, unless a reviewed decision adds tiny compatibility stubs. Run repository searches to catch stale live links. Do not treat references inside `docs/exec-plans/completed/` as blockers unless they are referenced by live docs; those files are historical. Run targeted tests first, then full gates. Commit implementation in atomic slices, for example public docs tree, code/tests path switch, live link cleanup, and validation fixes. After the implementation commits, run the mandatory review workflow again with read-only subagents over the implementation diff, fix findings in follow-up commits, and close the plan only after the final review pass is clean.
 
@@ -165,6 +200,7 @@ Run all commands from `/workspaces/docs-rework`.
 3. Create the new public docs tree with copy-then-trim movement to avoid information loss.
 
        mkdir -p docs/public/commands docs/public/reference docs/public/workflows docs/public/troubleshooting docs/skills
+       cp docs/design/index.md docs/public/intro.md
        cp docs/design/contracts/command_model.md docs/public/reference/command-model.md
        cp docs/design/contracts/machine_output.md docs/public/reference/machine-output.md
        cp docs/design/contracts/expression_lang.md docs/public/reference/expression-language.md
@@ -174,7 +210,7 @@ Run all commands from `/workspaces/docs-rework`.
        cp docs/design/architecture.md docs/ARCHITECTURE.md
        cp docs/cli/wavepeek-skill.md docs/skills/wavepeek.md
 
-   Then edit the copied files into their final form. Do not delete the old source files until the code and tests have been switched and validated.
+   Then edit the copied files into their final form. Add topic front matter to every public topic copied from `docs/design/`, because those files do not currently start with the required embedded-topic metadata. Do not delete the old source files until the code and tests have been switched and validated.
 
 4. Create or rewrite the public command topics. Each file must start with YAML front matter and then an H1 matching `title`.
 
@@ -197,7 +233,7 @@ Run all commands from `/workspaces/docs-rework`.
 
            wavepeek help info
 
-   Use the same pattern for `schema`, `scope`, `signal`, `value`, `change`, and `property`. For `commands/docs`, point to `wavepeek docs --help`; for `commands/help`, explain `wavepeek -h`, `wavepeek --help`, and `wavepeek help <command-path...>`; for `commands/change` and `commands/property`, include `reference/expression-language` in `see_also`.
+   Use the same placeholder pattern for `schema`, `scope`, `signal`, `value`, `change`, and `property`. For `commands/change` and `commands/property`, include `reference/expression-language` in `see_also`. Do not use the placeholder pattern for `commands/help` and `commands/docs`: write real guide content for those two files using the Documentation-Surface Migration Map above.
 
 5. Switch the embedded runtime paths.
 
@@ -222,9 +258,9 @@ Run all commands from `/workspaces/docs-rework`.
 
 7. Search for stale live references and fix them.
 
-       rg -n "docs/cli|docs/design|design/contracts|design/index|design/architecture|reference/cli|concepts/|wavepeek-skill" AGENTS.md README.md CHANGELOG.md docs src tests schema scripts Cargo.toml -g '!docs/exec-plans/completed/**' -g '!*.fst'
+       rg -n "docs/cli|docs/design|design/contracts|design/index|design/architecture|reference/cli|concepts/|wavepeek-skill" AGENTS.md README.md CHANGELOG.md bench docs src tests schema scripts Cargo.toml -g '!docs/exec-plans/**' -g '!*.fst'
 
-   Expected result after cleanup: no stale live references remain except intentional historical notes or freshly updated compatibility references if a compatibility-stub decision was made and recorded.
+   Expected result after cleanup: no stale live references remain except intentional historical notes or freshly updated compatibility references if a compatibility-stub decision was made and recorded. The active and completed execution plans are excluded because they intentionally describe the migration from old paths.
 
 8. Run full validation.
 
@@ -247,12 +283,14 @@ The implementation is acceptable when the installed docs surface demonstrates th
 - `cargo run -- docs show reference/machine-output` prints the machine output reference moved from the old design contract.
 - `cargo run -- docs show reference/expression-language` prints the expression-language reference moved from the old design contract.
 - `cargo run -- docs show commands/info` prints a valid placeholder with `Detailed guide coming soon` and `wavepeek help info`.
+- `cargo run -- docs show commands/help` explains layered help, including `wavepeek -h`, `wavepeek --help`, and `wavepeek help <command-path...>`.
+- `cargo run -- docs show commands/docs` explains topic listing, showing, searching, exporting, skill printing, docs JSON support, and export safety at a user-facing level.
 - `cargo run -- docs skill` prints the new short skill from `docs/skills/wavepeek.md`; it must preserve waveform safety guidance and route agents to help/docs rather than copying long reference content.
 - `cargo run -- docs export /tmp/wavepeek-docs-public-check` exports the topic corpus from `docs/public/`, preserves YAML front matter, writes `manifest.json`, and does not export `docs/skills/wavepeek.md`.
 - `cargo run -- docs topics --json` and `cargo run -- docs search expression --json` still emit the standard JSON envelope with `command` values `docs topics` and `docs search`.
 - `cargo run -- schema` still emits the canonical schema and `cargo test --test schema_cli` passes, proving JSON schema behavior did not drift.
 
-The repository is acceptable when live links and breadcrumbs no longer point to deleted canonical paths. Run the stale-reference `rg` command above and inspect any remaining hits. Completed execution plans may remain historical and are not blockers.
+The repository is acceptable when live links and breadcrumbs no longer point to deleted canonical paths. Run the stale-reference `rg` command above and inspect any remaining hits. Execution plans may mention old paths as migration context or historical context and are not blockers.
 
 The final handoff is acceptable only after `make check` and `make ci` pass in the intended container environment, or after the inability to run them is explicitly recorded with the reason and all targeted Cargo tests are green.
 
@@ -264,7 +302,7 @@ If the embedded topic loader fails after the path switch, run `cargo test docs::
 
 If docs export tests fail, check whether `source_relpath` still matches the topic ID and whether the test helper points to `docs/public` rather than `docs/cli`. The export contract should continue to export only topic files and should continue to exclude the packaged skill.
 
-If a stale-link search finds many historical hits under `docs/exec-plans/completed/`, rerun the search with the completed-plans exclusion shown in the concrete steps. Historical plans are allowed to preserve old paths. Live docs and source/test breadcrumbs are not.
+If a stale-link search finds many hits under `docs/exec-plans/`, rerun the search with the execution-plan exclusion shown in the concrete steps. Active and completed plans are allowed to mention old paths as migration context. Live docs and source/test breadcrumbs are not.
 
 If full `make` gates fail because the current environment is not the devcontainer or CI image, do not bypass the gate. Record the failure reason in `Surprises & Discoveries`, run the targeted Cargo tests locally, and state that full validation remains pending until the correct container environment is available.
 
@@ -272,8 +310,12 @@ If full `make` gates fail because the current environment is not the devcontaine
 
 Current high-risk stale-reference roots identified before implementation include these live files:
 
+       AGENTS.md
        README.md
        CHANGELOG.md
+       bench/AGENTS.md
+       bench/e2e/AGENTS.md
+       bench/expr/AGENTS.md
        docs/AGENTS.md
        docs/BACKLOG.md
        docs/DEVELOPMENT.md
@@ -287,6 +329,7 @@ Current high-risk stale-reference roots identified before implementation include
        docs/design/reference/cli.md
        docs/cli/AGENTS.md
        docs/cli/topics/AGENTS.md
+       src/cli/docs.rs
 
 The current old topic inventory is:
 
@@ -342,3 +385,5 @@ The bodies of those functions should continue to source metadata from embedded M
 `schema/wavepeek.json` should remain the authority for the precise JSON schema. Because the docs JSON payload shape is generic topic metadata and search matches, the new topic IDs and sections should not require a schema shape change unless the implementation changes serialized fields. If schema bytes do change, use the repository schema workflow and validate with `make check-schema` or the relevant `make` gate.
 
 Revision Note: 2026-05-06 / Pi - Initial active ExecPlan created from the scratch TODO and discussion decisions. It records the target public docs corpus, reference-topic migration, command-topic placeholder strategy, skill relocation, internal architecture move, code/test/link update scope, validation gates, and mandatory subagent review workflow.
+
+Revision Note: 2026-05-06 / Pi - Revised after read-only subagent plan review. The revision adds a section-by-section migration map for `documentation_surface.md`, requires YAML front matter for moved public topics, makes `commands/help` and `commands/docs` non-placeholder guides, moves maintainer-only docs rules to `docs/DEVELOPMENT.md` instead of `AGENTS.md`, updates concrete copy/test/search steps, and expands stale-reference cleanup to bench breadcrumbs and root `AGENTS.md`.

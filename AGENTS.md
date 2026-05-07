@@ -5,7 +5,7 @@ then follow referenced paths to deeper docs.
 
 ## Start Here
 
-- Product design entrypoint and contracts: `docs/design/index.md`
+- Public docs entrypoint and contracts: `docs/public/intro.md`, `docs/public/reference/`
 - Delivery milestones and versions: `docs/ROADMAP.md`
 - Development workflow and coding conventions: `docs/DEVELOPMENT.md`
 - Release checklist and rollback notes: `docs/RELEASE.md`

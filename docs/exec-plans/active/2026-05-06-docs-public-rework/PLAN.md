@@ -31,8 +31,8 @@ This plan does not update historical completed execution plans unless a future m
 - [x] (2026-05-06 21:16Z) Ran focused read-only subagent reviews of this plan in docs, code/tests, and architecture/link-integrity lanes.
 - [x] (2026-05-06 21:25Z) Revised this plan from review findings: added a documentation-surface mapping, required front matter for moved topics, clarified non-placeholder help/docs topics, fixed concrete copy/test/search/stale-reference steps, and kept maintainer rules out of `AGENTS.md`.
 - [x] (2026-05-06 21:30Z) Committed the reviewed plan as the second checkpoint after incorporating the docs, code/tests, and architecture review findings.
-- [ ] Implement the documentation tree migration and embedded-doc runtime path changes.
-- [ ] Update live links, breadcrumbs, tests, and changelog.
+- [x] (2026-05-06 22:05Z) Implemented the first migration slice: created `docs/public/`, `docs/skills/`, and `docs/ARCHITECTURE.md`; moved public reference contracts and command/workflow/troubleshooting topics; rewrote the skill as a router; switched `src/docs/mod.rs` to embed `docs/public` and `docs/skills/wavepeek.md`; updated docs runtime tests and `tests/docs_cli.rs`; removed retired `docs/cli/` and `docs/design/` trees.
+- [x] (2026-05-06 22:05Z) Updated live breadcrumbs and supporting docs for the new public docs/source-of-truth paths, including root/docs/src/tests/schema/bench `AGENTS.md`, README, changelog, backlog, and development guidance.
 - [ ] Run full validation and a final multi-lane subagent review on the implementation diff.
 - [ ] Move this plan to `docs/exec-plans/completed/2026-05-06-docs-public-rework/PLAN.md` after implementation, validation, review, and reporting are complete.
 
@@ -58,6 +58,9 @@ This plan does not update historical completed execution plans unless a future m
 
 - Observation: plan review found additional live references outside the first search scope.
   Evidence: the architecture/link-integrity lane found references under `bench/`, such as `bench/AGENTS.md` and `bench/expr/AGENTS.md`, so stale-reference searches must include the whole live repository instead of only `docs`, `src`, `tests`, `schema`, and root prose files.
+
+- Observation: expanding the docs corpus changes deterministic search rankings even when the search algorithm does not change.
+  Evidence: after adding `reference/expression-language`, `cargo test docs:: --lib` initially failed because `search_topics("find first change", false)` matched the new reference topic summary before `troubleshooting/empty-results`; the test was updated to assert the new deterministic order.
 
 ## Decision Log
 
@@ -99,9 +102,11 @@ This plan does not update historical completed execution plans unless a future m
 
 ## Outcomes & Retrospective
 
-No implementation outcome exists yet. The current outcome is a reviewed planning target: move public user-facing docs into `docs/public/`, move internal architecture to `docs/ARCHITECTURE.md`, move the packaged skill to `docs/skills/wavepeek.md`, and update code/tests/links so the installed `wavepeek docs` surface exposes the richer public corpus without duplicating it.
+Partial implementation outcome: the public docs corpus now exists under `docs/public/`, the packaged skill source now exists under `docs/skills/wavepeek.md`, and internal architecture now exists at `docs/ARCHITECTURE.md`. The embedded docs runtime and docs CLI tests point at the new locations, and the old `docs/cli/` and `docs/design/` trees have been removed from the working tree.
 
 The first plan review cycle produced substantive findings and those findings are now incorporated into the plan. The main corrections are that moved topics must gain proper YAML front matter, `documentation_surface.md` needs an explicit section-by-section destination map, `commands/help` and `commands/docs` must carry real user-facing semantics rather than placeholder-only content, maintainer rules must live in contributor prose docs rather than AGENTS breadcrumbs, and stale-reference sweeps must include `bench/` while excluding execution-plan history.
+
+Targeted validation for this partial implementation is green: `cargo test docs:: --lib`, `cargo test --test docs_cli`, `cargo test --test cli_contract`, and `cargo test --test schema_cli` passed after the migration slice. Full `make check` and `make ci` still remain before final handoff.
 
 ## Context and Orientation
 

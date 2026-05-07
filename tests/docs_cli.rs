@@ -7,30 +7,40 @@ use tempfile::tempdir;
 mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
-const TOPIC_IDS: [&str; 9] = [
+const TOPIC_IDS: [&str; 16] = [
     "intro",
-    "concepts/selectors",
-    "concepts/time",
     "commands/change",
     "commands/docs",
     "commands/help",
+    "commands/info",
+    "commands/overview",
     "commands/property",
+    "commands/schema",
+    "commands/scope",
+    "commands/signal",
+    "commands/value",
     "workflows/find-first-change",
     "troubleshooting/empty-results",
+    "reference/command-model",
+    "reference/expression-language",
+    "reference/machine-output",
 ];
 
 fn docs_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("docs")
-        .join("cli")
+        .join("public")
 }
 
 fn canonical_topic_path(topic_id: &str) -> PathBuf {
-    docs_root().join("topics").join(format!("{topic_id}.md"))
+    docs_root().join(format!("{topic_id}.md"))
 }
 
 fn canonical_skill_path() -> PathBuf {
-    docs_root().join("wavepeek-skill.md")
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("docs")
+        .join("skills")
+        .join("wavepeek.md")
 }
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
@@ -162,10 +172,14 @@ fn docs_search_ranks_matches_deterministically() {
         vec![
             "workflows/find-first-change",
             "commands/change",
+            "reference/expression-language",
             "troubleshooting/empty-results"
         ]
     );
-    assert_eq!(match_kinds, vec!["title_exact", "id_prefix", "heading"]);
+    assert_eq!(
+        match_kinds,
+        vec!["title_exact", "id_prefix", "title_or_summary", "heading"]
+    );
 }
 
 #[test]
@@ -351,7 +365,7 @@ fn docs_export_excludes_skill_asset() {
 
     export_to(&export_dir);
 
-    assert!(!export_dir.join("wavepeek-skill.md").exists());
+    assert!(!export_dir.join("wavepeek.md").exists());
 }
 
 #[test]

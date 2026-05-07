@@ -63,12 +63,12 @@ wavepeek signal --waves "$WAVES" --scope "$scope" --json | jq '.data[:5]'
 
 `wavepeek` ships with a ready-to-install agent skill:
 
-- Packaged source (repo): `docs/cli/wavepeek-skill.md`
+- Packaged source (repo): `docs/skills/wavepeek.md`
 - CLI export: `wavepeek docs skill`
 
 Install via your agent:
 
-- Ask your coding agent to install the skill from `docs/cli/wavepeek-skill.md` or from the output of `wavepeek docs skill`.
+- Ask your coding agent to install the skill from `docs/skills/wavepeek.md` or from the output of `wavepeek docs skill`.
 
 Manual install examples:
 
@@ -96,7 +96,7 @@ Use progressive disclosure via built-in help and docs:
 - `wavepeek -h` for compact lookup help
 - `wavepeek --help` for detailed top-level reference help
 - `wavepeek help <command-path...>` for nested long-help aliases
-- `wavepeek docs` for embedded concepts, workflows, troubleshooting, export, and skill text
+- `wavepeek docs` for embedded command guidance, workflows, troubleshooting, reference topics, export, and skill text
 
 ## Development
 

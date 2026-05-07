@@ -242,8 +242,19 @@ Wavepeek is "LLM-first" and expects output stability:
 - Waveform-inspection commands use named flags for their primary inputs. The visible `help` and `docs` surfaces intentionally use positional command paths, topic IDs, search queries, and export paths where that keeps offline documentation workflows concise.
 - The waveform file flag is always `--waves`.
 - Default output is human-readable; `--json` enables strict JSON envelope output with a stable `$schema` contract.
-- CLI help must stay standalone and layered: `wavepeek` with no args aliases top-level `--help`, `-h` stays compact, `--help` stays detailed, `wavepeek help <command-path...>` aliases long help for nested paths, and `wavepeek docs` remains the packaged narrative-doc surface. Follow `docs/design/contracts/documentation_surface.md` for the normative help/docs contract.
+- CLI help must stay standalone and layered: `wavepeek` with no args aliases top-level `--help`, `-h` stays compact, `--help` stays detailed, `wavepeek help <command-path...>` aliases long help for nested paths, and `wavepeek docs` remains the packaged narrative-doc surface.
 - Time values require explicit units; reject bare numbers.
+
+### Public Docs Maintenance
+
+- The packaged topic corpus for `wavepeek docs` lives under `docs/public/`.
+- Topic files use YAML front matter with `id`, `title`, `summary`, and `section`; `see_also` is optional but must reference existing topic IDs.
+- Each topic body must begin with an H1 that exactly matches `title`.
+- Topic IDs are stable slash-separated user-facing names, and the file path under `docs/public/` must match the ID plus `.md`.
+- Keep `docs/public/commands/help.md` and `docs/public/commands/docs.md` as the user-facing homes for layered help and docs command behavior.
+- Keep maintainer/source-of-truth rules here and in breadcrumbs that point here; do not turn `AGENTS.md` files into manuals.
+- The packaged skill source lives at `docs/skills/wavepeek.md` and is emitted verbatim by `wavepeek docs skill`.
+- `wavepeek docs export` exports public topics only and intentionally excludes packaged skills.
 
 ### Testing Expectations
 

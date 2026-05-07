@@ -9,8 +9,8 @@ This directory contains integration and fixture-driven tests.
 ## Source of Truth
 
 - Testing workflow and conventions: `../docs/DEVELOPMENT.md`
-- Product behavior and output contracts: `../docs/design/contracts/command_model.md`, `../docs/design/contracts/machine_output.md`
-- Expression behavior for trigger and eval surfaces: `../docs/design/contracts/expression_lang.md`
+- Product behavior and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
+- Expression behavior for trigger and eval surfaces: `../docs/public/reference/expression-language.md`
 
 Tests should validate current contracts from those documents.
 

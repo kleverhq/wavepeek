@@ -13,12 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
 - Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
-- Moved open design questions into `docs/BACKLOG.md` and removed the separate `docs/design/open_questions.md` entrypoint.
+- Moved open design questions into `docs/BACKLOG.md` and removed the separate open-questions entrypoint.
 - Superseded the temporary universal `-h == --help` help model with layered help and a packaged narrative-doc surface.
+- Reorganized packaged documentation around `docs/public/` topics, `docs/public/reference/` contracts, `docs/skills/wavepeek.md`, and `docs/ARCHITECTURE.md`.
 
 ### Removed
 - Removed project-local OpenCode config/skills.
-- Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/design/index.md` and `docs/design/contracts/expression_lang.md` instead.
+- Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/public/intro.md` and `docs/public/reference/expression-language.md` instead.
 
 ## [0.4.0] - 2026-04-05
 

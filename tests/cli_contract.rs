@@ -516,6 +516,7 @@ fn docs_command_help_is_direct_and_omits_examples() {
         assert!(!help.contains("Behavior:"));
         assert!(!help.contains("Examples:"));
         assert!(!help.contains("wavepeek docs export <OUT_DIR>"));
+        assert!(!help.contains("concepts"));
     }
 
     assert_eq!(no_args, short_help, "wavepeek docs should show short help");

@@ -1,6 +1,6 @@
 # Architecture
 
-This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `contracts/command_model.md` and `contracts/machine_output.md`.
+This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `public/reference/command-model.md` and `public/reference/machine-output.md`.
 
 ## Non-Functional Requirements
 
@@ -122,7 +122,7 @@ Development dependencies include `assert_cmd`, `predicates`, `tempfile`, `insta`
 
 ## Expression Engine Architecture
 
-The `change` and `property` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `contracts/expression_lang.md`; this section describes how the implementation is arranged.
+The `change` and `property` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `public/reference/expression-language.md`; this section describes how the implementation is arranged.
 
 The pipeline is:
 
@@ -208,5 +208,5 @@ The architectural split matters for docs maintenance:
 
 - `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help` are the exact CLI surface authority.
 - `schema/wavepeek.json` and `wavepeek schema` are the machine-readable output authority.
-- `contracts/` documents the semantics that code and schema alone do not explain well enough.
-- this file documents internals that help contributors change implementation safely without regrowing the old monolithic design doc.
+- `docs/public/reference/` documents the user-visible semantics that code and schema alone do not explain well enough.
+- this file documents internals that help contributors change implementation safely without regrowing a monolithic design doc.

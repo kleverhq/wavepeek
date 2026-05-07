@@ -1,3 +1,12 @@
+---
+id: reference/machine-output
+title: Machine Output Contract
+summary: Stable stdout, stderr, JSON envelope, warning, schema, error, and exit-code behavior.
+section: reference
+see_also:
+  - reference/command-model
+  - commands/schema
+---
 # Machine Output Contract
 
 This document is normative for stdout, stderr, JSON-mode behavior, schema linkage, warnings, and exit codes.
@@ -84,4 +93,4 @@ Errors are never wrapped in the JSON success envelope. Even in `--json` mode, st
 
 ## 6. Human Output Flexibility
 
-Human-readable output is part of the user experience, but it is intentionally less rigid than the machine contract. Commands may improve human formatting over time as long as they preserve the semantic guarantees documented in `command_model.md` and the stricter cases called out by command-specific help or tests.
+Human-readable output is part of the user experience, but it is intentionally less rigid than the machine contract. Commands may improve human formatting over time as long as they preserve the semantic guarantees documented in `command-model` and the stricter cases called out by command-specific help or tests.

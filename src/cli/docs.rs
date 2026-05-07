@@ -5,7 +5,7 @@ use clap::{Args, Subcommand};
 #[derive(Debug, Args)]
 #[command(
     about = "Browse the embedded documentation packaged with this build.",
-    long_about = "Browse the embedded documentation packaged with this build.\n\nUse this command family when you need concepts, workflows, troubleshooting, or agent guidance that complements command reference help.",
+    long_about = "Browse the embedded documentation packaged with this build.\n\nUse this command family when you need command guidance, workflows, troubleshooting, reference topics, or agent guidance that complements command reference help.",
     arg_required_else_help = true
 )]
 pub struct DocsArgs {

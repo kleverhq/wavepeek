@@ -5,8 +5,8 @@
 These unresolved design questions stay here so they remain visible without
 polluting the stable design contracts.
 
-Stable design contracts and the design corpus entrypoint live under
-[`docs/design/`](design/), starting from [`docs/design/index.md`](design/index.md).
+Stable user-facing contracts live under `public/reference/`, starting from
+`public/intro.md` for the public documentation map.
 
 1. **Scope and path canonicalization.** What is the canonical path syntax and
    escaping policy for VCD escaped identifiers and other unusual names across
@@ -46,7 +46,7 @@ Stable design contracts and the design corpus entrypoint live under
 - Add an opt-in streaming mode via `--jsonl` (NDJSON) for high-volume/long-running commands, while keeping current `--json` contract unchanged.
 - Define a dedicated stream schema (for example, `schema/wavepeek-stream-v1.json`) with deterministic record ordering and explicit terminal summary.
 - Suggested stream record kinds: `begin`, `item` (command-specific payload), `warning`, `end` (with counters and truncation flags).
-- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/design/reference/cli.md` and `docs/design/contracts/machine_output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
+- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/public/commands/overview.md` and `docs/public/reference/machine-output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
 
 ### Typed stdin projection from wavepeek JSON
 

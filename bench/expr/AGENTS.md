@@ -23,7 +23,7 @@ directory such as `runs/baseline/`.
 ## Source of Truth
 
 - Benchmark workflow and command contracts: `../../docs/DEVELOPMENT.md`
-- Expression semantics and shipped rollout context: `../../docs/design/contracts/expression_lang.md`, `../../docs/ROADMAP.md`
+- Expression semantics and shipped rollout context: `../../docs/public/reference/expression-language.md`, `../../docs/ROADMAP.md`
 
 ## Run Artifacts
 

@@ -8,18 +8,21 @@ This file is a local navigation map for this directory.
 
 ## Canonical Docs
 
-- Product requirements and design entrypoint: `design/index.md`
-- Expression language target semantics: `design/contracts/expression_lang.md`
+- Public user-facing docs entrypoint: `public/intro.md`
+- Public command semantics reference: `public/reference/command-model.md`
+- Public machine-output reference: `public/reference/machine-output.md`
+- Public expression-language reference: `public/reference/expression-language.md`
+- Internal architecture and implementation map: `ARCHITECTURE.md`
 - Delivery milestones and target versions: `ROADMAP.md`
-- Development workflow and coding conventions: `DEVELOPMENT.md`
+- Development workflow, coding conventions, and docs maintenance: `DEVELOPMENT.md`
 - Release checklist and rollback notes: `RELEASE.md`
 - Active backlog, open design questions, and tech debt tracking: `BACKLOG.md`
 - Actual shipped release history: `../CHANGELOG.md`
 
 ## Child Maps
 
-- Packaged CLI docs: `cli/AGENTS.md`
-- Design corpus: `design/AGENTS.md`
+- Public embedded docs corpus: `public/AGENTS.md`
+- Packaged skills: `skills/AGENTS.md`
 - Execution plans: `exec-plans/AGENTS.md`
 
 ## Execution Plans

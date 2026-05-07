@@ -1,3 +1,13 @@
+---
+id: reference/expression-language
+title: Expression Language Contract
+summary: Syntax and semantics for event and value expressions used by change and property.
+section: reference
+see_also:
+  - commands/change
+  - commands/property
+  - reference/command-model
+---
 # Expression Language Contract
 
 This document captures the intended end-state semantics of the `wavepeek`

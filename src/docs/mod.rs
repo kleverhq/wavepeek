@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::WavepeekError;
 
-static TOPICS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/docs/cli/topics");
+static TOPICS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/docs/public");
 pub const PACKAGED_SKILL_MARKDOWN: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/docs/cli/wavepeek-skill.md"
+    "/docs/skills/wavepeek.md"
 ));
 
 const EXPORT_KIND: &str = "wavepeek-docs-export";
@@ -96,10 +96,10 @@ impl DocsCatalog {
 fn topic_section_rank(section: &str) -> usize {
     match section {
         "intro" => 0,
-        "concepts" => 1,
-        "commands" => 2,
-        "workflows" => 3,
-        "troubleshooting" => 4,
+        "commands" => 1,
+        "workflows" => 2,
+        "troubleshooting" => 3,
+        "reference" => 4,
         _ => 5,
     }
 }
@@ -734,8 +734,10 @@ mod tests {
         assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
         assert_eq!(matches[1].topic.id, "commands/change");
         assert_eq!(matches[1].match_kind, MatchKind::IdPrefix);
-        assert_eq!(matches[2].topic.id, "troubleshooting/empty-results");
-        assert_eq!(matches[2].match_kind, MatchKind::Heading);
+        assert_eq!(matches[2].topic.id, "reference/expression-language");
+        assert_eq!(matches[2].match_kind, MatchKind::TitleOrSummary);
+        assert_eq!(matches[3].topic.id, "troubleshooting/empty-results");
+        assert_eq!(matches[3].match_kind, MatchKind::Heading);
     }
 
     #[test]
@@ -801,10 +803,10 @@ mod tests {
 
         let summary = export_catalog(&out_dir, false).expect("export should succeed");
 
-        assert_eq!(summary.topics.len(), 9);
+        assert_eq!(summary.topics.len(), 16);
         assert!(out_dir.join("commands").join("change.md").exists());
         assert!(out_dir.join("manifest.json").exists());
-        assert!(!out_dir.join("wavepeek-skill.md").exists());
+        assert!(!out_dir.join("wavepeek.md").exists());
         assert_eq!(EXPORT_FORMAT_VERSION, 1);
         assert!(packaged_skill_markdown().starts_with("---\nname: wavepeek\n"));
     }

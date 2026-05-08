@@ -10,9 +10,11 @@ see_also:
 ---
 # Expression Language Contract
 
-This document captures the intended end-state semantics of the `wavepeek`
-expression language used by `property --on` / `property --eval` and by
-`change --on`. It describes the target contract, not rollout order.
+This document defines the shipped `wavepeek` expression language used by
+`property --on` / `property --eval` and by `change --on`.
+
+It is the public reference for the expression syntax and semantics available in
+this build.
 
 The contract is based on IEEE 1800-2023 SystemVerilog and aims to preserve
 SystemVerilog-compatible syntax and semantics wherever practical for dump-based

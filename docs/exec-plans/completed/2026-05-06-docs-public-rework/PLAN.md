@@ -33,8 +33,11 @@ This plan does not update historical completed execution plans unless a future m
 - [x] (2026-05-06 21:30Z) Committed the reviewed plan as the second checkpoint after incorporating the docs, code/tests, and architecture review findings.
 - [x] (2026-05-06 22:05Z) Implemented the first migration slice: created `docs/public/`, `docs/skills/`, and `docs/ARCHITECTURE.md`; moved public reference contracts and command/workflow/troubleshooting topics; rewrote the skill as a router; switched `src/docs/mod.rs` to embed `docs/public` and `docs/skills/wavepeek.md`; updated docs runtime tests and `tests/docs_cli.rs`; removed retired `docs/cli/` and `docs/design/` trees.
 - [x] (2026-05-06 22:05Z) Updated live breadcrumbs and supporting docs for the new public docs/source-of-truth paths, including root/docs/src/tests/schema/bench `AGENTS.md`, README, changelog, backlog, and development guidance.
-- [ ] Run full validation and a final multi-lane subagent review on the implementation diff.
-- [ ] Move this plan to `docs/exec-plans/completed/2026-05-06-docs-public-rework/PLAN.md` after implementation, validation, review, and reporting are complete.
+- [x] (2026-05-07 13:05Z) Ran full validation with `make check` and `make ci`; both passed after the public-corpus migration commit.
+- [x] (2026-05-07 13:28Z) Ran final read-only subagent review lanes on the implementation diff. The docs lane found two public-doc wording issues, the architecture lane found one stale active-plan context issue, and the code lane was attempted but failed due an external ChatGPT usage-limit error in the subagent session before it could return findings.
+- [x] (2026-05-07 13:40Z) Applied the final implementation-review fixes: removed future-tense rollout wording from `docs/public/reference/expression-language.md`, removed repository-source guidance from the public `reference/command-model` topic, and refreshed this plan's context and status to match the post-migration repository state.
+- [x] (2026-05-07 13:40Z) Re-ran targeted docs validation after the follow-up fixes: `cargo test docs:: --lib`, `cargo test --test docs_cli`, and `make check` all passed.
+- [x] (2026-05-07 13:45Z) Moved this plan to `docs/exec-plans/completed/2026-05-06-docs-public-rework/PLAN.md` after implementation, validation, review, and reporting were complete.
 
 ## Surprises & Discoveries
 
@@ -61,6 +64,12 @@ This plan does not update historical completed execution plans unless a future m
 
 - Observation: expanding the docs corpus changes deterministic search rankings even when the search algorithm does not change.
   Evidence: after adding `reference/expression-language`, `cargo test docs:: --lib` initially failed because `search_topics("find first change", false)` matched the new reference topic summary before `troubleshooting/empty-results`; the test was updated to assert the new deterministic order.
+
+- Observation: final implementation review found that a user-facing embedded reference still spoke in future-tense rollout language.
+  Evidence: the docs review lane flagged `docs/public/reference/expression-language.md` for phrases such as "intended end-state" and "target contract, not rollout order," which are appropriate in an internal design doc but confusing in an installed public reference topic.
+
+- Observation: the attempted final code-review subagent did not return findings because the provider session hit an external usage limit.
+  Evidence: `/home/ubuntu/.pi/agent/subagents/pi-sub-docs-public-impl-code-25fc3846.log` ends with `You have hit your ChatGPT usage limit (plus plan)` instead of findings. Targeted tests, `make check`, and `make ci` still completed successfully in the main session.
 
 ## Decision Log
 
@@ -102,25 +111,25 @@ This plan does not update historical completed execution plans unless a future m
 
 ## Outcomes & Retrospective
 
-Partial implementation outcome: the public docs corpus now exists under `docs/public/`, the packaged skill source now exists under `docs/skills/wavepeek.md`, and internal architecture now exists at `docs/ARCHITECTURE.md`. The embedded docs runtime and docs CLI tests point at the new locations, and the old `docs/cli/` and `docs/design/` trees have been removed from the working tree.
+The documentation rework is complete. The public docs corpus now lives under `docs/public/`, the packaged skill source now lives under `docs/skills/wavepeek.md`, and internal architecture now lives at `docs/ARCHITECTURE.md`. The embedded docs runtime and docs CLI tests point at the new locations, the old `docs/cli/` and `docs/design/` trees are gone, and live breadcrumbs/docs point to the new source-of-truth paths.
 
-The first plan review cycle produced substantive findings and those findings are now incorporated into the plan. The main corrections are that moved topics must gain proper YAML front matter, `documentation_surface.md` needs an explicit section-by-section destination map, `commands/help` and `commands/docs` must carry real user-facing semantics rather than placeholder-only content, maintainer rules must live in contributor prose docs rather than AGENTS breadcrumbs, and stale-reference sweeps must include `bench/` while excluding execution-plan history.
+The first plan review cycle improved the implementation plan before coding. The final implementation review then added three smaller follow-ups, all of which are now fixed: future-tense rollout wording was removed from the public expression-language reference, repository-source guidance was removed from the public `reference/command-model` topic, and this plan was refreshed so its active context no longer described deleted paths as current runtime state.
 
-Targeted validation for this partial implementation is green: `cargo test docs:: --lib`, `cargo test --test docs_cli`, `cargo test --test cli_contract`, and `cargo test --test schema_cli` passed after the migration slice. Full `make check` and `make ci` still remain before final handoff.
+Validation is green: `cargo test docs:: --lib`, `cargo test --test docs_cli`, `cargo test --test cli_contract`, `cargo test --test schema_cli`, `make check`, and `make ci` passed during the implementation, and the follow-up doc fixes revalidated with `cargo test docs:: --lib`, `cargo test --test docs_cli`, and `make check`. One code-review subagent failed due an external usage-limit error, so the main session relied on the passing validation gates plus direct repo inspection for the code lane while still using successful docs and architecture subagent lanes.
 
 ## Context and Orientation
 
-The repository root is `/workspaces/docs-rework`. The project is a Rust command-line tool named `wavepeek`. It already has an installed documentation command family, `wavepeek docs`, implemented by `src/cli/docs.rs`, `src/engine/docs.rs`, and `src/docs/mod.rs`. The runtime currently embeds Markdown topics from `docs/cli/topics/` and embeds the packaged agent skill from `docs/cli/wavepeek-skill.md`.
+The repository root is `/workspaces/docs-rework`. The project is a Rust command-line tool named `wavepeek`. It has an installed documentation command family, `wavepeek docs`, implemented by `src/cli/docs.rs`, `src/engine/docs.rs`, and `src/docs/mod.rs`. The runtime now embeds Markdown topics from `docs/public/` and embeds the packaged agent skill from `docs/skills/wavepeek.md`.
 
 A topic is one Markdown file with YAML front matter. The current topic front matter requires `id`, `title`, `summary`, and `section`, with optional `see_also`. The topic body must start with an H1 heading that matches `title`. The topic ID is the stable slash-separated public name shown to users, such as `commands/change`; it is not the raw filesystem path with `.md`, although the loader currently requires the file path under the embedded root to match the ID plus `.md`.
 
-The current public-but-thin embedded topic corpus lives under `docs/cli/topics/`. It contains `intro`, two short `concepts` topics, four command topics, one workflow, and one troubleshooting topic. The richer semantic contracts live under `docs/design/contracts/`. Those contracts are currently not embedded into `wavepeek docs`, even though they describe user-visible behavior.
+The current embedded public topic corpus lives under `docs/public/`. It contains a user-facing `intro`, command-family topics, one workflow topic, one troubleshooting topic, and three public reference topics for command semantics, machine output, and expression language.
 
-The current internal architecture document is `docs/design/architecture.md`. It explains Rust dependencies, execution layers, module structure, expression-engine implementation, error handling, the `change` command execution architecture, and testing strategy. It should remain available to contributors but should not be treated as an installed user topic.
+The internal architecture document is `docs/ARCHITECTURE.md`. It explains Rust dependencies, execution layers, module structure, expression-engine implementation, error handling, the `change` command execution architecture, and testing strategy. It remains available to contributors but is not part of the installed topic corpus.
 
-The current command-family guide is `docs/design/reference/cli.md`. It is explicitly derived documentation and says that exact command syntax, defaults, requiredness, and examples are authoritative in generated help and `src/cli/`. It should become a user-facing overview topic under `commands/overview`, not a reference contract.
+The current command-family guide is `docs/public/commands/overview.md`. It is intentionally derived documentation and says that exact command syntax, defaults, requiredness, and examples are authoritative in generated help. It is a user-facing overview topic, not a reference contract.
 
-The current documentation-surface contract is `docs/design/contracts/documentation_surface.md`. It defines layered help, the `docs` command family, topic metadata, docs search, docs export, and ownership split. Its user-facing content belongs in public command/help topics, while its maintainer-only source-of-truth rules belong in contributor prose documentation such as `docs/DEVELOPMENT.md`. `AGENTS.md` breadcrumb files may link to those maintainer rules, but they must not become the canonical home for the rules themselves.
+The layered-help, docs-command, topic-metadata, docs-search, and docs-export semantics that used to live in `docs/design/contracts/documentation_surface.md` are now split between user-facing topics such as `docs/public/commands/help.md` and `docs/public/commands/docs.md`, and maintainer guidance in `docs/DEVELOPMENT.md`. `AGENTS.md` breadcrumb files may link to those maintainer rules, but they must not become the canonical home for the rules themselves.
 
 The important implementation files are:
 
@@ -392,3 +401,5 @@ The bodies of those functions should continue to source metadata from embedded M
 Revision Note: 2026-05-06 / Pi - Initial active ExecPlan created from the scratch TODO and discussion decisions. It records the target public docs corpus, reference-topic migration, command-topic placeholder strategy, skill relocation, internal architecture move, code/test/link update scope, validation gates, and mandatory subagent review workflow.
 
 Revision Note: 2026-05-06 / Pi - Revised after read-only subagent plan review. The revision adds a section-by-section migration map for `documentation_surface.md`, requires YAML front matter for moved public topics, makes `commands/help` and `commands/docs` non-placeholder guides, moves maintainer-only docs rules to `docs/DEVELOPMENT.md` instead of `AGENTS.md`, updates concrete copy/test/search steps, and expands stale-reference cleanup to bench breadcrumbs and root `AGENTS.md`.
+
+Revision Note: 2026-05-07 / Pi - Updated after implementation, validation, and final review. This revision records the completed migration to `docs/public/`, the successful validation gates, the successful docs/architecture review lanes, the external failure of the code-review subagent, and the follow-up fixes applied to the public reference topics and plan context.

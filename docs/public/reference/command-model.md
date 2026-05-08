@@ -9,7 +9,7 @@ see_also:
 ---
 # Command Model Contract
 
-This document is normative for the cross-cutting semantics shared across the shipped waveform-inspection commands. It intentionally avoids repeating exact flag lists and defaults. Layered help, the visible `help` subcommand, the `docs` command family, embedded topic rules, and docs export/search behavior are governed by `commands/docs` instead. For the precise command-line surface, follow `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help`.
+This document is normative for the cross-cutting semantics shared across the shipped waveform-inspection commands. It intentionally avoids repeating exact flag lists and defaults. Layered help, the visible `help` subcommand, the `docs` command family, embedded topic rules, and docs export/search behavior are governed by `commands/docs` instead. For the precise command-line surface in an installed build, follow `wavepeek -h`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`.
 
 ## 1. Waveform Input Model
 

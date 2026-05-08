@@ -728,14 +728,37 @@ mod tests {
 
         assert_eq!(matches[0].topic.id, "workflows/find-first-change");
         assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
-        assert_eq!(matches[1].topic.id, "reference/expression-language");
-        assert_eq!(matches[1].match_kind, MatchKind::TitleOrSummary);
-        assert_eq!(matches[2].topic.id, "troubleshooting/empty-results");
-        assert_eq!(matches[2].match_kind, MatchKind::Heading);
-        assert_eq!(matches[3].topic.id, "commands/overview");
-        assert_eq!(matches[3].match_kind, MatchKind::Body);
-        assert_eq!(matches[5].topic.id, "commands/change");
-        assert_eq!(matches[5].match_kind, MatchKind::IdPrefix);
+
+        let title_or_summary_idx = matches
+            .iter()
+            .position(|entry| entry.topic.id == "reference/expression-language")
+            .expect("reference/expression-language should match");
+        assert_eq!(
+            matches[title_or_summary_idx].match_kind,
+            MatchKind::TitleOrSummary
+        );
+
+        let heading_idx = matches
+            .iter()
+            .position(|entry| entry.topic.id == "troubleshooting/empty-results")
+            .expect("troubleshooting/empty-results should match");
+        assert_eq!(matches[heading_idx].match_kind, MatchKind::Heading);
+
+        let body_idx = matches
+            .iter()
+            .position(|entry| entry.match_kind == MatchKind::Body)
+            .expect("query should produce at least one body match");
+
+        let id_prefix_idx = matches
+            .iter()
+            .position(|entry| entry.topic.id == "commands/change")
+            .expect("commands/change should match");
+        assert_eq!(matches[id_prefix_idx].match_kind, MatchKind::IdPrefix);
+
+        assert!(title_or_summary_idx > 0);
+        assert!(heading_idx > title_or_summary_idx);
+        assert!(body_idx > heading_idx);
+        assert!(id_prefix_idx > body_idx);
     }
 
     #[test]

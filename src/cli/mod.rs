@@ -64,7 +64,8 @@ enum WaveformCommand {
 
 Behavior:
 - Prints available metadata (e.g. time unit, start/end times, etc.) in free form
-- `--json` uses the machine contract defined by `wavepeek schema`."#
+- `--json` uses the machine contract defined by `wavepeek schema`."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/info"
     )]
     Info(info::InfoArgs),
     #[command(

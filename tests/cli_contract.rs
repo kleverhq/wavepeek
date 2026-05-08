@@ -560,7 +560,15 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
     }
 
     assert!(long_help.contains("Behavior:\n- Prints available metadata (e.g. time unit, start/end times, etc.) in free form\n- `--json` uses the machine contract defined by `wavepeek schema`."));
-    for help in [&short_help, &long_help] {
+    assert!(!short_help.contains("See also:"));
+    for help in [&long_help, &alias_help] {
+        assert!(help.contains("See also:\n  wavepeek docs show commands/info"));
+        assert!(
+            help.find("Other options:").unwrap() < help.find("See also:").unwrap(),
+            "See also block should follow the options block"
+        );
+    }
+    for help in [&short_help, &long_help, &alias_help] {
         assert!(help.contains("Input options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));

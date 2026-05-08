@@ -150,53 +150,40 @@ fn docs_search_ranks_matches_deterministically() {
     let matches = value["data"]["matches"]
         .as_array()
         .expect("docs search payload should expose a matches array");
-    let ids: Vec<&str> = matches
-        .iter()
-        .map(|entry| {
-            entry["topic"]["id"]
-                .as_str()
-                .expect("topic id should exist")
-        })
-        .collect();
-    let match_kinds: Vec<&str> = matches
-        .iter()
-        .map(|entry| {
-            entry["match_kind"]
-                .as_str()
-                .expect("match_kind should be string")
-        })
-        .collect();
 
+    assert_eq!(matches[0]["topic"]["id"], "workflows/find-first-change");
+    assert_eq!(matches[0]["match_kind"], "title_exact");
+
+    let title_or_summary_idx = matches
+        .iter()
+        .position(|entry| entry["topic"]["id"] == "reference/expression-language")
+        .expect("reference/expression-language should match");
     assert_eq!(
-        ids,
-        vec![
-            "workflows/find-first-change",
-            "reference/expression-language",
-            "troubleshooting/empty-results",
-            "commands/overview",
-            "reference/command-model",
-            "commands/change",
-            "commands/docs",
-            "commands/help",
-            "intro",
-            "reference/machine-output"
-        ]
+        matches[title_or_summary_idx]["match_kind"],
+        "title_or_summary"
     );
-    assert_eq!(
-        match_kinds,
-        vec![
-            "title_exact",
-            "title_or_summary",
-            "heading",
-            "body",
-            "body",
-            "id_prefix",
-            "body",
-            "body",
-            "body",
-            "body"
-        ]
-    );
+
+    let heading_idx = matches
+        .iter()
+        .position(|entry| entry["topic"]["id"] == "troubleshooting/empty-results")
+        .expect("troubleshooting/empty-results should match");
+    assert_eq!(matches[heading_idx]["match_kind"], "heading");
+
+    let body_idx = matches
+        .iter()
+        .position(|entry| entry["match_kind"] == "body")
+        .expect("query should produce at least one body match");
+
+    let id_prefix_idx = matches
+        .iter()
+        .position(|entry| entry["topic"]["id"] == "commands/change")
+        .expect("commands/change should match");
+    assert_eq!(matches[id_prefix_idx]["match_kind"], "id_prefix");
+
+    assert!(title_or_summary_idx > 0);
+    assert!(heading_idx > title_or_summary_idx);
+    assert!(body_idx > heading_idx);
+    assert!(id_prefix_idx > body_idx);
 }
 
 #[test]

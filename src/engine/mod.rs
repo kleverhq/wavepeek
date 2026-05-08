@@ -80,7 +80,6 @@ pub struct DocsSearchMatchData {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct DocsSearchData {
     pub query: String,
-    pub full_text: bool,
     pub matches: Vec<DocsSearchMatchData>,
 }
 

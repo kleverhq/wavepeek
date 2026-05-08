@@ -150,7 +150,7 @@ pub fn normalize_search_query(query: &str) -> Result<String, WavepeekError> {
     normalize_query(query)
 }
 
-pub fn search_topics(query: &str, full_text: bool) -> Result<Vec<SearchMatch>, WavepeekError> {
+pub fn search_topics(query: &str) -> Result<Vec<SearchMatch>, WavepeekError> {
     let catalog = embedded_catalog()?;
     let normalized_query = normalize_query(query)?;
     let tokens = tokenize(&normalized_query);
@@ -158,7 +158,7 @@ pub fn search_topics(query: &str, full_text: bool) -> Result<Vec<SearchMatch>, W
     let mut matches = catalog
         .topics
         .values()
-        .filter_map(|record| search_match(record, &normalized_query, &tokens, full_text))
+        .filter_map(|record| search_match(record, &normalized_query, &tokens))
         .collect::<Vec<_>>();
 
     matches.sort_by(|left, right| {
@@ -471,7 +471,6 @@ fn search_match(
     record: &TopicRecord,
     normalized_query: &str,
     tokens: &[String],
-    full_text: bool,
 ) -> Option<SearchMatch> {
     let normalized_id = record.summary.id.to_ascii_lowercase();
     let normalized_title = record.summary.title.to_ascii_lowercase();
@@ -481,7 +480,7 @@ fn search_match(
         .iter()
         .map(|heading| heading.to_ascii_lowercase())
         .collect::<Vec<_>>();
-    let normalized_body = full_text.then(|| record.body.to_ascii_lowercase());
+    let normalized_body = record.body.to_ascii_lowercase();
 
     if normalized_id == normalized_query {
         return Some(SearchMatch {
@@ -517,10 +516,7 @@ fn search_match(
             .any(|heading| heading.contains(token))
         {
             Some(MatchKind::Heading)
-        } else if normalized_body
-            .as_ref()
-            .is_some_and(|body| body.contains(token))
-        {
+        } else if normalized_body.contains(token) {
             Some(MatchKind::Body)
         } else {
             None
@@ -711,7 +707,7 @@ mod tests {
 
     #[test]
     fn embedded_topics_load_in_lexicographic_order() {
-        let matches = search_topics("commands/change", false).expect("catalog should load");
+        let matches = search_topics("commands/change").expect("catalog should load");
         assert_eq!(matches[0].topic.id, "commands/change");
         assert_eq!(matches[0].match_kind, MatchKind::IdExact);
     }
@@ -728,16 +724,18 @@ mod tests {
 
     #[test]
     fn search_ranks_exact_title_above_weaker_matches() {
-        let matches = search_topics("find first change", false).expect("search should succeed");
+        let matches = search_topics("find first change").expect("search should succeed");
 
         assert_eq!(matches[0].topic.id, "workflows/find-first-change");
         assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
-        assert_eq!(matches[1].topic.id, "commands/change");
-        assert_eq!(matches[1].match_kind, MatchKind::IdPrefix);
-        assert_eq!(matches[2].topic.id, "reference/expression-language");
-        assert_eq!(matches[2].match_kind, MatchKind::TitleOrSummary);
-        assert_eq!(matches[3].topic.id, "troubleshooting/empty-results");
-        assert_eq!(matches[3].match_kind, MatchKind::Heading);
+        assert_eq!(matches[1].topic.id, "reference/expression-language");
+        assert_eq!(matches[1].match_kind, MatchKind::TitleOrSummary);
+        assert_eq!(matches[2].topic.id, "troubleshooting/empty-results");
+        assert_eq!(matches[2].match_kind, MatchKind::Heading);
+        assert_eq!(matches[3].topic.id, "commands/overview");
+        assert_eq!(matches[3].match_kind, MatchKind::Body);
+        assert_eq!(matches[5].topic.id, "commands/change");
+        assert_eq!(matches[5].match_kind, MatchKind::IdPrefix);
     }
 
     #[test]
@@ -749,7 +747,7 @@ mod tests {
 
     #[test]
     fn search_matches_topic_id_tokens_by_default() {
-        let matches = search_topics("empty-results", false).expect("search should succeed");
+        let matches = search_topics("empty-results").expect("search should succeed");
 
         assert_eq!(matches[0].topic.id, "troubleshooting/empty-results");
         assert_eq!(matches[0].match_kind, MatchKind::IdPrefix);
@@ -758,17 +756,20 @@ mod tests {
 
     #[test]
     fn search_counts_distinct_query_tokens_only_once() {
-        let matches = search_topics("change change", false).expect("search should succeed");
+        let matches = search_topics("change change").expect("search should succeed");
 
         assert_eq!(matches[0].matched_tokens, 1);
     }
 
     #[test]
     fn search_preserves_exact_title_match_kind() {
-        let matches = search_topics("Change command", false).expect("search should succeed");
+        let matches = search_topics("Change command").expect("search should succeed");
 
-        assert_eq!(matches[0].topic.id, "commands/change");
-        assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
+        let change_match = matches
+            .iter()
+            .find(|entry| entry.topic.id == "commands/change")
+            .expect("commands/change should match exact title query");
+        assert_eq!(change_match.match_kind, MatchKind::TitleExact);
     }
 
     #[test]

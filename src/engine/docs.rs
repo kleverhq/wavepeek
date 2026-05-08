@@ -62,7 +62,7 @@ fn show(args: DocsShowArgs) -> Result<CommandResult, WavepeekError> {
 fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
     let raw_query = args.query.join(" ");
     let normalized_query = docs::normalize_search_query(&raw_query)?;
-    let matches = docs::search_topics(&raw_query, args.full_text)?;
+    let matches = docs::search_topics(&raw_query)?;
 
     if args.json {
         return Ok(CommandResult {
@@ -71,7 +71,6 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsSearch(DocsSearchData {
                 query: normalized_query,
-                full_text: args.full_text,
                 matches: matches
                     .into_iter()
                     .map(|entry| DocsSearchMatchData {

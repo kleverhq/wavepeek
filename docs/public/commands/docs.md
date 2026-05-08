@@ -27,7 +27,7 @@ Run `wavepeek docs search <query>` when you do not know the exact topic ID.
 
 ## Search behavior
 
-Docs search is deterministic and case-insensitive. Queries are split on whitespace. By default, search covers topic ID, title, summary, and Markdown headings. Add `--full-text` to include the full topic body.
+Docs search is deterministic and case-insensitive. Queries are plain text, not regular expressions. They are split on whitespace. Search covers topic ID, title, summary, Markdown headings, and Markdown body text.
 
 Matches that cover more distinct query tokens rank ahead of weaker matches. Remaining ties use structural match strength and then topic ID order, so repeated searches with the same installed binary produce stable results.
 

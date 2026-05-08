@@ -729,6 +729,49 @@ fn docs_show_help_is_layered() {
 }
 
 #[test]
+fn nested_docs_help_surfaces_are_aligned_and_trimmed() {
+    let search_short = successful_stdout_text(&["docs", "search", "-h"]);
+    let search_long = successful_stdout_text(&["docs", "search", "--help"]);
+    let search_alias = successful_stdout_text(&["help", "docs", "search"]);
+    for help in [&search_short, &search_long, &search_alias] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Search embedded documentation topics.")
+        );
+        assert!(help.contains("Plain-text query split into whitespace tokens"));
+        assert!(!help.contains("--full-text"));
+    }
+    assert_eq!(search_long, search_alias);
+    assert!(search_long.contains("not a regular expression"));
+    assert!(search_long.contains("Markdown bodies"));
+    assert!(search_long.contains("contract: see `wavepeek schema`"));
+
+    let export_short = successful_stdout_text(&["docs", "export", "-h"]);
+    let export_long = successful_stdout_text(&["docs", "export", "--help"]);
+    let export_alias = successful_stdout_text(&["help", "docs", "export"]);
+    for help in [&export_short, &export_long, &export_alias] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Export all embedded Markdown documentation to disk.")
+        );
+        assert!(!help.contains("skill Markdown"));
+    }
+    assert_eq!(export_long, export_alias);
+
+    let skill_short = successful_stdout_text(&["docs", "skill", "-h"]);
+    let skill_long = successful_stdout_text(&["docs", "skill", "--help"]);
+    let skill_alias = successful_stdout_text(&["help", "docs", "skill"]);
+    for help in [&skill_short, &skill_long, &skill_alias] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Print the packaged agent skill Markdown for wavepeek.")
+        );
+        assert!(!help.contains("Behavior:"));
+    }
+    assert_eq!(skill_long, skill_alias);
+}
+
+#[test]
 fn nested_parse_errors_point_to_full_help_path() {
     wavepeek_cmd()
         .args(["docs", "show", "intro", "--wat"])

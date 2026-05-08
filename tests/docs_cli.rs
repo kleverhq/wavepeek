@@ -145,7 +145,7 @@ fn docs_search_ranks_matches_deterministically() {
 
     assert_eq!(value["command"], "docs search");
     assert_eq!(value["data"]["query"], "find first change");
-    assert_eq!(value["data"]["full_text"], false);
+    assert!(value["data"].get("full_text").is_none());
 
     let matches = value["data"]["matches"]
         .as_array()
@@ -171,14 +171,31 @@ fn docs_search_ranks_matches_deterministically() {
         ids,
         vec![
             "workflows/find-first-change",
-            "commands/change",
             "reference/expression-language",
-            "troubleshooting/empty-results"
+            "troubleshooting/empty-results",
+            "commands/overview",
+            "reference/command-model",
+            "commands/change",
+            "commands/docs",
+            "commands/help",
+            "intro",
+            "reference/machine-output"
         ]
     );
     assert_eq!(
         match_kinds,
-        vec!["title_exact", "id_prefix", "title_or_summary", "heading"]
+        vec![
+            "title_exact",
+            "title_or_summary",
+            "heading",
+            "body",
+            "body",
+            "id_prefix",
+            "body",
+            "body",
+            "body",
+            "body"
+        ]
     );
 }
 
@@ -218,8 +235,11 @@ fn docs_search_preserves_exact_title_match_kind() {
     let matches = value["data"]["matches"]
         .as_array()
         .expect("docs search payload should expose a matches array");
-    assert_eq!(matches[0]["topic"]["id"], "commands/change");
-    assert_eq!(matches[0]["match_kind"], "title_exact");
+    let change_match = matches
+        .iter()
+        .find(|entry| entry["topic"]["id"] == "commands/change")
+        .expect("commands/change should match exact title query");
+    assert_eq!(change_match["match_kind"], "title_exact");
 }
 
 #[test]

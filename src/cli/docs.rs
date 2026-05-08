@@ -30,35 +30,28 @@ Behavior:
     )]
     Show(DocsShowArgs),
     #[command(
-        about = "Search embedded documentation topics",
-        long_about = r#"Search embedded documentation topics in deterministic ranked order.
+        about = "Search embedded documentation topics.",
+        long_about = r#"Search embedded documentation topics.
 
 Behavior:
-- Matching is case-insensitive and tokenized on whitespace.
-- Default scope searches topic IDs, titles, summaries, and Markdown headings.
-- `--full-text` expands the search to full Markdown bodies.
-- `--json` emits the standard machine-readable envelope for ranked search results."#
+- Query is plain text, not a regular expression; it is normalized case-insensitively and split into whitespace tokens.
+- Scope searches topic IDs, titles, summaries, Markdown headings, and Markdown bodies.
+- `--json` emits the standard machine-readable envelope for ranked search results (contract: see `wavepeek schema`)."#
     )]
     Search(DocsSearchArgs),
     #[command(
-        about = "Export authored Markdown topics to disk",
-        long_about = r#"Export the authored Markdown topic corpus to disk.
+        about = "Export all embedded Markdown documentation to disk.",
+        long_about = r#"Export all embedded Markdown documentation to disk.
 
 Behavior:
 - Writes one Markdown file per embedded topic using stable topic-path layout.
 - Preserves YAML front matter exactly as authored in the packaged source.
-- Writes a managed-root manifest that makes future `--force` replacement safe.
-- Excludes the separately routed packaged skill Markdown."#
+- Writes a managed-root manifest that makes future `--force` replacement safe."#
     )]
     Export(DocsExportArgs),
     #[command(
-        about = "Print the packaged agent skill Markdown",
-        long_about = r#"Print the packaged agent skill Markdown for wavepeek.
-
-Behavior:
-- Writes the shipped skill source directly to stdout.
-- Keeps agent guidance version-matched to the installed binary.
-- Does not export through `wavepeek docs export`; use this subcommand when you need the skill text."#
+        about = "Print the packaged agent skill Markdown for wavepeek.",
+        long_about = "Print the packaged agent skill Markdown for wavepeek."
     )]
     Skill(DocsSkillArgs),
 }
@@ -82,12 +75,9 @@ pub struct DocsShowArgs {
 
 #[derive(Debug, Args)]
 pub struct DocsSearchArgs {
-    /// One or more query tokens
+    /// Plain-text query split into whitespace tokens
     #[arg(value_name = "QUERY", num_args = 1.., required = true)]
     pub query: Vec<String>,
-    /// Expand matching to full Markdown bodies
-    #[arg(long)]
-    pub full_text: bool,
     /// Machine-readable JSON output
     #[arg(long)]
     pub json: bool,

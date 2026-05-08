@@ -459,15 +459,11 @@
       "additionalProperties": false,
       "required": [
         "query",
-        "full_text",
         "matches"
       ],
       "properties": {
         "query": {
           "type": "string"
-        },
-        "full_text": {
-          "type": "boolean"
         },
         "matches": {
           "type": "array",

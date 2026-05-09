@@ -729,6 +729,12 @@ mod tests {
         assert_eq!(matches[0].topic.id, "workflows/find-first-change");
         assert_eq!(matches[0].match_kind, MatchKind::TitleExact);
 
+        let heading_idx = matches
+            .iter()
+            .position(|entry| entry.topic.id == "troubleshooting/empty-results")
+            .expect("troubleshooting/empty-results should match");
+        assert_eq!(matches[heading_idx].match_kind, MatchKind::Heading);
+
         let title_or_summary_idx = matches
             .iter()
             .position(|entry| entry.topic.id == "reference/expression-language")
@@ -737,12 +743,6 @@ mod tests {
             matches[title_or_summary_idx].match_kind,
             MatchKind::TitleOrSummary
         );
-
-        let heading_idx = matches
-            .iter()
-            .position(|entry| entry.topic.id == "troubleshooting/empty-results")
-            .expect("troubleshooting/empty-results should match");
-        assert_eq!(matches[heading_idx].match_kind, MatchKind::Heading);
 
         let body_idx = matches
             .iter()
@@ -755,9 +755,9 @@ mod tests {
             .expect("commands/change should match");
         assert_eq!(matches[id_prefix_idx].match_kind, MatchKind::IdPrefix);
 
-        assert!(title_or_summary_idx > 0);
-        assert!(heading_idx > title_or_summary_idx);
-        assert!(body_idx > heading_idx);
+        assert!(heading_idx > 0);
+        assert!(title_or_summary_idx > heading_idx);
+        assert!(body_idx > title_or_summary_idx);
         assert!(id_prefix_idx > body_idx);
     }
 
@@ -827,7 +827,7 @@ mod tests {
 
         let summary = export_catalog(&out_dir, false).expect("export should succeed");
 
-        assert_eq!(summary.topics.len(), 16);
+        assert_eq!(summary.topics.len(), 19);
         assert!(out_dir.join("commands").join("change.md").exists());
         assert!(out_dir.join("manifest.json").exists());
         assert!(!out_dir.join("wavepeek.md").exists());

@@ -7,7 +7,7 @@ use tempfile::tempdir;
 mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
-const TOPIC_IDS: [&str; 16] = [
+const TOPIC_IDS: [&str; 19] = [
     "intro",
     "commands/change",
     "commands/docs",
@@ -21,6 +21,9 @@ const TOPIC_IDS: [&str; 16] = [
     "commands/value",
     "workflows/find-first-change",
     "troubleshooting/empty-results",
+    "troubleshooting/scoped-vs-canonical-names",
+    "troubleshooting/time-tokens-and-alignment",
+    "troubleshooting/unsupported-signal-encodings",
     "reference/command-model",
     "reference/expression-language",
     "reference/machine-output",
@@ -154,6 +157,12 @@ fn docs_search_ranks_matches_deterministically() {
     assert_eq!(matches[0]["topic"]["id"], "workflows/find-first-change");
     assert_eq!(matches[0]["match_kind"], "title_exact");
 
+    let heading_idx = matches
+        .iter()
+        .position(|entry| entry["topic"]["id"] == "troubleshooting/empty-results")
+        .expect("troubleshooting/empty-results should match");
+    assert_eq!(matches[heading_idx]["match_kind"], "heading");
+
     let title_or_summary_idx = matches
         .iter()
         .position(|entry| entry["topic"]["id"] == "reference/expression-language")
@@ -162,12 +171,6 @@ fn docs_search_ranks_matches_deterministically() {
         matches[title_or_summary_idx]["match_kind"],
         "title_or_summary"
     );
-
-    let heading_idx = matches
-        .iter()
-        .position(|entry| entry["topic"]["id"] == "troubleshooting/empty-results")
-        .expect("troubleshooting/empty-results should match");
-    assert_eq!(matches[heading_idx]["match_kind"], "heading");
 
     let body_idx = matches
         .iter()
@@ -180,9 +183,9 @@ fn docs_search_ranks_matches_deterministically() {
         .expect("commands/change should match");
     assert_eq!(matches[id_prefix_idx]["match_kind"], "id_prefix");
 
-    assert!(title_or_summary_idx > 0);
-    assert!(heading_idx > title_or_summary_idx);
-    assert!(body_idx > heading_idx);
+    assert!(heading_idx > 0);
+    assert!(title_or_summary_idx > heading_idx);
+    assert!(body_idx > title_or_summary_idx);
     assert!(id_prefix_idx > body_idx);
 }
 

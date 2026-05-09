@@ -29,7 +29,7 @@ Use full canonical paths:
 ```text
 wavepeek value --waves dump.vcd --at 10ns --signals top.cpu.clk,top.cpu.state
 wavepeek change --waves dump.vcd --signals top.cpu.clk,top.cpu.state --from 0ns --to 20ns
-wavepeek property --waves dump.vcd --on 'posedge top.cpu.clk' --eval 'top.cpu.state == 8'h03'
+wavepeek property --waves dump.vcd --on 'posedge top.cpu.clk' --eval "top.cpu.state == 8'h03"
 ```
 
 Short names such as `clk` do not resolve in this mode unless the dump really contains a top-level canonical path with that exact name.

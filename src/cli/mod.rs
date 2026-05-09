@@ -80,7 +80,8 @@ Behavior:
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command to explore hierarchy shape before narrowing to signal-level queries."#
+Use this command to explore hierarchy shape before narrowing to signal-level queries."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/scope"
     )]
     Scope(scope::ScopeArgs),
     #[command(

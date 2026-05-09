@@ -595,9 +595,17 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
     assert!(long_help.contains(
         "Behavior:\n- Finds all scopes matching `--filter` and displays scope name, depth, and kind."
     ));
+    assert!(!short_help.contains("See also:"));
+    for help in [&long_help, &alias_help] {
+        assert!(help.contains("See also:\n  wavepeek docs show commands/scope"));
+        assert!(
+            help.find("Other options:").unwrap() < help.find("See also:").unwrap(),
+            "See also block should follow the options block"
+        );
+    }
     assert!(!long_help.contains("human output"));
 
-    for help in [&short_help, &long_help] {
+    for help in [&short_help, &long_help, &alias_help] {
         assert!(help.contains("Input options:"));
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));

@@ -6,6 +6,7 @@ section: commands
 see_also:
   - commands/help
   - commands/docs
+  - commands/skill
   - reference/command-model
   - reference/machine-output
 ---
@@ -17,11 +18,13 @@ Use this topic to choose the right command family. It is not the exact flag refe
 
 Use `help` when you want the detailed reference layer directly, especially for nested paths such as `wavepeek help docs show`.
 
-Use `docs` when command help is not enough. It is the packaged narrative surface for command guidance, workflows, troubleshooting, topic discovery, export, and the shipped agent skill.
+Use `docs` when command help is not enough. It is the packaged narrative surface for command guidance, workflows, troubleshooting, topic discovery, and export.
 
 ## Helper commands
 
 Use `schema` when a machine client needs the canonical JSON contract for `--json` outputs. It prints the schema artifact directly and does not require a waveform file.
+
+Use `skill` when a coding agent needs the packaged Wavepeek skill Markdown from the installed build.
 
 ## Waveform inspection commands
 

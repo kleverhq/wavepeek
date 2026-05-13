@@ -6,6 +6,7 @@ section: reference
 see_also:
   - reference/command-model
   - commands/schema
+  - commands/skill
 ---
 # Machine Output Contract
 
@@ -43,10 +44,7 @@ The semantics of the envelope fields are:
 
 The exact JSON shapes for every command are defined by `schema/wavepeek.json` and by `wavepeek schema`.
 
-The stable JSON-producing commands currently include the waveform-inspection
-commands plus `docs topics --json` and `docs search --json`. Other `docs`
-subcommands do not silently change output modes; unsupported `--json`
-combinations fail as argument errors and leave stdout empty.
+The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
 ## 3. `schema` Command Behavior
 

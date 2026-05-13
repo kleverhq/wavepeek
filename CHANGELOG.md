@@ -8,9 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, export, and the shipped agent skill.
+- Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, and export.
 
 ### Changed
+- Promoted the packaged agent skill from `wavepeek docs skill` to the top-level `wavepeek skill` helper command.
 - Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
 - Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
 - Moved open design questions into `docs/BACKLOG.md` and removed the separate open-questions entrypoint.

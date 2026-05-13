@@ -58,17 +58,16 @@ scope="$(wavepeek scope --waves "$WAVES" --json | jq -r '.data[0].path')"
 wavepeek signal --waves "$WAVES" --scope "$scope" --json | jq '.data[:5]'
 ```
 
-
 ## Agentic Flows
 
 `wavepeek` ships with a ready-to-install agent skill:
 
 - Packaged source (repo): `docs/skills/wavepeek.md`
-- CLI export: `wavepeek docs skill`
+- CLI export: `wavepeek skill`
 
 Install via your agent:
 
-- Ask your coding agent to install the skill from `docs/skills/wavepeek.md` or from the output of `wavepeek docs skill`.
+- Ask your coding agent to install the skill from `docs/skills/wavepeek.md` or from the output of `wavepeek skill`.
 
 Manual install examples:
 
@@ -88,7 +87,8 @@ Note: an MCP server for tool-native agent integration is not available yet, but 
 | `change` | available | Delta snapshots over a time range with `--on` event triggers |
 | `property` | available | Property checks over event triggers with capture modes |
 | `schema` | available | Print canonical JSON schema used by `--json` output |
-| `docs` | available | Browse embedded narrative docs, search topics, export Markdown, and print the packaged skill |
+| `docs` | available | Browse embedded narrative docs, search topics, and export Markdown |
+| `skill` | available | Print packaged agent skill Markdown |
 | `help` | available | Print detailed long help for top-level or nested command paths |
 
 Use progressive disclosure via built-in help and docs:
@@ -96,7 +96,8 @@ Use progressive disclosure via built-in help and docs:
 - `wavepeek -h` for compact lookup help
 - `wavepeek --help` for detailed top-level reference help
 - `wavepeek help <command-path...>` for nested long-help aliases
-- `wavepeek docs` for embedded command guidance, workflows, troubleshooting, reference topics, export, and skill text
+- `wavepeek docs` for embedded command guidance, workflows, troubleshooting, reference topics, and export
+- `wavepeek skill` for packaged agent skill Markdown
 
 ## Development
 

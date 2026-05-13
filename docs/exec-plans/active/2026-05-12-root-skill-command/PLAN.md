@@ -29,7 +29,11 @@ This plan does not implement the feature during plan authoring. The current bran
 - [x] (2026-05-12 20:04Z) Attempted focused read-only subagent review lanes for docs, code, and architecture. The helper wrapper mis-handled prompts containing backticks and the word `skill`, so those runs did not return usable findings.
 - [x] (2026-05-12 20:04Z) Completed a main-session review fallback and identified three plan fixes: add an explicit regression test for rejecting `wavepeek docs skill`, include `docs/public/commands/help.md` and `docs/public/commands/AGENTS.md` in the collateral list, and clarify that `CHANGELOG.md` must revise the existing unreleased docs-surface wording rather than only append a new line.
 - [x] (2026-05-12 20:10Z) Applied the review fixes in this plan file, recorded the failed subagent attempt plus the manual-review fallback, and finalized the reviewed plan revision for the second plan-only commit.
-- [x] (2026-05-12 20:10Z) Implementation has not started. No source, docs, or test collateral outside this plan file changed during this planning task.
+- [x] (2026-05-13 06:20Z) Rewrote the CLI and engine command tree so `skill` is a top-level helper command implemented by `src/cli/skill.rs` and `src/engine/skill.rs`, while `docs` now owns only topics, show, search, and export.
+- [x] (2026-05-13 06:24Z) Updated public docs, maintainer collateral, breadcrumbs, README, changelog, and development guidance so all live command references point to `wavepeek skill` and `commands/skill`.
+- [x] (2026-05-13 06:28Z) Moved contract coverage to the new surface: added `tests/skill_cli.rs`, updated `tests/docs_cli.rs` and `tests/cli_contract.rs`, and adjusted embedded-doc export assertions for the additional public topic.
+- [x] (2026-05-13 06:31Z) Validated the implementation with `cargo test --test docs_cli --test skill_cli --test cli_contract --test schema_cli` and `make check`; all passed.
+- [x] (2026-05-13 06:37Z) Attempted focused read-only implementation review lanes again, but the subagent helper still produced empty print-mode logs. Completed a main-session review fallback on the final diff and found no substantive follow-up fixes beyond the already-applied branch changes.
 
 ## Surprises & Discoveries
 
@@ -42,8 +46,11 @@ This plan does not implement the feature during plan authoring. The current bran
 - Observation: some likely-adjacent files are intentionally no-change surfaces for this migration.
   Evidence: the same search does not require behavioral edits in `schema/wavepeek.json`, `tests/schema_cli.rs`, `docs/ROADMAP.md`, `docs/RELEASE.md`, or `docs/BACKLOG.md`; they either do not mention the command path or they describe broader concepts that remain true after the promotion.
 
-- Observation: the read-only subagent review workflow tripped over prompt text containing backticks and the token `skill`, which collided with shell evaluation in the helper wrapper instead of producing review findings.
-  Evidence: the failed review logs emitted shell errors such as `bash: line 5: wavepeek: command not found` and `Usage: skill [signal] [options] <expression>` before reaching the actual review task.
+- Observation: adding the new `commands/skill` topic changed both docs-topic ordering and exported-topic count, so two separate guards had to move together.
+  Evidence: `tests/docs_cli.rs` needed `TOPIC_IDS` to grow from 19 to 20 and `src/docs/mod.rs` needed `summary.topics.len()` to grow from 19 to 20 for export validation.
+
+- Observation: the read-only subagent review workflow remained unreliable even after switching to prompt files.
+  Evidence: the tmux sessions launched successfully, but `subagent.py tail` and the corresponding log files stayed empty while `subagent.py capture` showed only the wrapper banner and full prompt text, so the implementation review fell back to the main session again.
 
 ## Decision Log
 
@@ -65,11 +72,11 @@ This plan does not implement the feature during plan authoring. The current bran
 
 ## Outcomes & Retrospective
 
-This plan is not implemented yet. The current outcome is repository research, one initial plan commit, and a reviewed implementation plan revision ready to be captured as the second plan-only commit. The intended branch result for this request remains two commits: the initial plan checkpoint and the reviewed plan revision.
+The migration is implemented and validated. `wavepeek skill` is now the canonical packaged-skill command, `wavepeek docs` stays limited to topic discovery/show/search/export, the public docs corpus contains `commands/skill`, and the schema plus docs-export contracts remained unchanged apart from the additional public topic count.
 
-The main value of the planning work is to make the collateral explicit before any code changes begin. The migration is small in executable logic, but it is easy to under-scope because the old command path is mentioned in help text, topic summaries, README prose, test names, breadcrumb guidance, and release notes. This plan intentionally treats those user-visible and maintainer-visible surfaces as first-class work, not cleanup.
+The implementation confirmed the plan’s original scoping insight: the risky part was not the Rust routing itself, but the breadth of user-visible collateral. The code move was small, while the help text, README, topic corpus, breadcrumbs, changelog, and integration tests were the surfaces most likely to drift if handled casually.
 
-A secondary lesson from the planning pass is tooling-related: prompt text for subagent review should avoid shell-sensitive backticks around phrases like `wavepeek skill` when routed through the tmux helper. The review itself still happened in the main session, but that subagent failure is worth recording so a later contributor does not misread the empty logs as a clean review pass.
+The main remaining tooling lesson is unchanged from planning and reinforced by implementation: the current subagent review wrapper is not dependable for this repository’s review prompts. Even prompt-file based invocations produced empty logs, so the effective review path for this task was a main-session fallback after validation.
 
 ## Context and Orientation
 

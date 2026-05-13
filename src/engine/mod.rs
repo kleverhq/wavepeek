@@ -6,6 +6,7 @@ pub mod property;
 pub mod schema;
 pub mod scope;
 pub mod signal;
+pub mod skill;
 pub mod time;
 pub mod value;
 mod value_format;
@@ -25,6 +26,7 @@ pub enum Command {
     Change(cli::change::ChangeArgs),
     Property(cli::property::PropertyArgs),
     Docs(cli::docs::DocsArgs),
+    Skill(cli::skill::SkillArgs),
 }
 
 #[allow(dead_code)]
@@ -42,7 +44,7 @@ pub enum CommandName {
     DocsShow,
     DocsSearch,
     DocsExport,
-    DocsSkill,
+    Skill,
 }
 
 impl CommandName {
@@ -60,7 +62,7 @@ impl CommandName {
             Self::DocsShow => "docs show",
             Self::DocsSearch => "docs search",
             Self::DocsExport => "docs export",
-            Self::DocsSkill => "docs skill",
+            Self::Skill => "skill",
         }
     }
 }
@@ -127,5 +129,6 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Change(args) => change::run(args),
         Command::Property(args) => property::run(args),
         Command::Docs(args) => docs::run(args),
+        Command::Skill(args) => skill::run(args),
     }
 }

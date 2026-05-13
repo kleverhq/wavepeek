@@ -4,8 +4,8 @@ use predicates::prelude::*;
 mod common;
 use common::wavepeek_cmd;
 
-const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 9] = [
-    "info", "scope", "signal", "value", "change", "property", "schema", "docs", "help",
+const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 10] = [
+    "info", "scope", "signal", "value", "change", "property", "schema", "docs", "skill", "help",
 ];
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
@@ -148,6 +148,7 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("property"))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("docs"))
+        .stdout(predicate::str::contains("skill"))
         .stdout(predicate::str::contains("\n  help"));
 }
 
@@ -247,6 +248,7 @@ fn top_level_short_help_is_compact_and_points_to_next_layers() {
     assert!(short_help.contains("wavepeek --help"));
     assert!(short_help.contains("wavepeek help <command-path...>"));
     assert!(short_help.contains("wavepeek docs"));
+    assert!(short_help.contains("wavepeek skill"));
     assert!(
         !short_help.contains("General conventions:"),
         "top-level short help should stay compact and omit long-form conventions"
@@ -275,6 +277,7 @@ fn top_level_long_help_describes_help_and_docs_entrypoints() {
     assert!(long_help.contains("General conventions:"));
     assert!(long_help.contains("wavepeek help <command-path...>"));
     assert!(long_help.contains("wavepeek docs"));
+    assert!(long_help.contains("wavepeek skill"));
     assert!(long_help.contains("Next steps:"));
     assert!(!long_help.contains("wavepeek docs topics"));
     assert!(!long_help.contains("wavepeek docs show <topic>"));
@@ -301,6 +304,11 @@ fn help_subcommand_aliases_nested_long_help() {
         &["help", "docs", "show"],
         &["docs", "show", "--help"],
         "wavepeek help docs show must match wavepeek docs show --help byte-for-byte",
+    );
+    assert_same_stdout(
+        &["help", "skill"],
+        &["skill", "--help"],
+        "wavepeek help skill must match wavepeek skill --help byte-for-byte",
     );
 }
 
@@ -773,18 +781,35 @@ fn nested_docs_help_surfaces_are_aligned_and_trimmed() {
         assert!(!help.contains("skill Markdown"));
     }
     assert_eq!(export_long, export_alias);
+}
 
-    let skill_short = successful_stdout_text(&["docs", "skill", "-h"]);
-    let skill_long = successful_stdout_text(&["docs", "skill", "--help"]);
-    let skill_alias = successful_stdout_text(&["help", "docs", "skill"]);
-    for help in [&skill_short, &skill_long, &skill_alias] {
+#[test]
+fn skill_help_surfaces_are_aligned_and_trimmed() {
+    let short_help = successful_stdout_text(&["skill", "-h"]);
+    let long_help = successful_stdout_text(&["skill", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "skill"]);
+
+    for help in [&short_help, &long_help, &alias_help] {
         assert_eq!(
             help.lines().next(),
             Some("Print the packaged agent skill Markdown for wavepeek.")
         );
         assert!(!help.contains("Behavior:"));
+        assert!(!help.contains("--json"));
     }
-    assert_eq!(skill_long, skill_alias);
+    assert_eq!(long_help, alias_help);
+}
+
+#[test]
+fn docs_skill_subcommand_is_rejected_and_points_to_docs_help() {
+    wavepeek_cmd()
+        .args(["docs", "skill"])
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::contains("unrecognized subcommand 'skill'"))
+        .stderr(predicate::str::contains("See 'wavepeek docs --help'."));
 }
 
 #[test]
@@ -801,7 +826,7 @@ fn nested_parse_errors_point_to_full_help_path() {
 
 #[test]
 fn shipped_commands_help_is_self_descriptive() {
-    let command_contracts: [(&str, &[&str]); 7] = [
+    let command_contracts: [(&str, &[&str]); 8] = [
         (
             "info",
             &[
@@ -868,6 +893,10 @@ fn shipped_commands_help_is_self_descriptive() {
                 "Prints exactly one deterministic schema document",
                 "source of truth for all `--json` command outputs",
             ],
+        ),
+        (
+            "skill",
+            &["Print the packaged agent skill Markdown for wavepeek."],
         ),
     ];
 

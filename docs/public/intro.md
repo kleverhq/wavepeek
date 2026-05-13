@@ -7,6 +7,7 @@ see_also:
   - commands/overview
   - commands/help
   - commands/docs
+  - commands/skill
   - reference/command-model
   - reference/machine-output
 ---
@@ -56,3 +57,4 @@ Use progressive disclosure when you need help:
 - `wavepeek docs --help` explains the local documentation command family.
 - `wavepeek docs topics` lists packaged topic IDs and summaries.
 - `wavepeek docs search <query>` searches topics when you do not know the exact ID.
+- `wavepeek skill` prints the packaged agent skill Markdown from the installed build.

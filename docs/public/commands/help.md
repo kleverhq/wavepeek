@@ -7,6 +7,7 @@ see_also:
   - intro
   - commands/docs
   - commands/overview
+  - commands/skill
 ---
 # Help command
 
@@ -22,9 +23,12 @@ Use `wavepeek help <command-path...>` for detailed help on a specific command or
 
     wavepeek help change
     wavepeek help docs show
+    wavepeek help skill
 
 You can also ask a command directly for detailed help with `wavepeek <command> --help` or `wavepeek <command-path...> --help`.
 
 ## Where narrative docs fit
 
 Generated help is the authority for exact syntax, flags, defaults, and required arguments. Use `wavepeek docs` when you need narrative guidance, workflows, troubleshooting, or stable semantic reference topics.
+
+Use `wavepeek skill` when you need the packaged agent skill Markdown from the installed build.

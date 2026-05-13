@@ -7,7 +7,7 @@ use tempfile::tempdir;
 mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
-const TOPIC_IDS: [&str; 19] = [
+const TOPIC_IDS: [&str; 20] = [
     "intro",
     "commands/change",
     "commands/docs",
@@ -18,6 +18,7 @@ const TOPIC_IDS: [&str; 19] = [
     "commands/schema",
     "commands/scope",
     "commands/signal",
+    "commands/skill",
     "commands/value",
     "workflows/find-first-change",
     "troubleshooting/empty-results",
@@ -37,13 +38,6 @@ fn docs_root() -> PathBuf {
 
 fn canonical_topic_path(topic_id: &str) -> PathBuf {
     docs_root().join(format!("{topic_id}.md"))
-}
-
-fn canonical_skill_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("docs")
-        .join("skills")
-        .join("wavepeek.md")
 }
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
@@ -108,7 +102,7 @@ fn docs_command_without_subcommand_prints_help() {
     assert!(output.contains("show"));
     assert!(output.contains("search"));
     assert!(output.contains("export"));
-    assert!(output.contains("skill"));
+    assert!(!output.contains("skill"));
     assert!(!output.contains("wavepeek local docs"));
     assert!(!output.contains("Try:"));
 }
@@ -279,7 +273,6 @@ fn unsupported_docs_json_modes_are_argument_errors() {
 
     let cases = [
         vec!["docs", "show", "intro", "--json"],
-        vec!["docs", "skill", "--json"],
         vec!["docs", "export", export_target.as_str(), "--json"],
     ];
 
@@ -421,19 +414,19 @@ fn docs_export_replaces_stale_managed_files() {
 }
 
 #[test]
-fn docs_skill_prints_packaged_skill_markdown() {
-    let expected = fs::read(canonical_skill_path()).expect("canonical skill should be readable");
-    let actual = successful_stdout(&["docs", "skill"]);
+fn commands_skill_topic_explains_top_level_entrypoint() {
+    let output = successful_stdout_text(&["docs", "show", "commands/skill"]);
 
-    assert_eq!(actual, expected);
+    assert!(output.contains("wavepeek skill"));
+    assert!(output.contains("wavepeek help skill"));
+    assert!(!output.contains("wavepeek docs skill"));
 }
 
 #[test]
-fn packaged_skill_guidance_matches_current_runtime_capabilities() {
-    let packaged =
-        fs::read_to_string(canonical_skill_path()).expect("packaged skill should be readable");
+fn commands_docs_topic_no_longer_mentions_skill_printing() {
+    let output = successful_stdout_text(&["docs", "show", "commands/docs"]);
 
-    assert!(packaged.contains("wavepeek help <command-path...>"));
-    assert!(!packaged.contains("parsed but not executed in `change`"));
-    assert!(!packaged.contains("parse-level only; runtime execution is not implemented"));
+    assert!(output.contains("wavepeek docs topics"));
+    assert!(!output.contains("wavepeek docs skill"));
+    assert!(!output.contains("docs skill --json"));
 }

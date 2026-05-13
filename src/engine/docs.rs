@@ -1,6 +1,5 @@
 use crate::cli::docs::{
-    DocsArgs, DocsCommand, DocsExportArgs, DocsSearchArgs, DocsShowArgs, DocsSkillArgs,
-    DocsTopicsArgs,
+    DocsArgs, DocsCommand, DocsExportArgs, DocsSearchArgs, DocsShowArgs, DocsTopicsArgs,
 };
 use crate::docs;
 use crate::engine::{
@@ -16,14 +15,13 @@ pub fn run(args: DocsArgs) -> Result<CommandResult, WavepeekError> {
         Some(DocsCommand::Show(args)) => show(args),
         Some(DocsCommand::Search(args)) => search(args),
         Some(DocsCommand::Export(args)) => export(args),
-        Some(DocsCommand::Skill(args)) => skill(args),
     }
 }
 
 fn orientation_index() -> Result<CommandResult, WavepeekError> {
     Ok(text_result(
         CommandName::Docs,
-        "wavepeek local docs\n\nStart here when you need more than command syntax.\n\nTry:\n  wavepeek docs topics\n  wavepeek docs show intro\n  wavepeek docs search transitions\n  wavepeek docs skill\n  wavepeek docs export /tmp/wavepeek-docs\n".to_string(),
+        "wavepeek local docs\n\nStart here when you need more than command syntax.\n\nTry:\n  wavepeek docs topics\n  wavepeek docs show intro\n  wavepeek docs search transitions\n  wavepeek docs export /tmp/wavepeek-docs\n".to_string(),
     ))
 }
 
@@ -110,13 +108,6 @@ fn export(args: DocsExportArgs) -> Result<CommandResult, WavepeekError> {
     );
 
     Ok(text_result(CommandName::DocsExport, rendered))
-}
-
-fn skill(_args: DocsSkillArgs) -> Result<CommandResult, WavepeekError> {
-    Ok(text_result(
-        CommandName::DocsSkill,
-        docs::packaged_skill_markdown().to_string(),
-    ))
 }
 
 fn text_result(command: CommandName, text: String) -> CommandResult {

@@ -9,7 +9,7 @@ This directory contains user-facing `wavepeek docs` topics for top-level command
 ## Source of Truth
 
 - Command overview: `overview.md`
-- Help/docs behavior topics: `help.md`, `docs.md`
+- Help/docs/skill behavior topics: `help.md`, `docs.md`, `skill.md`
 - Stable command semantics: `../reference/command-model.md`
 - Machine output behavior: `../reference/machine-output.md`
 - Expression syntax for `change` and `property`: `../reference/expression-language.md`

@@ -1,11 +1,12 @@
 ---
 id: commands/docs
 title: Docs command
-summary: Browse packaged topics, search local documentation, export Markdown, and print the packaged skill.
+summary: Browse packaged topics, search local documentation, and export Markdown.
 section: commands
 see_also:
   - intro
   - commands/help
+  - commands/skill
   - reference/command-model
   - reference/machine-output
 ---
@@ -40,16 +41,12 @@ Only two docs subcommands support stable JSON output:
 
 Both use the standard JSON success envelope described by `reference/machine-output` and the exact schema printed by `wavepeek schema`.
 
-Other docs subcommands are human/Markdown surfaces. `docs show --json`, `docs export --json`, and `docs skill --json` fail as argument errors instead of silently changing output mode.
+Other docs subcommands are human or Markdown surfaces. `docs show --json` and `docs export --json` fail as argument errors instead of silently changing output mode.
 
 ## Export behavior
 
 Run `wavepeek docs export <out-dir>` when you need the authored Markdown topic corpus on disk. Export writes one Markdown file per public topic and a deterministic `manifest.json`.
 
-Export does not write the packaged agent skill. Use `wavepeek docs skill` when you need the skill text.
+Export does not write the packaged agent skill. Use `wavepeek skill` when you need the skill text.
 
 Export protects existing files. It can populate a missing or empty directory. A non-empty unmanaged directory is rejected. `--force` may replace an empty directory or a previously managed export root with a recognized manifest version. A managed export root is a directory with a `manifest.json` whose `kind` is `wavepeek-docs-export` and whose `export_format_version` is recognized by this binary.
-
-## Packaged skill
-
-Run `wavepeek docs skill` to print the packaged agent skill Markdown. The skill is a compact agent entrypoint that points back to help and docs instead of duplicating the full reference topics.

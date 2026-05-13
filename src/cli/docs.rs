@@ -49,11 +49,6 @@ Behavior:
 - Writes a managed-root manifest that makes future `--force` replacement safe."#
     )]
     Export(DocsExportArgs),
-    #[command(
-        about = "Print the packaged agent skill Markdown for wavepeek.",
-        long_about = "Print the packaged agent skill Markdown for wavepeek."
-    )]
-    Skill(DocsSkillArgs),
 }
 
 #[derive(Debug, Args)]
@@ -92,6 +87,3 @@ pub struct DocsExportArgs {
     #[arg(long)]
     pub force: bool,
 }
-
-#[derive(Debug, Args, Default)]
-pub struct DocsSkillArgs {}

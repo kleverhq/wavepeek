@@ -6,6 +6,7 @@ pub mod property;
 pub mod schema;
 pub mod scope;
 pub mod signal;
+pub mod skill;
 pub mod value;
 
 use clap::error::ErrorKind;
@@ -32,10 +33,10 @@ General conventions:
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Errors follow `error: <category>: <message>`.
 
-Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, and `wavepeek docs` for guidance."#,
-    after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs",
-    after_long_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs",
-    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
+Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, `wavepeek docs` for narrative guidance, and `wavepeek skill` for the packaged agent skill."#,
+    after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
+    after_long_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
+    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
 )]
 pub struct Cli {
     /// Print semver version
@@ -162,6 +163,11 @@ Use this command to fetch the machine-readable contract consumed by JSON-mode cl
     )]
     Schema(schema::SchemaArgs),
     Docs(docs::DocsArgs),
+    #[command(
+        about = "Print the packaged agent skill Markdown for wavepeek.",
+        long_about = "Print the packaged agent skill Markdown for wavepeek."
+    )]
+    Skill(skill::SkillArgs),
 }
 
 pub fn run() -> Result<(), WavepeekError> {
@@ -387,6 +393,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
         Command::Helper(command) => match command {
             HelperCommand::Schema(args) => EngineCommand::Schema(args),
             HelperCommand::Docs(args) => EngineCommand::Docs(args),
+            HelperCommand::Skill(args) => EngineCommand::Skill(args),
         },
     }
 }

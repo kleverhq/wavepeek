@@ -38,17 +38,19 @@ The repository ships agent-facing workflow assets and deterministic `--json` con
 
 ### High-Level Execution Layers
 
-wavepeek is organized as three execution layers plus a shared output module. Data flows top-down: the CLI parses arguments, the engine executes command logic, the waveform layer answers dump queries, and the output module renders results.
+wavepeek is organized as three execution layers plus two shared support modules. Data flows top-down: the CLI parses arguments, the engine executes command logic, waveform commands query the waveform layer, docs/skill helpers query embedded Markdown assets, and the output module renders results.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
 3. **Waveform layer** (`src/waveform/`) is the thin adapter over `wellen` for file opening, format detection, hierarchy traversal, and sampled-value access.
-4. **Output module** (`src/output.rs`) owns stdout rendering for human mode and strict JSON mode.
+4. **Embedded docs runtime** (`src/docs/`) loads packaged public topics and the packaged agent skill from repository Markdown assets.
+5. **Output module** (`src/output.rs`) owns stdout rendering for human mode and strict JSON mode.
 
 Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump, runs once, and exits.
-- The engine is format-agnostic. VCD versus FST handling stays in the waveform layer.
+- The engine is format-agnostic for waveform commands. VCD versus FST handling stays in the waveform layer.
+- Docs and skill helper surfaces keep their source of truth in packaged Markdown instead of duplicated Rust string tables.
 - JSON contracts are stabilized through the checked-in schema artifact at `schema/wavepeek.json`.
 
 ### Module Structure
@@ -66,7 +68,9 @@ src/
 │   ├── value.rs         # `value` command args + clap help
 │   ├── change.rs        # `change` command args + clap help
 │   ├── property.rs      # `property` command args + clap help
-│   └── schema.rs        # `schema` command args + clap help
+│   ├── schema.rs        # `schema` command args + clap help
+│   ├── docs.rs          # `docs` helper command family args + clap help
+│   └── skill.rs         # `skill` helper command args + clap help
 ├── engine/              # Business logic per command
 │   ├── mod.rs           # Command dispatch + shared result types
 │   ├── info.rs          # Dump metadata extraction
@@ -78,7 +82,11 @@ src/
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint and capture-mode execution
-│   └── schema.rs        # JSON schema export
+│   ├── schema.rs        # JSON schema export
+│   ├── docs.rs          # Embedded docs topics/search/show/export runtime
+│   └── skill.rs         # Packaged agent skill print runtime
+├── docs/                # Embedded docs asset runtime and export helpers
+│   └── mod.rs           # Topic catalog loading, search, export, and packaged skill source
 ├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
 ├── expr/                # Expression engine shared by `change` and `property`
 │   ├── mod.rs           # Public typed facade for parsing/binding/evaluation

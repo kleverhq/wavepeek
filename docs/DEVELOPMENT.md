@@ -242,7 +242,7 @@ Wavepeek is "LLM-first" and expects output stability:
 - Waveform-inspection commands use named flags for their primary inputs. The visible `help` and `docs` surfaces intentionally use positional command paths, topic IDs, search queries, and export paths where that keeps offline documentation workflows concise.
 - The waveform file flag is always `--waves`.
 - Default output is human-readable; `--json` enables strict JSON envelope output with a stable `$schema` contract.
-- CLI help must stay standalone and layered: `wavepeek` with no args aliases top-level `--help`, `-h` stays compact, `--help` stays detailed, `wavepeek help <command-path...>` aliases long help for nested paths, `wavepeek docs` remains the packaged narrative-doc surface, and `wavepeek skill` remains the packaged agent-skill print surface.
+- CLI help must stay standalone and layered: `wavepeek` with no args aliases top-level compact help (`-h`), `-h` stays compact, `--help` stays detailed, `wavepeek help <command-path...>` aliases long help for nested paths, `wavepeek docs` remains the packaged narrative-doc surface, and `wavepeek skill` remains the packaged agent-skill print surface.
 - Time values require explicit units; reject bare numbers.
 
 ### Public Docs Maintenance

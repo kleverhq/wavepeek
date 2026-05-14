@@ -9,18 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, and export.
+- Expanded the packaged docs corpus with practical command guides for `info`, `scope`, `signal`, `value`, `change`, `property`, and `schema`, plus troubleshooting topics for empty results, scoped versus canonical names, time alignment, and unsupported signal encodings.
 
 ### Changed
 - Promoted the packaged agent skill from `wavepeek docs skill` to the top-level `wavepeek skill` helper command.
-- Renamed the CI devcontainer config to `.devcontainer/devcontainer.ci.json` for clearer intent.
-- Expanded the devcontainer for multi-agent workflows with Codex, Claude Code, Pi, OpenCode, and host-mounted agent state.
-- Moved open design questions into `docs/BACKLOG.md` and removed the separate open-questions entrypoint.
-- Superseded the temporary universal `-h == --help` help model with layered help and a packaged narrative-doc surface.
-- Reorganized packaged documentation around `docs/public/` topics, `docs/public/reference/` contracts, `docs/skills/wavepeek.md`, and `docs/ARCHITECTURE.md`.
-
-### Removed
-- Removed project-local OpenCode config/skills.
-- Removed legacy documentation paths `docs/DESIGN.md` and `docs/expression_lang.md`; use `docs/public/intro.md` and `docs/public/reference/expression-language.md` instead.
+- Refined top-level and per-command help text, and improved `wavepeek docs` topic listing/search behavior for clearer offline discovery and navigation.
 
 ## [0.4.0] - 2026-04-05
 

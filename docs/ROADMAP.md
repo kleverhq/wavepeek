@@ -14,5 +14,5 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ## Near-Term Roadmap
 
-The next post-v0.5 release is intentionally not planned yet.
+The next post-v0.5.0 release is intentionally not planned yet.
 

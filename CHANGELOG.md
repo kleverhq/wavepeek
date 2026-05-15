@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-15
+
 ### Added
 - Added layered help plus embedded local docs: `wavepeek -h` is now compact, `wavepeek --help` and `wavepeek help <command-path...>` provide the detailed reference layer, and `wavepeek docs` exposes packaged topics, search, and export.
 - Expanded the packaged docs corpus with practical command guides for `info`, `scope`, `signal`, `value`, `change`, `property`, and `schema`, plus troubleshooting topics for empty results, scoped versus canonical names, time alignment, and unsupported signal encodings.
@@ -93,7 +95,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.3.0
 [0.2.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.2.0

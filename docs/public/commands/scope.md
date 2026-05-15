@@ -78,7 +78,7 @@ Use `--tree` when you want to understand parent/child relationships at a glance.
 
 ```text
 $ wavepeek scope --waves path/to/dump.fst --max 50 --json
-{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.4.0/schema/wavepeek.json","command":"scope","data":[{"path":"top","depth":0,"kind":"module"},{"path":"top.cpu","depth":1,"kind":"module"},{"path":"top.mem","depth":1,"kind":"module"}],"warnings":[]}
+{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.5.0/schema/wavepeek.json","command":"scope","data":[{"path":"top","depth":0,"kind":"module"},{"path":"top.cpu","depth":1,"kind":"module"},{"path":"top.mem","depth":1,"kind":"module"}],"warnings":[]}
 ```
 
 Use this in scripts, agents, or when you want deterministic parsing instead of human formatting.

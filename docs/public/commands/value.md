@@ -85,7 +85,7 @@ Use this for spot checks between edges or between visible value changes.
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,data --json
-{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.4.0/schema/wavepeek.json","command":"value","data":{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]},"warnings":[]}
+{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.5.0/schema/wavepeek.json","command":"value","data":{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]},"warnings":[]}
 ```
 
 Use this when another tool needs deterministic parsing instead of human formatting.

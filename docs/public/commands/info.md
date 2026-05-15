@@ -39,7 +39,7 @@ Add `--json`:
 
 ```text
 $ wavepeek info --waves path/to/dump.vcd --json
-{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.4.0/schema/wavepeek.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
+{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.5.0/schema/wavepeek.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
 ```
 
 Use this in scripts and agents. The exact JSON shape is defined by `wavepeek schema` and explained in `reference/machine-output`.

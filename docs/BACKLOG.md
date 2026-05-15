@@ -34,11 +34,15 @@ Stable user-facing contracts live under `public/reference/`, starting from
 - Include drift protection so Rust-side emitted aliases and schema enum values stay in sync.
 - Close when `schema/wavepeek.json`, `wavepeek schema`, schema checks, and relevant contract tests cover the richer field metadata without changing existing JSON output bytes except for the schema document itself.
 
-### Post-MVP: temporal property language extensions
+### Temporal property language extensions over waveforms
 
-- Track follow-up evolution toward richer assertion/cover-like checks (temporal operators, implication, multi-event relations).
-- Keep MVP scope explicit: event trigger + boolean eval + capture modes only.
-- Close when a separate design contract defines syntax/semantics and phased rollout milestones.
+- Explore an "SVA over waves" direction: evaluate temporal/property-style checks directly on recorded waveform data instead of requiring a live simulator assertion flow.
+- Use the existing SV-like expression surface as the starting point, then extend it with temporal operators and assertion-style composition where that produces a coherent user model.
+- Reference material for the idea and possible UX shape:
+  - DVCon paper: `https://dvcon-proceedings.org/wp-content/uploads/72781.pdf`
+  - Blog summary: `https://ahmedalsawi.github.io/posts/2022/12/sawd-the-fun-version/`
+- Keep the current shipped `property` scope explicit while this stays exploratory: event trigger + boolean eval + capture modes only.
+- Close when a separate design contract defines syntax/semantics, compatibility boundaries with the existing expression language, and a phased rollout plan.
 
 ### Streaming JSON output mode for large result sets
 

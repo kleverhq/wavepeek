@@ -60,36 +60,34 @@ wavepeek signal --waves "$WAVES" --scope "$scope" --json | jq '.data[:5]'
 
 ## Agentic Flows
 
-`wavepeek` ships with a ready-to-install agent skill:
+Copy/paste this to your agent:
 
-- Packaged source (repo): `docs/skills/wavepeek.md`
-- CLI export: `wavepeek skill`
+```text
+Check whether `wavepeek` is installed:
 
-Install via your agent:
+wavepeek version
 
-- Ask your coding agent to install the skill from `docs/skills/wavepeek.md` or from the output of `wavepeek skill`.
+If that succeeds, run:
 
-Manual install examples:
+wavepeek skill
 
-- Codex CLI: `~/.codex/skills/wavepeek/SKILL.md`
-- Claude Code: `~/.claude/skills/wavepeek/SKILL.md`
-
-Note: an MCP server for tool-native agent integration is not available yet, but is planned.
+`wavepeek skill` prints the full packaged skill Markdown to stdout. Use that output as the source of truth and install/adapt the skill according to your own skill format and rules.
+```
 
 ## Commands
 
-| Command | Status | Purpose |
-| --- | --- | --- |
-| `info` | available | Print dump metadata (`time_unit`, `time_start`, `time_end`) |
-| `scope` | available | List hierarchy scopes (deterministic DFS, optional `--tree`) |
-| `signal` | available | List signals in a scope with metadata |
-| `value` | available | Signal values at a specific time |
-| `change` | available | Delta snapshots over a time range with `--on` event triggers |
-| `property` | available | Property checks over event triggers with capture modes |
-| `schema` | available | Print canonical JSON schema used by `--json` output |
-| `docs` | available | Browse embedded narrative docs, search topics, and export Markdown |
-| `skill` | available | Print packaged agent skill Markdown |
-| `help` | available | Print detailed long help for top-level or nested command paths |
+| Command | Purpose |
+| --- | --- |
+| `info` | Print dump metadata (`time_unit`, `time_start`, `time_end`) |
+| `scope` | List hierarchy scopes (deterministic DFS, optional `--tree`) |
+| `signal` | List signals in a scope with metadata |
+| `value` | Signal values at a specific time |
+| `change` | Delta snapshots over a time range with `--on` event triggers |
+| `property` | Property checks over event triggers with capture modes |
+| `schema` | Print canonical JSON schema used by `--json` output |
+| `docs` | Browse embedded narrative docs, search topics, and export Markdown |
+| `skill` | Print packaged agent skill Markdown |
+| `help` | Print detailed long help for top-level or nested command paths |
 
 Use progressive disclosure via built-in help and docs:
 
@@ -101,14 +99,7 @@ Use progressive disclosure via built-in help and docs:
 
 ## Development
 
-- Preferred workflow uses `Makefile` targets aligned with CI.
-- In devcontainer/CI image, run:
-
-```bash
-make bootstrap
-make check
-make test
-```
+See `docs/DEVELOPMENT.md` for the canonical developer workflow, quality gates, and container-first setup.
 
 ## License
 

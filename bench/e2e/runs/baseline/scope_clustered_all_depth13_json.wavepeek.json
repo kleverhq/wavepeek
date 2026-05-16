@@ -482,7 +482,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.bank.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -507,7 +507,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.bank.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -737,7 +737,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -762,7 +762,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -1062,7 +1062,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.coupler_to_prci_ctrl.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -1087,7 +1087,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.coupler_to_prci_ctrl.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -1222,7 +1222,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.wrapped_error_device.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -1247,7 +1247,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cbus.wrapped_error_device.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -1627,7 +1627,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -1652,7 +1652,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -1677,7 +1677,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -1702,7 +1702,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -1727,7 +1727,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -2002,7 +2002,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -2027,7 +2027,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -2052,7 +2052,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -2077,7 +2077,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -2102,7 +2102,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -2187,7 +2187,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -3042,7 +3042,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -3572,7 +3572,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -3597,7 +3597,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -3622,7 +3622,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -3647,7 +3647,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -3672,7 +3672,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -3757,7 +3757,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -4612,7 +4612,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_1.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -5142,7 +5142,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -5167,7 +5167,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -5192,7 +5192,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -5217,7 +5217,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -5242,7 +5242,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -5327,7 +5327,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -6182,7 +6182,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_2.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -6712,7 +6712,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -6737,7 +6737,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -6762,7 +6762,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -6787,7 +6787,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -6812,7 +6812,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -6897,7 +6897,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -7752,7 +7752,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain.element_reset_domain_element.tile_prci_domain_3.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -8342,7 +8342,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -8367,7 +8367,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -8392,7 +8392,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -8417,7 +8417,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -8442,7 +8442,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -8717,7 +8717,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -8742,7 +8742,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -8767,7 +8767,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -8792,7 +8792,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -8817,7 +8817,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -8902,7 +8902,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -9757,7 +9757,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -10287,7 +10287,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -10312,7 +10312,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -10337,7 +10337,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -10362,7 +10362,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -10387,7 +10387,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -10472,7 +10472,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -11327,7 +11327,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_1.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -11857,7 +11857,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -11882,7 +11882,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -11907,7 +11907,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -11932,7 +11932,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -11957,7 +11957,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -12042,7 +12042,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -12897,7 +12897,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_2.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -13427,7 +13427,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.buffer.nodeIn_b_q.ram_ext.Memory"
     },
     {
@@ -13452,7 +13452,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -13477,7 +13477,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -13502,7 +13502,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_c_q.ram_ext.Memory"
     },
     {
@@ -13527,7 +13527,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.buffer.nodeOut_e_q.ram_sink_ext.Memory"
     },
     {
@@ -13612,7 +13612,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.element_reset_domain_rockettile.core.rf_ext.Memory"
     },
     {
@@ -14467,7 +14467,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.cluster_prci_domain_1.element_reset_domain_element.tile_prci_domain_3.element_reset_domain_rockettile.fpuOpt.regfile_ext.Memory"
     },
     {
@@ -15132,7 +15132,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.cork.q.ram_ext.Memory"
     },
     {
@@ -15157,7 +15157,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.cork.q_1.ram_ext.Memory"
     },
     {
@@ -15462,7 +15462,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.requests.head_ext.Memory"
     },
     {
@@ -15487,7 +15487,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.requests.tail_ext.Memory"
     },
     {
@@ -15582,7 +15582,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkC.c_q.ram_ext.Memory"
     },
     {
@@ -15612,7 +15612,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkC.putbuffer.data_ext.Memory"
     },
     {
@@ -15632,7 +15632,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkC.putbuffer.head_ext.Memory"
     },
     {
@@ -15647,7 +15647,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkC.putbuffer.next_ext.Memory"
     },
     {
@@ -15662,7 +15662,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkC.putbuffer.tail_ext.Memory"
     },
     {
@@ -15692,7 +15692,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sinkD.d_q.ram_ext.Memory"
     },
     {
@@ -15742,7 +15742,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sourceA.io_a_q.ram_ext.Memory"
     },
     {
@@ -15782,7 +15782,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sourceC.queue.ram_ext.Memory"
     },
     {
@@ -15822,7 +15822,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sourceD.queue.ram_data_ext.Memory"
     },
     {
@@ -15857,7 +15857,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.coh_wrapper.l2.inclusive_cache_bank_sched.sourceE.io_e_q.ram_sink_ext.Memory"
     },
     {
@@ -15987,7 +15987,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.fbus.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -16012,7 +16012,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.fbus.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -16112,7 +16112,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.fbus.coupler_from_port_named_serial_tl_0_in.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -16137,7 +16137,7 @@
     },
     {
       "depth": 10,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.fbus.coupler_from_port_named_serial_tl_0_in.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -16252,7 +16252,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.mbus.buffer_1.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -16277,7 +16277,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.mbus.buffer_1.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -16597,7 +16597,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.pbus.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -16622,7 +16622,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.pbus.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -16672,7 +16672,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.pbus.buffer_1.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -16697,7 +16697,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.pbus.buffer_1.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -18242,7 +18242,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.in_phits_io_inner_ser_0_in_q.ram_flit_ext.Memory"
     },
     {
@@ -18267,7 +18267,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.in_phits_io_inner_ser_1_in_q.ram_flit_ext.Memory"
     },
     {
@@ -18292,7 +18292,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.in_phits_io_inner_ser_2_in_q.ram_flit_ext.Memory"
     },
     {
@@ -18317,7 +18317,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.in_phits_io_inner_ser_3_in_q.ram_flit_ext.Memory"
     },
     {
@@ -18342,7 +18342,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.in_phits_io_inner_ser_4_in_q.ram_flit_ext.Memory"
     },
     {
@@ -19367,7 +19367,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.out_phits_out_async_io_enq_q.ram_flit_ext.Memory"
     },
     {
@@ -19387,7 +19387,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.out_phits_out_async_io_enq_q_1.ram_flit_ext.Memory"
     },
     {
@@ -19407,7 +19407,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.out_phits_out_async_io_enq_q_2.ram_flit_ext.Memory"
     },
     {
@@ -19427,7 +19427,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.out_phits_out_async_io_enq_q_3.ram_flit_ext.Memory"
     },
     {
@@ -19447,7 +19447,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.serial_tl_domain.phy.out_phits_out_async_io_enq_q_4.ram_flit_ext.Memory"
     },
     {
@@ -19747,7 +19747,7 @@
     },
     {
       "depth": 11,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.tlDM.dmInner.dmInner.sb2tlOpt.d_q.ram_ext.Memory"
     },
     {
@@ -20482,7 +20482,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.uartClockDomainWrapper.uart_0.rxq.ram_ext.Memory"
     },
     {
@@ -20517,7 +20517,7 @@
     },
     {
       "depth": 9,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.chiptop0.system.uartClockDomainWrapper.uart_0.txq.ram_ext.Memory"
     },
     {
@@ -20617,7 +20617,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.buffer.nodeIn_d_q.ram_ext.Memory"
     },
     {
@@ -20642,7 +20642,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.buffer.nodeOut_a_q.ram_ext.Memory"
     },
     {
@@ -21662,7 +21662,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.in_phits_io_inner_ser_0_in_q.ram_flit_ext.Memory"
     },
     {
@@ -21687,7 +21687,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.in_phits_io_inner_ser_1_in_q.ram_flit_ext.Memory"
     },
     {
@@ -21712,7 +21712,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.in_phits_io_inner_ser_2_in_q.ram_flit_ext.Memory"
     },
     {
@@ -21737,7 +21737,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.in_phits_io_inner_ser_3_in_q.ram_flit_ext.Memory"
     },
     {
@@ -21762,7 +21762,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.in_phits_io_inner_ser_4_in_q.ram_flit_ext.Memory"
     },
     {
@@ -22787,7 +22787,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.out_phits_out_async_io_enq_q.ram_flit_ext.Memory"
     },
     {
@@ -22807,7 +22807,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.out_phits_out_async_io_enq_q_1.ram_flit_ext.Memory"
     },
     {
@@ -22827,7 +22827,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.out_phits_out_async_io_enq_q_2.ram_flit_ext.Memory"
     },
     {
@@ -22847,7 +22847,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.out_phits_out_async_io_enq_q_3.ram_flit_ext.Memory"
     },
     {
@@ -22867,7 +22867,7 @@
     },
     {
       "depth": 7,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.ram.phy.out_phits_out_async_io_enq_q_4.ram_flit_ext.Memory"
     },
     {
@@ -23082,7 +23082,7 @@
     },
     {
       "depth": 6,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.uart_sim_0_uartno0.rxq.ram_ext.Memory"
     },
     {
@@ -23117,7 +23117,7 @@
     },
     {
       "depth": 6,
-      "kind": "vhdl_array",
+      "kind": "unknown",
       "path": "TOP.TestDriver.testHarness.uart_sim_0_uartno0.txq.ram_ext.Memory"
     },
     {

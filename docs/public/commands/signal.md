@@ -139,6 +139,6 @@ $ wavepeek signal --waves path/to/dump.vcd --scope top --recursive --filter '^cp
 
   This succeeds with no rows, because the names are `valid` and `ready`; `cpu.` is only part of the human display string.
 - Recursive human output is scope-relative by default, but JSON `path` fields stay canonical.
-- Signal kinds are not limited to wires. You may see `reg`, `parameter`, and other parser-native kinds.
+- Signal kinds are not limited to wires. You may see `reg`, `parameter`, and other stable signal kind aliases; backend-specific VHDL spellings are normalized to the stable contract surface.
 - `--max-depth` requires `--recursive`.
 - An empty match is a valid result, not an error.

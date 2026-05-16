@@ -36,6 +36,8 @@ update-schema: require-container
 ## Validate canonical schema freshness and JSON contract URL
 check-schema: require-container
 	@$(PYTHON) scripts/check_schema_contract.py "$(SCHEMA_PATH)"
+	@cargo test -q --lib schema_kind_alias_inventory_matches_canonical_schema
+	@cargo test -q --lib stable_schema_kind_aliases_cover_full_inventory
 
 ## Lint GitHub Actions workflows
 check-actions: require-container

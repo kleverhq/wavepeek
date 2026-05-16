@@ -76,7 +76,7 @@ Behavior:
 Behavior:
 - Finds all scopes matching `--filter` and displays scope name, depth, and kind.
 - Traversal order is stable: pre-order depth-first, with lexicographic child ordering.
-- Includes parser-native scope kinds from hierarchy data (not only modules).
+- Includes stable scope kind aliases from hierarchy data (not only modules); excluded backend-specific spellings are normalized to the stable contract surface.
 - `--tree` switches from flat list to visual hierarchy rendering.
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
@@ -93,7 +93,7 @@ Behavior:
 - Finds all signals matching `--filter` within the selected scope and displays name, kind, and available metadata (for example width).
 - Default mode lists only direct signals in the selected scope.
 - Recursive mode walks child scopes depth-first in stable lexicographic order; `--max-depth` limits recursion when set.
-- Includes parser-native signal kinds (not only wires).
+- Includes stable signal kind aliases (not only wires); excluded backend-specific VHDL spellings are normalized to the stable contract surface.
 - Truncation and disabled-limit conditions emit warnings.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 

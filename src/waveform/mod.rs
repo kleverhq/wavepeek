@@ -1120,6 +1120,85 @@ fn map_wellen_error(path: &Path, error: wellen::WellenError) -> WavepeekError {
     }
 }
 
+// Stable machine-contract kind inventories intentionally exclude backend-specific
+// GHW/VHDL spellings even when the waveform backend can expose them.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) const STABLE_SCOPE_KIND_ALIASES: &[&str] = &[
+    "module",
+    "task",
+    "function",
+    "begin",
+    "fork",
+    "generate",
+    "struct",
+    "union",
+    "class",
+    "interface",
+    "package",
+    "program",
+    "unknown",
+];
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) const EXCLUDED_SCOPE_KIND_ALIASES: &[&str] = &[
+    "vhdl_architecture",
+    "vhdl_procedure",
+    "vhdl_function",
+    "vhdl_record",
+    "vhdl_process",
+    "vhdl_block",
+    "vhdl_for_generate",
+    "vhdl_if_generate",
+    "vhdl_generate",
+    "vhdl_package",
+    "vhdl_array",
+    "ghw_generic",
+];
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) const STABLE_SIGNAL_KIND_ALIASES: &[&str] = &[
+    "event",
+    "integer",
+    "parameter",
+    "real",
+    "reg",
+    "supply0",
+    "supply1",
+    "time",
+    "tri",
+    "triand",
+    "trior",
+    "trireg",
+    "tri0",
+    "tri1",
+    "wand",
+    "wire",
+    "wor",
+    "string",
+    "port",
+    "sparse_array",
+    "real_time",
+    "real_parameter",
+    "bit",
+    "logic",
+    "int",
+    "short_int",
+    "long_int",
+    "byte",
+    "enum",
+    "short_real",
+    "boolean",
+    "bit_vector",
+];
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub(crate) const EXCLUDED_SIGNAL_KIND_ALIASES: &[&str] = &[
+    "std_logic",
+    "std_ulogic",
+    "std_logic_vector",
+    "std_ulogic_vector",
+];
+
 fn var_type_alias(var_type: VarType) -> &'static str {
     match var_type {
         VarType::Event => "event",
@@ -1154,10 +1233,8 @@ fn var_type_alias(var_type: VarType) -> &'static str {
         VarType::ShortReal => "short_real",
         VarType::Boolean => "boolean",
         VarType::BitVector => "bit_vector",
-        VarType::StdLogic => "std_logic",
-        VarType::StdLogicVector => "std_logic_vector",
-        VarType::StdULogic => "std_ulogic",
-        VarType::StdULogicVector => "std_ulogic_vector",
+        VarType::StdLogic | VarType::StdULogic => "logic",
+        VarType::StdLogicVector | VarType::StdULogicVector => "bit_vector",
     }
 }
 
@@ -1175,19 +1252,19 @@ fn scope_type_alias(scope_type: ScopeType) -> &'static str {
         ScopeType::Interface => "interface",
         ScopeType::Package => "package",
         ScopeType::Program => "program",
-        ScopeType::VhdlArchitecture => "vhdl_architecture",
-        ScopeType::VhdlProcedure => "vhdl_procedure",
-        ScopeType::VhdlFunction => "vhdl_function",
-        ScopeType::VhdlRecord => "vhdl_record",
-        ScopeType::VhdlProcess => "vhdl_process",
-        ScopeType::VhdlBlock => "vhdl_block",
-        ScopeType::VhdlForGenerate => "vhdl_for_generate",
-        ScopeType::VhdlIfGenerate => "vhdl_if_generate",
-        ScopeType::VhdlGenerate => "vhdl_generate",
-        ScopeType::VhdlPackage => "vhdl_package",
-        ScopeType::GhwGeneric => "ghw_generic",
-        ScopeType::VhdlArray => "vhdl_array",
-        ScopeType::Unknown => "unknown",
+        ScopeType::VhdlArchitecture
+        | ScopeType::VhdlProcedure
+        | ScopeType::VhdlFunction
+        | ScopeType::VhdlRecord
+        | ScopeType::VhdlProcess
+        | ScopeType::VhdlBlock
+        | ScopeType::VhdlForGenerate
+        | ScopeType::VhdlIfGenerate
+        | ScopeType::VhdlGenerate
+        | ScopeType::VhdlPackage
+        | ScopeType::GhwGeneric
+        | ScopeType::VhdlArray
+        | ScopeType::Unknown => "unknown",
         _ => "unknown",
     }
 }
@@ -1278,8 +1355,10 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::{
-        SampledSignal, ScopeEntry, Waveform, classify_edge, duplicate_preserving_projection,
-        should_emit_delta_and_update_baseline,
+        EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, STABLE_SCOPE_KIND_ALIASES,
+        STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform, classify_edge,
+        duplicate_preserving_projection, scope_type_alias, should_emit_delta_and_update_baseline,
+        var_type_alias,
     };
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
@@ -1797,6 +1876,110 @@ mod tests {
 
         assert!(emitted);
         assert_eq!(previous, vec![Some("1".to_string()), Some("1".to_string())]);
+    }
+
+    #[test]
+    fn stable_schema_kind_aliases_cover_full_inventory() {
+        let scope_cases = [
+            (wellen::ScopeType::Module, "module"),
+            (wellen::ScopeType::Task, "task"),
+            (wellen::ScopeType::Function, "function"),
+            (wellen::ScopeType::Begin, "begin"),
+            (wellen::ScopeType::Fork, "fork"),
+            (wellen::ScopeType::Generate, "generate"),
+            (wellen::ScopeType::Struct, "struct"),
+            (wellen::ScopeType::Union, "union"),
+            (wellen::ScopeType::Class, "class"),
+            (wellen::ScopeType::Interface, "interface"),
+            (wellen::ScopeType::Package, "package"),
+            (wellen::ScopeType::Program, "program"),
+            (wellen::ScopeType::Unknown, "unknown"),
+            (wellen::ScopeType::VhdlArchitecture, "unknown"),
+            (wellen::ScopeType::VhdlProcedure, "unknown"),
+            (wellen::ScopeType::VhdlFunction, "unknown"),
+            (wellen::ScopeType::VhdlRecord, "unknown"),
+            (wellen::ScopeType::VhdlProcess, "unknown"),
+            (wellen::ScopeType::VhdlBlock, "unknown"),
+            (wellen::ScopeType::VhdlForGenerate, "unknown"),
+            (wellen::ScopeType::VhdlIfGenerate, "unknown"),
+            (wellen::ScopeType::VhdlGenerate, "unknown"),
+            (wellen::ScopeType::VhdlPackage, "unknown"),
+            (wellen::ScopeType::GhwGeneric, "unknown"),
+            (wellen::ScopeType::VhdlArray, "unknown"),
+        ];
+        for (scope_type, expected_alias) in scope_cases {
+            let alias = scope_type_alias(scope_type);
+            assert_eq!(
+                alias, expected_alias,
+                "unexpected scope alias for {scope_type:?}"
+            );
+            assert!(
+                STABLE_SCOPE_KIND_ALIASES.contains(&alias),
+                "scope alias {alias:?} for {scope_type:?} escaped the stable inventory"
+            );
+        }
+        for alias in EXCLUDED_SCOPE_KIND_ALIASES {
+            assert!(
+                !STABLE_SCOPE_KIND_ALIASES.contains(alias),
+                "excluded scope alias {alias:?} leaked into the stable inventory"
+            );
+        }
+
+        let signal_cases = [
+            (wellen::VarType::Event, "event"),
+            (wellen::VarType::Integer, "integer"),
+            (wellen::VarType::Parameter, "parameter"),
+            (wellen::VarType::Real, "real"),
+            (wellen::VarType::Reg, "reg"),
+            (wellen::VarType::Supply0, "supply0"),
+            (wellen::VarType::Supply1, "supply1"),
+            (wellen::VarType::Time, "time"),
+            (wellen::VarType::Tri, "tri"),
+            (wellen::VarType::TriAnd, "triand"),
+            (wellen::VarType::TriOr, "trior"),
+            (wellen::VarType::TriReg, "trireg"),
+            (wellen::VarType::Tri0, "tri0"),
+            (wellen::VarType::Tri1, "tri1"),
+            (wellen::VarType::WAnd, "wand"),
+            (wellen::VarType::Wire, "wire"),
+            (wellen::VarType::WOr, "wor"),
+            (wellen::VarType::String, "string"),
+            (wellen::VarType::Port, "port"),
+            (wellen::VarType::SparseArray, "sparse_array"),
+            (wellen::VarType::RealTime, "real_time"),
+            (wellen::VarType::RealParameter, "real_parameter"),
+            (wellen::VarType::Bit, "bit"),
+            (wellen::VarType::Logic, "logic"),
+            (wellen::VarType::Int, "int"),
+            (wellen::VarType::ShortInt, "short_int"),
+            (wellen::VarType::LongInt, "long_int"),
+            (wellen::VarType::Byte, "byte"),
+            (wellen::VarType::Enum, "enum"),
+            (wellen::VarType::ShortReal, "short_real"),
+            (wellen::VarType::Boolean, "boolean"),
+            (wellen::VarType::BitVector, "bit_vector"),
+            (wellen::VarType::StdLogic, "logic"),
+            (wellen::VarType::StdLogicVector, "bit_vector"),
+            (wellen::VarType::StdULogic, "logic"),
+            (wellen::VarType::StdULogicVector, "bit_vector"),
+        ];
+        for (var_type, expected_alias) in signal_cases {
+            let alias = var_type_alias(var_type);
+            assert_eq!(
+                alias, expected_alias,
+                "unexpected signal alias for {var_type:?}"
+            );
+            assert!(
+                STABLE_SIGNAL_KIND_ALIASES.contains(&alias),
+                "signal alias {alias:?} for {var_type:?} escaped the stable inventory"
+            );
+        }
+        for alias in EXCLUDED_SIGNAL_KIND_ALIASES {
+            assert!(
+                !STABLE_SIGNAL_KIND_ALIASES.contains(alias),
+                "excluded signal alias {alias:?} leaked into the stable inventory"
+            );
+        }
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

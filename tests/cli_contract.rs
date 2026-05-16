@@ -603,6 +603,10 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
     assert!(long_help.contains(
         "Behavior:\n- Finds all scopes matching `--filter` and displays scope name, depth, and kind."
     ));
+    assert!(long_help.contains(
+        "Includes stable scope kind aliases from hierarchy data (not only modules); excluded backend-specific spellings are normalized to the stable contract surface."
+    ));
+    assert!(!long_help.contains("Includes parser-native scope kinds"));
     assert!(!short_help.contains("See also:"));
     for help in [&long_help, &alias_help] {
         assert!(help.contains("See also:\n  wavepeek docs show commands/scope"));
@@ -650,7 +654,9 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
         "Behavior:\n- Finds all signals matching `--filter` within the selected scope and displays name, kind, and available metadata (for example width)."
     ));
     assert!(long_help.contains("Recursive mode walks child scopes depth-first in stable lexicographic order; `--max-depth` limits recursion when set."));
-    assert!(long_help.contains("Includes parser-native signal kinds (not only wires)."));
+    assert!(long_help.contains(
+        "Includes stable signal kind aliases (not only wires); excluded backend-specific VHDL spellings are normalized to the stable contract surface."
+    ));
     assert!(!long_help.contains("human output"));
 
     for help in [&short_help, &long_help] {
@@ -852,7 +858,7 @@ fn shipped_commands_help_is_self_descriptive() {
                 "Provides scope-local signal listings.",
                 "Finds all signals matching `--filter`",
                 "depth-first in stable lexicographic order",
-                "Includes parser-native signal kinds",
+                "Includes stable signal kind aliases",
                 "wavepeek schema",
             ],
         ),

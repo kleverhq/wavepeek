@@ -16,16 +16,23 @@ This plan does not tighten canonical path syntax, time-string syntax, or sampled
 
 This plan does not add GHW support, VHDL support, or new waveform formats. Instead, it explicitly keeps GHW- and VHDL-specific `kind` literals out of the stable machine contract.
 
-This plan does not change JSON bytes for the current shipped contract fixtures. If unsupported backend-specific VHDL or GHW aliases can leak through today, the fix is to normalize them into the stable inventory rather than expanding the schema enums to advertise those backend-specific literals.
+This plan does not change JSON bytes for the current shipped integration contract fixtures. Benchmark baseline artifacts may still need intentional refreshes if they currently capture backend-specific aliases that this plan normalizes into the stable inventory. If unsupported backend-specific VHDL or GHW aliases can leak through today, the fix is to normalize them into the stable inventory rather than expanding the schema enums to advertise those backend-specific literals.
 
 ## Progress
 
 - [x] (2026-05-16 00:00Z) Audited the backlog item in `docs/BACKLOG.md`, the current schema in `schema/wavepeek.json`, and the current command/runtime docs in `docs/public/reference/machine-output.md` and `docs/ARCHITECTURE.md`.
 - [x] (2026-05-16 00:00Z) Located the current runtime sources for `scope` and `signal` kind strings in `src/waveform/mod.rs` (`scope_type_alias` and `var_type_alias`) and confirmed that the checked-in schema still models those fields as generic strings.
 - [x] (2026-05-16 00:00Z) Resolved the user-requested policy that schema enums must exclude GHW- and VHDL-related kind values even though `wellen` exposes them.
-- [x] (2026-05-16 00:00Z) Wrote the first draft of this implementation plan in `docs/exec-plans/active/2026-05-16-json-schema-data-field-detail-hardening/PLAN.md`.
+- [x] (2026-05-16 00:00Z) Wrote the first draft of this implementation plan.
 - [x] (2026-05-16 00:20Z) Ran peer review with separate Grins on plan quality and technical correctness, then revised the plan to require runtime/schema alignment, alias-path drift protection, and mandatory runtime regression validation.
-- [ ] Implementation is not started. Remaining work is to normalize the stable alias surface, harden the schema artifact, add drift protection, validate, and keep this plan current while coding.
+- [x] (2026-05-16 01:05Z) Normalized the waveform adapter’s stable `scope` and `signal` kind aliases in `src/waveform/mod.rs`, added curated stable inventory constants, and added exhaustive alias-mapping tests that cover both stable and excluded backend-specific variants.
+- [x] (2026-05-16 01:10Z) Hardened `schema/wavepeek.json` with reusable kind and row definitions plus concise `description` text for the command payload fields called out in this plan.
+- [x] (2026-05-16 01:15Z) Added schema-vs-runtime drift protection in `src/schema_contract.rs`, extended `tests/schema_cli.rs` with enum/description assertions, and wired the focused Rust checks into `make check-schema`.
+- [x] (2026-05-16 01:25Z) Ran focused validation: `cargo test --lib schema_kind_alias_inventory_matches_canonical_schema`, `cargo test --lib stable_schema_kind_aliases_cover_full_inventory`, `cargo test --test schema_cli --test scope_cli --test signal_cli`, `make check-schema`, and `cargo clippy --all-targets --all-features -- -D warnings` all passed.
+- [x] (2026-05-16 01:40Z) Ran parallel review lanes for code correctness and contract/docs consistency. Review surfaced one missing schema-reference assertion, one over-broad docs-search description, and the need to state the intentional runtime normalization in changelog/plan notes.
+- [x] (2026-05-16 02:05Z) Applied the review follow-ups, updated CLI/help/docs wording to describe stable normalized kind aliases, refreshed the affected CLI contract assertions, reran validation, and completed a clean final control pass with no substantive findings.
+- [x] (2026-05-16 02:10Z) Final gates passed: `make check`, `make ci`, and `make bench-e2e-smoke-commit` are green.
+- [x] Completed. The plan is now preserved under `docs/exec-plans/completed/2026-05-16-json-schema-data-field-detail-hardening/PLAN.md` as the historical execution record.
 
 ## Surprises & Discoveries
 
@@ -34,6 +41,9 @@ This plan does not change JSON bytes for the current shipped contract fixtures. 
 
 - Observation: the runtime adapter already has explicit alias functions, but they include dormant VHDL and GHW values that do not match the intended stable contract for this backlog item.
   Evidence: `src/waveform/mod.rs` maps `ScopeType::Vhdl*`, `ScopeType::GhwGeneric`, `VarType::StdLogic*`, and `VarType::StdULogic*` to output strings.
+
+- Observation: normalizing `ScopeType::VhdlArray` to `unknown` does not perturb the shipped integration fixtures, but it does change committed benchmark functional artifacts for real external FSTs.
+  Evidence: `bench/e2e/runs/baseline/scope_scr1_all_depth7_json.wavepeek.json` and `bench/e2e/runs/baseline/scope_clustered_all_depth13_json.wavepeek.json` had to be refreshed from `"kind": "vhdl_array"` to `"kind": "unknown"` so the benchmark smoke parity gate matched the new stable contract.
 
 - Observation: the existing `make check-schema` path only proves artifact freshness, byte equality, and envelope URL shape; it does not prove that schema enum inventories still match the waveform adapter’s stable alias inventory.
   Evidence: `scripts/check_schema_contract.py` compares `wavepeek schema` against `schema/wavepeek.json` and inspects `$schema`, but it never compares schema enum arrays with the adapter’s emitted stable kind inventory.
@@ -72,9 +82,11 @@ This plan does not change JSON bytes for the current shipped contract fixtures. 
 
 ## Outcomes & Retrospective
 
-Planning is complete and implementation is pending. After one review loop, the plan is stricter and less hand-wavy: it now tells the implementer to make the runtime and schema agree, not to fake agreement with a curated enum and a disconnected constant.
+The work is complete. `wavepeek schema` now exposes curated `scope` and `signal` kind enums, payload field descriptions are materially richer, runtime alias normalization matches the stable schema surface, and the schema gate now checks both schema-vs-inventory drift and live alias-function behavior.
 
-The remaining risk is the usual one: someone will be tempted to patch only `schema/wavepeek.json` and call it a day. Do not. The whole point of this plan is to make the stable contract honest and self-checking.
+Review is complete and the final control pass came back clean. The full repository gates are green, including the benchmark smoke hook that forced an intentional refresh of two scope baseline artifacts where real external fixtures had been leaking `vhdl_array` instead of the stable `unknown` alias.
+
+The main lesson is the obvious one that people keep trying to dodge anyway: if the schema claims to be the exact machine contract, then the runtime, tests, help text, and benchmark parity artifacts all have to tell the same story. Anything else is just polished dishonesty with JSON.
 
 ## Context and Orientation
 
@@ -322,7 +334,7 @@ A concise success spot-check after implementation should look roughly like this:
 
 and:
 
-    $ wavepeek schema | jq -r '."$defs".signalData.items.properties.kind.description'
+    $ wavepeek schema | jq -r '."$defs".signalEntry.properties.kind.description'
     Stable signal kind alias emitted by wavepeek for the selected signal.
 
 If the exact wording differs, that is fine. What is not fine is leaving those fields undocumented or silently reintroducing excluded backend-specific literals.
@@ -340,3 +352,9 @@ The implementation should continue depending on:
 At the end of implementation, the repository should contain one stable waveform-adapter kind inventory that both the runtime alias helpers and the schema tests rely on, a canonical schema artifact whose `scope` and `signal` kind fields point at stable enum definitions, and a `check-schema` gate that exercises both artifact freshness and alias-inventory drift.
 
 Revision Note: 2026-05-16 / Grin — Initial plan authored from the backlog item, current schema artifact, waveform adapter alias functions, and the user-requested exclusion of GHW/VHDL literals. Revised after peer review to require runtime/schema alignment, exhaustive adapter-path drift tests wired into `make check-schema`, mandatory runtime regression validation, and a required `make ci` completion gate.
+
+Revision Note: 2026-05-16 / Grin — Updated after implementation to record the stable alias normalization, richer schema definitions, focused schema drift tests, and the first successful focused validation pass. Full repository gates and review still pending at this revision point.
+
+Revision Note: 2026-05-16 / Grin — Updated after review follow-up to document the intentional benchmark baseline refresh caused by `vhdl_array -> unknown` normalization, narrow one schema description that was over-promising docs-search normalization semantics, and record the new schema-reference assertion requested by review.
+
+Revision Note: 2026-05-16 / Grin — Final completion update: recorded that review follow-ups landed, all repository and benchmark smoke gates passed, and the final clean control pass found no substantive remaining issues.

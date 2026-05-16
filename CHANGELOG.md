@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
+- Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
+
 ## [0.5.0] - 2026-05-15
 
 ### Added

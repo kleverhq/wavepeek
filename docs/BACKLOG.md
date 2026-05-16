@@ -28,6 +28,11 @@ Stable user-facing contracts live under `public/reference/`, starting from
 
 ### JSON schema data-field detail hardening
 
+Affecting flows:
+- `llm-agent` — Must: stronger field typing and descriptions reduce guesswork, brittle prompt-side parsing, and schema drift in agent tooling.
+- `user-manual` — Could: humans can already rely on command docs and examples, so schema detail is mostly indirect value here.
+- `scripting` — Must: stricter machine contracts make validation, codegen, and long-lived automation less fragile.
+
 - Tighten schema coverage for `data` payload fields that currently validate only as generic strings.
 - Add explicit enum definitions for enumeration-like fields such as `scope.data[].kind` and `signal.data[].kind`, sourced from the stable aliases emitted by the waveform adapter.
 - Add concise `description` text for command payload fields so `wavepeek schema` is more self-documenting for machine clients and agent workflows.
@@ -35,6 +40,11 @@ Stable user-facing contracts live under `public/reference/`, starting from
 - Close when `schema/wavepeek.json`, `wavepeek schema`, schema checks, and relevant contract tests cover the richer field metadata without changing existing JSON output bytes except for the schema document itself.
 
 ### Temporal property language extensions over waveforms
+
+Affecting flows:
+- `llm-agent` — Could: richer temporal operators would let agents ask higher-level verification questions, but current inspection flows remain usable without them.
+- `user-manual` — Could: this is a real feature expansion for verification users, not a baseline usability gap in the shipped command set.
+- `scripting` — Could: it can collapse multi-step post-processing into one query, but existing scripts can still compose current commands externally.
 
 - Explore an "SVA over waves" direction: evaluate temporal/property-style checks directly on recorded waveform data instead of requiring a live simulator assertion flow.
 - Use the existing SV-like expression surface as the starting point, then extend it with temporal operators and assertion-style composition where that produces a coherent user model.
@@ -46,6 +56,11 @@ Stable user-facing contracts live under `public/reference/`, starting from
 
 ### Streaming JSON output mode for large result sets
 
+Affecting flows:
+- `llm-agent` — Could: mainly helps partial-result recovery on timeout or cancellation, but many agent harnesses still deliver command output only after completion.
+- `user-manual` — Could: interactive humans usually prefer bounded human output, so NDJSON is not the primary operator path.
+- `scripting` — Must: large pipelines benefit from incremental consumption, simpler failure recovery, and not buffering one giant JSON document in memory.
+
 - Large waveform queries (especially recursive signal collection on big `.fst`) are expensive to consume as one buffered JSON envelope.
 - Add an opt-in streaming mode via `--jsonl` (NDJSON) for high-volume/long-running commands, while keeping current `--json` contract unchanged.
 - Define a dedicated stream schema (for example, `schema/wavepeek-stream-v1.json`) with deterministic record ordering and explicit terminal summary.
@@ -53,6 +68,11 @@ Stable user-facing contracts live under `public/reference/`, starting from
 - Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/public/commands/overview.md` and `docs/public/reference/machine-output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
 
 ### Typed stdin projection from wavepeek JSON
+
+Affecting flows:
+- `llm-agent` — Could: agents can already parse prior JSON results and pass explicit arguments, so this is mostly ergonomic sugar for them.
+- `user-manual` — Should: common ad hoc pipelines become shorter and less dependent on `jq`, `python -c`, or fragile text scraping.
+- `scripting` — Should: typed producer→consumer chaining reduces glue code and avoids hand-written JSON field extraction for common command pairs.
 
 - Consider allowing selected consumer arguments to use `-` as a typed stdin source from another `wavepeek --json` command instead of adding a separate chaining output mode.
 - Example: `scope --json | signal --scope -` projects exactly one `scope.data[].path`; `signal --json | value --signals -` projects one or more `signal.data[].path` values.

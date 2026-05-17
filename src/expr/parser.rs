@@ -1658,4 +1658,55 @@ mod tests {
             other => panic!("expected unary minus root, got {other:?}"),
         }
     }
+
+    #[test]
+    fn typed_parser_rejects_empty_iff_invalid_names_and_missing_edge_operands() {
+        let error = parse_event_expr_ast("clk iff").expect_err("empty iff should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-EMPTY-IFF");
+
+        let error = parse_event_expr_ast("posedge").expect_err("missing edge name should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-MISSING-NAME");
+
+        let error = parse_event_expr_ast("sig@bad").expect_err("invalid signal name should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-LEX-CHAR");
+
+        let error = parse_event_expr_ast("iff clk").expect_err("iff cannot lead an event term");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-BROKEN-UNION");
+    }
+
+    #[test]
+    fn logical_parser_rejects_empty_groupings_and_inside_sets() {
+        let error = parse_logical_expr_ast("{}").expect_err("empty concatenation should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error =
+            parse_logical_expr_ast("a inside {}").expect_err("empty inside set should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error = parse_logical_expr_ast("a[1")
+            .expect_err("selection without closing bracket should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error = parse_logical_expr_ast(")").expect_err("unmatched closing paren should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-UNMATCHED-CLOSE");
+    }
+
+    #[test]
+    fn logical_parser_rejects_malformed_cast_and_enum_forms() {
+        let error = parse_logical_expr_ast("type(state)::")
+            .expect_err("enum label without label should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error =
+            parse_logical_expr_ast("bit[0]'(a)").expect_err("zero-width cast target should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+
+        let error = parse_logical_expr_ast("type(1)'(a)")
+            .expect_err("recovered type target must name an operand");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+
+        let error =
+            parse_logical_expr_ast("signed'a").expect_err("casts require parenthesized payloads");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+    }
 }

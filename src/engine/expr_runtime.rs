@@ -262,9 +262,13 @@ fn unknown_signal_diagnostic(name: &str) -> ExprDiagnostic {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::path::Path;
 
     use tempfile::NamedTempFile;
 
+    use crate::expr::sema::{
+        BoundInsideItem, BoundLogicalExpr, BoundLogicalKind, BoundLogicalNode, BoundSelection,
+    };
     use crate::expr::{
         DiagnosticLayer, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
         IntegerLikeKind, SampledValue, SignalHandle, Span,
@@ -272,10 +276,11 @@ mod tests {
     use crate::waveform::expr_host::WaveformExprHost;
 
     use super::{
-        ScopedExprHost, bind_waveform_logical_expr, candidate_sources_for_handles,
-        eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
-        event_expr_is_any_tracked_only, event_expr_is_edge_only, expr_diagnostic,
-        open_shared_waveform, referenced_signal_handles,
+        ScopedExprHost, bind_waveform_event_expr, bind_waveform_logical_expr,
+        candidate_sources_for_handles, eval_bound_logical_truth, event_candidate_handles,
+        event_expr_contains_wildcard, event_expr_is_any_tracked_only, event_expr_is_edge_only,
+        event_expr_matches, expr_diagnostic, open_shared_waveform, referenced_signal_handles,
+        unknown_signal_diagnostic,
     };
 
     const TEST_VCD: &str = concat!(
@@ -498,6 +503,201 @@ mod tests {
             error.to_string(),
             "error: internal: unknown signal handle 999"
         );
+    }
+
+    #[test]
+    fn helper_wrappers_cover_open_failures_event_matching_and_nested_handle_walks() {
+        let error = open_shared_waveform(Path::new("/definitely/missing.vcd"))
+            .expect_err("missing waveform should fail");
+        assert!(error.to_string().contains("No such file or directory"));
+
+        let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
+        let shared = open_shared_waveform(fixture.path()).expect("waveform should open");
+        let (host, bound_event) = bind_waveform_event_expr(shared, Some("top"), "posedge clk")
+            .expect("event binding should succeed");
+        let frame = crate::expr::host::EventEvalFrame {
+            timestamp: 5,
+            previous_timestamp: Some(0),
+            tracked_signals: &[SignalHandle(1)],
+        };
+        assert!(event_expr_matches("posedge clk", &bound_event, &host, &frame).expect("match"));
+
+        let error = bind_waveform_event_expr(
+            open_shared_waveform(fixture.path()).expect("waveform should reopen"),
+            Some("top"),
+            "top.clk",
+        )
+        .expect_err("scoped dotted token should fail");
+        assert!(error.to_string().contains("unknown signal 'top.clk'"));
+
+        let nested = BoundLogicalExpr {
+            root: BoundLogicalNode {
+                ty: ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::PackedVector,
+                    width: 4,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                    enum_labels: None,
+                },
+                span: Span::new(0, 0),
+                kind: BoundLogicalKind::Conditional {
+                    condition: Box::new(BoundLogicalNode {
+                        ty: ExprType {
+                            kind: ExprTypeKind::BitVector,
+                            storage: ExprStorage::Scalar,
+                            width: 1,
+                            is_four_state: true,
+                            is_signed: false,
+                            enum_type_id: None,
+                            enum_labels: None,
+                        },
+                        span: Span::new(0, 0),
+                        kind: BoundLogicalKind::Triggered {
+                            handle: SignalHandle(3),
+                        },
+                    }),
+                    when_true: Box::new(BoundLogicalNode {
+                        ty: ExprType {
+                            kind: ExprTypeKind::BitVector,
+                            storage: ExprStorage::PackedVector,
+                            width: 2,
+                            is_four_state: true,
+                            is_signed: false,
+                            enum_type_id: None,
+                            enum_labels: None,
+                        },
+                        span: Span::new(0, 0),
+                        kind: BoundLogicalKind::Inside {
+                            expr: Box::new(BoundLogicalNode {
+                                ty: ExprType {
+                                    kind: ExprTypeKind::BitVector,
+                                    storage: ExprStorage::PackedVector,
+                                    width: 2,
+                                    is_four_state: true,
+                                    is_signed: false,
+                                    enum_type_id: None,
+                                    enum_labels: None,
+                                },
+                                span: Span::new(0, 0),
+                                kind: BoundLogicalKind::SignalRef {
+                                    handle: SignalHandle(1),
+                                },
+                            }),
+                            set: vec![BoundInsideItem::Range {
+                                low: BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(2),
+                                    },
+                                },
+                                high: BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::Selection {
+                                        base: Box::new(BoundLogicalNode {
+                                            ty: ExprType {
+                                                kind: ExprTypeKind::BitVector,
+                                                storage: ExprStorage::PackedVector,
+                                                width: 2,
+                                                is_four_state: true,
+                                                is_signed: false,
+                                                enum_type_id: None,
+                                                enum_labels: None,
+                                            },
+                                            span: Span::new(0, 0),
+                                            kind: BoundLogicalKind::SignalRef {
+                                                handle: SignalHandle(4),
+                                            },
+                                        }),
+                                        selection: BoundSelection::IndexedUp {
+                                            base: Box::new(BoundLogicalNode {
+                                                ty: ExprType {
+                                                    kind: ExprTypeKind::BitVector,
+                                                    storage: ExprStorage::Scalar,
+                                                    width: 1,
+                                                    is_four_state: true,
+                                                    is_signed: false,
+                                                    enum_type_id: None,
+                                                    enum_labels: None,
+                                                },
+                                                span: Span::new(0, 0),
+                                                kind: BoundLogicalKind::SignalRef {
+                                                    handle: SignalHandle(5),
+                                                },
+                                            }),
+                                            width: 1,
+                                        },
+                                    },
+                                },
+                            }],
+                        },
+                    }),
+                    when_false: Box::new(BoundLogicalNode {
+                        ty: ExprType {
+                            kind: ExprTypeKind::BitVector,
+                            storage: ExprStorage::PackedVector,
+                            width: 2,
+                            is_four_state: true,
+                            is_signed: false,
+                            enum_type_id: None,
+                            enum_labels: None,
+                        },
+                        span: Span::new(0, 0),
+                        kind: BoundLogicalKind::Concatenation {
+                            items: vec![BoundLogicalNode {
+                                ty: ExprType {
+                                    kind: ExprTypeKind::BitVector,
+                                    storage: ExprStorage::Scalar,
+                                    width: 1,
+                                    is_four_state: true,
+                                    is_signed: false,
+                                    enum_type_id: None,
+                                    enum_labels: None,
+                                },
+                                span: Span::new(0, 0),
+                                kind: BoundLogicalKind::SignalRef {
+                                    handle: SignalHandle(6),
+                                },
+                            }],
+                        },
+                    }),
+                },
+            },
+        };
+        assert_eq!(
+            referenced_signal_handles(&nested),
+            vec![
+                SignalHandle(3),
+                SignalHandle(1),
+                SignalHandle(2),
+                SignalHandle(4),
+                SignalHandle(5),
+                SignalHandle(6),
+            ]
+        );
+
+        let error = unknown_signal_diagnostic("missing.sig");
+        assert_eq!(error.code, "HOST-UNKNOWN-SIGNAL");
+        assert_eq!(error.message, "unknown signal 'missing.sig'");
     }
 
     fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {

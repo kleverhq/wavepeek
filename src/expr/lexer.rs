@@ -873,4 +873,25 @@ mod tests {
             super::LogicalTokenKind::StringLiteral(_)
         ));
     }
+
+    #[test]
+    fn lex_logical_expr_rejects_bad_strings_and_unsupported_tokens() {
+        for source in ["\"unterminated", "\"bad\\q\""] {
+            let error = lex_logical_expr(source, 0).expect_err("string lexing should fail");
+            assert_eq!(error.code, "EXPR-PARSE-LOGICAL-STRING");
+        }
+
+        for source in ["++a", "@"] {
+            let error = lex_logical_expr(source, 0).expect_err("unsupported token should fail");
+            assert_eq!(error.code, "EXPR-PARSE-LOGICAL-TOKEN");
+        }
+    }
+
+    #[test]
+    fn lex_logical_expr_rejects_malformed_integral_literals() {
+        for source in ["0'(a)", "1'q1", "4'b", "4'b102"] {
+            let error = lex_logical_expr(source, 0).expect_err("literal should fail");
+            assert_eq!(error.code, "EXPR-PARSE-LOGICAL-LITERAL", "{source}");
+        }
+    }
 }

@@ -698,14 +698,17 @@ fn unique_sibling_path(parent: &Path, out_dir: &Path, prefix: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
     use std::path::Path;
 
     use tempfile::tempdir;
 
     use super::{
-        EXPORT_FORMAT_VERSION, EXPORT_KIND, MatchKind, canonical_source_relpath, export_catalog,
-        extract_headings, id_matches_token, lookup_topic, normalize_query, packaged_skill_markdown,
-        search_topics, split_front_matter, suggest_topics, validate_export_target,
+        DocsCatalog, EXPORT_FORMAT_VERSION, EXPORT_KIND, MatchKind, SearchMatch, TopicRecord,
+        TopicSummary, canonical_source_relpath, export_catalog, extract_headings, id_matches_token,
+        lookup_topic, normalize_query, packaged_skill_markdown, search_match, search_topics,
+        split_front_matter, suggest_topics, tokenize, topic_section_rank, unique_sibling_path,
+        validate_export_target,
     };
 
     #[test]
@@ -951,5 +954,107 @@ mod tests {
                 .to_string()
                 .contains("has unrecognized export manifest version 999")
         );
+    }
+
+    #[test]
+    fn docs_catalog_helpers_sort_sections_and_preserve_topics() {
+        let catalog = DocsCatalog {
+            topics: BTreeMap::from([
+                (
+                    "reference/zeta".to_string(),
+                    fake_topic("reference/zeta", "Zeta", "z", "reference", &[]),
+                ),
+                (
+                    "misc/topic".to_string(),
+                    fake_topic("misc/topic", "Misc", "m", "misc", &[]),
+                ),
+                (
+                    "commands/alpha".to_string(),
+                    fake_topic("commands/alpha", "Alpha", "a", "commands", &[]),
+                ),
+            ]),
+        };
+
+        let ids = catalog
+            .logical_topic_summaries()
+            .into_iter()
+            .map(|topic| topic.id)
+            .collect::<Vec<_>>();
+        assert_eq!(ids, vec!["commands/alpha", "reference/zeta", "misc/topic"]);
+        assert_eq!(topic_section_rank("intro"), 0);
+        assert_eq!(topic_section_rank("mystery"), 5);
+        assert_eq!(catalog.topic_summaries().len(), 3);
+    }
+
+    #[test]
+    fn search_helpers_cover_tokenization_and_match_kinds() {
+        assert_eq!(tokenize("alpha alpha beta"), vec!["alpha", "beta"]);
+
+        let record = fake_topic(
+            "commands/change-help",
+            "Change command",
+            "Use this to review deltas",
+            "commands",
+            &["Details"],
+        );
+        let SearchMatch {
+            match_kind,
+            matched_tokens,
+            ..
+        } = search_match(&record, "details", &["details".to_string()])
+            .expect("heading token should match");
+        assert_eq!(match_kind, MatchKind::Heading);
+        assert_eq!(matched_tokens, 1);
+
+        let SearchMatch { match_kind, .. } =
+            search_match(&record, "bodytoken", &["bodytoken".to_string()])
+                .expect("body token should match");
+        assert_eq!(match_kind, MatchKind::Body);
+
+        assert!(search_match(&record, "nomatch", &["nomatch".to_string()]).is_none());
+    }
+
+    #[test]
+    fn export_target_helpers_accept_empty_dirs_and_generate_unique_names() {
+        let temp = tempdir().expect("tempdir should be created");
+        let empty = temp.path().join("empty");
+        std::fs::create_dir(&empty).expect("empty dir should be created");
+        validate_export_target(&empty, false).expect("empty dir should be accepted");
+
+        let sibling_one = unique_sibling_path(temp.path(), &empty, ".prefix");
+        let sibling_two = unique_sibling_path(temp.path(), &empty, ".prefix");
+        assert_ne!(sibling_one, sibling_two);
+        assert!(
+            sibling_one
+                .file_name()
+                .unwrap()
+                .to_string_lossy()
+                .contains("empty")
+        );
+    }
+
+    fn fake_topic(
+        id: &str,
+        title: &str,
+        summary: &str,
+        section: &str,
+        headings: &[&str],
+    ) -> TopicRecord {
+        TopicRecord {
+            summary: TopicSummary {
+                id: id.to_string(),
+                title: title.to_string(),
+                summary: summary.to_string(),
+                section: section.to_string(),
+                see_also: vec![],
+            },
+            raw_markdown: format!("---\nid: {id}\n---\n# {title}\n{summary}\n"),
+            body: format!("# {title}\n{summary}\nbodytoken details\n"),
+            headings: headings
+                .iter()
+                .map(|heading| (*heading).to_string())
+                .collect(),
+            source_relpath: canonical_source_relpath(id),
+        }
     }
 }

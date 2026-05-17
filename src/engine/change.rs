@@ -1262,8 +1262,26 @@ fn parse_bound_time(
 
 #[cfg(test)]
 mod tests {
-    use super::{AutoDispatchWorkEstimate, ChangeEngineMode, select_engine_mode};
-    use crate::cli::change::TuneChangeEngineMode;
+    use std::fs;
+    use std::path::PathBuf;
+
+    use tempfile::NamedTempFile;
+
+    use super::{
+        AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, FastEventEvalHost,
+        RequestedSignal, build_candidate_schedule, build_snapshot, cached_event_handles,
+        cached_sample_value, candidate_times_to_indices, resolve_requested_signals,
+        resolve_token_to_path, select_engine_mode, should_use_stream_candidates_in_fused,
+        time_window_indices,
+    };
+    use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
+    use crate::cli::limits::LimitArg;
+    use crate::expr::SignalHandle;
+    use crate::expr::host::{ExprStorage, ExprType, ExprTypeKind, ExpressionHost, SampledValue};
+    use crate::expr::sema::{BoundEventExpr, BoundEventKind, BoundEventTerm};
+    use crate::waveform::{
+        ChangeCandidateCollectionMode, SampledSignalState, Waveform, expr_host::WaveformExprHost,
+    };
 
     fn select_auto_mode_for_profile(
         any_tracked_only: bool,
@@ -1352,5 +1370,246 @@ mod tests {
         let selected = select_auto_mode_for_profile(true, false, 32, 2_000, 2_000);
 
         assert_eq!(selected, ChangeEngineMode::Fused);
+    }
+
+    #[test]
+    fn candidate_and_window_helpers_cover_success_and_error_paths() {
+        assert_eq!(time_window_indices(&[], 0, 1), None);
+        assert_eq!(time_window_indices(&[0, 5, 10], 7, 6), None);
+        assert_eq!(time_window_indices(&[0, 5, 10], 5, 10), Some((1, 3)));
+
+        assert_eq!(
+            candidate_times_to_indices(&[0, 5, 10], &[0, 10]).expect("indices"),
+            vec![0, 2]
+        );
+        assert_eq!(
+            build_candidate_schedule(&[0, 5, 10], &[5, 10]).expect("schedule"),
+            vec![(5, Some(0)), (10, Some(5))]
+        );
+        assert!(
+            candidate_times_to_indices(&[0, 5], &[1])
+                .expect_err("missing candidate should fail")
+                .to_string()
+                .contains("missing from waveform time table")
+        );
+    }
+
+    #[test]
+    fn request_resolution_and_snapshot_helpers_cover_validation() {
+        assert_eq!(
+            resolve_token_to_path("sig", Some("top")).expect("scoped token"),
+            "top.sig"
+        );
+        assert_eq!(
+            resolve_token_to_path("top.sig", None).expect("canonical token"),
+            "top.sig"
+        );
+        assert!(
+            resolve_token_to_path("top.sig", Some("top"))
+                .expect_err("dotted scoped token should fail")
+                .to_string()
+                .contains("signal 'top.sig' not found in dump")
+        );
+
+        let fixture = write_fixture(TEST_VCD, "change-helper.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
+        let args = ChangeArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string(), "msg".to_string()],
+            on: None,
+            max: LimitArg::Numeric(5),
+            abs: false,
+            json: false,
+            tune_engine: TuneChangeEngineMode::Auto,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        };
+        let resolved = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)
+            .expect("signals should resolve");
+        assert_eq!(resolved[0].display, "sig");
+        assert_eq!(resolved[0].path, "top.sig");
+
+        let snapshot = build_snapshot(
+            &[RequestedSignal {
+                display: "sig".to_string(),
+                path: "top.sig".to_string(),
+            }],
+            &[SampledSignalState {
+                path: "top.sig".to_string(),
+                width: 1,
+                bits: Some("1".to_string()),
+            }],
+            5,
+            crate::engine::time::ParsedTime {
+                value: 1,
+                unit: crate::engine::time::TimeUnit::Ns,
+            },
+        )
+        .expect("snapshot should build");
+        assert_eq!(snapshot.time, "5ns");
+        assert_eq!(snapshot.signals[0].value, "1'h1");
+
+        let error = build_snapshot(
+            &[RequestedSignal {
+                display: "sig".to_string(),
+                path: "top.sig".to_string(),
+            }],
+            &[SampledSignalState {
+                path: "top.sig".to_string(),
+                width: 1,
+                bits: None,
+            }],
+            5,
+            crate::engine::time::ParsedTime {
+                value: 1,
+                unit: crate::engine::time::TimeUnit::Ns,
+            },
+        )
+        .expect_err("missing value should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("has no value at or before requested time")
+        );
+    }
+
+    #[test]
+    fn cached_event_helpers_cover_dedup_and_sample_filtering() {
+        let bound_event = BoundEventExpr {
+            terms: vec![
+                BoundEventTerm {
+                    event: BoundEventKind::Posedge(SignalHandle(1)),
+                    iff: None,
+                },
+                BoundEventTerm {
+                    event: BoundEventKind::Named(SignalHandle(2)),
+                    iff: None,
+                },
+                BoundEventTerm {
+                    event: BoundEventKind::Named(SignalHandle(1)),
+                    iff: None,
+                },
+            ],
+        };
+        assert_eq!(
+            cached_event_handles(&bound_event, &[SignalHandle(2), SignalHandle(3)]),
+            vec![SignalHandle(1), SignalHandle(2), SignalHandle(3)]
+        );
+
+        let integral = crate::waveform::ExprResolvedSignal {
+            path: "top.sig".to_string(),
+            signal_ref: wellen::SignalRef::from_index(1).expect("signal ref"),
+            expr_type: ExprType {
+                kind: ExprTypeKind::BitVector,
+                storage: ExprStorage::Scalar,
+                width: 1,
+                is_four_state: true,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            },
+        };
+        let real = crate::waveform::ExprResolvedSignal {
+            path: "top.temp".to_string(),
+            signal_ref: wellen::SignalRef::from_index(2).expect("signal ref"),
+            expr_type: ExprType {
+                kind: ExprTypeKind::Real,
+                storage: ExprStorage::Scalar,
+                width: 64,
+                is_four_state: false,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            },
+        };
+        assert_eq!(
+            cached_sample_value(&integral, Some("1".to_string())),
+            Some(SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            })
+        );
+        assert_eq!(cached_sample_value(&real, Some("1".to_string())), None);
+        assert!(should_use_stream_candidates_in_fused(
+            ChangeCandidateCollectionMode::Stream
+        ));
+        assert!(!should_use_stream_candidates_in_fused(
+            ChangeCandidateCollectionMode::Random
+        ));
+    }
+
+    #[test]
+    fn fast_event_eval_host_prefers_cached_samples_over_waveform_queries() {
+        let fixture = write_fixture(TEST_VCD, "change-fast-host.vcd");
+        let host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        let cached = std::collections::HashMap::from([(
+            SignalHandle(9),
+            CachedEventSamples {
+                current: SampledValue::Integral {
+                    bits: Some("1".to_string()),
+                    label: None,
+                },
+                previous: SampledValue::Integral {
+                    bits: Some("0".to_string()),
+                    label: None,
+                },
+            },
+        )]);
+        let fast = FastEventEvalHost {
+            base: &host,
+            current_timestamp: 5,
+            cached,
+        };
+
+        assert_eq!(
+            fast.sample_value(SignalHandle(9), 5)
+                .expect("current sample"),
+            SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            }
+        );
+        assert_eq!(
+            fast.sample_value(SignalHandle(9), 4)
+                .expect("previous sample"),
+            SampledValue::Integral {
+                bits: Some("0".to_string()),
+                label: None,
+            }
+        );
+        assert!(
+            fast.sample_value(
+                host.resolve_signal("top.sig")
+                    .expect("signal should resolve"),
+                5,
+            )
+            .is_ok()
+        );
+    }
+
+    const TEST_VCD: &str = concat!(
+        "$date\n  today\n$end\n",
+        "$version\n  wavepeek-test\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var wire 1 ! sig $end\n",
+        "$var string 1 \" msg $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "0!\n",
+        "shello \"\n",
+        "#5\n",
+        "1!\n",
+        "sworld \"\n"
+    );
+
+    fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+        let fixture = NamedTempFile::with_suffix(suffix).expect("fixture should create");
+        fs::write(fixture.path(), contents).expect("fixture should write");
+        fixture
     }
 }

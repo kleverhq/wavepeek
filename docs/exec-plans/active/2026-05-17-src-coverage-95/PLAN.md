@@ -73,7 +73,8 @@ After each substantial batch, rerun focused tests, then rerun coverage. Commit a
 - [x] (2026-05-17) Added a mixed helper batch in `src/docs/mod.rs`, `src/engine/expr_runtime.rs`, `src/expr/sema.rs`, `src/expr/parser.rs`, `src/waveform/mod.rs`, and `src/expr/eval.rs`, covering embedded docs parse/export helpers, more runtime wrapper/error paths, more semantic rejection branches, more parser negative forms, and extra evaluator/cache/arithmetic helper paths.
 - [x] (2026-05-17) Remeasured coverage with `tmp/coverage-batch9.json`; total `src/**` coverage improved to line 90.59%, region 91.74%, function 88.54%.
 - [x] (2026-05-17) Added another helper-heavy batch across `src/cli/mod.rs`, `src/docs/mod.rs`, `src/engine/change.rs`, `src/expr/eval.rs`, `src/expr/lexer.rs`, `src/expr/parser.rs`, `src/expr/sema.rs`, and `src/waveform/mod.rs`, then remeasured through `tmp/coverage-batch15.json`; total `src/**` coverage is now line 93.63%, region 93.48%, function 93.01%, average 93.37%.
-- [ ] Continue expanding semantic-helper tests in `src/expr/sema.rs` and waveform/helper-error tests in `src/waveform/mod.rs`, then return again to the remaining docs/export and change-engine residue in `src/docs/mod.rs` and `src/engine/change.rs`; those files still dominate the last stretch to 95%.
+- [x] (2026-05-17) Added another closure batch across `src/expr/mod.rs`, `src/docs/mod.rs`, `src/engine/property.rs`, `src/engine/change.rs`, `src/engine/value.rs`, `src/expr/lexer.rs`, `src/expr/parser.rs`, `src/expr/sema.rs`, and `src/waveform/mod.rs`, focusing on public entrypoints plus more sema/waveform helper matrices; remeasured through `tmp/coverage-batch18.json` at line 93.87%, region 93.74%, function 93.06%, average 93.55%.
+- [ ] Continue expanding parser/lexer negative/helper tests and the remaining waveform/change/docs public-helper residue; despite progress, those files are still hoarding too many uncovered lines for the final 95% push.
 - [ ] Continue autonomous test/measure/commit loops without pausing for status handoff until the 95% average target is actually reached.
 - [ ] Run final validation coverage command(s), record the final percentages here, and commit the completion state.
 
@@ -102,6 +103,9 @@ After each substantial batch, rerun focused tests, then rerun coverage. Commit a
 
 - Observation: direct helper tables and in-file host/cache smoke tests still move the needle, but the easy wins are mostly gone now. The branch is no longer missing broad feature coverage; it is fighting a stubborn tail of export error plumbing, waveform edge cases, and semantic const-eval residue.
   Evidence: after the later helper-heavy closure batches, totals climbed again to 93.63/93.48/93.01 from `tmp/coverage-batch15.json`, while the worst remaining files are `src/waveform/mod.rs` (94.20/95.77/87.10), `src/docs/mod.rs` (90.34/93.74/87.27), `src/engine/change.rs` (93.09/93.72/88.24), and `src/expr/sema.rs` (92.72/90.79/92.73).
+
+- Observation: another mixed pass across direct entrypoints and helper tables improved the floor but barely moved the total average. The remaining problem is now less about finding untested modules and more about exhausting a large residue of line-level parse/semantic/helper branches in a few stubborn files.
+  Evidence: `tmp/coverage-batch18.json` only improved totals to 93.87/93.74/93.06 (average 93.55), while raw missed lines are still concentrated in `src/expr/sema.rs` (262), `src/expr/parser.rs` (121), `src/waveform/mod.rs` (111), `src/docs/mod.rs` (91), and `src/engine/change.rs` (90).
 
 ## Decision Log
 
@@ -189,3 +193,4 @@ Revision Note: 2026-05-17 / Grin - Updated after the parser/docs/change/runtime 
 Revision Note: 2026-05-17 / Grin - Updated after the latest sema/waveform and direct-expression integration batches to record the `tmp/coverage-batch6.json` totals and the fact that the remaining problem is no longer “find big missing features,” but “exhaust a nasty residue of helper branches and function-level stragglers.”
 Revision Note: 2026-05-17 / Grin - Updated after the mixed docs/runtime/sema/parser/waveform/eval helper batch to record the `tmp/coverage-batch9.json` totals, the parser/docs/runtime gains, and the still-annoying fact that `src/expr/sema.rs` remains the main obstacle to the 95% average target.
 Revision Note: 2026-05-17 / Grin - Updated after the later helper-heavy closure batches to record the `tmp/coverage-batch15.json` totals, the autonomous continue-until-done working mode, and the fact that the final blockers have consolidated into waveform/docs/change edge residue plus a smaller remaining `sema` tail.
+Revision Note: 2026-05-17 / Grin - Updated after the next closure batch to record the `tmp/coverage-batch18.json` totals, the new direct entrypoint/helper tests landed since batch15, and the irritating fact that parser/lexer/sema line residue still blocks the last 95% climb.

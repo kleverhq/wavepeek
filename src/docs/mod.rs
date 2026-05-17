@@ -707,13 +707,45 @@ mod tests {
     use super::{
         DocsCatalog, EXPORT_FORMAT_VERSION, EXPORT_KIND, ExportManifest, MatchKind, SearchMatch,
         TOPICS_DIR, TopicRecord, TopicSummary, canonical_source_relpath, collect_markdown_files,
-        export_catalog, extract_headings, id_matches_token, lookup_topic, normalize_query,
-        packaged_skill_markdown, parse_topic_file, search_match, search_topics, split_front_matter,
-        suggest_topics, tokenize, topic_section_rank, unique_sibling_path, validate_export_target,
+        embedded_catalog, export_catalog, extract_headings, id_matches_token, list_topics,
+        lookup_topic, normalize_query, normalize_search_query, packaged_skill_markdown,
+        parse_topic_file, search_match, search_topics, split_front_matter, suggest_topics,
+        tokenize, topic_section_rank, unique_sibling_path, validate_export_target,
         write_export_tree,
     };
 
     static DOC_FIXTURES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/docs_embed");
+
+    #[test]
+    fn public_docs_api_smoke_covers_catalog_search_and_lookup_wrappers() {
+        let catalog = embedded_catalog().expect("embedded catalog should load");
+        assert!(catalog.topics.len() >= 20);
+
+        let topics = list_topics().expect("topics should list");
+        assert!(topics.len() >= 20);
+        assert!(topics.iter().any(|topic| topic.id == "commands/change"));
+
+        assert_eq!(
+            normalize_search_query("  commands   info  ").expect("query should normalize"),
+            "commands info"
+        );
+
+        let change = lookup_topic("commands/change")
+            .expect("lookup should succeed")
+            .expect("topic should exist");
+        assert_eq!(change.summary.id, "commands/change");
+
+        let matches = search_topics("commands info").expect("search should succeed");
+        assert!(
+            matches
+                .iter()
+                .any(|entry| entry.topic.id == "commands/info")
+        );
+
+        let suggestions = suggest_topics("value", 3);
+        assert!(!suggestions.is_empty());
+        assert!(suggestions.iter().any(|topic| topic.id == "commands/value"));
+    }
 
     #[test]
     fn embedded_topics_load_in_lexicographic_order() {
@@ -1154,6 +1186,21 @@ mod tests {
         )
         .expect("exact id should match");
         assert_eq!(exact_id.match_kind, MatchKind::IdExact);
+    }
+
+    #[test]
+    fn export_catalog_replaces_existing_managed_root() {
+        let temp = tempdir().expect("tempdir should be created");
+        let out_dir = temp.path().join("wavepeek-docs");
+
+        export_catalog(&out_dir, false).expect("initial export should succeed");
+        std::fs::write(out_dir.join("stale.txt"), "obsolete").expect("stale file should write");
+
+        let summary = export_catalog(&out_dir, true).expect("managed replacement should succeed");
+        assert_eq!(summary.out_dir, out_dir.display().to_string());
+        assert!(!out_dir.join("stale.txt").exists());
+        assert!(out_dir.join("manifest.json").exists());
+        assert!(out_dir.join("commands/change.md").exists());
     }
 
     #[test]

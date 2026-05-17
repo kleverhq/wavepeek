@@ -130,3 +130,136 @@ fn map_value_time_validation_error(
         )),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use tempfile::NamedTempFile;
+
+    use super::{
+        RequestedSignal, WaveformMetadata, map_value_time_validation_error,
+        resolve_requested_signals, run,
+    };
+    use crate::cli::value::ValueArgs;
+    use crate::engine::CommandData;
+    use crate::engine::time::TimeValidationError;
+    use crate::waveform::Waveform;
+
+    const TEST_VCD: &str = concat!(
+        "$date\n  today\n$end\n",
+        "$version\n  value-test\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var wire 1 ! sig $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n0!\n#5\n1!\n"
+    );
+
+    #[test]
+    fn value_helpers_cover_resolution_time_errors_and_public_run() {
+        let fixture = write_fixture(TEST_VCD, ".value-run.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
+
+        assert_eq!(
+            resolve_requested_signals(
+                &waveform,
+                Some("top"),
+                &ValueArgs {
+                    waves: PathBuf::from(fixture.path()),
+                    at: "5ns".to_string(),
+                    scope: Some("top".to_string()),
+                    signals: vec!["sig".to_string()],
+                    abs: false,
+                    json: false,
+                },
+            )
+            .expect("scoped signals should resolve"),
+            vec![RequestedSignal {
+                display: "sig".to_string(),
+                path: "top.sig".to_string(),
+            }]
+        );
+        assert!(
+            resolve_requested_signals(
+                &waveform,
+                None,
+                &ValueArgs {
+                    waves: PathBuf::from(fixture.path()),
+                    at: "5ns".to_string(),
+                    scope: None,
+                    signals: vec!["  ".to_string()],
+                    abs: false,
+                    json: false,
+                },
+            )
+            .expect_err("empty signal names should fail")
+            .to_string()
+            .contains("signal names must not be empty")
+        );
+
+        let metadata = WaveformMetadata {
+            time_unit: "1ns".to_string(),
+            time_start: "0ns".to_string(),
+            time_end: "5ns".to_string(),
+        };
+        for error in [
+            TimeValidationError::RequiresUnits,
+            TimeValidationError::InvalidToken,
+        ] {
+            assert!(
+                map_value_time_validation_error("10", &metadata, error)
+                    .to_string()
+                    .contains("expected <integer><unit>")
+            );
+        }
+        assert!(
+            map_value_time_validation_error("10ns", &metadata, TimeValidationError::TooLarge)
+                .to_string()
+                .contains("too large")
+        );
+        assert!(
+            map_value_time_validation_error("10ns", &metadata, TimeValidationError::OutOfBounds)
+                .to_string()
+                .contains("outside dump bounds [0ns, 5ns]")
+        );
+        assert!(
+            map_value_time_validation_error("10ps", &metadata, TimeValidationError::NotAligned)
+                .to_string()
+                .contains("not aligned to dump resolution '1ns'")
+        );
+        assert!(
+            map_value_time_validation_error(
+                "9999999999999999999ns",
+                &metadata,
+                TimeValidationError::RawOutOfRange
+            )
+            .to_string()
+            .contains("supported raw timestamp range")
+        );
+
+        let result = run(ValueArgs {
+            waves: PathBuf::from(fixture.path()),
+            at: "5ns".to_string(),
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            abs: true,
+            json: true,
+        })
+        .expect("value run should succeed");
+        let CommandData::Value(payload) = result.data else {
+            panic!("value command should return value data");
+        };
+        assert_eq!(payload.time, "5ns");
+        assert_eq!(payload.signals[0].path, "top.sig");
+        assert_eq!(payload.signals[0].value, "1'h1");
+    }
+
+    fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+        let fixture = NamedTempFile::with_suffix(suffix).expect("fixture should create");
+        fs::write(fixture.path(), contents).expect("fixture should write");
+        fixture
+    }
+}

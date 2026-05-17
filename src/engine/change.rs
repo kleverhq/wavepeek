@@ -1271,12 +1271,13 @@ mod tests {
         AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, FastEventEvalHost,
         IndexDecodeCache, RequestedSignal, SampleCache, build_candidate_schedule, build_snapshot,
         cached_event_handles, cached_event_sources, cached_sample_value,
-        candidate_times_to_indices, resolve_requested_signals, resolve_token_to_path, run_baseline,
-        run_edge_fast, run_fused, select_engine_mode, should_use_stream_candidates_in_fused,
-        time_window_indices,
+        candidate_times_to_indices, resolve_requested_signals, resolve_token_to_path, run,
+        run_baseline, run_edge_fast, run_fused, select_engine_mode,
+        should_use_stream_candidates_in_fused, time_window_indices,
     };
     use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
     use crate::cli::limits::LimitArg;
+    use crate::engine::CommandData;
     use crate::engine::expr_runtime::bind_waveform_event_expr;
     use crate::expr::SignalHandle;
     use crate::expr::host::{ExprStorage, ExprType, ExprTypeKind, ExpressionHost, SampledValue};
@@ -1654,6 +1655,73 @@ mod tests {
             build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule should build"),
             vec![(0, None), (10, Some(5))]
         );
+    }
+
+    #[test]
+    fn change_run_covers_public_entrypoint_success_and_early_errors() {
+        let fixture = write_fixture(TEST_VCD, "change-run.vcd");
+
+        let result = run(ChangeArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            on: Some("posedge sig".to_string()),
+            max: LimitArg::Unlimited,
+            abs: false,
+            json: true,
+            tune_engine: TuneChangeEngineMode::Auto,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        })
+        .expect("change run should succeed");
+        assert_eq!(result.warnings, vec!["limit disabled: --max=unlimited"]);
+        let CommandData::Change(rows) = result.data else {
+            panic!("change command should return change rows");
+        };
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].time, "5ns");
+        assert_eq!(rows[0].signals[0].path, "top.sig");
+        assert_eq!(rows[0].signals[0].value, "1'h1");
+
+        let zero_max = run(ChangeArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            on: None,
+            max: LimitArg::Numeric(0),
+            abs: false,
+            json: false,
+            tune_engine: TuneChangeEngineMode::Auto,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        })
+        .expect_err("zero max should fail");
+        assert!(
+            zero_max
+                .to_string()
+                .contains("--max must be greater than 0")
+        );
+
+        let reversed = run(ChangeArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: Some("5ns".to_string()),
+            to: Some("0ns".to_string()),
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            on: Some("posedge sig".to_string()),
+            max: LimitArg::Numeric(5),
+            abs: false,
+            json: false,
+            tune_engine: TuneChangeEngineMode::Auto,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        })
+        .expect_err("reversed range should fail");
+        assert!(reversed.to_string().contains("less than or equal to --to"));
     }
 
     #[test]

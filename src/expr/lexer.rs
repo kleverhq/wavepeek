@@ -755,7 +755,7 @@ fn logical_identifier_char(ch: char) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{TokenKind, lex_event_expr, lex_logical_expr};
+    use super::{LogicalLexer, TokenKind, lex_event_expr, lex_logical_expr};
 
     #[test]
     fn lex_event_expr_tracks_keywords_and_spans() {
@@ -919,5 +919,39 @@ mod tests {
         let error = lex_logical_expr("42949672960'b1", 0)
             .expect_err("oversized sized literal width should fail");
         assert_eq!(error.code, "EXPR-PARSE-LOGICAL-LITERAL");
+    }
+
+    #[test]
+    fn private_lexer_helpers_cover_exponent_and_string_edge_cases() {
+        let mut lexer = LogicalLexer {
+            source: "1e+",
+            span_offset: 0,
+            index: 1,
+        };
+        assert!(!lexer.consume_real_exponent());
+
+        let mut string_lexer = LogicalLexer {
+            source: "\"unterminated",
+            span_offset: 2,
+            index: 0,
+        };
+        let error = string_lexer
+            .lex_string_literal()
+            .expect_err("unterminated strings should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-STRING");
+        assert_eq!(error.primary_span.start, 2);
+
+        let mut escape_lexer = LogicalLexer {
+            source: "\"bad\\q\"",
+            span_offset: 0,
+            index: 0,
+        };
+        assert_eq!(
+            escape_lexer
+                .lex_string_literal()
+                .expect_err("unsupported escapes should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-STRING"
+        );
     }
 }

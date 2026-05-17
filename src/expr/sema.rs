@@ -4387,6 +4387,137 @@ mod tests {
     }
 
     #[test]
+    fn sema_type_result_helpers_cover_fallback_numeric_and_unknown_signal_paths() {
+        let span = Span::new(0, 1);
+        let enum_ty = ExprType {
+            kind: ExprTypeKind::EnumCore,
+            storage: ExprStorage::Scalar,
+            width: 2,
+            is_four_state: true,
+            is_signed: false,
+            enum_type_id: Some("state".to_string()),
+            enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                name: "BUSY".to_string(),
+                bits: "10".to_string(),
+            }]),
+        };
+
+        let widened = common_integral_type(
+            &integer_like_type(IntegerLikeKind::Int),
+            &bit_vector_type(64, false, false, true),
+        );
+        assert!(matches!(widened.kind, ExprTypeKind::BitVector));
+        assert_eq!(widened.width, 64);
+        assert!(!widened.is_signed);
+        assert!(!widened.is_four_state);
+
+        let integral_numeric = common_numeric_result_type(
+            &bit_vector_type(8, false, false, true),
+            &bit_vector_type(4, true, true, true),
+        );
+        assert!(matches!(integral_numeric.kind, ExprTypeKind::BitVector));
+        assert_eq!(integral_numeric.width, 8);
+        assert!(!integral_numeric.is_signed);
+        assert!(integral_numeric.is_four_state);
+
+        assert!(matches!(
+            conditional_result_type(
+                &real_type(),
+                span,
+                &integer_like_type(IntegerLikeKind::Byte),
+                Span::new(2, 3),
+            )
+            .expect("real/integral conditionals should coerce to real")
+            .kind,
+            ExprTypeKind::Real
+        ));
+        assert!(matches!(
+            binary_result_type(
+                BinaryOpAst::CaseEq,
+                &bit_vector_type(1, true, false, false),
+                span,
+                &bit_vector_type(1, false, false, false),
+                span,
+            )
+            .expect("case equality should produce booleans")
+            .kind,
+            ExprTypeKind::BitVector
+        ));
+        let shifted = binary_result_type(
+            BinaryOpAst::ShiftRight,
+            &enum_ty,
+            span,
+            &bit_vector_type(1, false, false, false),
+            span,
+        )
+        .expect("integral shifts should succeed for enum-typed lhs");
+        assert!(matches!(shifted.kind, ExprTypeKind::BitVector));
+        assert_eq!(shifted.width, 2);
+
+        struct EmptyMessageHost;
+        impl ExpressionHost for EmptyMessageHost {
+            fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                Err(ExprDiagnostic {
+                    layer: DiagnosticLayer::Semantic,
+                    code: "HOST-UNKNOWN-SIGNAL",
+                    message: String::new(),
+                    primary_span: Span::new(0, 1),
+                    notes: vec![],
+                })
+            }
+
+            fn signal_type(&self, _handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(bit_vector_type(1, true, false, false))
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("0".to_string()),
+                    label: None,
+                })
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                Ok(false)
+            }
+        }
+
+        let missing = bind_logical_expr_ast(
+            &parse_logical_expr_ast("missing").expect("parse"),
+            &EmptyMessageHost,
+        )
+        .expect_err("missing signal should fail without host detail notes");
+        assert!(missing.notes.is_empty());
+
+        let triggered = bind_logical_expr_ast(
+            &parse_logical_expr_ast("missing.triggered()").expect("parse"),
+            &EmptyMessageHost,
+        )
+        .expect_err("missing triggered operand should fail without host detail notes");
+        assert!(triggered.notes.is_empty());
+
+        let cast_error = cast_target_type(
+            &CastTargetAst::RecoveredType {
+                name: "missing".to_string(),
+                span,
+            },
+            &bit_vector_type(1, true, false, false),
+            &EmptyMessageHost,
+            span,
+        )
+        .expect_err("missing recovered cast target should fail");
+        assert!(cast_error.notes.is_empty());
+    }
+
+    #[test]
     fn sema_literal_decoder_and_const_wrappers_cover_non_constant_paths() {
         let span = Span::new(1, 4);
         assert_eq!(
@@ -4503,6 +4634,90 @@ mod tests {
                 None
             );
         }
+    }
+
+    #[test]
+    fn sema_decoder_and_const_helpers_cover_empty_digits_enum_constants_and_extra_nibbles() {
+        let span = Span::new(2, 4);
+        let zero = decode_integral_literal(&IntegralLiteral {
+            width: None,
+            signed: false,
+            base: IntegralBase::Hex,
+            digits: String::new(),
+            span,
+        })
+        .expect("empty digit strings should normalize to zero");
+        assert_eq!(zero.bits, vec![BoundBit::Zero]);
+
+        let widened = unsigned_to_bits(1, 130);
+        assert_eq!(widened.len(), 130);
+        assert_eq!(widened.first(), Some(&BoundBit::Zero));
+        assert_eq!(widened.last(), Some(&BoundBit::One));
+        assert_eq!(
+            widened.iter().filter(|bit| **bit == BoundBit::One).count(),
+            1
+        );
+
+        let mut nibble = Vec::new();
+        for ch in ['5', '6', 'a', 'e', 'x', 'z'] {
+            push_hex_nibble(ch, &mut nibble).expect("hex nibble should decode");
+        }
+        assert_eq!(nibble.len(), 24);
+        assert_eq!(
+            &nibble[0..4],
+            &[BoundBit::Zero, BoundBit::One, BoundBit::Zero, BoundBit::One]
+        );
+        assert_eq!(
+            &nibble[4..8],
+            &[BoundBit::Zero, BoundBit::One, BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            &nibble[8..12],
+            &[BoundBit::One, BoundBit::Zero, BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            &nibble[12..16],
+            &[BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            &nibble[16..20],
+            &[BoundBit::X, BoundBit::X, BoundBit::X, BoundBit::X]
+        );
+        assert_eq!(
+            &nibble[20..24],
+            &[BoundBit::Z, BoundBit::Z, BoundBit::Z, BoundBit::Z]
+        );
+
+        let enum_ty = ExprType {
+            kind: ExprTypeKind::EnumCore,
+            storage: ExprStorage::Scalar,
+            width: 2,
+            is_four_state: true,
+            is_signed: false,
+            enum_type_id: Some("state".to_string()),
+            enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                name: "BUSY".to_string(),
+                bits: "10".to_string(),
+            }]),
+        };
+        let enum_node = BoundLogicalNode {
+            ty: enum_ty.clone(),
+            span,
+            kind: BoundLogicalKind::EnumLabel {
+                value: BoundIntegralValue {
+                    bits: vec![BoundBit::One, BoundBit::Zero],
+                    signed: false,
+                },
+                label: "BUSY".to_string(),
+            },
+        };
+        assert_eq!(
+            eval_const_node(&enum_node).expect("enum labels should be constant"),
+            Some(BoundIntegralValue {
+                bits: vec![BoundBit::One, BoundBit::Zero],
+                signed: false,
+            })
+        );
     }
 
     fn const_bits_node(bits: &[BoundBit], signed: bool) -> BoundLogicalNode {

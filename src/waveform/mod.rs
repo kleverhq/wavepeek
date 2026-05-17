@@ -1374,6 +1374,35 @@ mod tests {
 
     const DELAYED_VALUE_VCD: &str = "$date\n  2026-03-03\n$end\n$version\n  wavepeek-delayed-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\n1!\n";
 
+    const TYPE_SURFACE_VCD: &str = concat!(
+        "$date\n  2026-05-17\n$end\n",
+        "$version\n  wavepeek-type-surface\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var byte 8 ! bytev $end\n",
+        "$var shortint 16 \" shortv $end\n",
+        "$var int 32 # intv $end\n",
+        "$var longint 64 $ longv $end\n",
+        "$var integer 32 % integerv $end\n",
+        "$var time 64 & timeval $end\n",
+        "$var real 1 ' realv $end\n",
+        "$var string 1 ( strv $end\n",
+        "$var event 1 ) ev $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "b00000001 !\n",
+        "b0000000000000010 \"\n",
+        "b00000000000000000000000000000011 #\n",
+        "b0000000000000000000000000000000000000000000000000000000000000100 $\n",
+        "b00000000000000000000000000000101 %\n",
+        "b0000000000000000000000000000000000000000000000000000000000000110 &\n",
+        "r2.5 '\n",
+        "shello (\n",
+        "#5\n",
+        "1)\n"
+    );
+
     #[test]
     fn open_and_read_metadata_from_vcd() {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
@@ -2687,6 +2716,185 @@ mod tests {
                 .expect("non-sampled timestamps should not report events")
         );
         assert_eq!(resolved.len(), 1);
+    }
+
+    #[test]
+    fn waveform_public_value_and_event_wrappers_cover_direct_api_paths() {
+        let fixture = write_fixture(TEST_VCD, "direct-api.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
+
+        let resolved = waveform
+            .resolve_signals(&["top.clk".to_string()])
+            .expect("signal should resolve");
+        assert_eq!(
+            waveform
+                .collect_change_times(&resolved, 0, 10)
+                .expect("change collection should work"),
+            vec![0, 5, 10]
+        );
+        assert!(
+            waveform
+                .sample_resolved_optional(&[], 0)
+                .expect("empty resolved list should sample")
+                .is_empty()
+        );
+
+        let expr = waveform
+            .resolve_expr_signal("top.data")
+            .expect("expr signal should resolve");
+        assert!(matches!(
+            waveform
+                .sample_expr_value(&expr, 10)
+                .expect("value should sample"),
+            crate::expr::SampledValue::Integral { bits: Some(bits), .. } if bits == "00001111"
+        ));
+        assert!(matches!(
+            waveform
+                .sample_expr_value(&expr, u64::MAX)
+                .expect("late queries should reuse latest value"),
+            crate::expr::SampledValue::Integral { bits: Some(bits), .. } if bits == "00001111"
+        ));
+
+        let event_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-event\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var event 1 ! ev $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n1!\n"
+            ),
+            "direct-api-event.vcd",
+        );
+        let mut event_waveform = Waveform::open(event_fixture.path()).expect("event waveform");
+        let event_signal = event_waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event signal should resolve");
+        assert!(
+            !event_waveform
+                .expr_event_occurred(&event_signal, 4)
+                .expect("non-event time should be false")
+        );
+        assert!(
+            event_waveform
+                .expr_event_occurred(&event_signal, 5)
+                .expect("event timestamp should be true")
+        );
+    }
+
+    #[test]
+    fn waveform_expr_type_resolution_covers_integer_like_surface_types() {
+        let fixture = write_fixture(TYPE_SURFACE_VCD, "type-surface.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
+
+        for (path, width, four_state, signed, kind) in [
+            (
+                "top.bytev",
+                8,
+                false,
+                true,
+                crate::expr::IntegerLikeKind::Byte,
+            ),
+            (
+                "top.shortv",
+                16,
+                false,
+                true,
+                crate::expr::IntegerLikeKind::Shortint,
+            ),
+            (
+                "top.intv",
+                32,
+                false,
+                true,
+                crate::expr::IntegerLikeKind::Int,
+            ),
+            (
+                "top.longv",
+                64,
+                false,
+                true,
+                crate::expr::IntegerLikeKind::Longint,
+            ),
+            (
+                "top.integerv",
+                32,
+                true,
+                true,
+                crate::expr::IntegerLikeKind::Integer,
+            ),
+            (
+                "top.timeval",
+                64,
+                true,
+                false,
+                crate::expr::IntegerLikeKind::Time,
+            ),
+        ] {
+            let resolved = waveform
+                .resolve_expr_signal(path)
+                .expect("typed signal should resolve");
+            assert!(matches!(
+                resolved.expr_type.kind,
+                crate::expr::ExprTypeKind::IntegerLike(actual) if actual == kind
+            ));
+            assert_eq!(resolved.expr_type.width, width);
+            assert_eq!(resolved.expr_type.is_four_state, four_state);
+            assert_eq!(resolved.expr_type.is_signed, signed);
+            assert!(matches!(
+                resolved.expr_type.storage,
+                crate::expr::ExprStorage::Scalar
+            ));
+            assert!(matches!(
+                waveform
+                    .sample_expr_value(&resolved, 0)
+                    .expect("typed signal should sample"),
+                crate::expr::SampledValue::Integral { bits: Some(_), .. }
+            ));
+        }
+
+        let real = waveform
+            .resolve_expr_signal("top.realv")
+            .expect("real signal should resolve");
+        assert!(matches!(
+            real.expr_type.kind,
+            crate::expr::ExprTypeKind::Real
+        ));
+        assert!(matches!(
+            waveform
+                .sample_expr_value(&real, 0)
+                .expect("real value should sample"),
+            crate::expr::SampledValue::Real { value: Some(value) } if value == 2.5
+        ));
+
+        let string = waveform
+            .resolve_expr_signal("top.strv")
+            .expect("string signal should resolve");
+        assert!(matches!(
+            string.expr_type.kind,
+            crate::expr::ExprTypeKind::String
+        ));
+        assert!(matches!(
+            waveform
+                .sample_expr_value(&string, 0)
+                .expect("string value should sample"),
+            crate::expr::SampledValue::String { value: Some(value) } if value == "hello"
+        ));
+
+        let event = waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event signal should resolve");
+        assert!(matches!(
+            event.expr_type.kind,
+            crate::expr::ExprTypeKind::Event
+        ));
+        assert!(
+            waveform
+                .expr_event_occurred(&event, 5)
+                .expect("event should occur at its timestamp")
+        );
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

@@ -61,3 +61,27 @@ pub fn event_matches_at(
 ) -> Result<bool, ExprDiagnostic> {
     eval::event_matches_at(expr, host, frame)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{lex_event_expr, parse_event_expr_ast, parse_logical_expr_ast};
+
+    #[test]
+    fn public_expression_facade_exposes_lexer_and_parser_entrypoints() {
+        let tokens = lex_event_expr("posedge clk, negedge rst")
+            .expect("event source should lex through facade");
+        assert_eq!(tokens.len(), 5);
+
+        let event = parse_event_expr_ast("posedge clk iff ready")
+            .expect("event expression should parse through facade");
+        assert_eq!(event.terms.len(), 1);
+        assert!(event.terms[0].iff.is_some());
+
+        let logical = parse_logical_expr_ast("a && !b")
+            .expect("logical expression should parse through facade");
+        assert!(matches!(
+            logical.root,
+            crate::expr::ast::LogicalExprNode::Binary { .. }
+        ));
+    }
+}

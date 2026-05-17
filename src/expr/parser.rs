@@ -1476,8 +1476,8 @@ fn logical_parse_diag(
 #[cfg(test)]
 mod tests {
     use super::{
-        LogicalParser, LogicalToken, LogicalTokenKind, StrictParser, parse_event_expr_ast,
-        parse_logical_expr_ast, parse_logical_expr_with_offset,
+        LogicalParser, LogicalToken, LogicalTokenKind, StrictParser, Token, TokenKind,
+        parse_event_expr_ast, parse_logical_expr_ast, parse_logical_expr_with_offset,
     };
     use crate::expr::{
         BasicEventAst, DiagnosticLayer,
@@ -1775,6 +1775,73 @@ mod tests {
         let error =
             parse_logical_expr_ast("logic[1").expect_err("cast widths need a closing bracket");
         assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+    }
+
+    #[test]
+    fn private_event_parser_manual_states_cover_more_error_branches() {
+        let mut parser = StrictParser {
+            source: "",
+            tokens: vec![],
+            index: 0,
+        };
+        assert_eq!(
+            parser
+                .capture_iff_payload(Span::new(0, 0))
+                .expect_err("empty iff payload should fail")
+                .code,
+            "EXPR-PARSE-EVENT-EMPTY-IFF"
+        );
+
+        let mut dispatch_parser = StrictParser {
+            source: "posedge foo",
+            tokens: vec![
+                Token {
+                    kind: TokenKind::KeywordPosedge,
+                    span: Span::new(0, 7),
+                    lexeme: "posedge".to_string(),
+                },
+                Token {
+                    kind: TokenKind::Identifier,
+                    span: Span::new(8, 11),
+                    lexeme: "foo".to_string(),
+                },
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            dispatch_parser
+                .parse_edge_event(TokenKind::KeywordOr)
+                .expect_err("invalid internal edge dispatch should fail")
+                .code,
+            "EXPR-PARSE-EVENT-BROKEN-UNION"
+        );
+
+        let eof = LogicalToken {
+            kind: LogicalTokenKind::Eof,
+            span: Span::new(0, 0),
+        };
+        let mut type_target_parser = LogicalParser {
+            source: "type(",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("type".to_string()),
+                    span: Span::new(0, 4),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::LeftParen,
+                    span: Span::new(4, 5),
+                },
+                eof,
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            type_target_parser
+                .try_parse_cast_target_candidate()
+                .expect_err("unterminated type(...) target should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN"
+        );
     }
 
     #[test]

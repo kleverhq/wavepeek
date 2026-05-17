@@ -243,13 +243,35 @@ fn parse_bound_time(
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+
+    use tempfile::NamedTempFile;
+
     use super::{
         DumpTimeContext, PropertyResultKind, build_candidate_schedule, capture_allows_kind,
-        parse_bound_time,
+        parse_bound_time, run,
     };
-    use crate::cli::property::CaptureMode;
+    use crate::cli::property::{CaptureMode, PropertyArgs};
+    use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
     use crate::waveform::WaveformMetadata;
+
+    const TEST_VCD: &str = concat!(
+        "$date\n  today\n$end\n",
+        "$version\n  property-test\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var wire 1 ! sig $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "0!\n",
+        "#5\n",
+        "1!\n",
+        "#10\n",
+        "0!\n"
+    );
 
     fn metadata() -> WaveformMetadata {
         WaveformMetadata {
@@ -357,5 +379,75 @@ mod tests {
         let error = parse_bound_time(&format!("{}ns", u64::MAX), "--to", huge_context, &md)
             .expect_err("raw out-of-range should fail");
         assert!(error.to_string().contains("supported raw timestamp range"));
+    }
+
+    #[test]
+    fn property_run_captures_match_and_switch_rows_through_public_entrypoint() {
+        let fixture = write_fixture(TEST_VCD, ".property-run.vcd");
+
+        let matched = run(PropertyArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            on: Some("posedge sig".to_string()),
+            eval: "sig".to_string(),
+            capture: CaptureMode::Match,
+            json: false,
+        })
+        .expect("match capture should succeed");
+        let CommandData::Property(rows) = matched.data else {
+            panic!("property command should return property rows");
+        };
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].time, "5ns");
+        assert_eq!(rows[0].kind, PropertyResultKind::Match);
+
+        let switched = run(PropertyArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            on: None,
+            eval: "sig".to_string(),
+            capture: CaptureMode::Switch,
+            json: true,
+        })
+        .expect("switch capture should succeed");
+        let CommandData::Property(rows) = switched.data else {
+            panic!("property command should return property rows");
+        };
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].kind, PropertyResultKind::Assert);
+        assert_eq!(rows[0].time, "5ns");
+        assert_eq!(rows[1].kind, PropertyResultKind::Deassert);
+        assert_eq!(rows[1].time, "10ns");
+    }
+
+    #[test]
+    fn property_run_rejects_signal_free_wildcard_inference() {
+        let fixture = write_fixture(TEST_VCD, ".property-run-error.vcd");
+        let error = run(PropertyArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            on: None,
+            eval: "1'b1".to_string(),
+            capture: CaptureMode::Match,
+            json: false,
+        })
+        .expect_err("signal-free wildcard trigger should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("wildcard trigger cannot infer tracked signals")
+        );
+    }
+
+    fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+        let fixture = NamedTempFile::with_suffix(suffix).expect("fixture should create");
+        fs::write(fixture.path(), contents).expect("fixture should write");
+        fixture
     }
 }

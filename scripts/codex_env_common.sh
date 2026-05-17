@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Codex cloud setup is maintained manually as a derivative of
+# .devcontainer/Dockerfile and the paired devcontainer configs.
+# Treat .devcontainer/ as the source of truth for tool versions,
+# fixture versions, and environment contracts; update this script
+# whenever the devcontainer image contents change.
+
 readonly WAVEPEEK_CODEX_RUST_VERSION="1.93.0"
 readonly WAVEPEEK_CODEX_CARGO_LLVM_COV_VERSION="0.8.7"
 readonly WAVEPEEK_CODEX_ACTIONLINT_VERSION="1.7.12"

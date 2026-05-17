@@ -15,6 +15,7 @@ This directory is designed so local development and CI share one foundation whil
 - OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `initialize.sh` to create mount sources before container startup.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
 - `postStartCommand: make dev-setup` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
+- `scripts/codex_setup.sh`, `scripts/codex_resume.sh`, and `scripts/codex_env_common.sh` are manual derivatives of the devcontainer image contract; if `.devcontainer/Dockerfile`, fixture versions, or container-provided tools change, update those Codex scripts in the same change.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
 - CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.

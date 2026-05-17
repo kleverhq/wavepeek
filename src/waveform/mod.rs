@@ -2649,6 +2649,98 @@ mod tests {
     }
 
     #[test]
+    fn waveform_helper_aliases_exercise_stdlogic_vhdl_and_parse_errors() {
+        for var_type in [
+            wellen::VarType::StdLogic,
+            wellen::VarType::StdULogic,
+            wellen::VarType::StdLogicVector,
+            wellen::VarType::StdULogicVector,
+        ] {
+            assert!(matches!(var_type_alias(var_type), "logic" | "bit_vector"));
+        }
+
+        for scope_type in [
+            wellen::ScopeType::VhdlArchitecture,
+            wellen::ScopeType::VhdlProcedure,
+            wellen::ScopeType::VhdlFunction,
+            wellen::ScopeType::VhdlRecord,
+            wellen::ScopeType::VhdlProcess,
+            wellen::ScopeType::VhdlBlock,
+            wellen::ScopeType::VhdlForGenerate,
+            wellen::ScopeType::VhdlIfGenerate,
+            wellen::ScopeType::VhdlGenerate,
+            wellen::ScopeType::VhdlPackage,
+            wellen::ScopeType::GhwGeneric,
+            wellen::ScopeType::VhdlArray,
+            wellen::ScopeType::Unknown,
+        ] {
+            assert_eq!(scope_type_alias(scope_type), "unknown");
+        }
+
+        for error in [
+            wellen::WellenError::UnknownFileFormat,
+            wellen::WellenError::FailedToLoad(wellen::FileFormat::Vcd, "bad data".to_string()),
+        ] {
+            assert!(
+                map_wellen_error(Path::new("broken.vcd"), error)
+                    .to_string()
+                    .contains("cannot parse 'broken.vcd'")
+            );
+        }
+    }
+
+    #[test]
+    fn waveform_metadata_and_streaming_paths_exercise_empty_tables_and_fst_streams() {
+        let empty_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-empty-times\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var wire 1 ! idle $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n"
+            ),
+            "empty-times.vcd",
+        );
+        let waveform = Waveform::open(empty_fixture.path()).expect("fixture should open");
+        let metadata = waveform.metadata().expect("metadata should succeed");
+        assert_eq!(metadata.time_start, "0ns");
+        assert_eq!(metadata.time_end, "0ns");
+
+        let fst_fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("tests")
+            .join("fixtures")
+            .join("hand")
+            .join("m2_core.fst");
+        let mut fst = Waveform::open(fst_fixture.as_path()).expect("fst fixture should open");
+        let resolved = fst
+            .resolve_signals(&["top.clk".to_string(), "top.data".to_string()])
+            .expect("fst signals should resolve");
+        let streamed = fst
+            .collect_change_times_with_mode(
+                &resolved,
+                0,
+                10,
+                super::ChangeCandidateCollectionMode::Stream,
+            )
+            .expect("stream collection should succeed");
+        assert_eq!(streamed, vec![0, 5, 10]);
+
+        let data = fst
+            .resolve_expr_signal("top.data")
+            .expect("fst expr signal should resolve");
+        assert_eq!(
+            fst.sample_expr_value(&data, 10)
+                .expect("fst expr sample should succeed"),
+            crate::expr::SampledValue::Integral {
+                bits: Some("00001111".to_string()),
+                label: None,
+            }
+        );
+    }
+
+    #[test]
     fn waveform_error_helpers_exercise_missing_metadata_and_bogus_loaded_signals() {
         let no_timescale = write_fixture(
             concat!(

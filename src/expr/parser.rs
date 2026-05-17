@@ -1474,8 +1474,1770 @@ fn logical_parse_diag(
 }
 
 #[cfg(test)]
-#[path = "parser_surface_matrix.rs"]
-mod parser_surface_matrix;
+mod parser_surface_matrix {
+    use super::{parse_event_expr_ast, parse_logical_expr_ast};
+
+    fn run_event_case(index: usize) {
+        let label = alpha_label(index);
+        let source = event_case_source(index, &label);
+        if let Err(error) = parse_event_expr_ast(&source) {
+            panic!("event surface case {index} ({source}) failed: {error:?}");
+        }
+    }
+
+    fn run_logical_case(index: usize) {
+        let label = alpha_label(index);
+        let source = logical_case_source(index, &label);
+        if let Err(error) = parse_logical_expr_ast(&source) {
+            panic!("logical surface case {index} ({source}) failed: {error:?}");
+        }
+    }
+
+    fn alpha_label(mut index: usize) -> String {
+        let mut chars = ['a'; 3];
+        for slot in (0..3).rev() {
+            chars[slot] = (b'a' + (index % 26) as u8) as char;
+            index /= 26;
+        }
+        chars.into_iter().collect()
+    }
+
+    fn event_case_source(index: usize, label: &str) -> String {
+        match index % 5 {
+            0 => format!("posedge clk{label}"),
+            1 => format!("negedge rst{label} iff enable{label}"),
+            2 => format!("event{label} or posedge clk{label}"),
+            3 => format!("a{label}, b{label}, c{label}"),
+            _ => format!("edge data{label} iff valid{label}"),
+        }
+    }
+
+    fn logical_case_source(index: usize, label: &str) -> String {
+        let nibble = format!("{:x}", index % 16);
+        match index % 20 {
+            0 => format!("sig{label} + {}", index % 17),
+            1 => format!("(sig{label} & mask{label}) == 1"),
+            2 => format!("sig{label}[0] == 1'b1"),
+            3 => format!("sig{label}[3:0] != 4'h{nibble}"),
+            4 => format!("sig{label} inside {{1, 2, 3}}"),
+            5 => format!("flag{label} ? yes{label} : no{label}"),
+            6 => format!("{{2{{sig{label}}}}}"),
+            7 => format!("sig{label} << 1"),
+            8 => format!("sig{label} >>> 2"),
+            9 => format!("~&sig{label}"),
+            10 => format!("^~sig{label}"),
+            11 => format!("type(state{label})::IDLE"),
+            12 => format!("logic[8]'(sig{label})"),
+            13 => format!("unsigned'(sig{label})"),
+            14 => format!("sig{label}.triggered()"),
+            15 => format!("sig{label} ** 2"),
+            16 => format!("signed'(sig{label})"),
+            17 => format!("sig{label} || ready{label}"),
+            18 => format!("bit'(sig{label})"),
+            _ => format!("sig{label}[idx{label} +: 2] == 2'b01"),
+        }
+    }
+
+    #[test]
+    fn parser_surface_event_case_000() {
+        run_event_case(0);
+    }
+
+    #[test]
+    fn parser_surface_event_case_001() {
+        run_event_case(1);
+    }
+
+    #[test]
+    fn parser_surface_event_case_002() {
+        run_event_case(2);
+    }
+
+    #[test]
+    fn parser_surface_event_case_003() {
+        run_event_case(3);
+    }
+
+    #[test]
+    fn parser_surface_event_case_004() {
+        run_event_case(4);
+    }
+
+    #[test]
+    fn parser_surface_event_case_005() {
+        run_event_case(5);
+    }
+
+    #[test]
+    fn parser_surface_event_case_006() {
+        run_event_case(6);
+    }
+
+    #[test]
+    fn parser_surface_event_case_007() {
+        run_event_case(7);
+    }
+
+    #[test]
+    fn parser_surface_event_case_008() {
+        run_event_case(8);
+    }
+
+    #[test]
+    fn parser_surface_event_case_009() {
+        run_event_case(9);
+    }
+
+    #[test]
+    fn parser_surface_event_case_010() {
+        run_event_case(10);
+    }
+
+    #[test]
+    fn parser_surface_event_case_011() {
+        run_event_case(11);
+    }
+
+    #[test]
+    fn parser_surface_event_case_012() {
+        run_event_case(12);
+    }
+
+    #[test]
+    fn parser_surface_event_case_013() {
+        run_event_case(13);
+    }
+
+    #[test]
+    fn parser_surface_event_case_014() {
+        run_event_case(14);
+    }
+
+    #[test]
+    fn parser_surface_event_case_015() {
+        run_event_case(15);
+    }
+
+    #[test]
+    fn parser_surface_event_case_016() {
+        run_event_case(16);
+    }
+
+    #[test]
+    fn parser_surface_event_case_017() {
+        run_event_case(17);
+    }
+
+    #[test]
+    fn parser_surface_event_case_018() {
+        run_event_case(18);
+    }
+
+    #[test]
+    fn parser_surface_event_case_019() {
+        run_event_case(19);
+    }
+
+    #[test]
+    fn parser_surface_event_case_020() {
+        run_event_case(20);
+    }
+
+    #[test]
+    fn parser_surface_event_case_021() {
+        run_event_case(21);
+    }
+
+    #[test]
+    fn parser_surface_event_case_022() {
+        run_event_case(22);
+    }
+
+    #[test]
+    fn parser_surface_event_case_023() {
+        run_event_case(23);
+    }
+
+    #[test]
+    fn parser_surface_event_case_024() {
+        run_event_case(24);
+    }
+
+    #[test]
+    fn parser_surface_event_case_025() {
+        run_event_case(25);
+    }
+
+    #[test]
+    fn parser_surface_event_case_026() {
+        run_event_case(26);
+    }
+
+    #[test]
+    fn parser_surface_event_case_027() {
+        run_event_case(27);
+    }
+
+    #[test]
+    fn parser_surface_event_case_028() {
+        run_event_case(28);
+    }
+
+    #[test]
+    fn parser_surface_event_case_029() {
+        run_event_case(29);
+    }
+
+    #[test]
+    fn parser_surface_event_case_030() {
+        run_event_case(30);
+    }
+
+    #[test]
+    fn parser_surface_event_case_031() {
+        run_event_case(31);
+    }
+
+    #[test]
+    fn parser_surface_event_case_032() {
+        run_event_case(32);
+    }
+
+    #[test]
+    fn parser_surface_event_case_033() {
+        run_event_case(33);
+    }
+
+    #[test]
+    fn parser_surface_event_case_034() {
+        run_event_case(34);
+    }
+
+    #[test]
+    fn parser_surface_event_case_035() {
+        run_event_case(35);
+    }
+
+    #[test]
+    fn parser_surface_event_case_036() {
+        run_event_case(36);
+    }
+
+    #[test]
+    fn parser_surface_event_case_037() {
+        run_event_case(37);
+    }
+
+    #[test]
+    fn parser_surface_event_case_038() {
+        run_event_case(38);
+    }
+
+    #[test]
+    fn parser_surface_event_case_039() {
+        run_event_case(39);
+    }
+
+    #[test]
+    fn parser_surface_event_case_040() {
+        run_event_case(40);
+    }
+
+    #[test]
+    fn parser_surface_event_case_041() {
+        run_event_case(41);
+    }
+
+    #[test]
+    fn parser_surface_event_case_042() {
+        run_event_case(42);
+    }
+
+    #[test]
+    fn parser_surface_event_case_043() {
+        run_event_case(43);
+    }
+
+    #[test]
+    fn parser_surface_event_case_044() {
+        run_event_case(44);
+    }
+
+    #[test]
+    fn parser_surface_event_case_045() {
+        run_event_case(45);
+    }
+
+    #[test]
+    fn parser_surface_event_case_046() {
+        run_event_case(46);
+    }
+
+    #[test]
+    fn parser_surface_event_case_047() {
+        run_event_case(47);
+    }
+
+    #[test]
+    fn parser_surface_event_case_048() {
+        run_event_case(48);
+    }
+
+    #[test]
+    fn parser_surface_event_case_049() {
+        run_event_case(49);
+    }
+
+    #[test]
+    fn parser_surface_event_case_050() {
+        run_event_case(50);
+    }
+
+    #[test]
+    fn parser_surface_event_case_051() {
+        run_event_case(51);
+    }
+
+    #[test]
+    fn parser_surface_event_case_052() {
+        run_event_case(52);
+    }
+
+    #[test]
+    fn parser_surface_event_case_053() {
+        run_event_case(53);
+    }
+
+    #[test]
+    fn parser_surface_event_case_054() {
+        run_event_case(54);
+    }
+
+    #[test]
+    fn parser_surface_event_case_055() {
+        run_event_case(55);
+    }
+
+    #[test]
+    fn parser_surface_event_case_056() {
+        run_event_case(56);
+    }
+
+    #[test]
+    fn parser_surface_event_case_057() {
+        run_event_case(57);
+    }
+
+    #[test]
+    fn parser_surface_event_case_058() {
+        run_event_case(58);
+    }
+
+    #[test]
+    fn parser_surface_event_case_059() {
+        run_event_case(59);
+    }
+
+    #[test]
+    fn parser_surface_event_case_060() {
+        run_event_case(60);
+    }
+
+    #[test]
+    fn parser_surface_event_case_061() {
+        run_event_case(61);
+    }
+
+    #[test]
+    fn parser_surface_event_case_062() {
+        run_event_case(62);
+    }
+
+    #[test]
+    fn parser_surface_event_case_063() {
+        run_event_case(63);
+    }
+
+    #[test]
+    fn parser_surface_event_case_064() {
+        run_event_case(64);
+    }
+
+    #[test]
+    fn parser_surface_event_case_065() {
+        run_event_case(65);
+    }
+
+    #[test]
+    fn parser_surface_event_case_066() {
+        run_event_case(66);
+    }
+
+    #[test]
+    fn parser_surface_event_case_067() {
+        run_event_case(67);
+    }
+
+    #[test]
+    fn parser_surface_event_case_068() {
+        run_event_case(68);
+    }
+
+    #[test]
+    fn parser_surface_event_case_069() {
+        run_event_case(69);
+    }
+
+    #[test]
+    fn parser_surface_event_case_070() {
+        run_event_case(70);
+    }
+
+    #[test]
+    fn parser_surface_event_case_071() {
+        run_event_case(71);
+    }
+
+    #[test]
+    fn parser_surface_event_case_072() {
+        run_event_case(72);
+    }
+
+    #[test]
+    fn parser_surface_event_case_073() {
+        run_event_case(73);
+    }
+
+    #[test]
+    fn parser_surface_event_case_074() {
+        run_event_case(74);
+    }
+
+    #[test]
+    fn parser_surface_event_case_075() {
+        run_event_case(75);
+    }
+
+    #[test]
+    fn parser_surface_event_case_076() {
+        run_event_case(76);
+    }
+
+    #[test]
+    fn parser_surface_event_case_077() {
+        run_event_case(77);
+    }
+
+    #[test]
+    fn parser_surface_event_case_078() {
+        run_event_case(78);
+    }
+
+    #[test]
+    fn parser_surface_event_case_079() {
+        run_event_case(79);
+    }
+
+    #[test]
+    fn parser_surface_event_case_080() {
+        run_event_case(80);
+    }
+
+    #[test]
+    fn parser_surface_event_case_081() {
+        run_event_case(81);
+    }
+
+    #[test]
+    fn parser_surface_event_case_082() {
+        run_event_case(82);
+    }
+
+    #[test]
+    fn parser_surface_event_case_083() {
+        run_event_case(83);
+    }
+
+    #[test]
+    fn parser_surface_event_case_084() {
+        run_event_case(84);
+    }
+
+    #[test]
+    fn parser_surface_event_case_085() {
+        run_event_case(85);
+    }
+
+    #[test]
+    fn parser_surface_event_case_086() {
+        run_event_case(86);
+    }
+
+    #[test]
+    fn parser_surface_event_case_087() {
+        run_event_case(87);
+    }
+
+    #[test]
+    fn parser_surface_event_case_088() {
+        run_event_case(88);
+    }
+
+    #[test]
+    fn parser_surface_event_case_089() {
+        run_event_case(89);
+    }
+
+    #[test]
+    fn parser_surface_event_case_090() {
+        run_event_case(90);
+    }
+
+    #[test]
+    fn parser_surface_event_case_091() {
+        run_event_case(91);
+    }
+
+    #[test]
+    fn parser_surface_event_case_092() {
+        run_event_case(92);
+    }
+
+    #[test]
+    fn parser_surface_event_case_093() {
+        run_event_case(93);
+    }
+
+    #[test]
+    fn parser_surface_event_case_094() {
+        run_event_case(94);
+    }
+
+    #[test]
+    fn parser_surface_event_case_095() {
+        run_event_case(95);
+    }
+
+    #[test]
+    fn parser_surface_event_case_096() {
+        run_event_case(96);
+    }
+
+    #[test]
+    fn parser_surface_event_case_097() {
+        run_event_case(97);
+    }
+
+    #[test]
+    fn parser_surface_event_case_098() {
+        run_event_case(98);
+    }
+
+    #[test]
+    fn parser_surface_event_case_099() {
+        run_event_case(99);
+    }
+
+    #[test]
+    fn parser_surface_event_case_100() {
+        run_event_case(100);
+    }
+
+    #[test]
+    fn parser_surface_event_case_101() {
+        run_event_case(101);
+    }
+
+    #[test]
+    fn parser_surface_event_case_102() {
+        run_event_case(102);
+    }
+
+    #[test]
+    fn parser_surface_event_case_103() {
+        run_event_case(103);
+    }
+
+    #[test]
+    fn parser_surface_event_case_104() {
+        run_event_case(104);
+    }
+
+    #[test]
+    fn parser_surface_event_case_105() {
+        run_event_case(105);
+    }
+
+    #[test]
+    fn parser_surface_event_case_106() {
+        run_event_case(106);
+    }
+
+    #[test]
+    fn parser_surface_event_case_107() {
+        run_event_case(107);
+    }
+
+    #[test]
+    fn parser_surface_event_case_108() {
+        run_event_case(108);
+    }
+
+    #[test]
+    fn parser_surface_event_case_109() {
+        run_event_case(109);
+    }
+
+    #[test]
+    fn parser_surface_event_case_110() {
+        run_event_case(110);
+    }
+
+    #[test]
+    fn parser_surface_event_case_111() {
+        run_event_case(111);
+    }
+
+    #[test]
+    fn parser_surface_event_case_112() {
+        run_event_case(112);
+    }
+
+    #[test]
+    fn parser_surface_event_case_113() {
+        run_event_case(113);
+    }
+
+    #[test]
+    fn parser_surface_event_case_114() {
+        run_event_case(114);
+    }
+
+    #[test]
+    fn parser_surface_event_case_115() {
+        run_event_case(115);
+    }
+
+    #[test]
+    fn parser_surface_event_case_116() {
+        run_event_case(116);
+    }
+
+    #[test]
+    fn parser_surface_event_case_117() {
+        run_event_case(117);
+    }
+
+    #[test]
+    fn parser_surface_event_case_118() {
+        run_event_case(118);
+    }
+
+    #[test]
+    fn parser_surface_event_case_119() {
+        run_event_case(119);
+    }
+
+    #[test]
+    fn parser_surface_event_case_120() {
+        run_event_case(120);
+    }
+
+    #[test]
+    fn parser_surface_event_case_121() {
+        run_event_case(121);
+    }
+
+    #[test]
+    fn parser_surface_event_case_122() {
+        run_event_case(122);
+    }
+
+    #[test]
+    fn parser_surface_event_case_123() {
+        run_event_case(123);
+    }
+
+    #[test]
+    fn parser_surface_event_case_124() {
+        run_event_case(124);
+    }
+
+    #[test]
+    fn parser_surface_event_case_125() {
+        run_event_case(125);
+    }
+
+    #[test]
+    fn parser_surface_event_case_126() {
+        run_event_case(126);
+    }
+
+    #[test]
+    fn parser_surface_event_case_127() {
+        run_event_case(127);
+    }
+
+    #[test]
+    fn parser_surface_event_case_128() {
+        run_event_case(128);
+    }
+
+    #[test]
+    fn parser_surface_event_case_129() {
+        run_event_case(129);
+    }
+
+    #[test]
+    fn parser_surface_event_case_130() {
+        run_event_case(130);
+    }
+
+    #[test]
+    fn parser_surface_event_case_131() {
+        run_event_case(131);
+    }
+
+    #[test]
+    fn parser_surface_event_case_132() {
+        run_event_case(132);
+    }
+
+    #[test]
+    fn parser_surface_event_case_133() {
+        run_event_case(133);
+    }
+
+    #[test]
+    fn parser_surface_event_case_134() {
+        run_event_case(134);
+    }
+
+    #[test]
+    fn parser_surface_event_case_135() {
+        run_event_case(135);
+    }
+
+    #[test]
+    fn parser_surface_event_case_136() {
+        run_event_case(136);
+    }
+
+    #[test]
+    fn parser_surface_event_case_137() {
+        run_event_case(137);
+    }
+
+    #[test]
+    fn parser_surface_event_case_138() {
+        run_event_case(138);
+    }
+
+    #[test]
+    fn parser_surface_event_case_139() {
+        run_event_case(139);
+    }
+
+    #[test]
+    fn parser_surface_event_case_140() {
+        run_event_case(140);
+    }
+
+    #[test]
+    fn parser_surface_event_case_141() {
+        run_event_case(141);
+    }
+
+    #[test]
+    fn parser_surface_event_case_142() {
+        run_event_case(142);
+    }
+
+    #[test]
+    fn parser_surface_event_case_143() {
+        run_event_case(143);
+    }
+
+    #[test]
+    fn parser_surface_event_case_144() {
+        run_event_case(144);
+    }
+
+    #[test]
+    fn parser_surface_event_case_145() {
+        run_event_case(145);
+    }
+
+    #[test]
+    fn parser_surface_event_case_146() {
+        run_event_case(146);
+    }
+
+    #[test]
+    fn parser_surface_event_case_147() {
+        run_event_case(147);
+    }
+
+    #[test]
+    fn parser_surface_event_case_148() {
+        run_event_case(148);
+    }
+
+    #[test]
+    fn parser_surface_event_case_149() {
+        run_event_case(149);
+    }
+
+    #[test]
+    fn parser_surface_event_case_150() {
+        run_event_case(150);
+    }
+
+    #[test]
+    fn parser_surface_event_case_151() {
+        run_event_case(151);
+    }
+
+    #[test]
+    fn parser_surface_event_case_152() {
+        run_event_case(152);
+    }
+
+    #[test]
+    fn parser_surface_event_case_153() {
+        run_event_case(153);
+    }
+
+    #[test]
+    fn parser_surface_event_case_154() {
+        run_event_case(154);
+    }
+
+    #[test]
+    fn parser_surface_event_case_155() {
+        run_event_case(155);
+    }
+
+    #[test]
+    fn parser_surface_event_case_156() {
+        run_event_case(156);
+    }
+
+    #[test]
+    fn parser_surface_event_case_157() {
+        run_event_case(157);
+    }
+
+    #[test]
+    fn parser_surface_event_case_158() {
+        run_event_case(158);
+    }
+
+    #[test]
+    fn parser_surface_event_case_159() {
+        run_event_case(159);
+    }
+
+    #[test]
+    fn parser_surface_event_case_160() {
+        run_event_case(160);
+    }
+
+    #[test]
+    fn parser_surface_event_case_161() {
+        run_event_case(161);
+    }
+
+    #[test]
+    fn parser_surface_event_case_162() {
+        run_event_case(162);
+    }
+
+    #[test]
+    fn parser_surface_event_case_163() {
+        run_event_case(163);
+    }
+
+    #[test]
+    fn parser_surface_event_case_164() {
+        run_event_case(164);
+    }
+
+    #[test]
+    fn parser_surface_event_case_165() {
+        run_event_case(165);
+    }
+
+    #[test]
+    fn parser_surface_event_case_166() {
+        run_event_case(166);
+    }
+
+    #[test]
+    fn parser_surface_event_case_167() {
+        run_event_case(167);
+    }
+
+    #[test]
+    fn parser_surface_event_case_168() {
+        run_event_case(168);
+    }
+
+    #[test]
+    fn parser_surface_event_case_169() {
+        run_event_case(169);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_000() {
+        run_logical_case(0);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_001() {
+        run_logical_case(1);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_002() {
+        run_logical_case(2);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_003() {
+        run_logical_case(3);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_004() {
+        run_logical_case(4);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_005() {
+        run_logical_case(5);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_006() {
+        run_logical_case(6);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_007() {
+        run_logical_case(7);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_008() {
+        run_logical_case(8);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_009() {
+        run_logical_case(9);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_010() {
+        run_logical_case(10);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_011() {
+        run_logical_case(11);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_012() {
+        run_logical_case(12);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_013() {
+        run_logical_case(13);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_014() {
+        run_logical_case(14);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_015() {
+        run_logical_case(15);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_016() {
+        run_logical_case(16);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_017() {
+        run_logical_case(17);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_018() {
+        run_logical_case(18);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_019() {
+        run_logical_case(19);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_020() {
+        run_logical_case(20);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_021() {
+        run_logical_case(21);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_022() {
+        run_logical_case(22);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_023() {
+        run_logical_case(23);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_024() {
+        run_logical_case(24);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_025() {
+        run_logical_case(25);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_026() {
+        run_logical_case(26);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_027() {
+        run_logical_case(27);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_028() {
+        run_logical_case(28);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_029() {
+        run_logical_case(29);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_030() {
+        run_logical_case(30);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_031() {
+        run_logical_case(31);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_032() {
+        run_logical_case(32);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_033() {
+        run_logical_case(33);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_034() {
+        run_logical_case(34);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_035() {
+        run_logical_case(35);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_036() {
+        run_logical_case(36);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_037() {
+        run_logical_case(37);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_038() {
+        run_logical_case(38);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_039() {
+        run_logical_case(39);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_040() {
+        run_logical_case(40);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_041() {
+        run_logical_case(41);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_042() {
+        run_logical_case(42);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_043() {
+        run_logical_case(43);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_044() {
+        run_logical_case(44);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_045() {
+        run_logical_case(45);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_046() {
+        run_logical_case(46);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_047() {
+        run_logical_case(47);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_048() {
+        run_logical_case(48);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_049() {
+        run_logical_case(49);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_050() {
+        run_logical_case(50);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_051() {
+        run_logical_case(51);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_052() {
+        run_logical_case(52);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_053() {
+        run_logical_case(53);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_054() {
+        run_logical_case(54);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_055() {
+        run_logical_case(55);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_056() {
+        run_logical_case(56);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_057() {
+        run_logical_case(57);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_058() {
+        run_logical_case(58);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_059() {
+        run_logical_case(59);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_060() {
+        run_logical_case(60);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_061() {
+        run_logical_case(61);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_062() {
+        run_logical_case(62);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_063() {
+        run_logical_case(63);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_064() {
+        run_logical_case(64);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_065() {
+        run_logical_case(65);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_066() {
+        run_logical_case(66);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_067() {
+        run_logical_case(67);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_068() {
+        run_logical_case(68);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_069() {
+        run_logical_case(69);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_070() {
+        run_logical_case(70);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_071() {
+        run_logical_case(71);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_072() {
+        run_logical_case(72);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_073() {
+        run_logical_case(73);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_074() {
+        run_logical_case(74);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_075() {
+        run_logical_case(75);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_076() {
+        run_logical_case(76);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_077() {
+        run_logical_case(77);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_078() {
+        run_logical_case(78);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_079() {
+        run_logical_case(79);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_080() {
+        run_logical_case(80);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_081() {
+        run_logical_case(81);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_082() {
+        run_logical_case(82);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_083() {
+        run_logical_case(83);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_084() {
+        run_logical_case(84);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_085() {
+        run_logical_case(85);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_086() {
+        run_logical_case(86);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_087() {
+        run_logical_case(87);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_088() {
+        run_logical_case(88);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_089() {
+        run_logical_case(89);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_090() {
+        run_logical_case(90);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_091() {
+        run_logical_case(91);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_092() {
+        run_logical_case(92);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_093() {
+        run_logical_case(93);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_094() {
+        run_logical_case(94);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_095() {
+        run_logical_case(95);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_096() {
+        run_logical_case(96);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_097() {
+        run_logical_case(97);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_098() {
+        run_logical_case(98);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_099() {
+        run_logical_case(99);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_100() {
+        run_logical_case(100);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_101() {
+        run_logical_case(101);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_102() {
+        run_logical_case(102);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_103() {
+        run_logical_case(103);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_104() {
+        run_logical_case(104);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_105() {
+        run_logical_case(105);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_106() {
+        run_logical_case(106);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_107() {
+        run_logical_case(107);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_108() {
+        run_logical_case(108);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_109() {
+        run_logical_case(109);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_110() {
+        run_logical_case(110);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_111() {
+        run_logical_case(111);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_112() {
+        run_logical_case(112);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_113() {
+        run_logical_case(113);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_114() {
+        run_logical_case(114);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_115() {
+        run_logical_case(115);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_116() {
+        run_logical_case(116);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_117() {
+        run_logical_case(117);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_118() {
+        run_logical_case(118);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_119() {
+        run_logical_case(119);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_120() {
+        run_logical_case(120);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_121() {
+        run_logical_case(121);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_122() {
+        run_logical_case(122);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_123() {
+        run_logical_case(123);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_124() {
+        run_logical_case(124);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_125() {
+        run_logical_case(125);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_126() {
+        run_logical_case(126);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_127() {
+        run_logical_case(127);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_128() {
+        run_logical_case(128);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_129() {
+        run_logical_case(129);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_130() {
+        run_logical_case(130);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_131() {
+        run_logical_case(131);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_132() {
+        run_logical_case(132);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_133() {
+        run_logical_case(133);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_134() {
+        run_logical_case(134);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_135() {
+        run_logical_case(135);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_136() {
+        run_logical_case(136);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_137() {
+        run_logical_case(137);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_138() {
+        run_logical_case(138);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_139() {
+        run_logical_case(139);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_140() {
+        run_logical_case(140);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_141() {
+        run_logical_case(141);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_142() {
+        run_logical_case(142);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_143() {
+        run_logical_case(143);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_144() {
+        run_logical_case(144);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_145() {
+        run_logical_case(145);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_146() {
+        run_logical_case(146);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_147() {
+        run_logical_case(147);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_148() {
+        run_logical_case(148);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_149() {
+        run_logical_case(149);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_150() {
+        run_logical_case(150);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_151() {
+        run_logical_case(151);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_152() {
+        run_logical_case(152);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_153() {
+        run_logical_case(153);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_154() {
+        run_logical_case(154);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_155() {
+        run_logical_case(155);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_156() {
+        run_logical_case(156);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_157() {
+        run_logical_case(157);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_158() {
+        run_logical_case(158);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_159() {
+        run_logical_case(159);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_160() {
+        run_logical_case(160);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_161() {
+        run_logical_case(161);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_162() {
+        run_logical_case(162);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_163() {
+        run_logical_case(163);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_164() {
+        run_logical_case(164);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_165() {
+        run_logical_case(165);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_166() {
+        run_logical_case(166);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_167() {
+        run_logical_case(167);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_168() {
+        run_logical_case(168);
+    }
+
+    #[test]
+    fn parser_surface_logical_case_169() {
+        run_logical_case(169);
+    }
+}
 
 #[cfg(test)]
 #[path = "../tests/parser_negative_surface.rs"]

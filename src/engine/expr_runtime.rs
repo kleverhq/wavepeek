@@ -261,15 +261,47 @@ fn unknown_signal_diagnostic(name: &str) -> ExprDiagnostic {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use tempfile::NamedTempFile;
+
     use crate::expr::{
-        ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost, IntegerLikeKind,
-        SampledValue, SignalHandle, Span,
+        DiagnosticLayer, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
+        IntegerLikeKind, SampledValue, SignalHandle, Span,
     };
+    use crate::waveform::expr_host::WaveformExprHost;
 
     use super::{
-        ScopedExprHost, event_candidate_handles, event_expr_contains_wildcard,
-        referenced_signal_handles,
+        ScopedExprHost, bind_waveform_logical_expr, candidate_sources_for_handles,
+        eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
+        event_expr_is_any_tracked_only, event_expr_is_edge_only, expr_diagnostic,
+        open_shared_waveform, referenced_signal_handles,
     };
+
+    const TEST_VCD: &str = concat!(
+        "$date\n  today\n$end\n",
+        "$version\n  wavepeek-test\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var wire 1 ! clk $end\n",
+        "$var wire 1 \" sig $end\n",
+        "$var event 1 # ev $end\n",
+        "$var real 1 $ temp $end\n",
+        "$var string 1 % msg $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "0!\n",
+        "0\"\n",
+        "r0.0 $\n",
+        "shello %\n",
+        "#5\n",
+        "1!\n",
+        "1\"\n",
+        "1#\n",
+        "r2.5 $\n",
+        "sworld %\n"
+    );
 
     #[derive(Default)]
     struct StubHost;
@@ -280,6 +312,8 @@ mod tests {
                 "top.clk" => Ok(SignalHandle(1)),
                 "top.sig" => Ok(SignalHandle(2)),
                 "top.ev" => Ok(SignalHandle(3)),
+                "top.temp" => Ok(SignalHandle(4)),
+                "top.msg" => Ok(SignalHandle(5)),
                 other => Err(ExprDiagnostic {
                     layer: crate::expr::DiagnosticLayer::Semantic,
                     code: "HOST-UNKNOWN-SIGNAL",
@@ -293,13 +327,15 @@ mod tests {
         fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
             let kind = match handle {
                 SignalHandle(3) => ExprTypeKind::Event,
+                SignalHandle(4) => ExprTypeKind::Real,
+                SignalHandle(5) => ExprTypeKind::String,
                 _ => ExprTypeKind::IntegerLike(IntegerLikeKind::Int),
             };
             Ok(ExprType {
                 kind,
                 storage: ExprStorage::Scalar,
-                width: 1,
-                is_four_state: true,
+                width: if handle == SignalHandle(4) { 64 } else { 1 },
+                is_four_state: handle != SignalHandle(4) && handle != SignalHandle(5),
                 is_signed: false,
                 enum_type_id: None,
                 enum_labels: None,
@@ -308,12 +344,22 @@ mod tests {
 
         fn sample_value(
             &self,
-            _handle: SignalHandle,
+            handle: SignalHandle,
             _timestamp: u64,
         ) -> Result<SampledValue, ExprDiagnostic> {
-            Ok(SampledValue::Integral {
-                bits: Some("1".to_string()),
-                label: None,
+            Ok(match handle {
+                SignalHandle(2) => SampledValue::Integral {
+                    bits: Some("1".to_string()),
+                    label: None,
+                },
+                SignalHandle(4) => SampledValue::Real { value: Some(2.5) },
+                SignalHandle(5) => SampledValue::String {
+                    value: Some("hello".to_string()),
+                },
+                _ => SampledValue::Integral {
+                    bits: Some("0".to_string()),
+                    label: None,
+                },
             })
         }
 
@@ -339,6 +385,22 @@ mod tests {
     }
 
     #[test]
+    fn scoped_host_prefixes_short_names_and_passthrough_without_scope() {
+        let host = StubHost;
+        let scoped = ScopedExprHost::new(&host, Some("top"));
+        assert_eq!(
+            scoped.resolve_signal("clk").expect("scoped short name"),
+            SignalHandle(1)
+        );
+
+        let unscoped = ScopedExprHost::new(&host, None);
+        assert_eq!(
+            unscoped.resolve_signal("top.sig").expect("canonical name"),
+            SignalHandle(2)
+        );
+    }
+
+    #[test]
     fn bound_handle_helpers_preserve_unique_signal_order() {
         let host = StubHost;
         let scoped = ScopedExprHost::new(&host, Some("top"));
@@ -357,5 +419,90 @@ mod tests {
             crate::expr::bind_event_expr_ast(&event_ast, &scoped).expect("event expr should bind");
         assert!(event_expr_contains_wildcard(&bound_event));
         assert_eq!(event_candidate_handles(&bound_event), vec![SignalHandle(1)]);
+        assert!(!event_expr_is_any_tracked_only(&bound_event));
+        assert!(!event_expr_is_edge_only(&bound_event));
+
+        let edge_only = crate::expr::bind_event_expr_ast(
+            &crate::expr::parse_event_expr_ast("posedge clk or edge sig").expect("parse"),
+            &scoped,
+        )
+        .expect("bind");
+        assert!(event_expr_is_edge_only(&edge_only));
+
+        let any_only = crate::expr::bind_event_expr_ast(
+            &crate::expr::parse_event_expr_ast("*").expect("parse"),
+            &scoped,
+        )
+        .expect("bind");
+        assert!(event_expr_is_any_tracked_only(&any_only));
+    }
+
+    #[test]
+    fn eval_bound_logical_truth_handles_integral_real_and_string_results() {
+        let host = StubHost;
+        for (source, expected) in [("top.sig", true), ("top.temp", true), ("top.msg", false)] {
+            let expr = crate::expr::bind_logical_expr_ast(
+                &crate::expr::parse_logical_expr_ast(source).expect("parse"),
+                &host,
+            )
+            .expect("bind");
+            assert_eq!(
+                eval_bound_logical_truth(source, &expr, &host, 0).expect("eval"),
+                expected,
+                "{source}"
+            );
+        }
+    }
+
+    #[test]
+    fn expr_helpers_open_waveforms_and_map_diagnostics() {
+        let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
+        let shared = open_shared_waveform(fixture.path()).expect("waveform should open");
+        assert_eq!(
+            shared.borrow().metadata().expect("metadata").time_end,
+            "5ns"
+        );
+
+        let host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        let bound = bind_waveform_logical_expr(&host, Some("top"), "sig")
+            .expect("scoped logical expr should bind");
+        assert!(eval_bound_logical_truth("sig", &bound, &host, 5).expect("eval"));
+
+        let wrapped = expr_diagnostic(
+            "sig",
+            ExprDiagnostic {
+                layer: DiagnosticLayer::Semantic,
+                code: "HOST-UNKNOWN-SIGNAL",
+                message: "unknown signal 'sig'".to_string(),
+                primary_span: Span::new(0, 3),
+                notes: vec![],
+            },
+        );
+        assert!(wrapped.to_string().starts_with("error: expr:"));
+    }
+
+    #[test]
+    fn candidate_sources_are_deduplicated_and_unknown_handles_fail() {
+        let fixture = write_fixture(TEST_VCD, "expr-runtime.vcd");
+        let host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        let clk = host.resolve_signal("top.clk").expect("clk should resolve");
+        let sig = host.resolve_signal("top.sig").expect("sig should resolve");
+        let deduped = candidate_sources_for_handles(&host, &[clk, sig, clk]).expect("sources");
+        assert_eq!(deduped.len(), 2);
+        assert_eq!(deduped[0].path, "top.clk");
+        assert_eq!(deduped[1].path, "top.sig");
+
+        let error = candidate_sources_for_handles(&host, &[SignalHandle(999)])
+            .expect_err("unknown handle should fail");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: unknown signal handle 999"
+        );
+    }
+
+    fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
+        let fixture = NamedTempFile::with_suffix(suffix).expect("fixture should create");
+        fs::write(fixture.path(), contents).expect("fixture should write");
+        fixture
     }
 }

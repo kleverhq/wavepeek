@@ -341,4 +341,75 @@ mod tests {
             Err(TimeValidationError::RawOutOfRange)
         );
     }
+
+    #[test]
+    fn time_units_cover_all_supported_suffixes() {
+        let cases = [
+            ("zs", TimeUnit::Zs),
+            ("as", TimeUnit::As),
+            ("fs", TimeUnit::Fs),
+            ("ps", TimeUnit::Ps),
+            ("ns", TimeUnit::Ns),
+            ("us", TimeUnit::Us),
+            ("ms", TimeUnit::Ms),
+            ("s", TimeUnit::S),
+        ];
+
+        for (suffix, unit) in cases {
+            assert_eq!(TimeUnit::parse(suffix), Some(unit));
+            assert_eq!(unit.suffix(), suffix);
+        }
+    }
+
+    #[test]
+    fn format_raw_timestamp_rejects_overflow() {
+        let error = format_raw_timestamp(
+            u64::MAX,
+            ParsedTime {
+                value: 2,
+                unit: TimeUnit::Ns,
+            },
+        )
+        .expect_err("overflow should fail");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: normalized time overflow while formatting timestamp"
+        );
+    }
+
+    #[test]
+    fn parse_dump_time_context_rejects_invalid_and_overflowing_metadata() {
+        for metadata in [
+            WaveformMetadata {
+                time_unit: "bogus".to_string(),
+                time_start: "0ns".to_string(),
+                time_end: "1ns".to_string(),
+            },
+            WaveformMetadata {
+                time_unit: "0ns".to_string(),
+                time_start: "0ns".to_string(),
+                time_end: "1ns".to_string(),
+            },
+            WaveformMetadata {
+                time_unit: "1ns".to_string(),
+                time_start: "bogus".to_string(),
+                time_end: "1ns".to_string(),
+            },
+            WaveformMetadata {
+                time_unit: "1ns".to_string(),
+                time_start: "0ns".to_string(),
+                time_end: "bogus".to_string(),
+            },
+            WaveformMetadata {
+                time_unit: format!("{}s", u64::MAX),
+                time_start: "0ns".to_string(),
+                time_end: "1ns".to_string(),
+            },
+        ] {
+            assert!(
+                parse_dump_time_context(&metadata).is_err(),
+                "metadata {metadata:?} should fail"
+            );
+        }
+    }
 }

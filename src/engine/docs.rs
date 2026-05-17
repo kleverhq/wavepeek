@@ -146,3 +146,154 @@ fn match_label(kind: crate::docs::MatchKind) -> &'static str {
         crate::docs::MatchKind::Body => "matched body",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use tempfile::tempdir;
+
+    use super::{match_label, run, unknown_topic_error};
+    use crate::cli::docs::{
+        DocsArgs, DocsCommand, DocsExportArgs, DocsSearchArgs, DocsShowArgs, DocsTopicsArgs,
+    };
+    use crate::docs::MatchKind;
+    use crate::engine::{CommandData, CommandName};
+
+    #[test]
+    fn run_without_subcommand_returns_orientation_text() {
+        let result = run(DocsArgs { command: None }).expect("docs root should succeed");
+
+        assert_eq!(result.command, CommandName::Docs);
+        assert!(matches!(
+            result.data,
+            CommandData::Text(ref text) if text.contains("wavepeek docs topics")
+        ));
+    }
+
+    #[test]
+    fn topics_support_human_and_json_modes() {
+        let human = run(DocsArgs {
+            command: Some(DocsCommand::Topics(DocsTopicsArgs { json: false })),
+        })
+        .expect("human topics should succeed");
+        assert_eq!(human.command, CommandName::DocsTopics);
+        assert!(matches!(
+            human.data,
+            CommandData::Text(ref text) if text.contains("intro")
+        ));
+
+        let json = run(DocsArgs {
+            command: Some(DocsCommand::Topics(DocsTopicsArgs { json: true })),
+        })
+        .expect("json topics should succeed");
+        assert!(matches!(
+            json.data,
+            CommandData::DocsTopics(ref data) if !data.topics.is_empty()
+        ));
+    }
+
+    #[test]
+    fn show_uses_summary_flag_and_unknown_topic_suggestions() {
+        let summary = run(DocsArgs {
+            command: Some(DocsCommand::Show(DocsShowArgs {
+                topic: "intro".to_string(),
+                summary: true,
+            })),
+        })
+        .expect("summary show should succeed");
+        assert!(matches!(
+            summary.data,
+            CommandData::Text(ref text) if !text.contains("# ") && text.contains("wavepeek")
+        ));
+
+        let body = run(DocsArgs {
+            command: Some(DocsCommand::Show(DocsShowArgs {
+                topic: "intro".to_string(),
+                summary: false,
+            })),
+        })
+        .expect("body show should succeed");
+        assert!(matches!(
+            body.data,
+            CommandData::Text(ref text) if text.starts_with("# ")
+        ));
+
+        let error = run(DocsArgs {
+            command: Some(DocsCommand::Show(DocsShowArgs {
+                topic: "commands/cha".to_string(),
+                summary: false,
+            })),
+        })
+        .expect_err("unknown topic should fail");
+        assert!(error.to_string().contains("Did you mean: commands/change?"));
+    }
+
+    #[test]
+    fn search_supports_human_and_json_modes() {
+        let human = run(DocsArgs {
+            command: Some(DocsCommand::Search(DocsSearchArgs {
+                query: vec!["change".to_string()],
+                json: false,
+            })),
+        })
+        .expect("human search should succeed");
+        assert!(matches!(
+            human.data,
+            CommandData::Text(ref text) if text.contains("[matched")
+        ));
+
+        let json = run(DocsArgs {
+            command: Some(DocsCommand::Search(DocsSearchArgs {
+                query: vec!["Change".to_string(), "command".to_string()],
+                json: true,
+            })),
+        })
+        .expect("json search should succeed");
+        assert!(matches!(
+            json.data,
+            CommandData::DocsSearch(ref data)
+                if data.query == "change command" && !data.matches.is_empty()
+        ));
+    }
+
+    #[test]
+    fn export_reports_destination_path() {
+        let temp = tempdir().expect("tempdir should exist");
+        let out_dir = temp.path().join("docs-export");
+        let result = run(DocsArgs {
+            command: Some(DocsCommand::Export(DocsExportArgs {
+                out_dir: out_dir.clone(),
+                force: false,
+            })),
+        })
+        .expect("export should succeed");
+
+        assert_eq!(result.command, CommandName::DocsExport);
+        assert!(matches!(
+            result.data,
+            CommandData::Text(ref text)
+                if text.contains("exported") && text.contains(out_dir.display().to_string().as_str())
+        ));
+    }
+
+    #[test]
+    fn unknown_topic_error_handles_empty_suggestions() {
+        let error = unknown_topic_error("zzzzzzzzzzzz");
+        assert_eq!(
+            error.to_string(),
+            "error: args: unknown docs topic 'zzzzzzzzzzzz'"
+        );
+    }
+
+    #[test]
+    fn match_label_covers_all_search_kinds() {
+        assert_eq!(match_label(MatchKind::IdExact), "matched id");
+        assert_eq!(match_label(MatchKind::IdPrefix), "matched id prefix");
+        assert_eq!(match_label(MatchKind::TitleExact), "matched title");
+        assert_eq!(
+            match_label(MatchKind::TitleOrSummary),
+            "matched title or summary"
+        );
+        assert_eq!(match_label(MatchKind::Heading), "matched heading");
+        assert_eq!(match_label(MatchKind::Body), "matched body");
+    }
+}

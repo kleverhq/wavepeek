@@ -133,13 +133,16 @@ impl ExpressionHost for WaveformExprHost {
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::rc::Rc;
 
     use tempfile::NamedTempFile;
 
     use super::WaveformExprHost;
     use crate::expr::{
-        ExprValuePayload, bind_logical_expr_ast, eval_logical_expr_at, parse_logical_expr_ast,
+        ExprValuePayload, ExpressionHost, SignalHandle, bind_logical_expr_ast,
+        eval_logical_expr_at, parse_logical_expr_ast,
     };
+    use crate::waveform::Waveform;
 
     const RICH_VCD: &str = concat!(
         "$date\n  today\n$end\n",
@@ -222,6 +225,58 @@ mod tests {
         let error = bind_logical_expr_ast(&ast, &host).expect_err("bind should fail");
 
         assert_eq!(error.code, "EXPR-SEMANTIC-METADATA");
+    }
+
+    #[test]
+    fn waveform_expr_host_reuses_cached_handles_and_supports_shared_construction() {
+        let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let host = WaveformExprHost::new(waveform);
+        let first = host
+            .resolve_signal("top.clk")
+            .expect("first lookup should resolve");
+        let second = host
+            .resolve_signal("top.clk")
+            .expect("second lookup should resolve");
+        assert_eq!(first, second);
+
+        let shared = Rc::new(std::cell::RefCell::new(
+            Waveform::open(fixture.path()).expect("shared waveform should open"),
+        ));
+        let shared_host = WaveformExprHost::from_shared(shared);
+        let handle = shared_host
+            .resolve_signal("top.ev")
+            .expect("shared host should resolve event");
+        assert_eq!(shared_host.signal_type(handle).expect("type").width, 0);
+    }
+
+    #[test]
+    fn waveform_expr_host_unknown_handles_map_to_stable_errors() {
+        let fixture = write_fixture(RICH_VCD, "rich-types.vcd");
+        let host = WaveformExprHost::open(fixture.path()).expect("fixture should open");
+
+        let error = host
+            .resolved_signal_for_handle(SignalHandle(999))
+            .expect_err("unknown handle should fail");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: unknown signal handle 999"
+        );
+
+        let error = host
+            .signal_type(SignalHandle(999))
+            .expect_err("type should fail");
+        assert_eq!(error.code, "HOST-UNKNOWN-SIGNAL");
+
+        let error = host
+            .sample_value(SignalHandle(999), 0)
+            .expect_err("sample should fail");
+        assert_eq!(error.code, "HOST-UNKNOWN-SIGNAL");
+
+        let error = host
+            .event_occurred(SignalHandle(999), 0)
+            .expect_err("event lookup should fail");
+        assert_eq!(error.code, "HOST-UNKNOWN-SIGNAL");
     }
 
     fn fixture_path(filename: &str) -> std::path::PathBuf {

@@ -240,3 +240,122 @@ fn parse_bound_time(
         ))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        DumpTimeContext, PropertyResultKind, build_candidate_schedule, capture_allows_kind,
+        parse_bound_time,
+    };
+    use crate::cli::property::CaptureMode;
+    use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
+    use crate::waveform::WaveformMetadata;
+
+    fn metadata() -> WaveformMetadata {
+        WaveformMetadata {
+            time_unit: "1ns".to_string(),
+            time_start: "0ns".to_string(),
+            time_end: "10ns".to_string(),
+        }
+    }
+
+    fn dump_time() -> DumpTimeContext {
+        DumpTimeContext {
+            dump_tick: ParsedTime {
+                value: 1,
+                unit: TimeUnit::Ns,
+            },
+            dump_tick_zs: 1_000_000_000_000,
+            dump_start_zs: 0,
+            dump_end_zs: 10_000_000_000_000,
+        }
+    }
+
+    #[test]
+    fn property_result_kind_display_is_stable() {
+        assert_eq!(PropertyResultKind::Match.to_string(), "match");
+        assert_eq!(PropertyResultKind::Assert.to_string(), "assert");
+        assert_eq!(PropertyResultKind::Deassert.to_string(), "deassert");
+    }
+
+    #[test]
+    fn capture_mode_filtering_matches_expected_transition_kinds() {
+        assert!(capture_allows_kind(
+            CaptureMode::Match,
+            PropertyResultKind::Assert
+        ));
+        assert!(capture_allows_kind(
+            CaptureMode::Switch,
+            PropertyResultKind::Deassert
+        ));
+        assert!(capture_allows_kind(
+            CaptureMode::Assert,
+            PropertyResultKind::Assert
+        ));
+        assert!(!capture_allows_kind(
+            CaptureMode::Assert,
+            PropertyResultKind::Deassert
+        ));
+        assert!(capture_allows_kind(
+            CaptureMode::Deassert,
+            PropertyResultKind::Deassert
+        ));
+        assert!(!capture_allows_kind(
+            CaptureMode::Deassert,
+            PropertyResultKind::Assert
+        ));
+    }
+
+    #[test]
+    fn candidate_schedule_tracks_previous_timestamp_and_rejects_unknown_times() {
+        let schedule = build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule");
+        assert_eq!(schedule, vec![(0, None), (10, Some(5))]);
+
+        let error = build_candidate_schedule(&[0, 5, 10], &[7]).expect_err("missing time");
+        assert_eq!(
+            error.to_string(),
+            "error: internal: candidate timestamp '7' is missing from waveform time table"
+        );
+    }
+
+    #[test]
+    fn parse_bound_time_maps_validation_failures_to_argument_errors() {
+        let md = metadata();
+        let context = dump_time();
+
+        assert_eq!(
+            parse_bound_time("10ns", "--from", context, &md).expect("valid time"),
+            10
+        );
+
+        for (token, expected) in [
+            ("10", "requires units"),
+            ("1.5ns", "expected <integer><unit>"),
+            ("11ns", "outside dump bounds [0ns, 10ns]"),
+            (
+                "15ps",
+                "cannot be represented exactly in dump precision '1ns'",
+            ),
+        ] {
+            let error = parse_bound_time(token, "--from", context, &md).expect_err("bad time");
+            assert!(error.to_string().contains(expected), "{token}: {error}");
+        }
+
+        let huge_context = DumpTimeContext {
+            dump_tick: ParsedTime {
+                value: 1,
+                unit: TimeUnit::Zs,
+            },
+            dump_tick_zs: 1,
+            dump_start_zs: 0,
+            dump_end_zs: as_zeptoseconds(ParsedTime {
+                value: u64::MAX,
+                unit: TimeUnit::Ns,
+            })
+            .expect("end should convert"),
+        };
+        let error = parse_bound_time(&format!("{}ns", u64::MAX), "--to", huge_context, &md)
+            .expect_err("raw out-of-range should fail");
+        assert!(error.to_string().contains("supported raw timestamp range"));
+    }
+}

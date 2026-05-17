@@ -224,7 +224,10 @@ mod tests {
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
     use crate::schema_contract::SCHEMA_URL;
 
-    use super::{render_human, render_json};
+    use super::{
+        OutputEnvelope, render_human, render_json, render_scope_tree, scope_entry_is_last_sibling,
+        signal_display_name,
+    };
 
     #[test]
     fn json_envelope_has_required_shape_for_info() {
@@ -407,5 +410,97 @@ mod tests {
         );
 
         assert_eq!(rendered, "@5ns clk=1'h1 data=8'h00");
+    }
+
+    #[test]
+    fn render_human_covers_schema_signal_and_docs_search_variants() {
+        let schema = render_human(
+            &CommandData::Schema("{\"type\":\"object\"}".to_string()),
+            HumanRenderOptions::default(),
+        );
+        assert_eq!(schema, "{\"type\":\"object\"}");
+
+        let signals = vec![
+            crate::engine::signal::SignalEntry {
+                display: "clk".to_string(),
+                name: "clk".to_string(),
+                path: "top.clk".to_string(),
+                kind: "wire".to_string(),
+                width: Some(1),
+            },
+            crate::engine::signal::SignalEntry {
+                display: "status".to_string(),
+                name: "status".to_string(),
+                path: "top.status".to_string(),
+                kind: "event".to_string(),
+                width: None,
+            },
+        ];
+        let rendered = render_human(
+            &CommandData::Signal(signals.clone()),
+            HumanRenderOptions {
+                scope_tree: false,
+                signals_abs: true,
+            },
+        );
+        assert_eq!(rendered, "top.clk kind=wire width=1\ntop.status kind=event");
+        assert_eq!(signal_display_name(&signals[0], true), "top.clk");
+        assert_eq!(signal_display_name(&signals[0], false), "clk");
+
+        let docs_search = render_human(
+            &CommandData::DocsSearch(crate::engine::DocsSearchData {
+                query: "change".to_string(),
+                matches: vec![crate::engine::DocsSearchMatchData {
+                    topic: crate::docs::TopicSummary {
+                        id: "commands/change".to_string(),
+                        title: "Change command".to_string(),
+                        summary: "Find changes.".to_string(),
+                        section: "commands".to_string(),
+                        see_also: vec![],
+                    },
+                    match_kind: crate::docs::MatchKind::IdPrefix,
+                    matched_tokens: 1,
+                }],
+            }),
+            HumanRenderOptions::default(),
+        );
+        assert_eq!(docs_search, "commands/change  Find changes.");
+    }
+
+    #[test]
+    fn helper_renderers_cover_empty_tree_and_sibling_detection() {
+        assert_eq!(render_scope_tree(&[]), "");
+
+        let scopes = vec![
+            crate::engine::scope::ScopeEntry {
+                path: "top".to_string(),
+                depth: 0,
+                kind: "module".to_string(),
+            },
+            crate::engine::scope::ScopeEntry {
+                path: "top.cpu".to_string(),
+                depth: 1,
+                kind: "module".to_string(),
+            },
+            crate::engine::scope::ScopeEntry {
+                path: "top.mem".to_string(),
+                depth: 1,
+                kind: "module".to_string(),
+            },
+        ];
+        assert!(!scope_entry_is_last_sibling(&scopes, 1));
+        assert!(scope_entry_is_last_sibling(&scopes, 2));
+    }
+
+    #[test]
+    fn output_envelope_constructor_sets_schema_and_warnings() {
+        let envelope = OutputEnvelope::with_warnings(
+            "docs show",
+            serde_json::json!({"ok": true}),
+            vec!["careful".to_string()],
+        );
+        assert_eq!(envelope.schema, SCHEMA_URL);
+        assert_eq!(envelope.command, "docs show");
+        assert_eq!(envelope.warnings, vec!["careful"]);
     }
 }

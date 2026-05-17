@@ -698,11 +698,14 @@ fn unique_sibling_path(parent: &Path, out_dir: &Path, prefix: &str) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
     use tempfile::tempdir;
 
     use super::{
-        EXPORT_FORMAT_VERSION, MatchKind, export_catalog, lookup_topic, packaged_skill_markdown,
-        search_topics, suggest_topics,
+        EXPORT_FORMAT_VERSION, EXPORT_KIND, MatchKind, canonical_source_relpath, export_catalog,
+        extract_headings, id_matches_token, lookup_topic, normalize_query, packaged_skill_markdown,
+        search_topics, split_front_matter, suggest_topics, validate_export_target,
     };
 
     #[test]
@@ -833,5 +836,120 @@ mod tests {
         assert!(!out_dir.join("wavepeek.md").exists());
         assert_eq!(EXPORT_FORMAT_VERSION, 1);
         assert!(packaged_skill_markdown().starts_with("---\nname: wavepeek\n"));
+    }
+
+    #[test]
+    fn normalize_query_rejects_whitespace_only_input() {
+        let error = normalize_query("   \n\t  ").expect_err("empty query should fail");
+        assert_eq!(
+            error.to_string(),
+            "error: args: query must contain at least one non-whitespace token"
+        );
+    }
+
+    #[test]
+    fn id_and_heading_helpers_cover_segmented_forms() {
+        assert!(id_matches_token("commands/change-help", "cha"));
+        assert!(id_matches_token("commands/change-help", "help"));
+        assert!(!id_matches_token("commands/change-help", "scope"));
+        assert_eq!(
+            canonical_source_relpath("commands/change"),
+            "commands/change.md"
+        );
+        assert_eq!(
+            extract_headings("# Title\ntext\n## Child\r\n### Grandchild\n####\n"),
+            vec!["Title", "Child", "Grandchild"]
+        );
+    }
+
+    #[test]
+    fn split_front_matter_requires_valid_envelope() {
+        let error = split_front_matter("# no front matter\n", Path::new("broken.md"))
+            .expect_err("missing envelope should fail");
+        assert!(error.contains("must start with YAML front matter"));
+    }
+
+    #[test]
+    fn validate_export_target_rejects_non_directory_and_unmanaged_roots() {
+        let temp = tempdir().expect("tempdir should be created");
+        let file_path = temp.path().join("not-a-dir");
+        std::fs::write(&file_path, "x").expect("file should be written");
+        let error = validate_export_target(&file_path, false).expect_err("file target should fail");
+        assert!(error.to_string().contains("must be a directory path"));
+
+        let unmanaged = temp.path().join("unmanaged");
+        std::fs::create_dir(&unmanaged).expect("directory should be created");
+        std::fs::write(unmanaged.join("topic.md"), "# topic\n").expect("topic should write");
+        let error = validate_export_target(&unmanaged, true)
+            .expect_err("unmanaged forced replacement should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("--force only applies to a managed export root")
+        );
+    }
+
+    #[test]
+    fn validate_export_target_rejects_invalid_manifests() {
+        let temp = tempdir().expect("tempdir should be created");
+
+        let invalid_json = temp.path().join("invalid-json");
+        std::fs::create_dir(&invalid_json).expect("directory should be created");
+        std::fs::write(invalid_json.join("manifest.json"), "{not json}")
+            .expect("manifest should be written");
+        let error = validate_export_target(&invalid_json, true)
+            .expect_err("invalid manifest json should fail");
+        assert!(error.to_string().contains("has an invalid manifest"));
+
+        let wrong_kind = temp.path().join("wrong-kind");
+        std::fs::create_dir(&wrong_kind).expect("directory should be created");
+        std::fs::write(
+            wrong_kind.join("manifest.json"),
+            format!(
+                "{{\"kind\":\"other\",\"export_format_version\":{}}}",
+                EXPORT_FORMAT_VERSION
+            ),
+        )
+        .expect("manifest should be written");
+        let error =
+            validate_export_target(&wrong_kind, true).expect_err("wrong manifest kind should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("--force only applies to a managed export root")
+        );
+
+        let missing_version = temp.path().join("missing-version");
+        std::fs::create_dir(&missing_version).expect("directory should be created");
+        std::fs::write(
+            missing_version.join("manifest.json"),
+            format!("{{\"kind\":\"{}\"}}", EXPORT_KIND),
+        )
+        .expect("manifest should be written");
+        let error = validate_export_target(&missing_version, true)
+            .expect_err("missing version should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("missing a recognized export_format_version")
+        );
+
+        let wrong_version = temp.path().join("wrong-version");
+        std::fs::create_dir(&wrong_version).expect("directory should be created");
+        std::fs::write(
+            wrong_version.join("manifest.json"),
+            format!(
+                "{{\"kind\":\"{}\",\"export_format_version\":999}}",
+                EXPORT_KIND
+            ),
+        )
+        .expect("manifest should be written");
+        let error =
+            validate_export_target(&wrong_version, true).expect_err("wrong version should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("has unrecognized export manifest version 999")
+        );
     }
 }

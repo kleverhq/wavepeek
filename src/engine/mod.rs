@@ -132,3 +132,25 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Skill(args) => skill::run(args),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::CommandName;
+
+    #[test]
+    fn command_name_strings_cover_all_variants() {
+        assert_eq!(CommandName::Schema.as_str(), "schema");
+        assert_eq!(CommandName::Info.as_str(), "info");
+        assert_eq!(CommandName::Scope.as_str(), "scope");
+        assert_eq!(CommandName::Signal.as_str(), "signal");
+        assert_eq!(CommandName::Value.as_str(), "value");
+        assert_eq!(CommandName::Change.as_str(), "change");
+        assert_eq!(CommandName::Property.as_str(), "property");
+        assert_eq!(CommandName::Docs.as_str(), "docs");
+        assert_eq!(CommandName::DocsTopics.as_str(), "docs topics");
+        assert_eq!(CommandName::DocsShow.as_str(), "docs show");
+        assert_eq!(CommandName::DocsSearch.as_str(), "docs search");
+        assert_eq!(CommandName::DocsExport.as_str(), "docs export");
+        assert_eq!(CommandName::Skill.as_str(), "skill");
+    }
+}

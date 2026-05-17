@@ -66,4 +66,20 @@ mod tests {
             })
             .collect()
     }
+
+    #[test]
+    #[should_panic(expected = "schema definition missing must expose an enum array")]
+    fn schema_enum_requires_array_definition() {
+        let schema = serde_json::json!({"$defs": {"missing": {}}});
+        let _ = schema_enum(&schema, "missing");
+    }
+
+    #[test]
+    #[should_panic(expected = "schema definition scopeKind must use strings")]
+    fn schema_enum_requires_string_entries() {
+        let schema = serde_json::json!({
+            "$defs": {"scopeKind": {"enum": [1, 2]}}
+        });
+        let _ = schema_enum(&schema, "scopeKind");
+    }
 }

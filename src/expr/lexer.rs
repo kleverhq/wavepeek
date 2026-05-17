@@ -894,4 +894,30 @@ mod tests {
             assert_eq!(error.code, "EXPR-PARSE-LOGICAL-LITERAL", "{source}");
         }
     }
+
+    #[test]
+    fn lexer_helpers_cover_empty_event_expr_and_sized_literal_overflow() {
+        assert!(
+            lex_event_expr("")
+                .expect("empty event expression should lex")
+                .is_empty()
+        );
+        assert!(
+            lex_event_expr("   ")
+                .expect("whitespace-only event expression should lex")
+                .is_empty()
+        );
+
+        let tokens = lex_logical_expr("name", 5).expect("identifier should lex");
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::Identifier(ref name) if name == "name"
+        ));
+        assert_eq!(tokens[0].span.start, 5);
+        assert_eq!(tokens[0].span.end, 9);
+
+        let error = lex_logical_expr("42949672960'b1", 0)
+            .expect_err("oversized sized literal width should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-LITERAL");
+    }
 }

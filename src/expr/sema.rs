@@ -2370,6 +2370,22 @@ mod tests {
     }
 
     #[test]
+    fn sema_host_stub_smoke_covers_direct_trait_helpers() {
+        let host = HostStub::with_defaults();
+        assert_eq!(host.resolve_signal("a").expect("resolve"), SignalHandle(1));
+        assert!(host.resolve_signal("missing").is_err());
+        assert!(matches!(
+            host.sample_value(SignalHandle(1), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(1), 0)
+                .expect("event check")
+        );
+    }
+
+    #[test]
     fn binder_preserves_enum_identity_in_conditional_arms() {
         struct EnumHost;
         impl ExpressionHost for EnumHost {
@@ -2424,8 +2440,23 @@ mod tests {
             }
         }
 
+        let host = EnumHost;
+        assert_eq!(
+            host.resolve_signal("cond").expect("resolve"),
+            SignalHandle(1)
+        );
+        assert!(matches!(
+            host.sample_value(SignalHandle(2), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(2), 0)
+                .expect("event check")
+        );
+
         let ast = parse_logical_expr_ast("cond ? lhs : rhs").expect("parse");
-        let bound = bind_logical_expr_ast(&ast, &EnumHost).expect("bind");
+        let bound = bind_logical_expr_ast(&ast, &host).expect("bind");
         assert!(matches!(bound.root.ty.kind, ExprTypeKind::EnumCore));
         assert_eq!(bound.root.ty.enum_type_id.as_deref(), Some("fsm_state"));
     }
@@ -2482,14 +2513,18 @@ mod tests {
             }
         }
 
-        let error =
-            bind_logical_expr_ast(&parse_logical_expr_ast("ev").expect("parse"), &MixedHost)
-                .expect_err("raw event operands require .triggered()");
+        let host = MixedHost;
+        assert_eq!(host.resolve_signal("ev").expect("resolve"), SignalHandle(1));
+        assert!(std::panic::catch_unwind(|| host.sample_value(SignalHandle(1), 0)).is_err());
+        assert!(std::panic::catch_unwind(|| host.event_occurred(SignalHandle(1), 0)).is_err());
+
+        let error = bind_logical_expr_ast(&parse_logical_expr_ast("ev").expect("parse"), &host)
+            .expect_err("raw event operands require .triggered()");
         assert_eq!(error.code, "EXPR-SEMANTIC-EVENT-VALUE");
 
         let bound = bind_logical_expr_ast(
             &parse_logical_expr_ast("ev.triggered()").expect("parse"),
-            &MixedHost,
+            &host,
         )
         .expect("triggered event should bind");
         assert!(matches!(
@@ -2501,14 +2536,14 @@ mod tests {
 
         let error = bind_logical_expr_ast(
             &parse_logical_expr_ast("bits.triggered()").expect("parse"),
-            &MixedHost,
+            &host,
         )
         .expect_err("non-event triggered call should fail");
         assert_eq!(error.code, "EXPR-SEMANTIC-TRIGGERED");
 
         let error = bind_event_expr_ast(
             &crate::expr::parse_event_expr_ast("posedge real").expect("parse"),
-            &MixedHost,
+            &host,
         )
         .expect_err("edge events require integral operands");
         assert_eq!(error.code, "EXPR-SEMANTIC-INTEGRAL-REQUIRED");
@@ -2604,7 +2639,10 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                unreachable!()
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("0".to_string()),
+                    label: None,
+                })
             }
 
             fn event_occurred(
@@ -2612,9 +2650,24 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<bool, ExprDiagnostic> {
-                unreachable!()
+                Ok(false)
             }
         }
+
+        let host = CastHost;
+        assert_eq!(
+            host.resolve_signal("evt").expect("resolve"),
+            SignalHandle(1)
+        );
+        assert!(matches!(
+            host.sample_value(SignalHandle(2), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(2), 0)
+                .expect("event check")
+        );
 
         let error = cast_target_type(
             &CastTargetAst::RecoveredType {
@@ -2622,7 +2675,7 @@ mod tests {
                 span,
             },
             &bit_vector_type(1, true, false, false),
-            &CastHost,
+            &host,
             span,
         )
         .expect_err("events cannot be recovered cast targets");
@@ -2634,7 +2687,7 @@ mod tests {
                 span,
             },
             &bit_vector_type(1, true, false, false),
-            &CastHost,
+            &host,
             span,
         )
         .expect_err("enum targets require metadata");
@@ -2912,7 +2965,10 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                unreachable!()
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("1".to_string()),
+                    label: None,
+                })
             }
 
             fn event_occurred(
@@ -2920,13 +2976,25 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<bool, ExprDiagnostic> {
-                unreachable!()
+                Ok(false)
             }
         }
 
+        let host = EventHost;
+        assert_eq!(host.resolve_signal("a").expect("resolve"), SignalHandle(1));
+        assert!(matches!(
+            host.sample_value(SignalHandle(1), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(1), 0)
+                .expect("event check")
+        );
+
         let ast = crate::expr::parse_event_expr_ast("a or posedge b or negedge c or edge d iff g")
             .expect("parse");
-        let bound = bind_event_expr_ast(&ast, &EventHost).expect("bind");
+        let bound = bind_event_expr_ast(&ast, &host).expect("bind");
         assert!(matches!(
             bound.terms[0].event,
             BoundEventKind::Named(SignalHandle(1))
@@ -2945,11 +3013,9 @@ mod tests {
         ));
         assert!(bound.terms[3].iff.is_some());
 
-        let error = bind_logical_expr_ast(
-            &parse_logical_expr_ast("missing").expect("parse"),
-            &EventHost,
-        )
-        .expect_err("unknown signal should fail");
+        let error =
+            bind_logical_expr_ast(&parse_logical_expr_ast("missing").expect("parse"), &host)
+                .expect_err("unknown signal should fail");
         assert_eq!(error.code, "EXPR-SEMANTIC-UNKNOWN-SIGNAL");
         assert!(error.notes[0].contains("backend detail"));
     }
@@ -3003,7 +3069,10 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                unreachable!()
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("1010".to_string()),
+                    label: None,
+                })
             }
 
             fn event_occurred(
@@ -3011,15 +3080,27 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<bool, ExprDiagnostic> {
-                unreachable!()
+                Ok(false)
             }
         }
 
-        let bound = bind_logical_expr_ast(
-            &parse_logical_expr_ast("bus[0]").expect("parse"),
-            &CanonicalHost,
-        )
-        .expect("canonical selection should bind through host");
+        let host = CanonicalHost;
+        assert_eq!(
+            host.resolve_signal("bus[0]").expect("resolve"),
+            SignalHandle(7)
+        );
+        assert!(matches!(
+            host.sample_value(SignalHandle(7), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(7), 0)
+                .expect("event check")
+        );
+
+        let bound = bind_logical_expr_ast(&parse_logical_expr_ast("bus[0]").expect("parse"), &host)
+            .expect("canonical selection should bind through host");
         assert!(matches!(
             bound.root.kind,
             BoundLogicalKind::SignalRef {
@@ -3223,7 +3304,10 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                unreachable!()
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("1".to_string()),
+                    label: None,
+                })
             }
 
             fn event_occurred(
@@ -3231,9 +3315,24 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<bool, ExprDiagnostic> {
-                unreachable!()
+                Ok(false)
             }
         }
+
+        let host = VariantHost;
+        assert_eq!(
+            host.resolve_signal("vec").expect("resolve"),
+            SignalHandle(1)
+        );
+        assert!(matches!(
+            host.sample_value(SignalHandle(1), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(1), 0)
+                .expect("event check")
+        );
 
         let span = Span::new(0, 1);
         let cases = vec![
@@ -3514,7 +3613,10 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
-                unreachable!()
+                Ok(crate::expr::SampledValue::Integral {
+                    bits: Some("0011".to_string()),
+                    label: None,
+                })
             }
 
             fn event_occurred(
@@ -3522,9 +3624,24 @@ mod tests {
                 _handle: SignalHandle,
                 _timestamp: u64,
             ) -> Result<bool, ExprDiagnostic> {
-                unreachable!()
+                Ok(false)
             }
         }
+
+        let host = BranchHost;
+        assert_eq!(
+            host.resolve_signal("vec").expect("resolve"),
+            SignalHandle(1)
+        );
+        assert!(matches!(
+            host.sample_value(SignalHandle(1), 0).expect("sample"),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(1), 0)
+                .expect("event check")
+        );
 
         let span = Span::new(4, 9);
         let missing = bind_logical_operand_ref("missing", span, &BranchHost)
@@ -4063,6 +4180,329 @@ mod tests {
             eval_const_node(&non_integral_cast).expect("string casts should be non-constant"),
             None
         );
+    }
+
+    #[test]
+    fn sema_direct_const_binary_helpers_cover_signed_zero_and_shift_edges() {
+        let mut nibble = Vec::new();
+        for ch in ['4', '8', 'f', 'z'] {
+            push_hex_nibble(ch, &mut nibble).expect("hex digit should decode");
+        }
+        assert_eq!(nibble.len(), 16);
+        assert!(push_hex_nibble('?', &mut nibble).is_none());
+
+        let signed_ty = bit_vector_type(4, true, true, true);
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Divide,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-4, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(0, 4),
+                    signed: true,
+                },
+                &signed_ty,
+            )
+            .bits,
+            vec![BoundBit::X; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Modulo,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-3, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(0, 4),
+                    signed: true,
+                },
+                &signed_ty,
+            )
+            .bits,
+            vec![BoundBit::X; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Power,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(0, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(-1, 4),
+                    signed: true,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::X; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Power,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(2, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(-1, 4),
+                    signed: true,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            unsigned_to_bits(0, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftLeft,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(3, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(9, 4),
+                    signed: false,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::Zero; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftArithRight,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-1, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(9, 4),
+                    signed: false,
+                },
+                &signed_ty,
+            )
+            .bits,
+            vec![BoundBit::One; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Divide,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-4, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(-2, 4),
+                    signed: true,
+                },
+                &signed_ty,
+            )
+            .bits,
+            signed_to_bits(2, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Modulo,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-5, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: signed_to_bits(2, 4),
+                    signed: true,
+                },
+                &signed_ty,
+            )
+            .bits,
+            signed_to_bits(-1, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Power,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::X, BoundBit::Zero, BoundBit::One, BoundBit::Zero],
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(2, 4),
+                    signed: false,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::X; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::CaseEq,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::LogicalOr,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::Zero],
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+        assert_eq!(
+            numeric_binary(
+                &BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &BoundIntegralValue {
+                    bits: vec![BoundBit::X],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+                |lhs, rhs| lhs + rhs,
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+    }
+
+    #[test]
+    fn sema_literal_decoder_and_const_wrappers_cover_non_constant_paths() {
+        let span = Span::new(1, 4);
+        assert_eq!(
+            part_select_width(1, 3, span).expect("ascending widths are valid"),
+            3
+        );
+        assert!(
+            try_eval_const_i64(&const_bits_node(&[BoundBit::X], false))
+                .expect("x-valued constants should not error")
+                .is_none()
+        );
+        assert_eq!(
+            eval_const_i64(&const_bits_node(&[BoundBit::One; 128], false), "ctx", span)
+                .expect_err("oversized constants should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let invalid_hex = crate::expr::ast::IntegralLiteral {
+            width: Some(4),
+            signed: false,
+            base: crate::expr::ast::IntegralBase::Hex,
+            digits: "?".to_string(),
+            span,
+        };
+        assert_eq!(
+            decode_integral_literal(&invalid_hex)
+                .expect_err("invalid hex digits should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-LITERAL"
+        );
+
+        let invalid_decimal = crate::expr::ast::IntegralLiteral {
+            width: None,
+            signed: true,
+            base: crate::expr::ast::IntegralBase::Decimal,
+            digits: "340282366920938463463374607431768211456".to_string(),
+            span,
+        };
+        assert_eq!(
+            decode_integral_literal(&invalid_decimal)
+                .expect_err("decimal overflow should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-LITERAL"
+        );
+
+        let signal = BoundLogicalNode {
+            ty: bit_vector_type(1, true, false, false),
+            span,
+            kind: BoundLogicalKind::SignalRef {
+                handle: SignalHandle(9),
+            },
+        };
+        for node in [
+            BoundLogicalNode {
+                ty: signal.ty.clone(),
+                span,
+                kind: BoundLogicalKind::Parenthesized {
+                    expr: Box::new(signal.clone()),
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(1, true, false, false),
+                span,
+                kind: BoundLogicalKind::Cast {
+                    kind: BoundCastKind::Static,
+                    expr: Box::new(signal.clone()),
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(1, true, false, false),
+                span,
+                kind: BoundLogicalKind::Unary {
+                    op: UnaryOpAst::BitNot,
+                    expr: Box::new(signal.clone()),
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(1, true, false, false),
+                span,
+                kind: BoundLogicalKind::Binary {
+                    op: BinaryOpAst::Add,
+                    left: Box::new(signal.clone()),
+                    right: Box::new(const_bits_node(&[BoundBit::One], false)),
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(1, true, false, false),
+                span,
+                kind: BoundLogicalKind::Conditional {
+                    condition: Box::new(signal.clone()),
+                    when_true: Box::new(const_bits_node(&[BoundBit::One], false)),
+                    when_false: Box::new(const_bits_node(&[BoundBit::Zero], false)),
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(2, true, false, true),
+                span,
+                kind: BoundLogicalKind::Concatenation {
+                    items: vec![signal.clone(), const_bits_node(&[BoundBit::One], false)],
+                },
+            },
+            BoundLogicalNode {
+                ty: bit_vector_type(2, true, false, true),
+                span,
+                kind: BoundLogicalKind::Replication {
+                    count: 2,
+                    expr: Box::new(signal.clone()),
+                },
+            },
+        ] {
+            assert_eq!(
+                eval_const_node(&node).expect("non-constant wrappers should not error"),
+                None
+            );
+        }
     }
 
     fn const_bits_node(bits: &[BoundBit], signed: bool) -> BoundLogicalNode {

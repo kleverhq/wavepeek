@@ -1269,13 +1269,15 @@ mod tests {
 
     use super::{
         AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, FastEventEvalHost,
-        RequestedSignal, build_candidate_schedule, build_snapshot, cached_event_handles,
-        cached_sample_value, candidate_times_to_indices, resolve_requested_signals,
-        resolve_token_to_path, select_engine_mode, should_use_stream_candidates_in_fused,
+        IndexDecodeCache, RequestedSignal, SampleCache, build_candidate_schedule, build_snapshot,
+        cached_event_handles, cached_event_sources, cached_sample_value,
+        candidate_times_to_indices, resolve_requested_signals, resolve_token_to_path, run_baseline,
+        run_edge_fast, run_fused, select_engine_mode, should_use_stream_candidates_in_fused,
         time_window_indices,
     };
     use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
     use crate::cli::limits::LimitArg;
+    use crate::engine::expr_runtime::bind_waveform_event_expr;
     use crate::expr::SignalHandle;
     use crate::expr::host::{ExprStorage, ExprType, ExprTypeKind, ExpressionHost, SampledValue};
     use crate::expr::sema::{BoundEventExpr, BoundEventKind, BoundEventTerm};
@@ -1565,6 +1567,28 @@ mod tests {
         };
 
         assert_eq!(
+            fast.resolve_signal("top.sig")
+                .expect("resolve should forward"),
+            host.resolve_signal("top.sig").expect("base resolve")
+        );
+        assert!(matches!(
+            fast.signal_type(
+                host.resolve_signal("top.sig")
+                    .expect("signal should resolve")
+            )
+            .expect("type should forward")
+            .kind,
+            ExprTypeKind::BitVector
+        ));
+        assert!(
+            fast.event_occurred(
+                host.resolve_signal("top.sig")
+                    .expect("signal should resolve"),
+                5
+            )
+            .is_err()
+        );
+        assert_eq!(
             fast.sample_value(SignalHandle(9), 5)
                 .expect("current sample"),
             SampledValue::Integral {
@@ -1588,6 +1612,135 @@ mod tests {
             )
             .is_ok()
         );
+
+        let sources = cached_event_sources(&host, &[host.resolve_signal("top.sig").unwrap()])
+            .expect("cached event sources should resolve");
+        assert_eq!(sources.len(), 1);
+        assert_eq!(sources[0].1.path, "top.sig");
+    }
+
+    #[test]
+    fn change_cache_helpers_cover_request_reuse_and_schedule_edges() {
+        let fixture = write_fixture(TEST_VCD, "change-cache-helpers.vcd");
+        let waveform = std::rc::Rc::new(std::cell::RefCell::new(
+            Waveform::open(fixture.path()).expect("waveform should open"),
+        ));
+        let resolved = waveform
+            .borrow()
+            .resolve_signals(&["top.sig".to_string()])
+            .expect("signal should resolve");
+
+        let mut sample_cache = SampleCache::default();
+        let first = sample_cache
+            .sample_requested_batch(&waveform, &resolved, 5)
+            .expect("first sample should work");
+        let second = sample_cache
+            .sample_requested_batch(&waveform, &resolved, 5)
+            .expect("cached sample should work");
+        assert_eq!(first, second);
+
+        let mut decode_cache = IndexDecodeCache::default();
+        let waveform_ref = waveform.borrow();
+        let first_bits = decode_cache
+            .bits(&waveform_ref, &resolved[0], 0)
+            .expect("decode should work");
+        let second_bits = decode_cache
+            .bits(&waveform_ref, &resolved[0], 0)
+            .expect("cached decode should work");
+        assert_eq!(first_bits, second_bits);
+        drop(waveform_ref);
+
+        assert_eq!(
+            build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule should build"),
+            vec![(0, None), (10, Some(5))]
+        );
+    }
+
+    #[test]
+    fn run_edge_fast_falls_back_to_baseline_for_small_edge_workloads() {
+        let fixture = write_fixture(TEST_VCD, "change-edge-fast-fallback.vcd");
+        let waveform = std::rc::Rc::new(std::cell::RefCell::new(
+            Waveform::open(fixture.path()).expect("waveform should open"),
+        ));
+        let (host, bound_event) =
+            bind_waveform_event_expr(waveform.clone(), Some("top"), "posedge sig")
+                .expect("event expression should bind");
+        let requested_signals = vec![RequestedSignal {
+            display: "sig".to_string(),
+            path: "top.sig".to_string(),
+        }];
+        let requested_resolved = waveform
+            .borrow()
+            .resolve_signals(&["top.sig".to_string()])
+            .expect("signal should resolve");
+        let requested_expr_sources = waveform
+            .borrow()
+            .resolve_expr_signals(&["top.sig".to_string()])
+            .expect("expr signal should resolve");
+        let tracked_signal_handles = vec![host.resolve_signal("top.sig").expect("handle")];
+        let dump_tick = crate::engine::time::ParsedTime {
+            value: 1,
+            unit: crate::engine::time::TimeUnit::Ns,
+        };
+
+        let baseline = run_baseline(
+            &waveform,
+            &host,
+            "posedge sig",
+            &bound_event,
+            &tracked_signal_handles,
+            &requested_signals,
+            &requested_resolved,
+            &requested_expr_sources,
+            0,
+            5,
+            0,
+            dump_tick,
+            None,
+            ChangeCandidateCollectionMode::Random,
+            None,
+        )
+        .expect("baseline should succeed");
+        let edge_fast = run_edge_fast(
+            &waveform,
+            &host,
+            "posedge sig",
+            &bound_event,
+            &tracked_signal_handles,
+            &requested_signals,
+            &requested_resolved,
+            &requested_expr_sources,
+            0,
+            5,
+            0,
+            dump_tick,
+            None,
+            ChangeCandidateCollectionMode::Random,
+            false,
+        )
+        .expect("edge-fast fallback should succeed");
+        assert_eq!(edge_fast.snapshots, baseline.snapshots);
+        assert_eq!(edge_fast.truncated, baseline.truncated);
+
+        let fused = run_fused(
+            &waveform,
+            &host,
+            "posedge sig",
+            &bound_event,
+            &tracked_signal_handles,
+            &requested_signals,
+            &requested_resolved,
+            &requested_expr_sources,
+            0,
+            5,
+            0,
+            dump_tick,
+            None,
+            ChangeCandidateCollectionMode::Random,
+        )
+        .expect("fused should succeed");
+        assert_eq!(fused.snapshots, baseline.snapshots);
+        assert_eq!(fused.truncated, baseline.truncated);
     }
 
     const TEST_VCD: &str = concat!(

@@ -1475,10 +1475,14 @@ fn logical_parse_diag(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_event_expr_ast, parse_logical_expr_ast};
+    use super::{
+        LogicalParser, LogicalToken, LogicalTokenKind, StrictParser, parse_event_expr_ast,
+        parse_logical_expr_ast, parse_logical_expr_with_offset,
+    };
     use crate::expr::{
         BasicEventAst, DiagnosticLayer,
-        ast::{IntegralBase, LogicalExprNode, UnaryOpAst},
+        ast::{IntegralBase, IntegralLiteral, LogicalExprNode, UnaryOpAst},
+        diagnostic::Span,
     };
 
     #[test]
@@ -1771,5 +1775,135 @@ mod tests {
         let error =
             parse_logical_expr_ast("logic[1").expect_err("cast widths need a closing bracket");
         assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+    }
+
+    #[test]
+    fn private_parser_helpers_cover_empty_inputs_and_cast_width_edges() {
+        let error = parse_event_expr_ast("   ").expect_err("empty event expression should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-EMPTY");
+        assert_eq!(error.primary_span, Span::new(0, 3));
+
+        let error = parse_logical_expr_with_offset("   ", 7).expect_err("empty logical expression");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EMPTY");
+        assert_eq!(error.primary_span, Span::new(7, 10));
+
+        let mut event_parser = StrictParser {
+            source: "",
+            tokens: vec![],
+            index: 0,
+        };
+        assert_eq!(
+            event_parser
+                .parse_event_expr()
+                .expect_err("missing event term should fail")
+                .code,
+            "EXPR-PARSE-EVENT-BROKEN-UNION"
+        );
+
+        let mut basic_event_parser = StrictParser {
+            source: "",
+            tokens: vec![],
+            index: 0,
+        };
+        assert_eq!(
+            basic_event_parser
+                .parse_basic_event()
+                .expect_err("missing basic event should fail")
+                .code,
+            "EXPR-PARSE-EVENT-BROKEN-UNION"
+        );
+
+        let eof = LogicalToken {
+            kind: LogicalTokenKind::Eof,
+            span: Span::new(0, 0),
+        };
+        let parser = LogicalParser {
+            source: "logic",
+            tokens: vec![eof.clone()],
+            index: 0,
+        };
+        assert!(matches!(parser.peek_kind(0), Some(LogicalTokenKind::Eof)));
+        assert!(parser.peek_kind(1).is_none());
+
+        let mut cast_parser = LogicalParser {
+            source: "bit[0]",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::LeftBracket,
+                    span: Span::new(3, 4),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::IntegralLiteral(IntegralLiteral {
+                        width: None,
+                        signed: true,
+                        base: IntegralBase::Decimal,
+                        digits: "0".to_string(),
+                        span: Span::new(4, 5),
+                    }),
+                    span: Span::new(4, 5),
+                },
+                eof.clone(),
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            cast_parser
+                .parse_bit_logic_target(false, false, Span::new(0, 3))
+                .expect_err("zero-width cast target should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-CAST"
+        );
+
+        let mut bad_width_parser = LogicalParser {
+            source: "bit[name]",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::LeftBracket,
+                    span: Span::new(3, 4),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("name".to_string()),
+                    span: Span::new(4, 8),
+                },
+                eof.clone(),
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            bad_width_parser
+                .parse_bit_logic_target(true, false, Span::new(0, 3))
+                .expect_err("non-integral cast target width should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-CAST"
+        );
+
+        let mut missing_bracket_parser = LogicalParser {
+            source: "bit[2",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::LeftBracket,
+                    span: Span::new(3, 4),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::IntegralLiteral(IntegralLiteral {
+                        width: None,
+                        signed: true,
+                        base: IntegralBase::Decimal,
+                        digits: "2".to_string(),
+                        span: Span::new(4, 5),
+                    }),
+                    span: Span::new(4, 5),
+                },
+                eof,
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            missing_bracket_parser
+                .parse_bit_logic_target(false, true, Span::new(0, 3))
+                .expect_err("missing cast target bracket should fail")
+                .code,
+            "EXPR-PARSE-LOGICAL-CAST"
+        );
     }
 }

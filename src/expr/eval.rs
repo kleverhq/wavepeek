@@ -2823,4 +2823,97 @@ mod tests {
             Ok(*self.events.get(&(handle, timestamp)).unwrap_or(&false))
         }
     }
+
+    #[test]
+    fn direct_host_and_event_helpers_cover_remaining_runtime_smoke_paths() {
+        let host = HostStub::default();
+        assert_eq!(
+            host.resolve_signal("anything").expect("resolve"),
+            SignalHandle(1)
+        );
+        assert!(matches!(
+            host.signal_type(SignalHandle(1)).expect("type").kind,
+            ExprTypeKind::BitVector
+        ));
+        assert!(matches!(
+            host.sample_value(SignalHandle(9), 0).expect("sample"),
+            SampledValue::Integral { .. }
+        ));
+        assert!(
+            !host
+                .event_occurred(SignalHandle(9), 0)
+                .expect("event check")
+        );
+
+        let fixture = FixtureHost::new()
+            .with_integral(3, Some("0"), Some("1"))
+            .with_event(4, true);
+        assert_eq!(
+            fixture.resolve_signal("ignored").expect("resolve"),
+            SignalHandle(0)
+        );
+        assert!(fixture.signal_type(SignalHandle(99)).is_err());
+        assert!(fixture.sample_value(SignalHandle(3), 1).is_ok());
+        assert!(fixture.sample_value(SignalHandle(3), 9).is_err());
+        assert!(
+            fixture
+                .event_occurred(SignalHandle(4), 1)
+                .expect("event check")
+        );
+
+        let frame = EventEvalFrame {
+            previous_timestamp: Some(0),
+            timestamp: 1,
+            tracked_signals: &[],
+        };
+        assert!(
+            named_event_matches(&fixture, SignalHandle(3), &frame, &mut EvalCache::default())
+                .expect("named events should compare sampled values")
+        );
+    }
+
+    #[test]
+    fn coercion_helpers_cover_real_cast_failures_and_string_identity_rules() {
+        let real_target = real_type();
+        let string_target = string_type();
+        let integral_source = integral_type(4, true, false);
+
+        let error = coerce_runtime_to_type(
+            RuntimeValue {
+                ty: integral_source.clone(),
+                payload: RuntimeValuePayload::Integral {
+                    bits: vec![BoundBit::X, BoundBit::Zero, BoundBit::One, BoundBit::Zero],
+                    label: None,
+                },
+            },
+            &real_target,
+        )
+        .expect_err("x/z integral values cannot coerce to real");
+        assert_eq!(error.code, "EXPR-RUNTIME-REAL-CAST");
+
+        let error = coerce_runtime_to_type(
+            RuntimeValue {
+                ty: string_target.clone(),
+                payload: RuntimeValuePayload::String {
+                    value: "abc".to_string(),
+                },
+            },
+            &real_target,
+        )
+        .expect_err("strings cannot coerce to real");
+        assert_eq!(error.code, "EXPR-RUNTIME-CAST");
+
+        let error = coerce_runtime_to_type(
+            RuntimeValue {
+                ty: integral_source,
+                payload: RuntimeValuePayload::Integral {
+                    bits: vec![BoundBit::One],
+                    label: None,
+                },
+            },
+            &string_target,
+        )
+        .expect_err("integral values cannot coerce to string");
+        assert_eq!(error.code, "EXPR-RUNTIME-CAST");
+    }
 }

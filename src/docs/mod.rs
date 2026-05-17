@@ -1146,6 +1146,81 @@ mod tests {
         )
         .expect("exact title should match");
         assert_eq!(exact_title.match_kind, MatchKind::TitleExact);
+
+        let exact_id = search_match(
+            &fake_topic("commands/change", "Rename me", "s", "commands", &[]),
+            "commands/change",
+            &["commands/change".to_string()],
+        )
+        .expect("exact id should match");
+        assert_eq!(exact_id.match_kind, MatchKind::IdExact);
+    }
+
+    #[test]
+    fn export_helpers_report_filesystem_collisions() {
+        let nested = fake_topic("nested/topic", "Nested", "summary", "misc", &["Nested"]);
+        let catalog = DocsCatalog {
+            topics: BTreeMap::from([(nested.summary.id.clone(), nested.clone())]),
+        };
+        let manifest = ExportManifest {
+            kind: EXPORT_KIND.to_string(),
+            export_format_version: EXPORT_FORMAT_VERSION,
+            cli_name: "wavepeek".to_string(),
+            cli_version: "test".to_string(),
+            topics: catalog.logical_topic_summaries(),
+        };
+
+        let temp = tempdir().expect("tempdir should be created");
+        let temp_file = temp.path().join("occupied");
+        std::fs::write(&temp_file, "file").expect("blocking file should be written");
+        let error = write_export_tree(&temp_file, &catalog, &manifest)
+            .expect_err("file-backed export root should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("failed to create temporary export directory")
+        );
+
+        let blocked_parent = temp.path().join("blocked-parent");
+        std::fs::create_dir(&blocked_parent).expect("directory should be created");
+        std::fs::write(blocked_parent.join("nested"), "file")
+            .expect("blocking parent should be written");
+        let error = write_export_tree(&blocked_parent, &catalog, &manifest)
+            .expect_err("file-backed topic parent should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("failed to create export directory")
+        );
+
+        let blocked_topic = temp.path().join("blocked-topic");
+        std::fs::create_dir_all(blocked_topic.join("nested/topic.md"))
+            .expect("topic collision directory should be created");
+        let error = write_export_tree(&blocked_topic, &catalog, &manifest)
+            .expect_err("directory-backed topic output should fail");
+        assert!(error.to_string().contains("failed to write exported topic"));
+
+        let blocked_manifest = temp.path().join("blocked-manifest");
+        std::fs::create_dir(&blocked_manifest).expect("manifest dir should be created");
+        std::fs::create_dir(blocked_manifest.join("manifest.json"))
+            .expect("manifest collision directory should be created");
+        let error = write_export_tree(&blocked_manifest, &catalog, &manifest)
+            .expect_err("directory-backed manifest path should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("failed to write export manifest")
+        );
+
+        let parent_file = temp.path().join("parent-file");
+        std::fs::write(&parent_file, "file").expect("parent file should be written");
+        let error = export_catalog(&parent_file.join("child"), false)
+            .expect_err("file-backed export parent should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("failed to create export parent directory")
+        );
     }
 
     fn fake_topic(

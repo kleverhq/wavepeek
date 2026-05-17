@@ -402,13 +402,14 @@ fn into_engine_command(command: Command) -> EngineCommand {
 mod tests {
     use std::path::PathBuf;
 
-    use clap::Parser;
+    use clap::{CommandFactory, Parser};
 
     use crate::cli::limits::LimitArg;
 
     use super::{
-        Cli, EngineCommand, clap_error_detail, help_hint_for_rendered_clap_error,
-        into_engine_command, normalize_clap_error,
+        Cli, EngineCommand, build_cli_command, change_tune_overrides_requested, clap_error_detail,
+        handle_parse_error, help_hint_for_rendered_clap_error, into_engine_command,
+        normalize_clap_error,
     };
 
     #[test]
@@ -650,5 +651,57 @@ mod tests {
         let rendered = "error: unexpected argument '--wat' found\n\nUsage: wavepeek info --waves <FILE>\n\nFor more information, try '--help'.\n";
         let hint = help_hint_for_rendered_clap_error(rendered);
         assert_eq!(hint, "See 'wavepeek info --help'.");
+    }
+
+    #[test]
+    fn cli_helper_functions_cover_override_detection_and_fallback_paths() {
+        let command = build_cli_command();
+        let info = command
+            .find_subcommand("info")
+            .expect("info subcommand should exist")
+            .clone();
+        assert!(info.get_arguments().any(|arg| arg.get_id() == "help_short"));
+        assert!(info.get_arguments().any(|arg| arg.get_id() == "help_long"));
+
+        let matches = Cli::command()
+            .try_get_matches_from([
+                "wavepeek",
+                "change",
+                "--waves",
+                "fixtures/sample.vcd",
+                "--signals",
+                "clk",
+                "--tune-engine",
+                "fused",
+            ])
+            .expect("change command should parse");
+        assert!(change_tune_overrides_requested(&matches));
+
+        let matches = Cli::command()
+            .try_get_matches_from([
+                "wavepeek",
+                "change",
+                "--waves",
+                "fixtures/sample.vcd",
+                "--signals",
+                "clk",
+            ])
+            .expect("change command should parse");
+        assert!(!change_tune_overrides_requested(&matches));
+
+        let help_error = Cli::command()
+            .try_get_matches_from(["wavepeek", "info", "--help"])
+            .expect_err("--help should short-circuit through clap");
+        handle_parse_error(help_error).expect("display-help errors should print cleanly");
+
+        assert_eq!(
+            clap_error_detail("plain fallback detail"),
+            "plain fallback detail"
+        );
+        assert_eq!(clap_error_detail("\n\n   \n"), "invalid arguments");
+        assert_eq!(
+            help_hint_for_rendered_clap_error("Usage: nope info --waves <FILE>\n"),
+            "See 'wavepeek --help'."
+        );
     }
 }

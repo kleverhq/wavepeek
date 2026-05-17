@@ -1357,13 +1357,13 @@ mod tests {
     use super::{
         EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, STABLE_SCOPE_KIND_ALIASES,
         STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform, classify_edge,
-        collect_scope_entries, collect_scope_signals, duplicate_preserving_projection,
-        empty_sampled_value, enum_label_for_bits, expr_type_from_var, floor_time_table_index,
-        format_timescale, map_wellen_error, normalize_time, normalize_to_four_state,
-        resolve_signal_ref_with_width, resolve_var_ref, scope_type_alias,
-        should_emit_delta_and_update_baseline, should_use_multi_thread_signal_load,
-        signal_entry_from_var_ref, sort_scope_refs, sort_signal_entries, time_window_indices,
-        timescale_unit_suffix, var_type_alias,
+        collect_scope_entries, collect_scope_signals, decode_signal_bits,
+        duplicate_preserving_projection, empty_sampled_value, enum_label_for_bits,
+        expr_type_from_var, floor_time_table_index, format_timescale, map_wellen_error,
+        normalize_time, normalize_to_four_state, resolve_signal_ref_with_width, resolve_var_ref,
+        scope_type_alias, should_emit_delta_and_update_baseline,
+        should_use_multi_thread_signal_load, signal_entry_from_var_ref, sort_scope_refs,
+        sort_signal_entries, time_window_indices, timescale_unit_suffix, var_type_alias,
     };
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
@@ -2242,6 +2242,78 @@ mod tests {
     }
 
     #[test]
+    fn waveform_helper_tables_cover_decode_timescale_and_extra_var_types() {
+        assert_eq!(
+            decode_signal_bits(wellen::SignalValue::Event, "top.ev")
+                .expect("events should decode as empty bit strings"),
+            Some(String::new())
+        );
+        for value in [
+            wellen::SignalValue::String("oops"),
+            wellen::SignalValue::Real(1.25),
+        ] {
+            assert!(
+                decode_signal_bits(value, "top.bad")
+                    .expect_err("non-bit-vector signal values should fail")
+                    .to_string()
+                    .contains("unsupported non-bit-vector encoding")
+            );
+        }
+
+        for (unit, expected) in [
+            (wellen::TimescaleUnit::ZeptoSeconds, "zs"),
+            (wellen::TimescaleUnit::AttoSeconds, "as"),
+            (wellen::TimescaleUnit::FemtoSeconds, "fs"),
+            (wellen::TimescaleUnit::PicoSeconds, "ps"),
+            (wellen::TimescaleUnit::NanoSeconds, "ns"),
+            (wellen::TimescaleUnit::MicroSeconds, "us"),
+            (wellen::TimescaleUnit::MilliSeconds, "ms"),
+            (wellen::TimescaleUnit::Seconds, "s"),
+        ] {
+            assert_eq!(timescale_unit_suffix(unit).expect("known unit"), expected);
+        }
+
+        let typed_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-typed\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var byte 8 ! byte_v $end\n",
+                "$var shortint 16 \" short_v $end\n",
+                "$var int 32 # int_v $end\n",
+                "$var longint 64 $ long_v $end\n",
+                "$var integer 32 % integer_v $end\n",
+                "$var time 64 & time_v $end\n",
+                "$var bit 1 ' bit_v $end\n",
+                "$var logic 4 ( logic_v $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#0\n"
+            ),
+            "typed-vars.vcd",
+        );
+        let typed = Waveform::open(typed_fixture.path()).expect("typed fixture should open");
+        let hierarchy = typed.inner.hierarchy();
+        for (path, expected_width, expected_four_state, expected_signed) in [
+            ("top.byte_v", 8, false, true),
+            ("top.short_v", 16, false, true),
+            ("top.int_v", 32, false, true),
+            ("top.long_v", 64, false, true),
+            ("top.integer_v", 32, true, true),
+            ("top.time_v", 64, true, false),
+            ("top.bit_v", 1, false, false),
+            ("top.logic_v", 4, true, false),
+        ] {
+            let var = &hierarchy[resolve_var_ref(hierarchy, path).expect("var should resolve")];
+            let ty = expr_type_from_var(hierarchy, var, path).expect("expr type");
+            assert_eq!(ty.width, expected_width, "{path}");
+            assert_eq!(ty.is_four_state, expected_four_state, "{path}");
+            assert_eq!(ty.is_signed, expected_signed, "{path}");
+        }
+    }
+
+    #[test]
     fn waveform_direct_helpers_cover_resolution_sorting_and_expr_types() {
         let fixture = write_fixture(TEST_VCD, "direct-helpers.vcd");
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
@@ -2510,6 +2582,111 @@ mod tests {
             0,
             super::ChangeCandidateCollectionMode::Auto,
         ));
+    }
+
+    #[test]
+    fn waveform_error_helpers_cover_missing_metadata_and_bogus_loaded_signals() {
+        let no_timescale = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-no-timescale\n$end\n",
+                "$scope module top $end\n",
+                "$var wire 1 ! sig $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#0\n0!\n"
+            ),
+            "missing-timescale.vcd",
+        );
+        let waveform = Waveform::open(no_timescale.path()).expect("fixture should open");
+        assert!(
+            waveform
+                .metadata()
+                .expect_err("missing timescale metadata should fail")
+                .to_string()
+                .contains("timescale")
+        );
+
+        let fixture = write_fixture(TEST_VCD, "bogus-signal-errors.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.clk".to_string()])
+            .expect("signal should resolve");
+        assert_eq!(
+            waveform
+                .sample_resolved_optional(&resolved, 0)
+                .expect("resolved signal should sample")[0]
+                .bits,
+            Some("0".to_string())
+        );
+
+        let event = waveform
+            .resolve_expr_signal("top.clk")
+            .expect("expr signal should resolve");
+        let fake_event = super::ExprResolvedSignal {
+            path: event.path.clone(),
+            signal_ref: event.signal_ref,
+            expr_type: crate::expr::ExprType {
+                kind: crate::expr::ExprTypeKind::Event,
+                storage: crate::expr::ExprStorage::Scalar,
+                width: 0,
+                is_four_state: false,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            },
+        };
+        assert!(
+            waveform
+                .sample_expr_value(&fake_event, 0)
+                .expect_err("raw events cannot be sampled as values")
+                .to_string()
+                .contains("raw event")
+        );
+
+        let event_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-event\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var event 1 ! ev $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n1!\n"
+            ),
+            "bogus-event.vcd",
+        );
+        let mut event_waveform = Waveform::open(event_fixture.path()).expect("event waveform");
+        let event_resolved = event_waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event signal should resolve");
+        let sampled_as_value = super::ExprResolvedSignal {
+            path: event_resolved.path.clone(),
+            signal_ref: event_resolved.signal_ref,
+            expr_type: crate::expr::ExprType {
+                kind: crate::expr::ExprTypeKind::BitVector,
+                storage: crate::expr::ExprStorage::Scalar,
+                width: 1,
+                is_four_state: true,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            },
+        };
+        assert!(
+            event_waveform
+                .sample_expr_value(&sampled_as_value, 5)
+                .expect_err("event payloads cannot be sampled as values")
+                .to_string()
+                .contains("produced event data through value sampling")
+        );
+        assert!(
+            !event_waveform
+                .expr_event_occurred(&event_resolved, 4)
+                .expect("non-sampled timestamps should not report events")
+        );
+        assert_eq!(resolved.len(), 1);
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

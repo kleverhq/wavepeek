@@ -405,6 +405,16 @@ mod tests {
                 time_start: "0ns".to_string(),
                 time_end: "1ns".to_string(),
             },
+            WaveformMetadata {
+                time_unit: "1ns".to_string(),
+                time_start: format!("{}s", u64::MAX),
+                time_end: "1ns".to_string(),
+            },
+            WaveformMetadata {
+                time_unit: "1ns".to_string(),
+                time_start: "0ns".to_string(),
+                time_end: format!("{}s", u64::MAX),
+            },
         ] {
             assert!(
                 parse_dump_time_context(&metadata).is_err(),

@@ -379,6 +379,10 @@ mod tests {
         let error = parse_bound_time(&format!("{}ns", u64::MAX), "--to", huge_context, &md)
             .expect_err("raw out-of-range should fail");
         assert!(error.to_string().contains("supported raw timestamp range"));
+
+        let error = parse_bound_time(&format!("{}s", u64::MAX), "--to", context, &md)
+            .expect_err("too-large time should fail");
+        assert!(error.to_string().contains("too large to process safely"));
     }
 
     #[test]
@@ -422,6 +426,40 @@ mod tests {
         assert_eq!(rows[0].time, "5ns");
         assert_eq!(rows[1].kind, PropertyResultKind::Deassert);
         assert_eq!(rows[1].time, "10ns");
+
+        let assert_only = run(PropertyArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: Some("0ns".to_string()),
+            to: Some("10ns".to_string()),
+            scope: Some("top".to_string()),
+            on: None,
+            eval: "sig".to_string(),
+            capture: CaptureMode::Assert,
+            json: false,
+        })
+        .expect("assert capture should succeed");
+        let CommandData::Property(rows) = assert_only.data else {
+            panic!("property command should return property rows");
+        };
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].kind, PropertyResultKind::Assert);
+
+        let error = run(PropertyArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: Some("10ns".to_string()),
+            to: Some("0ns".to_string()),
+            scope: Some("top".to_string()),
+            on: Some("posedge sig".to_string()),
+            eval: "sig".to_string(),
+            capture: CaptureMode::Match,
+            json: false,
+        })
+        .expect_err("reversed time bounds should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("--from must be less than or equal to --to")
+        );
     }
 
     #[test]

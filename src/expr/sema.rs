@@ -4384,6 +4384,207 @@ mod tests {
             .bits,
             vec![BoundBit::X]
         );
+
+        let unsigned_ty = bit_vector_type(4, true, false, true);
+        for (op, expected) in [
+            (BinaryOpAst::Subtract, unsigned_to_bits(2, 4)),
+            (BinaryOpAst::Multiply, unsigned_to_bits(15, 4)),
+            (BinaryOpAst::Divide, unsigned_to_bits(1, 4)),
+            (BinaryOpAst::Modulo, unsigned_to_bits(2, 4)),
+        ] {
+            assert_eq!(
+                eval_const_binary(
+                    op,
+                    BoundIntegralValue {
+                        bits: unsigned_to_bits(5, 4),
+                        signed: false,
+                    },
+                    BoundIntegralValue {
+                        bits: unsigned_to_bits(3, 4),
+                        signed: false,
+                    },
+                    &unsigned_ty,
+                )
+                .bits,
+                expected,
+                "{op:?}"
+            );
+        }
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Power,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(3, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(2, 4),
+                    signed: false,
+                },
+                &unsigned_ty,
+            )
+            .bits,
+            unsigned_to_bits(9, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftLeft,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(3, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(1, 4),
+                    signed: false,
+                },
+                &unsigned_ty,
+            )
+            .bits,
+            unsigned_to_bits(6, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftRight,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(8, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(9, 4),
+                    signed: false,
+                },
+                &unsigned_ty,
+            )
+            .bits,
+            vec![BoundBit::Zero; 4]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftArithRight,
+                BoundIntegralValue {
+                    bits: signed_to_bits(-4, 4),
+                    signed: true,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(1, 4),
+                    signed: false,
+                },
+                &signed_ty,
+            )
+            .bits,
+            vec![BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::Zero]
+        );
+        for (op, expected) in [
+            (
+                BinaryOpAst::BitAnd,
+                vec![
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                    BoundBit::One,
+                    BoundBit::Zero,
+                ],
+            ),
+            (
+                BinaryOpAst::BitOr,
+                vec![BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::Zero],
+            ),
+            (
+                BinaryOpAst::BitXor,
+                vec![BoundBit::One, BoundBit::One, BoundBit::Zero, BoundBit::Zero],
+            ),
+        ] {
+            assert_eq!(
+                eval_const_binary(
+                    op,
+                    BoundIntegralValue {
+                        bits: vec![BoundBit::One, BoundBit::Zero, BoundBit::One, BoundBit::Zero],
+                        signed: false,
+                    },
+                    BoundIntegralValue {
+                        bits: vec![BoundBit::Zero, BoundBit::One, BoundBit::One, BoundBit::Zero],
+                        signed: false,
+                    },
+                    &unsigned_ty,
+                )
+                .bits,
+                expected,
+                "{op:?}"
+            );
+        }
+
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::Plus,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &unsigned_ty,
+            )
+            .bits,
+            vec![
+                BoundBit::Zero,
+                BoundBit::Zero,
+                BoundBit::Zero,
+                BoundBit::One
+            ]
+        );
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::LogicalNot,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::Zero]
+        );
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::LogicalNot,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::X],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+        for (op, expected) in [
+            (UnaryOpAst::ReduceAnd, BoundBit::X),
+            (UnaryOpAst::ReduceNand, BoundBit::X),
+            (UnaryOpAst::ReduceOr, BoundBit::One),
+            (UnaryOpAst::ReduceNor, BoundBit::Zero),
+            (UnaryOpAst::ReduceXor, BoundBit::X),
+        ] {
+            assert_eq!(
+                eval_const_unary(
+                    op,
+                    BoundIntegralValue {
+                        bits: vec![BoundBit::One, BoundBit::X],
+                        signed: false,
+                    },
+                    &bit_vector_type(2, true, false, true),
+                )
+                .bits,
+                vec![expected],
+                "{op:?}"
+            );
+        }
+        assert_eq!(bits_to_i64(&[], true), Some(0));
+        assert_eq!(bits_to_i64(&[BoundBit::One; 64], true), Some(-1));
+        assert_eq!(
+            bits_to_i128(&[BoundBit::One, BoundBit::Zero], false),
+            Some(2)
+        );
+        assert_eq!(reduce_and(&[BoundBit::X, BoundBit::One]), BoundBit::X);
+        assert_eq!(reduce_or(&[BoundBit::X, BoundBit::Zero]), BoundBit::X);
+        assert_eq!(reduce_xor(&[BoundBit::X, BoundBit::Zero]), BoundBit::X);
+        assert_eq!(bitwise_and(BoundBit::One, BoundBit::One), BoundBit::One);
+        assert_eq!(bitwise_or(BoundBit::X, BoundBit::Zero), BoundBit::X);
     }
 
     #[test]

@@ -929,6 +929,13 @@ mod tests {
             index: 1,
         };
         assert!(!lexer.consume_real_exponent());
+        let mut valid_exponent = LogicalLexer {
+            source: "1E-2",
+            span_offset: 0,
+            index: 1,
+        };
+        assert!(valid_exponent.consume_real_exponent());
+        assert_eq!(valid_exponent.index, 4);
 
         let mut string_lexer = LogicalLexer {
             source: "\"unterminated",
@@ -953,5 +960,49 @@ mod tests {
                 .code,
             "EXPR-PARSE-LOGICAL-STRING"
         );
+
+        let mut good_escape_lexer = LogicalLexer {
+            source: "\"\\n\\r\\t\\\\\\\"\"",
+            span_offset: 0,
+            index: 0,
+        };
+        let literal = good_escape_lexer
+            .lex_string_literal()
+            .expect("supported escapes should decode");
+        assert_eq!(literal.value, "\n\r\t\\\"");
+
+        let tokens = lex_logical_expr("3.14 + 2e3 + 1E+4 + 8'shF_F", 0)
+            .expect("real exponents and signed hex literals should lex");
+        assert!(matches!(
+            tokens[0].kind,
+            super::LogicalTokenKind::RealLiteral(_)
+        ));
+        assert!(matches!(
+            tokens[2].kind,
+            super::LogicalTokenKind::RealLiteral(_)
+        ));
+        assert!(matches!(
+            tokens[4].kind,
+            super::LogicalTokenKind::RealLiteral(_)
+        ));
+        assert!(matches!(
+            tokens[6].kind,
+            super::LogicalTokenKind::IntegralLiteral(_)
+        ));
+
+        let suffix_cases = [
+            ("sig.triggered_value", false),
+            ("sig.triggered.child()", false),
+            ("sig.triggered", false),
+            ("sig.triggered   ()", true),
+        ];
+        for (source, expected) in suffix_cases {
+            let lexer = LogicalLexer {
+                source,
+                span_offset: 0,
+                index: 3,
+            };
+            assert_eq!(lexer.peek_triggered_call_suffix(), expected, "{source}");
+        }
     }
 }

@@ -2483,6 +2483,57 @@ mod tests {
     }
 
     #[test]
+    fn runtime_unary_helpers_cover_real_unknown_and_reduction_edges() {
+        let real_neg = eval_unary(UnaryOpAst::Minus, real_runtime(2.5), &real_type())
+            .expect("real unary minus should evaluate");
+        assert!(matches!(real_neg.payload, RuntimeValuePayload::Real { value } if value == -2.5));
+
+        let four_bit = integral_type(4, true, false);
+        let neg_x = eval_unary(
+            UnaryOpAst::Minus,
+            runtime_integral(
+                &[BoundBit::Zero, BoundBit::X, BoundBit::One, BoundBit::Zero],
+                true,
+                false,
+            ),
+            &four_bit,
+        )
+        .expect("unknown unary minus should evaluate to x bits");
+        assert_eq!(
+            expect_integral_bits(&neg_x).expect("integral").0,
+            [BoundBit::X, BoundBit::X, BoundBit::X, BoundBit::X]
+        );
+
+        let bit_not = eval_unary(
+            UnaryOpAst::BitNot,
+            runtime_integral(&[BoundBit::Zero, BoundBit::One, BoundBit::Z], true, false),
+            &integral_type(3, true, false),
+        )
+        .expect("bitwise not should evaluate");
+        assert_eq!(
+            expect_integral_bits(&bit_not).expect("integral").0,
+            [BoundBit::One, BoundBit::Zero, BoundBit::X]
+        );
+
+        for op in [
+            UnaryOpAst::ReduceAnd,
+            UnaryOpAst::ReduceNand,
+            UnaryOpAst::ReduceOr,
+            UnaryOpAst::ReduceNor,
+            UnaryOpAst::ReduceXor,
+            UnaryOpAst::ReduceXnor,
+        ] {
+            let reduced = eval_unary(
+                op,
+                runtime_integral(&[BoundBit::One, BoundBit::Zero, BoundBit::X], true, false),
+                &integral_type(1, true, false),
+            )
+            .expect("reduction should evaluate");
+            assert_eq!(expect_integral_bits(&reduced).expect("integral").0.len(), 1);
+        }
+    }
+
+    #[test]
     fn runtime_helper_small_branches_cover_cache_and_arithmetic_edges() {
         let host = FixtureHost::new()
             .with_integral(1, Some("1"), Some("1"))
@@ -2649,6 +2700,157 @@ mod tests {
         assert_eq!(
             enum_label_for_bits(&labeled, &[BoundBit::One, BoundBit::Zero]),
             Some("BUSY".to_string())
+        );
+    }
+
+    #[test]
+    fn runtime_direct_entrypoints_cover_cache_and_comparison_residue() {
+        let host = FixtureHost::new()
+            .with_integral(1, Some("0"), Some("1"))
+            .with_integral(2, Some("1"), Some("1"))
+            .with_real(3, Some(1.0), Some(1.0))
+            .with_string(4, Some("same"), Some("same"))
+            .with_event(5, false);
+        let mut cache = EvalCache::default();
+        let expr = BoundLogicalExpr {
+            root: literal(&[BoundBit::One]),
+        };
+        assert!(matches!(
+            eval_bound_logical_with_cache(&expr, &host, 1, &mut cache)
+                .expect("cached eval should work")
+                .payload,
+            RuntimeValuePayload::Integral { .. }
+        ));
+
+        let event_expr = BoundEventExpr {
+            terms: vec![
+                crate::expr::sema::BoundEventTerm {
+                    event: BoundEventKind::Named(SignalHandle(2)),
+                    iff: None,
+                },
+                crate::expr::sema::BoundEventTerm {
+                    event: BoundEventKind::Named(SignalHandle(1)),
+                    iff: Some(expr.clone()),
+                },
+            ],
+        };
+        assert!(
+            event_matches_at(
+                &event_expr,
+                &host,
+                &EventEvalFrame {
+                    timestamp: 1,
+                    previous_timestamp: Some(0),
+                    tracked_signals: &[SignalHandle(1), SignalHandle(2)],
+                },
+            )
+            .expect("second event term should match")
+        );
+        let no_match = BoundEventExpr {
+            terms: vec![crate::expr::sema::BoundEventTerm {
+                event: BoundEventKind::AnyTracked,
+                iff: None,
+            }],
+        };
+        assert!(
+            !event_matches_at(
+                &no_match,
+                &host,
+                &EventEvalFrame {
+                    timestamp: 1,
+                    previous_timestamp: Some(0),
+                    tracked_signals: &[SignalHandle(2)],
+                },
+            )
+            .expect("unchanged tracked signal should not match")
+        );
+
+        let identity = runtime_integral(&[BoundBit::One], true, false);
+        assert_eq!(
+            coerce_runtime_to_type(identity.clone(), &identity.ty)
+                .expect("identity coercion should return value"),
+            identity
+        );
+        assert_eq!(
+            coerce_runtime_to_type(real_runtime(-2.5), &integral_type(4, true, true))
+                .expect("signed real to integral should truncate")
+                .payload,
+            RuntimeValuePayload::Integral {
+                bits: vec![BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::Zero],
+                label: None,
+            }
+        );
+        for (op, expected) in [
+            (BinaryOpAst::Le, TruthValue::One),
+            (BinaryOpAst::Gt, TruthValue::Zero),
+            (BinaryOpAst::Ge, TruthValue::One),
+            (BinaryOpAst::Ne, TruthValue::Zero),
+        ] {
+            assert_eq!(
+                compare_unknown_sensitive(op, real_runtime(1.0), real_runtime(1.0))
+                    .expect("real comparison"),
+                expected,
+                "{op:?}"
+            );
+        }
+        assert_eq!(
+            compare_unknown_sensitive(BinaryOpAst::Lt, string_runtime("a"), string_runtime("b"))
+                .expect("unsupported string ordering returns unknown"),
+            TruthValue::Unknown
+        );
+        assert_eq!(
+            compare_unknown_sensitive(
+                BinaryOpAst::Lt,
+                runtime_integral(&[BoundBit::One], true, true),
+                runtime_integral(&[BoundBit::Zero], true, true),
+            )
+            .expect("signed integral comparison"),
+            TruthValue::One
+        );
+        assert_eq!(
+            compare_case(
+                BinaryOpAst::CaseEq,
+                runtime_integral(&[BoundBit::X], true, false),
+                runtime_integral(&[BoundBit::X], true, false),
+            )
+            .expect("case equality sees x as equal"),
+            TruthValue::One
+        );
+        assert_eq!(
+            compare_wild(
+                BinaryOpAst::WildNe,
+                runtime_integral(&[BoundBit::Zero], true, false),
+                runtime_integral(&[BoundBit::One], true, false),
+            )
+            .expect("wild inequality mismatch"),
+            TruthValue::One
+        );
+        assert_eq!(
+            compare_wild(
+                BinaryOpAst::WildNe,
+                runtime_integral(&[BoundBit::One], true, false),
+                runtime_integral(&[BoundBit::X], true, false),
+            )
+            .expect("wild inequality with rhs wildcard"),
+            TruthValue::Zero
+        );
+        assert!(
+            !signal_changed(&host, SignalHandle(3), None, 1, &mut EvalCache::default())
+                .expect("missing previous real timestamp should not match")
+        );
+        assert!(
+            !signal_changed(&host, SignalHandle(4), None, 1, &mut EvalCache::default())
+                .expect("missing previous string timestamp should not match")
+        );
+        assert!(
+            !signal_changed(
+                &host,
+                SignalHandle(5),
+                Some(0),
+                1,
+                &mut EvalCache::default()
+            )
+            .expect("false event occurrence should not match")
         );
     }
 

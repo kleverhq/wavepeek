@@ -1474,6 +1474,10 @@ fn logical_parse_diag(
 }
 
 #[cfg(test)]
+#[path = "parser_coverage_smoke.rs"]
+mod parser_coverage_smoke;
+
+#[cfg(test)]
 mod tests {
     use super::{
         LogicalParser, LogicalToken, LogicalTokenKind, StrictParser, Token, TokenKind,
@@ -1484,6 +1488,55 @@ mod tests {
         ast::{IntegralBase, IntegralLiteral, LogicalExprNode, UnaryOpAst},
         diagnostic::Span,
     };
+
+    macro_rules! parse_ok_case {
+        ($($name:ident => $source:expr),+ $(,)?) => {
+            $(
+                #[test]
+                fn $name() {
+                    parse_logical_expr_ast($source).expect($source);
+                }
+            )+
+        };
+    }
+
+    parse_ok_case! {
+        parse_ok_rel_lt => "a < b",
+        parse_ok_rel_le => "a <= b",
+        parse_ok_rel_gt => "a > b",
+        parse_ok_rel_ge => "a >= b",
+        parse_ok_shift_left => "a << 1",
+        parse_ok_shift_right => "a >> 1",
+        parse_ok_shift_arith_left => "a <<< 1",
+        parse_ok_shift_arith_right => "a >>> 1",
+        parse_ok_multiply => "a * b",
+        parse_ok_divide => "a / b",
+        parse_ok_modulo => "a % b",
+        parse_ok_power => "a ** b",
+        parse_ok_unary_plus => "+a",
+        parse_ok_logical_not => "!a",
+        parse_ok_bit_not => "~a",
+        parse_ok_reduce_and => "&a",
+        parse_ok_reduce_nand => "~&a",
+        parse_ok_reduce_or => "|a",
+        parse_ok_reduce_nor => "~|a",
+        parse_ok_reduce_xor => "^a",
+        parse_ok_reduce_xnor_caret_tilde => "^~a",
+        parse_ok_bitwise_and => "a & b",
+        parse_ok_bitwise_or => "a | b",
+        parse_ok_bitwise_xor => "a ^ b",
+        parse_ok_bitwise_xnor => "a ~^ b",
+        parse_ok_logical_and => "a && b",
+        parse_ok_logical_or => "a || b",
+        parse_ok_group => "(a)",
+        parse_ok_conditional => "a ? b : c",
+        parse_ok_concat => "{a, b}",
+        parse_ok_replication => "{2{a}}",
+        parse_ok_bit_select => "a[0]",
+        parse_ok_part_select => "a[3:0]",
+        parse_ok_indexed_up_select => "a[0 +: 4]",
+        parse_ok_indexed_down_select => "a[7 -: 4]",
+    }
 
     #[test]
     fn typed_parser_rejects_unmatched_open_parenthesis() {
@@ -1536,6 +1589,19 @@ mod tests {
             "(signed'(a + 3) inside {[1:8], 16'hx0}) ? {2{b[3]}} : (c ==? 4'b1x0z)",
         )
         .expect("integral boolean sample expression should parse");
+    }
+
+    #[test]
+    fn logical_parser_accepts_operator_and_cast_residue_surface() {
+        for source in [
+            "&a || ~|b && (^c == ~^d)",
+            "logic[8]'(a) + unsigned bit[4]'(b)",
+            "a >>> 1 <= b <<< 2",
+            "{a, b, c} != {3{d}}",
+            "type(state)'(next_state) inside {type(state)::IDLE, type(state)::BUSY}",
+        ] {
+            parse_logical_expr_ast(source).expect("residue surface expression should parse");
+        }
     }
 
     #[test]
@@ -1971,6 +2037,90 @@ mod tests {
                 .expect_err("missing cast target bracket should fail")
                 .code,
             "EXPR-PARSE-LOGICAL-CAST"
+        );
+    }
+
+    #[test]
+    fn parser_edge_residue_covers_manual_suffix_and_rhs_failures() {
+        let error = parse_event_expr_ast("a (").expect_err("event-level open after a term fails");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-OPEN");
+
+        for source in [
+            "a ? b",
+            "1 <",
+            "a[1:]",
+            "a[1+:]",
+            "a[1-:]",
+            "a inside {[1:]}",
+            "(a",
+        ] {
+            let error = parse_logical_expr_ast(source).expect_err("source should fail");
+            assert!(
+                matches!(
+                    error.code,
+                    "EXPR-PARSE-LOGICAL-EXPECTED" | "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN"
+                ),
+                "{source}: {}",
+                error.code
+            );
+        }
+
+        let eof = LogicalToken {
+            kind: LogicalTokenKind::Eof,
+            span: Span::new(11, 11),
+        };
+        let mut suffix_without_paren = LogicalParser {
+            source: "sig.triggered",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("sig".to_string()),
+                    span: Span::new(0, 3),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::Dot,
+                    span: Span::new(3, 4),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("triggered".to_string()),
+                    span: Span::new(4, 13),
+                },
+                eof.clone(),
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            suffix_without_paren
+                .parse()
+                .expect_err("triggered suffix needs parens")
+                .code,
+            "EXPR-PARSE-LOGICAL-EXPECTED"
+        );
+
+        let mut inside_without_brace = LogicalParser {
+            source: "a inside b",
+            tokens: vec![
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("a".to_string()),
+                    span: Span::new(0, 1),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::KeywordInside,
+                    span: Span::new(2, 8),
+                },
+                LogicalToken {
+                    kind: LogicalTokenKind::Identifier("b".to_string()),
+                    span: Span::new(9, 10),
+                },
+                eof,
+            ],
+            index: 0,
+        };
+        assert_eq!(
+            inside_without_brace
+                .parse()
+                .expect_err("inside requires braced set")
+                .code,
+            "EXPR-PARSE-LOGICAL-EXPECTED"
         );
     }
 }

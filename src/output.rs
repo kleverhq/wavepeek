@@ -226,7 +226,7 @@ mod tests {
 
     use super::{
         OutputEnvelope, render_human, render_json, render_scope_tree, scope_entry_is_last_sibling,
-        signal_display_name,
+        signal_display_name, write,
     };
 
     #[test]
@@ -420,6 +420,26 @@ mod tests {
         );
         assert_eq!(schema, "{\"type\":\"object\"}");
 
+        let info = render_human(
+            &CommandData::Info(crate::engine::info::InfoData {
+                time_unit: "1ps".to_string(),
+                time_start: "0ps".to_string(),
+                time_end: "10ps".to_string(),
+            }),
+            HumanRenderOptions::default(),
+        );
+        assert_eq!(info, "time_unit: 1ps\ntime_start: 0ps\ntime_end: 10ps");
+
+        let flat_scopes = render_human(
+            &CommandData::Scope(vec![crate::engine::scope::ScopeEntry {
+                path: "top.cpu".to_string(),
+                depth: 1,
+                kind: "module".to_string(),
+            }]),
+            HumanRenderOptions::default(),
+        );
+        assert_eq!(flat_scopes, "1 top.cpu kind=module");
+
         let signals = vec![
             crate::engine::signal::SignalEntry {
                 display: "clk".to_string(),
@@ -502,5 +522,38 @@ mod tests {
         assert_eq!(envelope.schema, SCHEMA_URL);
         assert_eq!(envelope.command, "docs show");
         assert_eq!(envelope.warnings, vec!["careful"]);
+    }
+
+    #[test]
+    fn write_entrypoint_covers_json_empty_human_and_warning_paths() {
+        write(CommandResult {
+            command: CommandName::Schema,
+            json: true,
+            human_options: HumanRenderOptions::default(),
+            data: CommandData::Schema("{}".to_string()),
+            warnings: Vec::new(),
+        })
+        .expect("json output should write");
+
+        write(CommandResult {
+            command: CommandName::DocsSearch,
+            json: false,
+            human_options: HumanRenderOptions::default(),
+            data: CommandData::DocsSearch(crate::engine::DocsSearchData {
+                query: "none".to_string(),
+                matches: vec![],
+            }),
+            warnings: vec!["nothing matched".to_string()],
+        })
+        .expect("empty human output with warnings should write");
+
+        write(CommandResult {
+            command: CommandName::Info,
+            json: false,
+            human_options: HumanRenderOptions::default(),
+            data: CommandData::Text("already-newline\n".to_string()),
+            warnings: Vec::new(),
+        })
+        .expect("newline-terminated human output should not add a second newline");
     }
 }

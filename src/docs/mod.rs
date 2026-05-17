@@ -899,6 +899,10 @@ mod tests {
             extract_headings("# Title\ntext\n## Child\r\n### Grandchild\n####\n"),
             vec!["Title", "Child", "Grandchild"]
         );
+        assert_eq!(
+            extract_headings("####### Too deep\n#\n## Good\r\n"),
+            vec!["Good"]
+        );
     }
 
     #[test]
@@ -906,6 +910,14 @@ mod tests {
         let error = split_front_matter("# no front matter\n", Path::new("broken.md"))
             .expect_err("missing envelope should fail");
         assert!(error.contains("must start with YAML front matter"));
+
+        let (front, body) = split_front_matter(
+            "---\r\nid: test/topic\r\n---\r\n# Title\r\nbody\r\n",
+            Path::new("crlf.md"),
+        )
+        .expect("CRLF front matter should split");
+        assert_eq!(front, "id: test/topic");
+        assert_eq!(body, "# Title\r\nbody\r\n");
     }
 
     #[test]
@@ -915,6 +927,17 @@ mod tests {
         std::fs::write(&file_path, "x").expect("file should be written");
         let error = validate_export_target(&file_path, false).expect_err("file target should fail");
         assert!(error.to_string().contains("must be a directory path"));
+
+        let nonempty = temp.path().join("nonempty");
+        std::fs::create_dir(&nonempty).expect("directory should be created");
+        std::fs::write(nonempty.join("note.txt"), "x").expect("note should write");
+        let error = validate_export_target(&nonempty, false)
+            .expect_err("nonempty unforced target should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("is not empty; rerun with --force")
+        );
 
         let unmanaged = temp.path().join("unmanaged");
         std::fs::create_dir(&unmanaged).expect("directory should be created");
@@ -926,6 +949,19 @@ mod tests {
                 .to_string()
                 .contains("--force only applies to a managed export root")
         );
+
+        let managed = temp.path().join("managed");
+        std::fs::create_dir(&managed).expect("managed dir should create");
+        std::fs::write(
+            managed.join("manifest.json"),
+            format!(
+                "{{\"kind\":\"{}\",\"export_format_version\":{}}}",
+                EXPORT_KIND, EXPORT_FORMAT_VERSION
+            ),
+        )
+        .expect("managed manifest should write");
+        std::fs::write(managed.join("stale.txt"), "x").expect("managed payload should write");
+        validate_export_target(&managed, true).expect("managed forced target should pass");
     }
 
     #[test]
@@ -1156,9 +1192,25 @@ mod tests {
 
     #[test]
     fn suggestion_sorting_and_error_helpers_cover_remaining_match_paths() {
+        assert!(suggest_topics("   ", 10).is_empty());
         let suggestions = suggest_topics("command", 10);
         assert!(suggestions.len() > 1);
         assert_eq!(suggestions[0].id, "commands/change");
+        assert_eq!(suggest_topics("command", 0).len(), 0);
+        assert!(
+            suggest_topics("First change", 5)
+                .iter()
+                .any(|topic| topic.title.contains("Find first change"))
+        );
+        assert!(
+            suggest_topics("exact JSON contract", 10)
+                .iter()
+                .any(|topic| topic.summary.contains("exact JSON contract"))
+        );
+        assert!(suggest_topics("no such docs phrase", 10).is_empty());
+
+        assert_eq!(MatchKind::IdExact.rank(), 0);
+        assert_eq!(MatchKind::Body.rank(), 5);
 
         let summary_record = fake_topic(
             "misc/topic",
@@ -1186,6 +1238,21 @@ mod tests {
         )
         .expect("exact id should match");
         assert_eq!(exact_id.match_kind, MatchKind::IdExact);
+
+        let title_beats_body = search_match(
+            &fake_topic(
+                "misc/title-body",
+                "Command",
+                "summary",
+                "misc",
+                &["Command details"],
+            ),
+            "command details",
+            &["command".to_string(), "details".to_string()],
+        )
+        .expect("multiple tokens should match");
+        assert_eq!(title_beats_body.match_kind, MatchKind::TitleOrSummary);
+        assert_eq!(title_beats_body.matched_tokens, 2);
     }
 
     #[test]
@@ -1258,6 +1325,14 @@ mod tests {
                 .to_string()
                 .contains("failed to write export manifest")
         );
+
+        let unreadable_manifest = temp.path().join("manifest-as-dir");
+        std::fs::create_dir(&unreadable_manifest).expect("directory should be created");
+        std::fs::create_dir(unreadable_manifest.join("manifest.json"))
+            .expect("manifest directory should be created");
+        let error = validate_export_target(&unreadable_manifest, true)
+            .expect_err("directory-backed manifest should fail to read");
+        assert!(error.to_string().contains("failed to read export manifest"));
 
         let parent_file = temp.path().join("parent-file");
         std::fs::write(&parent_file, "file").expect("parent file should be written");

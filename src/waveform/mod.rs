@@ -2715,6 +2715,13 @@ mod tests {
                 .expr_event_occurred(&event_resolved, 4)
                 .expect("non-sampled timestamps should not report events")
         );
+        assert!(
+            event_waveform
+                .expr_event_occurred(&sampled_as_value, 5)
+                .expect_err("non-event expr metadata should be rejected")
+                .to_string()
+                .contains("is not a raw event")
+        );
         assert_eq!(resolved.len(), 1);
     }
 
@@ -2894,6 +2901,101 @@ mod tests {
             waveform
                 .expr_event_occurred(&event, 5)
                 .expect("event should occur at its timestamp")
+        );
+    }
+
+    #[test]
+    fn waveform_remaining_direct_helpers_cover_empty_and_tiebreak_paths() {
+        let fixture = write_fixture(TEST_VCD, "remaining-direct.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
+        let hierarchy = waveform.inner.hierarchy();
+        let top_scope = hierarchy.lookup_scope(&["top"]).expect("top scope");
+
+        let mut scope_entries = Vec::new();
+        collect_scope_entries(hierarchy, top_scope, 2, Some(1), &mut scope_entries);
+        assert!(scope_entries.is_empty());
+        let mut signal_entries = Vec::new();
+        collect_scope_signals(hierarchy, top_scope, 2, Some(1), &mut signal_entries);
+        assert!(signal_entries.is_empty());
+
+        let mut same_name = vec![
+            super::SignalEntry {
+                name: "sig".to_string(),
+                path: "top.b.sig".to_string(),
+                kind: "wire".to_string(),
+                width: Some(1),
+            },
+            super::SignalEntry {
+                name: "sig".to_string(),
+                path: "top.a.sig".to_string(),
+                kind: "wire".to_string(),
+                width: Some(1),
+            },
+        ];
+        sort_signal_entries(&mut same_name);
+        assert_eq!(same_name[0].path, "top.a.sig");
+
+        assert_eq!(normalize_to_four_state('?'), 'x');
+        assert_ne!(
+            super::SignalOffsetData::new(1, 1),
+            super::SignalOffsetData::new(1, 2)
+        );
+        waveform.ensure_signals_loaded(&[]);
+
+        let empty_expr: Vec<super::ExprResolvedSignal> = Vec::new();
+        assert!(
+            waveform
+                .collect_expr_candidate_times_with_mode(
+                    &empty_expr,
+                    0,
+                    10,
+                    super::ChangeCandidateCollectionMode::Random,
+                )
+                .expect("empty expr sources should short-circuit")
+                .is_empty()
+        );
+
+        let event_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-event-window\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var event 1 ! ev $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#0\n1!\n#5\n1!\n"
+            ),
+            "event-window.vcd",
+        );
+        let mut event_waveform = Waveform::open(event_fixture.path()).expect("event waveform");
+        let event = event_waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event should resolve");
+        assert!(
+            event_waveform
+                .collect_expr_candidate_times_with_mode(
+                    &[event],
+                    1,
+                    4,
+                    super::ChangeCandidateCollectionMode::Random,
+                )
+                .expect("event-only empty window should collect")
+                .is_empty()
+        );
+        let event_again = event_waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event should resolve again");
+        assert_eq!(
+            event_waveform
+                .collect_expr_candidate_times_with_mode(
+                    &[event_again],
+                    5,
+                    5,
+                    super::ChangeCandidateCollectionMode::Random,
+                )
+                .expect("event-only exact window should collect"),
+            vec![5]
         );
     }
 

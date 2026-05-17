@@ -1269,10 +1269,11 @@ mod tests {
 
     use super::{
         AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, FastEventEvalHost,
-        IndexDecodeCache, RequestedSignal, SampleCache, build_candidate_schedule, build_snapshot,
-        cached_event_handles, cached_event_sources, cached_sample_value,
-        candidate_times_to_indices, resolve_requested_signals, resolve_token_to_path, run,
-        run_baseline, run_edge_fast, run_fused, select_engine_mode,
+        IndexDecodeCache, RequestedSignal, RollingSignalState, SampleCache,
+        build_candidate_schedule, build_edge_fast_event_eval_host, build_fused_event_eval_host,
+        build_snapshot, cached_event_handles, cached_event_sources, cached_sample_value,
+        candidate_times_to_indices, parse_bound_time, resolve_requested_signals,
+        resolve_token_to_path, run, run_baseline, run_edge_fast, run_fused, select_engine_mode,
         should_use_stream_candidates_in_fused, time_window_indices,
     };
     use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
@@ -1621,6 +1622,106 @@ mod tests {
     }
 
     #[test]
+    fn fast_event_eval_builders_cover_skip_and_missing_previous_paths() {
+        let fixture = write_fixture(TEST_VCD, "change-fast-builders.vcd");
+        let host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        let handle = host
+            .resolve_signal("top.sig")
+            .expect("signal should resolve");
+        let source = host
+            .resolved_signal_for_handle(handle)
+            .expect("source should resolve");
+
+        let mut tracked_index_by_ref = std::collections::HashMap::new();
+        tracked_index_by_ref.insert(source.signal_ref, 0usize);
+        let rolling = vec![RollingSignalState {
+            offset: None,
+            bits: Some("1".to_string()),
+        }];
+        let previous_bits = vec![None];
+        let missing_ref_source = crate::waveform::ExprResolvedSignal {
+            signal_ref: wellen::SignalRef::from_index(999).expect("fake signal ref"),
+            ..source.clone()
+        };
+        let real_source = crate::waveform::ExprResolvedSignal {
+            expr_type: ExprType {
+                kind: ExprTypeKind::Real,
+                storage: ExprStorage::Scalar,
+                width: 64,
+                is_four_state: false,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            },
+            ..source.clone()
+        };
+        let fused_host = build_fused_event_eval_host(
+            &host,
+            7,
+            &[
+                (SignalHandle(21), source.clone()),
+                (SignalHandle(22), missing_ref_source),
+                (SignalHandle(23), real_source),
+            ],
+            &tracked_index_by_ref,
+            &rolling,
+            &previous_bits,
+        );
+        assert_eq!(
+            fused_host
+                .sample_value(SignalHandle(21), 7)
+                .expect("current cached sample"),
+            SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            }
+        );
+        assert_eq!(
+            fused_host
+                .sample_value(SignalHandle(21), 6)
+                .expect("previous defaults to current when unchanged"),
+            SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            }
+        );
+        assert!(fused_host.sample_value(SignalHandle(22), 7).is_err());
+        assert!(fused_host.sample_value(SignalHandle(23), 7).is_err());
+
+        let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
+        waveform.ensure_signals_loaded(&[source.signal_ref]);
+        let mut decode_cache = IndexDecodeCache::default();
+        let edge_host = build_edge_fast_event_eval_host(
+            &host,
+            5,
+            1,
+            None,
+            &waveform,
+            &mut decode_cache,
+            &[(SignalHandle(31), source)],
+        )
+        .expect("edge-fast host should build");
+        assert_eq!(
+            edge_host
+                .sample_value(SignalHandle(31), 5)
+                .expect("current edge-fast sample"),
+            SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            }
+        );
+        assert_eq!(
+            edge_host
+                .sample_value(SignalHandle(31), 4)
+                .expect("missing previous index should become empty sample"),
+            SampledValue::Integral {
+                bits: None,
+                label: None,
+            }
+        );
+    }
+
+    #[test]
     fn change_cache_helpers_cover_request_reuse_and_schedule_edges() {
         let fixture = write_fixture(TEST_VCD, "change-cache-helpers.vcd");
         let waveform = std::rc::Rc::new(std::cell::RefCell::new(
@@ -1725,6 +1826,83 @@ mod tests {
     }
 
     #[test]
+    fn change_run_and_time_helpers_cover_warning_and_bound_error_paths() {
+        let fixture = write_fixture(TEST_VCD, "change-warning-empty.vcd");
+        let empty = run(ChangeArgs {
+            waves: PathBuf::from(fixture.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            on: Some("negedge sig".to_string()),
+            max: LimitArg::Numeric(5),
+            abs: false,
+            json: false,
+            tune_engine: TuneChangeEngineMode::Baseline,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        })
+        .expect("empty result should still succeed");
+        assert_eq!(empty.warnings, vec![super::EMPTY_WARNING.to_string()]);
+
+        const MULTI_CHANGE_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! sig $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n0!\n#5\n1!\n#10\n0!\n#15\n1!\n"
+        );
+        let multi = write_fixture(MULTI_CHANGE_VCD, "change-warning-truncated.vcd");
+        let truncated = run(ChangeArgs {
+            waves: PathBuf::from(multi.path()),
+            from: None,
+            to: None,
+            scope: Some("top".to_string()),
+            signals: vec!["sig".to_string()],
+            on: Some("*".to_string()),
+            max: LimitArg::Numeric(1),
+            abs: false,
+            json: false,
+            tune_engine: TuneChangeEngineMode::Baseline,
+            tune_candidates: TuneChangeCandidateMode::Auto,
+            tune_edge_fast_force: false,
+        })
+        .expect("truncated result should succeed");
+        assert!(
+            truncated
+                .warnings
+                .iter()
+                .any(|warning| { warning.contains("truncated output to 1 entries") })
+        );
+        let CommandData::Change(rows) = truncated.data else {
+            panic!("change command should return rows");
+        };
+        assert_eq!(rows.len(), 1);
+
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
+        let metadata = waveform.metadata().expect("metadata should load");
+        let dump_time = crate::engine::time::parse_dump_time_context(&metadata)
+            .expect("dump time should parse");
+        for (token, expected) in [
+            ("5", "requires units"),
+            ("abc", "invalid time token"),
+            ("10ns", "outside dump bounds"),
+            ("1ps", "cannot be represented exactly"),
+        ] {
+            assert!(
+                parse_bound_time(token, "--from", dump_time, &metadata)
+                    .expect_err("time token should fail")
+                    .to_string()
+                    .contains(expected),
+                "{token} should contain {expected}"
+            );
+        }
+    }
+
+    #[test]
     fn run_edge_fast_falls_back_to_baseline_for_small_edge_workloads() {
         let fixture = write_fixture(TEST_VCD, "change-edge-fast-fallback.vcd");
         let waveform = std::rc::Rc::new(std::cell::RefCell::new(
@@ -1790,6 +1968,27 @@ mod tests {
         assert_eq!(edge_fast.snapshots, baseline.snapshots);
         assert_eq!(edge_fast.truncated, baseline.truncated);
 
+        let forced_edge_fast = run_edge_fast(
+            &waveform,
+            &host,
+            "posedge sig",
+            &bound_event,
+            &tracked_signal_handles,
+            &requested_signals,
+            &requested_resolved,
+            &requested_expr_sources,
+            0,
+            5,
+            0,
+            dump_tick,
+            Some(0),
+            ChangeCandidateCollectionMode::Random,
+            true,
+        )
+        .expect("forced edge-fast path should run directly");
+        assert!(forced_edge_fast.truncated);
+        assert!(forced_edge_fast.snapshots.is_empty());
+
         let fused = run_fused(
             &waveform,
             &host,
@@ -1809,6 +2008,26 @@ mod tests {
         .expect("fused should succeed");
         assert_eq!(fused.snapshots, baseline.snapshots);
         assert_eq!(fused.truncated, baseline.truncated);
+
+        let truncated_fused = run_fused(
+            &waveform,
+            &host,
+            "posedge sig",
+            &bound_event,
+            &tracked_signal_handles,
+            &requested_signals,
+            &requested_resolved,
+            &requested_expr_sources,
+            0,
+            5,
+            0,
+            dump_tick,
+            Some(0),
+            ChangeCandidateCollectionMode::Random,
+        )
+        .expect("fused truncation branch should run");
+        assert!(truncated_fused.truncated);
+        assert!(truncated_fused.snapshots.is_empty());
     }
 
     const TEST_VCD: &str = concat!(

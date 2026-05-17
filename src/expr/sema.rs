@@ -2879,6 +2879,597 @@ mod tests {
         assert_eq!(shifted.bits, vec![BoundBit::One; 4]);
     }
 
+    #[test]
+    fn sema_helpers_cover_event_success_paths_and_host_detail_errors() {
+        struct EventHost;
+        impl ExpressionHost for EventHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "a" => Ok(SignalHandle(1)),
+                    "b" => Ok(SignalHandle(2)),
+                    "c" => Ok(SignalHandle(3)),
+                    "d" => Ok(SignalHandle(4)),
+                    "g" => Ok(SignalHandle(5)),
+                    _ => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: "HOST-UNKNOWN-SIGNAL",
+                        message: "backend detail".to_string(),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(5) => real_type(),
+                    _ => bit_vector_type(1, true, false, false),
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!()
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+        }
+
+        let ast = crate::expr::parse_event_expr_ast("a or posedge b or negedge c or edge d iff g")
+            .expect("parse");
+        let bound = bind_event_expr_ast(&ast, &EventHost).expect("bind");
+        assert!(matches!(
+            bound.terms[0].event,
+            BoundEventKind::Named(SignalHandle(1))
+        ));
+        assert!(matches!(
+            bound.terms[1].event,
+            BoundEventKind::Posedge(SignalHandle(2))
+        ));
+        assert!(matches!(
+            bound.terms[2].event,
+            BoundEventKind::Negedge(SignalHandle(3))
+        ));
+        assert!(matches!(
+            bound.terms[3].event,
+            BoundEventKind::Edge(SignalHandle(4))
+        ));
+        assert!(bound.terms[3].iff.is_some());
+
+        let error = bind_logical_expr_ast(
+            &parse_logical_expr_ast("missing").expect("parse"),
+            &EventHost,
+        )
+        .expect_err("unknown signal should fail");
+        assert_eq!(error.code, "EXPR-SEMANTIC-UNKNOWN-SIGNAL");
+        assert!(error.notes[0].contains("backend detail"));
+    }
+
+    #[test]
+    fn sema_helpers_cover_canonical_selection_casts_and_binary_typing() {
+        struct CanonicalHost;
+        impl ExpressionHost for CanonicalHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "bus[0]" => Ok(SignalHandle(7)),
+                    "real_src" => Ok(SignalHandle(8)),
+                    "string_src" => Ok(SignalHandle(9)),
+                    "enum_src" => Ok(SignalHandle(10)),
+                    other => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: if other == "hostfail[0]" {
+                            "HOST-BROKEN"
+                        } else {
+                            "HOST-UNKNOWN-SIGNAL"
+                        },
+                        message: "lookup failure".to_string(),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(8) => real_type(),
+                    SignalHandle(9) => string_type(),
+                    SignalHandle(10) => ExprType {
+                        kind: ExprTypeKind::EnumCore,
+                        storage: ExprStorage::Scalar,
+                        width: 2,
+                        is_four_state: true,
+                        is_signed: false,
+                        enum_type_id: Some("state".to_string()),
+                        enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                            name: "BUSY".to_string(),
+                            bits: "10".to_string(),
+                        }]),
+                    },
+                    _ => bit_vector_type(4, true, false, true),
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!()
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+        }
+
+        let bound = bind_logical_expr_ast(
+            &parse_logical_expr_ast("bus[0]").expect("parse"),
+            &CanonicalHost,
+        )
+        .expect("canonical selection should bind through host");
+        assert!(matches!(
+            bound.root.kind,
+            BoundLogicalKind::SignalRef {
+                handle: SignalHandle(7)
+            }
+        ));
+
+        let ast = parse_logical_expr_ast("hostfail[0]").expect("parse");
+        let error =
+            bind_logical_expr_ast(&ast, &CanonicalHost).expect_err("host failure should surface");
+        assert_eq!(error.code, "HOST-BROKEN");
+
+        let span = Span::new(0, 1);
+        let (ty, kind) = cast_target_type(
+            &CastTargetAst::Real,
+            &integer_like_type(IntegerLikeKind::Int),
+            &CanonicalHost,
+            span,
+        )
+        .expect("real cast should succeed");
+        assert_eq!(kind, BoundCastKind::Static);
+        assert!(matches!(ty.kind, ExprTypeKind::Real));
+        assert!(matches!(
+            cast_target_type(
+                &CastTargetAst::RecoveredType {
+                    name: "string_src".to_string(),
+                    span,
+                },
+                &string_type(),
+                &CanonicalHost,
+                span,
+            )
+            .expect("string recovered target should succeed")
+            .0
+            .kind,
+            ExprTypeKind::String
+        ));
+        assert!(matches!(
+            cast_target_type(
+                &CastTargetAst::RecoveredType {
+                    name: "enum_src".to_string(),
+                    span,
+                },
+                &bit_vector_type(2, true, false, true),
+                &CanonicalHost,
+                span,
+            )
+            .expect("enum recovered target should succeed")
+            .0
+            .kind,
+            ExprTypeKind::EnumCore
+        ));
+
+        assert!(matches!(bool_result_type().kind, ExprTypeKind::BitVector));
+        assert_eq!(integer_like_type(IntegerLikeKind::Byte).width, 8);
+        assert_eq!(integer_like_type(IntegerLikeKind::Shortint).width, 16);
+        assert_eq!(integer_like_type(IntegerLikeKind::Longint).width, 64);
+        assert!(integer_like_type(IntegerLikeKind::Integer).is_four_state);
+        assert!(!integer_like_type(IntegerLikeKind::Time).is_signed);
+        assert!(matches!(
+            binary_result_type(
+                BinaryOpAst::LogicalAnd,
+                &real_type(),
+                span,
+                &bit_vector_type(1, true, false, false),
+                span,
+            )
+            .expect("logical real/integral should typecheck")
+            .kind,
+            ExprTypeKind::BitVector
+        ));
+        assert!(matches!(
+            binary_result_type(BinaryOpAst::Eq, &string_type(), span, &string_type(), span,)
+                .expect("string equality should typecheck")
+                .kind,
+            ExprTypeKind::BitVector
+        ));
+        assert_eq!(
+            binary_result_type(BinaryOpAst::Eq, &string_type(), span, &real_type(), span,)
+                .expect_err("mixed string equality should fail")
+                .code,
+            "EXPR-SEMANTIC-EQUALITY-TYPE"
+        );
+    }
+
+    #[test]
+    fn sema_helpers_cover_enum_lookup_and_low_level_bit_math() {
+        let span = Span::new(0, 0);
+        let enum_ty = ExprType {
+            kind: ExprTypeKind::EnumCore,
+            storage: ExprStorage::Scalar,
+            width: 2,
+            is_four_state: true,
+            is_signed: false,
+            enum_type_id: Some("state".to_string()),
+            enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                name: "IDLE".to_string(),
+                bits: "00".to_string(),
+            }]),
+        };
+        assert_eq!(
+            lookup_enum_label_bits(&enum_ty, "IDLE", span).expect("label"),
+            "00"
+        );
+        assert_eq!(
+            lookup_enum_label_bits(
+                &ExprType {
+                    enum_labels: None,
+                    ..enum_ty.clone()
+                },
+                "IDLE",
+                span
+            )
+            .expect_err("missing metadata should fail")
+            .code,
+            "EXPR-SEMANTIC-METADATA"
+        );
+        assert_eq!(
+            lookup_enum_label_bits(&enum_ty, "BUSY", span)
+                .expect_err("unknown label should fail")
+                .code,
+            "EXPR-SEMANTIC-ENUM-LABEL"
+        );
+
+        assert!(selection_range_is_in_bounds(4, 0, 3));
+        assert!(!selection_range_is_in_bounds(4, -1, 3));
+        assert_eq!(bits_to_u128(&[BoundBit::One, BoundBit::Zero]), Some(2));
+        assert_eq!(bits_to_i64(&[BoundBit::One, BoundBit::One], true), Some(-1));
+        assert_eq!(
+            bits_to_i128(&[BoundBit::One, BoundBit::Zero, BoundBit::One], true),
+            Some(-3)
+        );
+        assert_eq!(signed_to_bits(-1, 2), vec![BoundBit::One, BoundBit::One]);
+        assert_eq!(pow_wrapping_u128(3, 4), 81);
+        assert_eq!(reduce_and(&[BoundBit::One, BoundBit::One]), BoundBit::One);
+        assert_eq!(reduce_or(&[BoundBit::Zero, BoundBit::X]), BoundBit::X);
+        assert_eq!(reduce_xor(&[BoundBit::One, BoundBit::Zero]), BoundBit::One);
+        assert_eq!(invert_reduce(BoundBit::Zero), BoundBit::One);
+        assert_eq!(bitwise_and(BoundBit::One, BoundBit::X), BoundBit::X);
+        assert_eq!(bitwise_or(BoundBit::Zero, BoundBit::One), BoundBit::One);
+        assert_eq!(bitwise_xor(BoundBit::One, BoundBit::One), BoundBit::Zero);
+    }
+
+    #[test]
+    fn bind_logical_node_covers_manual_ast_variants() {
+        struct VariantHost;
+        impl ExpressionHost for VariantHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "vec" => Ok(SignalHandle(1)),
+                    "scalar" => Ok(SignalHandle(2)),
+                    "real" => Ok(SignalHandle(3)),
+                    "str" => Ok(SignalHandle(4)),
+                    "evt" => Ok(SignalHandle(5)),
+                    "state" => Ok(SignalHandle(6)),
+                    "idx" => Ok(SignalHandle(7)),
+                    "vec[0]" => Ok(SignalHandle(8)),
+                    _ => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: "HOST-UNKNOWN-SIGNAL",
+                        message: "unknown".to_string(),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(2) | SignalHandle(8) => bit_vector_type(1, true, false, false),
+                    SignalHandle(3) => real_type(),
+                    SignalHandle(4) => string_type(),
+                    SignalHandle(5) => ExprType {
+                        kind: ExprTypeKind::Event,
+                        storage: ExprStorage::Scalar,
+                        width: 0,
+                        is_four_state: false,
+                        is_signed: false,
+                        enum_type_id: None,
+                        enum_labels: None,
+                    },
+                    SignalHandle(6) => ExprType {
+                        kind: ExprTypeKind::EnumCore,
+                        storage: ExprStorage::Scalar,
+                        width: 2,
+                        is_four_state: true,
+                        is_signed: false,
+                        enum_type_id: Some("state_t".to_string()),
+                        enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                            name: "BUSY".to_string(),
+                            bits: "10".to_string(),
+                        }]),
+                    },
+                    SignalHandle(7) => integer_like_type(IntegerLikeKind::Int),
+                    _ => bit_vector_type(4, true, false, true),
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!()
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+        }
+
+        let span = Span::new(0, 1);
+        let cases = vec![
+            LogicalExprNode::IntegralLiteral {
+                literal: IntegralLiteral {
+                    width: None,
+                    signed: true,
+                    base: IntegralBase::Decimal,
+                    digits: "5".to_string(),
+                    span,
+                },
+                span,
+            },
+            LogicalExprNode::RealLiteral {
+                literal: crate::expr::ast::RealLiteral {
+                    text: "3.5".to_string(),
+                    span,
+                },
+                span,
+            },
+            LogicalExprNode::StringLiteral {
+                literal: crate::expr::ast::StringLiteral {
+                    value: "ok".to_string(),
+                    span,
+                },
+                span,
+            },
+            LogicalExprNode::EnumLabel {
+                operand: "state".to_string(),
+                operand_span: span,
+                label: "BUSY".to_string(),
+                label_span: span,
+                span,
+            },
+            LogicalExprNode::Parenthesized {
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Cast {
+                target: CastTargetAst::BitVector {
+                    width: 4,
+                    is_four_state: true,
+                    is_signed: false,
+                },
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "real".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Selection {
+                base: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                selection: SelectionKindAst::Part {
+                    msb: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "3".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                    lsb: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "1".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                },
+                span,
+            },
+            LogicalExprNode::Selection {
+                base: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                selection: SelectionKindAst::IndexedUp {
+                    base: Box::new(LogicalExprNode::OperandRef {
+                        name: "idx".to_string(),
+                        span,
+                    }),
+                    width: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "2".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                },
+                span,
+            },
+            LogicalExprNode::Unary {
+                op: UnaryOpAst::Plus,
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "real".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Binary {
+                op: BinaryOpAst::LogicalAnd,
+                left: Box::new(LogicalExprNode::OperandRef {
+                    name: "real".to_string(),
+                    span,
+                }),
+                right: Box::new(LogicalExprNode::OperandRef {
+                    name: "scalar".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Conditional {
+                condition: Box::new(LogicalExprNode::OperandRef {
+                    name: "real".to_string(),
+                    span,
+                }),
+                when_true: Box::new(LogicalExprNode::OperandRef {
+                    name: "str".to_string(),
+                    span,
+                }),
+                when_false: Box::new(LogicalExprNode::StringLiteral {
+                    literal: crate::expr::ast::StringLiteral {
+                        value: "alt".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Inside {
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                set: vec![InsideItemAst::Range {
+                    low: LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "0".to_string(),
+                            span,
+                        },
+                        span,
+                    },
+                    high: LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "3".to_string(),
+                            span,
+                        },
+                        span,
+                    },
+                    span,
+                }],
+                span,
+            },
+            LogicalExprNode::Concatenation {
+                items: vec![
+                    LogicalExprNode::OperandRef {
+                        name: "scalar".to_string(),
+                        span,
+                    },
+                    LogicalExprNode::OperandRef {
+                        name: "scalar".to_string(),
+                        span,
+                    },
+                ],
+                span,
+            },
+            LogicalExprNode::Replication {
+                count: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: true,
+                        base: IntegralBase::Decimal,
+                        digits: "2".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "scalar".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Triggered {
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "evt".to_string(),
+                    span,
+                }),
+                span,
+            },
+            LogicalExprNode::Selection {
+                base: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                selection: SelectionKindAst::Bit {
+                    index: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "0".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                },
+                span,
+            },
+        ];
+
+        for node in cases {
+            bind_logical_node(&node, &VariantHost).expect("node should bind");
+        }
+    }
+
     fn const_bits_node(bits: &[BoundBit], signed: bool) -> BoundLogicalNode {
         BoundLogicalNode {
             ty: bit_vector_type(bits.len() as u32, true, signed, bits.len() > 1),

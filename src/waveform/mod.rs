@@ -1357,8 +1357,12 @@ mod tests {
     use super::{
         EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, STABLE_SCOPE_KIND_ALIASES,
         STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform, classify_edge,
-        duplicate_preserving_projection, scope_type_alias, should_emit_delta_and_update_baseline,
-        var_type_alias,
+        collect_scope_entries, collect_scope_signals, duplicate_preserving_projection,
+        empty_sampled_value, enum_label_for_bits, expr_type_from_var, floor_time_table_index,
+        format_timescale, normalize_time, normalize_to_four_state, resolve_signal_ref_with_width,
+        resolve_var_ref, scope_type_alias, should_emit_delta_and_update_baseline,
+        should_use_multi_thread_signal_load, signal_entry_from_var_ref, sort_scope_refs,
+        sort_signal_entries, time_window_indices, timescale_unit_suffix, var_type_alias,
     };
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
@@ -2173,32 +2177,32 @@ mod tests {
         let hierarchy = waveform.inner.hierarchy();
 
         assert!(
-            super::resolve_var_ref(hierarchy, "")
+            resolve_var_ref(hierarchy, "")
                 .expect_err("empty path should fail")
                 .to_string()
                 .contains("not found in dump")
         );
         assert!(
-            super::resolve_var_ref(hierarchy, "top.")
+            resolve_var_ref(hierarchy, "top.")
                 .expect_err("trailing dot path should fail")
                 .to_string()
                 .contains("not found in dump")
         );
         assert!(
-            super::resolve_signal_ref_with_width(hierarchy, "top.temp")
+            resolve_signal_ref_with_width(hierarchy, "top.temp")
                 .expect_err("real signals do not have bit-vector widths")
                 .to_string()
                 .contains("unsupported non-bit-vector encoding")
         );
 
         assert_eq!(
-            super::timescale_unit_suffix(wellen::TimescaleUnit::Unknown)
+            timescale_unit_suffix(wellen::TimescaleUnit::Unknown)
                 .expect_err("unknown timescale units should fail")
                 .to_string(),
             "error: file: waveform timescale unit is unknown"
         );
         assert_eq!(
-            super::format_timescale(wellen::Timescale {
+            format_timescale(wellen::Timescale {
                 factor: 1,
                 unit: wellen::TimescaleUnit::NanoSeconds,
             })
@@ -2206,7 +2210,7 @@ mod tests {
             "1ns"
         );
         assert!(
-            super::normalize_time(
+            normalize_time(
                 u64::MAX,
                 wellen::Timescale {
                     factor: 2,
@@ -2223,7 +2227,7 @@ mod tests {
         assert!(super::var_type_is_signed(wellen::VarType::Integer));
         assert!(!super::var_type_is_signed(wellen::VarType::Logic));
         assert_eq!(
-            super::empty_sampled_value(&crate::expr::ExprType {
+            empty_sampled_value(&crate::expr::ExprType {
                 kind: crate::expr::ExprTypeKind::String,
                 storage: crate::expr::ExprStorage::Scalar,
                 width: 0,
@@ -2234,6 +2238,122 @@ mod tests {
             }),
             crate::expr::SampledValue::String { value: None }
         );
+    }
+
+    #[test]
+    fn waveform_direct_helpers_cover_resolution_sorting_and_expr_types() {
+        let fixture = write_fixture(TEST_VCD, "direct-helpers.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let hierarchy = waveform.inner.hierarchy();
+
+        assert!(!should_use_multi_thread_signal_load(
+            wellen::FileFormat::Vcd
+        ));
+        assert!(should_use_multi_thread_signal_load(wellen::FileFormat::Fst));
+        assert_eq!(floor_time_table_index(&[0, 5, 10], 6), Some(1));
+        assert_eq!(time_window_indices(&[0, 5, 10], 0, 4), Some((0, 1)));
+
+        let (clk_ref, clk_width) =
+            resolve_signal_ref_with_width(hierarchy, "top.clk").expect("clk should resolve");
+        assert_eq!(clk_width, 1);
+        let clk_entry = signal_entry_from_var_ref(
+            hierarchy,
+            resolve_var_ref(hierarchy, "top.clk").expect("clk var"),
+        );
+        assert_eq!(clk_entry.name, "clk");
+        assert_eq!(clk_entry.kind, "wire");
+
+        let top_scope = hierarchy.lookup_scope(&["top"]).expect("top scope");
+        let mut scopes = Vec::new();
+        collect_scope_entries(hierarchy, top_scope, 0, Some(0), &mut scopes);
+        assert_eq!(scopes.len(), 1);
+
+        let mut recursive_signals = Vec::new();
+        collect_scope_signals(hierarchy, top_scope, 0, Some(1), &mut recursive_signals);
+        assert!(
+            recursive_signals
+                .iter()
+                .any(|entry| entry.path == "top.cfg")
+        );
+
+        let mut unsorted = vec![
+            super::SignalEntry {
+                name: "b".to_string(),
+                path: "top.b".to_string(),
+                kind: "wire".to_string(),
+                width: Some(1),
+            },
+            super::SignalEntry {
+                name: "a".to_string(),
+                path: "top.a".to_string(),
+                kind: "wire".to_string(),
+                width: Some(1),
+            },
+        ];
+        sort_signal_entries(&mut unsorted);
+        assert_eq!(unsorted[0].name, "a");
+
+        let mut roots: Vec<_> = hierarchy.scopes().collect();
+        sort_scope_refs(hierarchy, &mut roots);
+        assert_eq!(hierarchy[roots[0]].full_name(hierarchy), "top");
+
+        let clk_var = &hierarchy[resolve_var_ref(hierarchy, "top.clk").expect("clk var")];
+        let clk_ty = expr_type_from_var(hierarchy, clk_var, "top.clk").expect("clk expr type");
+        assert!(matches!(clk_ty.kind, crate::expr::ExprTypeKind::BitVector));
+
+        let rich_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-rich\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var event 1 ! ev $end\n",
+                "$var real 1 \" temp $end\n",
+                "$var string 1 # msg $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#0\n",
+                "1!\n",
+                "r1.25 \"\n",
+                "sok #\n"
+            ),
+            "direct-rich.vcd",
+        );
+        let rich = Waveform::open(rich_fixture.path()).expect("rich fixture should open");
+        let rich_hierarchy = rich.inner.hierarchy();
+        for (path, expected) in [
+            ("top.ev", crate::expr::ExprTypeKind::Event),
+            ("top.temp", crate::expr::ExprTypeKind::Real),
+            ("top.msg", crate::expr::ExprTypeKind::String),
+        ] {
+            let var = &rich_hierarchy[resolve_var_ref(rich_hierarchy, path).expect("var")];
+            let ty = expr_type_from_var(rich_hierarchy, var, path).expect("expr type");
+            assert_eq!(
+                std::mem::discriminant(&ty.kind),
+                std::mem::discriminant(&expected)
+            );
+        }
+
+        let labeled = crate::expr::ExprType {
+            kind: crate::expr::ExprTypeKind::EnumCore,
+            storage: crate::expr::ExprStorage::Scalar,
+            width: 2,
+            is_four_state: true,
+            is_signed: false,
+            enum_type_id: Some("state".to_string()),
+            enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                name: "BUSY".to_string(),
+                bits: "10".to_string(),
+            }]),
+        };
+        assert_eq!(
+            enum_label_for_bits(&labeled, "10"),
+            Some("BUSY".to_string())
+        );
+        assert_eq!(normalize_to_four_state('h'), 'x');
+        assert_eq!(normalize_to_four_state('1'), '1');
+        let clk_var_ref = resolve_var_ref(hierarchy, "top.clk").expect("same ref");
+        assert_eq!(clk_ref, hierarchy[clk_var_ref].signal_ref());
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

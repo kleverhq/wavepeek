@@ -124,10 +124,12 @@ ENV HOME=/home/ubuntu
 ENV RUSTUP_HOME=/home/ubuntu/.rustup
 ENV CARGO_HOME=/home/ubuntu/.cargo
 ENV RUST_VERSION=1.93.0
+ENV CARGO_LLVM_COV_VERSION=0.8.7
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup default ${RUST_VERSION} && \
-    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy --toolchain ${RUST_VERSION}
+    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy llvm-tools-preview --toolchain ${RUST_VERSION} && \
+    /home/ubuntu/.cargo/bin/cargo install --locked cargo-llvm-cov --version ${CARGO_LLVM_COV_VERSION}
 
 # ---- CI Image ----------------------------------------------------------------
 FROM base AS ci

@@ -79,6 +79,11 @@ check-build: require-container
 test: require-container check-rtl-artifacts
 	cargo test -q
 
+## Report source coverage for src/**/*.rs via cargo-llvm-cov
+coverage-src: require-container check-rtl-artifacts
+	@mkdir -p tmp/coverage
+	cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' | tee tmp/coverage/coverage-src-summary.txt
+
 ## Run auxiliary Python/unit test suites
 test-aux: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"

@@ -52,6 +52,8 @@ Common commands:
 - Tests:
   - `make test`
   - `make test-aux`
+- Coverage:
+  - `make coverage-src`
 - Run all pre-commit hooks locally:
   - `make pre-commit`
 - Validate commit message (commit-msg hook runs this):
@@ -69,6 +71,7 @@ Direct Cargo equivalents (useful when iterating):
 - `cargo clippy --all-targets --all-features -- -D warnings`
 - `cargo check`
 - `cargo test`
+- `cargo llvm-cov --workspace --all-features --summary-only`
 - `cargo build` / `cargo build --release`
 - `cargo run -- <args>`
 

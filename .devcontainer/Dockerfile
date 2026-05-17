@@ -1,3 +1,7 @@
+# ---- Shared Environment Contract -----------------------------------------------
+FROM scratch AS env_contract
+COPY .devcontainer/env_contract.sh /wavepeek-env-contract.sh
+
 # ---- Surfer Builder ------------------------------------------------------------
 FROM ubuntu:24.04 AS surfer_builder
 
@@ -5,10 +9,10 @@ FROM ubuntu:24.04 AS surfer_builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Setup environment variables
+COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
 ENV SURFER_INSTALL=/opt/surfer \
     RUSTUP_HOME=/opt/rustup \
-    CARGO_HOME=/opt/cargo \
-    RUST_VERSION=1.93.0
+    CARGO_HOME=/opt/cargo
 
 # Install build dependencies
 RUN apt-get update && \
@@ -18,15 +22,16 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Rust toolchain
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
-    ${CARGO_HOME}/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
-    ${CARGO_HOME}/bin/rustup default ${RUST_VERSION}
+RUN . /tmp/wavepeek-env-contract.sh && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
+    ${CARGO_HOME}/bin/rustup toolchain install ${WAVEPEEK_RUST_VERSION} --profile minimal && \
+    ${CARGO_HOME}/bin/rustup default ${WAVEPEEK_RUST_VERSION}
 
 # Build Surfer
-ARG SURFER_VERSION=v0.5.0
-RUN ${CARGO_HOME}/bin/cargo install --locked \
+RUN . /tmp/wavepeek-env-contract.sh && \
+    ${CARGO_HOME}/bin/cargo install --locked \
     --git https://gitlab.com/surfer-project/surfer.git \
-    --tag ${SURFER_VERSION} \
+    --tag ${WAVEPEEK_SURFER_VERSION} \
     --root ${SURFER_INSTALL} \
     surfer
 
@@ -34,7 +39,7 @@ RUN ${CARGO_HOME}/bin/cargo install --locked \
 FROM ubuntu:24.04 AS rtl_artifacts
 
 ENV DEBIAN_FRONTEND=noninteractive
-ARG RTL_ARTIFACTS_VERSION=v1.0.0
+COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
 ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
 
 RUN apt-get update && \
@@ -42,23 +47,12 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p ${RTL_ARTIFACTS_DIR} && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/picorv32_test_vcd.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/picorv32_test_vcd.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_coremark.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_coremark.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/picorv32_test_ez_vcd.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/picorv32_test_ez_vcd.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_isr_sample.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_isr_sample.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/scr1_max_axi_riscv_compliance.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/scr1_max_axi_riscv_compliance.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_DualRocketConfig_dhrystone.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_DualRocketConfig_dhrystone.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_ClusteredRocketConfig_dhrystone.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_ClusteredRocketConfig_dhrystone.fst && \
-    curl -fsSL -o ${RTL_ARTIFACTS_DIR}/chipyard_ClusteredRocketConfig_mt-memcpy.fst \
-      https://github.com/kleverhq/rtl-artifacts/releases/download/${RTL_ARTIFACTS_VERSION}/chipyard_ClusteredRocketConfig_mt-memcpy.fst
+RUN . /tmp/wavepeek-env-contract.sh && \
+    mkdir -p ${RTL_ARTIFACTS_DIR} && \
+    for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do \
+      curl -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
+        "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"; \
+    done
 
 # ---- Node Toolchain ----------------------------------------------------------
 FROM node:24-bookworm AS node_toolchain
@@ -67,7 +61,7 @@ FROM node:24-bookworm AS node_toolchain
 FROM ubuntu:24.04 AS base
 
 ARG TARGETARCH
-ARG ACTIONLINT_VERSION=1.7.12
+COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
 
 # Install necessary system dependencies
 RUN apt-get update && \
@@ -83,14 +77,15 @@ RUN apt-get update && \
     && rm -rf /var/lib/apt/lists/*
 
 # Install GitHub Actions workflow linter for hooks and CI checks.
-RUN arch="${TARGETARCH:-amd64}" && \
+RUN . /tmp/wavepeek-env-contract.sh && \
+    arch="${TARGETARCH:-amd64}" && \
     case "$arch" in \
         amd64|arm64) actionlint_arch="$arch" ;; \
         *) printf '%s\n' "unsupported actionlint architecture: $arch" >&2; exit 1 ;; \
     esac && \
     tmp_dir="$(mktemp -d)" && \
     curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
-        "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz" && \
+        "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz" && \
     tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint && \
     install -m 0755 "$tmp_dir/actionlint" /usr/local/bin/actionlint && \
     rm -rf "$tmp_dir"
@@ -123,13 +118,12 @@ USER ubuntu
 ENV HOME=/home/ubuntu
 ENV RUSTUP_HOME=/home/ubuntu/.rustup
 ENV CARGO_HOME=/home/ubuntu/.cargo
-ENV RUST_VERSION=1.93.0
-ENV CARGO_LLVM_COV_VERSION=0.8.7
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
-    /home/ubuntu/.cargo/bin/rustup toolchain install ${RUST_VERSION} --profile minimal && \
-    /home/ubuntu/.cargo/bin/rustup default ${RUST_VERSION} && \
-    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy llvm-tools-preview --toolchain ${RUST_VERSION} && \
-    /home/ubuntu/.cargo/bin/cargo install --locked cargo-llvm-cov --version ${CARGO_LLVM_COV_VERSION}
+RUN . /tmp/wavepeek-env-contract.sh && \
+    curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal && \
+    /home/ubuntu/.cargo/bin/rustup toolchain install ${WAVEPEEK_RUST_VERSION} --profile minimal && \
+    /home/ubuntu/.cargo/bin/rustup default ${WAVEPEEK_RUST_VERSION} && \
+    /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy llvm-tools-preview --toolchain ${WAVEPEEK_RUST_VERSION} && \
+    /home/ubuntu/.cargo/bin/cargo install --locked cargo-llvm-cov --version ${WAVEPEEK_CARGO_LLVM_COV_VERSION}
 
 # ---- CI Image ----------------------------------------------------------------
 FROM base AS ci
@@ -163,9 +157,9 @@ COPY --from=surfer_builder --chown=ubuntu:ubuntu ${SURFER_INSTALL} ${SURFER_INST
 
 # Install latest npm-based coding agents
 ENV NPM_CONFIG_PREFIX=/home/ubuntu/.local
-ENV DEVCONTAINERS_CLI_VERSION=0.86.0
-RUN npm install -g \
-    @devcontainers/cli@${DEVCONTAINERS_CLI_VERSION} \
+RUN . /tmp/wavepeek-env-contract.sh && \
+    npm install -g \
+    @devcontainers/cli@${WAVEPEEK_DEVCONTAINERS_CLI_VERSION} \
     @openai/codex \
     @mariozechner/pi-coding-agent
 
@@ -180,10 +174,9 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 ENV WINIT_UNIX_BACKEND=x11
 
 # Install Python tooling for hooks
-ENV PRECOMMIT_VERSION=4.5.1
-ENV COMMITIZEN_VERSION=4.12.1
-RUN pipx install pre-commit==${PRECOMMIT_VERSION} && \
-    pipx install commitizen==${COMMITIZEN_VERSION}
+RUN . /tmp/wavepeek-env-contract.sh && \
+    pipx install pre-commit==${WAVEPEEK_PRECOMMIT_VERSION} && \
+    pipx install commitizen==${WAVEPEEK_COMMITIZEN_VERSION}
 
 # Update PATH
 ENV PATH="/home/ubuntu/.local/bin:${CARGO_HOME}/bin:${SURFER_INSTALL}/bin:${PATH}"

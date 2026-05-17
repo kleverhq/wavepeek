@@ -1,19 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Codex cloud setup is maintained manually as a derivative of
-# .devcontainer/Dockerfile and the paired devcontainer configs.
-# Treat .devcontainer/ as the source of truth for tool versions,
-# fixture versions, and environment contracts; update this script
-# whenever the devcontainer image contents change.
+# Codex cloud setup is maintained manually as a derivative of the repository's
+# devcontainer contract. Keep `.devcontainer/` as the primary source of truth,
+# especially `.devcontainer/env_contract.sh`, and update this script whenever
+# the devcontainer image contents or environment guarantees change.
 
-readonly WAVEPEEK_CODEX_RUST_VERSION="1.93.0"
-readonly WAVEPEEK_CODEX_CARGO_LLVM_COV_VERSION="0.8.7"
-readonly WAVEPEEK_CODEX_ACTIONLINT_VERSION="1.7.12"
-readonly WAVEPEEK_CODEX_HYPERFINE_VERSION="1.18.0"
-readonly WAVEPEEK_CODEX_PRECOMMIT_VERSION="4.5.1"
-readonly WAVEPEEK_CODEX_COMMITIZEN_VERSION="4.12.1"
-readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_VERSION="v1.0.0"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+# shellcheck source=../.devcontainer/env_contract.sh
+source "${REPO_ROOT}/.devcontainer/env_contract.sh"
+
 readonly WAVEPEEK_CODEX_BIN_DIR="${HOME}/.local/bin"
 if [ -n "${RTL_ARTIFACTS_DIR:-}" ]; then
     _wavepeek_codex_rtl_artifacts_dir="${RTL_ARTIFACTS_DIR}"
@@ -24,16 +21,6 @@ else
 fi
 readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR="${_wavepeek_codex_rtl_artifacts_dir}"
 unset _wavepeek_codex_rtl_artifacts_dir
-readonly WAVEPEEK_CODEX_RTL_ARTIFACTS=(
-    picorv32_test_vcd.fst
-    scr1_max_axi_coremark.fst
-    picorv32_test_ez_vcd.fst
-    scr1_max_axi_isr_sample.fst
-    scr1_max_axi_riscv_compliance.fst
-    chipyard_DualRocketConfig_dhrystone.fst
-    chipyard_ClusteredRocketConfig_dhrystone.fst
-    chipyard_ClusteredRocketConfig_mt-memcpy.fst
-)
 log() {
     printf '%s\n' "$*"
 }
@@ -80,13 +67,13 @@ ensure_rust_toolchain() {
     local current_version
     current_version="$(rustc --version | awk '{print $2}')"
 
-    if [ "$current_version" != "$WAVEPEEK_CODEX_RUST_VERSION" ]; then
-        log "Selecting Rust ${WAVEPEEK_CODEX_RUST_VERSION}"
-        rustup toolchain install "$WAVEPEEK_CODEX_RUST_VERSION" --profile minimal
-        rustup default "$WAVEPEEK_CODEX_RUST_VERSION"
+    if [ "$current_version" != "$WAVEPEEK_RUST_VERSION" ]; then
+        log "Selecting Rust ${WAVEPEEK_RUST_VERSION}"
+        rustup toolchain install "$WAVEPEEK_RUST_VERSION" --profile minimal
+        rustup default "$WAVEPEEK_RUST_VERSION"
     fi
 
-    rustup component add rustfmt clippy llvm-tools-preview --toolchain "$WAVEPEEK_CODEX_RUST_VERSION"
+    rustup component add rustfmt clippy llvm-tools-preview --toolchain "$WAVEPEEK_RUST_VERSION"
 }
 
 ensure_cargo_llvm_cov() {
@@ -96,12 +83,12 @@ ensure_cargo_llvm_cov() {
         current_version="$(cargo llvm-cov --version | awk '{print $2}')"
     fi
 
-    if [ "$current_version" = "$WAVEPEEK_CODEX_CARGO_LLVM_COV_VERSION" ]; then
+    if [ "$current_version" = "$WAVEPEEK_CARGO_LLVM_COV_VERSION" ]; then
         return
     fi
 
-    log "Installing cargo-llvm-cov ${WAVEPEEK_CODEX_CARGO_LLVM_COV_VERSION}"
-    cargo install --locked cargo-llvm-cov --version "$WAVEPEEK_CODEX_CARGO_LLVM_COV_VERSION"
+    log "Installing cargo-llvm-cov ${WAVEPEEK_CARGO_LLVM_COV_VERSION}"
+    cargo install --locked cargo-llvm-cov --version "$WAVEPEEK_CARGO_LLVM_COV_VERSION"
 }
 
 install_actionlint() {
@@ -125,7 +112,7 @@ install_actionlint() {
     trap 'rm -rf "$tmp_dir"' RETURN
 
     curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
-        "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_CODEX_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_CODEX_ACTIONLINT_VERSION}_linux_${arch}.tar.gz"
+        "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${arch}.tar.gz"
     tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint
     install -m 0755 "$tmp_dir/actionlint" "$WAVEPEEK_CODEX_BIN_DIR/actionlint"
 }
@@ -137,11 +124,11 @@ ensure_actionlint() {
         current_version="$(actionlint -version | awk 'NR==1 {print $1}')"
     fi
 
-    if [ "$current_version" = "$WAVEPEEK_CODEX_ACTIONLINT_VERSION" ]; then
+    if [ "$current_version" = "$WAVEPEEK_ACTIONLINT_VERSION" ]; then
         return
     fi
 
-    log "Installing actionlint ${WAVEPEEK_CODEX_ACTIONLINT_VERSION}"
+    log "Installing actionlint ${WAVEPEEK_ACTIONLINT_VERSION}"
     install_actionlint
 }
 
@@ -153,10 +140,10 @@ install_hyperfine() {
     arch="$(uname -m)"
     case "$arch" in
         x86_64)
-            asset_name="hyperfine-v${WAVEPEEK_CODEX_HYPERFINE_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
+            asset_name="hyperfine-v${WAVEPEEK_HYPERFINE_VERSION}-x86_64-unknown-linux-gnu.tar.gz"
             ;;
         aarch64|arm64)
-            asset_name="hyperfine-v${WAVEPEEK_CODEX_HYPERFINE_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
+            asset_name="hyperfine-v${WAVEPEEK_HYPERFINE_VERSION}-aarch64-unknown-linux-gnu.tar.gz"
             ;;
         *)
             error "unsupported hyperfine architecture: $arch"
@@ -167,7 +154,7 @@ install_hyperfine() {
     trap 'rm -rf "$tmp_dir"' RETURN
 
     curl -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
-        "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_CODEX_HYPERFINE_VERSION}/${asset_name}"
+        "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_HYPERFINE_VERSION}/${asset_name}"
     tar -xzf "$tmp_dir/hyperfine.tar.gz" -C "$tmp_dir"
     install -m 0755 "$tmp_dir"/*/hyperfine "$WAVEPEEK_CODEX_BIN_DIR/hyperfine"
 }
@@ -179,11 +166,11 @@ ensure_hyperfine() {
         current_version="$(hyperfine --version | awk '{print $2}')"
     fi
 
-    if [ "$current_version" = "$WAVEPEEK_CODEX_HYPERFINE_VERSION" ]; then
+    if [ "$current_version" = "$WAVEPEEK_HYPERFINE_VERSION" ]; then
         return
     fi
 
-    log "Installing hyperfine ${WAVEPEEK_CODEX_HYPERFINE_VERSION}"
+    log "Installing hyperfine ${WAVEPEEK_HYPERFINE_VERSION}"
     install_hyperfine
 }
 
@@ -216,7 +203,7 @@ ensure_rtl_artifacts() {
 
     ensure_rtl_artifacts_dir
 
-    for artifact in "${WAVEPEEK_CODEX_RTL_ARTIFACTS[@]}"; do
+    for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do
         if [ -f "$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR/$artifact" ]; then
             continue
         fi
@@ -224,7 +211,7 @@ ensure_rtl_artifacts() {
         log "Downloading RTL artifact: $artifact"
         tmp_file="$(mktemp)"
         curl -fsSL -o "$tmp_file" \
-            "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_CODEX_RTL_ARTIFACTS_VERSION}/${artifact}"
+            "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"
         install -m 0644 "$tmp_file" "$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR/$artifact"
         rm -f "$tmp_file"
     done
@@ -243,7 +230,7 @@ ensure_codex_tooling() {
     ensure_cargo_llvm_cov
     ensure_actionlint
     ensure_hyperfine
-    ensure_pipx_package pre-commit "$WAVEPEEK_CODEX_PRECOMMIT_VERSION" pre-commit --version
-    ensure_pipx_package commitizen "$WAVEPEEK_CODEX_COMMITIZEN_VERSION" cz version
+    ensure_pipx_package pre-commit "$WAVEPEEK_PRECOMMIT_VERSION" pre-commit --version
+    ensure_pipx_package commitizen "$WAVEPEEK_COMMITIZEN_VERSION" cz version
     ensure_rtl_artifacts
 }

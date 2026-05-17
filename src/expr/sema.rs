@@ -2292,6 +2292,10 @@ fn sema_diag(code: &'static str, message: &str, span: Span, notes: &[&str]) -> E
 }
 
 #[cfg(test)]
+#[path = "../tests/sema_coverage_96.rs"]
+mod sema_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use std::collections::HashMap;
 
@@ -2454,6 +2458,7 @@ mod tests {
                 .event_occurred(SignalHandle(2), 0)
                 .expect("event check")
         );
+        assert!(host.resolve_signal("missing").is_err());
 
         let ast = parse_logical_expr_ast("cond ? lhs : rhs").expect("parse");
         let bound = bind_logical_expr_ast(&ast, &host).expect("bind");
@@ -2515,6 +2520,7 @@ mod tests {
 
         let host = MixedHost;
         assert_eq!(host.resolve_signal("ev").expect("resolve"), SignalHandle(1));
+        assert!(host.resolve_signal("missing").is_err());
         assert!(std::panic::catch_unwind(|| host.sample_value(SignalHandle(1), 0)).is_err());
         assert!(std::panic::catch_unwind(|| host.event_occurred(SignalHandle(1), 0)).is_err());
 
@@ -2668,6 +2674,7 @@ mod tests {
                 .event_occurred(SignalHandle(2), 0)
                 .expect("event check")
         );
+        assert!(host.resolve_signal("missing").is_err());
 
         let error = cast_target_type(
             &CastTargetAst::RecoveredType {
@@ -4716,6 +4723,15 @@ mod tests {
         )
         .expect_err("missing recovered cast target should fail");
         assert!(cast_error.notes.is_empty());
+        assert!(matches!(
+            EmptyMessageHost.signal_type(SignalHandle(1)).unwrap().kind,
+            ExprTypeKind::BitVector
+        ));
+        assert!(matches!(
+            EmptyMessageHost.sample_value(SignalHandle(1), 0).unwrap(),
+            crate::expr::SampledValue::Integral { .. }
+        ));
+        assert!(!EmptyMessageHost.event_occurred(SignalHandle(1), 0).unwrap());
     }
 
     #[test]

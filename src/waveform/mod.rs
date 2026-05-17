@@ -1348,6 +1348,41 @@ fn normalize_to_four_state(bit: char) -> char {
 }
 
 #[cfg(test)]
+#[path = "../tests/waveform_coverage_96.rs"]
+mod waveform_coverage_96;
+
+#[cfg(test)]
+mod waveform_inline_derive_coverage_96 {
+    use super::*;
+
+    #[test]
+    fn inline_derive_calls_are_attributed_to_waveform_module() {
+        let scope = ScopeEntry {
+            path: "top".to_string(),
+            depth: 0,
+            kind: "module".to_string(),
+        };
+        assert_eq!(scope.clone(), scope);
+        assert!(format!("{scope:?}").contains("module"));
+        let signal = SignalEntry {
+            name: "sig".to_string(),
+            path: "top.sig".to_string(),
+            kind: "wire".to_string(),
+            width: Some(1),
+        };
+        assert_eq!(signal.clone(), signal);
+        assert!(format!("{signal:?}").contains("top.sig"));
+        let state = SampledSignalState {
+            path: "top.sig".to_string(),
+            width: 1,
+            bits: Some("1".to_string()),
+        };
+        assert_eq!(state.clone(), state);
+        assert!(format!("{state:?}").contains("bits"));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::io::Write;
     use std::path::Path;

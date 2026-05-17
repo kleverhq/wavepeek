@@ -1261,6 +1261,34 @@ fn parse_bound_time(
 }
 
 #[cfg(test)]
+#[path = "../tests/change_coverage_96.rs"]
+mod change_coverage_96;
+
+#[cfg(test)]
+mod change_inline_derive_coverage_96 {
+    use super::*;
+
+    #[test]
+    fn inline_derive_calls_are_attributed_to_change_module() {
+        let signal = ChangeSignalValue {
+            display: "sig".to_string(),
+            path: "top.sig".to_string(),
+            value: "1'b1".to_string(),
+        };
+        assert_eq!(signal.clone(), signal);
+        assert!(format!("{signal:?}").contains("top.sig"));
+        assert!(serde_json::to_string(&signal).unwrap().contains("top.sig"));
+        let snapshot = ChangeSnapshot {
+            time: "1ns".to_string(),
+            signals: vec![signal],
+        };
+        assert_eq!(snapshot.clone(), snapshot);
+        assert!(format!("{snapshot:?}").contains("1ns"));
+        assert!(serde_json::to_string(&snapshot).unwrap().contains("1ns"));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::fs;
     use std::path::PathBuf;

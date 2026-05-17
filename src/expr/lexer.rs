@@ -754,6 +754,10 @@ fn logical_identifier_char(ch: char) -> bool {
 }
 
 #[cfg(test)]
+#[path = "../tests/lexer_coverage_96.rs"]
+mod lexer_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use super::{LogicalLexer, TokenKind, lex_event_expr, lex_logical_expr};
 

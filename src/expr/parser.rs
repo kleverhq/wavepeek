@@ -1478,6 +1478,10 @@ fn logical_parse_diag(
 mod parser_coverage_smoke;
 
 #[cfg(test)]
+#[path = "../tests/parser_coverage_96.rs"]
+mod parser_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use super::{
         LogicalParser, LogicalToken, LogicalTokenKind, StrictParser, Token, TokenKind,

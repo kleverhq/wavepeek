@@ -242,6 +242,10 @@ fn parse_bound_time(
 }
 
 #[cfg(test)]
+#[path = "../tests/property_coverage_96.rs"]
+mod property_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use std::fs;
     use std::path::PathBuf;

@@ -697,6 +697,34 @@ fn unique_sibling_path(parent: &Path, out_dir: &Path, prefix: &str) -> PathBuf {
 }
 
 #[cfg(test)]
+#[path = "../tests/docs_coverage_96.rs"]
+mod docs_coverage_96;
+
+#[cfg(test)]
+mod docs_inline_derive_coverage_96 {
+    use super::*;
+
+    #[test]
+    fn inline_derive_calls_are_attributed_to_docs_module() {
+        let topic = TopicSummary {
+            id: "commands/demo".to_string(),
+            title: "Demo".to_string(),
+            summary: "Demo summary".to_string(),
+            section: "commands".to_string(),
+            see_also: Vec::new(),
+        };
+        assert_eq!(topic.clone(), topic);
+        assert!(format!("{topic:?}").contains("Demo"));
+        assert!(serde_json::to_string(&topic).unwrap().contains("Demo"));
+        let front: FrontMatter = serde_yaml::from_str(
+            "id: commands/demo\ntitle: Demo\nsummary: Demo summary\nsection: commands\n",
+        )
+        .unwrap();
+        assert!(format!("{front:?}").contains("commands/demo"));
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
     use std::path::Path;

@@ -814,6 +814,13 @@ mod tests {
                 .to_string()
                 .contains("sample blew up")
         );
+        assert!(
+            FailingHost
+                .event_occurred(SignalHandle(1), 5)
+                .expect_err("direct event failure should remain available")
+                .message
+                .contains("event blew up")
+        );
 
         let rich_tree = BoundLogicalExpr {
             root: BoundLogicalNode {

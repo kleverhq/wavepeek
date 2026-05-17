@@ -218,6 +218,10 @@ fn write_stdout(output: &str) {
 }
 
 #[cfg(test)]
+#[path = "tests/output_coverage_96.rs"]
+mod output_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use serde_json::Value;
 

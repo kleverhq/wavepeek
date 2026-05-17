@@ -1908,6 +1908,10 @@ fn bits_to_string(bits: &[BoundBit]) -> String {
 }
 
 #[cfg(test)]
+#[path = "../tests/eval_coverage_96.rs"]
+mod eval_coverage_96;
+
+#[cfg(test)]
 mod tests {
     use std::cell::RefCell;
 

@@ -3470,6 +3470,601 @@ mod tests {
         }
     }
 
+    #[test]
+    fn sema_manual_error_and_const_eval_paths_cover_remaining_helpers() {
+        struct BranchHost;
+        impl ExpressionHost for BranchHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "vec" => Ok(SignalHandle(1)),
+                    "scalar" => Ok(SignalHandle(2)),
+                    "real" => Ok(SignalHandle(3)),
+                    "evt" => Ok(SignalHandle(4)),
+                    "str" => Ok(SignalHandle(5)),
+                    _ => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: "HOST-UNKNOWN-SIGNAL",
+                        message: String::new(),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(2) => integer_like_type(IntegerLikeKind::Int),
+                    SignalHandle(3) => real_type(),
+                    SignalHandle(4) => ExprType {
+                        kind: ExprTypeKind::Event,
+                        storage: ExprStorage::Scalar,
+                        width: 0,
+                        is_four_state: false,
+                        is_signed: false,
+                        enum_type_id: None,
+                        enum_labels: None,
+                    },
+                    SignalHandle(5) => string_type(),
+                    _ => bit_vector_type(4, false, false, true),
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!()
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+        }
+
+        let span = Span::new(4, 9);
+        let missing = bind_logical_operand_ref("missing", span, &BranchHost)
+            .expect_err("unknown operands should fail without host notes");
+        assert!(missing.notes.is_empty());
+        let missing_event = resolve_event_signal(&BranchHost, "missing", span)
+            .expect_err("missing event signals should fail without host notes");
+        assert!(missing_event.notes.is_empty());
+        assert_eq!(
+            const_bits_node(&[BoundBit::One], false).span(),
+            Span::new(0, 0)
+        );
+
+        let invalid_real = LogicalExprNode::RealLiteral {
+            literal: crate::expr::ast::RealLiteral {
+                text: "bogus".to_string(),
+                span,
+            },
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&invalid_real, &BranchHost)
+                .expect_err("invalid real literals should fail")
+                .code,
+            "EXPR-SEMANTIC-REAL-LITERAL"
+        );
+
+        let scalar_select = LogicalExprNode::Selection {
+            base: Box::new(LogicalExprNode::OperandRef {
+                name: "scalar".to_string(),
+                span,
+            }),
+            selection: SelectionKindAst::Bit {
+                index: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: false,
+                        base: IntegralBase::Decimal,
+                        digits: "0".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+            },
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&scalar_select, &BranchHost)
+                .expect_err("scalar integral types are not packed vectors")
+                .code,
+            "EXPR-SEMANTIC-SELECTION-BASE"
+        );
+
+        let zero_width_select = LogicalExprNode::Selection {
+            base: Box::new(LogicalExprNode::OperandRef {
+                name: "vec".to_string(),
+                span,
+            }),
+            selection: SelectionKindAst::IndexedUp {
+                base: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: false,
+                        base: IntegralBase::Decimal,
+                        digits: "1".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+                width: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: false,
+                        base: IntegralBase::Decimal,
+                        digits: "0".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+            },
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&zero_width_select, &BranchHost)
+                .expect_err("indexed part-select width zero should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let negative_width_select = LogicalExprNode::Selection {
+            base: Box::new(LogicalExprNode::OperandRef {
+                name: "vec".to_string(),
+                span,
+            }),
+            selection: SelectionKindAst::IndexedDown {
+                base: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: false,
+                        base: IntegralBase::Decimal,
+                        digits: "1".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+                width: Box::new(LogicalExprNode::Unary {
+                    op: UnaryOpAst::Minus,
+                    expr: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: true,
+                            base: IntegralBase::Decimal,
+                            digits: "1".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                    span,
+                }),
+            },
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&negative_width_select, &BranchHost)
+                .expect_err("negative indexed widths should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let chained_trigger = LogicalExprNode::Triggered {
+            expr: Box::new(LogicalExprNode::Triggered {
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "evt".to_string(),
+                    span,
+                }),
+                span,
+            }),
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&chained_trigger, &BranchHost)
+                .expect_err("chained triggered calls should fail")
+                .code,
+            "EXPR-SEMANTIC-TRIGGERED"
+        );
+
+        let selected_trigger = LogicalExprNode::Triggered {
+            expr: Box::new(LogicalExprNode::Selection {
+                base: Box::new(LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                }),
+                selection: SelectionKindAst::Bit {
+                    index: Box::new(LogicalExprNode::IntegralLiteral {
+                        literal: IntegralLiteral {
+                            width: None,
+                            signed: false,
+                            base: IntegralBase::Decimal,
+                            digits: "0".to_string(),
+                            span,
+                        },
+                        span,
+                    }),
+                },
+                span,
+            }),
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&selected_trigger, &BranchHost)
+                .expect_err("selection.triggered() should fail")
+                .code,
+            "EXPR-SEMANTIC-TRIGGERED"
+        );
+
+        let empty_concat = LogicalExprNode::Concatenation {
+            items: vec![],
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&empty_concat, &BranchHost)
+                .expect_err("empty concatenation should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let overflowing_concat = LogicalExprNode::Concatenation {
+            items: vec![
+                LogicalExprNode::Cast {
+                    target: CastTargetAst::BitVector {
+                        width: u32::MAX,
+                        is_four_state: false,
+                        is_signed: false,
+                    },
+                    expr: Box::new(LogicalExprNode::OperandRef {
+                        name: "real".to_string(),
+                        span,
+                    }),
+                    span,
+                },
+                LogicalExprNode::OperandRef {
+                    name: "vec".to_string(),
+                    span,
+                },
+            ],
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&overflowing_concat, &BranchHost)
+                .expect_err("concat width overflow should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let inside_non_integral = LogicalExprNode::Inside {
+            expr: Box::new(LogicalExprNode::OperandRef {
+                name: "str".to_string(),
+                span,
+            }),
+            set: vec![InsideItemAst::Expr(LogicalExprNode::OperandRef {
+                name: "vec".to_string(),
+                span,
+            })],
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&inside_non_integral, &BranchHost)
+                .expect_err("inside lhs must be integral")
+                .code,
+            "EXPR-SEMANTIC-INTEGRAL-REQUIRED"
+        );
+
+        let zero_replication = LogicalExprNode::Replication {
+            count: Box::new(LogicalExprNode::IntegralLiteral {
+                literal: IntegralLiteral {
+                    width: None,
+                    signed: false,
+                    base: IntegralBase::Decimal,
+                    digits: "0".to_string(),
+                    span,
+                },
+                span,
+            }),
+            expr: Box::new(LogicalExprNode::OperandRef {
+                name: "vec".to_string(),
+                span,
+            }),
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&zero_replication, &BranchHost)
+                .expect_err("zero replication counts should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let negative_replication = LogicalExprNode::Replication {
+            count: Box::new(LogicalExprNode::Unary {
+                op: UnaryOpAst::Minus,
+                expr: Box::new(LogicalExprNode::IntegralLiteral {
+                    literal: IntegralLiteral {
+                        width: None,
+                        signed: true,
+                        base: IntegralBase::Decimal,
+                        digits: "1".to_string(),
+                        span,
+                    },
+                    span,
+                }),
+                span,
+            }),
+            expr: Box::new(LogicalExprNode::OperandRef {
+                name: "vec".to_string(),
+                span,
+            }),
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&negative_replication, &BranchHost)
+                .expect_err("negative replication counts should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let overflowing_replication = LogicalExprNode::Replication {
+            count: Box::new(LogicalExprNode::IntegralLiteral {
+                literal: IntegralLiteral {
+                    width: None,
+                    signed: false,
+                    base: IntegralBase::Decimal,
+                    digits: "2".to_string(),
+                    span,
+                },
+                span,
+            }),
+            expr: Box::new(LogicalExprNode::Cast {
+                target: CastTargetAst::BitVector {
+                    width: u32::MAX,
+                    is_four_state: false,
+                    is_signed: false,
+                },
+                expr: Box::new(LogicalExprNode::OperandRef {
+                    name: "real".to_string(),
+                    span,
+                }),
+                span,
+            }),
+            span,
+        };
+        assert_eq!(
+            bind_logical_node(&overflowing_replication, &BranchHost)
+                .expect_err("replication width overflow should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+
+        let ty = bit_vector_type(4, true, true, true);
+        assert!(
+            apply_const_cast(
+                BoundCastKind::Signed,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::Zero],
+                    signed: false,
+                },
+                &ty,
+            )
+            .signed
+        );
+        assert!(
+            !apply_const_cast(
+                BoundCastKind::Unsigned,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: true,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .signed
+        );
+        assert_eq!(truthiness_bits(&[BoundBit::Zero]), ConstTruth::Zero);
+        assert_eq!(truthiness_bits(&[BoundBit::One]), ConstTruth::One);
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::LogicalNot,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::Zero],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::One]
+        );
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::BitNot,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One, BoundBit::Z],
+                    signed: false,
+                },
+                &bit_vector_type(2, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::Zero, BoundBit::X]
+        );
+        assert_eq!(
+            eval_const_unary(
+                UnaryOpAst::Minus,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::X, BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(2, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::X, BoundBit::X]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::Add,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(3, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(1, 4),
+                    signed: false,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            unsigned_to_bits(4, 4)
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::ShiftRight,
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(8, 4),
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: unsigned_to_bits(1, 4),
+                    signed: false,
+                },
+                &bit_vector_type(4, true, false, true),
+            )
+            .bits,
+            vec![
+                BoundBit::Zero,
+                BoundBit::One,
+                BoundBit::Zero,
+                BoundBit::Zero
+            ]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::BitXnor,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One, BoundBit::Zero],
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One, BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(2, true, false, true),
+            )
+            .bits,
+            vec![BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            eval_const_binary(
+                BinaryOpAst::LogicalAnd,
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+        assert_eq!(
+            numeric_binary(
+                &BoundIntegralValue {
+                    bits: vec![BoundBit::X],
+                    signed: false,
+                },
+                &BoundIntegralValue {
+                    bits: vec![BoundBit::One],
+                    signed: false,
+                },
+                &bit_vector_type(1, true, false, false),
+                |lhs, rhs| lhs + rhs,
+            )
+            .bits,
+            vec![BoundBit::X]
+        );
+        assert_eq!(bits_to_i128(&[BoundBit::One; 128], true), Some(-1));
+        assert_eq!(reduce_and(&[BoundBit::Zero, BoundBit::One]), BoundBit::Zero);
+        assert_eq!(reduce_or(&[BoundBit::One, BoundBit::Zero]), BoundBit::One);
+        assert_eq!(reduce_xor(&[BoundBit::One, BoundBit::One]), BoundBit::Zero);
+        assert_eq!(invert_reduce(BoundBit::Z), BoundBit::X);
+        assert_eq!(bitwise_and(BoundBit::Zero, BoundBit::X), BoundBit::Zero);
+        assert_eq!(bitwise_or(BoundBit::Zero, BoundBit::Zero), BoundBit::Zero);
+        assert_eq!(bitwise_xor(BoundBit::Zero, BoundBit::X), BoundBit::X);
+        assert_eq!(
+            sema_diag("EXPR-TEST", "msg", span, &["note-a", "note-b"]).notes,
+            vec!["note-a".to_string(), "note-b".to_string()]
+        );
+
+        let conditional_unknown = BoundLogicalNode {
+            ty: bit_vector_type(2, true, false, true),
+            span,
+            kind: BoundLogicalKind::Conditional {
+                condition: Box::new(const_bits_node(&[BoundBit::X], false)),
+                when_true: Box::new(const_bits_node(&[BoundBit::One, BoundBit::Zero], false)),
+                when_false: Box::new(const_bits_node(&[BoundBit::One, BoundBit::One], false)),
+            },
+        };
+        assert_eq!(
+            eval_const_node(&conditional_unknown)
+                .expect("conditional eval should succeed")
+                .expect("conditional should stay constant")
+                .bits,
+            vec![BoundBit::One, BoundBit::X]
+        );
+
+        let concat = BoundLogicalNode {
+            ty: bit_vector_type(2, true, false, true),
+            span,
+            kind: BoundLogicalKind::Concatenation {
+                items: vec![
+                    const_bits_node(&[BoundBit::One], false),
+                    const_bits_node(&[BoundBit::Zero], false),
+                ],
+            },
+        };
+        assert_eq!(
+            eval_const_node(&concat)
+                .expect("concat eval should succeed")
+                .expect("concat should stay constant")
+                .bits,
+            vec![BoundBit::One, BoundBit::Zero]
+        );
+
+        let replication = BoundLogicalNode {
+            ty: bit_vector_type(2, true, false, true),
+            span,
+            kind: BoundLogicalKind::Replication {
+                count: 2,
+                expr: Box::new(const_bits_node(&[BoundBit::One], false)),
+            },
+        };
+        assert_eq!(
+            eval_const_node(&replication)
+                .expect("replication eval should succeed")
+                .expect("replication should stay constant")
+                .bits,
+            vec![BoundBit::One, BoundBit::One]
+        );
+
+        let non_integral_cast = BoundLogicalNode {
+            ty: string_type(),
+            span,
+            kind: BoundLogicalKind::Cast {
+                kind: BoundCastKind::Static,
+                expr: Box::new(const_bits_node(&[BoundBit::One], false)),
+            },
+        };
+        assert_eq!(
+            eval_const_node(&non_integral_cast).expect("string casts should be non-constant"),
+            None
+        );
+    }
+
     fn const_bits_node(bits: &[BoundBit], signed: bool) -> BoundLogicalNode {
         BoundLogicalNode {
             ty: bit_vector_type(bits.len() as u32, true, signed, bits.len() > 1),

@@ -1709,4 +1709,67 @@ mod tests {
             parse_logical_expr_ast("signed'a").expect_err("casts require parenthesized payloads");
         assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
     }
+
+    #[test]
+    fn parser_rejects_more_event_union_iff_and_member_suffix_edges() {
+        for source in ["a or", "a,", "a or or b", "a, ,b"] {
+            let error = parse_event_expr_ast(source).expect_err("broken unions should fail");
+            assert_eq!(error.code, "EXPR-PARSE-EVENT-BROKEN-UNION", "{source}");
+        }
+
+        let error = parse_event_expr_ast("a iff )")
+            .expect_err("unmatched close inside iff payload should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-CLOSE");
+
+        let error = parse_event_expr_ast("a iff (")
+            .expect_err("unmatched open inside iff payload should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-OPEN");
+
+        let error =
+            parse_event_expr_ast("a iff   ").expect_err("whitespace-only iff payload should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-EMPTY-IFF");
+
+        let error =
+            parse_event_expr_ast("posedge )").expect_err("edge keywords followed by ) should fail");
+        assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-CLOSE");
+
+        let error = parse_logical_expr_ast("sig.foo()")
+            .expect_err("unsupported member-like suffixes should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-TRAILING");
+    }
+
+    #[test]
+    fn parser_rejects_more_inside_selection_and_cast_forms() {
+        let error =
+            parse_logical_expr_ast("a[1?2]").expect_err("malformed selection suffix should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error =
+            parse_logical_expr_ast("a inside {[1 2]}").expect_err("inside ranges require a colon");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error = parse_logical_expr_ast("a inside {1, 2")
+            .expect_err("inside sets must close with a brace");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error = parse_logical_expr_ast("{2{a}")
+            .expect_err("replication missing outer close should fail");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-EXPECTED");
+
+        let error = parse_logical_expr_ast("type(state'(a)")
+            .expect_err("type(...) cast targets need a closing parenthesis");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+
+        let error = parse_logical_expr_ast("type(state)'(a")
+            .expect_err("cast payloads need a closing parenthesis");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-UNMATCHED-OPEN");
+
+        let error = parse_logical_expr_ast("logic[x]'(a)")
+            .expect_err("cast widths must be integral literals");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+
+        let error =
+            parse_logical_expr_ast("logic[1").expect_err("cast widths need a closing bracket");
+        assert_eq!(error.code, "EXPR-PARSE-LOGICAL-CAST");
+    }
 }

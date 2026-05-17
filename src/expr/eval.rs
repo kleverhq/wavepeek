@@ -2482,6 +2482,176 @@ mod tests {
         );
     }
 
+    #[test]
+    fn runtime_helper_small_branches_cover_cache_and_arithmetic_edges() {
+        let host = FixtureHost::new()
+            .with_integral(1, Some("1"), Some("1"))
+            .with_event(2, true);
+        let mut cache = EvalCache::default();
+
+        assert!(matches!(
+            cache
+                .sample_value(&host, SignalHandle(1), 1)
+                .expect("sample"),
+            CachedSample::Integral { .. }
+        ));
+        assert!(matches!(
+            cache
+                .sample_value(&host, SignalHandle(1), 1)
+                .expect("cached sample"),
+            CachedSample::Integral { .. }
+        ));
+        assert_eq!(
+            cache
+                .signal_type(&host, SignalHandle(1))
+                .expect("type")
+                .width,
+            1
+        );
+        assert_eq!(
+            cache
+                .signal_type(&host, SignalHandle(1))
+                .expect("cached type")
+                .width,
+            1
+        );
+        assert!(
+            cache
+                .event_occurred(&host, SignalHandle(2), 1)
+                .expect("event should occur")
+        );
+        assert!(
+            cache
+                .event_occurred(&host, SignalHandle(2), 1)
+                .expect("cached event should occur")
+        );
+
+        assert!(matches!(
+            cache_sample(SampledValue::Real { value: None }),
+            CachedSample::Real { value: None }
+        ));
+        assert!(matches!(
+            cache_sample(SampledValue::String { value: None }),
+            CachedSample::String { value: None }
+        ));
+
+        let shifted_unknown = eval_shift(
+            BinaryOpAst::ShiftLeft,
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], true, false),
+            runtime_integral(&[BoundBit::X], true, false),
+            &integral_type(2, true, false),
+        )
+        .expect("unknown shifts should produce x values");
+        assert_eq!(
+            expect_integral_bits(&shifted_unknown).expect("integral").0,
+            [BoundBit::X, BoundBit::X]
+        );
+
+        let divide_by_zero = eval_arithmetic(
+            BinaryOpAst::Divide,
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], true, true),
+            runtime_integral(&[BoundBit::Zero, BoundBit::Zero], true, true),
+            &integral_type(2, true, true),
+        )
+        .expect("divide-by-zero should yield x, not a Rust failure");
+        assert_eq!(
+            expect_integral_bits(&divide_by_zero).expect("integral").0,
+            [BoundBit::X, BoundBit::X]
+        );
+
+        let zero_to_negative_power = eval_arithmetic(
+            BinaryOpAst::Power,
+            runtime_integral(&[BoundBit::Zero], false, false),
+            runtime_integral(&[BoundBit::One], false, true),
+            &integral_type(1, false, true),
+        )
+        .expect("negative powers should stay in runtime space");
+        assert_eq!(
+            expect_integral_bits(&zero_to_negative_power)
+                .expect("integral")
+                .0,
+            [BoundBit::X]
+        );
+
+        let bit_or = eval_bitwise(
+            BinaryOpAst::BitOr,
+            runtime_integral(&[BoundBit::Zero, BoundBit::X], true, false),
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], true, false),
+            &integral_type(2, true, false),
+        )
+        .expect("bitwise or should succeed");
+        assert_eq!(
+            expect_integral_bits(&bit_or).expect("integral").0,
+            [BoundBit::One, BoundBit::X]
+        );
+
+        assert_eq!(
+            compare_ordering(&[BoundBit::One], &[BoundBit::Zero], false),
+            Ordering::Greater
+        );
+        assert_eq!(
+            compare_unsigned(
+                &[BoundBit::One, BoundBit::One],
+                &[BoundBit::One, BoundBit::Zero]
+            ),
+            Ordering::Greater
+        );
+        assert_eq!(ordering_truth(true), TruthValue::One);
+        assert_eq!(ordering_truth(false), TruthValue::Zero);
+        assert_eq!(truth_to_bit(TruthValue::Unknown), BoundBit::X);
+        let all_x_value = all_x(&integral_type(0, true, false));
+        assert_eq!(
+            expect_integral_bits(&all_x_value).expect("integral").0,
+            [BoundBit::X]
+        );
+        assert_eq!(
+            select_bit(&[BoundBit::One], -1, false, false),
+            BoundBit::Zero
+        );
+        assert_eq!(select_bit(&[BoundBit::One], 4, true, true), BoundBit::X);
+        assert_eq!(
+            part_select_bits(&[BoundBit::One, BoundBit::Zero, BoundBit::One], 2, 1, false),
+            vec![BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            indexed_part_select_bits(&[BoundBit::One, BoundBit::Zero], -1, 2, true, false),
+            vec![BoundBit::Zero, BoundBit::X]
+        );
+        assert_eq!(reduce_and(&[BoundBit::One, BoundBit::One]), BoundBit::One);
+        assert_eq!(reduce_or(&[BoundBit::Zero, BoundBit::Zero]), BoundBit::Zero);
+        assert_eq!(reduce_xor(&[BoundBit::One, BoundBit::One]), BoundBit::Zero);
+        assert_eq!(invert_bit(BoundBit::Z), BoundBit::X);
+        assert_eq!(bitwise_and(BoundBit::Zero, BoundBit::One), BoundBit::Zero);
+        assert_eq!(bitwise_or(BoundBit::One, BoundBit::X), BoundBit::One);
+        assert_eq!(bitwise_xor(BoundBit::One, BoundBit::X), BoundBit::X);
+        assert_eq!(
+            finite_real(f64::INFINITY)
+                .expect_err("non-finite should fail")
+                .code,
+            "EXPR-RUNTIME-REAL-NONFINITE"
+        );
+        assert_eq!(bits_to_string(&unsigned_to_bits(5, 3)), "101");
+        assert_eq!(pow_wrapping_u128(3, 4), 81);
+        assert_eq!(signed_to_bits(-1, 2), vec![BoundBit::One, BoundBit::One]);
+
+        let labeled = ExprType {
+            kind: ExprTypeKind::EnumCore,
+            storage: ExprStorage::Scalar,
+            width: 2,
+            is_four_state: true,
+            is_signed: false,
+            enum_type_id: Some("state_t".to_string()),
+            enum_labels: Some(vec![crate::expr::EnumLabelInfo {
+                name: "BUSY".to_string(),
+                bits: "10".to_string(),
+            }]),
+        };
+        assert_eq!(
+            enum_label_for_bits(&labeled, &[BoundBit::One, BoundBit::Zero]),
+            Some("BUSY".to_string())
+        );
+    }
+
     fn integral_type(width: u32, is_four_state: bool, is_signed: bool) -> ExprType {
         ExprType {
             kind: ExprTypeKind::BitVector,

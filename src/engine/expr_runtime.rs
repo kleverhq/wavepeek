@@ -700,6 +700,318 @@ mod tests {
         assert_eq!(error.message, "unknown signal 'missing.sig'");
     }
 
+    #[test]
+    fn scoped_host_forwarders_and_error_wrappers_cover_remaining_branches() {
+        struct FailingHost;
+
+        impl ExpressionHost for FailingHost {
+            fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                Ok(SignalHandle(1))
+            }
+
+            fn signal_type(&self, _handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::Scalar,
+                    width: 1,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                    enum_labels: None,
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<SampledValue, ExprDiagnostic> {
+                Err(ExprDiagnostic {
+                    layer: DiagnosticLayer::Runtime,
+                    code: "HOST-SAMPLE-FAIL",
+                    message: "sample blew up".to_string(),
+                    primary_span: Span::new(0, 0),
+                    notes: vec![],
+                })
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                Err(ExprDiagnostic {
+                    layer: DiagnosticLayer::Runtime,
+                    code: "HOST-EVENT-FAIL",
+                    message: "event blew up".to_string(),
+                    primary_span: Span::new(0, 0),
+                    notes: vec![],
+                })
+            }
+        }
+
+        let host = StubHost;
+        let scoped = ScopedExprHost::new(&host, Some("top"));
+        assert_eq!(
+            scoped
+                .sample_value(SignalHandle(2), 5)
+                .expect("forwarded sample"),
+            SampledValue::Integral {
+                bits: Some("1".to_string()),
+                label: None,
+            }
+        );
+        assert!(
+            scoped
+                .event_occurred(SignalHandle(1), 5)
+                .expect("forwarded event")
+        );
+
+        let fixture = write_fixture(TEST_VCD, "expr-runtime-errors.vcd");
+        let wf_host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        assert!(
+            bind_waveform_event_expr(
+                open_shared_waveform(fixture.path()).expect("waveform should reopen"),
+                Some("top"),
+                "posedge )",
+            )
+            .expect_err("parse failures should map to expr errors")
+            .to_string()
+            .starts_with("error: expr:")
+        );
+        assert!(
+            bind_waveform_logical_expr(&wf_host, Some("top"), "ev")
+                .expect_err("semantic bind failures should map to expr errors")
+                .to_string()
+                .contains("triggered()")
+        );
+
+        let logical = crate::expr::bind_logical_expr_ast(
+            &crate::expr::parse_logical_expr_ast("top.sig").expect("parse"),
+            &host,
+        )
+        .expect("bind");
+        assert!(
+            eval_bound_logical_truth("top.sig", &logical, &FailingHost, 0)
+                .expect_err("runtime sample failures should map to expr errors")
+                .to_string()
+                .contains("sample blew up")
+        );
+
+        let event = crate::expr::bind_event_expr_ast(
+            &crate::expr::parse_event_expr_ast("posedge top.clk").expect("parse"),
+            &host,
+        )
+        .expect("event bind");
+        let frame = crate::expr::host::EventEvalFrame {
+            timestamp: 5,
+            previous_timestamp: Some(0),
+            tracked_signals: &[SignalHandle(1)],
+        };
+        assert!(
+            event_expr_matches("posedge top.clk", &event, &FailingHost, &frame)
+                .expect_err("runtime event failures should map to expr errors")
+                .to_string()
+                .contains("sample blew up")
+        );
+
+        let rich_tree = BoundLogicalExpr {
+            root: BoundLogicalNode {
+                ty: ExprType {
+                    kind: ExprTypeKind::BitVector,
+                    storage: ExprStorage::PackedVector,
+                    width: 4,
+                    is_four_state: true,
+                    is_signed: false,
+                    enum_type_id: None,
+                    enum_labels: None,
+                },
+                span: Span::new(0, 0),
+                kind: BoundLogicalKind::Concatenation {
+                    items: vec![
+                        BoundLogicalNode {
+                            ty: ExprType {
+                                kind: ExprTypeKind::BitVector,
+                                storage: ExprStorage::Scalar,
+                                width: 1,
+                                is_four_state: true,
+                                is_signed: false,
+                                enum_type_id: None,
+                                enum_labels: None,
+                            },
+                            span: Span::new(0, 0),
+                            kind: BoundLogicalKind::Parenthesized {
+                                expr: Box::new(BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(10),
+                                    },
+                                }),
+                            },
+                        },
+                        BoundLogicalNode {
+                            ty: ExprType {
+                                kind: ExprTypeKind::BitVector,
+                                storage: ExprStorage::Scalar,
+                                width: 1,
+                                is_four_state: true,
+                                is_signed: false,
+                                enum_type_id: None,
+                                enum_labels: None,
+                            },
+                            span: Span::new(0, 0),
+                            kind: BoundLogicalKind::Cast {
+                                kind: crate::expr::sema::BoundCastKind::Static,
+                                expr: Box::new(BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(11),
+                                    },
+                                }),
+                            },
+                        },
+                        BoundLogicalNode {
+                            ty: ExprType {
+                                kind: ExprTypeKind::BitVector,
+                                storage: ExprStorage::Scalar,
+                                width: 1,
+                                is_four_state: true,
+                                is_signed: false,
+                                enum_type_id: None,
+                                enum_labels: None,
+                            },
+                            span: Span::new(0, 0),
+                            kind: BoundLogicalKind::Unary {
+                                op: crate::expr::ast::UnaryOpAst::Plus,
+                                expr: Box::new(BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(12),
+                                    },
+                                }),
+                            },
+                        },
+                        BoundLogicalNode {
+                            ty: ExprType {
+                                kind: ExprTypeKind::BitVector,
+                                storage: ExprStorage::Scalar,
+                                width: 1,
+                                is_four_state: true,
+                                is_signed: false,
+                                enum_type_id: None,
+                                enum_labels: None,
+                            },
+                            span: Span::new(0, 0),
+                            kind: BoundLogicalKind::Replication {
+                                count: 2,
+                                expr: Box::new(BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::Scalar,
+                                        width: 1,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(13),
+                                    },
+                                }),
+                            },
+                        },
+                        BoundLogicalNode {
+                            ty: ExprType {
+                                kind: ExprTypeKind::BitVector,
+                                storage: ExprStorage::PackedVector,
+                                width: 2,
+                                is_four_state: true,
+                                is_signed: false,
+                                enum_type_id: None,
+                                enum_labels: None,
+                            },
+                            span: Span::new(0, 0),
+                            kind: BoundLogicalKind::Selection {
+                                base: Box::new(BoundLogicalNode {
+                                    ty: ExprType {
+                                        kind: ExprTypeKind::BitVector,
+                                        storage: ExprStorage::PackedVector,
+                                        width: 2,
+                                        is_four_state: true,
+                                        is_signed: false,
+                                        enum_type_id: None,
+                                        enum_labels: None,
+                                    },
+                                    span: Span::new(0, 0),
+                                    kind: BoundLogicalKind::SignalRef {
+                                        handle: SignalHandle(14),
+                                    },
+                                }),
+                                selection: BoundSelection::IndexedDown {
+                                    base: Box::new(BoundLogicalNode {
+                                        ty: ExprType {
+                                            kind: ExprTypeKind::BitVector,
+                                            storage: ExprStorage::Scalar,
+                                            width: 1,
+                                            is_four_state: true,
+                                            is_signed: false,
+                                            enum_type_id: None,
+                                            enum_labels: None,
+                                        },
+                                        span: Span::new(0, 0),
+                                        kind: BoundLogicalKind::SignalRef {
+                                            handle: SignalHandle(15),
+                                        },
+                                    }),
+                                    width: 1,
+                                },
+                            },
+                        },
+                    ],
+                },
+            },
+        };
+        assert_eq!(
+            referenced_signal_handles(&rich_tree),
+            vec![
+                SignalHandle(10),
+                SignalHandle(11),
+                SignalHandle(12),
+                SignalHandle(13),
+                SignalHandle(14),
+                SignalHandle(15),
+            ]
+        );
+    }
+
     fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
         let fixture = NamedTempFile::with_suffix(suffix).expect("fixture should create");
         fs::write(fixture.path(), contents).expect("fixture should write");

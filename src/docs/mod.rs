@@ -701,15 +701,19 @@ mod tests {
     use std::collections::BTreeMap;
     use std::path::Path;
 
+    use include_dir::{Dir, include_dir};
     use tempfile::tempdir;
 
     use super::{
-        DocsCatalog, EXPORT_FORMAT_VERSION, EXPORT_KIND, MatchKind, SearchMatch, TopicRecord,
-        TopicSummary, canonical_source_relpath, export_catalog, extract_headings, id_matches_token,
-        lookup_topic, normalize_query, packaged_skill_markdown, search_match, search_topics,
-        split_front_matter, suggest_topics, tokenize, topic_section_rank, unique_sibling_path,
-        validate_export_target,
+        DocsCatalog, EXPORT_FORMAT_VERSION, EXPORT_KIND, ExportManifest, MatchKind, SearchMatch,
+        TOPICS_DIR, TopicRecord, TopicSummary, canonical_source_relpath, collect_markdown_files,
+        export_catalog, extract_headings, id_matches_token, lookup_topic, normalize_query,
+        packaged_skill_markdown, parse_topic_file, search_match, search_topics, split_front_matter,
+        suggest_topics, tokenize, topic_section_rank, unique_sibling_path, validate_export_target,
+        write_export_tree,
     };
+
+    static DOC_FIXTURES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/docs_embed");
 
     #[test]
     fn embedded_topics_load_in_lexicographic_order() {
@@ -1031,6 +1035,117 @@ mod tests {
                 .to_string_lossy()
                 .contains("empty")
         );
+    }
+
+    #[test]
+    fn embedded_loader_helpers_cover_parse_and_export_details() {
+        let mut files = Vec::new();
+        collect_markdown_files(&TOPICS_DIR, &mut files);
+        assert!(
+            files
+                .iter()
+                .any(|file| file.path() == Path::new("commands/change.md"))
+        );
+        assert!(
+            files
+                .iter()
+                .all(|file| file.path().file_name().unwrap() != "AGENTS.md")
+        );
+
+        let change = TOPICS_DIR
+            .get_file("commands/change.md")
+            .expect("embedded file should exist");
+        let parsed = parse_topic_file(change).expect("embedded topic should parse");
+        assert_eq!(parsed.summary.id, "commands/change");
+        assert_eq!(parsed.headings[0], "Change command");
+        assert_eq!(parsed.source_relpath, "commands/change.md");
+
+        let nested = DOC_FIXTURES
+            .get_file("nested/topic.md")
+            .expect("fixture topic should exist");
+        let nested = parse_topic_file(nested).expect("fixture topic should parse");
+        assert_eq!(nested.summary.id, "nested/topic");
+        assert_eq!(nested.headings, vec!["Nested topic", "Child"]);
+
+        let mismatch = DOC_FIXTURES
+            .get_file("mismatch.md")
+            .expect("mismatch fixture should exist");
+        assert!(
+            parse_topic_file(mismatch)
+                .expect_err("mismatched id/path should fail")
+                .contains("declares id 'commands/change'")
+        );
+
+        let empty_body = DOC_FIXTURES
+            .get_file("empty-body.md")
+            .expect("empty-body fixture should exist");
+        assert!(
+            parse_topic_file(empty_body)
+                .expect_err("empty body should fail")
+                .contains("has an empty body")
+        );
+
+        let bad_heading = DOC_FIXTURES
+            .get_file("bad-heading.md")
+            .expect("bad-heading fixture should exist");
+        assert!(
+            parse_topic_file(bad_heading)
+                .expect_err("bad heading should fail")
+                .contains("must start with '# Expected title'")
+        );
+
+        let bad_yaml = DOC_FIXTURES
+            .get_file("bad-yaml.md")
+            .expect("bad-yaml fixture should exist");
+        assert!(
+            parse_topic_file(bad_yaml)
+                .expect_err("bad yaml should fail")
+                .contains("failed to parse YAML front matter")
+        );
+
+        let temp = tempdir().expect("tempdir should be created");
+        let export_dir = temp.path().join("export-tree");
+        let catalog = DocsCatalog {
+            topics: BTreeMap::from([(nested.summary.id.clone(), nested.clone())]),
+        };
+        let manifest = ExportManifest {
+            kind: EXPORT_KIND.to_string(),
+            export_format_version: EXPORT_FORMAT_VERSION,
+            cli_name: "wavepeek".to_string(),
+            cli_version: "test".to_string(),
+            topics: catalog.logical_topic_summaries(),
+        };
+        write_export_tree(&export_dir, &catalog, &manifest).expect("export tree should write");
+        assert!(export_dir.join("nested/topic.md").exists());
+        let manifest_json = std::fs::read_to_string(export_dir.join("manifest.json"))
+            .expect("manifest should be readable");
+        assert!(manifest_json.contains("\"kind\": \"wavepeek-docs-export\""));
+    }
+
+    #[test]
+    fn suggestion_sorting_and_error_helpers_cover_remaining_match_paths() {
+        let suggestions = suggest_topics("command", 10);
+        assert!(suggestions.len() > 1);
+        assert_eq!(suggestions[0].id, "commands/change");
+
+        let summary_record = fake_topic(
+            "misc/topic",
+            "Totally unrelated",
+            "Contains command keyword in summary",
+            "misc",
+            &[],
+        );
+        let summary_match = search_match(&summary_record, "command", &["command".to_string()])
+            .expect("summary token should match");
+        assert_eq!(summary_match.match_kind, MatchKind::TitleOrSummary);
+
+        let exact_title = search_match(
+            &fake_topic("misc/exact", "Command", "s", "misc", &[]),
+            "command",
+            &["command".to_string()],
+        )
+        .expect("exact title should match");
+        assert_eq!(exact_title.match_kind, MatchKind::TitleExact);
     }
 
     fn fake_topic(

@@ -1359,10 +1359,11 @@ mod tests {
         STABLE_SIGNAL_KIND_ALIASES, SampledSignal, ScopeEntry, Waveform, classify_edge,
         collect_scope_entries, collect_scope_signals, duplicate_preserving_projection,
         empty_sampled_value, enum_label_for_bits, expr_type_from_var, floor_time_table_index,
-        format_timescale, normalize_time, normalize_to_four_state, resolve_signal_ref_with_width,
-        resolve_var_ref, scope_type_alias, should_emit_delta_and_update_baseline,
-        should_use_multi_thread_signal_load, signal_entry_from_var_ref, sort_scope_refs,
-        sort_signal_entries, time_window_indices, timescale_unit_suffix, var_type_alias,
+        format_timescale, map_wellen_error, normalize_time, normalize_to_four_state,
+        resolve_signal_ref_with_width, resolve_var_ref, scope_type_alias,
+        should_emit_delta_and_update_baseline, should_use_multi_thread_signal_load,
+        signal_entry_from_var_ref, sort_scope_refs, sort_signal_entries, time_window_indices,
+        timescale_unit_suffix, var_type_alias,
     };
 
     const TEST_VCD: &str = "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var reg 8 \" data $end\n$var parameter 8 # cfg $end\n$scope module cpu $end\n$var wire 1 $ valid $end\n$upscope $end\n$scope function helper $end\n$var wire 1 & helper_flag $end\n$upscope $end\n$scope module mem $end\n$var wire 1 % ready $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\nb00000000 \"\nb10101010 #\n0$\n0&\n0%\n#5\n1!\n1$\n1&\n#10\nb00001111 \"\n1%\n";
@@ -2354,6 +2355,161 @@ mod tests {
         assert_eq!(normalize_to_four_state('1'), '1');
         let clk_var_ref = resolve_var_ref(hierarchy, "top.clk").expect("same ref");
         assert_eq!(clk_ref, hierarchy[clk_var_ref].signal_ref());
+    }
+
+    #[test]
+    fn waveform_sampling_and_scope_error_helpers_cover_remaining_public_branches() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-errors.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let error = waveform
+            .signals_in_scope_recursive("top.nope", Some(1))
+            .expect_err("missing recursive scope should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("scope 'top.nope' not found in dump")
+        );
+
+        let delayed_fixture = write_fixture(DELAYED_VALUE_VCD, "delayed-public.vcd");
+        let mut delayed = Waveform::open(delayed_fixture.path()).expect("fixture should open");
+        let error = delayed
+            .sample_signals_at_time(&["top.delayed".to_string()], 0)
+            .expect_err("public sampling should reject missing prior values");
+        assert!(
+            error
+                .to_string()
+                .contains("has no value at or before requested time")
+        );
+
+        let empty: Vec<super::ResolvedSignal> = Vec::new();
+        assert!(
+            delayed
+                .sample_resolved_optional(&empty, 0)
+                .expect("empty resolved set should short-circuit")
+                .is_empty()
+        );
+
+        let late_only_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-late\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var wire 1 ! late $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n",
+                "1!\n"
+            ),
+            "late-only.vcd",
+        );
+        let mut late_only = Waveform::open(late_only_fixture.path()).expect("fixture should open");
+        let late_resolved = late_only
+            .resolve_signals(&["top.late".to_string()])
+            .expect("signal should resolve");
+        assert!(
+            late_only
+                .sample_resolved_optional(&late_resolved, 0)
+                .expect_err("sampling before the first dump timestamp should fail")
+                .to_string()
+                .contains("before first dump timestamp")
+        );
+
+        let delayed_expr = delayed
+            .resolve_expr_signal("top.delayed")
+            .expect("expr signal should resolve");
+        assert_eq!(
+            delayed
+                .sample_expr_value(&delayed_expr, 0)
+                .expect("pre-value integral sample should succeed"),
+            crate::expr::SampledValue::Integral {
+                bits: None,
+                label: None,
+            }
+        );
+
+        let rich_delayed_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-rich-delayed\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var real 1 ! temp $end\n",
+                "$var string 1 \" msg $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n",
+                "r3.25 !\n",
+                "slate \"\n"
+            ),
+            "rich-delayed.vcd",
+        );
+        let mut rich_delayed =
+            Waveform::open(rich_delayed_fixture.path()).expect("fixture should open");
+        let real = rich_delayed
+            .resolve_expr_signal("top.temp")
+            .expect("real signal should resolve");
+        let string = rich_delayed
+            .resolve_expr_signal("top.msg")
+            .expect("string signal should resolve");
+        assert_eq!(
+            rich_delayed
+                .sample_expr_value(&real, 0)
+                .expect("pre-value real sample should succeed"),
+            crate::expr::SampledValue::Real { value: None }
+        );
+        assert_eq!(
+            rich_delayed
+                .sample_expr_value(&string, 0)
+                .expect("pre-value string sample should succeed"),
+            crate::expr::SampledValue::String { value: None }
+        );
+    }
+
+    #[test]
+    fn waveform_helper_branches_cover_empty_edges_delta_noops_and_window_shortcuts() {
+        assert!(!classify_edge("", "1").edge());
+        assert!(!classify_edge("1", "").edge());
+
+        let mut previous = vec![Some("1".to_string())];
+        assert!(!should_emit_delta_and_update_baseline(
+            &mut previous,
+            &[None],
+        ));
+        assert_eq!(previous, vec![Some("1".to_string())]);
+
+        let io_error = map_wellen_error(
+            Path::new("missing.vcd"),
+            wellen::WellenError::Io(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "nope",
+            )),
+        );
+        assert!(io_error.to_string().contains("cannot open 'missing.vcd'"));
+
+        let fixture = write_fixture(TEST_VCD, "window-shortcuts.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_signals(&["top.clk".to_string()])
+            .expect("signal should resolve");
+        assert!(
+            waveform
+                .collect_change_times(&resolved, 11, 12)
+                .expect("empty window should short-circuit")
+                .is_empty()
+        );
+        assert!(
+            waveform
+                .collect_change_times(&resolved, 10, 0)
+                .expect("reversed window should short-circuit")
+                .is_empty()
+        );
+        assert!(!waveform.should_use_streaming_candidate_collection(
+            50,
+            10,
+            0,
+            super::ChangeCandidateCollectionMode::Auto,
+        ));
     }
 
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

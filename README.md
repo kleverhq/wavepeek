@@ -1,5 +1,7 @@
+
 # wavepeek
 
+![wavepeek banner](docs/banner.png)
 [![CI](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/wavepeek.svg)](https://crates.io/crates/wavepeek)
 
@@ -43,6 +45,9 @@ wavepeek value --waves "$WAVES" --at 100ns --scope top.cpu --signals reset_n,sta
 
 # 5) Inspect transitions over a time window (--on is a SystemVerilog-like clocking event expression)
 wavepeek change --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --signals state --on 'posedge clk'
+
+# 6) Check a property on selected events (--eval is a SystemVerilog-like logical expression)
+wavepeek property --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --on 'posedge clk' --eval 'ready && !stall' --capture assert
 ```
 
 By default, commands print human-readable output. Add `--json` for strict machine output:
@@ -78,11 +83,11 @@ wavepeek skill
 
 | Command | Purpose |
 | --- | --- |
-| `info` | Print dump metadata (`time_unit`, `time_start`, `time_end`) |
-| `scope` | List hierarchy scopes (deterministic DFS, optional `--tree`) |
+| `info` | Print dump metadata |
+| `scope` | List hierarchy scopes |
 | `signal` | List signals in a scope with metadata |
 | `value` | Signal values at a specific time |
-| `change` | Delta snapshots over a time range with `--on` event triggers |
+| `change` | Delta snapshots over a time range with event triggers |
 | `property` | Property checks over event triggers with capture modes |
 | `schema` | Print canonical JSON schema used by `--json` output |
 | `docs` | Browse embedded narrative docs, search topics, and export Markdown |
@@ -92,9 +97,9 @@ wavepeek skill
 Use progressive disclosure via built-in help and docs:
 
 - `wavepeek -h` for compact lookup help
-- `wavepeek --help` for detailed top-level reference help
-- `wavepeek help <command-path...>` for nested long-help aliases
+- `wavepeek --help` or `wavepeek help <command-path...>` for detailed top-level reference help
 - `wavepeek docs` for embedded command guidance, workflows, troubleshooting, reference topics, and export
+- `wavepeek schema` for packaged JSON contract
 - `wavepeek skill` for packaged agent skill Markdown
 
 ## Development

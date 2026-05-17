@@ -9,8 +9,9 @@ inside the devcontainer/CI image so tooling, fixtures, and behavior are aligned
 with CI.
 
 - `make` targets enforce container execution via `WAVEPEEK_IN_CONTAINER=1`.
-- Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target).
+- Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target) and runs `make dev-setup` on start.
 - Automation and CI use `.devcontainer/devcontainer.ci.json` (`ci` target).
+- Codex cloud environments should set `WAVEPEEK_IN_CONTAINER=1`, run `make codex-setup` during setup, and run `make codex-resume` during maintenance.
 - Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in image build,
   so tests do not fetch fixtures at runtime.
 
@@ -39,8 +40,10 @@ Use the `Makefile` targets when possible (they match CI and pre-commit hooks).
 
 Common commands:
 
-- Bootstrap dev env and install git hooks:
-  - `make bootstrap`
+- Prepare local devcontainer env and install git hooks:
+  - `make dev-setup`
+- Prepare Codex cloud env for all non-dev `make` targets:
+  - `make codex-setup`
 - Format:
   - `make format`
   - `make format-check`
@@ -152,7 +155,7 @@ stays guarded behind one explicit target.
 
 ## Pre-commit Hooks
 
-Hooks are defined in `.pre-commit-config.yaml` and installed by `make bootstrap`.
+Hooks are defined in `.pre-commit-config.yaml` and installed by `make dev-setup`.
 Current hooks run (pre-commit): rustfmt, clippy, cargo check, schema contract, cargo test, auxiliary Python unit tests, and the bench/e2e smoke run+compare catalog.
 Commit messages are validated (commit-msg) via `commitizen` (`cz check`).
 

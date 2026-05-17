@@ -8,12 +8,14 @@ BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
 BENCH_EXPR_RUNS_DIR := bench/expr/runs
 BENCH_EXPR_BASELINE_DIR := $(BENCH_EXPR_RUNS_DIR)/baseline
 WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
+CODEX_SETUP_SCRIPT := scripts/codex_setup.sh
+CODEX_RESUME_SCRIPT := scripts/codex_resume.sh
 PYTHON := python3 -B
 
 ## Require containerized execution
 require-container:
 	@if [ "$${WAVEPEEK_IN_CONTAINER:-0}" != "1" ]; then \
-		printf '%s\n' "error: container: this target must run inside the wavepeek devcontainer/CI image (set WAVEPEEK_IN_CONTAINER=1)" >&2; \
+		printf '%s\n' "error: container: this target must run inside a wavepeek-managed container environment (set WAVEPEEK_IN_CONTAINER=1)" >&2; \
 		exit 1; \
 	fi
 
@@ -43,8 +45,8 @@ check-schema: require-container
 check-actions: require-container
 	actionlint .github/workflows/*.yml
 
-## Bootstrap project env
-bootstrap: require-container
+## Prepare local devcontainer environment and install git hooks
+dev-setup: require-container
 	rustup show >/dev/null
 	cargo --version
 	cargo fmt --version
@@ -54,6 +56,14 @@ bootstrap: require-container
 	gtkwave --version
 	surfer --version
 	pre-commit install --hook-type commit-msg --hook-type pre-commit
+
+## Prepare Codex cloud environment for non-dev make targets
+codex-setup: require-container
+	bash "$(CODEX_SETUP_SCRIPT)"
+
+## Repair Codex cloud environment after cache resume
+codex-resume: require-container
+	bash "$(CODEX_RESUME_SCRIPT)"
 
 ## Format with rustfmt
 format: require-container

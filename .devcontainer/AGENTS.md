@@ -14,7 +14,7 @@ This directory is designed so local development and CI share one foundation whil
 - The workspace mounts the repository parent as the container workspace root (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
 - OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `initialize.sh` to create mount sources before container startup.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
-- `postStartCommand: make bootstrap` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
+- `postStartCommand: make dev-setup` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
 - CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.

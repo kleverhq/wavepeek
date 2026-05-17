@@ -697,11 +697,11 @@ fn unique_sibling_path(parent: &Path, out_dir: &Path, prefix: &str) -> PathBuf {
 }
 
 #[cfg(test)]
-#[path = "../tests/docs_coverage_96.rs"]
-mod docs_coverage_96;
+#[path = "../tests/docs_runtime_edges.rs"]
+mod docs_runtime_edges;
 
 #[cfg(test)]
-mod docs_inline_derive_coverage_96 {
+mod docs_inline_derive_tests {
     use super::*;
 
     #[test]
@@ -745,7 +745,7 @@ mod tests {
     static DOC_FIXTURES: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/tests/fixtures/docs_embed");
 
     #[test]
-    fn public_docs_api_smoke_covers_catalog_search_and_lookup_wrappers() {
+    fn public_docs_api_exercises_catalog_search_and_lookup_wrappers() {
         let catalog = embedded_catalog().expect("embedded catalog should load");
         assert!(catalog.topics.len() >= 20);
 
@@ -915,7 +915,7 @@ mod tests {
     }
 
     #[test]
-    fn id_and_heading_helpers_cover_segmented_forms() {
+    fn id_and_heading_helpers_exercise_segmented_forms() {
         assert!(id_matches_token("commands/change-help", "cha"));
         assert!(id_matches_token("commands/change-help", "help"));
         assert!(!id_matches_token("commands/change-help", "scope"));
@@ -1087,7 +1087,7 @@ mod tests {
     }
 
     #[test]
-    fn search_helpers_cover_tokenization_and_match_kinds() {
+    fn search_helpers_exercise_tokenization_and_match_kinds() {
         assert_eq!(tokenize("alpha alpha beta"), vec!["alpha", "beta"]);
 
         let record = fake_topic(
@@ -1134,7 +1134,7 @@ mod tests {
     }
 
     #[test]
-    fn embedded_loader_helpers_cover_parse_and_export_details() {
+    fn embedded_loader_helpers_exercise_parse_and_export_details() {
         let mut files = Vec::new();
         collect_markdown_files(&TOPICS_DIR, &mut files);
         assert!(
@@ -1219,7 +1219,7 @@ mod tests {
     }
 
     #[test]
-    fn suggestion_sorting_and_error_helpers_cover_remaining_match_paths() {
+    fn suggestion_sorting_and_error_helpers_exercise_match_paths() {
         assert!(suggest_topics("   ", 10).is_empty());
         let suggestions = suggest_topics("command", 10);
         assert!(suggestions.len() > 1);

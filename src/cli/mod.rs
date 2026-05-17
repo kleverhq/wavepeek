@@ -654,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn cli_helper_functions_cover_override_detection_and_fallback_paths() {
+    fn cli_helper_functions_exercise_override_detection_and_fallback_paths() {
         let command = build_cli_command();
         let info = command
             .find_subcommand("info")

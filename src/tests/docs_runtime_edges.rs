@@ -23,7 +23,7 @@ fn record(id: &str, title: &str, body: &str) -> TopicRecord {
 }
 
 #[test]
-fn docs96_derives_search_edges_and_catalog_sorting() {
+fn derives_search_edges_and_catalog_sorting() {
     let topic = summary("commands/change", "Change", "Find changes");
     let topic_clone = topic.clone();
     assert_eq!(topic, topic_clone);
@@ -109,7 +109,7 @@ fn docs96_derives_search_edges_and_catalog_sorting() {
 }
 
 #[test]
-fn docs96_filesystem_error_closures_are_exercised() {
+fn filesystem_error_handlers_are_exercised() {
     let tmp = tempfile::tempdir().expect("tempdir");
     let blocker = tmp.path().join("blocker");
     std::fs::write(&blocker, "not a directory").expect("blocker file");

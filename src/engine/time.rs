@@ -343,7 +343,7 @@ mod tests {
     }
 
     #[test]
-    fn time_units_cover_all_supported_suffixes() {
+    fn time_units_exercise_all_supported_suffixes() {
         let cases = [
             ("zs", TimeUnit::Zs),
             ("as", TimeUnit::As),

@@ -5,7 +5,7 @@ use crate::expr::lexer::{LogicalToken, LogicalTokenKind};
 use super::*;
 
 #[test]
-fn parser96_debug_private_parser_state() {
+fn debug_private_parser_state() {
     let parser = LogicalParser {
         source: "a",
         tokens: vec![LogicalToken {
@@ -25,7 +25,7 @@ fn parser96_debug_private_parser_state() {
 }
 
 #[test]
-fn parser96_negative_branches_for_error_construction() {
+fn negative_branches_for_error_construction() {
     for source in [
         "sig iff   ",
         "{a, b",

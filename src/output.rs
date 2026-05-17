@@ -218,8 +218,8 @@ fn write_stdout(output: &str) {
 }
 
 #[cfg(test)]
-#[path = "tests/output_coverage_96.rs"]
-mod output_coverage_96;
+#[path = "tests/output_rendering_edges.rs"]
+mod output_rendering_edges;
 
 #[cfg(test)]
 mod tests {
@@ -417,7 +417,7 @@ mod tests {
     }
 
     #[test]
-    fn render_human_covers_schema_signal_and_docs_search_variants() {
+    fn render_human_exercises_schema_signal_and_docs_search_variants() {
         let schema = render_human(
             &CommandData::Schema("{\"type\":\"object\"}".to_string()),
             HumanRenderOptions::default(),
@@ -492,7 +492,7 @@ mod tests {
     }
 
     #[test]
-    fn helper_renderers_cover_empty_tree_and_sibling_detection() {
+    fn helper_renderers_exercise_empty_tree_and_sibling_detection() {
         assert_eq!(render_scope_tree(&[]), "");
 
         let scopes = vec![
@@ -529,7 +529,7 @@ mod tests {
     }
 
     #[test]
-    fn write_entrypoint_covers_json_empty_human_and_warning_paths() {
+    fn write_entrypoint_exercises_json_empty_human_and_warning_paths() {
         write(CommandResult {
             command: CommandName::Schema,
             json: true,

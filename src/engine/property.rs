@@ -242,8 +242,8 @@ fn parse_bound_time(
 }
 
 #[cfg(test)]
-#[path = "../tests/property_coverage_96.rs"]
-mod property_coverage_96;
+#[path = "../tests/property_capture_types.rs"]
+mod property_capture_types;
 
 #[cfg(test)]
 mod tests {

@@ -1908,8 +1908,8 @@ fn bits_to_string(bits: &[BoundBit]) -> String {
 }
 
 #[cfg(test)]
-#[path = "../tests/eval_coverage_96.rs"]
-mod eval_coverage_96;
+#[path = "../tests/eval_runtime_edges.rs"]
+mod eval_runtime_edges;
 
 #[cfg(test)]
 mod tests {
@@ -2075,7 +2075,7 @@ mod tests {
     }
 
     #[test]
-    fn selection_and_shift_helpers_cover_out_of_range_and_unknown_indices() {
+    fn selection_and_shift_helpers_exercise_out_of_range_and_unknown_indices() {
         let host = HostStub::default();
         let mut cache = EvalCache::default();
 
@@ -2147,7 +2147,7 @@ mod tests {
     }
 
     #[test]
-    fn coercion_and_comparison_helpers_cover_mixed_runtime_paths() {
+    fn coercion_and_comparison_helpers_exercise_mixed_runtime_paths() {
         let coerced = coerce_runtime_to_type(
             runtime_integral(&[BoundBit::X, BoundBit::One], true, false),
             &integral_type(2, false, false),
@@ -2211,7 +2211,7 @@ mod tests {
     }
 
     #[test]
-    fn conditional_inside_and_misc_helpers_cover_unknown_paths() {
+    fn conditional_inside_and_misc_helpers_exercise_unknown_paths() {
         let condition = BoundLogicalNode {
             ty: integral_type(1, true, false),
             span: crate::expr::Span::new(0, 0),
@@ -2306,7 +2306,7 @@ mod tests {
     }
 
     #[test]
-    fn event_runtime_helpers_cover_change_detection_and_type_mismatches() {
+    fn event_runtime_helpers_exercise_change_detection_and_type_mismatches() {
         let host = FixtureHost::new()
             .with_integral(1, Some("0"), Some("1"))
             .with_real(2, None, Some(2.5))
@@ -2392,7 +2392,7 @@ mod tests {
     }
 
     #[test]
-    fn eval_signal_ref_and_bit_helpers_cover_missing_samples_and_classification() {
+    fn eval_signal_ref_and_bit_helpers_exercise_missing_samples_and_classification() {
         let real_node = BoundLogicalNode {
             ty: real_type(),
             span: crate::expr::Span::new(0, 0),
@@ -2487,7 +2487,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_unary_helpers_cover_real_unknown_and_reduction_edges() {
+    fn runtime_unary_helpers_exercise_real_unknown_and_reduction_edges() {
         let real_neg = eval_unary(UnaryOpAst::Minus, real_runtime(2.5), &real_type())
             .expect("real unary minus should evaluate");
         assert!(matches!(real_neg.payload, RuntimeValuePayload::Real { value } if value == -2.5));
@@ -2538,7 +2538,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_helper_small_branches_cover_cache_and_arithmetic_edges() {
+    fn runtime_helper_small_branches_exercise_cache_and_arithmetic_edges() {
         let host = FixtureHost::new()
             .with_integral(1, Some("1"), Some("1"))
             .with_event(2, true);
@@ -2708,7 +2708,7 @@ mod tests {
     }
 
     #[test]
-    fn runtime_direct_entrypoints_cover_cache_and_comparison_residue() {
+    fn runtime_direct_entrypoints_exercise_cache_and_comparison_edges() {
         let host = FixtureHost::new()
             .with_integral(1, Some("0"), Some("1"))
             .with_integral(2, Some("1"), Some("1"))
@@ -3031,7 +3031,7 @@ mod tests {
     }
 
     #[test]
-    fn direct_host_and_event_helpers_cover_remaining_runtime_smoke_paths() {
+    fn direct_host_and_event_helpers_exercise_runtime_entrypoint_paths() {
         let host = HostStub::default();
         assert_eq!(
             host.resolve_signal("anything").expect("resolve"),
@@ -3079,7 +3079,7 @@ mod tests {
     }
 
     #[test]
-    fn coercion_helpers_cover_real_cast_failures_and_string_identity_rules() {
+    fn coercion_helpers_exercise_real_cast_failures_and_string_identity_rules() {
         let real_target = real_type();
         let string_target = string_type();
         let integral_source = integral_type(4, true, false);

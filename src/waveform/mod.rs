@@ -1348,11 +1348,11 @@ fn normalize_to_four_state(bit: char) -> char {
 }
 
 #[cfg(test)]
-#[path = "../tests/waveform_coverage_96.rs"]
-mod waveform_coverage_96;
+#[path = "../tests/waveform_helper_edges.rs"]
+mod waveform_helper_edges;
 
 #[cfg(test)]
-mod waveform_inline_derive_coverage_96 {
+mod waveform_inline_derive_tests {
     use super::*;
 
     #[test]
@@ -1948,7 +1948,7 @@ mod tests {
     }
 
     #[test]
-    fn stable_schema_kind_aliases_cover_full_inventory() {
+    fn stable_schema_kind_aliases_exercise_full_inventory() {
         let scope_cases = [
             (wellen::ScopeType::Module, "module"),
             (wellen::ScopeType::Task, "task"),
@@ -2052,7 +2052,7 @@ mod tests {
     }
 
     #[test]
-    fn expr_resolution_and_sampling_cover_real_string_event_paths() {
+    fn expr_resolution_and_sampling_exercise_real_string_event_paths() {
         const EXPR_VCD: &str = concat!(
             "$date\n  today\n$end\n",
             "$version\n  wavepeek-test\n$end\n",
@@ -2146,7 +2146,7 @@ mod tests {
     }
 
     #[test]
-    fn candidate_collection_and_time_helpers_cover_split_paths() {
+    fn candidate_collection_and_time_helpers_exercise_split_paths() {
         const EXPR_VCD: &str = concat!(
             "$date\n  today\n$end\n",
             "$version\n  wavepeek-test\n$end\n",
@@ -2224,7 +2224,7 @@ mod tests {
     }
 
     #[test]
-    fn helper_functions_cover_invalid_paths_and_timescales() {
+    fn helper_functions_exercise_invalid_paths_and_timescales() {
         const EXPR_VCD: &str = concat!(
             "$date\n  today\n$end\n",
             "$version\n  wavepeek-test\n$end\n",
@@ -2306,7 +2306,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_helper_tables_cover_decode_timescale_and_extra_var_types() {
+    fn waveform_helper_tables_exercise_decode_timescale_and_extra_var_types() {
         assert_eq!(
             decode_signal_bits(wellen::SignalValue::Event, "top.ev")
                 .expect("events should decode as empty bit strings"),
@@ -2378,7 +2378,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_direct_helpers_cover_resolution_sorting_and_expr_types() {
+    fn waveform_direct_helpers_exercise_resolution_sorting_and_expr_types() {
         let fixture = write_fixture(TEST_VCD, "direct-helpers.vcd");
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
         let hierarchy = waveform.inner.hierarchy();
@@ -2494,7 +2494,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_sampling_and_scope_error_helpers_cover_remaining_public_branches() {
+    fn waveform_sampling_and_scope_error_helpers_exercise_public_error_paths() {
         let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-errors.vcd");
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
         let error = waveform
@@ -2603,7 +2603,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_helper_branches_cover_empty_edges_delta_noops_and_window_shortcuts() {
+    fn waveform_helper_branches_exercise_empty_edges_delta_noops_and_window_shortcuts() {
         assert!(!classify_edge("", "1").edge());
         assert!(!classify_edge("1", "").edge());
 
@@ -2649,7 +2649,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_error_helpers_cover_missing_metadata_and_bogus_loaded_signals() {
+    fn waveform_error_helpers_exercise_missing_metadata_and_bogus_loaded_signals() {
         let no_timescale = write_fixture(
             concat!(
                 "$date\n  today\n$end\n",
@@ -2761,7 +2761,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_public_value_and_event_wrappers_cover_direct_api_paths() {
+    fn waveform_public_value_and_event_wrappers_exercise_direct_api_paths() {
         let fixture = write_fixture(TEST_VCD, "direct-api.vcd");
         let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
 
@@ -2827,7 +2827,7 @@ mod tests {
     }
 
     #[test]
-    fn waveform_expr_type_resolution_covers_integer_like_surface_types() {
+    fn waveform_expr_type_resolution_exercises_integer_like_surface_types() {
         let fixture = write_fixture(TYPE_SURFACE_VCD, "type-surface.vcd");
         let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
 
@@ -2940,8 +2940,8 @@ mod tests {
     }
 
     #[test]
-    fn waveform_remaining_direct_helpers_cover_empty_and_tiebreak_paths() {
-        let fixture = write_fixture(TEST_VCD, "remaining-direct.vcd");
+    fn waveform_direct_helpers_exercise_empty_and_tiebreak_paths() {
+        let fixture = write_fixture(TEST_VCD, "additional-direct.vcd");
         let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
         let hierarchy = waveform.inner.hierarchy();
         let top_scope = hierarchy.lookup_scope(&["top"]).expect("top scope");

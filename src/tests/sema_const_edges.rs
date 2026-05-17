@@ -43,7 +43,7 @@ fn lit(bit: BoundBit) -> BoundLogicalNode {
 }
 
 #[test]
-fn sema96_bound_tree_derive_surface() {
+fn bound_tree_derive_surface() {
     let event_kinds = [
         BoundEventKind::AnyTracked,
         BoundEventKind::Named(SignalHandle(1)),
@@ -172,7 +172,7 @@ fn sema96_bound_tree_derive_surface() {
 }
 
 #[test]
-fn sema96_const_and_type_helper_residue_branches() {
+fn const_and_type_helper_edge_branches() {
     let unsigned4 = bit_vector_type(4, false, false, true);
     let signed4 = bit_vector_type(4, true, true, true);
     let one = BoundIntegralValue {
@@ -448,7 +448,7 @@ fn sema96_const_and_type_helper_residue_branches() {
 }
 
 #[test]
-fn sema96_more_error_and_const_region_residue() {
+fn additional_error_and_const_region_paths() {
     struct EmptyUnknownHost;
     impl ExpressionHost for EmptyUnknownHost {
         fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {

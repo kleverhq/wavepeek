@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn change96_derives_private_state_and_mode_helpers() {
+fn derives_private_state_and_mode_helpers() {
     let estimate = AutoDispatchWorkEstimate {
         fused_work: 7,
         edge_work: 11,

@@ -1261,11 +1261,11 @@ fn parse_bound_time(
 }
 
 #[cfg(test)]
-#[path = "../tests/change_coverage_96.rs"]
-mod change_coverage_96;
+#[path = "../tests/change_private_helpers.rs"]
+mod change_private_helpers;
 
 #[cfg(test)]
-mod change_inline_derive_coverage_96 {
+mod change_inline_derive_tests {
     use super::*;
 
     #[test]
@@ -1405,7 +1405,7 @@ mod tests {
     }
 
     #[test]
-    fn candidate_and_window_helpers_cover_success_and_error_paths() {
+    fn candidate_and_window_helpers_exercise_success_and_error_paths() {
         assert_eq!(time_window_indices(&[], 0, 1), None);
         assert_eq!(time_window_indices(&[0, 5, 10], 7, 6), None);
         assert_eq!(time_window_indices(&[0, 5, 10], 5, 10), Some((1, 3)));
@@ -1427,7 +1427,7 @@ mod tests {
     }
 
     #[test]
-    fn request_resolution_and_snapshot_helpers_cover_validation() {
+    fn request_resolution_and_snapshot_helpers_exercise_validation() {
         assert_eq!(
             resolve_token_to_path("sig", Some("top")).expect("scoped token"),
             "top.sig"
@@ -1509,7 +1509,7 @@ mod tests {
     }
 
     #[test]
-    fn cached_event_helpers_cover_dedup_and_sample_filtering() {
+    fn cached_event_helpers_exercise_dedup_and_sample_filtering() {
         let bound_event = BoundEventExpr {
             terms: vec![
                 BoundEventTerm {
@@ -1650,7 +1650,7 @@ mod tests {
     }
 
     #[test]
-    fn fast_event_eval_builders_cover_skip_and_missing_previous_paths() {
+    fn fast_event_eval_builders_exercise_skip_and_missing_previous_paths() {
         let fixture = write_fixture(TEST_VCD, "change-fast-builders.vcd");
         let host = WaveformExprHost::open(fixture.path()).expect("host should open");
         let handle = host
@@ -1750,7 +1750,7 @@ mod tests {
     }
 
     #[test]
-    fn change_cache_helpers_cover_request_reuse_and_schedule_edges() {
+    fn change_cache_helpers_exercise_request_reuse_and_schedule_edges() {
         let fixture = write_fixture(TEST_VCD, "change-cache-helpers.vcd");
         let waveform = std::rc::Rc::new(std::cell::RefCell::new(
             Waveform::open(fixture.path()).expect("waveform should open"),
@@ -1787,7 +1787,7 @@ mod tests {
     }
 
     #[test]
-    fn change_run_covers_public_entrypoint_success_and_early_errors() {
+    fn change_run_exercises_public_entrypoint_success_and_early_errors() {
         let fixture = write_fixture(TEST_VCD, "change-run.vcd");
 
         let result = run(ChangeArgs {
@@ -1854,7 +1854,7 @@ mod tests {
     }
 
     #[test]
-    fn change_run_and_time_helpers_cover_warning_and_bound_error_paths() {
+    fn change_run_and_time_helpers_exercise_warning_and_bound_error_paths() {
         let fixture = write_fixture(TEST_VCD, "change-warning-empty.vcd");
         let empty = run(ChangeArgs {
             waves: PathBuf::from(fixture.path()),

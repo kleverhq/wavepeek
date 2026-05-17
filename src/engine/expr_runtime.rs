@@ -506,7 +506,7 @@ mod tests {
     }
 
     #[test]
-    fn helper_wrappers_cover_open_failures_event_matching_and_nested_handle_walks() {
+    fn helper_wrappers_exercise_open_failures_event_matching_and_nested_handle_walks() {
         let error = open_shared_waveform(Path::new("/definitely/missing.vcd"))
             .expect_err("missing waveform should fail");
         assert!(error.to_string().contains("No such file or directory"));
@@ -701,7 +701,7 @@ mod tests {
     }
 
     #[test]
-    fn scoped_host_forwarders_and_error_wrappers_cover_remaining_branches() {
+    fn scoped_host_forwarders_and_error_wrappers_exercise_edge_branches() {
         struct FailingHost;
 
         impl ExpressionHost for FailingHost {

@@ -159,7 +159,7 @@ mod tests {
     );
 
     #[test]
-    fn value_helpers_cover_resolution_time_errors_and_public_run() {
+    fn value_helpers_exercise_resolution_time_errors_and_public_run() {
         let fixture = write_fixture(TEST_VCD, ".value-run.vcd");
         let waveform = Waveform::open(fixture.path()).expect("waveform should open");
 

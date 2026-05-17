@@ -4,7 +4,7 @@ use crate::expr::ast::{IntegralBase, IntegralLiteral, RealLiteral, StringLiteral
 use super::*;
 
 #[test]
-fn lexer96_derive_tokens_and_logical_token_kinds() {
+fn derive_tokens_and_logical_token_kinds() {
     let token = Token {
         kind: TokenKind::KeywordIff,
         span: Span::new(1, 4),

@@ -1,7 +1,7 @@
 use super::*;
 
 #[test]
-fn property96_derives_public_capture_types() {
+fn derives_public_capture_types() {
     for kind in [
         PropertyResultKind::Match,
         PropertyResultKind::Assert,

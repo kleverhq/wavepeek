@@ -285,7 +285,7 @@ mod tests {
     }
 
     #[test]
-    fn match_label_covers_all_search_kinds() {
+    fn match_label_exercises_all_search_kinds() {
         assert_eq!(match_label(MatchKind::IdExact), "matched id");
         assert_eq!(match_label(MatchKind::IdPrefix), "matched id prefix");
         assert_eq!(match_label(MatchKind::TitleExact), "matched title");

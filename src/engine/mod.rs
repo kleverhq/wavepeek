@@ -138,7 +138,7 @@ mod tests {
     use super::CommandName;
 
     #[test]
-    fn command_name_strings_cover_all_variants() {
+    fn command_name_strings_exercise_all_variants() {
         assert_eq!(CommandName::Schema.as_str(), "schema");
         assert_eq!(CommandName::Info.as_str(), "info");
         assert_eq!(CommandName::Scope.as_str(), "scope");

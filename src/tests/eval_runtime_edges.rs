@@ -7,11 +7,11 @@ use crate::expr::host::{ExprStorage, IntegerLikeKind};
 use super::*;
 
 #[derive(Default)]
-struct Host96 {
+struct EvalHost {
     samples: RefCell<Vec<(SignalHandle, u64)>>,
 }
 
-impl ExpressionHost for Host96 {
+impl ExpressionHost for EvalHost {
     fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {
         Ok(SignalHandle(1))
     }
@@ -164,8 +164,8 @@ fn string_node(value: &str) -> BoundLogicalNode {
 }
 
 #[test]
-fn eval96_cache_public_and_event_match_branches() {
-    let host = Host96::default();
+fn cache_public_and_event_match_branches() {
+    let host = EvalHost::default();
     let mut cache = EvalCache::default();
     assert!(matches!(
         cache.sample_value(&host, SignalHandle(1), 3).unwrap(),
@@ -232,8 +232,8 @@ fn eval96_cache_public_and_event_match_branches() {
 }
 
 #[test]
-fn eval96_node_shapes_and_conditionals() {
-    let host = Host96::default();
+fn node_shapes_and_conditionals() {
+    let host = EvalHost::default();
     let mut cache = EvalCache::default();
     let result_ty = int_ty(4, true, false);
     let concat = BoundLogicalNode {
@@ -315,7 +315,7 @@ fn eval96_node_shapes_and_conditionals() {
 }
 
 #[test]
-fn eval96_binary_arithmetic_comparison_and_cast_residue() {
+fn binary_arithmetic_comparison_and_cast_edges() {
     let ty = int_ty(4, true, true);
     for op in [
         BinaryOpAst::Add,
@@ -449,8 +449,8 @@ fn eval96_binary_arithmetic_comparison_and_cast_residue() {
 }
 
 #[test]
-fn eval96_direct_runtime_residue_branches() {
-    let host = Host96::default();
+fn direct_runtime_edge_branches() {
+    let host = EvalHost::default();
     let mut cache = EvalCache::default();
     let one = value(&[BoundBit::Zero, BoundBit::One], true, false);
     let unknown = value(&[BoundBit::X, BoundBit::One], true, false);
@@ -674,7 +674,7 @@ fn eval96_direct_runtime_residue_branches() {
 }
 
 #[test]
-fn eval96_exhaustive_small_bit_truth_tables() {
+fn exhaustive_small_bit_truth_tables() {
     let bits = [BoundBit::Zero, BoundBit::One, BoundBit::X, BoundBit::Z];
     for lhs in bits {
         for rhs in bits {
@@ -725,8 +725,8 @@ fn eval96_exhaustive_small_bit_truth_tables() {
 }
 
 #[test]
-fn eval96_runtime_sampling_error_residue() {
-    let host = Host96::default();
+fn runtime_sampling_error_paths() {
+    let host = EvalHost::default();
     let mut cache = EvalCache::default();
     assert!(matches!(
         sample_real_value(&host, SignalHandle(2), 0, &mut cache).unwrap(),
@@ -745,8 +745,8 @@ fn eval96_runtime_sampling_error_residue() {
 }
 
 #[test]
-fn eval96_condition_inside_and_logical_truth_grid() {
-    let host = Host96::default();
+fn condition_inside_and_logical_truth_grid() {
+    let host = EvalHost::default();
     let mut cache = EvalCache::default();
     let bool_ty = int_ty(1, true, false);
     for cond in [BoundBit::One, BoundBit::Zero, BoundBit::X] {

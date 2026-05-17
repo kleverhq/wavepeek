@@ -2292,8 +2292,8 @@ fn sema_diag(code: &'static str, message: &str, span: Span, notes: &[&str]) -> E
 }
 
 #[cfg(test)]
-#[path = "../tests/sema_coverage_96.rs"]
-mod sema_coverage_96;
+#[path = "../tests/sema_const_edges.rs"]
+mod sema_const_edges;
 
 #[cfg(test)]
 mod tests {
@@ -2374,7 +2374,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_host_stub_smoke_covers_direct_trait_helpers() {
+    fn sema_host_stub_exercises_direct_trait_helpers() {
         let host = HostStub::with_defaults();
         assert_eq!(host.resolve_signal("a").expect("resolve"), SignalHandle(1));
         assert!(host.resolve_signal("missing").is_err());
@@ -2467,7 +2467,7 @@ mod tests {
     }
 
     #[test]
-    fn event_and_triggered_binding_cover_event_specific_errors() {
+    fn event_and_triggered_binding_exercise_event_specific_errors() {
         struct MixedHost;
         impl ExpressionHost for MixedHost {
             fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -2556,7 +2556,7 @@ mod tests {
     }
 
     #[test]
-    fn type_and_cast_helpers_cover_incompatible_operands() {
+    fn type_and_cast_helpers_exercise_incompatible_operands() {
         let span = Span::new(2, 5);
         assert_eq!(
             ensure_integral(&string_type(), span, "ctx")
@@ -2731,7 +2731,7 @@ mod tests {
     }
 
     #[test]
-    fn integral_literal_and_const_helpers_cover_range_and_unknown_paths() {
+    fn integral_literal_and_const_helpers_exercise_range_and_unknown_paths() {
         let span = Span::new(0, 0);
         let binary = decode_integral_literal(&IntegralLiteral {
             width: None,
@@ -2940,7 +2940,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_helpers_cover_event_success_paths_and_host_detail_errors() {
+    fn sema_helpers_exercise_event_success_paths_and_host_detail_errors() {
         struct EventHost;
         impl ExpressionHost for EventHost {
             fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -3028,7 +3028,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_helpers_cover_canonical_selection_casts_and_binary_typing() {
+    fn sema_helpers_exercise_canonical_selection_casts_and_binary_typing() {
         struct CanonicalHost;
         impl ExpressionHost for CanonicalHost {
             fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -3194,7 +3194,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_helpers_cover_enum_lookup_and_low_level_bit_math() {
+    fn sema_helpers_exercise_enum_lookup_and_low_level_bit_math() {
         let span = Span::new(0, 0);
         let enum_ty = ExprType {
             kind: ExprTypeKind::EnumCore,
@@ -3252,7 +3252,7 @@ mod tests {
     }
 
     #[test]
-    fn bind_logical_node_covers_manual_ast_variants() {
+    fn bind_logical_node_exercises_manual_ast_variants() {
         struct VariantHost;
         impl ExpressionHost for VariantHost {
             fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -3577,7 +3577,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_manual_error_and_const_eval_paths_cover_remaining_helpers() {
+    fn sema_manual_error_and_const_eval_paths_exercise_helper_errors() {
         struct BranchHost;
         impl ExpressionHost for BranchHost {
             fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -4190,7 +4190,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_direct_const_binary_helpers_cover_signed_zero_and_shift_edges() {
+    fn sema_direct_const_binary_helpers_exercise_signed_zero_and_shift_edges() {
         let mut nibble = Vec::new();
         for ch in ['4', '8', 'f', 'z'] {
             push_hex_nibble(ch, &mut nibble).expect("hex digit should decode");
@@ -4595,7 +4595,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_type_result_helpers_cover_fallback_numeric_and_unknown_signal_paths() {
+    fn sema_type_result_helpers_exercise_fallback_numeric_and_unknown_signal_paths() {
         let span = Span::new(0, 1);
         let enum_ty = ExprType {
             kind: ExprTypeKind::EnumCore,
@@ -4735,7 +4735,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_literal_decoder_and_const_wrappers_cover_non_constant_paths() {
+    fn sema_literal_decoder_and_const_wrappers_exercise_non_constant_paths() {
         let span = Span::new(1, 4);
         assert_eq!(
             part_select_width(1, 3, span).expect("ascending widths are valid"),
@@ -4854,7 +4854,7 @@ mod tests {
     }
 
     #[test]
-    fn sema_decoder_and_const_helpers_cover_empty_digits_enum_constants_and_extra_nibbles() {
+    fn sema_decoder_and_const_helpers_exercise_empty_digits_enum_constants_and_extra_nibbles() {
         let span = Span::new(2, 4);
         let zero = decode_integral_literal(&IntegralLiteral {
             width: None,

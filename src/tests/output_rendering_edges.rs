@@ -18,7 +18,7 @@ fn topic(id: &str) -> TopicSummary {
 }
 
 #[test]
-fn output96_covers_docs_topics_human_json_and_warning_rendering() {
+fn exercises_docs_topics_human_json_and_warning_rendering() {
     let topics = vec![topic("commands/change"), topic("commands/value")];
     let data = CommandData::DocsTopics(DocsTopicsData {
         topics: topics.clone(),

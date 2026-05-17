@@ -49,7 +49,7 @@ fn write_small_vcd() -> tempfile::NamedTempFile {
 }
 
 #[test]
-fn waveform96_invalid_signal_refs_cover_backend_error_closures() {
+fn invalid_signal_refs_exercise_backend_error_handlers() {
     let file = write_small_vcd();
     let mut waveform = Waveform::open(file.path()).expect("fixture should open");
     let bogus_ref = SignalRef::from_index(9999).expect("bogus signal ref should construct");
@@ -107,7 +107,7 @@ fn waveform96_invalid_signal_refs_cover_backend_error_closures() {
 }
 
 #[test]
-fn waveform96_derive_surfaces_for_data_transfer_types() {
+fn derive_surfaces_for_data_transfer_types() {
     let metadata = WaveformMetadata {
         time_unit: "1ns".to_string(),
         time_start: "0ns".to_string(),

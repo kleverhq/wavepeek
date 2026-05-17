@@ -1474,12 +1474,12 @@ fn logical_parse_diag(
 }
 
 #[cfg(test)]
-#[path = "parser_coverage_smoke.rs"]
-mod parser_coverage_smoke;
+#[path = "parser_surface_matrix.rs"]
+mod parser_surface_matrix;
 
 #[cfg(test)]
-#[path = "../tests/parser_coverage_96.rs"]
-mod parser_coverage_96;
+#[path = "../tests/parser_negative_surface.rs"]
+mod parser_negative_surface;
 
 #[cfg(test)]
 mod tests {
@@ -1596,7 +1596,7 @@ mod tests {
     }
 
     #[test]
-    fn logical_parser_accepts_operator_and_cast_residue_surface() {
+    fn logical_parser_accepts_operator_and_cast_edge_surface() {
         for source in [
             "&a || ~|b && (^c == ~^d)",
             "logic[8]'(a) + unsigned bit[4]'(b)",
@@ -1604,7 +1604,7 @@ mod tests {
             "{a, b, c} != {3{d}}",
             "type(state)'(next_state) inside {type(state)::IDLE, type(state)::BUSY}",
         ] {
-            parse_logical_expr_ast(source).expect("residue surface expression should parse");
+            parse_logical_expr_ast(source).expect("edge surface expression should parse");
         }
     }
 
@@ -1848,7 +1848,7 @@ mod tests {
     }
 
     #[test]
-    fn private_event_parser_manual_states_cover_more_error_branches() {
+    fn private_event_parser_manual_states_exercise_more_error_branches() {
         let mut parser = StrictParser {
             source: "",
             tokens: vec![],
@@ -1915,7 +1915,7 @@ mod tests {
     }
 
     #[test]
-    fn private_parser_helpers_cover_empty_inputs_and_cast_width_edges() {
+    fn private_parser_helpers_exercise_empty_inputs_and_cast_width_edges() {
         let error = parse_event_expr_ast("   ").expect_err("empty event expression should fail");
         assert_eq!(error.code, "EXPR-PARSE-EVENT-EMPTY");
         assert_eq!(error.primary_span, Span::new(0, 3));
@@ -2045,7 +2045,7 @@ mod tests {
     }
 
     #[test]
-    fn parser_edge_residue_covers_manual_suffix_and_rhs_failures() {
+    fn parser_edge_cases_exercise_manual_suffix_and_rhs_failures() {
         let error = parse_event_expr_ast("a (").expect_err("event-level open after a term fails");
         assert_eq!(error.code, "EXPR-PARSE-EVENT-UNMATCHED-OPEN");
 

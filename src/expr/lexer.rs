@@ -754,8 +754,8 @@ fn logical_identifier_char(ch: char) -> bool {
 }
 
 #[cfg(test)]
-#[path = "../tests/lexer_coverage_96.rs"]
-mod lexer_coverage_96;
+#[path = "../tests/lexer_token_surface.rs"]
+mod lexer_token_surface;
 
 #[cfg(test)]
 mod tests {
@@ -900,7 +900,7 @@ mod tests {
     }
 
     #[test]
-    fn lexer_helpers_cover_empty_event_expr_and_sized_literal_overflow() {
+    fn lexer_helpers_exercise_empty_event_expr_and_sized_literal_overflow() {
         assert!(
             lex_event_expr("")
                 .expect("empty event expression should lex")
@@ -926,7 +926,7 @@ mod tests {
     }
 
     #[test]
-    fn private_lexer_helpers_cover_exponent_and_string_edge_cases() {
+    fn private_lexer_helpers_exercise_exponent_and_string_edge_cases() {
         let mut lexer = LogicalLexer {
             source: "1e+",
             span_offset: 0,

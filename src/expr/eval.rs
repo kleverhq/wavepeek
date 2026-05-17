@@ -2069,4 +2069,588 @@ mod tests {
         .expect("wild equality should evaluate");
         assert_eq!(truth, TruthValue::Unknown);
     }
+
+    #[test]
+    fn selection_and_shift_helpers_cover_out_of_range_and_unknown_indices() {
+        let host = HostStub::default();
+        let mut cache = EvalCache::default();
+
+        let zero_result = eval_selection(
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], false, false),
+            &BoundSelection::Bit {
+                index: Box::new(literal(&[BoundBit::One, BoundBit::One])),
+            },
+            &host,
+            0,
+            &mut cache,
+            &integral_type(1, false, false),
+        )
+        .expect("two-state out-of-range select should return zero");
+        assert_eq!(
+            expect_integral_bits(&zero_result).expect("integral").0,
+            [BoundBit::Zero]
+        );
+
+        let x_result = eval_selection(
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], true, false),
+            &BoundSelection::IndexedDown {
+                base: Box::new(literal(&[BoundBit::X, BoundBit::Zero])),
+                width: 2,
+            },
+            &host,
+            0,
+            &mut cache,
+            &integral_type(2, true, false),
+        )
+        .expect("unknown index should propagate x");
+        assert_eq!(
+            expect_integral_bits(&x_result).expect("integral").0,
+            [BoundBit::X, BoundBit::X]
+        );
+
+        let shifted = eval_shift(
+            BinaryOpAst::ShiftArithRight,
+            runtime_integral(
+                &[
+                    BoundBit::One,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                ],
+                true,
+                true,
+            ),
+            runtime_integral(&[BoundBit::One, BoundBit::One, BoundBit::One], false, false),
+            &integral_type(4, true, true),
+        )
+        .expect("arithmetic shift should succeed");
+        assert_eq!(
+            expect_integral_bits(&shifted).expect("integral").0,
+            [BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::One]
+        );
+
+        let zeroed = eval_shift(
+            BinaryOpAst::ShiftLeft,
+            runtime_integral(&[BoundBit::One, BoundBit::Zero], true, false),
+            runtime_integral(&[BoundBit::One, BoundBit::One], false, false),
+            &integral_type(2, true, false),
+        )
+        .expect("overshift should succeed");
+        assert_eq!(
+            expect_integral_bits(&zeroed).expect("integral").0,
+            [BoundBit::Zero, BoundBit::Zero]
+        );
+    }
+
+    #[test]
+    fn coercion_and_comparison_helpers_cover_mixed_runtime_paths() {
+        let coerced = coerce_runtime_to_type(
+            runtime_integral(&[BoundBit::X, BoundBit::One], true, false),
+            &integral_type(2, false, false),
+        )
+        .expect("two-state coercion should succeed");
+        assert_eq!(
+            expect_integral_bits(&coerced).expect("integral").0,
+            [BoundBit::Zero, BoundBit::One]
+        );
+
+        assert_eq!(
+            coerce_runtime_to_type(string_runtime("hello"), &integral_type(2, true, false))
+                .expect_err("string cannot coerce to integral")
+                .code,
+            "EXPR-RUNTIME-CAST"
+        );
+        assert_eq!(
+            coerce_runtime_to_type(runtime_integral(&[BoundBit::X], true, false), &real_type())
+                .expect_err("x bits cannot coerce to real")
+                .code,
+            "EXPR-RUNTIME-REAL-CAST"
+        );
+        assert_eq!(
+            coerce_runtime_to_type(real_runtime(3.75), &integral_type(4, true, false))
+                .expect("real to integral coercion should succeed")
+                .payload,
+            RuntimeValuePayload::Integral {
+                bits: vec![BoundBit::Zero, BoundBit::Zero, BoundBit::One, BoundBit::One],
+                label: None,
+            }
+        );
+        assert_eq!(
+            coerce_runtime_to_type(
+                runtime_integral(&[BoundBit::One], true, false),
+                &event_type()
+            )
+            .expect_err("ordinary values cannot coerce to raw event")
+            .code,
+            "HOST-TYPE-MISMATCH"
+        );
+
+        assert_eq!(
+            compare_unknown_sensitive(BinaryOpAst::Eq, string_runtime("a"), string_runtime("a"))
+                .expect("string equality should work"),
+            TruthValue::One
+        );
+        assert_eq!(
+            compare_unknown_sensitive(BinaryOpAst::Lt, real_runtime(1.0), real_runtime(2.0))
+                .expect("real comparison should work"),
+            TruthValue::One
+        );
+        assert_eq!(
+            compare_case(
+                BinaryOpAst::CaseNe,
+                runtime_integral(&[BoundBit::Zero], true, false),
+                runtime_integral(&[BoundBit::One], true, false)
+            )
+            .expect("case inequality should work"),
+            TruthValue::One
+        );
+    }
+
+    #[test]
+    fn conditional_inside_and_misc_helpers_cover_unknown_paths() {
+        let condition = BoundLogicalNode {
+            ty: integral_type(1, true, false),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::IntegralLiteral {
+                value: crate::expr::sema::BoundIntegralValue {
+                    bits: vec![BoundBit::X],
+                    signed: false,
+                },
+                is_unsized: false,
+            },
+        };
+        let when_true = literal(&[BoundBit::One, BoundBit::Zero]);
+        let when_false = literal(&[BoundBit::One, BoundBit::One]);
+        let host = HostStub::default();
+        let mut cache = EvalCache::default();
+        let merged = eval_conditional(
+            &condition,
+            &when_true,
+            &when_false,
+            &host,
+            0,
+            &mut cache,
+            &integral_type(2, true, false),
+        )
+        .expect("unknown conditional should merge integral arms");
+        assert_eq!(
+            expect_integral_bits(&merged).expect("integral").0,
+            [BoundBit::One, BoundBit::X]
+        );
+
+        let same_string = eval_conditional(
+            &condition,
+            &string_node("same"),
+            &string_node("same"),
+            &host,
+            0,
+            &mut cache,
+            &string_type(),
+        )
+        .expect("matching string arms should be allowed");
+        assert_eq!(
+            same_string.payload,
+            RuntimeValuePayload::String {
+                value: "same".into()
+            }
+        );
+
+        assert_eq!(
+            eval_conditional(
+                &condition,
+                &string_node("lhs"),
+                &string_node("rhs"),
+                &host,
+                0,
+                &mut cache,
+                &string_type(),
+            )
+            .expect_err("mismatched strings should fail")
+            .code,
+            "EXPR-RUNTIME-CONDITIONAL-UNKNOWN"
+        );
+
+        let inside = eval_inside(
+            &literal(&[BoundBit::X, BoundBit::One]),
+            &[BoundInsideItem::Expr(literal(&[
+                BoundBit::Zero,
+                BoundBit::One,
+            ]))],
+            &host,
+            0,
+            &mut cache,
+            &integral_type(1, true, false),
+        )
+        .expect("inside should succeed");
+        assert_eq!(
+            expect_integral_bits(&inside).expect("integral").0,
+            [BoundBit::X]
+        );
+
+        assert_eq!(
+            finite_real(f64::INFINITY)
+                .expect_err("infinite reals should fail")
+                .code,
+            "EXPR-RUNTIME-REAL-NONFINITE"
+        );
+        assert_eq!(
+            expect_integral_bits(&string_runtime("oops"))
+                .expect_err("non-integral payload should fail")
+                .code,
+            "HOST-TYPE-MISMATCH"
+        );
+    }
+
+    #[test]
+    fn event_runtime_helpers_cover_change_detection_and_type_mismatches() {
+        let host = FixtureHost::new()
+            .with_integral(1, Some("0"), Some("1"))
+            .with_real(2, None, Some(2.5))
+            .with_string(3, Some("old"), Some("new"))
+            .with_event(4, true);
+        let mut cache = EvalCache::default();
+
+        assert!(
+            signal_changed(&host, SignalHandle(1), Some(0), 1, &mut cache)
+                .expect("integral change")
+        );
+        assert!(
+            signal_changed(&host, SignalHandle(2), Some(0), 1, &mut cache).expect("real change")
+        );
+        assert!(
+            signal_changed(&host, SignalHandle(3), Some(0), 1, &mut cache).expect("string change")
+        );
+        assert!(
+            signal_changed(&host, SignalHandle(4), Some(0), 1, &mut cache)
+                .expect("event occurrence")
+        );
+        assert!(
+            any_tracked_matches(
+                &host,
+                &crate::expr::host::EventEvalFrame {
+                    timestamp: 1,
+                    previous_timestamp: Some(0),
+                    tracked_signals: &[SignalHandle(2)],
+                },
+                &mut cache,
+            )
+            .expect("tracked change should match")
+        );
+
+        assert_eq!(
+            edge_event_matches(
+                &host,
+                SignalHandle(2),
+                &crate::expr::host::EventEvalFrame {
+                    timestamp: 1,
+                    previous_timestamp: Some(0),
+                    tracked_signals: &[],
+                },
+                &mut EvalCache::default(),
+            )
+            .expect_err("real operands cannot drive edge terms")
+            .code,
+            "EXPR-SEMANTIC-EVENT-EDGE"
+        );
+        assert_eq!(
+            edge_event_matches(
+                &host,
+                SignalHandle(1),
+                &crate::expr::host::EventEvalFrame {
+                    timestamp: 0,
+                    previous_timestamp: None,
+                    tracked_signals: &[],
+                },
+                &mut EvalCache::default(),
+            )
+            .expect("timestamp zero has no previous sample"),
+            (false, false)
+        );
+
+        assert_eq!(
+            sample_signal_bits(&host, SignalHandle(2), 1, &mut EvalCache::default())
+                .expect_err("real samples are not integral")
+                .code,
+            "HOST-TYPE-MISMATCH"
+        );
+        assert_eq!(
+            sample_real_value(&host, SignalHandle(1), 1, &mut EvalCache::default())
+                .expect_err("integral samples are not real")
+                .code,
+            "HOST-TYPE-MISMATCH"
+        );
+        assert_eq!(
+            sample_string_value(&host, SignalHandle(1), 1, &mut EvalCache::default())
+                .expect_err("integral samples are not strings")
+                .code,
+            "HOST-TYPE-MISMATCH"
+        );
+    }
+
+    #[test]
+    fn eval_signal_ref_and_bit_helpers_cover_missing_samples_and_classification() {
+        let real_node = BoundLogicalNode {
+            ty: real_type(),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::SignalRef {
+                handle: SignalHandle(2),
+            },
+        };
+        let string_node_ref = BoundLogicalNode {
+            ty: string_type(),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::SignalRef {
+                handle: SignalHandle(3),
+            },
+        };
+        let integral_node = BoundLogicalNode {
+            ty: integral_type(1, true, false),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::SignalRef {
+                handle: SignalHandle(1),
+            },
+        };
+
+        let missing_host = FixtureHost::new()
+            .with_real(2, None, None)
+            .with_string(3, None, None)
+            .with_string(1, Some("oops"), Some("oops"));
+        assert_eq!(
+            eval_signal_ref(
+                &real_node,
+                SignalHandle(2),
+                &missing_host,
+                0,
+                &mut EvalCache::default()
+            )
+            .expect_err("missing real sample should fail")
+            .code,
+            "EXPR-RUNTIME-MISSING-SAMPLE"
+        );
+        assert_eq!(
+            eval_signal_ref(
+                &string_node_ref,
+                SignalHandle(3),
+                &missing_host,
+                0,
+                &mut EvalCache::default(),
+            )
+            .expect_err("missing string sample should fail")
+            .code,
+            "EXPR-RUNTIME-MISSING-SAMPLE"
+        );
+        assert_eq!(
+            eval_signal_ref(
+                &integral_node,
+                SignalHandle(1),
+                &missing_host,
+                0,
+                &mut EvalCache::default(),
+            )
+            .expect_err("wrong payload shape should fail")
+            .code,
+            "HOST-TYPE-MISMATCH"
+        );
+
+        assert_eq!(classify_edge_bits(&[], &[BoundBit::One]), (false, false));
+        assert_eq!(classify_edge_bits(&[BoundBit::Zero], &[]), (false, false));
+        assert_eq!(
+            bits_from_sample("10h-u?z"),
+            vec![
+                BoundBit::One,
+                BoundBit::Zero,
+                BoundBit::X,
+                BoundBit::X,
+                BoundBit::X,
+                BoundBit::X,
+                BoundBit::Z
+            ]
+        );
+        assert_eq!(
+            bits_to_string(&[BoundBit::One, BoundBit::Zero, BoundBit::X, BoundBit::Z]),
+            "10xz"
+        );
+        assert_eq!(truthiness(&real_runtime(0.0)), TruthValue::Zero);
+        assert_eq!(truthiness(&string_runtime("text")), TruthValue::Unknown);
+        assert_eq!(
+            runtime_index_to_usize(&[BoundBit::One, BoundBit::Zero]),
+            Some(2)
+        );
+        assert_eq!(
+            runtime_index_to_i64(&[BoundBit::One, BoundBit::One], true),
+            Some(-1)
+        );
+    }
+
+    fn integral_type(width: u32, is_four_state: bool, is_signed: bool) -> ExprType {
+        ExprType {
+            kind: ExprTypeKind::BitVector,
+            storage: if width > 1 {
+                ExprStorage::PackedVector
+            } else {
+                ExprStorage::Scalar
+            },
+            width,
+            is_four_state,
+            is_signed,
+            enum_type_id: None,
+            enum_labels: None,
+        }
+    }
+
+    fn event_type() -> ExprType {
+        ExprType {
+            kind: ExprTypeKind::Event,
+            storage: ExprStorage::Scalar,
+            width: 0,
+            is_four_state: false,
+            is_signed: false,
+            enum_type_id: None,
+            enum_labels: None,
+        }
+    }
+
+    fn runtime_integral(bits: &[BoundBit], is_four_state: bool, is_signed: bool) -> RuntimeValue {
+        RuntimeValue {
+            ty: integral_type(bits.len() as u32, is_four_state, is_signed),
+            payload: RuntimeValuePayload::Integral {
+                bits: bits.to_vec(),
+                label: None,
+            },
+        }
+    }
+
+    fn real_runtime(value: f64) -> RuntimeValue {
+        RuntimeValue {
+            ty: real_type(),
+            payload: RuntimeValuePayload::Real { value },
+        }
+    }
+
+    fn string_runtime(value: &str) -> RuntimeValue {
+        RuntimeValue {
+            ty: string_type(),
+            payload: RuntimeValuePayload::String {
+                value: value.to_string(),
+            },
+        }
+    }
+
+    fn string_node(value: &str) -> BoundLogicalNode {
+        BoundLogicalNode {
+            ty: string_type(),
+            span: crate::expr::Span::new(0, 0),
+            kind: BoundLogicalKind::StringLiteral {
+                value: value.to_string(),
+            },
+        }
+    }
+
+    struct FixtureHost {
+        types: std::collections::HashMap<SignalHandle, ExprType>,
+        samples: std::collections::HashMap<(SignalHandle, u64), SampledValue>,
+        events: std::collections::HashMap<(SignalHandle, u64), bool>,
+    }
+
+    impl FixtureHost {
+        fn new() -> Self {
+            Self {
+                types: std::collections::HashMap::new(),
+                samples: std::collections::HashMap::new(),
+                events: std::collections::HashMap::new(),
+            }
+        }
+
+        fn with_integral(
+            mut self,
+            raw: u32,
+            previous: Option<&str>,
+            current: Option<&str>,
+        ) -> Self {
+            let handle = SignalHandle(raw);
+            self.types.insert(handle, integral_type(1, true, false));
+            self.samples.insert(
+                (handle, 0),
+                SampledValue::Integral {
+                    bits: previous.map(str::to_string),
+                    label: None,
+                },
+            );
+            self.samples.insert(
+                (handle, 1),
+                SampledValue::Integral {
+                    bits: current.map(str::to_string),
+                    label: None,
+                },
+            );
+            self
+        }
+
+        fn with_real(mut self, raw: u32, previous: Option<f64>, current: Option<f64>) -> Self {
+            let handle = SignalHandle(raw);
+            self.types.insert(handle, real_type());
+            self.samples
+                .insert((handle, 0), SampledValue::Real { value: previous });
+            self.samples
+                .insert((handle, 1), SampledValue::Real { value: current });
+            self
+        }
+
+        fn with_string(mut self, raw: u32, previous: Option<&str>, current: Option<&str>) -> Self {
+            let handle = SignalHandle(raw);
+            self.types.insert(handle, string_type());
+            self.samples.insert(
+                (handle, 0),
+                SampledValue::String {
+                    value: previous.map(str::to_string),
+                },
+            );
+            self.samples.insert(
+                (handle, 1),
+                SampledValue::String {
+                    value: current.map(str::to_string),
+                },
+            );
+            self
+        }
+
+        fn with_event(mut self, raw: u32, occurred_at_one: bool) -> Self {
+            let handle = SignalHandle(raw);
+            self.types.insert(handle, event_type());
+            self.events.insert((handle, 1), occurred_at_one);
+            self
+        }
+    }
+
+    impl ExpressionHost for FixtureHost {
+        fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+            Ok(SignalHandle(0))
+        }
+
+        fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+            self.types
+                .get(&handle)
+                .cloned()
+                .ok_or_else(|| runtime_diag("HOST-UNKNOWN-SIGNAL", "unknown handle"))
+        }
+
+        fn sample_value(
+            &self,
+            handle: SignalHandle,
+            timestamp: u64,
+        ) -> Result<SampledValue, ExprDiagnostic> {
+            self.samples
+                .get(&(handle, timestamp))
+                .cloned()
+                .ok_or_else(|| runtime_diag("HOST-UNKNOWN-SIGNAL", "unknown sample"))
+        }
+
+        fn event_occurred(
+            &self,
+            handle: SignalHandle,
+            timestamp: u64,
+        ) -> Result<bool, ExprDiagnostic> {
+            Ok(*self.events.get(&(handle, timestamp)).unwrap_or(&false))
+        }
+    }
 }

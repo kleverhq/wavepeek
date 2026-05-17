@@ -66,10 +66,10 @@ After each substantial batch, rerun focused tests, then rerun coverage. Commit a
 - [x] (2026-05-17) Read repository workflow docs, test breadcrumbs, source breadcrumbs, and prior expression/runtime execution plans relevant to existing test patterns.
 - [x] (2026-05-17) Added focused unit tests for smaller helper-heavy modules: `src/docs/mod.rs`, `src/engine/docs.rs`, `src/engine/time.rs`, `src/engine/property.rs`, `src/engine/expr_runtime.rs`, `src/waveform/expr_host.rs`, `src/output.rs`, `src/schema_contract.rs`, and `src/engine/mod.rs`.
 - [x] (2026-05-17) Ran the smaller-module batch through `cargo test --lib` and `cargo llvm-cov --workspace --all-features --summary-only --json > tmp/coverage-after-m1.json`; total `src/**` coverage improved to line 84.02%, region 86.47%, function 84.05%.
-- [ ] Add targeted semantic-helper tests in `src/expr/sema.rs` for casts, selections, enum-label handling, constant-expression validation, and low-level integral decoding helpers.
-- [ ] Add targeted evaluator-helper tests in `src/expr/eval.rs` for truthiness, event matching, edge handling, sampling-type mismatches, finite-real checks, reduction/bitwise helpers, and runtime helper branches.
-- [ ] Run focused expression tests, measure coverage again, and commit the expression batch.
-- [ ] Add targeted waveform-helper tests in `src/waveform/mod.rs` for time-window helpers, alias mapping, scope/signal helper branches, candidate-collection fallbacks, and format-normalization helpers.
+- [x] (2026-05-17) Added the first targeted semantic/evaluator/waveform helper batch in `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs`, covering event binding errors, cast/type checks, literal/constant helpers, runtime coercions, selection/shift behavior, event/runtime mismatches, expression-backed waveform sampling, candidate collection, and time/path helper branches.
+- [ ] Continue expanding semantic-helper tests in `src/expr/sema.rs`; this file is still the single largest remaining blocker by both line and function coverage.
+- [ ] Continue expanding evaluator-helper tests in `src/expr/eval.rs` and the remaining waveform helper tests in `src/waveform/mod.rs`, then remeasure coverage and commit the next batch.
+- [ ] Add targeted waveform-helper tests in `src/waveform/mod.rs` for the still-uncovered alias, scope/signal, and fallback branches that remain after the first waveform batch.
 - [ ] Run focused waveform tests, measure coverage again, and commit the waveform batch.
 - [ ] If overall `src/**` average is still below 95%, iterate on the remaining low-coverage files using the updated coverage report until the threshold is met.
 - [ ] Run final validation coverage command(s), record the final percentages here, and commit the completion state.
@@ -84,6 +84,9 @@ After each substantial batch, rerun focused tests, then rerun coverage. Commit a
 
 - Observation: the smaller helper-module batch raised total `src/**` coverage by only about 1.4 average points, which is useful but not remotely sufficient by itself.
   Evidence: totals moved from 81.91/84.77/81.28 to 84.02/86.47/84.05, so the remaining climb still depends on the large internals in `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs`.
+
+- Observation: the first direct internals batch on `sema`/`eval`/`waveform` helped, but not enough to make the remaining path obvious. After this batch, `src/expr/sema.rs` is still the dominant hotspot, while `src/docs/mod.rs`, `src/expr/parser.rs`, `src/expr/lexer.rs`, `src/engine/change.rs`, and `src/engine/expr_runtime.rs` now look like the next realistic high-yield files.
+  Evidence: totals moved again to 86.18/88.14/85.25, with the biggest remaining misses still in `src/expr/sema.rs` (1273 combined misses), `src/expr/eval.rs` (452), `src/waveform/mod.rs` (424), `src/docs/mod.rs` (323), `src/expr/parser.rs` (335), and `src/expr/lexer.rs` (243).
 
 ## Decision Log
 
@@ -160,9 +163,10 @@ Acceptance for this milestone is that the final coverage report proves the requi
 
 Current status: in progress.
 
-The first batch is done and committed next: smaller helper-module tests materially improved local file coverage and cleaned up several easy branch gaps, but the overall target is still far away. The next meaningful work must attack expression semantics/evaluation internals rather than polishing already-small files.
+The helper-module batch is already committed. The next commit should record the first direct internals pass across `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs`, which raised overall totals again but still left the branch well below the 95 target. The remaining work is now a broader campaign, not a single silver bullet: more `sema`/`waveform` depth plus targeted coverage work in docs/parser/lexer/change/runtime helpers.
 
 Final percentages, remaining weak spots, discovered bugs, and lessons learned will be recorded here when the work is done.
 
 Revision Note: 2026-05-17 / Grin - Initial active coverage-closure ExecPlan created from current repository docs, baseline coverage artifacts, source/test inspection, and the user’s explicit test-only-plus-frequent-commit requirement.
-Revision Note: 2026-05-17 / Grin - Updated after the first test-only helper-module batch to record completed smaller-file work, the post-batch coverage totals from `tmp/coverage-after-m1.json`, and the fact that the remaining risk is now concentrated in `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs`. 
+Revision Note: 2026-05-17 / Grin - Updated after the first test-only helper-module batch to record completed smaller-file work, the post-batch coverage totals from `tmp/coverage-after-m1.json`, and the fact that the remaining risk is now concentrated in `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs`.
+Revision Note: 2026-05-17 / Grin - Updated after the first direct internals batch on `src/expr/sema.rs`, `src/expr/eval.rs`, and `src/waveform/mod.rs` to record the new total coverage state from `tmp/coverage-after-m2a.json` and the widened list of next high-yield targets (`docs`, `parser`, `lexer`, `change`, and `expr_runtime`) beyond the still-dominant `sema` and `waveform` gaps. 

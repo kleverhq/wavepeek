@@ -1982,6 +1982,260 @@ mod tests {
         }
     }
 
+    #[test]
+    fn expr_resolution_and_sampling_cover_real_string_event_paths() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! sig $end\n",
+            "$var event 1 \" ev $end\n",
+            "$var real 1 # temp $end\n",
+            "$var string 1 $ msg $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "r0.0 #\n",
+            "shello $\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n",
+            "r2.5 #\n",
+            "sworld $\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-sample.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+
+        let real = waveform
+            .resolve_expr_signal("top.temp")
+            .expect("real signal should resolve");
+        assert!(matches!(
+            real.expr_type.kind,
+            crate::expr::ExprTypeKind::Real
+        ));
+        assert_eq!(
+            waveform
+                .sample_expr_value(&real, 5)
+                .expect("real value should sample"),
+            crate::expr::SampledValue::Real { value: Some(2.5) }
+        );
+
+        let string = waveform
+            .resolve_expr_signal("top.msg")
+            .expect("string signal should resolve");
+        assert!(matches!(
+            string.expr_type.kind,
+            crate::expr::ExprTypeKind::String
+        ));
+        assert_eq!(
+            waveform
+                .sample_expr_value(&string, 5)
+                .expect("string value should sample"),
+            crate::expr::SampledValue::String {
+                value: Some("world".to_string())
+            }
+        );
+
+        let event = waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event signal should resolve");
+        assert!(matches!(
+            event.expr_type.kind,
+            crate::expr::ExprTypeKind::Event
+        ));
+        assert!(
+            waveform
+                .expr_event_occurred(&event, 5)
+                .expect("event should occur")
+        );
+        assert!(
+            !waveform
+                .expr_event_occurred(&event, 4)
+                .expect("non-sampled event timestamp should be false")
+        );
+        assert!(
+            waveform
+                .sample_expr_value(&event, 5)
+                .expect_err("events cannot be sampled as values")
+                .to_string()
+                .contains("is a raw event and cannot be sampled as a value")
+        );
+
+        let signal = waveform
+            .resolve_expr_signal("top.sig")
+            .expect("bit-vector signal should resolve");
+        assert!(
+            waveform
+                .expr_event_occurred(&signal, 5)
+                .expect_err("non-events cannot be queried as events")
+                .to_string()
+                .contains("is not a raw event")
+        );
+    }
+
+    #[test]
+    fn candidate_collection_and_time_helpers_cover_split_paths() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! sig $end\n",
+            "$var event 1 \" ev $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-candidates.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_expr_signals(&["top.sig".to_string(), "top.ev".to_string()])
+            .expect("signals should resolve");
+        let candidates = waveform
+            .collect_expr_candidate_times_with_mode(
+                &resolved,
+                0,
+                5,
+                super::ChangeCandidateCollectionMode::Random,
+            )
+            .expect("candidate collection should succeed");
+        assert_eq!(candidates, vec![0, 5]);
+
+        let empty: Vec<super::ResolvedSignal> = Vec::new();
+        assert!(
+            waveform
+                .collect_change_times_with_mode(
+                    &empty,
+                    0,
+                    5,
+                    super::ChangeCandidateCollectionMode::Random,
+                )
+                .expect("empty signal list should short-circuit")
+                .is_empty()
+        );
+
+        assert!(
+            waveform
+                .collect_change_times_with_mode(
+                    &[super::ResolvedSignal {
+                        path: "top.sig".to_string(),
+                        signal_ref: resolved[0].signal_ref,
+                        width: 1,
+                    }],
+                    0,
+                    5,
+                    super::ChangeCandidateCollectionMode::Stream,
+                )
+                .expect_err("forcing stream mode on VCD should fail")
+                .to_string()
+                .contains("forced stream candidate collection")
+        );
+        assert!(!waveform.should_use_streaming_candidate_collection(
+            1,
+            0,
+            5,
+            super::ChangeCandidateCollectionMode::Auto,
+        ));
+
+        assert_eq!(super::floor_time_table_index(&[], 0), None);
+        assert_eq!(super::floor_time_table_index(&[5, 10], 4), None);
+        assert_eq!(super::floor_time_table_index(&[5, 10], 5), Some(0));
+        assert_eq!(super::floor_time_table_index(&[5, 10], 7), Some(0));
+        assert_eq!(super::time_window_indices(&[], 0, 1), None);
+        assert_eq!(super::time_window_indices(&[0, 5, 10], 9, 1), None);
+        assert_eq!(super::time_window_indices(&[0, 5, 10], 1, 9), Some((1, 2)));
+    }
+
+    #[test]
+    fn helper_functions_cover_invalid_paths_and_timescales() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var real 1 ! temp $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "r1.0 !\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-helpers.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let hierarchy = waveform.inner.hierarchy();
+
+        assert!(
+            super::resolve_var_ref(hierarchy, "")
+                .expect_err("empty path should fail")
+                .to_string()
+                .contains("not found in dump")
+        );
+        assert!(
+            super::resolve_var_ref(hierarchy, "top.")
+                .expect_err("trailing dot path should fail")
+                .to_string()
+                .contains("not found in dump")
+        );
+        assert!(
+            super::resolve_signal_ref_with_width(hierarchy, "top.temp")
+                .expect_err("real signals do not have bit-vector widths")
+                .to_string()
+                .contains("unsupported non-bit-vector encoding")
+        );
+
+        assert_eq!(
+            super::timescale_unit_suffix(wellen::TimescaleUnit::Unknown)
+                .expect_err("unknown timescale units should fail")
+                .to_string(),
+            "error: file: waveform timescale unit is unknown"
+        );
+        assert_eq!(
+            super::format_timescale(wellen::Timescale {
+                factor: 1,
+                unit: wellen::TimescaleUnit::NanoSeconds,
+            })
+            .expect("timescale formatting should succeed"),
+            "1ns"
+        );
+        assert!(
+            super::normalize_time(
+                u64::MAX,
+                wellen::Timescale {
+                    factor: 2,
+                    unit: wellen::TimescaleUnit::NanoSeconds,
+                },
+            )
+            .expect_err("overflowing normalized times should fail")
+            .to_string()
+            .contains("time value overflow")
+        );
+
+        assert!(!super::var_type_is_four_state(wellen::VarType::Bit));
+        assert!(super::var_type_is_four_state(wellen::VarType::Logic));
+        assert!(super::var_type_is_signed(wellen::VarType::Integer));
+        assert!(!super::var_type_is_signed(wellen::VarType::Logic));
+        assert_eq!(
+            super::empty_sampled_value(&crate::expr::ExprType {
+                kind: crate::expr::ExprTypeKind::String,
+                storage: crate::expr::ExprStorage::Scalar,
+                width: 0,
+                is_four_state: false,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            }),
+            crate::expr::SampledValue::String { value: None }
+        );
+    }
+
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {
         let mut file = tempfile::Builder::new()
             .suffix(filename)

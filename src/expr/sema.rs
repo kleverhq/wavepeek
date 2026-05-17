@@ -2429,4 +2429,467 @@ mod tests {
         assert!(matches!(bound.root.ty.kind, ExprTypeKind::EnumCore));
         assert_eq!(bound.root.ty.enum_type_id.as_deref(), Some("fsm_state"));
     }
+
+    #[test]
+    fn event_and_triggered_binding_cover_event_specific_errors() {
+        struct MixedHost;
+        impl ExpressionHost for MixedHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "ev" => Ok(SignalHandle(1)),
+                    "bits" => Ok(SignalHandle(2)),
+                    "real" => Ok(SignalHandle(3)),
+                    _ => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: "HOST-UNKNOWN",
+                        message: format!("unknown signal '{name}'"),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(1) => ExprType {
+                        kind: ExprTypeKind::Event,
+                        storage: ExprStorage::Scalar,
+                        width: 0,
+                        is_four_state: false,
+                        is_signed: false,
+                        enum_type_id: None,
+                        enum_labels: None,
+                    },
+                    SignalHandle(3) => real_type(),
+                    _ => bit_vector_type(4, true, false, true),
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!("semantic binder should not sample values")
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!("semantic binder should not query events")
+            }
+        }
+
+        let error =
+            bind_logical_expr_ast(&parse_logical_expr_ast("ev").expect("parse"), &MixedHost)
+                .expect_err("raw event operands require .triggered()");
+        assert_eq!(error.code, "EXPR-SEMANTIC-EVENT-VALUE");
+
+        let bound = bind_logical_expr_ast(
+            &parse_logical_expr_ast("ev.triggered()").expect("parse"),
+            &MixedHost,
+        )
+        .expect("triggered event should bind");
+        assert!(matches!(
+            bound.root.kind,
+            BoundLogicalKind::Triggered {
+                handle: SignalHandle(1)
+            }
+        ));
+
+        let error = bind_logical_expr_ast(
+            &parse_logical_expr_ast("bits.triggered()").expect("parse"),
+            &MixedHost,
+        )
+        .expect_err("non-event triggered call should fail");
+        assert_eq!(error.code, "EXPR-SEMANTIC-TRIGGERED");
+
+        let error = bind_event_expr_ast(
+            &crate::expr::parse_event_expr_ast("posedge real").expect("parse"),
+            &MixedHost,
+        )
+        .expect_err("edge events require integral operands");
+        assert_eq!(error.code, "EXPR-SEMANTIC-INTEGRAL-REQUIRED");
+    }
+
+    #[test]
+    fn type_and_cast_helpers_cover_incompatible_operands() {
+        let span = Span::new(2, 5);
+        assert_eq!(
+            ensure_integral(&string_type(), span, "ctx")
+                .expect_err("string is not integral")
+                .code,
+            "EXPR-SEMANTIC-INTEGRAL-REQUIRED"
+        );
+        assert_eq!(
+            ensure_numeric(&string_type(), span, "ctx")
+                .expect_err("string is not numeric")
+                .code,
+            "EXPR-SEMANTIC-NUMERIC"
+        );
+        assert_eq!(
+            ensure_boolean_context_type(&string_type(), span, "ctx")
+                .expect_err("string is not valid in boolean context")
+                .code,
+            "EXPR-SEMANTIC-BOOLEAN-CONTEXT"
+        );
+        assert_eq!(
+            ensure_enum_type(&bit_vector_type(2, true, false, true), span, "ctx")
+                .expect_err("bit vectors are not enums")
+                .code,
+            "EXPR-SEMANTIC-ENUM-LABEL"
+        );
+        assert_eq!(
+            ensure_cast_compatible(&string_type(), &ExprTypeKind::BitVector, span)
+                .expect_err("string cannot target integral casts")
+                .code,
+            "EXPR-SEMANTIC-CAST-TARGET"
+        );
+        assert_eq!(
+            ensure_real_cast_source(&string_type(), span)
+                .expect_err("string cannot cast to real")
+                .code,
+            "EXPR-SEMANTIC-CAST-TARGET"
+        );
+        assert_eq!(
+            ensure_string_cast_source(&real_type(), span)
+                .expect_err("real cannot cast to string")
+                .code,
+            "EXPR-SEMANTIC-CAST-TARGET"
+        );
+
+        struct CastHost;
+        impl ExpressionHost for CastHost {
+            fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
+                match name {
+                    "evt" => Ok(SignalHandle(1)),
+                    "enm" => Ok(SignalHandle(2)),
+                    _ => Err(ExprDiagnostic {
+                        layer: DiagnosticLayer::Semantic,
+                        code: "HOST-UNKNOWN",
+                        message: format!("unknown signal '{name}'"),
+                        primary_span: Span::new(0, 0),
+                        notes: vec![],
+                    }),
+                }
+            }
+
+            fn signal_type(&self, handle: SignalHandle) -> Result<ExprType, ExprDiagnostic> {
+                Ok(match handle {
+                    SignalHandle(1) => ExprType {
+                        kind: ExprTypeKind::Event,
+                        storage: ExprStorage::Scalar,
+                        width: 0,
+                        is_four_state: false,
+                        is_signed: false,
+                        enum_type_id: None,
+                        enum_labels: None,
+                    },
+                    _ => ExprType {
+                        kind: ExprTypeKind::EnumCore,
+                        storage: ExprStorage::Scalar,
+                        width: 2,
+                        is_four_state: true,
+                        is_signed: false,
+                        enum_type_id: None,
+                        enum_labels: None,
+                    },
+                })
+            }
+
+            fn sample_value(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<crate::expr::SampledValue, ExprDiagnostic> {
+                unreachable!()
+            }
+
+            fn event_occurred(
+                &self,
+                _handle: SignalHandle,
+                _timestamp: u64,
+            ) -> Result<bool, ExprDiagnostic> {
+                unreachable!()
+            }
+        }
+
+        let error = cast_target_type(
+            &CastTargetAst::RecoveredType {
+                name: "evt".to_string(),
+                span,
+            },
+            &bit_vector_type(1, true, false, false),
+            &CastHost,
+            span,
+        )
+        .expect_err("events cannot be recovered cast targets");
+        assert_eq!(error.code, "EXPR-SEMANTIC-CAST-TARGET");
+
+        let error = cast_target_type(
+            &CastTargetAst::RecoveredType {
+                name: "enm".to_string(),
+                span,
+            },
+            &bit_vector_type(1, true, false, false),
+            &CastHost,
+            span,
+        )
+        .expect_err("enum targets require metadata");
+        assert_eq!(error.code, "EXPR-SEMANTIC-METADATA");
+
+        let (ty, kind) = cast_target_type(
+            &CastTargetAst::Unsigned,
+            &integer_like_type(IntegerLikeKind::Int),
+            &CastHost,
+            span,
+        )
+        .expect("unsigned cast should succeed");
+        assert_eq!(kind, BoundCastKind::Unsigned);
+        assert!(!ty.is_signed);
+
+        assert!(matches!(
+            common_integral_type(
+                &integer_like_type(IntegerLikeKind::Int),
+                &integer_like_type(IntegerLikeKind::Int)
+            )
+            .kind,
+            ExprTypeKind::IntegerLike(IntegerLikeKind::Int)
+        ));
+        assert!(matches!(
+            common_numeric_result_type(&real_type(), &bit_vector_type(4, true, false, true)).kind,
+            ExprTypeKind::Real
+        ));
+        assert_eq!(
+            conditional_result_type(&string_type(), span, &real_type(), Span::new(6, 9))
+                .expect_err("mismatched conditional arms should fail")
+                .code,
+            "EXPR-SEMANTIC-CONDITIONAL-TYPE"
+        );
+    }
+
+    #[test]
+    fn integral_literal_and_const_helpers_cover_range_and_unknown_paths() {
+        let span = Span::new(0, 0);
+        let binary = decode_integral_literal(&IntegralLiteral {
+            width: None,
+            signed: false,
+            base: IntegralBase::Binary,
+            digits: "10xz".to_string(),
+            span,
+        })
+        .expect("binary literal should decode");
+        assert_eq!(
+            binary.bits,
+            vec![BoundBit::One, BoundBit::Zero, BoundBit::X, BoundBit::Z]
+        );
+
+        let hex = decode_integral_literal(&IntegralLiteral {
+            width: Some(6),
+            signed: false,
+            base: IntegralBase::Hex,
+            digits: "f".to_string(),
+            span,
+        })
+        .expect("hex literal should decode");
+        assert_eq!(
+            hex.bits,
+            vec![
+                BoundBit::Zero,
+                BoundBit::Zero,
+                BoundBit::One,
+                BoundBit::One,
+                BoundBit::One,
+                BoundBit::One
+            ]
+        );
+
+        assert_eq!(
+            decode_integral_literal(&IntegralLiteral {
+                width: None,
+                signed: false,
+                base: IntegralBase::Decimal,
+                digits: "12x".to_string(),
+                span,
+            })
+            .expect_err("decimal x digits should fail")
+            .code,
+            "EXPR-PARSE-LOGICAL-LITERAL"
+        );
+        assert_eq!(
+            decode_integral_literal(&IntegralLiteral {
+                width: None,
+                signed: false,
+                base: IntegralBase::Binary,
+                digits: "102".to_string(),
+                span,
+            })
+            .expect_err("invalid binary digit should fail")
+            .code,
+            "EXPR-PARSE-LOGICAL-LITERAL"
+        );
+
+        assert_eq!(decimal_signed_width(3), 3);
+        assert_eq!(bit_length(0), 1);
+        assert_eq!(
+            resize_bits(vec![BoundBit::One, BoundBit::Zero], 4, true),
+            vec![BoundBit::One, BoundBit::One, BoundBit::One, BoundBit::Zero]
+        );
+        assert_eq!(
+            resize_bits(vec![BoundBit::One, BoundBit::Zero, BoundBit::One], 2, false),
+            vec![BoundBit::Zero, BoundBit::One]
+        );
+        assert_eq!(bit_from_char('?'), None);
+        assert_eq!(
+            bits_from_sample("10q"),
+            vec![BoundBit::One, BoundBit::Zero, BoundBit::X]
+        );
+        let mut nibble = Vec::new();
+        assert_eq!(push_hex_nibble('g', &mut nibble), None);
+
+        let x_node = const_bits_node(&[BoundBit::X], false);
+        assert_eq!(
+            eval_const_i64(&x_node, "const", span)
+                .expect_err("x values are not valid const integers")
+                .code,
+            "EXPR-SEMANTIC-CONST-REQUIRED"
+        );
+        let signal_node = BoundLogicalNode {
+            ty: bit_vector_type(1, true, false, false),
+            span,
+            kind: BoundLogicalKind::SignalRef {
+                handle: SignalHandle(99),
+            },
+        };
+        assert_eq!(
+            try_eval_const_i64(&signal_node).expect("signal refs are non-constant"),
+            None
+        );
+
+        assert_eq!(
+            part_select_width(i64::MAX, i64::MIN, span)
+                .expect_err("overflowing bounds should fail")
+                .code,
+            "EXPR-SEMANTIC-CONST-RANGE"
+        );
+        let base_ty = bit_vector_type(4, false, false, true);
+        assert!(!invalid_part_select_forces_four_state(&base_ty, 2, 1));
+        assert!(invalid_part_select_forces_four_state(&base_ty, 4, 1));
+        assert!(
+            !indexed_part_select_may_produce_x(
+                &base_ty,
+                &const_bits_node(&[BoundBit::One], false),
+                2,
+                true
+            )
+            .expect("in-bounds indexed select")
+        );
+        assert!(
+            indexed_part_select_may_produce_x(
+                &base_ty,
+                &const_bits_node(&[BoundBit::One, BoundBit::One], false),
+                3,
+                true
+            )
+            .expect("out-of-bounds indexed select")
+        );
+
+        let coerced = apply_const_cast(
+            BoundCastKind::Static,
+            BoundIntegralValue {
+                bits: vec![BoundBit::X, BoundBit::One],
+                signed: false,
+            },
+            &bit_vector_type(2, false, false, true),
+        );
+        assert_eq!(coerced.bits, vec![BoundBit::Zero, BoundBit::One]);
+        assert_eq!(
+            truthiness_bits(&[BoundBit::X, BoundBit::Zero]),
+            ConstTruth::Unknown
+        );
+
+        let unary = eval_const_unary(
+            UnaryOpAst::ReduceXnor,
+            BoundIntegralValue {
+                bits: vec![BoundBit::One, BoundBit::One],
+                signed: false,
+            },
+            &bit_vector_type(2, true, false, true),
+        );
+        assert_eq!(unary.bits, vec![BoundBit::One]);
+
+        let ty = bit_vector_type(4, true, true, true);
+        let divide_by_zero = eval_const_binary(
+            BinaryOpAst::Divide,
+            BoundIntegralValue {
+                bits: vec![
+                    BoundBit::Zero,
+                    BoundBit::One,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                ],
+                signed: true,
+            },
+            BoundIntegralValue {
+                bits: vec![
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                ],
+                signed: true,
+            },
+            &ty,
+        );
+        assert_eq!(divide_by_zero.bits, vec![BoundBit::X; 4]);
+
+        let neg_power = eval_const_binary(
+            BinaryOpAst::Power,
+            BoundIntegralValue {
+                bits: vec![BoundBit::Zero, BoundBit::Zero],
+                signed: false,
+            },
+            BoundIntegralValue {
+                bits: vec![BoundBit::One, BoundBit::One],
+                signed: true,
+            },
+            &bit_vector_type(2, true, true, true),
+        );
+        assert_eq!(neg_power.bits, vec![BoundBit::X; 2]);
+
+        let shifted = eval_const_binary(
+            BinaryOpAst::ShiftArithRight,
+            BoundIntegralValue {
+                bits: vec![
+                    BoundBit::One,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                    BoundBit::Zero,
+                ],
+                signed: true,
+            },
+            BoundIntegralValue {
+                bits: vec![BoundBit::One, BoundBit::Zero, BoundBit::Zero],
+                signed: false,
+            },
+            &ty,
+        );
+        assert_eq!(shifted.bits, vec![BoundBit::One; 4]);
+    }
+
+    fn const_bits_node(bits: &[BoundBit], signed: bool) -> BoundLogicalNode {
+        BoundLogicalNode {
+            ty: bit_vector_type(bits.len() as u32, true, signed, bits.len() > 1),
+            span: Span::new(0, 0),
+            kind: BoundLogicalKind::IntegralLiteral {
+                value: BoundIntegralValue {
+                    bits: bits.to_vec(),
+                    signed,
+                },
+                is_unsized: false,
+            },
+        }
+    }
 }

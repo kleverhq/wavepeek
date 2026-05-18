@@ -58,6 +58,7 @@ Common commands:
   - `make test-aux`
 - Coverage:
   - `make coverage-src`
+  - `make coverage-src-check`
 - Run all pre-commit hooks locally:
   - `make pre-commit`
 - Validate commit message (commit-msg hook runs this):
@@ -65,7 +66,7 @@ Common commands:
 - One-shot local gate:
   - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + cargo test + auxiliary Python unit tests + cargo check)
+  - `make ci` (format-check + clippy + check-schema + cargo test + auxiliary Python unit tests + source coverage gate at 90% per metric for `src/**` + cargo check)
 - Cleanup:
   - `make clean`
 
@@ -78,6 +79,8 @@ Direct Cargo equivalents (useful when iterating):
 - `cargo llvm-cov --workspace --all-features --summary-only`
 - `cargo build` / `cargo build --release`
 - `cargo run -- <args>`
+
+The source-coverage gate tracks `src/**` only, ignores `/tests/`, and currently requires at least `90%` for lines, regions, and functions.
 
 ## CLI E2E Benchmark Harness
 

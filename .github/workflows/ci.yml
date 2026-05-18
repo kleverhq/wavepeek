@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   checks:
-    name: Format, lint, schema, tests, bench e2e, build
+    name: Format, lint, schema, tests, coverage, bench e2e, build
     runs-on: ubuntu-24.04
     env:
       DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
@@ -55,6 +55,7 @@ jobs:
           push: never
           runCmd: make ci
 
+
       - name: Run checks in devcontainer baseline (cache read-only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         uses: devcontainers/ci@v0.3
@@ -62,3 +63,12 @@ jobs:
           configFile: .devcontainer/.devcontainer.json
           push: never
           runCmd: make ci
+
+      - name: Summarize source coverage
+        run: |
+          python3 -B scripts/check_coverage.py \
+            --summary tmp/coverage/coverage-src-summary.txt \
+            --min-regions 90 \
+            --min-functions 90 \
+            --min-lines 90 \
+            --job-summary-path "$GITHUB_STEP_SUMMARY"

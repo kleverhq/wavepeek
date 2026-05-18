@@ -13,6 +13,7 @@ WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
 CODEX_SETUP_SCRIPT := scripts/codex_setup.sh
 CODEX_RESUME_SCRIPT := scripts/codex_resume.sh
 PYTHON := python3 -B
+COVERAGE_SRC_THRESHOLD ?= 90
 
 ## Require containerized execution
 require-container:
@@ -94,13 +95,23 @@ test: require-container check-rtl-artifacts
 ## Report source coverage for src/**/*.rs via cargo-llvm-cov
 coverage-src: require-container check-rtl-artifacts
 	@mkdir -p tmp/coverage
-	cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' | tee tmp/coverage/coverage-src-summary.txt
+	cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.txt
+	@cat tmp/coverage/coverage-src-summary.txt
+
+## Enforce minimum source coverage for src/**/*.rs
+coverage-src-check: coverage-src
+	$(PYTHON) scripts/check_coverage.py \
+		--summary tmp/coverage/coverage-src-summary.txt \
+		--min-regions $(COVERAGE_SRC_THRESHOLD) \
+		--min-functions $(COVERAGE_SRC_THRESHOLD) \
+		--min-lines $(COVERAGE_SRC_THRESHOLD)
 
 ## Run auxiliary Python/unit test suites
 test-aux: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
 	$(PYTHON) -m unittest discover -s bench/expr -p "test_*.py"
 	$(PYTHON) -m unittest scripts/test_extract_release_notes.py
+	$(PYTHON) -m unittest scripts/test_check_coverage.py
 
 ## Build release binary
 build-release: require-container
@@ -147,7 +158,7 @@ check-commit: require-container
 check: format-check lint check-schema check-actions check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema check-actions test test-aux check-build
+ci: format-check lint check-schema check-actions test test-aux coverage-src-check check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

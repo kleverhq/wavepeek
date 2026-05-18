@@ -92,19 +92,26 @@ check-build: require-container
 test: require-container check-rtl-artifacts
 	cargo test -q
 
-## Report source coverage for src/**/*.rs via cargo-llvm-cov
-coverage-src: require-container check-rtl-artifacts
+coverage-src-data: require-container check-rtl-artifacts
 	@mkdir -p tmp/coverage
-	cargo llvm-cov --workspace --all-features --summary-only --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.txt
-	@cat tmp/coverage/coverage-src-summary.txt
+	cargo llvm-cov --workspace --all-features --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
+
+## Report source coverage for src/**/*.rs via cargo-llvm-cov
+coverage-src: coverage-src-data
+	$(PYTHON) scripts/check_coverage.py \
+		--summary-json tmp/coverage/coverage-src-summary.json \
+		--min-regions 0 \
+		--min-functions 0 \
+		--min-lines 0
 
 ## Enforce minimum source coverage for src/**/*.rs
-coverage-src-check: coverage-src
+coverage-src-check: coverage-src-data
 	$(PYTHON) scripts/check_coverage.py \
-		--summary tmp/coverage/coverage-src-summary.txt \
+		--summary-json tmp/coverage/coverage-src-summary.json \
 		--min-regions $(COVERAGE_SRC_THRESHOLD) \
 		--min-functions $(COVERAGE_SRC_THRESHOLD) \
-		--min-lines $(COVERAGE_SRC_THRESHOLD)
+		--min-lines $(COVERAGE_SRC_THRESHOLD) \
+		--markdown-output tmp/coverage/coverage-src-summary.md
 
 ## Run auxiliary Python/unit test suites
 test-aux: require-container

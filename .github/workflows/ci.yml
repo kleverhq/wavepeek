@@ -17,6 +17,7 @@ jobs:
     name: Format, lint, schema, tests, coverage, bench e2e, build
     runs-on: ubuntu-24.04
     env:
+      COVERAGE_SRC_THRESHOLD: "90"
       DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
       DEVCONTAINER_CONFIG: .devcontainer/devcontainer.ci.json
       DEVCONTAINER_CONFIG_ALIAS: .devcontainer/.devcontainer.json
@@ -53,8 +54,7 @@ jobs:
           cacheTo: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }},mode=max
           push: never
-          runCmd: make ci
-
+          runCmd: COVERAGE_SRC_THRESHOLD=${{ env.COVERAGE_SRC_THRESHOLD }} make ci
 
       - name: Run checks in devcontainer baseline (cache read-only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
@@ -62,13 +62,13 @@ jobs:
         with:
           configFile: .devcontainer/.devcontainer.json
           push: never
-          runCmd: make ci
+          runCmd: COVERAGE_SRC_THRESHOLD=${{ env.COVERAGE_SRC_THRESHOLD }} make ci
 
       - name: Summarize source coverage
+        if: always()
         run: |
-          python3 -B scripts/check_coverage.py \
-            --summary tmp/coverage/coverage-src-summary.txt \
-            --min-regions 90 \
-            --min-functions 90 \
-            --min-lines 90 \
-            --job-summary-path "$GITHUB_STEP_SUMMARY"
+          if [ -f tmp/coverage/coverage-src-summary.md ]; then
+            cat tmp/coverage/coverage-src-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "coverage summary markdown was not generated" >> "$GITHUB_STEP_SUMMARY"
+          fi

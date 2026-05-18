@@ -109,3 +109,5 @@ See `docs/DEVELOPMENT.md` for the canonical developer workflow, quality gates, a
 ## License
 
 Apache-2.0
+
+> E2E flow check note: temporary README update for branch/commit/PR validation (2026-05-18).

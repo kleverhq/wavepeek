@@ -50,7 +50,7 @@ RUN apt-get update && \
 RUN . /tmp/wavepeek-env-contract.sh && \
     mkdir -p ${RTL_ARTIFACTS_DIR} && \
     for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do \
-      curl -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
+      curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
         "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"; \
     done
 
@@ -83,7 +83,7 @@ RUN . /tmp/wavepeek-env-contract.sh && \
         *) printf '%s\n' "unsupported actionlint architecture: $arch" >&2; exit 1 ;; \
     esac && \
     tmp_dir="$(mktemp -d)" && \
-    curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
+    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/actionlint.tar.gz" \
         "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz" && \
     tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint && \
     install -m 0755 "$tmp_dir/actionlint" /usr/local/bin/actionlint && \
@@ -98,7 +98,7 @@ RUN . /tmp/wavepeek-env-contract.sh && \
         *) printf '%s\n' "unsupported hyperfine architecture: $arch" >&2; exit 1 ;; \
     esac && \
     tmp_dir="$(mktemp -d)" && \
-    curl -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
+    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
         "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_HYPERFINE_VERSION}/hyperfine-v${WAVEPEEK_HYPERFINE_VERSION}-${hyperfine_arch}.tar.gz" && \
     tar -xzf "$tmp_dir/hyperfine.tar.gz" -C "$tmp_dir" && \
     install -m 0755 "$tmp_dir"/*/hyperfine /usr/local/bin/hyperfine && \
@@ -175,11 +175,23 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     npm install -g \
     @devcontainers/cli@${WAVEPEEK_DEVCONTAINERS_CLI_VERSION} \
     @openai/codex \
-    @mariozechner/pi-coding-agent
+    @earendil-works/pi-coding-agent
 
-# Install latest OpenCode
-RUN curl -fsSL https://opencode.ai/install | bash && \
-    ln -s /home/ubuntu/.opencode/bin/opencode /home/ubuntu/.local/bin/opencode
+# Install pinned OpenCode release directly instead of relying on the moving
+# installer script from the upstream dev branch.
+RUN . /tmp/wavepeek-env-contract.sh && \
+    arch="$(dpkg --print-architecture)" && \
+    case "$arch" in \
+        amd64) opencode_archive="opencode-linux-x64-baseline.tar.gz" ;; \
+        arm64) opencode_archive="opencode-linux-arm64.tar.gz" ;; \
+        *) printf '%s\n' "unsupported opencode architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    tmp_dir="$(mktemp -d)" && \
+    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/opencode.tar.gz" \
+        "https://github.com/anomalyco/opencode/releases/download/v${WAVEPEEK_OPENCODE_VERSION}/${opencode_archive}" && \
+    tar -xzf "$tmp_dir/opencode.tar.gz" -C "$tmp_dir" && \
+    install -m 0755 "$tmp_dir/opencode" /home/ubuntu/.local/bin/opencode && \
+    rm -rf "$tmp_dir"
 
 # Install latest Claude Code
 RUN curl -fsSL https://claude.ai/install.sh | bash

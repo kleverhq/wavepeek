@@ -86,6 +86,7 @@ ensure_cargo_llvm_cov() {
 
 install_actionlint() {
     local arch
+    local status
     local tmp_dir
 
     arch="$(uname -m)"
@@ -102,12 +103,19 @@ install_actionlint() {
     esac
 
     tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "$tmp_dir"' RETURN
+    if {
+        curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
+            "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${arch}.tar.gz"
+        tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint
+        install -m 0755 "$tmp_dir/actionlint" "$WAVEPEEK_CODEX_BIN_DIR/actionlint"
+    }; then
+        status=0
+    else
+        status=$?
+    fi
 
-    curl -fsSL -o "$tmp_dir/actionlint.tar.gz" \
-        "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${arch}.tar.gz"
-    tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint
-    install -m 0755 "$tmp_dir/actionlint" "$WAVEPEEK_CODEX_BIN_DIR/actionlint"
+    rm -rf "$tmp_dir"
+    return "$status"
 }
 
 ensure_actionlint() {
@@ -128,6 +136,7 @@ ensure_actionlint() {
 install_hyperfine() {
     local arch
     local asset_name
+    local status
     local tmp_dir
 
     arch="$(uname -m)"
@@ -144,12 +153,19 @@ install_hyperfine() {
     esac
 
     tmp_dir="$(mktemp -d)"
-    trap 'rm -rf "$tmp_dir"' RETURN
+    if {
+        curl -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
+            "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_HYPERFINE_VERSION}/${asset_name}"
+        tar -xzf "$tmp_dir/hyperfine.tar.gz" -C "$tmp_dir"
+        install -m 0755 "$tmp_dir"/*/hyperfine "$WAVEPEEK_CODEX_BIN_DIR/hyperfine"
+    }; then
+        status=0
+    else
+        status=$?
+    fi
 
-    curl -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
-        "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_HYPERFINE_VERSION}/${asset_name}"
-    tar -xzf "$tmp_dir/hyperfine.tar.gz" -C "$tmp_dir"
-    install -m 0755 "$tmp_dir"/*/hyperfine "$WAVEPEEK_CODEX_BIN_DIR/hyperfine"
+    rm -rf "$tmp_dir"
+    return "$status"
 }
 
 ensure_hyperfine() {

@@ -76,7 +76,7 @@ Direct Cargo equivalents (useful when iterating):
 - `cargo clippy --all-targets --all-features -- -D warnings`
 - `cargo check`
 - `cargo test`
-- `cargo llvm-cov --workspace --all-features --summary-only`
+- `cargo llvm-cov --workspace --all-features --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)'`
 - `cargo build` / `cargo build --release`
 - `cargo run -- <args>`
 

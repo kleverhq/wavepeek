@@ -119,6 +119,11 @@ def load_export(summary_path: pathlib.Path) -> dict:
     version = payload.get("version")
     if not isinstance(version, str) or not version:
         fail("error: coverage: expected non-empty string 'version' in coverage JSON payload")
+    if version.split(".", 1)[0] not in {"2", "3"}:
+        fail(
+            "error: coverage: unsupported coverage JSON version: "
+            f"expected 2.x or 3.x export schema, got {version!r}"
+        )
 
     data = payload.get("data")
     if not isinstance(data, list) or not data:

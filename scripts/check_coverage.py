@@ -109,6 +109,17 @@ def load_export(summary_path: pathlib.Path) -> dict:
     if not isinstance(payload, dict):
         fail(f"error: coverage: expected top-level JSON object in {summary_path}")
 
+    payload_type = payload.get("type")
+    if payload_type != "llvm.coverage.json.export":
+        fail(
+            "error: coverage: unsupported coverage JSON type: "
+            f"expected 'llvm.coverage.json.export', got {payload_type!r}"
+        )
+
+    version = payload.get("version")
+    if not isinstance(version, str) or not version:
+        fail("error: coverage: expected non-empty string 'version' in coverage JSON payload")
+
     data = payload.get("data")
     if not isinstance(data, list) or not data:
         fail(f"error: coverage: expected non-empty 'data' array in {summary_path}")

@@ -15,6 +15,9 @@ CODEX_RESUME_SCRIPT := scripts/codex_resume.sh
 PYTHON := python3 -B
 COVERAGE_SRC_THRESHOLD ?= 90
 
+print-coverage-src-threshold:
+	@printf '%s\n' "$(COVERAGE_SRC_THRESHOLD)"
+
 ## Require containerized execution
 require-container:
 	@if [ "$${WAVEPEEK_IN_CONTAINER:-0}" != "1" ]; then \

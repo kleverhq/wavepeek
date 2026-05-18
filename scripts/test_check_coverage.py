@@ -104,8 +104,14 @@ class CheckCoverageCliTest(unittest.TestCase):
             self.assertIn("- Scope: `src/**` excluding `**/tests/**`", markdown)
             self.assertIn("- Regions: `80.00%` (min `90.00%`)", markdown)
 
+    def test_fails_when_summary_type_is_unsupported(self) -> None:
+        result = self.run_script({"type": "wrong", "version": "1", "data": [{"files": []}]})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unsupported coverage JSON type", result.stderr)
+
     def test_fails_when_summary_shape_is_malformed(self) -> None:
-        result = self.run_script({"data": [{"totals": {}}]})
+        result = self.run_script({"type": "llvm.coverage.json.export", "version": "1", "data": [{"totals": {}}]})
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("expected each export block to contain a 'files' array", result.stderr)

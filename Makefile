@@ -168,7 +168,7 @@ check-commit: require-container
 check: format-check lint check-schema check-actions check-build check-commit
 
 ## CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema check-actions test test-aux coverage-src-check check-build
+ci: format-check lint check-schema check-actions test-aux coverage-src-check check-build
 
 ## Fix everything
 fix: format lint-fix update-schema

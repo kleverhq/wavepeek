@@ -66,7 +66,7 @@ Common commands:
 - One-shot local gate:
   - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + cargo test + auxiliary Python unit tests + source coverage gate at 90% per metric for `src/**` + cargo check)
+  - `make ci` (format-check + clippy + check-schema + auxiliary Python unit tests + source coverage gate at 90% per metric for `src/**` via `cargo llvm-cov` test execution + cargo check)
 - Cleanup:
   - `make clean`
 

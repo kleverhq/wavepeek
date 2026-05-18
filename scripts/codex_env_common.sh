@@ -12,15 +12,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 source "${REPO_ROOT}/.devcontainer/env_contract.sh"
 
 readonly WAVEPEEK_CODEX_BIN_DIR="${HOME}/.local/bin"
-if [ -n "${RTL_ARTIFACTS_DIR:-}" ]; then
-    _wavepeek_codex_rtl_artifacts_dir="${RTL_ARTIFACTS_DIR}"
-elif [ -d /opt/rtl-artifacts ] && [ -r /opt/rtl-artifacts ]; then
-    _wavepeek_codex_rtl_artifacts_dir="/opt/rtl-artifacts"
-else
-    _wavepeek_codex_rtl_artifacts_dir="${HOME}/.cache/wavepeek/rtl-artifacts"
-fi
-readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR="${_wavepeek_codex_rtl_artifacts_dir}"
-unset _wavepeek_codex_rtl_artifacts_dir
+readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR="$("${REPO_ROOT}/.devcontainer/resolve_rtl_artifacts_dir.sh")"
 log() {
     printf '%s\n' "$*"
 }
@@ -61,6 +53,7 @@ ensure_bashrc_line() {
 persist_shell_env() {
     ensure_bashrc_line 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"'
     ensure_bashrc_line "export RTL_ARTIFACTS_DIR=\"$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR\""
+    ensure_bashrc_line "export WAVEPEEK_RTL_ARTIFACTS_DIR=\"$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR\""
 }
 
 ensure_rust_toolchain() {

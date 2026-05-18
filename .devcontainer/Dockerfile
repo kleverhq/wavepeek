@@ -70,7 +70,6 @@ RUN apt-get update && \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
     python3 \
-    hyperfine \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
@@ -88,6 +87,21 @@ RUN . /tmp/wavepeek-env-contract.sh && \
         "https://github.com/rhysd/actionlint/releases/download/v${WAVEPEEK_ACTIONLINT_VERSION}/actionlint_${WAVEPEEK_ACTIONLINT_VERSION}_linux_${actionlint_arch}.tar.gz" && \
     tar -xzf "$tmp_dir/actionlint.tar.gz" -C "$tmp_dir" actionlint && \
     install -m 0755 "$tmp_dir/actionlint" /usr/local/bin/actionlint && \
+    rm -rf "$tmp_dir"
+
+# Install pinned Hyperfine release so benchmark tooling matches Codex setup.
+RUN . /tmp/wavepeek-env-contract.sh && \
+    arch="${TARGETARCH:-amd64}" && \
+    case "$arch" in \
+        amd64) hyperfine_arch="x86_64-unknown-linux-gnu" ;; \
+        arm64) hyperfine_arch="aarch64-unknown-linux-gnu" ;; \
+        *) printf '%s\n' "unsupported hyperfine architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    tmp_dir="$(mktemp -d)" && \
+    curl -fsSL -o "$tmp_dir/hyperfine.tar.gz" \
+        "https://github.com/sharkdp/hyperfine/releases/download/v${WAVEPEEK_HYPERFINE_VERSION}/hyperfine-v${WAVEPEEK_HYPERFINE_VERSION}-${hyperfine_arch}.tar.gz" && \
+    tar -xzf "$tmp_dir/hyperfine.tar.gz" -C "$tmp_dir" && \
+    install -m 0755 "$tmp_dir"/*/hyperfine /usr/local/bin/hyperfine && \
     rm -rf "$tmp_dir"
 
 ENV LANG=en_US.UTF-8

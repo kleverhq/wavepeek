@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub mod command_cases;
@@ -31,7 +31,18 @@ pub fn fixture_path(filename: &str) -> PathBuf {
 #[allow(dead_code)]
 pub fn rtl_fixture_path(filename: &str) -> PathBuf {
     let base = std::env::var("WAVEPEEK_RTL_ARTIFACTS_DIR")
+        .or_else(|_| std::env::var("RTL_ARTIFACTS_DIR"))
         .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from("/opt/rtl-artifacts"));
+        .unwrap_or_else(|_| {
+            let opt_dir = Path::new("/opt/rtl-artifacts");
+            if opt_dir.is_dir() && std::fs::read_dir(opt_dir).is_ok() {
+                return opt_dir.to_path_buf();
+            }
+
+            std::env::var("HOME")
+                .map(PathBuf::from)
+                .map(|home| home.join(".cache").join("wavepeek").join("rtl-artifacts"))
+                .unwrap_or_else(|_| opt_dir.to_path_buf())
+        });
     base.join(filename)
 }

@@ -1,7 +1,9 @@
 .DEFAULT_GOAL := help
 
-RTL_ARTIFACTS_DIR ?= /opt/rtl-artifacts
-REQUIRED_RTL_ARTIFACTS := picorv32_test_vcd.fst scr1_max_axi_coremark.fst picorv32_test_ez_vcd.fst scr1_max_axi_isr_sample.fst scr1_max_axi_riscv_compliance.fst chipyard_DualRocketConfig_dhrystone.fst chipyard_ClusteredRocketConfig_dhrystone.fst chipyard_ClusteredRocketConfig_mt-memcpy.fst
+DEFAULT_RTL_ARTIFACTS_DIR := $(shell ./.devcontainer/resolve_rtl_artifacts_dir.sh)
+RTL_ARTIFACTS_DIR ?= $(DEFAULT_RTL_ARTIFACTS_DIR)
+export WAVEPEEK_RTL_ARTIFACTS_DIR := $(RTL_ARTIFACTS_DIR)
+REQUIRED_RTL_ARTIFACTS := $(shell . ./.devcontainer/env_contract.sh && printf '%s\n' "$$WAVEPEEK_RTL_ARTIFACT_FILES")
 SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
 BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline

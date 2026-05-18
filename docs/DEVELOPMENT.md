@@ -12,8 +12,9 @@ with CI.
 - Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target) and runs `make dev-setup` on start.
 - Automation and CI use `.devcontainer/devcontainer.ci.json` (`ci` target).
 - Codex cloud environments should set `WAVEPEEK_IN_CONTAINER=1`, run `make codex-setup` during setup, and run `make codex-resume` during maintenance.
-- Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in image build,
-  so tests do not fetch fixtures at runtime.
+- Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in devcontainer/CI image builds, so those environments do not fetch fixtures at runtime.
+- Fixture path resolution prefers `WAVEPEEK_RTL_ARTIFACTS_DIR`, then `RTL_ARTIFACTS_DIR`, then `/opt/rtl-artifacts`, and finally `~/.cache/wavepeek/rtl-artifacts`.
+- Codex setup may populate the cache fallback during `make codex-setup`, and `make` propagates the resolved path to test/runtime processes as `WAVEPEEK_RTL_ARTIFACTS_DIR`.
 
 For rationale and non-obvious container decisions, see `.devcontainer/AGENTS.md`.
 

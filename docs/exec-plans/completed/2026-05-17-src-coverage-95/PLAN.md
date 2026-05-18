@@ -198,7 +198,7 @@ Acceptance for this milestone is that the final coverage report proves the requi
 
 ## Outcomes & Retrospective
 
-Current status: implementation complete, including the stricter 96%-per-metric follow-up; this record remains under `active/` while branch review, cleanup, and landing follow-ups are still in flight.
+Current status: completed. The implementation landed with the stricter 96%-per-metric follow-up, and this record is ready to live under `completed/` as the historical execution log.
 
 The helper-module batch, the direct internals batches, the parser/docs/change/runtime sweeps, the original 95% closure batch, and the later 96%-per-metric closure batch are now on the branch. The stricter target is met.
 
@@ -243,3 +243,4 @@ Revision Note: 2026-05-17 / Grin - Updated after the later helper-heavy closure 
 Revision Note: 2026-05-17 / Grin - Updated after the next closure batch to record the `tmp/coverage-batch18.json` totals, the new direct entrypoint/helper tests landed since batch15, and the irritating fact that parser/lexer/sema line residue still blocks the last 95% climb.
 Revision Note: 2026-05-17 / Grin - Updated after final closure and validation to record `tmp/coverage-final.json` / `tmp/coverage-full-final.json`, the 95.08% `src/**` average, and the completion status.
 Revision Note: 2026-05-17 / Grin - Updated after the stricter 96%-per-metric closure to record `tmp/coverage-96l.json` / `tmp/coverage-full-96l.json`, the final 96.39% line / 96.01% region / 96.80% function coverage, and the final validation commands.
+Revision Note: 2026-05-18 / Grin - Marked the plan complete and prepared it for archival under `docs/exec-plans/completed/`.

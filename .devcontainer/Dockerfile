@@ -1,6 +1,6 @@
 # ---- Shared Environment Contract -----------------------------------------------
 FROM scratch AS env_contract
-COPY .devcontainer/env_contract.sh /wavepeek-env-contract.sh
+COPY env_contract.sh /wavepeek-env-contract.sh
 
 # ---- Surfer Builder ------------------------------------------------------------
 FROM ubuntu:24.04 AS surfer_builder

@@ -653,6 +653,8 @@ For wavepeek, use the GTKWave/Vaporview model: store **project-owned** source co
 
 ### M0: build spike
 
+Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-build-spike/PLAN.md`.
+
 - Verify Linux-only build gating and default `linux64` with the devcontainer compiler, plus explicit override through `WAVEPEEK_FSDB_READER_LIBDIR` / `WAVEPEEK_FSDB_ABI` for alternatives such as `linux64_gcc950`.
 - Build a minimal C++ shim that opens FSDB and reads metadata.
 - Verify that builds fail cleanly without `$VERDI_HOME` only when `--features fsdb` is enabled.

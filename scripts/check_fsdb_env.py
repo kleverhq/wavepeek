@@ -11,18 +11,6 @@ SKIP_STATUS = 77
 SKIP_MESSAGE = "skip: fsdb: Verdi FSDB Reader SDK not found; set VERDI_HOME to run FSDB build checks"
 REQUIRED_HEADERS = ("ffrAPI.h", "ffrKit.h", "fsdbShr.h")
 REQUIRED_LIBRARIES = ("libnffr.so", "libnsys.so")
-BUNDLED_SMOKE_RELATIVE_PATHS = (
-    pathlib.Path("share") / "VIA" / "demo" / "waveform" / "cpu.fsdb",
-    pathlib.Path("share") / "VIA" / "demo" / "waveform" / "modport.fsdb",
-    pathlib.Path("share")
-    / "NPI"
-    / "example"
-    / "via_examples"
-    / "NPI_Models"
-    / "FSDB_Model"
-    / "npi_fsdb_open"
-    / "demo.fsdb",
-)
 
 
 def eprint(message: str) -> None:
@@ -76,35 +64,13 @@ def configured_home_candidates() -> list[pathlib.Path]:
 
 
 def has_explicit_reader_override() -> bool:
-    return env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or bool(os.environ.get("WAVEPEEK_FSDB_ABI"))
+    return env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or bool(
+        os.environ.get("WAVEPEEK_FSDB_ABI")
+    )
 
 
 def verbose_output_enabled() -> bool:
     return os.environ.get("WAVEPEEK_FSDB_ENV_VERBOSE") == "1"
-
-
-def validate_explicit_smoke_file() -> pathlib.Path | None:
-    smoke_file = env_path("WAVEPEEK_FSDB_SMOKE_FILE")
-    if smoke_file is None:
-        return None
-    if not smoke_file.is_file():
-        missing_text = (
-            str(smoke_file) if verbose_output_enabled() else "configured WAVEPEEK_FSDB_SMOKE_FILE"
-        )
-        fail(f"{missing_text} does not point to a readable FSDB file")
-    return smoke_file
-
-
-def find_bundled_smoke_file(verdi_home: pathlib.Path) -> pathlib.Path | None:
-    explicit = validate_explicit_smoke_file()
-    if explicit is not None:
-        return explicit
-
-    for relative_path in BUNDLED_SMOKE_RELATIVE_PATHS:
-        candidate = verdi_home / relative_path
-        if candidate.is_file():
-            return candidate
-    return None
 
 
 def unavailable(required: bool) -> None:
@@ -137,7 +103,11 @@ def validate_sdk(required: bool) -> tuple[pathlib.Path, pathlib.Path]:
         libdir = selected_libdir(verdi_home)
         library_misses = missing_libraries(libdir)
         if library_misses:
-            if env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or libdir.exists() or explicit_override:
+            if (
+                env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None
+                or libdir.exists()
+                or explicit_override
+            ):
                 missing = library_misses[0]
                 missing_text = str(missing) if verbose_output_enabled() else missing.name
                 fail(
@@ -176,15 +146,6 @@ def main(argv: list[str] | None = None) -> None:
         print(f"ok: fsdb: Verdi FSDB Reader SDK found at {verdi_home} (libdir {libdir})")
     else:
         print("ok: fsdb: Verdi FSDB Reader SDK found")
-
-    smoke_file = find_bundled_smoke_file(verdi_home)
-    if smoke_file is not None:
-        if verbose:
-            print(f"info: fsdb: FSDB smoke file found at {smoke_file}")
-        else:
-            print("info: fsdb: FSDB smoke file found")
-    else:
-        print("info: fsdb: bundled FSDB smoke file not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE")
 
 
 if __name__ == "__main__":

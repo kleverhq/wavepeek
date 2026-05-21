@@ -105,27 +105,7 @@ class CheckFsdbEnvTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ok: fsdb: Verdi FSDB Reader SDK found", result.stdout)
-        self.assertIn("bundled FSDB smoke file not found", result.stdout)
-        self.assertNotIn(str(root), result.stdout)
-
-    def test_bundled_smoke_file_is_detected_without_path_leak(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = pathlib.Path(temp_dir)
-            reader_root = root / "share" / "FsdbReader"
-            libdir = reader_root / "linux64"
-            smoke_file = root / "share" / "VIA" / "demo" / "waveform" / "cpu.fsdb"
-            libdir.mkdir(parents=True)
-            smoke_file.parent.mkdir(parents=True)
-            for header in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
-                (reader_root / header).write_text("", encoding="utf-8")
-            for library in ("libnffr.so", "libnsys.so"):
-                (libdir / library).write_text("", encoding="utf-8")
-            smoke_file.write_bytes(b"binary marker, not parsed")
-
-            result = self.run_script({"VERDI_HOME": str(root)})
-
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("info: fsdb: FSDB smoke file found", result.stdout)
+        self.assertEqual(result.stdout.count("\n"), 1)
         self.assertNotIn(str(root), result.stdout)
 
 

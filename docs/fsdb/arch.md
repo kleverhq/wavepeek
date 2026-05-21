@@ -552,7 +552,7 @@ Do not store FSDB fixtures in this repository. Checked public repositories with 
 
 For the current FSDB development branch, use the example `.fsdb` files bundled inside the local Verdi installation. The inspected `$VERDI_HOME` contains small examples under `$VERDI_HOME/share/VIA/demo/waveform`, many focused NPI examples under `$VERDI_HOME/share/NPI/example/via_examples`, and larger performance examples under `$VERDI_HOME/share/verdi_perf/perfExamples`. This keeps tests local to the same licensed Verdi installation that provides the Reader SDK and avoids creating a separate private artifact-mount contract before we need one. Splendid, one less mystery directory to appease.
 
-The first smoke fixture should be `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`: it is small, present in the inspected installation, and already proved usable through `WAVEPEEK_FSDB_SMOKE_FILE=$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb make check-fsdb-build`. Use other bundled Verdi examples only when a test needs a capability that `cpu.fsdb` does not cover, such as NPI model traversal or larger performance-style files. Do not read `.fsdb` files as text; tests must access them only through the FSDB Reader API or binary-safe file metadata operations such as `find`, `stat`, `ls`, `du`, and checksums.
+The first smoke fixture is `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`: it is small, present in the inspected installation, and already proved usable by `make check-fsdb-build`. Tests may refer to this concrete path relative to `VERDI_HOME` directly; do not add another fixture-discovery layer until the bundled files stop covering a real need. Use other bundled Verdi examples only when a test needs a capability that `cpu.fsdb` does not cover, such as NPI model traversal or larger performance-style files. Do not read `.fsdb` files as text; tests must access them only through the FSDB Reader API or binary-safe file metadata operations such as `find`, `stat`, `ls`, `du`, and checksums.
 
 Private/local artifact mounts are deferred. If bundled Verdi examples cannot cover a later command-level requirement, re-open this decision and define a separate artifact policy at that time. Until then, avoid adding `WAVEPEEK_FSDB_ARTIFACTS_DIR`, `FSDB_RTL_ARTIFACTS_DIR`, `/opt/fsdb-rtl-artifacts`, or similar paths to the architecture as required test inputs.
 
@@ -568,8 +568,7 @@ Before adding the `fsdb` feature, update public quality gates that currently use
 | no Verdi, default features | FSDB-disabled unit/integration test | verifies clear error on `.fsdb` path without a real FSDB fixture |
 | no Verdi, `make check-fsdb-env` | availability probe exits 0 with skip message | developers can inspect availability without failing default automation |
 | no Verdi, `make test-fsdb` | explicit FSDB target fails through `require-verdi` before Cargo builds | accidental local invocation gets a clear SDK requirement; public CI does not call this target |
-| Verdi, bundled examples available | `make test-fsdb` | build/link smoke + bundled-example FSDB tests run |
-| Verdi, bundled example missing | `make test-fsdb` | build/link smoke + clear skip for tests requiring that example |
+| Verdi | `make test-fsdb` | build/link smoke + bundled-example FSDB tests run |
 | public GitHub CI | `make ci` | Verdi/FSDB tests do not require proprietary payload; public CI remains green |
 
 Rust `cargo test` does not have a native skip primitive, so integration tests should return early:

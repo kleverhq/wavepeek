@@ -171,11 +171,14 @@ mod tests {
 
     #[test]
     fn fsdb_reader_metadata_smoke() {
-        let Some(path) = std::env::var_os("WAVEPEEK_FSDB_SMOKE_FILE") else {
-            println!("skipping FSDB metadata smoke: WAVEPEEK_FSDB_SMOKE_FILE is unset");
-            return;
-        };
-        let path = PathBuf::from(path);
+        let path = PathBuf::from(
+            std::env::var_os("VERDI_HOME").expect("VERDI_HOME must be set for FSDB smoke tests"),
+        )
+        .join("share")
+        .join("VIA")
+        .join("demo")
+        .join("waveform")
+        .join("cpu.fsdb");
 
         assert!(probe(&path).expect("FSDB probe failed"));
         let reader = FsdbReader::open(&path).expect("FSDB open failed");

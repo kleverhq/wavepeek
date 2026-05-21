@@ -264,7 +264,7 @@ Main groups:
 
 Good default test candidates:
 
-- `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` — `23.9 KiB` (`24504` bytes), already used successfully by `WAVEPEEK_FSDB_SMOKE_FILE=... make check-fsdb-build`.
+- `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` — `23.9 KiB` (`24504` bytes), already used successfully by `make check-fsdb-build`.
 - `$VERDI_HOME/share/VIA/demo/waveform/modport.fsdb` — `9.4 KiB` (`9636` bytes), another small VIA demo.
 - `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_open/demo.fsdb` — `4.8 KiB` (`4873` bytes), useful for NPI-oriented open/traversal comparisons.
 

@@ -9,6 +9,7 @@ This directory contains temporary development collateral for the current FSDB su
 ## Source of Truth
 
 - FSDB integration architecture proposal: `arch.md`
+- Local Verdi installation map for FSDB work: `verdi_home_map.md`
 - Command-specific FSDB Reader API research: `cmd_info.md`, `cmd_scope.md`, `cmd_signal.md`, `cmd_value.md`, `cmd_change.md`, `cmd_property.md`
 
 ## Local Notes

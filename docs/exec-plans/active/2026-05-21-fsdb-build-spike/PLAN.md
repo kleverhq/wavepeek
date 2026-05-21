@@ -34,7 +34,8 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 09:05Z) Added focused tests and make targets that skip cleanly without Verdi but prove build/link/metadata behavior when Verdi is available. Local validation so far: `make format`, `python3 -m unittest scripts/test_check_fsdb_env.py`, `make check-fsdb-env`, `make check-build`, and `make check-fsdb-build` on a Verdi-equipped container with `WAVEPEEK_FSDB_SMOKE_FILE` unset.
 - [x] (2026-05-21 09:25Z) Ran full default validation and targeted FSDB validation: `make ci`, `make check-fsdb-build`, simulated no-Verdi skip with an empty temporary `VERDI_HOME`, direct missing-`VERDI_HOME` `cargo check --features fsdb` failure, proprietary-payload search, and the existing VCD `wavepeek info --waves ... --json` smoke.
 - [x] (2026-05-21 09:45Z) Ran first focused implementation review lanes and applied fixes: propagated native link metadata while keeping package-local `--no-as-needed`, made the shim metadata string allocation RAII-safe, changed FSDB environment success output to be path-free by default, documented the current `fsdb` feature as repository-local, and corrected/sanitized living-plan text.
-- [ ] Run targeted re-review plus final control review, apply any remaining fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
+- [x] (2026-05-21 10:00Z) Ran targeted re-review. Build/link re-review returned no substantive findings; docs/licensing re-review found one remaining low-severity path-leakage concern in explicit `scripts/check_fsdb_env.py` error output, which was fixed by making default missing-header/library errors component-only while preserving full paths behind `WAVEPEEK_FSDB_ENV_VERBOSE=1`.
+- [ ] Run final control review, apply any remaining fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
 
 ## Surprises & Discoveries
 
@@ -398,3 +399,5 @@ Revision Note: 2026-05-21 / Grin - Updated progress, discoveries, decisions, and
 Revision Note: 2026-05-21 / Grin - Recorded validation evidence after `make ci`, Verdi-enabled `make check-fsdb-build`, simulated no-Verdi skip, direct missing-`VERDI_HOME` feature-build failure, proprietary-payload search, and VCD CLI smoke all behaved as expected. A private FSDB smoke file was not available, so the real-file metadata path remains conditional on user/local fixture configuration.
 
 Revision Note: 2026-05-21 / Grin - Applied first implementation-review fixes in the plan text: made the old `--all-features` discovery explicitly historical, sanitized local dynamic-loader details, and updated the FSDB checker transcript to the new path-free default output.
+
+Revision Note: 2026-05-21 / Grin - Recorded targeted re-review results and the follow-up fix that keeps explicit FSDB checker error output path-free by default while allowing verbose local path diagnostics through `WAVEPEEK_FSDB_ENV_VERBOSE=1`.

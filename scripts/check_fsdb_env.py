@@ -100,9 +100,11 @@ def validate_sdk() -> tuple[pathlib.Path, pathlib.Path]:
         header_misses = missing_headers(verdi_home)
         if header_misses:
             if explicit_override:
+                missing = header_misses[0]
+                missing_text = str(missing) if verbose_output_enabled() else missing.name
                 fail(
                     "VERDI_HOME does not contain a usable FSDB Reader header root; "
-                    f"missing {header_misses[0]}"
+                    f"missing {missing_text}"
                 )
             continue
 
@@ -110,9 +112,11 @@ def validate_sdk() -> tuple[pathlib.Path, pathlib.Path]:
         library_misses = missing_libraries(libdir)
         if library_misses:
             if env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or libdir.exists() or explicit_override:
+                missing = library_misses[0]
+                missing_text = str(missing) if verbose_output_enabled() else missing.name
                 fail(
                     "selected FSDB Reader library directory is incomplete; "
-                    f"missing {library_misses[0]}; set WAVEPEEK_FSDB_READER_LIBDIR or try WAVEPEEK_FSDB_ABI=linux64_gcc950"
+                    f"missing {missing_text}; set WAVEPEEK_FSDB_READER_LIBDIR or try WAVEPEEK_FSDB_ABI=linux64_gcc950"
                 )
             continue
 

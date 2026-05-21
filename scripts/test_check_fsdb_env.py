@@ -59,6 +59,7 @@ class CheckFsdbEnvTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("error: fsdb: selected FSDB Reader library directory is incomplete", result.stderr)
         self.assertIn("libnffr.so", result.stderr)
+        self.assertNotIn(str(root), result.stderr)
 
     def test_minimal_file_complete_sdk_is_accepted(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

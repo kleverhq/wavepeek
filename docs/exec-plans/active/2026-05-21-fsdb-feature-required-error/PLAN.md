@@ -31,6 +31,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 21:43Z) Ran four read-only review lanes (code correctness, docs/help, architecture, performance). Code, docs, and performance lanes reported no substantive findings; architecture reported that the README could imply `--features fsdb` already gives full Reader-backed command support, so README and public docs were qualified and docs/help tests were rerun successfully.
 - [x] (2026-05-21 21:52Z) Ran a fresh control review. It found that existing `.fsdb` directories were incorrectly translated to the FSDB feature-required error, so `fsdb_disabled::should_report_disabled_support` now excludes directories and `tests/fsdb_disabled_cli.rs` covers a `.fsdb` directory preserving a regular file error. `cargo test -q --test fsdb_disabled_cli` now passes `7` tests, and `cargo test -q fsdb_disabled` still passes the targeted unit coverage.
 - [x] (2026-05-21 22:02Z) Reran full repository gates after the directory fix: `make check` and `make ci` both completed successfully, with source coverage still at regions `95.04%`, functions `95.76%`, lines `95.61%`.
+- [x] (2026-05-21 22:06Z) Ran a fresh final control recheck after the directory fix; it reported no substantive findings.
 
 ## Surprises & Discoveries
 
@@ -550,6 +551,9 @@ Review and follow-up evidence:
     WAVEPEEK_IN_CONTAINER=1 make ci
     completed successfully after the directory fix; coverage remained regions=95.04% functions=95.76% lines=95.61%
 
+    Fresh final control recheck after the directory fix:
+    No substantive findings.
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -581,3 +585,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded first review cycle results and the docs qualification fix prompted by architecture review.
 - 2026-05-21 / Grin: Recorded the fresh control-review directory finding, code/test fix, and focused retest evidence.
 - 2026-05-21 / Grin: Recorded the post-directory-fix `make check` and `make ci` validation rerun.
+- 2026-05-21 / Grin: Recorded the final post-fix control recheck result: no substantive findings.

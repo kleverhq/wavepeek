@@ -21,12 +21,13 @@ use crate::output;
 #[command(
     name = "wavepeek",
     disable_version_flag = true,
-    about = "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.\nSee more with '--help'",
-    long_about = r#"wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.
+    about = "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.\nSee more with '--help'",
+    long_about = r#"wavepeek is a machine-friendly command-line tool for RTL waveform inspection.
 See more with '--help'
 
 General conventions:
 - Waveform-inspection commands require `--waves <FILE>`.
+- Default builds support VCD/FST and report a feature-required file error for FSDB input.
 - Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.

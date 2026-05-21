@@ -5,13 +5,13 @@
 [![CI](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/wavepeek.svg)](https://crates.io/crates/wavepeek)
 
-`wavepeek` is a deterministic CLI for inspecting RTL waveforms (`.vcd`/`.fst`) in scripts, CI, and LLM-driven workflows.
+`wavepeek` is a deterministic CLI for inspecting RTL waveforms in scripts, CI, and LLM-driven workflows. Default builds support VCD/FST and report a clear feature-required error for FSDB input.
 
 ## Why
 
 - In RTL debugging, waveforms are the primary artifact, but most existing tooling is GUI-first.
 - LLM agents and CI jobs need short, composable commands instead of interactive navigation.
-- Raw dumps (especially large VCD/FST files) are too heavy for direct, repeated analysis in context-limited systems.
+- Raw dumps (especially large waveform files) are too heavy for direct, repeated analysis in context-limited systems.
 - `wavepeek` closes this gap with deterministic, bounded, machine-friendly waveform queries.
 
 ## Quick Start
@@ -23,6 +23,8 @@ cargo install wavepeek
 # or from source
 cargo install --path .
 ```
+
+Default binaries support VCD/FST. FSDB input requires a wavepeek binary built with `--features fsdb` on a machine with a licensed local Verdi/FSDB Reader SDK exposed through `VERDI_HOME`; default binaries fail FSDB-looking inputs with a file error that explains this requirement.
 
 Run a complete inspection flow:
 

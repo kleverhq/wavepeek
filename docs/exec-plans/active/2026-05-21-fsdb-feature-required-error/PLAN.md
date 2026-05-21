@@ -22,7 +22,9 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 20:14Z) Captured default-build validation baselines before source edits: `make coverage-src` passed with source coverage regions `95.02%`, functions `95.74%`, lines `95.59%`; full `bench/e2e/tests.json` benchmark baseline completed under `tmp/fsdb-feature-required-error/perf-before` with `142` Hyperfine and `142` wavepeek JSON artifacts.
 - [x] (2026-05-21 20:24Z) Added default-build FSDB-disabled routing in `src/waveform/fsdb_disabled.rs` and `Waveform::open`, preserving Wellen-first parsing and narrow translation of `cannot parse '<path>': ...` file errors only.
 - [x] (2026-05-21 20:25Z) Added default-build unit and CLI integration tests in `src/waveform/fsdb_disabled.rs` and `tests/fsdb_disabled_cli.rs`; `cargo test -q --test fsdb_disabled_cli` passed with `6` tests and `cargo test -q fsdb_disabled` passed with `4` targeted unit tests.
-- [ ] Public docs and generated-help contract updates have not started. The next implementation step is to update README, public command model docs, CLI help wording, and help contract assertions.
+- [x] (2026-05-21 20:35Z) Updated README, public introduction, command-model reference, top-level CLI help, per-command `--waves` help, help-contract assertions, and changelog language to describe default VCD/FST support and feature-gated FSDB behavior honestly.
+- [x] (2026-05-21 20:36Z) Ran documentation/help checks: `cargo test -q --test cli_contract`, `cargo test -q --test docs_cli`, and `cargo test -q --test schema_cli` all passed; the stale-wording search no longer finds the old top-level or `--waves` help phrases.
+- [ ] Full quality, coverage, optional FSDB environment probe, and performance gates have not yet run after the docs/help updates.
 
 ## Surprises & Discoveries
 
@@ -424,6 +426,23 @@ Focused test evidence after adding the default-build helper:
     ....
     test result: ok. 4 passed; 0 failed
 
+Docs/help contract evidence:
+
+    cargo test -q --test cli_contract
+    running 47 tests
+    ...............................................
+    test result: ok. 47 passed; 0 failed
+
+    cargo test -q --test docs_cli
+    running 20 tests
+    ....................
+    test result: ok. 20 passed; 0 failed
+
+    cargo test -q --test schema_cli
+    running 8 tests
+    ........
+    test result: ok. 8 passed; 0 failed
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -450,3 +469,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Initial plan created from `docs/fsdb/arch.md`, current waveform facade/backend code, public docs, development workflow, and benchmark/coverage requirements. The plan intentionally uses behavior-oriented names and avoids milestone-labelled entities.
 - 2026-05-21 / Grin: Folded independent review feedback into the plan. The revision changed FSDB-disabled routing to Wellen-first fallback, gated default-build tests, expanded CLI help/doc targets, added an explicit coverage regression command, strengthened benchmark acceptance to no repeatable regression, and renamed temporary artifacts to behavior-oriented paths.
 - 2026-05-21 / Grin: Recorded baseline coverage/performance artifacts and the first implementation pass for the default-build FSDB-disabled helper, including the decision to keep parse-failure matching private and narrow.
+- 2026-05-21 / Grin: Recorded public docs/help/changelog updates and focused contract-test evidence for the shipped FSDB-disabled wording.

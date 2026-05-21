@@ -6,7 +6,7 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Args)]
 pub struct SignalArgs {
-    /// Path to VCD/FST waveform file
+    /// Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Exact scope path (e.g. top.cpu)

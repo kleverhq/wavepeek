@@ -118,7 +118,7 @@ fn no_args_prints_top_level_help_and_exits_zero() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.",
         ))
         .stdout(predicate::str::contains("Usage: wavepeek"))
         .stderr(predicate::str::is_empty());
@@ -133,7 +133,7 @@ fn help_lists_expected_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.",
         ))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("info"))
@@ -163,6 +163,9 @@ fn top_level_help_documents_general_conventions() {
         .stdout(predicate::str::contains("General conventions:"))
         .stdout(predicate::str::contains(
             "Waveform-inspection commands require `--waves <FILE>`.",
+        ))
+        .stdout(predicate::str::contains(
+            "Default builds support VCD/FST and report a feature-required file error for FSDB input.",
         ))
         .stdout(
             predicate::str::contains(
@@ -436,7 +439,7 @@ fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(
             help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
         );
@@ -489,7 +492,7 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(
             help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
         );
@@ -580,7 +583,7 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
         assert!(help.contains("Input options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(help.contains("Machine-readable JSON output"));
         assert!(!help.contains("(`--waves <FILE>` is required)"));
         assert!(!help.contains("(contract: see `wavepeek schema`)"));
@@ -622,7 +625,7 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(help.contains(
             "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
         ));
@@ -664,7 +667,7 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(help.contains("Exact scope path (e.g. top.cpu)"));
         assert!(help.contains(
             "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
@@ -717,7 +720,7 @@ fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB"));
         assert!(help.contains("Time point with explicit units (e.g. 1337ns)"));
         assert!(help.contains("Canonical scope path for scope-relative signal names"));
         assert!(help.contains(

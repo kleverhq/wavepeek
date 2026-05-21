@@ -21,7 +21,7 @@ The primary users are LLM-driven debugging workflows and other automation that n
 
 ## Scope
 
-`wavepeek` supports VCD and FST waveform dumps, hierarchy and signal discovery, point-in-time value sampling, bounded time-range inspection, property checks over event-selected timestamps, and stateless CLI execution with deterministic output.
+Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and signal discovery, point-in-time value sampling, bounded time-range inspection, property checks over event-selected timestamps, and stateless CLI execution with deterministic output. FSDB input is feature-gated: a default binary recognizes `.fsdb` and `.fsdb.gz` names after VCD/FST parsing fails and reports a clear file error explaining that FSDB requires a binary built with the `fsdb` feature plus a licensed local Verdi/FSDB Reader SDK.
 
 `wavepeek` is not a GUI or TUI waveform viewer. It does not provide real-time waveform streaming, live simulator connections, or waveform diffing and comparison.
 

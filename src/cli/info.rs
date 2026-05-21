@@ -4,7 +4,7 @@ use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct InfoArgs {
-    /// Path to VCD/FST waveform file
+    /// Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Machine-readable JSON output

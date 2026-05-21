@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added a `src/**` coverage gate to CI with a `90%` minimum on lines, regions, and functions.
+- Added a default-build FSDB feature-required file error for existing `.fsdb` and `.fsdb.gz` inputs that fail VCD/FST parsing, while preserving valid VCD/FST content with misleading suffixes.
 
 ### Changed
 - Split environment bootstrap into explicit `make dev-setup`, `make codex-setup`, and `make codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.

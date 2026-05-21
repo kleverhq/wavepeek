@@ -24,7 +24,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 20:25Z) Added default-build unit and CLI integration tests in `src/waveform/fsdb_disabled.rs` and `tests/fsdb_disabled_cli.rs`; `cargo test -q --test fsdb_disabled_cli` passed with `6` tests and `cargo test -q fsdb_disabled` passed with `4` targeted unit tests.
 - [x] (2026-05-21 20:35Z) Updated README, public introduction, command-model reference, top-level CLI help, per-command `--waves` help, help-contract assertions, and changelog language to describe default VCD/FST support and feature-gated FSDB behavior honestly.
 - [x] (2026-05-21 20:36Z) Ran documentation/help checks: `cargo test -q --test cli_contract`, `cargo test -q --test docs_cli`, and `cargo test -q --test schema_cli` all passed; the stale-wording search no longer finds the old top-level or `--waves` help phrases.
-- [ ] Full quality, coverage, optional FSDB environment probe, and performance gates have not yet run after the docs/help updates.
+- [x] (2026-05-21 20:55Z) Ran full post-change validation gates: `make format-check`, `make lint`, `make check-schema`, `make test-aux`, `make coverage-src`, `make coverage-src-check`, and `make check-build` all passed. Source coverage improved slightly from baseline to regions `95.04%`, functions `95.76%`, lines `95.61%`.
+- [x] (2026-05-21 20:58Z) Ran optional FSDB environment validation in this container. `make check-fsdb-env` reported `ok: fsdb: Verdi FSDB Reader SDK found`, and `make check-fsdb-build` passed `cargo check --features fsdb` plus the `fsdb_reader_metadata_smoke` library test.
+- [x] (2026-05-21 21:24Z) Ran the full `bench/e2e/tests.json` candidate benchmark and repeat/control performance investigations. The catalog-level zero-threshold compare proved too noisy even for same-binary control runs, so paired Hyperfine checks were run for the worst apparent regressions; paired old/new runs showed no repeatable slowdown and several were slightly faster within noise.
+- [x] (2026-05-21 21:31Z) Ran final repository gates `make check` and `make ci`; both completed successfully.
 
 ## Surprises & Discoveries
 
@@ -44,6 +47,12 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Evidence: `cargo run -q -- info --waves tmp/invalid.fsdb.gz` before the routing change printed `error: file: cannot parse 'tmp/invalid.fsdb.gz': unknown file format, only GHW, FST and VCD are supported`.
 - Observation: A tiny valid VCD file with a `.fsdb` suffix is accepted by the existing Wellen path, which validates that suffix checks must stay behind parser failure.
   Evidence: `cargo run -q -- info --waves tmp/test-valid.fsdb` before the routing change printed `time_unit: 1ns`, `time_start: 0ns`, and `time_end: 10ns`.
+- Observation: The current `bench/e2e/perf.py compare` interface uses `--golden`, `--revised`, and `--max-negative-delta-pct`, not the older `--baseline-dir`, `--candidate-dir`, `--metric`, `--threshold`, and `--markdown-output` options shown in this plan's first draft.
+  Evidence: `python3 bench/e2e/perf.py compare --help` prints `--revised REVISED --golden GOLDEN --max-negative-delta-pct MAX_NEGATIVE_DELTA_PCT`.
+- Observation: A zero-threshold catalog compare is too sensitive to environment noise to be a sole blocking signal for this benchmark suite.
+  Evidence: comparing two consecutive runs of the same post-change release binary with `--max-negative-delta-pct 0` still failed, including apparent same-binary regressions such as `info_scr1` median `0.042768s -> 0.056186s` (`-31.37%`) and `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk` median `0.241656s -> 0.291143s` (`-20.48%`).
+- Observation: Pairwise Hyperfine runs for the worst apparent catalog regressions did not reproduce a code slowdown when old and new binaries were measured in the same command.
+  Evidence: paired 20-run checks showed `change_scr1_coremark_imem_axi_2sig_to_1000ps` new `34.6ms` versus old `34.9ms`, `change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any` new `166.0ms` versus old `167.9ms`, `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` new `264.1ms` versus old `267.2ms`, `info_scr1` new `15.9ms` versus old `16.3ms`, and `signal_scr1_top_recursive_depth2_json` new `7.6ms` versus old `7.7ms`; `change_scr1_coremark_imem_axi_1sig_to_1000ps` was the only selected pair with old slightly faster, `33.8ms` versus `34.3ms`, inside the observed standard deviation.
 
 ## Decision Log
 
@@ -79,9 +88,13 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Rationale: This slice must preserve the public error taxonomy and stderr text for existing VCD/FST behavior. The helper only translates messages matching the current `cannot parse '<path>': ...` shape for the same path, so ordinary open failures remain untouched while avoiding a wider internal refactor.
   Date/Author: 2026-05-21 / Grin
 
+- Decision: Treat the zero-threshold benchmark compare as an initial smoke signal and rely on same-binary control plus paired old/new Hyperfine runs for repeatability when the catalog compare is noisy.
+  Rationale: The plan already required investigating repeatability instead of quietly ignoring a red compare. The repository compare command flags any negative mean or median delta, and a same-binary control run failed by double-digit percentages, so the defensible check is to measure the worst apparent regressions with old and new binaries side by side. That paired measurement directly tests whether this open-path change has a real performance cost.
+  Date/Author: 2026-05-21 / Grin
+
 ## Outcomes & Retrospective
 
-No implementation outcome exists yet. At completion, record the final behavior, test count or named test coverage, exact coverage percentages, benchmark comparison result, and any remaining limitation such as extension-only detection for default builds.
+Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs now describe default VCD/FST support and feature-gated FSDB behavior without claiming full FSDB command support. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
 
 ## Context and Orientation
 
@@ -443,6 +456,47 @@ Docs/help contract evidence:
     ........
     test result: ok. 8 passed; 0 failed
 
+Full validation evidence:
+
+    WAVEPEEK_IN_CONTAINER=1 make coverage-src
+    coverage ok: scope=src/** regions=95.04% functions=95.76% lines=95.61% average=95.47% minimum=95.04%
+
+    python coverage no-regression check
+    coverage no-regression: regions 95.02% -> 95.04%; functions 95.74% -> 95.76%; lines 95.59% -> 95.61%
+
+    WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env
+    ok: fsdb: Verdi FSDB Reader SDK found
+
+    WAVEPEEK_IN_CONTAINER=1 make check-fsdb-build
+    cargo check --features fsdb: finished successfully
+    waveform::fsdb_native::tests::fsdb_reader_metadata_smoke ... ok
+
+    WAVEPEEK_IN_CONTAINER=1 make check
+    completed successfully
+
+    WAVEPEEK_IN_CONTAINER=1 make ci
+    completed successfully
+
+Performance evidence:
+
+    WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --tests bench/e2e/tests.json --run-dir tmp/fsdb-feature-required-error/perf-after
+    ok: run: completed successfully (use --verbose for detailed logs)
+
+    python3 bench/e2e/perf.py compare --golden tmp/fsdb-feature-required-error/perf-before --revised tmp/fsdb-feature-required-error/perf-after --max-negative-delta-pct 0
+    error: compare: checks failed (use --verbose for detailed logs)
+
+    Same-binary control also failed the same zero-threshold compare, demonstrating benchmark noise rather than a clear code regression:
+    info_scr1 median 0.042768s -> 0.056186s (-31.37%)
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk median 0.241656s -> 0.291143s (-20.48%)
+
+    Paired old/new Hyperfine checks for worst apparent regressions:
+    change_scr1_coremark_imem_axi_2sig_to_1000ps: old 34.9ms ± 1.5ms, new 34.6ms ± 1.4ms
+    change_scr1_coremark_imem_axi_1sig_to_1000ps: old 33.8ms ± 1.4ms, new 34.3ms ± 2.7ms
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any: old 167.9ms ± 3.8ms, new 166.0ms ± 2.2ms
+    change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk: old 267.2ms ± 5.6ms, new 264.1ms ± 3.1ms
+    info_scr1: old 16.3ms ± 1.1ms, new 15.9ms ± 1.0ms
+    signal_scr1_top_recursive_depth2_json: old 7.7ms ± 0.9ms, new 7.6ms ± 0.9ms
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -470,3 +524,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Folded independent review feedback into the plan. The revision changed FSDB-disabled routing to Wellen-first fallback, gated default-build tests, expanded CLI help/doc targets, added an explicit coverage regression command, strengthened benchmark acceptance to no repeatable regression, and renamed temporary artifacts to behavior-oriented paths.
 - 2026-05-21 / Grin: Recorded baseline coverage/performance artifacts and the first implementation pass for the default-build FSDB-disabled helper, including the decision to keep parse-failure matching private and narrow.
 - 2026-05-21 / Grin: Recorded public docs/help/changelog updates and focused contract-test evidence for the shipped FSDB-disabled wording.
+- 2026-05-21 / Grin: Recorded full validation, optional FSDB smoke, noisy benchmark investigation, paired performance evidence, and final retrospective. The plan remains active for user review as requested.

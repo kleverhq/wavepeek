@@ -662,6 +662,8 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-buil
 
 ### M1: backend refactor without FSDB
 
+Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md`.
+
 - Move the current `src/waveform/mod.rs` implementation into WellenBackend.
 - Introduce backend-neutral `SignalId`, `ResolvedSignal`, and `ExprResolvedSignal`.
 - Preserve facade `Waveform` and existing engine call sites as much as possible.

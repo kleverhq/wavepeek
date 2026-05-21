@@ -25,7 +25,7 @@ This plan does not create any repository entity whose name contains a milestone 
 ## Progress
 
 - [x] (2026-05-21 11:23Z) Read `docs/fsdb/arch.md`, `docs/exec-plans/AGENTS.md`, the completed FSDB build-spike plan, `src/waveform/mod.rs`, `src/waveform/expr_host.rs`, `src/engine/change.rs`, `src/engine/property.rs`, `src/engine/expr_runtime.rs`, `Cargo.toml`, `Makefile`, `docs/DEVELOPMENT.md`, `bench/AGENTS.md`, `bench/expr/AGENTS.md`, and `tests/AGENTS.md`.
-- [x] (2026-05-21 11:35Z) Drafted this active ExecPlan under `docs/exec-plans/active/2026-05-21-fsdb-backend-refactor/PLAN.md` with descriptive entity names and no milestone-label entity names.
+- [x] (2026-05-21 11:35Z) Drafted this ExecPlan under `docs/exec-plans/active/2026-05-21-fsdb-backend-refactor/PLAN.md` with descriptive entity names and no milestone-label entity names; it is now archived under `docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md`.
 - [x] (2026-05-21 11:52Z) Ran focused plan review lanes for exec-plan completeness, backend architecture/code feasibility, and validation/performance/coverage risk.
 - [x] (2026-05-21 12:05Z) Applied review fixes: merged non-compiling extraction/engine milestones, made indexed fast paths an optional capability, tightened `SignalId` visibility and Wellen index conversion, preserved FST stream path re-resolution, switched blocking CLI benchmarks to the full catalog, made FSDB smoke conditional, and fixed scratch-directory setup.
 - [x] (2026-05-21 12:24Z) Ran one final independent control review on the revised plan.
@@ -40,9 +40,10 @@ This plan does not create any repository entity whose name contains a milestone 
 - [x] (2026-05-22 01:10Z) Ran four review lanes. Code review found no substantive findings. Architecture review found that indexed offset absence conflated backend capability with data absence; fixed by returning `Option<Option<SignalOffsetData>>` from the facade and unwrapping capability in optimized engines. Performance review found redundant id-to-Wellen conversion in `sample_resolved_optional`; fixed by decoding with already collected `SignalRef` values. Docs review found this plan stale; fixed by recording validation, benchmark noise, and review outcomes.
 - [x] (2026-05-22 01:34Z) Post-review validation passed: `make ci` in `tmp/backend-refactor-make-ci-postreview.log`, coverage in `tmp/coverage/backend-refactor-coverage-postreview-check.txt` improved to `[84.82, 82.21, 82.18]`, boundary grep evidence in `tmp/backend-refactor-boundary-postreview.txt`, FSDB smoke in `tmp/backend-refactor-check-fsdb-build-postreview.log`, and expression performance compare in `tmp/perf/backend-refactor-expr-compare-postreview.txt`.
 - [x] (2026-05-22 01:48Z) Targeted architecture/performance recheck returned no substantive findings. Final independent control review found one stale interface signature in this plan; fixed it and reran a targeted control-fix recheck, which returned no substantive findings.
-- [x] (2026-05-22 01:55Z) Created final conventional commit with subject `refactor(waveform): isolate Wellen backend`. The plan remains active for user review by explicit request.
+- [x] (2026-05-22 01:55Z) Created final conventional commit with subject `refactor(waveform): isolate Wellen backend`. Kept the plan active pending user review at the time.
 - [x] (2026-05-22 02:35Z) Rebasing follow-up: measured `main` coverage at commit `0ba9b50` with `scripts/check_coverage.py` output `regions=95.56% functions=96.14% lines=96.22% average=95.97% minimum=95.56%`, rebased `feat/fsdb` onto `main`, fixed rebase fallout in coverage-focused engine tests, and added Wellen-backend coverage tests for the moved helper paths. Final rebased coverage is `regions=95.02% functions=95.74% lines=95.59% average=95.45% minimum=95.02%` in `tmp/coverage/feat-fsdb-rebased-coverage-after-wellen-tests-check.txt`.
 - [x] (2026-05-22 02:48Z) Post-rebase validation passed: final `make ci` logged to `tmp/feat-fsdb-rebased-make-ci-final.log`, `make check-fsdb-env` found the Verdi FSDB Reader SDK in `tmp/feat-fsdb-rebased-check-fsdb-env.log`, `make check-fsdb-build` passed in `tmp/feat-fsdb-rebased-check-fsdb-build.log`, and boundary grep evidence is in `tmp/feat-fsdb-rebased-boundary.txt`.
+- [x] (2026-05-22 03:05Z) Moved this plan to `docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md` after user approval and linked it from the M1 milestone in `docs/fsdb/arch.md`.
 
 ## Surprises & Discoveries
 
@@ -128,7 +129,7 @@ This plan does not create any repository entity whose name contains a milestone 
 
 ## Outcomes & Retrospective
 
-Current status: implementation, validation, review cycles, fixes, targeted recheck, final control review, final conventional commit, and rebase onto `main` are complete. `main` source coverage measured `average=95.97% minimum=95.56%`; the rebased branch now measures `average=95.45% minimum=95.02%` after adding tests for moved Wellen-backend helper paths, with every scoped metric still above 95%. Post-rebase `make ci`, FSDB build smoke, and boundary grep passed. The full CLI performance harness remains noisy: the final old-vs-new failure was matched by an old-vs-old baseline control, so no isolated repeatable refactor regression is currently known. The plan remains active and must not be moved to `completed/` before user review.
+Current status: implementation, validation, review cycles, fixes, targeted recheck, final control review, final conventional commit, rebase onto `main`, and user-approved completion are done. `main` source coverage measured `average=95.97% minimum=95.56%`; the rebased branch measures `average=95.45% minimum=95.02%` after adding tests for moved Wellen-backend helper paths, with every scoped metric still above 95%. Post-rebase `make ci`, FSDB build smoke, and boundary grep passed. The full CLI performance harness remains noisy: the final old-vs-new failure was matched by an old-vs-old baseline control, so no isolated repeatable refactor regression is currently known. This plan is now archived under `docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md`.
 
 Plan-authoring outcome: the review loop found and fixed non-verifiable intermediate milestones, unconditional indexed APIs that would force future FSDB code to fake Wellen state, overly broad `SignalId` raw access, unsafe Wellen index conversion guidance, missing property benchmark coverage, unconditional FSDB smoke commands, missing scratch-directory setup, and a non-existent change-candidate enum variant. Implementation split `src/waveform/mod.rs` into a facade plus `types.rs` and `wellen_backend.rs`, changed engine deduplication and indexed caches to `SignalId`, kept baseline previous-timestamp scheduling on `Waveform::previous_sample_time`, preserved Wellen fast paths behind optional indexed capabilities, added focused tests for stable IDs, strict predecessor timestamps, offset capability semantics, and missing-prior-value errors, and confined Wellen-native handles to `src/waveform/wellen_backend.rs`. Review found and fixed an ambiguous optional indexed offset API and one redundant hot-path id conversion. Remaining risk is performance-harness noise rather than a demonstrated code regression; the raw run directories and compare outputs are recorded under `tmp/perf/` because apparently even benchmarks enjoy interpretive dance.
 
@@ -453,12 +454,12 @@ Expected result: both pass. `make bench-expr-run` compares against the maintaine
 
     git status --short
     git diff --check
-    git add src/waveform/mod.rs src/waveform/types.rs src/waveform/wellen_backend.rs src/engine/change.rs src/engine/property.rs src/engine/expr_runtime.rs docs/exec-plans/active/2026-05-21-fsdb-backend-refactor/PLAN.md
+    git add src/waveform/mod.rs src/waveform/types.rs src/waveform/wellen_backend.rs src/engine/change.rs src/engine/property.rs src/engine/expr_runtime.rs docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md
     git commit -m "refactor(waveform): isolate Wellen backend"
 
 If the implementation only changes this plan and not source code, use a docs commit instead:
 
-    git add docs/exec-plans/active/2026-05-21-fsdb-backend-refactor/PLAN.md
+    git add docs/exec-plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md
     git commit -m "docs(fsdb): plan waveform backend refactor"
 
 ## Validation and Acceptance
@@ -575,5 +576,6 @@ No new external Rust crates are required for this refactor. Do not change `Cargo
 - 2026-05-22 / Grin: Updated after full validation and first review cycle. The plan now records `make ci`, coverage, FSDB smoke, boundary grep, expression performance pass, e2e benchmark noise with baseline control evidence, review findings, applied architecture/performance/docs fixes, and the remaining targeted recheck/control-review gate.
 - 2026-05-22 / Grin: Updated after final control review. The interface summary now documents `indexed_signal_offset_at` as `Option<Option<SignalOffsetData>>` and explains outer capability absence versus inner offset/data absence.
 - 2026-05-22 / Grin: Updated after targeted control-fix recheck. The plan now records post-review validation artifacts, clean targeted recheck, clean final control-fix recheck, and that only the final conventional commit remains before user handoff.
-- 2026-05-22 / Grin: Updated after commit. The plan now records that the final conventional commit was created and keeps this plan in `active/` for user review instead of moving it to `completed/`.
+- 2026-05-22 / Grin: Updated after commit. The plan now records that the final conventional commit was created and that the plan stayed in `active/` pending user review.
 - 2026-05-22 / Grin: Updated after rebasing onto `main`. The plan now records the `main` coverage measurement, rebased branch coverage, the extra Wellen-backend coverage tests added to keep all source coverage metrics above 95% after the split, and post-rebase `make ci` plus FSDB build-smoke validation.
+- 2026-05-22 / Grin: Moved to `completed/` after user approval and linked from the M1 milestone in `docs/fsdb/arch.md`.

@@ -76,6 +76,7 @@ class CheckFsdbEnvTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ok: fsdb: Verdi FSDB Reader SDK found", result.stdout)
         self.assertIn("optional artifact directory", result.stdout)
+        self.assertNotIn(str(root), result.stdout)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <exception>
+#include <memory>
 #include <new>
 #include <string>
 
@@ -48,6 +49,14 @@ wp_fsdb_status fail_unknown_exception(char **error_message) {
 uint64_t tag64_to_u64(const fsdbTag64 &tag) {
     return (static_cast<uint64_t>(tag.H) << 32) | static_cast<uint64_t>(tag.L);
 }
+
+struct free_deleter {
+    void operator()(char *value) const {
+        std::free(value);
+    }
+};
+
+using owned_c_string = std::unique_ptr<char, free_deleter>;
 
 void clear_error(char **error_message) {
     if (error_message != nullptr) {
@@ -155,14 +164,13 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
             return fail(error_message, "FSDB Reader: scale unit metadata is empty");
         }
 
-        char *scale_unit_copy = copy_string(scale_unit);
+        owned_c_string scale_unit_copy(copy_string(scale_unit));
         if (scale_unit_copy == nullptr) {
             return fail(error_message, "FSDB Reader: failed to allocate scale unit string");
         }
 
         const fsdbXTagType xtag_type = reader->object->ffrGetXTagType();
         if (xtag_type != FSDB_XTAG_TYPE_L && xtag_type != FSDB_XTAG_TYPE_HL) {
-            std::free(scale_unit_copy);
             return fail(
                 error_message,
                 "FSDB Reader: unsupported non-integer FSDB time tag representation"
@@ -172,15 +180,13 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
         fsdbTag64 min_tag{};
         fsdbTag64 max_tag{};
         if (reader->object->ffrGetMinFsdbTag64(&min_tag) != FSDB_RC_SUCCESS) {
-            std::free(scale_unit_copy);
             return fail(error_message, "FSDB Reader: failed to read minimum FSDB time tag");
         }
         if (reader->object->ffrGetMaxFsdbTag64(&max_tag) != FSDB_RC_SUCCESS) {
-            std::free(scale_unit_copy);
             return fail(error_message, "FSDB Reader: failed to read maximum FSDB time tag");
         }
 
-        out->scale_unit = scale_unit_copy;
+        out->scale_unit = scale_unit_copy.release();
         out->time_start_raw = tag64_to_u64(min_tag);
         out->time_end_raw = tag64_to_u64(max_tag);
         out->xtag_type = static_cast<uint32_t>(xtag_type);

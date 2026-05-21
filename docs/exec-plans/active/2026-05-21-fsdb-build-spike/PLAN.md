@@ -33,12 +33,13 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 09:05Z) Added the project-owned C++ metadata shim and Rust FFI smoke wrapper: `native/fsdb/wavepeek_fsdb_shim.{h,cpp}` and `src/waveform/fsdb_native.rs` are private to the `fsdb` feature and are not wired into the CLI.
 - [x] (2026-05-21 09:05Z) Added focused tests and make targets that skip cleanly without Verdi but prove build/link/metadata behavior when Verdi is available. Local validation so far: `make format`, `python3 -m unittest scripts/test_check_fsdb_env.py`, `make check-fsdb-env`, `make check-build`, and `make check-fsdb-build` on a Verdi-equipped container with `WAVEPEEK_FSDB_SMOKE_FILE` unset.
 - [x] (2026-05-21 09:25Z) Ran full default validation and targeted FSDB validation: `make ci`, `make check-fsdb-build`, simulated no-Verdi skip with an empty temporary `VERDI_HOME`, direct missing-`VERDI_HOME` `cargo check --features fsdb` failure, proprietary-payload search, and the existing VCD `wavepeek info --waves ... --json` smoke.
-- [ ] Run focused implementation review lanes plus control review, apply review fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
+- [x] (2026-05-21 09:45Z) Ran first focused implementation review lanes and applied fixes: propagated native link metadata while keeping package-local `--no-as-needed`, made the shim metadata string allocation RAII-safe, changed FSDB environment success output to be path-free by default, documented the current `fsdb` feature as repository-local, and corrected/sanitized living-plan text.
+- [ ] Run targeted re-review plus final control review, apply any remaining fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
 
 ## Surprises & Discoveries
 
-- Observation: the current `make lint`, `make lint-fix`, and `make coverage-src` targets use `--all-features`.
-  Evidence: `Makefile` runs `cargo clippy --all-targets --all-features -- -D warnings`, `cargo clippy --all-targets --all-features --fix ...`, and `cargo llvm-cov --workspace --all-features ...`.
+- Observation: before this implementation, the `make lint`, `make lint-fix`, and `make coverage-src` targets used `--all-features`.
+  Evidence: the pre-change `Makefile` ran `cargo clippy --all-targets --all-features -- -D warnings`, `cargo clippy --all-targets --all-features --fix ...`, and `cargo llvm-cov --workspace --all-features ...`. The implemented `Makefile` now uses default features for those public/default gates.
 
 - Observation: public CI calls only `make ci`, so keeping `make ci` Verdi-free is the important public safety property.
   Evidence: `.github/workflows/ci.yml` runs `runCmd: make ci` inside `.devcontainer/devcontainer.ci.json`, which does not set `VERDI_HOME`.
@@ -52,8 +53,8 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - Observation: adding `cc` as a direct build dependency did not require refreshing all dependency versions because `cc` was already present transitively in `Cargo.lock`; only the root `wavepeek` dependency list needed the new `cc` entry.
   Evidence: after reverting an accidental broad `cargo generate-lockfile` refresh, the final `Cargo.lock` diff is one added `"cc"` line under the `wavepeek` package.
 
-- Observation: linking `libnffr.so` and `libnsys.so` with ordinary `cargo:rustc-link-lib` caused `libnsys.so` to be dropped from the test binary on this toolchain, and the FSDB test executable then failed at dynamic-load time with an unresolved `prodCnlIdent` symbol from `libnffr.so`.
-  Evidence: `ldd target/debug/deps/wavepeek-1031e88f28ef85c7` initially listed `libnffr.so` but not `libnsys.so`, and `cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture` exited 127 with `symbol lookup error: /opt/verdi/share/FsdbReader/linux64/libnffr.so: undefined symbol: prodCnlIdent`.
+- Observation: linking `libnffr.so` and `libnsys.so` with ordinary `cargo:rustc-link-lib` caused `libnsys.so` to be dropped from the test binary on this toolchain, and the FSDB test executable then failed at dynamic-load time with an unresolved companion-library symbol from `libnffr.so`.
+  Evidence: `ldd` on the feature-enabled test executable initially listed `libnffr.so` but not `libnsys.so`, and `cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture` exited 127 with a dynamic-loader `undefined symbol` error from `libnffr.so`.
 
 - Observation: the existing waveform facade is still tightly coupled to Wellen handles.
   Evidence: `src/waveform/mod.rs` stores `simple::Waveform`, `wellen::FileFormat`, and `HashSet<SignalRef>`, and `ResolvedSignal` plus `ExprResolvedSignal` contain `wellen::SignalRef`. This plan must avoid pretending the backend boundary already exists.
@@ -84,8 +85,8 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
   Rationale: after the `fsdb` feature exists, `--all-features` means “requires Verdi.” Public CI and default hooks must not ask for proprietary SDKs by accident.
   Date/Author: 2026-05-21 / Grin
 
-- Decision: make the feature-enabled linker invocation pass `libnffr.so` and `libnsys.so` as absolute linker arguments inside a temporary `--no-as-needed` block, instead of relying only on `cargo:rustc-link-lib`.
-  Rationale: this Verdi installation's `libnffr.so` needs symbols from `libnsys.so`, but the default Rust/Cargo linker path dropped `libnsys.so` because the executable had no direct symbol reference to it. Forcing both DSOs into the `NEEDED` set makes the runtime dependency explicit and fixes the metadata smoke test.
+- Decision: make the feature-enabled linker invocation emit propagated `cargo:rustc-link-lib` metadata and also pass `libnffr.so` and `libnsys.so` as absolute linker arguments inside a temporary `--no-as-needed` block for this package's binaries and tests.
+  Rationale: this Verdi installation's `libnffr.so` needs symbols from `libnsys.so`, but the default Rust/Cargo linker path dropped `libnsys.so` because the executable had no direct symbol reference to it. The propagated link metadata gives downstream builds the standard native-library information, while the package-local `--no-as-needed` block keeps both DSOs in the `NEEDED` set for the smoke test. This remains a development/build-smoke feature, not a supported downstream library contract.
   Date/Author: 2026-05-21 / Grin
 
 - Decision: treat an invalid or empty `VERDI_HOME` without FSDB library overrides as an ordinary no-Verdi skip in `scripts/check_fsdb_env.py`, while `build.rs` still requires a valid `VERDI_HOME` when a developer directly enables `--features fsdb`.
@@ -98,7 +99,7 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 
 ## Outcomes & Retrospective
 
-Current status: implementation and local validation are complete; focused implementation review is still pending. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
+Current status: implementation, local validation, and the first focused implementation-review fix pass are complete; targeted re-review and final control review are still pending. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
 
 The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts.
 
@@ -302,7 +303,7 @@ Record concise validation transcripts here as implementation proceeds. The simul
 The feature-enabled metadata smoke transcript on the available Verdi-equipped container, with no private FSDB smoke file configured, was:
 
     $ make check-fsdb-build
-    ok: fsdb: Verdi FSDB Reader SDK found at /opt/verdi (libdir /opt/verdi/share/FsdbReader/linux64)
+    ok: fsdb: Verdi FSDB Reader SDK found
     info: fsdb: optional artifact directory not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE
     running 1 test
     skipping FSDB metadata smoke: WAVEPEEK_FSDB_SMOKE_FILE is unset
@@ -395,3 +396,5 @@ Revision Note: 2026-05-21 / Grin - Recorded the clean final independent control 
 Revision Note: 2026-05-21 / Grin - Updated progress, discoveries, decisions, and closure instructions after implementing the FSDB build spike foundation. The note records the `libnsys.so` dynamic-link issue, the decision to keep invalid devcontainer `VERDI_HOME` as an optional-target skip, and the user-requested choice to leave this plan active for inspection.
 
 Revision Note: 2026-05-21 / Grin - Recorded validation evidence after `make ci`, Verdi-enabled `make check-fsdb-build`, simulated no-Verdi skip, direct missing-`VERDI_HOME` feature-build failure, proprietary-payload search, and VCD CLI smoke all behaved as expected. A private FSDB smoke file was not available, so the real-file metadata path remains conditional on user/local fixture configuration.
+
+Revision Note: 2026-05-21 / Grin - Applied first implementation-review fixes in the plan text: made the old `--all-features` discovery explicitly historical, sanitized local dynamic-loader details, and updated the FSDB checker transcript to the new path-free default output.

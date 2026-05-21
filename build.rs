@@ -105,6 +105,8 @@ fn emit_fsdb_link_settings(sdk: &FsdbSdk) {
     let nsys = sdk.libdir.join("libnsys.so");
 
     println!("cargo:rustc-link-search=native={}", sdk.libdir.display());
+    println!("cargo:rustc-link-lib=dylib=nffr");
+    println!("cargo:rustc-link-lib=dylib=nsys");
     println!("cargo:rustc-link-arg=-Wl,--no-as-needed");
     println!("cargo:rustc-link-arg={}", nffr.display());
     println!("cargo:rustc-link-arg={}", nsys.display());

@@ -90,7 +90,10 @@ The optional `fsdb` Cargo feature is intentionally excluded from default lint,
 test, coverage, pre-commit, and CI paths because it requires a licensed local
 Synopsys Verdi FSDB Reader SDK. Use `make check-fsdb-build` on Verdi-equipped
 Linux x86_64 machines; the target skips cleanly when no SDK is available and
-runs `cargo check --features fsdb` plus the metadata smoke test when it is.
+runs `cargo check --features fsdb` plus the metadata smoke test when it is. This
+feature is currently a repository-local build smoke and is not a supported
+library-consumer contract; downstream crates should not enable it until the FSDB
+backend and packaging story are explicitly promoted.
 
 ## CLI E2E Benchmark Harness
 

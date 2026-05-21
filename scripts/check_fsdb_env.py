@@ -66,6 +66,10 @@ def has_explicit_reader_override() -> bool:
     return env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or bool(os.environ.get("WAVEPEEK_FSDB_ABI"))
 
 
+def verbose_output_enabled() -> bool:
+    return os.environ.get("WAVEPEEK_FSDB_ENV_VERBOSE") == "1"
+
+
 def find_optional_artifact_dir() -> pathlib.Path | None:
     candidates: list[pathlib.Path] = []
     for name in ("WAVEPEEK_FSDB_ARTIFACTS_DIR", "FSDB_RTL_ARTIFACTS_DIR"):
@@ -127,10 +131,18 @@ def validate_sdk() -> tuple[pathlib.Path, pathlib.Path]:
 
 def main() -> None:
     verdi_home, libdir = validate_sdk()
-    print(f"ok: fsdb: Verdi FSDB Reader SDK found at {verdi_home} (libdir {libdir})")
+    verbose = verbose_output_enabled()
+    if verbose:
+        print(f"ok: fsdb: Verdi FSDB Reader SDK found at {verdi_home} (libdir {libdir})")
+    else:
+        print("ok: fsdb: Verdi FSDB Reader SDK found")
+
     artifact_dir = find_optional_artifact_dir()
     if artifact_dir is not None:
-        print(f"info: fsdb: optional artifact directory found at {artifact_dir}")
+        if verbose:
+            print(f"info: fsdb: optional artifact directory found at {artifact_dir}")
+        else:
+            print("info: fsdb: optional artifact directory found")
     else:
         print("info: fsdb: optional artifact directory not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE")
 

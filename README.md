@@ -24,7 +24,7 @@ cargo install wavepeek
 cargo install --path .
 ```
 
-Default binaries support VCD/FST. FSDB input requires a wavepeek binary built with `--features fsdb` on a machine with a licensed local Verdi/FSDB Reader SDK exposed through `VERDI_HOME`; default binaries fail FSDB-looking inputs with a file error that explains this requirement.
+Default binaries support VCD/FST. When a default binary sees FSDB-looking input that is not valid VCD/FST, it fails with a file error naming the prerequisites for FSDB-capable builds: a wavepeek binary built with `--features fsdb` on a machine with a licensed local Verdi/FSDB Reader SDK exposed through `VERDI_HOME`. This release does not otherwise document full Reader-backed FSDB command support in the default package.
 
 Run a complete inspection flow:
 

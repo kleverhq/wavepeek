@@ -28,6 +28,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 20:58Z) Ran optional FSDB environment validation in this container. `make check-fsdb-env` reported `ok: fsdb: Verdi FSDB Reader SDK found`, and `make check-fsdb-build` passed `cargo check --features fsdb` plus the `fsdb_reader_metadata_smoke` library test.
 - [x] (2026-05-21 21:24Z) Ran the full `bench/e2e/tests.json` candidate benchmark and repeat/control performance investigations. The catalog-level zero-threshold compare proved too noisy even for same-binary control runs, so paired Hyperfine checks were run for the worst apparent regressions; paired old/new runs showed no repeatable slowdown and several were slightly faster within noise.
 - [x] (2026-05-21 21:31Z) Ran final repository gates `make check` and `make ci`; both completed successfully.
+- [x] (2026-05-21 21:43Z) Ran four read-only review lanes (code correctness, docs/help, architecture, performance). Code, docs, and performance lanes reported no substantive findings; architecture reported that the README could imply `--features fsdb` already gives full Reader-backed command support, so README and public docs were qualified and docs/help tests were rerun successfully.
 
 ## Surprises & Discoveries
 
@@ -90,6 +91,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 
 - Decision: Treat the zero-threshold benchmark compare as an initial smoke signal and rely on same-binary control plus paired old/new Hyperfine runs for repeatability when the catalog compare is noisy.
   Rationale: The plan already required investigating repeatability instead of quietly ignoring a red compare. The repository compare command flags any negative mean or median delta, and a same-binary control run failed by double-digit percentages, so the defensible check is to measure the worst apparent regressions with old and new binaries side by side. That paired measurement directly tests whether this open-path change has a real performance cost.
+  Date/Author: 2026-05-21 / Grin
+
+- Decision: Qualify public prose that mentions `--features fsdb` so it reads as prerequisites named by the default-build diagnostic, not as a promise that this slice ships full Reader-backed FSDB command support.
+  Rationale: Independent architecture review caught that the README wording could lead users to reinstall with `--features fsdb` and expect complete FSDB command behavior, while this implementation only improves the default-build error. The exact diagnostic remains unchanged because it is part of the planned behavior, but surrounding docs now state that default-package docs do not otherwise claim full Reader-backed FSDB support.
   Date/Author: 2026-05-21 / Grin
 
 ## Outcomes & Retrospective
@@ -497,6 +502,27 @@ Performance evidence:
     info_scr1: old 16.3ms ± 1.1ms, new 15.9ms ± 1.0ms
     signal_scr1_top_recursive_depth2_json: old 7.7ms ± 0.9ms, new 7.6ms ± 0.9ms
 
+Review and follow-up evidence:
+
+    Review lanes: code correctness, docs/help, architecture, performance.
+    Results: code/docs/performance reported no substantive findings; architecture reported a medium README overclaim risk around `--features fsdb` implying complete Reader-backed command support.
+    Fix: README.md, docs/public/intro.md, and docs/public/reference/command-model.md now frame `--features fsdb` as prerequisites named by the diagnostic and explicitly avoid claiming full default-package FSDB command support.
+
+    cargo test -q --test docs_cli
+    running 20 tests
+    ....................
+    test result: ok. 20 passed; 0 failed
+
+    cargo test -q --test cli_contract
+    running 47 tests
+    ...............................................
+    test result: ok. 47 passed; 0 failed
+
+    cargo test -q --test schema_cli
+    running 8 tests
+    ........
+    test result: ok. 8 passed; 0 failed
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -525,3 +551,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded baseline coverage/performance artifacts and the first implementation pass for the default-build FSDB-disabled helper, including the decision to keep parse-failure matching private and narrow.
 - 2026-05-21 / Grin: Recorded public docs/help/changelog updates and focused contract-test evidence for the shipped FSDB-disabled wording.
 - 2026-05-21 / Grin: Recorded full validation, optional FSDB smoke, noisy benchmark investigation, paired performance evidence, and final retrospective. The plan remains active for user review as requested.
+- 2026-05-21 / Grin: Recorded first review cycle results and the docs qualification fix prompted by architecture review.

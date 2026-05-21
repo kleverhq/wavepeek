@@ -32,7 +32,8 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 09:05Z) Added environment discovery helpers for local Verdi and optional private FSDB artifacts: `.devcontainer/resolve_verdi_home.sh`, `scripts/check_fsdb_env.py`, and deterministic no-Verdi Python tests.
 - [x] (2026-05-21 09:05Z) Added the project-owned C++ metadata shim and Rust FFI smoke wrapper: `native/fsdb/wavepeek_fsdb_shim.{h,cpp}` and `src/waveform/fsdb_native.rs` are private to the `fsdb` feature and are not wired into the CLI.
 - [x] (2026-05-21 09:05Z) Added focused tests and make targets that skip cleanly without Verdi but prove build/link/metadata behavior when Verdi is available. Local validation so far: `make format`, `python3 -m unittest scripts/test_check_fsdb_env.py`, `make check-fsdb-env`, `make check-build`, and `make check-fsdb-build` on a Verdi-equipped container with `WAVEPEEK_FSDB_SMOKE_FILE` unset.
-- [ ] Finish full validation, run focused implementation review lanes plus control review, apply review fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
+- [x] (2026-05-21 09:25Z) Ran full default validation and targeted FSDB validation: `make ci`, `make check-fsdb-build`, simulated no-Verdi skip with an empty temporary `VERDI_HOME`, direct missing-`VERDI_HOME` `cargo check --features fsdb` failure, proprietary-payload search, and the existing VCD `wavepeek info --waves ... --json` smoke.
+- [ ] Run focused implementation review lanes plus control review, apply review fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
 
 ## Surprises & Discoveries
 
@@ -97,7 +98,7 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 
 ## Outcomes & Retrospective
 
-Current status: implementation is in progress and the core build/link slice now exists. Default-feature compilation still works, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
+Current status: implementation and local validation are complete; focused implementation review is still pending. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
 
 The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts.
 
@@ -293,17 +294,39 @@ Do not bypass pre-commit hooks. If hooks fail because the environment lacks Verd
 
 ### Artifacts and Notes
 
-Record concise validation transcripts here as implementation proceeds. The expected no-Verdi skip transcript should look like:
+Record concise validation transcripts here as implementation proceeds. The simulated no-Verdi skip transcript observed locally was:
 
-    $ make check-fsdb-build
+    $ VERDI_HOME=$(mktemp -d) make check-fsdb-build
     skip: fsdb: Verdi FSDB Reader SDK not found; set VERDI_HOME to run FSDB build checks
 
-The expected feature-enabled metadata smoke transcript with a private file should be reduced to non-proprietary facts:
+The feature-enabled metadata smoke transcript on the available Verdi-equipped container, with no private FSDB smoke file configured, was:
 
+    $ make check-fsdb-build
+    ok: fsdb: Verdi FSDB Reader SDK found at /opt/verdi (libdir /opt/verdi/share/FsdbReader/linux64)
+    info: fsdb: optional artifact directory not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE
     running 1 test
+    skipping FSDB metadata smoke: WAVEPEEK_FSDB_SMOKE_FILE is unset
     test waveform::fsdb_native::tests::fsdb_reader_metadata_smoke ... ok
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 108 filtered out
 
-Do not record private FSDB paths, design names, hierarchy names, or signal names in this plan. Metadata such as a scale unit and raw start/end times is acceptable only if it does not identify proprietary design contents.
+The direct feature-enabled build failure without `VERDI_HOME` was:
+
+    $ env -u VERDI_HOME -u WAVEPEEK_FSDB_READER_LIBDIR -u WAVEPEEK_FSDB_ABI cargo check --features fsdb
+    status=101
+    FSDB support requires VERDI_HOME; set VERDI_HOME to a Synopsys Verdi installation containing share/FsdbReader
+
+Default-feature and repository hygiene validation was:
+
+    $ make ci
+    [OK] Build successful
+
+    $ find . -path './target' -prune -o -path './tmp' -prune -o \( -name '*.fsdb' -o -name 'ffrAPI.h' -o -name 'ffrKit.h' -o -name 'fsdbShr.h' -o -name 'libnffr.so' -o -name 'libnsys.so' \) -print
+    <no output>
+
+    $ cargo run --quiet -- info --waves tests/fixtures/hand/m2_core.vcd --json
+    {"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.5.0/schema/wavepeek.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
+
+No private FSDB file was available in this environment, so the smoke test's real-file open path remains conditional on `WAVEPEEK_FSDB_SMOKE_FILE`.
 
 ### Interfaces and Dependencies
 
@@ -370,3 +393,5 @@ Revision Note: 2026-05-21 / Grin - Revised after parallel review to clarify the 
 Revision Note: 2026-05-21 / Grin - Recorded the clean final independent control review and updated the retrospective to mark planning complete while leaving implementation progress unchecked.
 
 Revision Note: 2026-05-21 / Grin - Updated progress, discoveries, decisions, and closure instructions after implementing the FSDB build spike foundation. The note records the `libnsys.so` dynamic-link issue, the decision to keep invalid devcontainer `VERDI_HOME` as an optional-target skip, and the user-requested choice to leave this plan active for inspection.
+
+Revision Note: 2026-05-21 / Grin - Recorded validation evidence after `make ci`, Verdi-enabled `make check-fsdb-build`, simulated no-Verdi skip, direct missing-`VERDI_HOME` feature-build failure, proprietary-payload search, and VCD CLI smoke all behaved as expected. A private FSDB smoke file was not available, so the real-file metadata path remains conditional on user/local fixture configuration.

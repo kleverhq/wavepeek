@@ -9,6 +9,11 @@ impl SignalId {
         Self(index)
     }
 
+    #[cfg(test)]
+    pub(crate) fn from_test_index(index: u64) -> Self {
+        Self(index)
+    }
+
     #[inline]
     pub(in crate::waveform) fn as_u64(self) -> u64 {
         self.0

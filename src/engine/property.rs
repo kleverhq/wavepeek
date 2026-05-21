@@ -244,7 +244,7 @@ mod tests {
     use crate::cli::property::{CaptureMode, PropertyArgs};
     use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
-    use crate::waveform::WaveformMetadata;
+    use crate::waveform::{Waveform, WaveformMetadata};
 
     const TEST_VCD: &str = concat!(
         "$date\n  today\n$end\n",
@@ -318,15 +318,12 @@ mod tests {
     }
 
     #[test]
-    fn candidate_schedule_tracks_previous_timestamp_and_rejects_unknown_times() {
-        let schedule = build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule");
-        assert_eq!(schedule, vec![(0, None), (10, Some(5))]);
+    fn candidate_schedule_tracks_previous_timestamp_for_indexed_and_between_times() {
+        let fixture = write_fixture(TEST_VCD, "property-schedule.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
 
-        let error = build_candidate_schedule(&[0, 5, 10], &[7]).expect_err("missing time");
-        assert_eq!(
-            error.to_string(),
-            "error: internal: candidate timestamp '7' is missing from waveform time table"
-        );
+        let schedule = build_candidate_schedule(&waveform, &[0, 7, 10]).expect("schedule");
+        assert_eq!(schedule, vec![(0, None), (7, Some(5)), (10, Some(5))]);
     }
 
     #[test]

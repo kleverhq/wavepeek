@@ -41,6 +41,8 @@ This plan does not create any repository entity whose name contains a milestone 
 - [x] (2026-05-22 01:34Z) Post-review validation passed: `make ci` in `tmp/backend-refactor-make-ci-postreview.log`, coverage in `tmp/coverage/backend-refactor-coverage-postreview-check.txt` improved to `[84.82, 82.21, 82.18]`, boundary grep evidence in `tmp/backend-refactor-boundary-postreview.txt`, FSDB smoke in `tmp/backend-refactor-check-fsdb-build-postreview.log`, and expression performance compare in `tmp/perf/backend-refactor-expr-compare-postreview.txt`.
 - [x] (2026-05-22 01:48Z) Targeted architecture/performance recheck returned no substantive findings. Final independent control review found one stale interface signature in this plan; fixed it and reran a targeted control-fix recheck, which returned no substantive findings.
 - [x] (2026-05-22 01:55Z) Created final conventional commit with subject `refactor(waveform): isolate Wellen backend`. The plan remains active for user review by explicit request.
+- [x] (2026-05-22 02:35Z) Rebasing follow-up: measured `main` coverage at commit `0ba9b50` with `scripts/check_coverage.py` output `regions=95.56% functions=96.14% lines=96.22% average=95.97% minimum=95.56%`, rebased `feat/fsdb` onto `main`, fixed rebase fallout in coverage-focused engine tests, and added Wellen-backend coverage tests for the moved helper paths. Final rebased coverage is `regions=95.02% functions=95.74% lines=95.59% average=95.45% minimum=95.02%` in `tmp/coverage/feat-fsdb-rebased-coverage-after-wellen-tests-check.txt`.
+- [x] (2026-05-22 02:48Z) Post-rebase validation passed: final `make ci` logged to `tmp/feat-fsdb-rebased-make-ci-final.log`, `make check-fsdb-env` found the Verdi FSDB Reader SDK in `tmp/feat-fsdb-rebased-check-fsdb-env.log`, `make check-fsdb-build` passed in `tmp/feat-fsdb-rebased-check-fsdb-build.log`, and boundary grep evidence is in `tmp/feat-fsdb-rebased-boundary.txt`.
 
 ## Surprises & Discoveries
 
@@ -126,7 +128,7 @@ This plan does not create any repository entity whose name contains a milestone 
 
 ## Outcomes & Retrospective
 
-Current status: implementation, validation, review cycles, fixes, targeted recheck, final control review, and final conventional commit are complete. `make ci` passed, FSDB build smoke passed in this container, coverage improved from `[84.77, 81.28, 81.91]` to `[84.82, 82.21, 82.18]`, boundary grep passed, and expression waveform-host performance compare passed. The full CLI performance harness remains noisy: the final old-vs-new failure is matched by an old-vs-old baseline control, so no isolated repeatable refactor regression is currently known. The plan remains active and must not be moved to `completed/` before user review.
+Current status: implementation, validation, review cycles, fixes, targeted recheck, final control review, final conventional commit, and rebase onto `main` are complete. `main` source coverage measured `average=95.97% minimum=95.56%`; the rebased branch now measures `average=95.45% minimum=95.02%` after adding tests for moved Wellen-backend helper paths, with every scoped metric still above 95%. Post-rebase `make ci`, FSDB build smoke, and boundary grep passed. The full CLI performance harness remains noisy: the final old-vs-new failure was matched by an old-vs-old baseline control, so no isolated repeatable refactor regression is currently known. The plan remains active and must not be moved to `completed/` before user review.
 
 Plan-authoring outcome: the review loop found and fixed non-verifiable intermediate milestones, unconditional indexed APIs that would force future FSDB code to fake Wellen state, overly broad `SignalId` raw access, unsafe Wellen index conversion guidance, missing property benchmark coverage, unconditional FSDB smoke commands, missing scratch-directory setup, and a non-existent change-candidate enum variant. Implementation split `src/waveform/mod.rs` into a facade plus `types.rs` and `wellen_backend.rs`, changed engine deduplication and indexed caches to `SignalId`, kept baseline previous-timestamp scheduling on `Waveform::previous_sample_time`, preserved Wellen fast paths behind optional indexed capabilities, added focused tests for stable IDs, strict predecessor timestamps, offset capability semantics, and missing-prior-value errors, and confined Wellen-native handles to `src/waveform/wellen_backend.rs`. Review found and fixed an ambiguous optional indexed offset API and one redundant hot-path id conversion. Remaining risk is performance-harness noise rather than a demonstrated code regression; the raw run directories and compare outputs are recorded under `tmp/perf/` because apparently even benchmarks enjoy interpretive dance.
 
@@ -160,13 +162,13 @@ If benchmark tooling is unavailable in an execution environment, do not mark per
 
 Before changing Rust source files, capture the current coverage and performance baselines in `tmp/`. This gives the refactor a same-machine comparison instead of relying only on committed benchmark artifacts, which may have been produced on different hardware. At the end of this milestone there are no source changes, but there are local disposable baseline artifacts for coverage, the full CLI benchmark catalog, and the waveform-host expression benchmark suite.
 
-Run `make coverage-src` and copy `tmp/coverage/coverage-src-summary.txt` to a before file. Build a release binary and run `bench/e2e/tests.json` into a `tmp/perf/backend-refactor-before-e2e-*` directory. Run the expression benchmark harness with `--suite waveform_host` into a `tmp/perf/backend-refactor-before-expr-*` directory. Record the exact directories in `Progress`. If any baseline command fails on a clean tree, stop and fix the environment before refactoring; otherwise the later comparison is just performance astrology.
+Run `make coverage-src` and copy `tmp/coverage/coverage-src-summary.json` to a before file. Build a release binary and run `bench/e2e/tests.json` into a `tmp/perf/backend-refactor-before-e2e-*` directory. Run the expression benchmark harness with `--suite waveform_host` into a `tmp/perf/backend-refactor-before-expr-*` directory. Record the exact directories in `Progress`. If any baseline command fails on a clean tree, stop and fix the environment before refactoring; otherwise the later comparison is just performance astrology.
 
 ### Isolate Wellen behind the facade and convert engines to `SignalId`
 
 Create `src/waveform/types.rs` for backend-neutral data structures and `src/waveform/wellen_backend.rs` for all Wellen-specific logic. Rewrite `src/waveform/mod.rs` into a small facade that declares modules, re-exports the backend-neutral types, stores a private `Backend` enum, and delegates methods to `WellenBackend`. In the same implementation slice, update `src/engine/change.rs`, `src/engine/property.rs`, `src/engine/expr_runtime.rs`, and `src/waveform/expr_host.rs` call sites so the crate compiles with `ResolvedSignal { id: SignalId, ... }` and `ExprResolvedSignal { id: SignalId, ... }`.
 
-At the end of this milestone, `cargo test -q waveform` should pass, and `cargo check` should pass. `rg "wellen::|SignalRef" src/engine src/waveform/expr_host.rs` should find no matches. The optimized `change` modes should still work for Wellen because the facade exposes optional indexed capability methods; future non-indexed backends can return `None` instead of faking a global time table.
+At the end of this milestone, `cargo test -q waveform` should pass, and `cargo check` should pass. `rg "wellen::|signal_ref" src/engine src/waveform/expr_host.rs` should find no matches. The optimized `change` modes should still work for Wellen because the facade exposes optional indexed capability methods; future non-indexed backends can return `None` instead of faking a global time table.
 
 ### Reduce global-time-table dependence in baseline scheduling
 
@@ -190,7 +192,7 @@ Acceptance is strict: default VCD/FST behavior unchanged, schema unchanged, no W
 
 Start from a clean tree on branch `feat/fsdb` or its implementation successor. All commands below assume the repository root `/workspaces/wavepeek-fsdb`.
 
-First capture the local baselines. Create `tmp/perf/` if needed. Run `make coverage-src`, then copy `tmp/coverage/coverage-src-summary.txt` to a uniquely named before file such as `tmp/coverage/backend-refactor-before.txt`. Run `make build-release`. Run the full CLI benchmark catalog into a before directory under `tmp/perf/`. Run the waveform-host expression benchmark suite into a before directory under `tmp/perf/`. Record these paths in `Progress` so a later agent can compare against the same artifacts.
+First capture the local baselines. Create `tmp/perf/` if needed. Run `make coverage-src`, then copy `tmp/coverage/coverage-src-summary.json` to a uniquely named before file such as `tmp/coverage/backend-refactor-before.json`. Run `make build-release`. Run the full CLI benchmark catalog into a before directory under `tmp/perf/`. Run the waveform-host expression benchmark suite into a before directory under `tmp/perf/`. Record these paths in `Progress` so a later agent can compare against the same artifacts.
 
 Next create `src/waveform/types.rs`. Move backend-neutral structs and enums from `src/waveform/mod.rs` into this file: `WaveformMetadata`, `ScopeEntry`, `SignalEntry`, `SampledSignal`, `SampledSignalState`, `ResolvedSignal`, `ExprResolvedSignal`, `ChangeCandidateCollectionMode`, `SignalOffsetData`, `STABLE_SCOPE_KIND_ALIASES`, `EXCLUDED_SCOPE_KIND_ALIASES`, `STABLE_SIGNAL_KIND_ALIASES`, and `EXCLUDED_SIGNAL_KIND_ALIASES`. Add `SignalId` in the same file. `SignalId` must be `Copy`, `Eq`, `Hash`, `Ord`, and `Debug` so the engine can use it in `HashMap`, `HashSet`, and deterministic comparisons. Its numeric value must stay private to ordinary engine code.
 
@@ -322,7 +324,7 @@ Update tests. Move Wellen kind-alias tests into `wellen_backend.rs` because they
 
 Run `rg` checks before validation. These are not tests, but they catch the important boundary leak:
 
-    rg --line-number "wellen::|SignalRef" src/engine src/waveform/expr_host.rs
+    rg --line-number "wellen::|signal_ref" src/engine src/waveform/expr_host.rs
 
 Expected result: no matches. Also inspect the waveform module boundary:
 
@@ -330,7 +332,7 @@ Expected result: no matches. Also inspect the waveform module boundary:
 
 Expected result: matches are confined to `src/waveform/wellen_backend.rs` and its tests. `src/waveform/mod.rs` should not store Wellen-native fields anymore.
 
-Finally run validation and compare with the before artifacts. The standard behavior gate is `make ci`. The optional FSDB build smoke is `make check-fsdb-build` only when `make check-fsdb-env` reports a usable SDK; skip it otherwise but record the skip. Coverage and performance are blocking for this refactor: run `make coverage-src` again, copy the summary to `tmp/coverage/backend-refactor-after.txt`, and compare the `TOTAL` row with the before summary. Rebuild release and run the same CLI and expression benchmark selections into after directories. Use the compare commands in the next section. If coverage decreases or a benchmark comparison reports a repeatable regression, add tests or fix the implementation before handoff.
+Finally run validation and compare with the before artifacts. The standard behavior gate is `make ci`. The optional FSDB build smoke is `make check-fsdb-build` only when `make check-fsdb-env` reports a usable SDK; skip it otherwise but record the skip. Coverage and performance are blocking for this refactor: run `make coverage-src` again, copy the summary to `tmp/coverage/backend-refactor-after.json`, and compare the source coverage metrics reported by `scripts/check_coverage.py` with the before summary. Rebuild release and run the same CLI and expression benchmark selections into after directories. Use the compare commands in the next section. If coverage decreases or a benchmark comparison reports a repeatable regression, add tests or fix the implementation before handoff.
 
 ## Concrete Steps
 
@@ -348,9 +350,9 @@ Expected output includes the current branch and no uncommitted Rust/source chang
 
     mkdir -p tmp/coverage
     make coverage-src
-    cp tmp/coverage/coverage-src-summary.txt tmp/coverage/backend-refactor-before.txt
+    cp tmp/coverage/coverage-src-summary.json tmp/coverage/backend-refactor-before.json
 
-Expected result: `make coverage-src` exits 0 and the copied summary has a `TOTAL` row. If `cargo llvm-cov` is missing, install it through the documented development environment rather than skipping coverage.
+Expected result: `make coverage-src` exits 0 and the copied JSON summary is accepted by `scripts/check_coverage.py`. If `cargo llvm-cov` is missing, install it through the documented development environment rather than skipping coverage.
 
 3. Capture CLI and expression performance before editing.
 
@@ -377,7 +379,7 @@ At this intermediate point compile errors are acceptable only while the facade a
 
 7. Update engine call sites.
 
-    rg --line-number "signal_ref|SignalRef|wellen::" src/engine src/waveform/expr_host.rs
+    rg --line-number "signal_ref|wellen::" src/engine src/waveform/expr_host.rs
 
 Use the search output as the to-do list. Replace each engine dependency on Wellen handles with `SignalId`, and gate optimized indexed `change` modes on `indexed_timestamps().is_some()` so future backends can fall back cleanly.
 
@@ -393,7 +395,7 @@ Expected result: all focused tests pass. The benchmark test command compiles and
 
 9. Check the backend boundary explicitly.
 
-    rg --line-number "wellen::|SignalRef" src/engine src/waveform/expr_host.rs
+    rg --line-number "wellen::|signal_ref" src/engine src/waveform/expr_host.rs
     rg --line-number "SignalRef|simple::Waveform|wellen::FileFormat" src/waveform
 
 Expected result: the first command has no matches. The second command has matches only in `src/waveform/wellen_backend.rs` and tests inside that file.
@@ -418,10 +420,11 @@ Expected result on a Verdi-equipped machine: both commands pass. Expected result
 12. Capture coverage after implementation and compare.
 
     make coverage-src
-    cp tmp/coverage/coverage-src-summary.txt tmp/coverage/backend-refactor-after.txt
-    grep '^TOTAL' tmp/coverage/backend-refactor-before.txt tmp/coverage/backend-refactor-after.txt
+    cp tmp/coverage/coverage-src-summary.json tmp/coverage/backend-refactor-after.json
+    python3 -B scripts/check_coverage.py --summary-json tmp/coverage/backend-refactor-before.json --min-regions 0 --min-functions 0 --min-lines 0
+    python3 -B scripts/check_coverage.py --summary-json tmp/coverage/backend-refactor-after.json --min-regions 0 --min-functions 0 --min-lines 0
 
-Expected result: the after `TOTAL` line has no lower line, region, or function coverage percentage than the before line. If coverage is lower, add tests around the moved backend/facade code until coverage recovers. Do not accept a coverage drop as “just a refactor”; that is how tests quietly evaporate.
+Expected result: the after `scripts/check_coverage.py` report has no lower line, region, or function coverage percentage than the before report. If coverage is lower, add tests around the moved backend/facade code until coverage recovers. Do not accept a coverage drop as “just a refactor”; that is how tests quietly evaporate.
 
 13. Capture performance after implementation and compare against the local before runs.
 
@@ -464,9 +467,9 @@ The refactor is accepted only when all of the following are true.
 
 First, existing behavior is demonstrably unchanged for VCD/FST. Run `make ci` and expect success. Run the focused command tests listed above and expect success. Inspect `git diff -- schema/wavepeek.json tests/snapshots` and expect no schema or snapshot churn unless a test was intentionally reorganized without output change. CLI benchmark functional artifacts must compare without `data` mismatches.
 
-Second, the backend boundary is real. `rg --line-number "wellen::|SignalRef" src/engine src/waveform/expr_host.rs` returns no matches. `ResolvedSignal` and `ExprResolvedSignal` contain `id: SignalId`, not `signal_ref`. Wellen-native imports are confined to `src/waveform/wellen_backend.rs` and tests that explicitly validate Wellen mapping.
+Second, the backend boundary is real. `rg --line-number "wellen::|signal_ref" src/engine src/waveform/expr_host.rs` returns no matches. `ResolvedSignal` and `ExprResolvedSignal` contain `id: SignalId`, not `signal_ref`. Wellen-native imports are confined to `src/waveform/wellen_backend.rs` and tests that explicitly validate Wellen mapping.
 
-Third, source coverage does not regress. Compare `tmp/coverage/backend-refactor-before.txt` and `tmp/coverage/backend-refactor-after.txt`; the after `TOTAL` row must not have lower line, region, or function coverage. If moving code changes the denominator, add tests until the total percentages recover or improve.
+Third, source coverage does not regress. Compare the `scripts/check_coverage.py` reports for `tmp/coverage/backend-refactor-before.json` and `tmp/coverage/backend-refactor-after.json`; the after report must not have lower line, region, or function coverage. If moving code changes the denominator, add tests until the total percentages recover or improve.
 
 Fourth, performance does not regress. The local before/after CLI comparison must use the full `bench/e2e/tests.json` catalog and pass with `--max-negative-delta-pct 5`; the local before/after expression comparison must use `--suite waveform_host` and pass with `--max-negative-delta-pct 10` plus matching toolchain metadata. `make bench-e2e-smoke-commit` and `make bench-expr-run` must pass. If one benchmark run is noisy, rerun the failing subset and record both runs; a repeatable regression fails acceptance.
 
@@ -490,8 +493,8 @@ If coverage or performance comparisons fail, do not delete the guardrail. Add te
 
 Important local artifacts produced during implementation should be recorded here as they are created:
 
-    tmp/coverage/backend-refactor-before.txt
-    tmp/coverage/backend-refactor-after.txt
+    tmp/coverage/backend-refactor-before.json
+    tmp/coverage/backend-refactor-after.json
     tmp/perf/backend-refactor-before.env
     tmp/perf/backend-refactor-after.env
     tmp/perf/backend-refactor-before-e2e.*
@@ -501,7 +504,7 @@ Important local artifacts produced during implementation should be recorded here
 
 Expected boundary search after implementation:
 
-    $ rg --line-number "wellen::|SignalRef" src/engine src/waveform/expr_host.rs
+    $ rg --line-number "wellen::|signal_ref" src/engine src/waveform/expr_host.rs
     <no output>
 
 Expected schema check after implementation:
@@ -511,11 +514,12 @@ Expected schema check after implementation:
 
 Expected coverage comparison shape:
 
-    $ grep '^TOTAL' tmp/coverage/backend-refactor-before.txt tmp/coverage/backend-refactor-after.txt
-    tmp/coverage/backend-refactor-before.txt:TOTAL ...
-    tmp/coverage/backend-refactor-after.txt:TOTAL ...
+    $ python3 -B scripts/check_coverage.py --summary-json tmp/coverage/backend-refactor-before.json --min-regions 0 --min-functions 0 --min-lines 0
+    coverage ok: scope=src/** regions=... functions=... lines=... average=... minimum=...
+    $ python3 -B scripts/check_coverage.py --summary-json tmp/coverage/backend-refactor-after.json --min-regions 0 --min-functions 0 --min-lines 0
+    coverage ok: scope=src/** regions=... functions=... lines=... average=... minimum=...
 
-Replace the ellipses with the actual `cargo llvm-cov` summary rows when implementation runs. If the after percentages are lower, this plan is not complete.
+Replace the ellipses with the actual source coverage metrics when implementation runs. If the after percentages are lower, this plan is not complete.
 
 ## Interfaces and Dependencies
 
@@ -572,3 +576,4 @@ No new external Rust crates are required for this refactor. Do not change `Cargo
 - 2026-05-22 / Grin: Updated after final control review. The interface summary now documents `indexed_signal_offset_at` as `Option<Option<SignalOffsetData>>` and explains outer capability absence versus inner offset/data absence.
 - 2026-05-22 / Grin: Updated after targeted control-fix recheck. The plan now records post-review validation artifacts, clean targeted recheck, clean final control-fix recheck, and that only the final conventional commit remains before user handoff.
 - 2026-05-22 / Grin: Updated after commit. The plan now records that the final conventional commit was created and keeps this plan in `active/` for user review instead of moving it to `completed/`.
+- 2026-05-22 / Grin: Updated after rebasing onto `main`. The plan now records the `main` coverage measurement, rebased branch coverage, the extra Wellen-backend coverage tests added to keep all source coverage metrics above 95% after the split, and post-rebase `make ci` plus FSDB build-smoke validation.

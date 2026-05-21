@@ -865,7 +865,7 @@ fn run_fused(
         }
     }
 
-    let tracked_index_by_ref = tracked_resolved
+    let tracked_index_by_id = tracked_resolved
         .iter()
         .enumerate()
         .map(|(index, signal)| (signal.id, index))
@@ -873,15 +873,12 @@ fn run_fused(
     let requested_tracked_indices = requested_resolved
         .iter()
         .map(|signal| {
-            tracked_index_by_ref
-                .get(&signal.id)
-                .copied()
-                .ok_or_else(|| {
-                    WavepeekError::Internal(format!(
-                        "requested signal '{}' is missing from fused tracking state",
-                        signal.path
-                    ))
-                })
+            tracked_index_by_id.get(&signal.id).copied().ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "requested signal '{}' is missing from fused tracking state",
+                    signal.path
+                ))
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
     let requested_slot_by_tracked = {
@@ -896,15 +893,12 @@ fn run_fused(
     let candidate_tracked_indices = candidate_sources
         .iter()
         .map(|signal| {
-            tracked_index_by_ref
-                .get(&signal.id)
-                .copied()
-                .ok_or_else(|| {
-                    WavepeekError::Internal(format!(
-                        "candidate signal '{}' is missing from fused tracking state",
-                        signal.path
-                    ))
-                })
+            tracked_index_by_id.get(&signal.id).copied().ok_or_else(|| {
+                WavepeekError::Internal(format!(
+                    "candidate signal '{}' is missing from fused tracking state",
+                    signal.path
+                ))
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
 
@@ -1090,7 +1084,7 @@ fn run_fused(
             host,
             timestamp,
             cached_sources.as_slice(),
-            &tracked_index_by_ref,
+            &tracked_index_by_id,
             rolling.as_slice(),
             previous_bits.as_slice(),
         );
@@ -1300,13 +1294,13 @@ fn build_fused_event_eval_host<'a>(
     host: &'a WaveformExprHost,
     current_timestamp: u64,
     cached_sources: &[(SignalHandle, ExprResolvedSignal)],
-    tracked_index_by_ref: &HashMap<SignalId, usize>,
+    tracked_index_by_id: &HashMap<SignalId, usize>,
     rolling: &[RollingSignalState],
     previous_bits: &[Option<Option<String>>],
 ) -> FastEventEvalHost<'a> {
     let mut cached = HashMap::new();
     for (handle, signal) in cached_sources {
-        let Some(&tracked_index) = tracked_index_by_ref.get(&signal.id) else {
+        let Some(&tracked_index) = tracked_index_by_id.get(&signal.id) else {
             continue;
         };
         let current_bits = rolling[tracked_index].bits.clone();
@@ -1552,8 +1546,10 @@ mod tests {
             candidate_times_to_indices(&[0, 5, 10], &[0, 10]).expect("indices"),
             vec![0, 2]
         );
+        let fixture = write_fixture(TEST_VCD, "change-schedule.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
         assert_eq!(
-            build_candidate_schedule(&[0, 5, 10], &[5, 10]).expect("schedule"),
+            build_candidate_schedule(&waveform, &[5, 10]).expect("schedule"),
             vec![(5, Some(0)), (10, Some(5))]
         );
         assert!(
@@ -1671,7 +1667,7 @@ mod tests {
 
         let integral = crate::waveform::ExprResolvedSignal {
             path: "top.sig".to_string(),
-            signal_ref: wellen::SignalRef::from_index(1).expect("signal ref"),
+            id: crate::waveform::SignalId::from_test_index(1),
             expr_type: ExprType {
                 kind: ExprTypeKind::BitVector,
                 storage: ExprStorage::Scalar,
@@ -1684,7 +1680,7 @@ mod tests {
         };
         let real = crate::waveform::ExprResolvedSignal {
             path: "top.temp".to_string(),
-            signal_ref: wellen::SignalRef::from_index(2).expect("signal ref"),
+            id: crate::waveform::SignalId::from_test_index(2),
             expr_type: ExprType {
                 kind: ExprTypeKind::Real,
                 storage: ExprStorage::Scalar,
@@ -1798,15 +1794,15 @@ mod tests {
             .resolved_signal_for_handle(handle)
             .expect("source should resolve");
 
-        let mut tracked_index_by_ref = std::collections::HashMap::new();
-        tracked_index_by_ref.insert(source.signal_ref, 0usize);
+        let mut tracked_index_by_id = std::collections::HashMap::new();
+        tracked_index_by_id.insert(source.id, 0usize);
         let rolling = vec![RollingSignalState {
             offset: None,
             bits: Some("1".to_string()),
         }];
         let previous_bits = vec![None];
-        let missing_ref_source = crate::waveform::ExprResolvedSignal {
-            signal_ref: wellen::SignalRef::from_index(999).expect("fake signal ref"),
+        let missing_id_source = crate::waveform::ExprResolvedSignal {
+            id: crate::waveform::SignalId::from_test_index(999),
             ..source.clone()
         };
         let real_source = crate::waveform::ExprResolvedSignal {
@@ -1826,10 +1822,10 @@ mod tests {
             7,
             &[
                 (SignalHandle(21), source.clone()),
-                (SignalHandle(22), missing_ref_source),
+                (SignalHandle(22), missing_id_source),
                 (SignalHandle(23), real_source),
             ],
-            &tracked_index_by_ref,
+            &tracked_index_by_id,
             &rolling,
             &previous_bits,
         );
@@ -1855,7 +1851,7 @@ mod tests {
         assert!(fused_host.sample_value(SignalHandle(23), 7).is_err());
 
         let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
-        waveform.ensure_signals_loaded(&[source.signal_ref]);
+        waveform.ensure_indexed_signals_loaded(&[source.id]);
         let mut decode_cache = IndexDecodeCache::default();
         let edge_host = build_edge_fast_event_eval_host(
             &host,
@@ -1918,9 +1914,10 @@ mod tests {
         assert_eq!(first_bits, second_bits);
         drop(waveform_ref);
 
+        let waveform_ref = waveform.borrow();
         assert_eq!(
-            build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule should build"),
-            vec![(0, None), (10, Some(5))]
+            build_candidate_schedule(&waveform_ref, &[0, 5]).expect("schedule should build"),
+            vec![(0, None), (5, Some(0))]
         );
     }
 

@@ -1893,6 +1893,440 @@ mod tests {
         }
     }
 
+    const TYPE_SURFACE_VCD: &str = concat!(
+        "$date\n  2026-05-17\n$end\n",
+        "$version\n  wavepeek-type-surface\n$end\n",
+        "$timescale 1ns $end\n",
+        "$scope module top $end\n",
+        "$var byte 8 ! bytev $end\n",
+        "$var shortint 16 \" shortv $end\n",
+        "$var int 32 # intv $end\n",
+        "$var longint 64 $ longv $end\n",
+        "$var integer 32 % integerv $end\n",
+        "$var time 64 & timeval $end\n",
+        "$var real 1 ' realv $end\n",
+        "$var string 1 ( strv $end\n",
+        "$var event 1 ) ev $end\n",
+        "$upscope $end\n",
+        "$enddefinitions $end\n",
+        "#0\n",
+        "b00000001 !\n",
+        "b0000000000000010 \"\n",
+        "b00000000000000000000000000000011 #\n",
+        "b0000000000000000000000000000000000000000000000000000000000000100 $\n",
+        "b00000000000000000000000000000101 %\n",
+        "b0000000000000000000000000000000000000000000000000000000000000110 &\n",
+        "r2.5 '\n",
+        "shello (\n",
+        "#5\n",
+        "1)\n"
+    );
+
+    #[test]
+    fn expr_resolution_and_sampling_exercise_real_string_event_paths() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! sig $end\n",
+            "$var event 1 \" ev $end\n",
+            "$var real 1 # temp $end\n",
+            "$var string 1 $ msg $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "r0.0 #\n",
+            "shello $\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n",
+            "r2.5 #\n",
+            "sworld $\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-sample.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+
+        let real = waveform
+            .resolve_expr_signal("top.temp")
+            .expect("real signal should resolve");
+        assert!(matches!(
+            real.expr_type.kind,
+            crate::expr::ExprTypeKind::Real
+        ));
+        assert_eq!(
+            waveform
+                .sample_expr_value(&real, 5)
+                .expect("real value should sample"),
+            crate::expr::SampledValue::Real { value: Some(2.5) }
+        );
+
+        let string = waveform
+            .resolve_expr_signal("top.msg")
+            .expect("string signal should resolve");
+        assert!(matches!(
+            string.expr_type.kind,
+            crate::expr::ExprTypeKind::String
+        ));
+        assert_eq!(
+            waveform
+                .sample_expr_value(&string, 5)
+                .expect("string value should sample"),
+            crate::expr::SampledValue::String {
+                value: Some("world".to_string())
+            }
+        );
+
+        let event = waveform
+            .resolve_expr_signal("top.ev")
+            .expect("event signal should resolve");
+        assert!(matches!(
+            event.expr_type.kind,
+            crate::expr::ExprTypeKind::Event
+        ));
+        assert!(
+            waveform
+                .expr_event_occurred(&event, 5)
+                .expect("event should occur")
+        );
+        assert!(
+            !waveform
+                .expr_event_occurred(&event, 4)
+                .expect("non-sampled event timestamp should be false")
+        );
+        assert!(
+            waveform
+                .sample_expr_value(&event, 5)
+                .expect_err("events cannot be sampled as values")
+                .to_string()
+                .contains("is a raw event and cannot be sampled as a value")
+        );
+
+        let signal = waveform
+            .resolve_expr_signal("top.sig")
+            .expect("bit-vector signal should resolve");
+        assert!(
+            waveform
+                .expr_event_occurred(&signal, 5)
+                .expect_err("non-events cannot be queried as events")
+                .to_string()
+                .contains("is not a raw event")
+        );
+    }
+
+    #[test]
+    fn candidate_collection_and_time_helpers_exercise_split_paths() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! sig $end\n",
+            "$var event 1 \" ev $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-candidates.vcd");
+        let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let resolved = waveform
+            .resolve_expr_signals(&["top.sig".to_string(), "top.ev".to_string()])
+            .expect("signals should resolve");
+        let candidates = waveform
+            .collect_expr_candidate_times_with_mode(
+                &resolved,
+                0,
+                5,
+                ChangeCandidateCollectionMode::Random,
+            )
+            .expect("candidate collection should succeed");
+        assert_eq!(candidates, vec![0, 5]);
+
+        let empty: Vec<super::ResolvedSignal> = Vec::new();
+        assert!(
+            waveform
+                .collect_change_times_with_mode(&empty, 0, 5, ChangeCandidateCollectionMode::Random)
+                .expect("empty signal list should short-circuit")
+                .is_empty()
+        );
+
+        assert!(
+            waveform
+                .collect_change_times_with_mode(
+                    &[super::ResolvedSignal {
+                        path: "top.sig".to_string(),
+                        id: resolved[0].id,
+                        width: 1,
+                    }],
+                    0,
+                    5,
+                    ChangeCandidateCollectionMode::Stream,
+                )
+                .expect_err("forcing stream mode on VCD should fail")
+                .to_string()
+                .contains("forced stream candidate collection")
+        );
+        assert!(!waveform.should_use_streaming_candidate_collection(
+            1,
+            0,
+            5,
+            ChangeCandidateCollectionMode::Auto,
+        ));
+
+        assert_eq!(super::floor_time_table_index(&[], 0), None);
+        assert_eq!(super::floor_time_table_index(&[5, 10], 4), None);
+        assert_eq!(super::floor_time_table_index(&[5, 10], 5), Some(0));
+        assert_eq!(super::floor_time_table_index(&[5, 10], 7), Some(0));
+        assert_eq!(super::time_window_indices(&[], 0, 1), None);
+        assert_eq!(super::time_window_indices(&[0, 5, 10], 9, 1), None);
+        assert_eq!(super::time_window_indices(&[0, 5, 10], 1, 9), Some((1, 2)));
+    }
+
+    #[test]
+    fn helper_functions_exercise_invalid_paths_and_timescales() {
+        const EXPR_VCD: &str = concat!(
+            "$date\n  today\n$end\n",
+            "$version\n  wavepeek-test\n$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var real 1 ! temp $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "r1.0 !\n"
+        );
+
+        let fixture = write_fixture(EXPR_VCD, "expr-helpers.vcd");
+        let backend = super::WellenBackend::open(fixture.path()).expect("fixture should open");
+        let hierarchy = backend.inner.hierarchy();
+
+        assert!(
+            super::resolve_var_ref(hierarchy, "")
+                .expect_err("empty path should fail")
+                .to_string()
+                .contains("not found in dump")
+        );
+        assert!(
+            super::resolve_var_ref(hierarchy, "top.")
+                .expect_err("trailing dot path should fail")
+                .to_string()
+                .contains("not found in dump")
+        );
+        assert!(
+            super::resolve_signal_ref_with_width(hierarchy, "top.temp")
+                .expect_err("real signals do not have bit-vector widths")
+                .to_string()
+                .contains("unsupported non-bit-vector encoding")
+        );
+
+        assert_eq!(
+            super::timescale_unit_suffix(wellen::TimescaleUnit::Unknown)
+                .expect_err("unknown timescale units should fail")
+                .to_string(),
+            "error: file: waveform timescale unit is unknown"
+        );
+        assert_eq!(
+            super::format_timescale(wellen::Timescale {
+                factor: 1,
+                unit: wellen::TimescaleUnit::NanoSeconds,
+            })
+            .expect("timescale formatting should succeed"),
+            "1ns"
+        );
+        assert!(
+            super::normalize_time(
+                u64::MAX,
+                wellen::Timescale {
+                    factor: 2,
+                    unit: wellen::TimescaleUnit::NanoSeconds,
+                },
+            )
+            .expect_err("overflowing normalized times should fail")
+            .to_string()
+            .contains("time value overflow")
+        );
+
+        assert!(!super::var_type_is_four_state(wellen::VarType::Bit));
+        assert!(super::var_type_is_four_state(wellen::VarType::Logic));
+        assert!(super::var_type_is_signed(wellen::VarType::Integer));
+        assert!(!super::var_type_is_signed(wellen::VarType::Logic));
+        assert_eq!(
+            super::empty_sampled_value(&crate::expr::ExprType {
+                kind: crate::expr::ExprTypeKind::String,
+                storage: crate::expr::ExprStorage::Scalar,
+                width: 0,
+                is_four_state: false,
+                is_signed: false,
+                enum_type_id: None,
+                enum_labels: None,
+            }),
+            crate::expr::SampledValue::String { value: None }
+        );
+    }
+
+    #[test]
+    fn waveform_helper_tables_exercise_decode_timescale_and_extra_var_types() {
+        assert_eq!(
+            super::decode_signal_bits(wellen::SignalValue::Event, "top.ev")
+                .expect("events should decode as empty bit strings"),
+            Some(String::new())
+        );
+        for value in [
+            wellen::SignalValue::String("oops"),
+            wellen::SignalValue::Real(1.25),
+        ] {
+            assert!(
+                super::decode_signal_bits(value, "top.bad")
+                    .expect_err("non-bit-vector signal values should fail")
+                    .to_string()
+                    .contains("unsupported non-bit-vector encoding")
+            );
+        }
+
+        for (unit, expected) in [
+            (wellen::TimescaleUnit::ZeptoSeconds, "zs"),
+            (wellen::TimescaleUnit::AttoSeconds, "as"),
+            (wellen::TimescaleUnit::FemtoSeconds, "fs"),
+            (wellen::TimescaleUnit::PicoSeconds, "ps"),
+            (wellen::TimescaleUnit::NanoSeconds, "ns"),
+            (wellen::TimescaleUnit::MicroSeconds, "us"),
+            (wellen::TimescaleUnit::MilliSeconds, "ms"),
+            (wellen::TimescaleUnit::Seconds, "s"),
+        ] {
+            assert_eq!(
+                super::timescale_unit_suffix(unit).expect("known unit"),
+                expected
+            );
+        }
+
+        let typed_fixture = write_fixture(TYPE_SURFACE_VCD, "typed-vars.vcd");
+        let typed =
+            super::WellenBackend::open(typed_fixture.path()).expect("typed fixture should open");
+        let hierarchy = typed.inner.hierarchy();
+        for (path, expected_width, expected_four_state, expected_signed) in [
+            ("top.bytev", 8, false, true),
+            ("top.shortv", 16, false, true),
+            ("top.intv", 32, false, true),
+            ("top.longv", 64, false, true),
+            ("top.integerv", 32, true, true),
+            ("top.timeval", 64, true, false),
+        ] {
+            let var =
+                &hierarchy[super::resolve_var_ref(hierarchy, path).expect("var should resolve")];
+            let ty = super::expr_type_from_var(hierarchy, var, path).expect("expr type");
+            assert_eq!(ty.width, expected_width, "{path}");
+            assert_eq!(ty.is_four_state, expected_four_state, "{path}");
+            assert_eq!(ty.is_signed, expected_signed, "{path}");
+        }
+    }
+
+    #[test]
+    fn waveform_sampling_and_scope_error_helpers_exercise_public_error_paths() {
+        let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-errors.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("fixture should open");
+        let error = waveform
+            .signals_in_scope_recursive("top.nope", Some(1))
+            .expect_err("missing recursive scope should fail");
+        assert!(
+            error
+                .to_string()
+                .contains("scope 'top.nope' not found in dump")
+        );
+
+        let delayed_fixture = write_fixture(DELAYED_VALUE_VCD, "delayed-public.vcd");
+        let mut delayed = Waveform::open(delayed_fixture.path()).expect("fixture should open");
+        let empty: Vec<super::ResolvedSignal> = Vec::new();
+        assert!(
+            delayed
+                .sample_resolved_optional(&empty, 0)
+                .expect("empty resolved set should short-circuit")
+                .is_empty()
+        );
+
+        let late_only_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-late\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var wire 1 ! late $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n",
+                "1!\n"
+            ),
+            "late-only.vcd",
+        );
+        let mut late_only = Waveform::open(late_only_fixture.path()).expect("fixture should open");
+        let late_resolved = late_only
+            .resolve_signals(&["top.late".to_string()])
+            .expect("signal should resolve");
+        assert!(
+            late_only
+                .sample_resolved_optional(&late_resolved, 0)
+                .expect_err("sampling before the first dump timestamp should fail")
+                .to_string()
+                .contains("before first dump timestamp")
+        );
+
+        let delayed_expr = delayed
+            .resolve_expr_signal("top.delayed")
+            .expect("expr signal should resolve");
+        assert_eq!(
+            delayed
+                .sample_expr_value(&delayed_expr, 0)
+                .expect("pre-value integral sample should succeed"),
+            crate::expr::SampledValue::Integral {
+                bits: None,
+                label: None,
+            }
+        );
+
+        let rich_delayed_fixture = write_fixture(
+            concat!(
+                "$date\n  today\n$end\n",
+                "$version\n  wavepeek-rich-delayed\n$end\n",
+                "$timescale 1ns $end\n",
+                "$scope module top $end\n",
+                "$var real 1 ! temp $end\n",
+                "$var string 1 \" msg $end\n",
+                "$upscope $end\n",
+                "$enddefinitions $end\n",
+                "#5\n",
+                "r3.25 !\n",
+                "slate \"\n"
+            ),
+            "rich-delayed.vcd",
+        );
+        let mut rich_delayed =
+            Waveform::open(rich_delayed_fixture.path()).expect("fixture should open");
+        let real = rich_delayed
+            .resolve_expr_signal("top.temp")
+            .expect("real signal should resolve");
+        let string = rich_delayed
+            .resolve_expr_signal("top.msg")
+            .expect("string signal should resolve");
+        assert_eq!(
+            rich_delayed
+                .sample_expr_value(&real, 0)
+                .expect("pre-value real sample should succeed"),
+            crate::expr::SampledValue::Real { value: None }
+        );
+        assert_eq!(
+            rich_delayed
+                .sample_expr_value(&string, 0)
+                .expect("pre-value string sample should succeed"),
+            crate::expr::SampledValue::String { value: None }
+        );
+    }
+
     fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {
         let mut file = tempfile::Builder::new()
             .suffix(filename)

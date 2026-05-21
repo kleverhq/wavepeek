@@ -11,7 +11,7 @@ FSDB is treated as an **optional native read backend**, not as a separate comman
 ### Goals
 
 - The default wavepeek installation works as it does today: VCD/FST through `wellen`, with no Verdi dependency.
-- FSDB support is enabled explicitly at build/install time, for example with `cargo install wavepeek --features fsdb`, or through a future installer option such as `--fsdb` that enables the Cargo feature internally.
+- FSDB support is enabled explicitly at build/install time on supported Linux targets, for example with `cargo install wavepeek --features fsdb`, or through a future installer option such as `--fsdb` that enables the Cargo feature internally.
 - If a binary is built without FSDB support, opening `.fsdb` input returns a clear user-facing error.
 - If a binary is built with FSDB support, `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface.
 - Integration is native and in-process through the FSDB Reader API. wavepeek does not launch Verdi, VIA, Tcl, Python, Perl, or other helper utilities.
@@ -23,6 +23,7 @@ FSDB is treated as an **optional native read backend**, not as a separate comman
 - Do not implement a custom parser for the FSDB on-disk format. FSDB is a closed binary format; the supported path is the official Reader API.
 - Do not add FSDB-specific CLI flags to the user-facing command surface.
 - Do not support every FSDB data class in the first implementation. Analog/SPICE, transaction streams, power, coverage, MDA, and proprietary/internal service records are out of scope initially. The first target is digital Verilog/SystemVerilog parity for the existing commands.
+- Do not support FSDB on non-Linux targets in the first implementation. The direct link + rpath design is Linux-only; non-Linux `fsdb` builds should fail with a clear build-time error.
 - Do not commit Verdi headers, libraries, documentation, FSDB files, or generated bindings containing proprietary header-derived content to the public repository.
 
 ## 2. User model
@@ -138,6 +139,8 @@ fsdb = []
 
 In practice, the feature adds build-time C++ compilation and a dependency on `cc`. `bindgen` is not recommended: generated output derived from proprietary headers must not be committed, and generating it during every user installation would add avoidable fragility. The default feature set must not require Verdi, C++ headers, or proprietary libraries.
 
+Public CI and default quality gates must not use `--all-features` once `fsdb` exists, because `fsdb` intentionally fails to build without a valid `$VERDI_HOME`. Repository automation should lint/check/test the default feature set by default and reserve `--features fsdb` for explicit FSDB targets after environment checks.
+
 ### 3.2 C++ shim instead of direct Rust FFI to a C++ API
 
 The FSDB Reader API is a C++ API. Rust should not link directly against C++ class ABI. A small C ABI shim should be compiled locally when `--features fsdb` is enabled.
@@ -201,7 +204,7 @@ FSDB integration uses direct feature-gated linking with FSDB Reader libraries:
 - it links `nffr` and required companion libraries;
 - it adds rpath/RUNPATH for the selected library directory, typically `$VERDI_HOME/share/FsdbReader/linux64`.
 
-The resulting `wavepeek` binary contains ELF dependencies (`DT_NEEDED`) on `libnffr.so`/`libnsys.so`. This is intentional: a binary built with FSDB support requires an available Verdi runtime.
+The resulting `wavepeek` binary contains ELF dependencies (`DT_NEEDED`) on `libnffr.so` plus any required companion libraries. This is intentional: a binary built with FSDB support requires an available Linux Verdi runtime.
 
 ## 4. Source refactor
 
@@ -408,7 +411,7 @@ Return only existing fields:
 {"path": "top.u0", "depth": 1, "kind": "module"}
 ```
 
-FSDB scope kinds map into the existing wavepeek inventory: `module`, `task`, `function`, `begin`, `fork`, `generate`, `interface`, `package`, `program`, `class`, `unknown`. Do not add new kind strings without a schema migration.
+FSDB scope kinds map into the existing wavepeek inventory: `module`, `task`, `function`, `begin`, `fork`, `generate`, `interface`, `package`, `program`, `class`, `struct`, `union`, `unknown`. Do not add new kind strings without a schema migration.
 
 ### 5.5 `signal`
 
@@ -490,7 +493,9 @@ Do not expand the user contract around tune flags. If they are hidden/debug cont
 - eval operands from `--eval`;
 - at-or-before sampling for values;
 - exact occurrence for raw events;
-- previous sample strictly before `t` for edge/capture transitions.
+- previous sample strictly before `t` for edge event terms.
+
+Capture modes (`match`, `switch`, `assert`, `deassert`) remain engine-level state over the selected event stream. They must not be implemented by comparing only against the immediately previous waveform sample.
 
 Datatype support for the first useful version:
 
@@ -511,7 +516,6 @@ Examples:
 ```text
 error: file: FSDB input requires a wavepeek binary built with FSDB support; reinstall with --features fsdb and provide a licensed VERDI_HOME
 error: file: FSDB Reader SDK not found: VERDI_HOME is unset or incomplete
-error: file: cannot load FSDB Reader library '/opt/verdi/share/FsdbReader/linux64/libnffr.so'
 error: file: unsupported FSDB time tag representation: floating-point xtags are not supported
 error: signal: signal 'top.a' has unsupported non-bit-vector encoding
 error: scope: scope 'top.missing' not found in dump
@@ -560,6 +564,8 @@ Test manifests in the repository may describe logical fixture names, required ca
 ### 7.3 Test matrix
 
 Required matrix:
+
+Before adding the `fsdb` feature, update public quality gates that currently use `--all-features` so they do not build Verdi-gated features in no-Verdi environments. FSDB coverage belongs behind explicit targets such as `make test-fsdb`, not the default public `make ci` path.
 
 | Environment | Command | Expected result |
 |---|---|---|
@@ -652,9 +658,10 @@ For wavepeek, use the GTKWave/Vaporview model: store **project-owned** source co
 
 ### M0: build spike
 
-- Verify default `linux64` with the devcontainer compiler and explicit override through `WAVEPEEK_FSDB_READER_LIBDIR` / `WAVEPEEK_FSDB_ABI` for alternatives such as `linux64_gcc950`.
+- Verify Linux-only build gating and default `linux64` with the devcontainer compiler, plus explicit override through `WAVEPEEK_FSDB_READER_LIBDIR` / `WAVEPEEK_FSDB_ABI` for alternatives such as `linux64_gcc950`.
 - Build a minimal C++ shim that opens FSDB and reads metadata.
 - Verify that builds fail cleanly without `$VERDI_HOME` only when `--features fsdb` is enabled.
+- Update `make ci`, `make check`, and related automation so public/no-Verdi gates do not use `--all-features` after the Verdi-gated feature exists.
 
 ### M1: backend refactor without FSDB
 

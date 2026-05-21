@@ -22,6 +22,7 @@ This file is a local navigation map for this directory.
 ## Child Maps
 
 - Public embedded docs corpus: `public/AGENTS.md`
+- Temporary FSDB development collateral: `fsdb/AGENTS.md`
 - Packaged skills: `skills/AGENTS.md`
 - Execution plans: `exec-plans/AGENTS.md`
 

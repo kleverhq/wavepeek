@@ -29,6 +29,8 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 21:24Z) Ran the full `bench/e2e/tests.json` candidate benchmark and repeat/control performance investigations. The catalog-level zero-threshold compare proved too noisy even for same-binary control runs, so paired Hyperfine checks were run for the worst apparent regressions; paired old/new runs showed no repeatable slowdown and several were slightly faster within noise.
 - [x] (2026-05-21 21:31Z) Ran final repository gates `make check` and `make ci`; both completed successfully.
 - [x] (2026-05-21 21:43Z) Ran four read-only review lanes (code correctness, docs/help, architecture, performance). Code, docs, and performance lanes reported no substantive findings; architecture reported that the README could imply `--features fsdb` already gives full Reader-backed command support, so README and public docs were qualified and docs/help tests were rerun successfully.
+- [x] (2026-05-21 21:52Z) Ran a fresh control review. It found that existing `.fsdb` directories were incorrectly translated to the FSDB feature-required error, so `fsdb_disabled::should_report_disabled_support` now excludes directories and `tests/fsdb_disabled_cli.rs` covers a `.fsdb` directory preserving a regular file error. `cargo test -q --test fsdb_disabled_cli` now passes `7` tests, and `cargo test -q fsdb_disabled` still passes the targeted unit coverage.
+- [x] (2026-05-21 22:02Z) Reran full repository gates after the directory fix: `make check` and `make ci` both completed successfully, with source coverage still at regions `95.04%`, functions `95.76%`, lines `95.61%`.
 
 ## Surprises & Discoveries
 
@@ -54,6 +56,8 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Evidence: comparing two consecutive runs of the same post-change release binary with `--max-negative-delta-pct 0` still failed, including apparent same-binary regressions such as `info_scr1` median `0.042768s -> 0.056186s` (`-31.37%`) and `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk` median `0.241656s -> 0.291143s` (`-20.48%`).
 - Observation: Pairwise Hyperfine runs for the worst apparent catalog regressions did not reproduce a code slowdown when old and new binaries were measured in the same command.
   Evidence: paired 20-run checks showed `change_scr1_coremark_imem_axi_2sig_to_1000ps` new `34.6ms` versus old `34.9ms`, `change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any` new `166.0ms` versus old `167.9ms`, `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` new `264.1ms` versus old `267.2ms`, `info_scr1` new `15.9ms` versus old `16.3ms`, and `signal_scr1_top_recursive_depth2_json` new `7.6ms` versus old `7.7ms`; `change_scr1_coremark_imem_axi_1sig_to_1000ps` was the only selected pair with old slightly faster, `33.8ms` versus `34.3ms`, inside the observed standard deviation.
+- Observation: On Linux, Wellen can return a parse-shaped file error for a directory path ending in `.fsdb`, so suffix-plus-parse-failure matching alone is not enough to preserve directory behavior.
+  Evidence: before the control-review fix, `wavepeek info --waves <tempdir>.fsdb` printed the FSDB feature-required error instead of an ordinary `cannot ...` file error; the new CLI test `info_directory_fsdb_suffix_keeps_regular_file_error` locks the corrected behavior.
 
 ## Decision Log
 
@@ -97,9 +101,13 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Rationale: Independent architecture review caught that the README wording could lead users to reinstall with `--features fsdb` and expect complete FSDB command behavior, while this implementation only improves the default-build error. The exact diagnostic remains unchanged because it is part of the planned behavior, but surrounding docs now state that default-package docs do not otherwise claim full Reader-backed FSDB support.
   Date/Author: 2026-05-21 / Grin
 
+- Decision: Exclude directory paths from default-build FSDB feature-required translation before checking the parse-error text.
+  Rationale: A directory named with an `.fsdb` suffix is an access/regular-file problem, not evidence that the user supplied a real FSDB dump to a default binary. Reporting reinstall guidance there is misleading and contradicts the plan's open/read error preservation requirement.
+  Date/Author: 2026-05-21 / Grin
+
 ## Outcomes & Retrospective
 
-Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs now describe default VCD/FST support and feature-gated FSDB behavior without claiming full FSDB command support. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
+Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs now describe default VCD/FST support and feature-gated FSDB behavior without claiming full FSDB command support. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
 
 ## Context and Orientation
 
@@ -523,6 +531,25 @@ Review and follow-up evidence:
     ........
     test result: ok. 8 passed; 0 failed
 
+    Fresh control review finding: `.fsdb` directories were translated to the FSDB feature-required diagnostic.
+    Fix: `fsdb_disabled::should_report_disabled_support` now returns false for directories and `tests/fsdb_disabled_cli.rs` adds `info_directory_fsdb_suffix_keeps_regular_file_error`.
+
+    cargo test -q --test fsdb_disabled_cli
+    running 7 tests
+    .......
+    test result: ok. 7 passed; 0 failed
+
+    cargo test -q fsdb_disabled
+    running 4 tests
+    ....
+    test result: ok. 4 passed; 0 failed
+
+    WAVEPEEK_IN_CONTAINER=1 make check
+    completed successfully after the directory fix
+
+    WAVEPEEK_IN_CONTAINER=1 make ci
+    completed successfully after the directory fix; coverage remained regions=95.04% functions=95.76% lines=95.61%
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -552,3 +579,5 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded public docs/help/changelog updates and focused contract-test evidence for the shipped FSDB-disabled wording.
 - 2026-05-21 / Grin: Recorded full validation, optional FSDB smoke, noisy benchmark investigation, paired performance evidence, and final retrospective. The plan remains active for user review as requested.
 - 2026-05-21 / Grin: Recorded first review cycle results and the docs qualification fix prompted by architecture review.
+- 2026-05-21 / Grin: Recorded the fresh control-review directory finding, code/test fix, and focused retest evidence.
+- 2026-05-21 / Grin: Recorded the post-directory-fix `make check` and `make ci` validation rerun.

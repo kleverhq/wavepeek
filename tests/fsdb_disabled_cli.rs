@@ -73,6 +73,25 @@ fn info_missing_fsdb_suffix_keeps_cannot_open_error() {
 }
 
 #[test]
+fn info_directory_fsdb_suffix_keeps_regular_file_error() {
+    let dir = tempfile::Builder::new()
+        .suffix(".fsdb")
+        .tempdir()
+        .expect("tempdir should be created");
+    let path = dir.path().to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    command
+        .args(["info", "--waves", path.as_str()])
+        .assert()
+        .failure()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: file: cannot "))
+        .stderr(predicate::str::contains("FSDB input requires").not());
+}
+
+#[test]
 fn info_unrelated_invalid_suffix_keeps_parse_error() {
     let file = write_temp_file(b"not-a-waveform", ".notfsdb");
     let path = file.path().to_string_lossy().into_owned();

@@ -19,7 +19,7 @@ pub(crate) fn disabled_support_error() -> WavepeekError {
 }
 
 pub(crate) fn should_report_disabled_support(path: &Path, error: &WavepeekError) -> bool {
-    if !looks_like_fsdb_path(path) {
+    if !looks_like_fsdb_path(path) || path.is_dir() {
         return false;
     }
 
@@ -29,7 +29,7 @@ pub(crate) fn should_report_disabled_support(path: &Path, error: &WavepeekError)
 
     // Wellen open errors currently preserve the public file category as plain text.
     // Keep this narrow so missing files, permission failures, directories, and other
-    // read/open failures remain ordinary `cannot open` errors.
+    // read/open failures remain ordinary file errors instead of FSDB feature guidance.
     let parse_prefix = format!("cannot parse '{}': ", path.display());
     message.starts_with(&parse_prefix)
 }

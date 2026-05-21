@@ -28,11 +28,11 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 08:20Z) Drafted this active ExecPlan under `docs/exec-plans/active/2026-05-21-fsdb-build-spike/PLAN.md` with descriptive entity names and no milestone-label prefixes or suffixes for new files, modules, functions, tests, or make targets.
 - [x] (2026-05-21 08:45Z) Ran parallel review lanes for plan quality, build architecture, and licensing/source hygiene; revised the plan to clarify `VERDI_HOME` versus library-directory overrides, probe return shape, C++ compilation flags, and mandatory default validation.
 - [x] (2026-05-21 08:55Z) Ran a fresh final independent control review on the revised plan; it returned no substantive findings.
-- [ ] Add the feature-gated Cargo/build-script foundation and default-feature automation changes.
-- [ ] Add environment discovery helpers for local Verdi and optional private FSDB artifacts.
-- [ ] Add the project-owned C++ metadata shim and Rust FFI smoke wrapper.
-- [ ] Add focused tests and make targets that skip cleanly without Verdi but prove build/link/metadata behavior when Verdi is available.
-- [ ] During implementation, run targeted validation in the available environment, repeat implementation review as needed, and move this plan to completed only after the implementation work is done.
+- [x] (2026-05-21 09:05Z) Added the feature-gated Cargo/build-script foundation and default-feature automation changes: `fsdb` is a non-default feature, `build.rs` is inert without the feature, and default lint/coverage no longer use `--all-features`.
+- [x] (2026-05-21 09:05Z) Added environment discovery helpers for local Verdi and optional private FSDB artifacts: `.devcontainer/resolve_verdi_home.sh`, `scripts/check_fsdb_env.py`, and deterministic no-Verdi Python tests.
+- [x] (2026-05-21 09:05Z) Added the project-owned C++ metadata shim and Rust FFI smoke wrapper: `native/fsdb/wavepeek_fsdb_shim.{h,cpp}` and `src/waveform/fsdb_native.rs` are private to the `fsdb` feature and are not wired into the CLI.
+- [x] (2026-05-21 09:05Z) Added focused tests and make targets that skip cleanly without Verdi but prove build/link/metadata behavior when Verdi is available. Local validation so far: `make format`, `python3 -m unittest scripts/test_check_fsdb_env.py`, `make check-fsdb-env`, `make check-build`, and `make check-fsdb-build` on a Verdi-equipped container with `WAVEPEEK_FSDB_SMOKE_FILE` unset.
+- [ ] Finish full validation, run focused implementation review lanes plus control review, apply review fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
 
 ## Surprises & Discoveries
 
@@ -47,6 +47,12 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 
 - Observation: the current Rust crate has no `build.rs`, no feature table, no native source directory, and no `cc` build dependency.
   Evidence: `Cargo.toml` has dependencies and dev-dependencies only, and `find . -maxdepth 2 -name build.rs` reports no build script.
+
+- Observation: adding `cc` as a direct build dependency did not require refreshing all dependency versions because `cc` was already present transitively in `Cargo.lock`; only the root `wavepeek` dependency list needed the new `cc` entry.
+  Evidence: after reverting an accidental broad `cargo generate-lockfile` refresh, the final `Cargo.lock` diff is one added `"cc"` line under the `wavepeek` package.
+
+- Observation: linking `libnffr.so` and `libnsys.so` with ordinary `cargo:rustc-link-lib` caused `libnsys.so` to be dropped from the test binary on this toolchain, and the FSDB test executable then failed at dynamic-load time with an unresolved `prodCnlIdent` symbol from `libnffr.so`.
+  Evidence: `ldd target/debug/deps/wavepeek-1031e88f28ef85c7` initially listed `libnffr.so` but not `libnsys.so`, and `cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture` exited 127 with `symbol lookup error: /opt/verdi/share/FsdbReader/linux64/libnffr.so: undefined symbol: prodCnlIdent`.
 
 - Observation: the existing waveform facade is still tightly coupled to Wellen handles.
   Evidence: `src/waveform/mod.rs` stores `simple::Waveform`, `wellen::FileFormat`, and `HashSet<SignalRef>`, and `ResolvedSignal` plus `ExprResolvedSignal` contain `wellen::SignalRef`. This plan must avoid pretending the backend boundary already exists.
@@ -77,11 +83,23 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
   Rationale: after the `fsdb` feature exists, `--all-features` means “requires Verdi.” Public CI and default hooks must not ask for proprietary SDKs by accident.
   Date/Author: 2026-05-21 / Grin
 
+- Decision: make the feature-enabled linker invocation pass `libnffr.so` and `libnsys.so` as absolute linker arguments inside a temporary `--no-as-needed` block, instead of relying only on `cargo:rustc-link-lib`.
+  Rationale: this Verdi installation's `libnffr.so` needs symbols from `libnsys.so`, but the default Rust/Cargo linker path dropped `libnsys.so` because the executable had no direct symbol reference to it. Forcing both DSOs into the `NEEDED` set makes the runtime dependency explicit and fixes the metadata smoke test.
+  Date/Author: 2026-05-21 / Grin
+
+- Decision: treat an invalid or empty `VERDI_HOME` without FSDB library overrides as an ordinary no-Verdi skip in `scripts/check_fsdb_env.py`, while `build.rs` still requires a valid `VERDI_HOME` when a developer directly enables `--features fsdb`.
+  Rationale: the interactive devcontainer may set `VERDI_HOME=/opt/verdi` even when the host mount is empty. Optional make targets should skip in that common public case, but a direct feature-enabled Cargo build is an explicit request and should fail clearly.
+  Date/Author: 2026-05-21 / Grin
+
+- Decision: keep this plan in `docs/exec-plans/active/2026-05-21-fsdb-build-spike/PLAN.md` after implementation review rather than moving it to `completed/`.
+  Rationale: the user explicitly asked to inspect the result first. The original plan's “move to completed” closure step is superseded for this handoff, because plans are also there to be read by the person who paid for the mess.
+  Date/Author: 2026-05-21 / Grin
+
 ## Outcomes & Retrospective
 
-Current status: planning is complete and implementation has not started. Parallel focused review plus a fresh final control pass found no remaining substantive issues after the revisions recorded above. The plan is ready to guide an implementation agent through a narrow build-and-metadata slice that keeps public automation green while creating a real Verdi-gated native seam.
+Current status: implementation is in progress and the core build/link slice now exists. Default-feature compilation still works, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
 
-The main risk is ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The plan handles that by choosing the simple `linux64` library directory by default, providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides, and requiring a feature-enabled build/link smoke before any later FSDB backend work builds on this foundation.
+The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts.
 
 ## Context and Orientation
 
@@ -125,7 +143,7 @@ In the same Rust module, add a feature-gated unit test named `fsdb_reader_metada
 
 Milestone 6 adds tests for no-Verdi behavior and environment-script determinism. Add Python unit tests if useful under `scripts/test_check_fsdb_env.py`, and wire them into `test-aux` only if they do not require Verdi. At minimum, test that an empty temporary `VERDI_HOME` causes the checker to emit the skip status, and that an explicit bad `WAVEPEEK_FSDB_READER_LIBDIR` produces a non-skip failure. Add Rust unit tests for any pure helper in `build.rs` only if you factor resolver logic into testable functions; otherwise rely on script tests and make-target validation. Do not add `.fsdb` fixtures to the repository.
 
-Milestone 7 closes with validation, review, and documentation bookkeeping. Run default-feature validation first in the available container: `make format-check`, `make lint`, `make check-schema`, `make check-build`, and `make ci`. If the required RTL fixture payload is genuinely unavailable in the current environment, record that as a validation limitation in this plan and run the component gates that do not need that payload; do not silently downgrade the standard gate. Run `make check-fsdb-build` in the available environment; without Verdi it must exit 0 with the skip line, and with Verdi it must compile/link the shim and run the metadata smoke test. On a Verdi-equipped machine with a local FSDB file, also run `WAVEPEEK_FSDB_SMOKE_FILE=/path/to/local.fsdb make check-fsdb-build` and record the concise metadata-smoke evidence in this plan. Update `CHANGELOG.md` only if the team treats the new `fsdb` Cargo feature and FSDB build smoke as user-visible; otherwise keep the change documented in this plan and temporary FSDB collateral. After implementation commits, run focused review lanes for build/link correctness, docs/automation consistency, and licensing/source hygiene, fix findings in follow-up commits, run one final control review, and then move this plan to `docs/exec-plans/completed/2026-05-21-fsdb-build-spike/PLAN.md`.
+Milestone 7 closes with validation, review, and documentation bookkeeping. Run default-feature validation first in the available container: `make format-check`, `make lint`, `make check-schema`, `make check-build`, and `make ci`. If the required RTL fixture payload is genuinely unavailable in the current environment, record that as a validation limitation in this plan and run the component gates that do not need that payload; do not silently downgrade the standard gate. Run `make check-fsdb-build` in the available environment; without Verdi it must exit 0 with the skip line, and with Verdi it must compile/link the shim and run the metadata smoke test. On a Verdi-equipped machine with a local FSDB file, also run `WAVEPEEK_FSDB_SMOKE_FILE=/path/to/local.fsdb make check-fsdb-build` and record the concise metadata-smoke evidence in this plan. Update `CHANGELOG.md` only if the team treats the new `fsdb` Cargo feature and FSDB build smoke as user-visible; otherwise keep the change documented in this plan and temporary FSDB collateral. After implementation commits, run focused review lanes for build/link correctness, docs/automation consistency, and licensing/source hygiene, fix findings in follow-up commits, run one final control review, and leave this plan in `active/` for user inspection.
 
 ### Concrete Steps
 
@@ -350,3 +368,5 @@ Revision Note: 2026-05-21 / Grin - Initial draft created from `docs/fsdb/arch.md
 Revision Note: 2026-05-21 / Grin - Revised after parallel review to clarify the `VERDI_HOME` header requirement, make `wp_fsdb_probe` distinguish successful non-FSDB probes from failures, require explicit C++ compilation settings for `cc`, make `make ci` a required default validation gate unless the environment cannot provide standard RTL fixtures, and define explicit-library-dir-without-headers as a configuration error rather than an ordinary no-Verdi skip.
 
 Revision Note: 2026-05-21 / Grin - Recorded the clean final independent control review and updated the retrospective to mark planning complete while leaving implementation progress unchecked.
+
+Revision Note: 2026-05-21 / Grin - Updated progress, discoveries, decisions, and closure instructions after implementing the FSDB build spike foundation. The note records the `libnsys.so` dynamic-link issue, the decision to keep invalid devcontainer `VERDI_HOME` as an optional-target skip, and the user-requested choice to leave this plan active for inspection.

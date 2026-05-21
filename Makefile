@@ -79,11 +79,11 @@ format-check: require-container
 
 ## Lint with clippy
 lint: require-container
-	cargo clippy --all-targets --all-features -- -D warnings
+	cargo clippy --all-targets -- -D warnings
 
 ## Fix linting with clippy
 lint-fix: require-container
-	cargo clippy --all-targets --all-features --fix --allow-dirty --allow-staged -- -D warnings
+	cargo clippy --all-targets --fix --allow-dirty --allow-staged -- -D warnings
 
 ## Type check with cargo
 check-build: require-container
@@ -95,7 +95,7 @@ test: require-container check-rtl-artifacts
 
 coverage-src-data: require-container check-rtl-artifacts
 	@mkdir -p tmp/coverage
-	cargo llvm-cov --workspace --all-features --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
+	cargo llvm-cov --workspace --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
 
 ## Report source coverage for src/**/*.rs via cargo-llvm-cov
 coverage-src: coverage-src-data
@@ -114,12 +114,38 @@ coverage-src-check: coverage-src-data
 		--min-lines $(COVERAGE_SRC_THRESHOLD) \
 		--markdown-output tmp/coverage/coverage-src-summary.md
 
+## Check local FSDB Reader SDK availability
+check-fsdb-env: require-container
+	@$(PYTHON) scripts/check_fsdb_env.py
+
+## Build and smoke-test optional FSDB support when Verdi is available
+check-fsdb-build: require-container
+	@set +e; \
+	$(PYTHON) scripts/check_fsdb_env.py; \
+	status="$$?"; \
+	if [ "$$status" -eq 77 ]; then \
+		exit 0; \
+	elif [ "$$status" -ne 0 ]; then \
+		exit "$$status"; \
+	fi; \
+	verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
+	if [ -z "$$verdi_home" ]; then \
+		printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
+		exit 1; \
+	fi; \
+	VERDI_HOME="$$verdi_home" cargo check --features fsdb && \
+	VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture
+
+## Run optional FSDB build smoke tests
+test-fsdb: check-fsdb-build
+
 ## Run auxiliary Python/unit test suites
 test-aux: require-container
 	$(PYTHON) -m unittest discover -s bench/e2e -p "test_*.py"
 	$(PYTHON) -m unittest discover -s bench/expr -p "test_*.py"
 	$(PYTHON) -m unittest scripts/test_extract_release_notes.py
 	$(PYTHON) -m unittest scripts/test_check_coverage.py
+	$(PYTHON) -m unittest scripts/test_check_fsdb_env.py
 
 ## Build release binary
 build-release: require-container

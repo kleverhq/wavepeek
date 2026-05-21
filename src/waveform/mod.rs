@@ -7,6 +7,8 @@
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
+#[cfg(feature = "fsdb")]
+mod fsdb_native;
 
 use std::cmp::Ordering;
 use std::collections::BTreeSet;

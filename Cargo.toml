@@ -17,6 +17,10 @@ exclude = [
     ".github/*",
 ]
 
+[features]
+default = []
+fsdb = []
+
 [dependencies]
 clap = { version = "~4", features = ["derive"] }
 serde = { version = "~1", features = ["derive"] }
@@ -33,6 +37,9 @@ predicates = "~3"
 tempfile = "~3"
 insta = "~1"
 criterion = { version = "~0.8", features = ["csv_output"] }
+
+[build-dependencies]
+cc = "~1"
 
 [profile.dev.package]
 insta.opt-level = 3

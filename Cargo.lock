@@ -1066,6 +1066,7 @@ name = "wavepeek"
 version = "0.5.0"
 dependencies = [
  "assert_cmd",
+ "cc",
  "clap",
  "criterion",
  "include_dir",

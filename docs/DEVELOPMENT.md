@@ -56,6 +56,8 @@ Common commands:
 - Tests:
   - `make test`
   - `make test-aux`
+- Optional FSDB build smoke when a local Verdi FSDB Reader SDK is available:
+  - `make check-fsdb-build`
 - Coverage:
   - `make coverage-src`
   - `make coverage-src-check`
@@ -75,14 +77,20 @@ Common commands:
 Direct Cargo equivalents (useful when iterating):
 
 - `cargo fmt` / `cargo fmt -- --check`
-- `cargo clippy --all-targets --all-features -- -D warnings`
+- `cargo clippy --all-targets -- -D warnings`
 - `cargo check`
 - `cargo test`
-- `cargo llvm-cov --workspace --all-features --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)'`
+- `cargo llvm-cov --workspace --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)'`
 - `cargo build` / `cargo build --release`
 - `cargo run -- <args>`
 
 The source-coverage gate tracks `src/**` only, ignores `/tests/`, and currently requires at least `90%` for lines, regions, and functions.
+
+The optional `fsdb` Cargo feature is intentionally excluded from default lint,
+test, coverage, pre-commit, and CI paths because it requires a licensed local
+Synopsys Verdi FSDB Reader SDK. Use `make check-fsdb-build` on Verdi-equipped
+Linux x86_64 machines; the target skips cleanly when no SDK is available and
+runs `cargo check --features fsdb` plus the metadata smoke test when it is.
 
 ## CLI E2E Benchmark Harness
 

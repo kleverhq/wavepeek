@@ -1,12 +1,14 @@
 //! Waveform adapter used by the engine layer.
 //!
-//! Canonical path policy in M2:
+//! Canonical path policy:
 //! - Paths are emitted as dot-separated full hierarchy paths.
 //! - Scope and signal names are preserved exactly as provided by the parser.
 //! - No additional escaping or normalization pass is applied.
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
+#[cfg(not(feature = "fsdb"))]
+mod fsdb_disabled;
 #[cfg(feature = "fsdb")]
 mod fsdb_native;
 mod types;
@@ -38,9 +40,20 @@ enum Backend {
 
 impl Waveform {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
-        Ok(Self {
-            backend: Backend::Wellen(wellen_backend::WellenBackend::open(path)?),
-        })
+        match wellen_backend::WellenBackend::open(path) {
+            Ok(backend) => Ok(Self {
+                backend: Backend::Wellen(backend),
+            }),
+            Err(error) => {
+                #[cfg(not(feature = "fsdb"))]
+                {
+                    if fsdb_disabled::should_report_disabled_support(path, &error) {
+                        return Err(fsdb_disabled::disabled_support_error());
+                    }
+                }
+                Err(error)
+            }
+        }
     }
 
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {

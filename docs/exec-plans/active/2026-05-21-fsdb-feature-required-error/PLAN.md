@@ -19,7 +19,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 19:37Z) Researched the architecture milestone in `docs/fsdb/arch.md`, current waveform facade in `src/waveform/mod.rs`, Wellen open/error mapping in `src/waveform/wellen_backend.rs`, optional FSDB smoke code in `src/waveform/fsdb_native.rs`, public command/machine-output docs, development gates, coverage tooling, and benchmark workflow.
 - [x] (2026-05-21 19:45Z) Drafted this implementation plan under `docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md` with behavior-oriented names and explicit performance/coverage controls.
 - [x] (2026-05-21 19:58Z) Ran independent plan-compliance, architecture/code-plan, and performance/coverage review lanes; folded their blocking feedback into this plan.
-- [ ] Implementation has not started. The first implementation step is to capture current default-build behavior and coverage/performance baselines before editing code.
+- [x] (2026-05-21 20:14Z) Captured default-build validation baselines before source edits: `make coverage-src` passed with source coverage regions `95.02%`, functions `95.74%`, lines `95.59%`; full `bench/e2e/tests.json` benchmark baseline completed under `tmp/fsdb-feature-required-error/perf-before` with `142` Hyperfine and `142` wavepeek JSON artifacts.
+- [x] (2026-05-21 20:24Z) Added default-build FSDB-disabled routing in `src/waveform/fsdb_disabled.rs` and `Waveform::open`, preserving Wellen-first parsing and narrow translation of `cannot parse '<path>': ...` file errors only.
+- [x] (2026-05-21 20:25Z) Added default-build unit and CLI integration tests in `src/waveform/fsdb_disabled.rs` and `tests/fsdb_disabled_cli.rs`; `cargo test -q --test fsdb_disabled_cli` passed with `6` tests and `cargo test -q fsdb_disabled` passed with `4` targeted unit tests.
+- [ ] Public docs and generated-help contract updates have not started. The next implementation step is to update README, public command model docs, CLI help wording, and help contract assertions.
 
 ## Surprises & Discoveries
 
@@ -35,6 +38,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Evidence: `rg "Path to VCD/FST waveform file" src/cli tests` reports matches in `src/cli/info.rs`, `scope.rs`, `signal.rs`, `value.rs`, `change.rs`, and `property.rs`, plus help-contract tests.
 - Observation: `scripts/check_coverage.py` validates one coverage summary against thresholds; it does not compare two summaries for regression by itself.
   Evidence: The script accepts one `--summary-json` input and minimum thresholds, so this plan includes an explicit before/after comparison command.
+- Observation: The current Wellen path reports fake invalid `.fsdb.gz` bytes as a parse failure instead of a gzip open/read failure, so the same narrow post-parse fallback covers `.fsdb` and `.fsdb.gz` temporary-file tests.
+  Evidence: `cargo run -q -- info --waves tmp/invalid.fsdb.gz` before the routing change printed `error: file: cannot parse 'tmp/invalid.fsdb.gz': unknown file format, only GHW, FST and VCD are supported`.
+- Observation: A tiny valid VCD file with a `.fsdb` suffix is accepted by the existing Wellen path, which validates that suffix checks must stay behind parser failure.
+  Evidence: `cargo run -q -- info --waves tmp/test-valid.fsdb` before the routing change printed `time_unit: 1ns`, `time_start: 0ns`, and `time_end: 10ns`.
 
 ## Decision Log
 
@@ -64,6 +71,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 
 - Decision: Treat coverage and performance as blocking validation, not nice-to-have evidence.
   Rationale: The change touches the common waveform open path. Coverage after the change must be at least as good as the captured baseline and must satisfy the repository threshold. Benchmark comparison must first run with a zero allowed regression threshold; any repeatable mean or median slowdown after control reruns is blocking.
+  Date/Author: 2026-05-21 / Grin
+
+- Decision: Keep parse-failure eligibility as a narrow private text match in `fsdb_disabled::should_report_disabled_support` instead of changing `WavepeekError` or exposing a new Wellen error enum.
+  Rationale: This slice must preserve the public error taxonomy and stderr text for existing VCD/FST behavior. The helper only translates messages matching the current `cannot parse '<path>': ...` shape for the same path, so ordinary open failures remain untouched while avoiding a wider internal refactor.
   Date/Author: 2026-05-21 / Grin
 
 ## Outcomes & Retrospective
@@ -389,8 +400,29 @@ Important command outputs should be pasted here as the implementation proceeds. 
 Initial planning evidence:
 
     current branch: feat/fsdb
-    current commit: da0b44a
+    current commit when this implementation run started: 0b08ea8
     active plan path: docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md
+
+Baseline validation evidence:
+
+    WAVEPEEK_IN_CONTAINER=1 make coverage-src
+    coverage ok: scope=src/** regions=95.02% functions=95.74% lines=95.59% average=95.45% minimum=95.02%
+
+    WAVEPEEK_BIN=target/release/wavepeek python3 bench/e2e/perf.py run --tests bench/e2e/tests.json --run-dir tmp/fsdb-feature-required-error/perf-before
+    ok: run: completed successfully (use --verbose for detailed logs)
+    tmp/fsdb-feature-required-error/perf-before/README.md reports 142 Hyperfine JSON files and 142 Wavepeek JSON files.
+
+Focused test evidence after adding the default-build helper:
+
+    cargo test -q --test fsdb_disabled_cli
+    running 6 tests
+    ......
+    test result: ok. 6 passed; 0 failed
+
+    cargo test -q fsdb_disabled
+    running 4 tests
+    ....
+    test result: ok. 4 passed; 0 failed
 
 ## Interfaces and Dependencies
 
@@ -417,3 +449,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 
 - 2026-05-21 / Grin: Initial plan created from `docs/fsdb/arch.md`, current waveform facade/backend code, public docs, development workflow, and benchmark/coverage requirements. The plan intentionally uses behavior-oriented names and avoids milestone-labelled entities.
 - 2026-05-21 / Grin: Folded independent review feedback into the plan. The revision changed FSDB-disabled routing to Wellen-first fallback, gated default-build tests, expanded CLI help/doc targets, added an explicit coverage regression command, strengthened benchmark acceptance to no repeatable regression, and renamed temporary artifacts to behavior-oriented paths.
+- 2026-05-21 / Grin: Recorded baseline coverage/performance artifacts and the first implementation pass for the default-build FSDB-disabled helper, including the decision to keep parse-failure matching private and narrow.

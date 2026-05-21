@@ -566,7 +566,8 @@ Before adding the `fsdb` feature, update public quality gates that currently use
 |---|---|---|
 | no Verdi, default features | `make ci` | full existing VCD/FST suite passes |
 | no Verdi, default features | FSDB-disabled unit/integration test | verifies clear error on `.fsdb` path without a real FSDB fixture |
-| no Verdi, `make test-fsdb` | optional target exits 0 with skip message | automation does not fail |
+| no Verdi, `make check-fsdb-env` | availability probe exits 0 with skip message | developers can inspect availability without failing default automation |
+| no Verdi, `make test-fsdb` | explicit FSDB target fails through `require-verdi` before Cargo builds | accidental local invocation gets a clear SDK requirement; public CI does not call this target |
 | Verdi, bundled examples available | `make test-fsdb` | build/link smoke + bundled-example FSDB tests run |
 | Verdi, bundled example missing | `make test-fsdb` | build/link smoke + clear skip for tests requiring that example |
 | public GitHub CI | `make ci` | Verdi/FSDB tests do not require proprietary payload; public CI remains green |
@@ -580,13 +581,13 @@ let Some(env) = fsdb_test_env() else {
 };
 ```
 
-However, building with `--features fsdb` without Verdi must fail. Therefore, optional `make test-fsdb` must check the environment before running:
+However, building with `--features fsdb` without Verdi must fail. Therefore, explicit FSDB make targets must depend on a `require-verdi` gate before running Cargo commands such as:
 
 ```sh
 cargo test --features fsdb --test fsdb_cli
 ```
 
-Otherwise the build fails before test code can skip.
+Otherwise Cargo fails later and usually less politely. Let the Makefile tripwire be the tripwire; do not make every test rediscover the same missing SDK.
 
 ### 7.4 What to test
 

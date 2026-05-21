@@ -25,6 +25,10 @@ require-container:
 		exit 1; \
 	fi
 
+## Require local Verdi FSDB Reader SDK
+require-verdi: require-container
+	@$(PYTHON) scripts/check_fsdb_env.py --require >/dev/null
+
 ## Verify external fixture payload is installed
 check-rtl-artifacts: require-container
 	@for fixture in $(REQUIRED_RTL_ARTIFACTS); do \
@@ -116,19 +120,17 @@ coverage-src-check: coverage-src-data
 
 ## Check local FSDB Reader SDK availability
 check-fsdb-env: require-container
-	@$(PYTHON) scripts/check_fsdb_env.py
-
-## Build and smoke-test optional FSDB support when Verdi is available
-check-fsdb-build: require-container
 	@set +e; \
 	$(PYTHON) scripts/check_fsdb_env.py; \
 	status="$$?"; \
 	if [ "$$status" -eq 77 ]; then \
 		exit 0; \
-	elif [ "$$status" -ne 0 ]; then \
-		exit "$$status"; \
 	fi; \
-	verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
+	exit "$$status"
+
+## Build and smoke-test optional FSDB support
+check-fsdb-build: require-verdi
+	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
 	if [ -z "$$verdi_home" ]; then \
 		printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
 		exit 1; \

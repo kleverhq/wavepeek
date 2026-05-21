@@ -26,11 +26,10 @@ has_reader_library() {
     [ -f "$libdir/libnffr.so" ]
 }
 
-for candidate in "${VERDI_HOME:-}" /opt/verdi; do
-    if [ -n "$candidate" ] && has_headers "$candidate" && has_reader_library "$candidate"; then
-        printf '%s\n' "$candidate"
-        exit 0
-    fi
-done
+candidate="${VERDI_HOME:-}"
+if [ -n "$candidate" ] && has_headers "$candidate" && has_reader_library "$candidate"; then
+    printf '%s\n' "$candidate"
+    exit 0
+fi
 
 exit 0

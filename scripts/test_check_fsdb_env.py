@@ -12,21 +12,32 @@ SCRIPT_PATH = pathlib.Path(__file__).with_name("check_fsdb_env.py")
 
 
 class CheckFsdbEnvTest(unittest.TestCase):
-    def run_script(self, env: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    def run_script(
+        self, env: dict[str, str], args: list[str] | None = None
+    ) -> subprocess.CompletedProcess[str]:
         script_env = {
             key: value
             for key, value in os.environ.items()
-            if not key.startswith("WAVEPEEK_FSDB_")
-            and key not in {"VERDI_HOME", "FSDB_RTL_ARTIFACTS_DIR"}
+            if not key.startswith("WAVEPEEK_FSDB_") and key != "VERDI_HOME"
         }
         script_env.update(env)
         return subprocess.run(
-            ["python3", str(SCRIPT_PATH)],
+            ["python3", str(SCRIPT_PATH), *(args or [])],
             check=False,
             capture_output=True,
             text=True,
             env=script_env,
         )
+
+    def test_unset_verdi_home_skips_without_default_fallback(self) -> None:
+        result = self.run_script({})
+
+        self.assertEqual(result.returncode, 77, result.stderr)
+        self.assertIn(
+            "skip: fsdb: Verdi FSDB Reader SDK not found; set VERDI_HOME to run FSDB build checks",
+            result.stdout,
+        )
+        self.assertEqual(result.stderr, "")
 
     def test_empty_verdi_home_skips_without_default_fallback(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -38,6 +49,24 @@ class CheckFsdbEnvTest(unittest.TestCase):
             result.stdout,
         )
         self.assertEqual(result.stderr, "")
+
+    def test_require_mode_fails_instead_of_skipping(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = self.run_script({"VERDI_HOME": temp_dir}, args=["--require"])
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("error: fsdb: Verdi FSDB Reader SDK not found; set VERDI_HOME", result.stderr)
+        self.assertNotIn(temp_dir, result.stderr)
+
+    def test_explicit_reader_override_without_verdi_home_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = self.run_script({"WAVEPEEK_FSDB_READER_LIBDIR": temp_dir})
+
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("error: fsdb: VERDI_HOME is required", result.stderr)
+        self.assertNotIn(temp_dir, result.stderr)
 
     def test_explicit_bad_library_directory_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -76,7 +105,27 @@ class CheckFsdbEnvTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ok: fsdb: Verdi FSDB Reader SDK found", result.stdout)
-        self.assertIn("optional artifact directory", result.stdout)
+        self.assertIn("bundled FSDB smoke file not found", result.stdout)
+        self.assertNotIn(str(root), result.stdout)
+
+    def test_bundled_smoke_file_is_detected_without_path_leak(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            reader_root = root / "share" / "FsdbReader"
+            libdir = reader_root / "linux64"
+            smoke_file = root / "share" / "VIA" / "demo" / "waveform" / "cpu.fsdb"
+            libdir.mkdir(parents=True)
+            smoke_file.parent.mkdir(parents=True)
+            for header in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
+                (reader_root / header).write_text("", encoding="utf-8")
+            for library in ("libnffr.so", "libnsys.so"):
+                (libdir / library).write_text("", encoding="utf-8")
+            smoke_file.write_bytes(b"binary marker, not parsed")
+
+            result = self.run_script({"VERDI_HOME": str(root)})
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("info: fsdb: FSDB smoke file found", result.stdout)
         self.assertNotIn(str(root), result.stdout)
 
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import os
 import pathlib
 import sys
@@ -10,6 +11,18 @@ SKIP_STATUS = 77
 SKIP_MESSAGE = "skip: fsdb: Verdi FSDB Reader SDK not found; set VERDI_HOME to run FSDB build checks"
 REQUIRED_HEADERS = ("ffrAPI.h", "ffrKit.h", "fsdbShr.h")
 REQUIRED_LIBRARIES = ("libnffr.so", "libnsys.so")
+BUNDLED_SMOKE_RELATIVE_PATHS = (
+    pathlib.Path("share") / "VIA" / "demo" / "waveform" / "cpu.fsdb",
+    pathlib.Path("share") / "VIA" / "demo" / "waveform" / "modport.fsdb",
+    pathlib.Path("share")
+    / "NPI"
+    / "example"
+    / "via_examples"
+    / "NPI_Models"
+    / "FSDB_Model"
+    / "npi_fsdb_open"
+    / "demo.fsdb",
+)
 
 
 def eprint(message: str) -> None:
@@ -57,9 +70,9 @@ def missing_libraries(libdir: pathlib.Path) -> list[pathlib.Path]:
 
 def configured_home_candidates() -> list[pathlib.Path]:
     verdi_home = env_path("VERDI_HOME")
-    if verdi_home is not None:
-        return [verdi_home]
-    return [pathlib.Path("/opt/verdi")]
+    if verdi_home is None:
+        return []
+    return [verdi_home]
 
 
 def has_explicit_reader_override() -> bool:
@@ -70,33 +83,46 @@ def verbose_output_enabled() -> bool:
     return os.environ.get("WAVEPEEK_FSDB_ENV_VERBOSE") == "1"
 
 
-def find_optional_artifact_dir() -> pathlib.Path | None:
-    candidates: list[pathlib.Path] = []
-    for name in ("WAVEPEEK_FSDB_ARTIFACTS_DIR", "FSDB_RTL_ARTIFACTS_DIR"):
-        value = env_path(name)
-        if value is not None:
-            candidates.append(value)
-    candidates.extend(
-        [
-            pathlib.Path("/opt/fsdb-rtl-artifacts"),
-            pathlib.Path.home() / ".cache" / "wavepeek" / "fsdb-rtl-artifacts",
-        ]
-    )
-    for candidate in candidates:
-        if candidate.is_dir():
+def validate_explicit_smoke_file() -> pathlib.Path | None:
+    smoke_file = env_path("WAVEPEEK_FSDB_SMOKE_FILE")
+    if smoke_file is None:
+        return None
+    if not smoke_file.is_file():
+        missing_text = (
+            str(smoke_file) if verbose_output_enabled() else "configured WAVEPEEK_FSDB_SMOKE_FILE"
+        )
+        fail(f"{missing_text} does not point to a readable FSDB file")
+    return smoke_file
+
+
+def find_bundled_smoke_file(verdi_home: pathlib.Path) -> pathlib.Path | None:
+    explicit = validate_explicit_smoke_file()
+    if explicit is not None:
+        return explicit
+
+    for relative_path in BUNDLED_SMOKE_RELATIVE_PATHS:
+        candidate = verdi_home / relative_path
+        if candidate.is_file():
             return candidate
     return None
 
 
-def validate_sdk() -> tuple[pathlib.Path, pathlib.Path]:
+def unavailable(required: bool) -> None:
+    if required:
+        fail("Verdi FSDB Reader SDK not found; set VERDI_HOME to run this target")
+    skip()
+
+
+def validate_sdk(required: bool) -> tuple[pathlib.Path, pathlib.Path]:
     candidates = configured_home_candidates()
     explicit_override = has_explicit_reader_override()
-    saw_existing_home = False
+
+    if not candidates:
+        if explicit_override:
+            fail("VERDI_HOME is required when FSDB Reader library overrides are set")
+        unavailable(required)
 
     for verdi_home in candidates:
-        if verdi_home.exists():
-            saw_existing_home = True
-
         header_misses = missing_headers(verdi_home)
         if header_misses:
             if explicit_override:
@@ -125,30 +151,40 @@ def validate_sdk() -> tuple[pathlib.Path, pathlib.Path]:
     if explicit_override:
         fail("explicit FSDB Reader library configuration did not resolve to a usable SDK")
 
-    # An empty /opt/verdi mount, or an intentionally empty temporary VERDI_HOME in
-    # tests, is ordinary no-Verdi availability rather than a hard configuration
-    # error. The variable is often set by the devcontainer whether a host mount is
-    # populated or not. Tiny distinction, large reduction in false alarms.
-    _ = saw_existing_home
-    skip()
+    # A devcontainer may set VERDI_HOME to an empty host mount. That is ordinary
+    # no-Verdi availability for optional discovery, but a hard error for targets
+    # that explicitly require Verdi. Yes, this distinction is annoying. So are
+    # proprietary SDKs wired through environment variables.
+    unavailable(required)
 
 
-def main() -> None:
-    verdi_home, libdir = validate_sdk()
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="check local Verdi FSDB Reader SDK availability")
+    parser.add_argument(
+        "--require",
+        action="store_true",
+        help="treat missing Verdi as an error instead of an optional skip",
+    )
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(sys.argv[1:] if argv is None else argv)
+    verdi_home, libdir = validate_sdk(required=args.require)
     verbose = verbose_output_enabled()
     if verbose:
         print(f"ok: fsdb: Verdi FSDB Reader SDK found at {verdi_home} (libdir {libdir})")
     else:
         print("ok: fsdb: Verdi FSDB Reader SDK found")
 
-    artifact_dir = find_optional_artifact_dir()
-    if artifact_dir is not None:
+    smoke_file = find_bundled_smoke_file(verdi_home)
+    if smoke_file is not None:
         if verbose:
-            print(f"info: fsdb: optional artifact directory found at {artifact_dir}")
+            print(f"info: fsdb: FSDB smoke file found at {smoke_file}")
         else:
-            print("info: fsdb: optional artifact directory found")
+            print("info: fsdb: FSDB smoke file found")
     else:
-        print("info: fsdb: optional artifact directory not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE")
+        print("info: fsdb: bundled FSDB smoke file not found; metadata smoke can still run without WAVEPEEK_FSDB_SMOKE_FILE")
 
 
 if __name__ == "__main__":

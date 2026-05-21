@@ -106,6 +106,15 @@ pub(crate) enum BoundLogicalKind {
     },
 }
 
+impl BoundLogicalKind {
+    pub(crate) fn direct_signal_handle(&self) -> Option<SignalHandle> {
+        match self {
+            Self::SignalRef { handle } | Self::Triggered { handle } => Some(*handle),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BoundCastKind {
     Signed,

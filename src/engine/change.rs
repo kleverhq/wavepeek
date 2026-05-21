@@ -21,7 +21,8 @@ use crate::expr::{
 };
 use crate::waveform::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
-    SignalOffsetData, Waveform, expr_host::WaveformExprHost, should_emit_delta_and_update_baseline,
+    SignalId, SignalOffsetData, Waveform, expr_host::WaveformExprHost,
+    should_emit_delta_and_update_baseline,
 };
 
 const EMPTY_WARNING: &str = "no signal changes found in selected time range";
@@ -150,7 +151,7 @@ impl SampleCache {
 
 #[derive(Default)]
 struct IndexDecodeCache {
-    entries: HashMap<(wellen::SignalRef, u32), Option<String>>,
+    entries: HashMap<(SignalId, u32), Option<String>>,
 }
 
 impl IndexDecodeCache {
@@ -160,17 +161,28 @@ impl IndexDecodeCache {
         resolved: &ResolvedSignal,
         time_table_idx: u32,
     ) -> Result<Option<String>, WavepeekError> {
-        let key = (resolved.signal_ref, time_table_idx);
+        let key = (resolved.id, time_table_idx);
         if let Some(existing) = self.entries.get(&key) {
             return Ok(existing.clone());
         }
 
         let bits = waveform
-            .decode_signal_at_index(resolved, time_table_idx)?
+            .decode_indexed_signal_at(resolved, time_table_idx)?
+            .ok_or_else(indexed_backend_unavailable)?
             .bits;
         self.entries.insert(key, bits.clone());
         Ok(bits)
     }
+}
+
+fn indexed_backend_unavailable() -> WavepeekError {
+    WavepeekError::Internal("indexed waveform access is unavailable for this backend".to_string())
+}
+
+fn indexed_timestamps(waveform: &Waveform) -> Result<&[u64], WavepeekError> {
+    waveform
+        .indexed_timestamps()
+        .ok_or_else(indexed_backend_unavailable)
 }
 
 pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
@@ -248,12 +260,14 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         candidate_sources_for_handles(&host, &event_candidate_handles(&bound_event))?;
     candidate_sources.extend(event_sources);
     let mut seen = HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.signal_ref));
+    candidate_sources.retain(|signal| seen.insert(signal.id));
 
     let candidate_mode = map_candidate_mode(args.tune_candidates);
     let window_timestamp_count = {
         let waveform_ref = waveform.borrow();
-        time_window_indices(waveform_ref.timestamps_raw_slice(), from_raw, to_raw)
+        indexed_timestamps(&waveform_ref)
+            .ok()
+            .and_then(|timestamps| time_window_indices(timestamps, from_raw, to_raw))
             .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
             .unwrap_or(0)
     };
@@ -439,7 +453,7 @@ fn run_baseline(
     };
     let candidate_schedule = {
         let waveform_ref = waveform.borrow();
-        build_candidate_schedule(waveform_ref.timestamps_raw_slice(), &candidate_times)?
+        build_candidate_schedule(&waveform_ref, &candidate_times)?
     };
 
     let mut sample_cache = SampleCache::default();
@@ -513,6 +527,43 @@ fn run_baseline(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn run_baseline_fallback(
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+    requested_signals: &[RequestedSignal],
+    requested_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
+    from_raw: u64,
+    to_raw: u64,
+    baseline_raw: u64,
+    dump_tick: ParsedTime,
+    max_entries: Option<usize>,
+    candidate_mode: ChangeCandidateCollectionMode,
+    precomputed_candidate_times: Option<Vec<u64>>,
+) -> Result<ChangeRunOutput, WavepeekError> {
+    run_baseline(
+        waveform,
+        host,
+        event_expr_source,
+        bound_event,
+        tracked_signal_handles,
+        requested_signals,
+        requested_resolved,
+        candidate_sources,
+        from_raw,
+        to_raw,
+        baseline_raw,
+        dump_tick,
+        max_entries,
+        candidate_mode,
+        precomputed_candidate_times,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
 fn run_edge_fast(
     waveform: &SharedWaveform,
     host: &WaveformExprHost,
@@ -531,7 +582,7 @@ fn run_edge_fast(
     force_edge_fast: bool,
 ) -> Result<ChangeRunOutput, WavepeekError> {
     if !event_expr_is_edge_only(bound_event) {
-        return run_baseline(
+        return run_baseline_fallback(
             waveform,
             host,
             event_expr_source,
@@ -564,7 +615,27 @@ fn run_edge_fast(
             .saturating_mul(requested_resolved.len())
             < EDGE_FAST_MIN_WORK
     {
-        return run_baseline(
+        return run_baseline_fallback(
+            waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
+            requested_signals,
+            requested_resolved,
+            candidate_sources,
+            from_raw,
+            to_raw,
+            baseline_raw,
+            dump_tick,
+            max_entries,
+            candidate_mode,
+            Some(candidate_times),
+        );
+    }
+
+    if waveform.borrow().indexed_timestamps().is_none() {
+        return run_baseline_fallback(
             waveform,
             host,
             event_expr_source,
@@ -585,21 +656,40 @@ fn run_edge_fast(
 
     let candidate_indices = {
         let waveform_ref = waveform.borrow();
-        let time_table = waveform_ref.timestamps_raw_slice();
+        let time_table = indexed_timestamps(&waveform_ref)?;
         candidate_times_to_indices(time_table, candidate_times.as_slice())?
     };
 
-    let mut loaded_signal_refs = requested_resolved
+    let mut loaded_signal_ids = requested_resolved
         .iter()
-        .map(|signal| signal.signal_ref)
+        .map(|signal| signal.id)
         .collect::<HashSet<_>>();
     for signal in candidate_sources {
-        loaded_signal_refs.insert(signal.signal_ref);
+        loaded_signal_ids.insert(signal.id);
     }
-    let loaded_signal_refs = loaded_signal_refs.into_iter().collect::<Vec<_>>();
-    waveform
+    let loaded_signal_ids = loaded_signal_ids.into_iter().collect::<Vec<_>>();
+    if !waveform
         .borrow_mut()
-        .ensure_signals_loaded(loaded_signal_refs.as_slice());
+        .ensure_indexed_signals_loaded(loaded_signal_ids.as_slice())
+    {
+        return run_baseline_fallback(
+            waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
+            requested_signals,
+            requested_resolved,
+            candidate_sources,
+            from_raw,
+            to_raw,
+            baseline_raw,
+            dump_tick,
+            max_entries,
+            candidate_mode,
+            Some(candidate_times),
+        );
+    }
     let cached_sources = cached_event_sources(
         host,
         cached_event_handles(bound_event, tracked_signal_handles).as_slice(),
@@ -627,10 +717,17 @@ fn run_edge_fast(
         {
             let waveform_ref = waveform.borrow();
             for resolved in requested_resolved {
-                let current_offset =
-                    waveform_ref.signal_offset_at_index(resolved.signal_ref, candidate_index_u32);
+                let current_offset = waveform_ref
+                    .indexed_signal_offset_at(resolved.id, candidate_index_u32)
+                    .ok_or_else(indexed_backend_unavailable)?;
                 let previous_offset = previous_index
-                    .and_then(|idx| waveform_ref.signal_offset_at_index(resolved.signal_ref, idx));
+                    .map(|idx| {
+                        waveform_ref
+                            .indexed_signal_offset_at(resolved.id, idx)
+                            .ok_or_else(indexed_backend_unavailable)
+                    })
+                    .transpose()?
+                    .flatten();
                 if current_offset == previous_offset {
                     continue;
                 }
@@ -660,7 +757,8 @@ fn run_edge_fast(
         let previous_timestamp = if candidate_index == 0 {
             None
         } else {
-            Some(waveform.borrow().timestamps_raw_slice()[candidate_index - 1])
+            let waveform_ref = waveform.borrow();
+            Some(indexed_timestamps(&waveform_ref)?[candidate_index - 1])
         };
         let fast_host = {
             let waveform_ref = waveform.borrow();
@@ -732,16 +830,36 @@ fn run_fused(
     max_entries: Option<usize>,
     candidate_mode: ChangeCandidateCollectionMode,
 ) -> Result<ChangeRunOutput, WavepeekError> {
+    if waveform.borrow().indexed_timestamps().is_none() {
+        return run_baseline_fallback(
+            waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
+            requested_signals,
+            requested_resolved,
+            candidate_sources,
+            from_raw,
+            to_raw,
+            baseline_raw,
+            dump_tick,
+            max_entries,
+            candidate_mode,
+            None,
+        );
+    }
+
     let mut tracked_resolved = requested_resolved.to_vec();
     let mut tracked_seen = tracked_resolved
         .iter()
-        .map(|signal| signal.signal_ref)
+        .map(|signal| signal.id)
         .collect::<HashSet<_>>();
     for signal in candidate_sources {
-        if tracked_seen.insert(signal.signal_ref) {
+        if tracked_seen.insert(signal.id) {
             tracked_resolved.push(ResolvedSignal {
                 path: signal.path.clone(),
-                signal_ref: signal.signal_ref,
+                id: signal.id,
                 width: signal.expr_type.width.max(1),
             });
         }
@@ -750,13 +868,13 @@ fn run_fused(
     let tracked_index_by_ref = tracked_resolved
         .iter()
         .enumerate()
-        .map(|(index, signal)| (signal.signal_ref, index))
+        .map(|(index, signal)| (signal.id, index))
         .collect::<HashMap<_, _>>();
     let requested_tracked_indices = requested_resolved
         .iter()
         .map(|signal| {
             tracked_index_by_ref
-                .get(&signal.signal_ref)
+                .get(&signal.id)
                 .copied()
                 .ok_or_else(|| {
                     WavepeekError::Internal(format!(
@@ -779,7 +897,7 @@ fn run_fused(
         .iter()
         .map(|signal| {
             tracked_index_by_ref
-                .get(&signal.signal_ref)
+                .get(&signal.id)
                 .copied()
                 .ok_or_else(|| {
                     WavepeekError::Internal(format!(
@@ -790,13 +908,32 @@ fn run_fused(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    let all_signal_refs = tracked_resolved
+    let all_signal_ids = tracked_resolved
         .iter()
-        .map(|signal| signal.signal_ref)
+        .map(|signal| signal.id)
         .collect::<Vec<_>>();
-    waveform
+    if !waveform
         .borrow_mut()
-        .ensure_signals_loaded(all_signal_refs.as_slice());
+        .ensure_indexed_signals_loaded(all_signal_ids.as_slice())
+    {
+        return run_baseline_fallback(
+            waveform,
+            host,
+            event_expr_source,
+            bound_event,
+            tracked_signal_handles,
+            requested_signals,
+            requested_resolved,
+            candidate_sources,
+            from_raw,
+            to_raw,
+            baseline_raw,
+            dump_tick,
+            max_entries,
+            candidate_mode,
+            None,
+        );
+    }
 
     let stream_candidate_times = if should_use_stream_candidates_in_fused(candidate_mode) {
         Some(
@@ -820,7 +957,7 @@ fn run_fused(
     let (start_idx, end_idx_exclusive) = {
         let waveform_ref = waveform.borrow();
         let Some(window) =
-            time_window_indices(waveform_ref.timestamps_raw_slice(), from_raw, to_raw)
+            time_window_indices(indexed_timestamps(&waveform_ref)?, from_raw, to_raw)
         else {
             return Ok(ChangeRunOutput {
                 snapshots: Vec::new(),
@@ -833,7 +970,7 @@ fn run_fused(
     let stream_candidate_indices = if let Some(stream_times) = stream_candidate_times {
         let waveform_ref = waveform.borrow();
         Some(candidate_times_to_indices(
-            waveform_ref.timestamps_raw_slice(),
+            indexed_timestamps(&waveform_ref)?,
             stream_times.as_slice(),
         )?)
     } else {
@@ -855,9 +992,12 @@ fn run_fused(
         })?;
         let waveform_ref = waveform.borrow();
         for signal in &tracked_resolved {
-            let offset = waveform_ref.signal_offset_at_index(signal.signal_ref, previous_idx);
+            let offset = waveform_ref
+                .indexed_signal_offset_at(signal.id, previous_idx)
+                .ok_or_else(indexed_backend_unavailable)?;
             let bits = waveform_ref
-                .decode_signal_at_index(signal, previous_idx)?
+                .decode_indexed_signal_at(signal, previous_idx)?
+                .ok_or_else(indexed_backend_unavailable)?
                 .bits;
             rolling.push(RollingSignalState { offset, bits });
         }
@@ -870,7 +1010,10 @@ fn run_fused(
     let mut stream_cursor = 0usize;
 
     for idx in start_idx..end_idx_exclusive {
-        let timestamp = waveform.borrow().timestamps_raw_slice()[idx];
+        let timestamp = {
+            let waveform_ref = waveform.borrow();
+            indexed_timestamps(&waveform_ref)?[idx]
+        };
         changed_offsets.fill(false);
         previous_bits.fill(None);
 
@@ -884,8 +1027,9 @@ fn run_fused(
         {
             let waveform_ref = waveform.borrow();
             for (tracked_index, signal) in tracked_resolved.iter().enumerate() {
-                let current_offset =
-                    waveform_ref.signal_offset_at_index(signal.signal_ref, idx_u32);
+                let current_offset = waveform_ref
+                    .indexed_signal_offset_at(signal.id, idx_u32)
+                    .ok_or_else(indexed_backend_unavailable)?;
                 if current_offset == rolling[tracked_index].offset {
                     continue;
                 }
@@ -895,8 +1039,10 @@ fn run_fused(
                 previous_bits[tracked_index] = Some(previous.clone());
 
                 rolling[tracked_index].offset = current_offset;
-                rolling[tracked_index].bits =
-                    waveform_ref.decode_signal_at_index(signal, idx_u32)?.bits;
+                rolling[tracked_index].bits = waveform_ref
+                    .decode_indexed_signal_at(signal, idx_u32)?
+                    .ok_or_else(indexed_backend_unavailable)?
+                    .bits;
 
                 if requested_slot_by_tracked[tracked_index].is_some() {
                     any_requested_offset_changed = true;
@@ -937,7 +1083,8 @@ fn run_fused(
         let previous_timestamp = if idx == 0 {
             None
         } else {
-            Some(waveform.borrow().timestamps_raw_slice()[idx - 1])
+            let waveform_ref = waveform.borrow();
+            Some(indexed_timestamps(&waveform_ref)?[idx - 1])
         };
         let fast_host = build_fused_event_eval_host(
             host,
@@ -1104,22 +1251,13 @@ fn resolve_token_to_path(token: &str, scope: Option<&str>) -> Result<String, Wav
 }
 
 fn build_candidate_schedule(
-    timestamps: &[u64],
+    waveform: &Waveform,
     candidate_times: &[u64],
 ) -> Result<Vec<(u64, Option<u64>)>, WavepeekError> {
     candidate_times
         .iter()
         .map(|timestamp| {
-            let index = timestamps.binary_search(timestamp).map_err(|_| {
-                WavepeekError::Internal(format!(
-                    "candidate timestamp '{timestamp}' is missing from waveform time table"
-                ))
-            })?;
-            let previous = if index == 0 {
-                None
-            } else {
-                Some(timestamps[index - 1])
-            };
+            let previous = waveform.previous_sample_time(*timestamp);
             Ok((*timestamp, previous))
         })
         .collect()
@@ -1162,13 +1300,13 @@ fn build_fused_event_eval_host<'a>(
     host: &'a WaveformExprHost,
     current_timestamp: u64,
     cached_sources: &[(SignalHandle, ExprResolvedSignal)],
-    tracked_index_by_ref: &HashMap<wellen::SignalRef, usize>,
+    tracked_index_by_ref: &HashMap<SignalId, usize>,
     rolling: &[RollingSignalState],
     previous_bits: &[Option<Option<String>>],
 ) -> FastEventEvalHost<'a> {
     let mut cached = HashMap::new();
     for (handle, signal) in cached_sources {
-        let Some(&tracked_index) = tracked_index_by_ref.get(&signal.signal_ref) else {
+        let Some(&tracked_index) = tracked_index_by_ref.get(&signal.id) else {
             continue;
         };
         let current_bits = rolling[tracked_index].bits.clone();
@@ -1203,7 +1341,7 @@ fn build_edge_fast_event_eval_host<'a>(
     for (handle, signal) in cached_sources {
         let resolved = ResolvedSignal {
             path: signal.path.clone(),
-            signal_ref: signal.signal_ref,
+            id: signal.id,
             width: signal.expr_type.width.max(1),
         };
         let current_bits = decode_cache.bits(waveform, &resolved, current_index)?;

@@ -14,7 +14,7 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
-use crate::waveform::ChangeCandidateCollectionMode;
+use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -93,7 +93,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         &event_candidate_handles(&bound_event),
     )?);
     let mut seen = std::collections::HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.signal_ref));
+    candidate_sources.retain(|signal| seen.insert(signal.id));
 
     let candidate_times = waveform
         .borrow_mut()
@@ -105,10 +105,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         )?;
     let candidate_schedule = {
         let waveform_ref = waveform.borrow();
-        build_candidate_schedule(
-            waveform_ref.timestamps_raw_slice(),
-            candidate_times.as_slice(),
-        )?
+        build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
     };
 
     let mut rows = Vec::new();
@@ -186,24 +183,12 @@ fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
 }
 
 fn build_candidate_schedule(
-    timestamps: &[u64],
+    waveform: &Waveform,
     candidate_times: &[u64],
 ) -> Result<Vec<(u64, Option<u64>)>, WavepeekError> {
     candidate_times
         .iter()
-        .map(|timestamp| {
-            let index = timestamps.binary_search(timestamp).map_err(|_| {
-                WavepeekError::Internal(format!(
-                    "candidate timestamp '{timestamp}' is missing from waveform time table"
-                ))
-            })?;
-            let previous = if index == 0 {
-                None
-            } else {
-                Some(timestamps[index - 1])
-            };
-            Ok((*timestamp, previous))
-        })
+        .map(|timestamp| Ok((*timestamp, waveform.previous_sample_time(*timestamp))))
         .collect()
 }
 

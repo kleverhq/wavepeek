@@ -15,8 +15,8 @@ FSDB is treated as an **optional native read backend**, not as a separate comman
 - If a binary is built without FSDB support, opening `.fsdb` input returns a clear user-facing error.
 - If a binary is built with FSDB support, `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface.
 - Integration is native and in-process through the FSDB Reader API. wavepeek does not launch Verdi, VIA, Tcl, Python, Perl, or other helper utilities.
-- Development and public CI work without Verdi and without FSDB artifacts.
-- On machines where Verdi and an external FSDB test artifact set are available, the full FSDB integration test suite can run.
+- Development and public CI work without Verdi and without checked-in FSDB artifacts.
+- On machines where Verdi is available, FSDB tests use the small example `.fsdb` files bundled under `$VERDI_HOME` before considering any private artifact set.
 
 ### Non-goals for the first implementation
 
@@ -546,20 +546,15 @@ Checks:
 - selected Reader libdir exists;
 - `libnffr.so` is loadable enough for a build/link smoke test.
 
-### 7.2 External FSDB artifacts
+### 7.2 FSDB test files from `$VERDI_HOME`
 
 Do not store FSDB fixtures in this repository. Checked public repositories with FSDB Reader integration — GTKWave/EGTKWave/Vaporview — store integration code but not `.fsdb` test fixtures. wavepeek should not download `.fsdb` files from third-party public repositories: provenance, stability, and artifact licensing would remain unclear. Tests must not perform network downloads.
 
-FSDB integration tests rely on a private local artifact mount. Introduce an optional artifact directory with resolution order similar to RTL artifacts:
+For the current FSDB development branch, use the example `.fsdb` files bundled inside the local Verdi installation. The inspected `$VERDI_HOME` contains small examples under `$VERDI_HOME/share/VIA/demo/waveform`, many focused NPI examples under `$VERDI_HOME/share/NPI/example/via_examples`, and larger performance examples under `$VERDI_HOME/share/verdi_perf/perfExamples`. This keeps tests local to the same licensed Verdi installation that provides the Reader SDK and avoids creating a separate private artifact-mount contract before we need one. Splendid, one less mystery directory to appease.
 
-1. `WAVEPEEK_FSDB_ARTIFACTS_DIR`;
-2. `FSDB_RTL_ARTIFACTS_DIR`;
-3. `/opt/fsdb-rtl-artifacts`;
-4. `~/.cache/wavepeek/fsdb-rtl-artifacts`.
+The first smoke fixture should be `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`: it is small, present in the inspected installation, and already proved usable through `WAVEPEEK_FSDB_SMOKE_FILE=$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb make check-fsdb-build`. Use other bundled Verdi examples only when a test needs a capability that `cpu.fsdb` does not cover, such as NPI model traversal or larger performance-style files. Do not read `.fsdb` files as text; tests must access them only through the FSDB Reader API or binary-safe file metadata operations such as `find`, `stat`, `ls`, `du`, and checksums.
 
-The devcontainer can mount host artifacts at `/opt/fsdb-rtl-artifacts` when available. If unavailable, it can create an empty directory so container startup does not fail.
-
-Test manifests in the repository may describe logical fixture names, required capabilities, and expected commands, but `.fsdb` files must come only from the local private artifact mount. If expected outputs reveal proprietary design names from internal artifacts, do not commit them; either store sanitized/private golden files in the same mount or validate only stable structural properties.
+Private/local artifact mounts are deferred. If bundled Verdi examples cannot cover a later command-level requirement, re-open this decision and define a separate artifact policy at that time. Until then, avoid adding `WAVEPEEK_FSDB_ARTIFACTS_DIR`, `FSDB_RTL_ARTIFACTS_DIR`, `/opt/fsdb-rtl-artifacts`, or similar paths to the architecture as required test inputs.
 
 ### 7.3 Test matrix
 
@@ -572,15 +567,15 @@ Before adding the `fsdb` feature, update public quality gates that currently use
 | no Verdi, default features | `make ci` | full existing VCD/FST suite passes |
 | no Verdi, default features | FSDB-disabled unit/integration test | verifies clear error on `.fsdb` path without a real FSDB fixture |
 | no Verdi, `make test-fsdb` | optional target exits 0 with skip message | automation does not fail |
-| Verdi, no FSDB artifacts | `make test-fsdb` | build/link smoke + skip artifact-heavy tests |
-| Verdi + FSDB artifacts | `make test-fsdb`, or local `make ci` if an optional hook is added | full FSDB integration suite |
+| Verdi, bundled examples available | `make test-fsdb` | build/link smoke + bundled-example FSDB tests run |
+| Verdi, bundled example missing | `make test-fsdb` | build/link smoke + clear skip for tests requiring that example |
 | public GitHub CI | `make ci` | Verdi/FSDB tests do not require proprietary payload; public CI remains green |
 
 Rust `cargo test` does not have a native skip primitive, so integration tests should return early:
 
 ```rust
 let Some(env) = fsdb_test_env() else {
-    eprintln!("skipping FSDB integration test: VERDI_HOME or FSDB artifacts unavailable");
+    eprintln!("skipping FSDB integration test: VERDI_HOME or bundled Verdi FSDB example unavailable");
     return;
 };
 ```
@@ -604,7 +599,7 @@ Without Verdi:
 - backend-neutral facade using a mock backend;
 - expression host behavior on a synthetic host.
 
-With Verdi + artifacts:
+With Verdi + bundled examples:
 
 - `info`: `time_unit`, `time_start`, `time_end`;
 - `scope`: depth/kind/order/filter/max-depth;
@@ -635,7 +630,7 @@ For wavepeek, use the GTKWave/Vaporview model: store **project-owned** source co
 - Build scripts that check for `$VERDI_HOME`.
 - A C++ shim that `#include`s headers from the local installation without copying their contents.
 - References to publicly observable API names/function names required to explain the integration.
-- Tests that skip without local Verdi/artifacts.
+- Tests that skip without local Verdi or the required bundled Verdi example file.
 - Documentation stating that a licensed Verdi installation is required and that wavepeek does not ship Synopsys libraries.
 
 ### Not acceptable in the public repository
@@ -645,7 +640,7 @@ For wavepeek, use the GTKWave/Vaporview model: store **project-owned** source co
 - PDF/HTML/manual excerpts from Verdi documentation.
 - Generated `bindgen` output from proprietary headers.
 - `.fsdb` fixtures without explicit redistribution rights.
-- Golden outputs that reveal proprietary design contents from closed artifacts.
+- Golden outputs that reveal proprietary design contents from Verdi-bundled or private FSDB files.
 
 ### Release policy
 
@@ -714,5 +709,5 @@ Recommended architecture:
 4. Integration uses a small C++ C-ABI shim compiled locally and linked with `libnffr.so`; proprietary files are not included in the repository.
 5. The engine receives a backend-neutral `Waveform` facade; existing Wellen code becomes one backend, FSDB becomes another.
 6. Commands and JSON schema are not extended for FSDB; format differences are hidden in the waveform backend and expression host.
-7. Tests and automation support two modes: without Verdi, FSDB integration tests are skipped; with Verdi/artifacts, the full suite runs.
+7. Tests and automation support two modes: without Verdi, FSDB integration tests are skipped; with Verdi and its bundled example FSDB files, the FSDB suite runs as far as those examples provide coverage.
 8. Public releases remain without FSDB-enabled binaries unless a separate binary release decision is made.

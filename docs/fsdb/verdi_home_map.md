@@ -1,6 +1,6 @@
 # `$VERDI_HOME` map for FSDB work in wavepeek
 
-Review date: 2026-05-20  
+Review date: 2026-05-21
 `$VERDI_HOME`: `/opt/verdi`
 
 > Important: Verdi/Synopsys content is proprietary. Do not copy headers, libraries, docs, or generated excerpts into this repository. Treat `/opt/verdi` as a local SDK/documentation installation. Treat `.fsdb` files as binary; do not read them with text tools.
@@ -250,18 +250,101 @@ These are useful for black-box sanity checks: compare future wavepeek output aga
 
 ## Sample FSDB files
 
-Found 73 `*.fsdb` files under `$VERDI_HOME/share`. Do not read them as text.
+Found 73 `*.fsdb` files under `$VERDI_HOME/share`, totaling about `13.7 MiB` (`14371494` bytes). This inventory was collected with binary-safe filename/size metadata commands; no `.fsdb` contents were read. Use these files only through official tools/API or binary-safe metadata commands (`find`, `stat`, `ls`, `du`, checksums`). For wavepeek tests on this branch, prefer bundled Verdi examples before introducing any separate private artifact mount.
 
 Main groups:
 
-- 37 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/`
-- 23 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/`
-- 7 under `$VERDI_HOME/share/verdi_perf/perfExamples/`
-- 2 under `$VERDI_HOME/share/VIA/demo/waveform/`
-- 1 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Writer_Model/`
-- 1 each under a few NPI miscellaneous demo design directories.
+- 37 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/`.
+- 23 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/`.
+- 7 under `$VERDI_HOME/share/verdi_perf/perfExamples/`.
+- 2 under `$VERDI_HOME/share/VIA/demo/waveform/`.
+- 2 under NPI miscellaneous demo design directories.
+- 1 under `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Writer_Model/reader_example/`.
+- 1 under `$VERDI_HOME/share/NPI/python/verdilearn/ddt/demo/waveform_extract/`.
 
-Use them only through official tools/API or binary-safe metadata commands (`file`, `ls`, `du`, checksums). If a future test needs a fixture, prefer generating a tiny fixture in a controlled script and keep licensing constraints in mind.
+Good default test candidates:
+
+- `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` — `23.9 KiB` (`24504` bytes), already used successfully by `WAVEPEEK_FSDB_SMOKE_FILE=... make check-fsdb-build`.
+- `$VERDI_HOME/share/VIA/demo/waveform/modport.fsdb` — `9.4 KiB` (`9636` bytes), another small VIA demo.
+- `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_open/demo.fsdb` — `4.8 KiB` (`4873` bytes), useful for NPI-oriented open/traversal comparisons.
+
+Full inventory:
+
+| Path under `$VERDI_HOME` | Size | Bytes |
+|---|---:|---:|
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_convert_time_in/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_convert_time_out/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_dump_sig_hdl_value_between/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_dump_sig_value_between/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_hier_tree_dump_scope/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_hier_tree_dump_sig/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_find_value_backward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_find_value_forward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_find_x_backward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_find_x_forward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_find_value_backward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_find_value_forward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_find_x_backward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_find_x_forward/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_value_at/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_value_between/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_vc_count/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_hdl_vec_value_at/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_value_at/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_value_between/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_vc_count/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_sig_vec_value_at/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/FSDB_Library/npi_fsdb_time_scale_unit/demoL1.fsdb` | 13.9 KiB | 14242 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/Miscellaneous/Communicate_Novas/Design/fulldump.fsdb` | 22.8 KiB | 23300 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Libraries/Miscellaneous/Socket_Client/Design/fulldump.fsdb` | 23.1 KiB | 23698 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_add_to_sig_list/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_close/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_create_vct/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_file_property/demo.fsdb` | 4.1 KiB | 4220 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_file_property_str/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_goto_first/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_goto_next/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_goto_prev/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_goto_time/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_child_scope/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_member/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_scope_next/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_scope_stop/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_sig/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_sig_next/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_sig_stop/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_iter_top_scope/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_load_vc_by_range/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_max_time/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_min_time/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_open/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_parent_scope/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_parent_sig/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_release_vct/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_reset_sig_list/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_scope_by_name/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_scope_file/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_scope_property_str/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_sig_by_name/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_sig_file/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_sig_property/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_sig_property_str/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_sig_scope/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_unload_vc/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_vct_seq_num/demo.fsdb` | 4.1 KiB | 4220 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_vct_time/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Model/npi_fsdb_vct_value/demo.fsdb` | 4.8 KiB | 4873 |
+| `$VERDI_HOME/share/NPI/example/via_examples/NPI_Models/FSDB_Writer_Model/reader_example/fsdbw.fsdb` | 4.7 KiB | 4791 |
+| `$VERDI_HOME/share/NPI/python/verdilearn/ddt/demo/waveform_extract/riscv.fsdb` | 2.8 MiB | 2886054 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/batchMode/multiProtocol/novas.fsdb` | 709.0 KiB | 726012 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/batchMode/singleProtocol/ace_latency_throughput.fsdb` | 6.6 MiB | 6909448 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/multiDb/multiProtocol/random_fulline.fsdb` | 1.4 MiB | 1482741 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/multiDb/multiProtocol/random_sequential.fsdb` | 709.0 KiB | 726012 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/multiDb/singleProtocol/directed_test.fsdb` | 524.7 KiB | 537338 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/multiDb/singleProtocol/random_wr_rd.fsdb` | 448.7 KiB | 459462 |
+| `$VERDI_HOME/share/verdi_perf/perfExamples/multiDb/singleProtocol/reorder_wr_rd.fsdb` | 50.7 KiB | 51937 |
+| `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` | 23.9 KiB | 24504 |
+| `$VERDI_HOME/share/VIA/demo/waveform/modport.fsdb` | 9.4 KiB | 9636 |
 
 ## Build/link notes observed
 

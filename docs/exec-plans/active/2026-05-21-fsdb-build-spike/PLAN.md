@@ -35,7 +35,8 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 09:25Z) Ran full default validation and targeted FSDB validation: `make ci`, `make check-fsdb-build`, simulated no-Verdi skip with an empty temporary `VERDI_HOME`, direct missing-`VERDI_HOME` `cargo check --features fsdb` failure, proprietary-payload search, and the existing VCD `wavepeek info --waves ... --json` smoke.
 - [x] (2026-05-21 09:45Z) Ran first focused implementation review lanes and applied fixes: propagated native link metadata while keeping package-local `--no-as-needed`, made the shim metadata string allocation RAII-safe, changed FSDB environment success output to be path-free by default, documented the current `fsdb` feature as repository-local, and corrected/sanitized living-plan text.
 - [x] (2026-05-21 10:00Z) Ran targeted re-review. Build/link re-review returned no substantive findings; docs/licensing re-review found one remaining low-severity path-leakage concern in explicit `scripts/check_fsdb_env.py` error output, which was fixed by making default missing-header/library errors component-only while preserving full paths behind `WAVEPEEK_FSDB_ENV_VERBOSE=1`.
-- [ ] Run final control review, apply any remaining fixes, and leave this active plan in place for user inspection rather than moving it to `completed/`.
+- [x] (2026-05-21 10:15Z) Ran second targeted re-review on the environment-checker path-leakage fix; it returned no substantive findings.
+- [x] (2026-05-21 10:20Z) Ran final independent control review on `4892aa2..HEAD`; it returned no substantive findings. The plan remains in `active/` for user inspection as requested.
 
 ## Surprises & Discoveries
 
@@ -100,9 +101,9 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 
 ## Outcomes & Retrospective
 
-Current status: implementation, local validation, and the first focused implementation-review fix pass are complete; targeted re-review and final control review are still pending. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset.
+Current status: implementation, local validation, focused review, targeted re-review, and final control review are complete. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset. No private FSDB file was available, so real-file metadata opening remains validated only by the conditional test path and requires a local `WAVEPEEK_FSDB_SMOKE_FILE` in a Verdi environment.
 
-The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts.
+The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with propagated native link metadata plus package-local absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts. First-round focused review found three low/medium issues, all fixed; targeted re-reviews and final control review returned no substantive findings.
 
 ## Context and Orientation
 
@@ -401,3 +402,5 @@ Revision Note: 2026-05-21 / Grin - Recorded validation evidence after `make ci`,
 Revision Note: 2026-05-21 / Grin - Applied first implementation-review fixes in the plan text: made the old `--all-features` discovery explicitly historical, sanitized local dynamic-loader details, and updated the FSDB checker transcript to the new path-free default output.
 
 Revision Note: 2026-05-21 / Grin - Recorded targeted re-review results and the follow-up fix that keeps explicit FSDB checker error output path-free by default while allowing verbose local path diagnostics through `WAVEPEEK_FSDB_ENV_VERBOSE=1`.
+
+Revision Note: 2026-05-21 / Grin - Recorded the clean second targeted re-review and final independent control review. The implementation is ready for user inspection, and this plan intentionally remains under `active/` rather than being moved to `completed/`.

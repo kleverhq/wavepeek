@@ -2,6 +2,7 @@
 
 #include "ffrAPI.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
@@ -9,11 +10,72 @@
 #include <new>
 #include <string>
 
+#include <fcntl.h>
+#include <unistd.h>
+
 struct wp_fsdb_reader {
     ffrObject *object;
 };
 
 namespace {
+
+bool native_verbose_enabled() {
+    const char *value = std::getenv("WAVEPEEK_FSDB_NATIVE_VERBOSE");
+    return value != nullptr && std::strcmp(value, "1") == 0;
+}
+
+class scoped_output_suppressor {
+  public:
+    scoped_output_suppressor() {
+        if (native_verbose_enabled()) {
+            return;
+        }
+
+        std::fflush(stdout);
+        std::fflush(stderr);
+
+        devnull_ = open("/dev/null", O_WRONLY);
+        if (devnull_ < 0) {
+            return;
+        }
+
+        saved_stdout_ = dup(STDOUT_FILENO);
+        saved_stderr_ = dup(STDERR_FILENO);
+        if (saved_stdout_ >= 0) {
+            dup2(devnull_, STDOUT_FILENO);
+        }
+        if (saved_stderr_ >= 0) {
+            dup2(devnull_, STDERR_FILENO);
+        }
+    }
+
+    scoped_output_suppressor(const scoped_output_suppressor &) = delete;
+    scoped_output_suppressor &operator=(const scoped_output_suppressor &) = delete;
+
+    ~scoped_output_suppressor() {
+        if (devnull_ < 0) {
+            return;
+        }
+
+        std::fflush(stdout);
+        std::fflush(stderr);
+
+        if (saved_stdout_ >= 0) {
+            dup2(saved_stdout_, STDOUT_FILENO);
+            close(saved_stdout_);
+        }
+        if (saved_stderr_ >= 0) {
+            dup2(saved_stderr_, STDERR_FILENO);
+            close(saved_stderr_);
+        }
+        close(devnull_);
+    }
+
+  private:
+    int devnull_ = -1;
+    int saved_stdout_ = -1;
+    int saved_stderr_ = -1;
+};
 
 void suppress_reader_messages() {
     ffrObject::ffrInfoSuppress(1);
@@ -77,6 +139,7 @@ extern "C" wp_fsdb_status wp_fsdb_probe(
     }
 
     try {
+        scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         *is_fsdb = ffrObject::ffrIsFSDB(const_cast<char *>(path)) ? 1 : 0;
         return WP_FSDB_STATUS_OK;
@@ -99,6 +162,7 @@ extern "C" wp_fsdb_status wp_fsdb_open(
     *out = nullptr;
 
     try {
+        scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         if (!ffrObject::ffrIsFSDB(const_cast<char *>(path))) {
             return fail(error_message, "FSDB Reader: input is not an FSDB file");
@@ -130,6 +194,7 @@ extern "C" void wp_fsdb_close(wp_fsdb_reader *reader) {
     }
 
     try {
+        scoped_output_suppressor output_suppressor;
         if (reader->object != nullptr) {
             reader->object->ffrClose();
             reader->object = nullptr;
@@ -157,6 +222,7 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
     out->xtag_type = 0;
 
     try {
+        scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
         const char *scale_unit = reader->object->ffrGetScaleUnit();

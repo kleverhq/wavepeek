@@ -37,6 +37,9 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 - [x] (2026-05-21 10:00Z) Ran targeted re-review. Build/link re-review returned no substantive findings; docs/licensing re-review found one remaining low-severity path-leakage concern in explicit `scripts/check_fsdb_env.py` error output, which was fixed by making default missing-header/library errors component-only while preserving full paths behind `WAVEPEEK_FSDB_ENV_VERBOSE=1`.
 - [x] (2026-05-21 10:15Z) Ran second targeted re-review on the environment-checker path-leakage fix; it returned no substantive findings.
 - [x] (2026-05-21 10:20Z) Ran final independent control review on `4892aa2..HEAD`; it returned no substantive findings. The plan remains in `active/` for user inspection as requested.
+- [x] (2026-05-21 10:35Z) After user follow-up, searched `$VERDI_HOME` by filename only and found bundled FSDB example files. Ran `WAVEPEEK_FSDB_SMOKE_FILE=$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb make check-fsdb-build`; the real-file metadata smoke passed, but the native Reader emitted `logDir = /tmp/`, so the shim now suppresses native stdout/stderr around FSDB Reader calls by default.
+- [x] (2026-05-21 10:50Z) Re-ran validation after the real-file smoke/output-suppression fix: `make ci`, real-file `make check-fsdb-build`, feature-enabled `cargo clippy`, and simulated no-Verdi skip passed. A targeted review found that `wp_fsdb_close` also needed the scoped suppressor; the close path was fixed and the real-file smoke plus feature-enabled clippy still passed.
+- [x] (2026-05-21 10:55Z) Ran final control review after the close-path suppression fix. It found one stale Decision Log sentence that omitted `wp_fsdb_close`; the sentence was updated, and no code findings remained.
 
 ## Surprises & Discoveries
 
@@ -57,6 +60,12 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
 
 - Observation: linking `libnffr.so` and `libnsys.so` with ordinary `cargo:rustc-link-lib` caused `libnsys.so` to be dropped from the test binary on this toolchain, and the FSDB test executable then failed at dynamic-load time with an unresolved companion-library symbol from `libnffr.so`.
   Evidence: `ldd` on the feature-enabled test executable initially listed `libnffr.so` but not `libnsys.so`, and `cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture` exited 127 with a dynamic-loader `undefined symbol` error from `libnffr.so`.
+
+- Observation: the local Verdi installation includes bundled example FSDB files that are useful for this build spike's real-file smoke test without adding repository fixtures.
+  Evidence: filename-only search under `$VERDI_HOME` found example `.fsdb` files under `$VERDI_HOME/share/NPI`, `$VERDI_HOME/share/VIA`, and `$VERDI_HOME/share/verdi_perf`; no file contents were read.
+
+- Observation: opening a bundled Verdi example FSDB through the Reader API initially printed `logDir = /tmp/` even though the shim called `ffrInfoSuppress(1)` and `ffrWarnSuppress(1)`.
+  Evidence: `WAVEPEEK_FSDB_SMOKE_FILE=$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb make check-fsdb-build` passed the Rust smoke test but included `logDir = /tmp/` in the output. After adding scoped native stdout/stderr suppression around FSDB Reader open, metadata, probe, and close calls, the same smoke command passed without that extra chatter.
 
 - Observation: the existing waveform facade is still tightly coupled to Wellen handles.
   Evidence: `src/waveform/mod.rs` stores `simple::Waveform`, `wellen::FileFormat`, and `HashSet<SignalRef>`, and `ResolvedSignal` plus `ExprResolvedSignal` contain `wellen::SignalRef`. This plan must avoid pretending the backend boundary already exists.
@@ -99,9 +108,13 @@ This plan does not publish FSDB-enabled release binaries. Public builds remain d
   Rationale: the user explicitly asked to inspect the result first. The original plan's “move to completed” closure step is superseded for this handoff, because plans are also there to be read by the person who paid for the mess.
   Date/Author: 2026-05-21 / Grin
 
+- Decision: suppress native FSDB Reader stdout/stderr around `wp_fsdb_probe`, `wp_fsdb_open`, `wp_fsdb_read_metadata`, and `wp_fsdb_close` by default, with a local escape hatch `WAVEPEEK_FSDB_NATIVE_VERBOSE=1`.
+  Rationale: the Reader can print process-global messages that are not disabled by its info/warning suppression knobs. The CLI and machine-output contracts require clean stdout/stderr; a scoped file-descriptor redirect is a blunt instrument, yes, but the alternative is letting a proprietary library scribble on our output like a raccoon with a marker.
+  Date/Author: 2026-05-21 / Grin
+
 ## Outcomes & Retrospective
 
-Current status: implementation, local validation, focused review, targeted re-review, and final control review are complete. Default-feature `make ci` passes, the optional environment checker is deterministic under unit tests, and `make check-fsdb-build` compiles and runs the feature-gated Rust metadata smoke test on the available Verdi-equipped container when `WAVEPEEK_FSDB_SMOKE_FILE` is unset. No private FSDB file was available, so real-file metadata opening remains validated only by the conditional test path and requires a local `WAVEPEEK_FSDB_SMOKE_FILE` in a Verdi environment.
+Current status: implementation, local validation, focused review, targeted re-review, and final control review are complete, including the user follow-up that uncovered bundled Verdi example FSDB files. A real-file metadata smoke now passes against one bundled Verdi example, and the shim suppresses native Reader chatter seen during that smoke across probe, open, metadata, and close calls. Default-feature `make ci` passes, and the optional environment checker is deterministic under unit tests.
 
 The main risk remains ABI compatibility between the locally compiled shim and the Verdi-provided `libnffr.so`/companion libraries. The implementation already found one concrete runtime-link issue: `libnsys.so` must be kept in the executable's dynamic dependency set even though the Rust binary has no direct symbol reference to it. The current `build.rs` handles that with propagated native link metadata plus package-local absolute linker arguments and `--no-as-needed`, while still providing `WAVEPEEK_FSDB_READER_LIBDIR` and `WAVEPEEK_FSDB_ABI` overrides for other local Verdi layouts. First-round focused review found three low/medium issues, all fixed; targeted re-reviews and final control review returned no substantive findings.
 
@@ -329,7 +342,14 @@ Default-feature and repository hygiene validation was:
     $ cargo run --quiet -- info --waves tests/fixtures/hand/m2_core.vcd --json
     {"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/v0.5.0/schema/wavepeek.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
 
-No private FSDB file was available in this environment, so the smoke test's real-file open path remains conditional on `WAVEPEEK_FSDB_SMOKE_FILE`.
+A bundled Verdi example FSDB was also used for a real-file smoke after the user asked whether `$VERDI_HOME` contained examples:
+
+    $ WAVEPEEK_FSDB_SMOKE_FILE=$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb make check-fsdb-build
+    running 1 test
+    test waveform::fsdb_native::tests::fsdb_reader_metadata_smoke ... ok
+    test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 108 filtered out
+
+No repository FSDB fixture was added. Use bundled Verdi examples or private local files only through `WAVEPEEK_FSDB_SMOKE_FILE`.
 
 ### Interfaces and Dependencies
 
@@ -404,3 +424,7 @@ Revision Note: 2026-05-21 / Grin - Applied first implementation-review fixes in 
 Revision Note: 2026-05-21 / Grin - Recorded targeted re-review results and the follow-up fix that keeps explicit FSDB checker error output path-free by default while allowing verbose local path diagnostics through `WAVEPEEK_FSDB_ENV_VERBOSE=1`.
 
 Revision Note: 2026-05-21 / Grin - Recorded the clean second targeted re-review and final independent control review. The implementation is ready for user inspection, and this plan intentionally remains under `active/` rather than being moved to `completed/`.
+
+Revision Note: 2026-05-21 / Grin - After the user asked about `$VERDI_HOME` examples, recorded that bundled Verdi example FSDB files exist, added real-file smoke evidence using a bundled example, and documented the follow-up native-output suppression needed to keep FSDB Reader chatter out of command/test output.
+
+Revision Note: 2026-05-21 / Grin - Recorded final follow-up review and fixed the stale Decision Log sentence so it names `wp_fsdb_close` alongside the other native calls covered by scoped output suppression.

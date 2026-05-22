@@ -18,23 +18,54 @@ use crate::error::WavepeekError;
 use crate::output;
 
 #[derive(Debug, Parser)]
-#[command(
-    name = "wavepeek",
-    disable_version_flag = true,
-    about = "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.\nSee more with '--help'",
-    long_about = r#"wavepeek is a machine-friendly command-line tool for RTL waveform inspection.
+#[cfg_attr(
+    not(feature = "fsdb"),
+    command(
+        long_about = r#"wavepeek is a machine-friendly command-line tool for RTL waveform inspection.
 See more with '--help'
 
 General conventions:
 - Waveform-inspection commands require `--waves <FILE>`.
-- Default builds support VCD/FST and report a feature-required file error for FSDB input.
+- VCD/FST input is available in every build.
+- FSDB input requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 - Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Errors follow `error: <category>: <message>`.
 
-Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, `wavepeek docs` for narrative guidance, and `wavepeek skill` for the packaged agent skill."#,
+Optional features:
+- FSDB - disabled (reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)
+
+Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, `wavepeek docs` for narrative guidance, and `wavepeek skill` for the packaged agent skill."#
+    )
+)]
+#[cfg_attr(
+    feature = "fsdb",
+    command(
+        long_about = r#"wavepeek is a machine-friendly command-line tool for RTL waveform inspection.
+See more with '--help'
+
+General conventions:
+- Waveform-inspection commands require `--waves <FILE>`.
+- VCD/FST input is available in every build.
+- FSDB input requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+- Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
+- Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
+- Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
+- Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
+- Errors follow `error: <category>: <message>`.
+
+Optional features:
+- FSDB - enabled
+
+Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, `wavepeek docs` for narrative guidance, and `wavepeek skill` for the packaged agent skill."#
+    )
+)]
+#[command(
+    name = "wavepeek",
+    disable_version_flag = true,
+    about = "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.\nSee more with '--help'",
     after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
     after_long_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
     help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"

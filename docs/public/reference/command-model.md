@@ -18,13 +18,7 @@ wavepeek is a stateless CLI. Each invocation opens one waveform dump when needed
 
 All waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. Non-waveform surfaces such as `schema`, `help`, `docs`, and `skill` are outside this document's scope and follow `commands/docs`, `commands/skill`, plus the exact CLI/help surface.
 
-Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). These formats are opened by the built-in waveform backend without proprietary dependencies.
-
-FSDB (Fast Signal Database) input is feature-gated because reading it requires the licensed Synopsys Verdi FSDB Reader SDK. In a default build, if VCD/FST parsing fails for a file whose final name ends in `.fsdb` or `.fsdb.gz`, the command fails as a file error with a diagnostic that names the build and runtime prerequisites for FSDB-capable binaries:
-
-    error: file: FSDB input requires a wavepeek binary built with FSDB support; reinstall with --features fsdb and provide a licensed VERDI_HOME
-
-The filename check is only a fallback after attempting VCD/FST parsing. A valid VCD or FST dump with an FSDB-looking name is still accepted, while missing or unreadable FSDB-looking paths keep the ordinary `cannot open` file error. The default package documentation does not otherwise claim full Reader-backed FSDB command support.
+Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB (Fast Signal Database) requires a wavepeek binary built with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 
 ## 2. Time Tokens and Normalization
 

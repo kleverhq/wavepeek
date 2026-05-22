@@ -32,6 +32,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 21:52Z) Ran a fresh control review. It found that existing `.fsdb` directories were incorrectly translated to the FSDB feature-required error, so `fsdb_disabled::should_report_disabled_support` now excludes directories and `tests/fsdb_disabled_cli.rs` covers a `.fsdb` directory preserving a regular file error. `cargo test -q --test fsdb_disabled_cli` now passes `7` tests, and `cargo test -q fsdb_disabled` still passes the targeted unit coverage.
 - [x] (2026-05-21 22:02Z) Reran full repository gates after the directory fix: `make check` and `make ci` both completed successfully, with source coverage still at regions `95.04%`, functions `95.76%`, lines `95.61%`.
 - [x] (2026-05-21 22:06Z) Ran a fresh final control recheck after the directory fix; it reported no substantive findings.
+- [x] (2026-05-22 06:02Z) Applied user-requested docs/help wording simplification: public docs now only state that default builds support VCD/FST and FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK; per-command `--waves` help now says `Path to VCD/FST/FSDB waveform file`; top-level long help now has separate VCD/FST and FSDB bullets plus an optional-features status line showing FSDB enabled or disabled. Focused docs/help tests, `cargo check --features fsdb`, a feature-enabled root-help contract test, and `make check` passed after the cleanup.
 
 ## Surprises & Discoveries
 
@@ -82,9 +83,9 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Rationale: The expected feature-required error is a default-build behavior. Future feature-enabled tests should verify Reader-backed behavior instead of inheriting default-build assertions.
   Date/Author: 2026-05-21 / Grin
 
-- Decision: Update public docs, top-level help, and each waveform command’s `--waves` help wording to describe default VCD/FST support plus feature-gated FSDB recognition, without implying that full FSDB command support is complete.
-  Rationale: The architecture says public docs should be updated after the optional FSDB feature is accepted. The honest shipped behavior at this slice is “default binaries give a clear FSDB feature-required error after VCD/FST parsing fails,” not “all waveform commands fully support FSDB.”
-  Date/Author: 2026-05-21 / Grin
+- Decision: Update public docs, top-level help, and each waveform command’s `--waves` help wording with concise format availability language.
+  Rationale: User-facing docs should not explain parser ordering, fallback mechanics, or diagnostic internals. Public docs state only that default builds support VCD/FST and FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK. Generated per-command `--waves` help uses the simple phrase `Path to VCD/FST/FSDB waveform file`. Top-level long help carries the extra build-status detail through an `Optional features` block.
+  Date/Author: 2026-05-21; revised 2026-05-22 / Grin
 
 - Decision: Treat coverage and performance as blocking validation, not nice-to-have evidence.
   Rationale: The change touches the common waveform open path. Coverage after the change must be at least as good as the captured baseline and must satisfy the repository threshold. Benchmark comparison must first run with a zero allowed regression threshold; any repeatable mean or median slowdown after control reruns is blocking.
@@ -108,7 +109,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 
 ## Outcomes & Retrospective
 
-Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs now describe default VCD/FST support and feature-gated FSDB behavior without claiming full FSDB command support. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
+Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs use concise format availability language: default builds support VCD/FST, FSDB requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, command help names VCD/FST/FSDB waveform files directly, and top-level long help reports whether the optional FSDB feature is enabled in the current build. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
 
 ## Context and Orientation
 
@@ -256,11 +257,11 @@ Update the public-facing language so users understand the new behavior without b
 
 Edit these files as needed:
 
-- `README.md`: keep quick-start examples on `.fst` or `.vcd`, but update the opening description and add a short note that default binaries support VCD/FST and return a clear feature-required error for FSDB input; FSDB support requires a local licensed Verdi/FSDB Reader SDK and an explicitly feature-enabled build.
-- `docs/public/intro.md`: update the Scope section to say default builds support VCD/FST and recognize FSDB input as feature-gated rather than silently parsing it as an unknown dump.
-- `docs/public/reference/command-model.md`: update the Waveform Input Model to define VCD, FST, and feature-gated FSDB behavior. State that `.fsdb` and `.fsdb.gz` inputs in default builds fail as file errors with the feature-required message.
-- `src/cli/mod.rs`: change the top-level `about` and `long_about` text away from the narrow “VCD/FST waveform inspection” phrasing if it would contradict the new docs. Prefer “RTL waveform inspection” plus a general-conventions bullet explaining default VCD/FST support and feature-gated FSDB.
-- `src/cli/info.rs`, `src/cli/scope.rs`, `src/cli/signal.rs`, `src/cli/value.rs`, `src/cli/change.rs`, and `src/cli/property.rs`: update the `--waves` help comments that currently say “Path to VCD/FST waveform file” so generated command help does not contradict the new default-build FSDB behavior. A suitable wording is “Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB.”
+- `README.md`: keep quick-start examples on `.fst` or `.vcd`, but update the opening description and add a short note that default binaries support VCD/FST. State that FSDB requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+- `docs/public/intro.md`: update the Scope section to say default builds support VCD/FST and that FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK. Do not describe parser ordering or fallback diagnostics in this public topic.
+- `docs/public/reference/command-model.md`: keep the Waveform Input Model concise: define VCD, FST, and FSDB at the format-availability level only. Do not paste the exact FSDB-disabled stderr text here.
+- `src/cli/mod.rs`: change the top-level `about` and `long_about` text away from the narrow “VCD/FST waveform inspection” phrasing if it would contradict the new docs. Prefer “RTL waveform inspection”; in detailed `--help`, include one bullet saying VCD/FST input is available in every build, one bullet saying FSDB input requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, and an `Optional features` section that reports `FSDB - enabled` or `FSDB - disabled` for the current build.
+- `src/cli/info.rs`, `src/cli/scope.rs`, `src/cli/signal.rs`, `src/cli/value.rs`, `src/cli/change.rs`, and `src/cli/property.rs`: update the `--waves` help comments that currently say “Path to VCD/FST waveform file” to the simple wording `Path to VCD/FST/FSDB waveform file`.
 - `tests/cli_contract.rs`: update assertions that check the old top-level help text and per-command `--waves` help text.
 
 Do not churn every command example from `.vcd` or `.fst` to `.fsdb`; that would imply feature parity this slice does not provide. Do not duplicate exact flag tables in docs. Do not add schema fields for format names.
@@ -277,8 +278,8 @@ The final `rg` should either produce no matches or only matches that are intenti
 
 Acceptance for this milestone:
 
-- Public docs state default and feature-gated FSDB behavior accurately.
-- Top-level help remains compact in `-h` mode and detailed in `--help` mode.
+- Public docs state default and feature-gated FSDB behavior accurately and concisely, without parser-order or fallback-diagnostic explanations.
+- Top-level help remains compact in `-h` mode and detailed in `--help` mode, including current-build optional FSDB feature status only in the detailed layer.
 - Help contract tests pass.
 - The plan’s naming discipline is preserved: no created doc topic, test, module, or helper uses a milestone label.
 
@@ -405,7 +406,7 @@ The feature is accepted only when all of these are true:
 - A valid VCD or FST file with an FSDB-looking suffix still opens successfully.
 - An unrelated invalid file, such as a temp file ending `.notfsdb`, still reports the previous parse-failure category and exit code.
 - Existing VCD/FST tests and command fixture tests pass.
-- Public docs and top-level help tell the truth: default binaries support VCD/FST, FSDB requires explicit feature-enabled builds and a licensed local Reader SDK, and this slice only improves default-build error clarity.
+- Public docs and top-level help tell the truth concisely: default binaries support VCD/FST, FSDB requires explicit feature-enabled builds and the Synopsys Verdi FSDB Reader SDK, and the detailed top-level help shows whether FSDB is enabled in the current build.
 - Source coverage after the change is not lower than the captured pre-change baseline and still passes the repository `90%` threshold.
 - End-to-end benchmark comparison has no repeatable regression in matched test mean or median timings in `bench/e2e/tests.json`.
 - No new created entity uses a milestone label as prefix, suffix, or embedded name.
@@ -554,6 +555,34 @@ Review and follow-up evidence:
     Fresh final control recheck after the directory fix:
     No substantive findings.
 
+User-requested docs/help simplification evidence:
+
+    cargo test -q --test cli_contract --test docs_cli --test schema_cli
+    cli_contract: 47 passed
+    docs_cli: 20 passed
+    schema_cli: 8 passed
+
+    cargo check --features fsdb
+    Finished `dev` profile [unoptimized + debuginfo]
+
+    cargo test --features fsdb -q --test cli_contract top_level_help_documents_general_conventions
+    test result: ok. 1 passed; 0 failed
+
+    WAVEPEEK_IN_CONTAINER=1 make check
+    completed successfully after the docs/help cleanup
+
+    cargo run -q -- --help
+    General conventions:
+    - VCD/FST input is available in every build.
+    - FSDB input requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+
+    Optional features:
+    - FSDB - disabled (reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)
+
+    cargo run -q -- info --help
+      --waves <FILE>
+          Path to VCD/FST/FSDB waveform file
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -586,3 +615,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded the fresh control-review directory finding, code/test fix, and focused retest evidence.
 - 2026-05-21 / Grin: Recorded the post-directory-fix `make check` and `make ci` validation rerun.
 - 2026-05-21 / Grin: Recorded the final post-fix control recheck result: no substantive findings.
+- 2026-05-22 / Grin: Recorded the user-requested cleanup that keeps public docs terse, simplifies per-command `--waves` help to `Path to VCD/FST/FSDB waveform file`, and adds current-build FSDB optional-feature status to the detailed root help.

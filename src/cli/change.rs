@@ -25,7 +25,7 @@ pub enum TuneChangeCandidateMode {
 
 #[derive(Debug, Args)]
 pub struct ChangeArgs {
-    /// Path to waveform file; default builds support VCD/FST and report a feature-required error for FSDB
+    /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Start of inclusive time range (e.g. 1234ns; omitted means dump start)

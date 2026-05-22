@@ -267,6 +267,10 @@ fn top_level_short_help_is_compact_and_points_to_next_layers() {
         "top-level short help should stay compact and omit long-form conventions"
     );
     assert!(
+        !short_help.contains("Optional features:"),
+        "top-level short help should stay compact and omit build feature status"
+    );
+    assert!(
         short_help.len() < long_help.len(),
         "top-level short help should be materially shorter than long help"
     );

@@ -33,6 +33,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 22:02Z) Reran full repository gates after the directory fix: `make check` and `make ci` both completed successfully, with source coverage still at regions `95.04%`, functions `95.76%`, lines `95.61%`.
 - [x] (2026-05-21 22:06Z) Ran a fresh final control recheck after the directory fix; it reported no substantive findings.
 - [x] (2026-05-22 06:02Z) Applied user-requested docs/help wording simplification: public docs now only state that default builds support VCD/FST and FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK; per-command `--waves` help now says `Path to VCD/FST/FSDB waveform file`; top-level long help now has separate VCD/FST and FSDB bullets plus an optional-features status line showing FSDB enabled or disabled. Focused docs/help tests, `cargo check --features fsdb`, a feature-enabled root-help contract test, and `make check` passed after the cleanup.
+- [x] (2026-05-22 06:49Z) Refactored top-level optional-feature help away from duplicate `cfg_attr` long-help bodies. `src/cli/mod.rs` now has one static long help and a small `OPTIONAL_FEATURES` registry rendered by `root_after_long_help()`; short `-h` help remains compact and omits build feature status. `make check`, `cargo check --features fsdb`, and the feature-enabled root-help contract test passed after this refactor.
 
 ## Surprises & Discoveries
 
@@ -87,6 +88,10 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
   Rationale: User-facing docs should not explain parser ordering, fallback mechanics, or diagnostic internals. Public docs state only that default builds support VCD/FST and FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK. Generated per-command `--waves` help uses the simple phrase `Path to VCD/FST/FSDB waveform file`. Top-level long help carries the extra build-status detail through an `Optional features` block.
   Date/Author: 2026-05-21; revised 2026-05-22 / Grin
 
+- Decision: Render root optional-feature status from a small registry instead of duplicating the entire root long help per Cargo feature combination.
+  Rationale: Duplicating help bodies behind `cfg_attr(feature = ...)` works for one feature but scales as a combinatorial mess when more optional features are added. A single static long help plus an `OPTIONAL_FEATURES` registry keeps feature status changes local to one list entry per feature and avoids drift between otherwise identical help text.
+  Date/Author: 2026-05-22 / Grin
+
 - Decision: Treat coverage and performance as blocking validation, not nice-to-have evidence.
   Rationale: The change touches the common waveform open path. Coverage after the change must be at least as good as the captured baseline and must satisfy the repository threshold. Benchmark comparison must first run with a zero allowed regression threshold; any repeatable mean or median slowdown after control reruns is blocking.
   Date/Author: 2026-05-21 / Grin
@@ -109,7 +114,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 
 ## Outcomes & Retrospective
 
-Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs use concise format availability language: default builds support VCD/FST, FSDB requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, command help names VCD/FST/FSDB waveform files directly, and top-level long help reports whether the optional FSDB feature is enabled in the current build. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
+Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs use concise format availability language: default builds support VCD/FST, FSDB requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, command help names VCD/FST/FSDB waveform files directly, and top-level long help reports whether the optional FSDB feature is enabled in the current build through a registry-rendered `Optional features` block rather than duplicated help bodies. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
 
 ## Context and Orientation
 
@@ -583,6 +588,17 @@ User-requested docs/help simplification evidence:
       --waves <FILE>
           Path to VCD/FST/FSDB waveform file
 
+Optional-feature registry refactor evidence:
+
+    WAVEPEEK_IN_CONTAINER=1 make check
+    completed successfully after replacing duplicated `cfg_attr` root help with `OPTIONAL_FEATURES` and `root_after_long_help()`
+
+    cargo check --features fsdb
+    Finished `dev` profile [unoptimized + debuginfo]
+
+    cargo test --features fsdb -q --test cli_contract top_level_help_documents_general_conventions
+    test result: ok. 1 passed; 0 failed
+
 ## Interfaces and Dependencies
 
 At the end of implementation, these internal interfaces should exist:
@@ -616,3 +632,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded the post-directory-fix `make check` and `make ci` validation rerun.
 - 2026-05-21 / Grin: Recorded the final post-fix control recheck result: no substantive findings.
 - 2026-05-22 / Grin: Recorded the user-requested cleanup that keeps public docs terse, simplifies per-command `--waves` help to `Path to VCD/FST/FSDB waveform file`, and adds current-build FSDB optional-feature status to the detailed root help.
+- 2026-05-22 / Grin: Recorded the optional-feature help registry refactor, which removes duplicated root long-help bodies and keeps future feature additions from multiplying help variants.

@@ -671,7 +671,7 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-back
 
 ### M2: FSDB-disabled UX
 
-Active implementation plan: `docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md`.
+Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-feature-required-error/PLAN.md`.
 
 - Add `.fsdb` path detection for the default binary.
 - Add tests for the clear error without a real FSDB fixture.

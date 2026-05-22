@@ -34,6 +34,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 - [x] (2026-05-21 22:06Z) Ran a fresh final control recheck after the directory fix; it reported no substantive findings.
 - [x] (2026-05-22 06:02Z) Applied user-requested docs/help wording simplification: public docs now only state that default builds support VCD/FST and FSDB requires the `fsdb` Cargo feature plus the Synopsys Verdi FSDB Reader SDK; per-command `--waves` help now says `Path to VCD/FST/FSDB waveform file`; top-level long help now has separate VCD/FST and FSDB bullets plus an optional-features status line showing FSDB enabled or disabled. Focused docs/help tests, `cargo check --features fsdb`, a feature-enabled root-help contract test, and `make check` passed after the cleanup.
 - [x] (2026-05-22 06:49Z) Refactored top-level optional-feature help away from duplicate `cfg_attr` long-help bodies. `src/cli/mod.rs` now has one static long help and a small `OPTIONAL_FEATURES` registry rendered by `root_after_long_help()`; short `-h` help remains compact and omits build feature status. `make check`, `cargo check --features fsdb`, and the feature-enabled root-help contract test passed after this refactor.
+- [x] (2026-05-22 06:53Z) Moved this completed implementation record from `docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md` to `docs/exec-plans/completed/2026-05-21-fsdb-feature-required-error/PLAN.md` and updated the M2 entry in `docs/fsdb/arch.md` to point at the completed record.
 
 ## Surprises & Discoveries
 
@@ -114,7 +115,7 @@ This plan does not implement FSDB parsing, hierarchy traversal, value sampling, 
 
 ## Outcomes & Retrospective
 
-Implementation is complete and the plan intentionally remains in `docs/exec-plans/active/` for user review. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs use concise format availability language: default builds support VCD/FST, FSDB requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, command help names VCD/FST/FSDB waveform files directly, and top-level long help reports whether the optional FSDB feature is enabled in the current build through a registry-rendered `Optional features` block rather than duplicated help bodies. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
+Implementation is complete and this record now lives under `docs/exec-plans/completed/2026-05-21-fsdb-feature-required-error/PLAN.md`. Default builds now translate existing `.fsdb` and `.fsdb.gz` parse failures into the exact feature-required file error while preserving missing-file errors, directory file errors, unrelated parse failures, and valid VCD/FST content with misleading suffixes. Public help and docs use concise format availability language: default builds support VCD/FST, FSDB requires the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK, command help names VCD/FST/FSDB waveform files directly, and top-level long help reports whether the optional FSDB feature is enabled in the current build through a registry-rendered `Optional features` block rather than duplicated help bodies. Focused unit and integration tests cover the new routing; `make check`, `make ci`, and optional `make check-fsdb-build` passed in this container. Source coverage improved slightly from the baseline (`95.02/95.74/95.59`) to (`95.04/95.76/95.61`) for regions/functions/lines. Full-catalog performance comparison was noisy under a zero threshold, but same-binary controls exposed that noise and paired old/new Hyperfine checks of the worst apparent regressions did not show a repeatable slowdown. The remaining limitation is intentional: default builds only detect FSDB-looking final file names after VCD/FST parsing fails; exact FSDB probing belongs to the feature-enabled Reader backend.
 
 ## Context and Orientation
 
@@ -436,7 +437,8 @@ Initial planning evidence:
 
     current branch: feat/fsdb
     current commit when this implementation run started: 0b08ea8
-    active plan path: docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md
+    original active plan path: docs/exec-plans/active/2026-05-21-fsdb-feature-required-error/PLAN.md
+    completed plan path: docs/exec-plans/completed/2026-05-21-fsdb-feature-required-error/PLAN.md
 
 Baseline validation evidence:
 
@@ -633,3 +635,4 @@ The implementation depends only on the Rust standard library, existing dev-depen
 - 2026-05-21 / Grin: Recorded the final post-fix control recheck result: no substantive findings.
 - 2026-05-22 / Grin: Recorded the user-requested cleanup that keeps public docs terse, simplifies per-command `--waves` help to `Path to VCD/FST/FSDB waveform file`, and adds current-build FSDB optional-feature status to the detailed root help.
 - 2026-05-22 / Grin: Recorded the optional-feature help registry refactor, which removes duplicated root long-help bodies and keeps future feature additions from multiplying help variants.
+- 2026-05-22 / Grin: Moved the finished plan from `active/` to `completed/` and updated `docs/fsdb/arch.md` M2 to link to this completed implementation record.

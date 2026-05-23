@@ -157,11 +157,23 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nano tmux openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
+    libxt6t64 libxmu6 libnuma1 \
     jq ripgrep ugrep pdfgrep poppler-utils fd-find tree gh \
     perl-doc z3 gtkwave \
     python3 pipx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+COPY verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
+RUN chmod 0755 /usr/local/bin/wavepeek-verdi-tool && \
+    for tool in \
+        vcd2fsdb fsdb2vcd fsdbdebug fsdbreport fsdbextract fsdbmerge \
+        fsdbjoin fsdbrecover fsdbsanitycheck fsdbqry fsdbdir fsdbedit \
+        fsdbmangle fsdb2saif fsdb2ns txt2fsdb merge_multi_swp_fsdb \
+        waveutils parallelWaveExpand; \
+    do \
+        ln -sf wavepeek-verdi-tool "/usr/local/bin/$tool"; \
+    done
 
 USER ubuntu
 

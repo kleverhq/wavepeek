@@ -98,6 +98,33 @@ smoke and is not a supported library-consumer contract; downstream crates should
 not enable it until the FSDB backend and packaging story are explicitly
 promoted.
 
+## Verdi SDK / FSDB Development
+
+FSDB work is optional and local-only unless a task explicitly states otherwise.
+Keep the repository clean of proprietary Verdi payloads and generated binary
+waveforms; the SDK may be referenced, but not vendored. In particular:
+
+- Do not commit Verdi SDK internals: headers, libraries, binaries, installed
+  docs, generated bindings that copy proprietary declarations, logs, or tool
+  output dumps. It is acceptable to reference the minimal invoked API surface,
+  header/library names, and command-line tools/options that wavepeek calls.
+- Do not commit `.fsdb` files. Treat them as generated binary artifacts and keep
+  ad hoc output under repository-root `tmp/` or another ignored cache directory.
+- If tests need FSDB inputs, prefer one of these local/gated paths:
+  - use example FSDB files from the local Verdi installation without copying
+    them into the repository;
+  - convert existing committed VCD/FST fixtures on demand, for example
+    `vcd2fsdb -o tmp/<name>.fsdb <fixture>.vcd` or
+    `fst2vcd <fixture>.fst tmp/<name>.vcd` followed by `vcd2fsdb`;
+  - derive narrow repro cases with Verdi tools such as `fsdbextract`,
+    `fsdbedit`, or other local mutations, keeping the derived files ignored.
+- FSDB-dependent tests and developer helpers must skip clearly when `VERDI_HOME`
+  or the required Reader/Writer/converter tools are unavailable. Default CI and
+  normal pre-commit hooks must remain Verdi-free.
+- The devcontainer may provide wrapper commands for Verdi tools such as
+  `vcd2fsdb`, `fsdb2vcd`, `fsdbdebug`, `fsdbreport`, and `fsdbextract`; call
+  those wrappers from `PATH` instead of hard-coding `$VERDI_HOME/bin/...`.
+
 ## CLI E2E Benchmark Harness
 
 For reproducible CLI performance runs, use `bench/e2e/perf.py` (Python stdlib only, powered by `hyperfine`).

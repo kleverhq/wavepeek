@@ -46,7 +46,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
 
     let waveform = Waveform::open(waves.as_path())?;
     let mut entries = waveform
-        .scopes_depth_first(max_depth.numeric())
+        .scopes_depth_first(max_depth.numeric())?
         .into_iter()
         .filter(|entry| filter.is_match(entry.path.as_str()))
         .map(|entry| ScopeEntry {

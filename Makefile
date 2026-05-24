@@ -128,6 +128,19 @@ check-fsdb-env: require-container
 	fi; \
 	exit "$$status"
 
+## Lint optional FSDB support
+lint-fsdb: require-verdi
+	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
+	if [ -z "$$verdi_home" ]; then \
+		printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
+		exit 1; \
+	fi; \
+	VERDI_HOME="$$verdi_home" cargo clippy --features fsdb --all-targets -- -D warnings
+
+## Prepare generated FSDB fixtures from checked-in VCD fixtures
+prepare-fsdb-fixtures: require-verdi
+	bash scripts/prepare_fsdb_fixtures.sh
+
 ## Build and smoke-test optional FSDB support
 check-fsdb-build: require-verdi
 	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
@@ -136,10 +149,13 @@ check-fsdb-build: require-verdi
 		exit 1; \
 	fi; \
 	VERDI_HOME="$$verdi_home" cargo check --features fsdb && \
-	VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture
+	VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture && \
+	VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 ## Run optional FSDB build smoke tests
-test-fsdb: check-fsdb-build
+test-fsdb: check-fsdb-build prepare-fsdb-fixtures
+	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
+	VERDI_HOME="$$verdi_home" cargo test --features fsdb --test fsdb_cli
 
 ## Run auxiliary Python/unit test suites
 test-aux: require-container

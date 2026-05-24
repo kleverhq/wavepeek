@@ -5,10 +5,7 @@ use std::collections::HashMap;
 use crate::error::WavepeekError;
 use crate::expr::{ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind};
 
-use super::types::{
-    EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, ExprResolvedSignal, ResolvedSignal,
-    STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES, ScopeEntry, SignalEntry, SignalId,
-};
+use super::types::{ExprResolvedSignal, ResolvedSignal, ScopeEntry, SignalEntry, SignalId};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum RawScopeKind {
@@ -656,6 +653,10 @@ fn datatype_signal_kind_alias(kind: RawDatatypeKind) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::waveform::{
+        EXCLUDED_SCOPE_KIND_ALIASES, EXCLUDED_SIGNAL_KIND_ALIASES, STABLE_SCOPE_KIND_ALIASES,
+        STABLE_SIGNAL_KIND_ALIASES,
+    };
 
     #[test]
     fn fsdb_hierarchy_sorts_scopes_and_filters_max_depth() {

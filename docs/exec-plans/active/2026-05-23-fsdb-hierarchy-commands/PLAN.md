@@ -43,6 +43,11 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 - [x] (2026-05-24 12:32Z) Began implementation from clean branch `feat/fsdb` at `5ca48e1`; default `make check`, default `make ci`, `make check-fsdb-env`, and current `make check-fsdb-build` all passed before editing.
 - [x] (2026-05-24 12:44Z) Added pure Rust `fsdb_time` and `fsdb_hierarchy` helpers with no-Verdi unit coverage for scale-unit normalization, raw time overflow, sorting, depth filtering, hidden subtree exclusion, deduplication, packed range normalization, direct/recursive signal listing, missing scope/signal errors, stable kind aliases, and enum datatype override.
 - [x] (2026-05-24 12:44Z) Ran `cargo fmt -- --check`, `cargo test -q fsdb_time`, and `cargo test -q fsdb_hierarchy`; all passed after formatting.
+- [x] (2026-05-24 13:08Z) Extended the wavepeek-owned native FSDB C ABI and Rust `fsdb_native` wrapper for datatype and scope/variable traversal, including serialized Reader calls and panic-safe Rust callback handling.
+- [x] (2026-05-24 13:08Z) Ran `cargo fmt -- --check`, `VERDI_HOME=$(./.devcontainer/resolve_verdi_home.sh) cargo check --features fsdb`, `cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture`, and `cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture`; feature build and native smokes passed.
+- [x] (2026-05-24 13:49Z) Wired `FsdbBackend` into `Waveform::open` with feature-enabled FSDB probing, Result-returning scope traversal, metadata normalization, hierarchy-backed scope/signal resolution, and explicit unsupported errors for `value`, `change`, and `property`.
+- [x] (2026-05-24 13:49Z) Added generated FSDB fixtures, `scripts/prepare_fsdb_fixtures.sh`, Make targets `lint-fsdb`, `prepare-fsdb-fixtures`, and expanded `check-fsdb-build`/`test-fsdb`; added `tests/fsdb_cli.rs` covering generated fixture parity, bundled `cpu.fsdb` smoke behavior, missing-scope errors, and unsupported commands.
+- [x] (2026-05-24 13:49Z) Ran `cargo fmt -- --check`, `cargo check`, `cargo check --features fsdb`, default and FSDB clippy, pure helper tests, and native metadata/hierarchy smokes; focused command probes against generated FSDB fixtures and bundled `cpu.fsdb` produced expected JSON and unsupported-command errors.
 
 ## Surprises & Discoveries
 
@@ -84,6 +89,12 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 
 - Observation: the public schema has `unknown` for `scopeKind` but not for `signalKind`.
   Evidence: the pure helper contract test failed when `RawSignalKind::Unknown` mapped to `unknown`; `schema/wavepeek.json` and `STABLE_SIGNAL_KIND_ALIASES` contain `bit_vector` but no signal-level `unknown`, so unknown FSDB signal variables now degrade to the stable `bit_vector` alias instead of emitting a schema-invalid kind.
+
+- Observation: the local FSDB Reader datatype block API can read the full datatype definition range in one call starting at block index `0`.
+  Evidence: `/opt/verdi/share/FsdbReader/ffrAPI.h` documents `ffrReadDataTypeDefByBlkIdx2` as reading from the supplied block to the last block and updating the biggest block read; the implementation calls it once with `block_index = 0` before `ffrReadScopeVarTree2`, and both `cargo check --features fsdb` and the `fsdb_reader_hierarchy_smoke` test passed against the bundled `cpu.fsdb`.
+
+- Observation: the SDK callback examples use `TRUE` and `FALSE`, but this build environment does not expose those macros to the shim translation unit.
+  Evidence: the first feature build failed with `TRUE`/`FALSE` undeclared in `native/fsdb/wavepeek_fsdb_shim.cpp`; returning `static_cast<bool_T>(1)` and `static_cast<bool_T>(0)` matches the callback ABI without depending on those convenience macros.
 
 ## Decision Log
 

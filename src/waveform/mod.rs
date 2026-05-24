@@ -41,23 +41,69 @@ pub struct Waveform {
 
 #[derive(Debug)]
 enum Backend {
-    Wellen(wellen_backend::WellenBackend),
+    Wellen(Box<wellen_backend::WellenBackend>),
+    #[cfg(feature = "fsdb")]
+    Fsdb(Box<fsdb_backend::FsdbBackend>),
 }
 
 impl Waveform {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
+        #[cfg(feature = "fsdb")]
+        {
+            Self::open_feature_enabled(path)
+        }
+
+        #[cfg(not(feature = "fsdb"))]
         match wellen_backend::WellenBackend::open(path) {
             Ok(backend) => Ok(Self {
-                backend: Backend::Wellen(backend),
+                backend: Backend::Wellen(Box::new(backend)),
             }),
             Err(error) => {
-                #[cfg(not(feature = "fsdb"))]
-                {
-                    if fsdb_disabled::should_report_disabled_support(path, &error) {
-                        return Err(fsdb_disabled::disabled_support_error());
-                    }
+                if fsdb_disabled::should_report_disabled_support(path, &error) {
+                    return Err(fsdb_disabled::disabled_support_error());
                 }
                 Err(error)
+            }
+        }
+    }
+
+    #[cfg(feature = "fsdb")]
+    fn open_feature_enabled(path: &Path) -> Result<Self, WavepeekError> {
+        let fsdb_looking = is_fsdb_looking_path(path);
+        let should_probe = path.is_file();
+        let mut probe_result = None;
+
+        if fsdb_looking && should_probe {
+            let result = fsdb_backend::FsdbBackend::probe(path);
+            if matches!(result, Ok(true)) {
+                return fsdb_backend::FsdbBackend::open(path).map(|backend| Self {
+                    backend: Backend::Fsdb(Box::new(backend)),
+                });
+            }
+            probe_result = Some(result);
+        }
+
+        match wellen_backend::WellenBackend::open(path) {
+            Ok(backend) => Ok(Self {
+                backend: Backend::Wellen(Box::new(backend)),
+            }),
+            Err(wellen_error) => {
+                if !should_probe {
+                    return Err(wellen_error);
+                }
+
+                let result = match probe_result {
+                    Some(result) => result,
+                    None => fsdb_backend::FsdbBackend::probe(path),
+                };
+                match result {
+                    Ok(true) => fsdb_backend::FsdbBackend::open(path).map(|backend| Self {
+                        backend: Backend::Fsdb(Box::new(backend)),
+                    }),
+                    Ok(false) => Err(wellen_error),
+                    Err(probe_error) if fsdb_looking => Err(probe_error),
+                    Err(_) => Err(wellen_error),
+                }
             }
         }
     }
@@ -65,18 +111,43 @@ impl Waveform {
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.metadata(),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.metadata(),
         }
     }
 
-    pub fn scopes_depth_first(&self, max_depth: Option<usize>) -> Vec<ScopeEntry> {
+    pub(crate) fn unsupported_fsdb_command_error(&self, command: &str) -> Option<WavepeekError> {
+        #[cfg(not(feature = "fsdb"))]
+        let _ = command;
+
+        match &self.backend {
+            Backend::Wellen(_) => None,
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(_) => match command {
+                "value" => Some(fsdb_backend::unsupported_value_sampling()),
+                "change" => Some(fsdb_backend::unsupported_change_collection()),
+                "property" => Some(fsdb_backend::unsupported_property_evaluation()),
+                _ => None,
+            },
+        }
+    }
+
+    pub fn scopes_depth_first(
+        &self,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<ScopeEntry>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.scopes_depth_first(max_depth),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.scopes_depth_first(max_depth),
         }
     }
 
     pub fn signals_in_scope(&self, scope_path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.signals_in_scope(scope_path),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.signals_in_scope(scope_path),
         }
     }
 
@@ -87,6 +158,8 @@ impl Waveform {
     ) -> Result<Vec<SignalEntry>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.signals_in_scope_recursive(scope_path, max_depth),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.signals_in_scope_recursive(scope_path, max_depth),
         }
     }
 
@@ -125,6 +198,8 @@ impl Waveform {
     pub fn previous_sample_time(&self, raw_time: u64) -> Option<u64> {
         match &self.backend {
             Backend::Wellen(backend) => backend.previous_sample_time(raw_time),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.previous_sample_time(raw_time),
         }
     }
 
@@ -134,6 +209,8 @@ impl Waveform {
     ) -> Result<Vec<ResolvedSignal>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.resolve_signals(canonical_paths),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.resolve_signals(canonical_paths),
         }
     }
 
@@ -144,6 +221,8 @@ impl Waveform {
     ) -> Result<ExprResolvedSignal, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.resolve_expr_signal(canonical_path),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.resolve_expr_signal(canonical_path),
         }
     }
 
@@ -153,6 +232,8 @@ impl Waveform {
     ) -> Result<Vec<ExprResolvedSignal>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.resolve_expr_signals(canonical_paths),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.resolve_expr_signals(canonical_paths),
         }
     }
 
@@ -163,6 +244,8 @@ impl Waveform {
     ) -> Result<Vec<SampledSignalState>, WavepeekError> {
         match &mut self.backend {
             Backend::Wellen(backend) => backend.sample_resolved_optional(resolved, query_time_raw),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.sample_resolved_optional(resolved, query_time_raw),
         }
     }
 
@@ -174,6 +257,8 @@ impl Waveform {
     ) -> Result<SampledValue, WavepeekError> {
         match &mut self.backend {
             Backend::Wellen(backend) => backend.sample_expr_value(resolved, query_time_raw),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.sample_expr_value(resolved, query_time_raw),
         }
     }
 
@@ -185,6 +270,8 @@ impl Waveform {
     ) -> Result<bool, WavepeekError> {
         match &mut self.backend {
             Backend::Wellen(backend) => backend.expr_event_occurred(resolved, query_time_raw),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.expr_event_occurred(resolved, query_time_raw),
         }
     }
 
@@ -192,6 +279,8 @@ impl Waveform {
     pub(crate) fn indexed_timestamps(&self) -> Option<&[u64]> {
         match &self.backend {
             Backend::Wellen(backend) => Some(backend.indexed_timestamps()),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.indexed_timestamps(),
         }
     }
 
@@ -203,6 +292,8 @@ impl Waveform {
     ) -> Option<Option<SignalOffsetData>> {
         match &self.backend {
             Backend::Wellen(backend) => Some(backend.indexed_signal_offset_at(id, time_table_idx)),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.indexed_signal_offset_at(id, time_table_idx),
         }
     }
 
@@ -216,6 +307,10 @@ impl Waveform {
             Backend::Wellen(backend) => Ok(Some(
                 backend.decode_indexed_signal_at(resolved, time_table_idx)?,
             )),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => {
+                Ok(backend.decode_indexed_signal_at(resolved, time_table_idx))
+            }
         }
     }
 
@@ -223,6 +318,8 @@ impl Waveform {
     pub(crate) fn ensure_indexed_signals_loaded(&mut self, ids: &[SignalId]) -> bool {
         match &mut self.backend {
             Backend::Wellen(backend) => backend.ensure_indexed_signals_loaded(ids),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.ensure_indexed_signals_loaded(ids),
         }
     }
 
@@ -252,6 +349,10 @@ impl Waveform {
             Backend::Wellen(backend) => {
                 backend.collect_change_times_with_mode(resolved, from_raw, to_raw, mode)
             }
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => {
+                backend.collect_change_times_with_mode(resolved, from_raw, to_raw, mode)
+            }
         }
     }
 
@@ -264,6 +365,10 @@ impl Waveform {
     ) -> Result<Vec<u64>, WavepeekError> {
         match &mut self.backend {
             Backend::Wellen(backend) => {
+                backend.collect_expr_candidate_times_with_mode(resolved, from_raw, to_raw, mode)
+            }
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => {
                 backend.collect_expr_candidate_times_with_mode(resolved, from_raw, to_raw, mode)
             }
         }
@@ -284,8 +389,24 @@ impl Waveform {
                 to_raw,
                 mode,
             ),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.should_use_streaming_candidate_collection(
+                signal_count,
+                from_raw,
+                to_raw,
+                mode,
+            ),
         }
     }
+}
+
+#[cfg(feature = "fsdb")]
+fn is_fsdb_looking_path(path: &Path) -> bool {
+    let Some(file_name) = path.file_name() else {
+        return false;
+    };
+    let file_name = file_name.to_string_lossy().to_lowercase();
+    file_name.ends_with(".fsdb") || file_name.ends_with(".fsdb.gz")
 }
 
 fn duplicate_preserving_projection(canonical_paths: &[String]) -> (Vec<String>, Vec<usize>) {

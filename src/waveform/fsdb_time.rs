@@ -61,6 +61,7 @@ pub(super) fn parse_scale_unit(raw: &str) -> Result<FsdbTimeUnit, WavepeekError>
         .ok_or_else(|| invalid_scale_unit(raw, "normalized scale factor exceeds supported range"))
 }
 
+#[cfg(test)]
 pub(super) fn normalize_time_unit(raw: &str) -> Result<String, WavepeekError> {
     let unit = parse_scale_unit(raw)?;
     Ok(format!("{}{}", unit.factor, unit.suffix))

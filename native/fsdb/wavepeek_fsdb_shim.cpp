@@ -7,6 +7,7 @@
 #include <cstring>
 #include <exception>
 #include <memory>
+#include <mutex>
 #include <new>
 #include <string>
 
@@ -22,6 +23,11 @@ namespace {
 bool native_verbose_enabled() {
     const char *value = std::getenv("WAVEPEEK_FSDB_NATIVE_VERBOSE");
     return value != nullptr && std::strcmp(value, "1") == 0;
+}
+
+std::mutex &reader_mutex() {
+    static std::mutex mutex;
+    return mutex;
 }
 
 class scoped_output_suppressor {
@@ -126,6 +132,283 @@ void clear_error(char **error_message) {
     }
 }
 
+wp_fsdb_scope_kind map_scope_kind(uint_T raw_type) {
+    switch (raw_type) {
+    case FSDB_ST_VCD_MODULE:
+    case FSDB_ST_SV_MODULE:
+    case FSDB_ST_SC_MODULE:
+        return WP_FSDB_SCOPE_KIND_MODULE;
+    case FSDB_ST_VCD_TASK:
+        return WP_FSDB_SCOPE_KIND_TASK;
+    case FSDB_ST_VCD_FUNCTION:
+    case FSDB_ST_VHDL_FUNCTION:
+        return WP_FSDB_SCOPE_KIND_FUNCTION;
+    case FSDB_ST_VCD_BEGIN:
+        return WP_FSDB_SCOPE_KIND_BEGIN;
+    case FSDB_ST_VCD_FORK:
+        return WP_FSDB_SCOPE_KIND_FORK;
+    case FSDB_ST_VCD_GENERATE:
+    case FSDB_ST_VHDL_GENERATE:
+    case FSDB_ST_VHDL_FOR_GENERATE:
+    case FSDB_ST_VHDL_IF_GENERATE:
+        return WP_FSDB_SCOPE_KIND_GENERATE;
+    case FSDB_ST_VHDL_RECORD:
+        return WP_FSDB_SCOPE_KIND_STRUCT;
+    case FSDB_ST_SV_CLASS:
+        return WP_FSDB_SCOPE_KIND_CLASS;
+    case FSDB_ST_SV_INTERFACE:
+    case FSDB_ST_SV_MODPORT:
+    case FSDB_ST_SV_INTERFACEPORT_REF:
+    case FSDB_ST_SV_MODPORT_REF:
+    case FSDB_ST_SV_INTERFACE_PORT:
+    case FSDB_ST_SV_MODPORT_PORT:
+        return WP_FSDB_SCOPE_KIND_INTERFACE;
+    case FSDB_ST_SV_PACKAGE:
+        return WP_FSDB_SCOPE_KIND_PACKAGE;
+    case FSDB_ST_SV_PROGRAM:
+        return WP_FSDB_SCOPE_KIND_PROGRAM;
+    default:
+        return WP_FSDB_SCOPE_KIND_UNKNOWN;
+    }
+}
+
+wp_fsdb_signal_kind map_signal_kind(uint_T raw_type) {
+    const uint_T type = raw_type & ~static_cast<uint_T>(FSDB_VT_MC_MASK);
+    switch (type) {
+    case FSDB_VT_VCD_EVENT:
+    case FSDB_VT_EVENT_VARIABLE:
+        return WP_FSDB_SIGNAL_KIND_EVENT;
+    case FSDB_VT_VCD_INTEGER:
+        return WP_FSDB_SIGNAL_KIND_INTEGER;
+    case FSDB_VT_VCD_PARAMETER:
+        return WP_FSDB_SIGNAL_KIND_PARAMETER;
+    case FSDB_VT_VCD_REAL:
+        return WP_FSDB_SIGNAL_KIND_REAL;
+    case FSDB_VT_VCD_REG:
+    case FSDB_VT_VCD_REG2:
+        return WP_FSDB_SIGNAL_KIND_REG;
+    case FSDB_VT_VCD_SUPPLY0:
+        return WP_FSDB_SIGNAL_KIND_SUPPLY0;
+    case FSDB_VT_VCD_SUPPLY1:
+        return WP_FSDB_SIGNAL_KIND_SUPPLY1;
+    case FSDB_VT_VCD_TIME:
+        return WP_FSDB_SIGNAL_KIND_TIME;
+    case FSDB_VT_VCD_TRI:
+        return WP_FSDB_SIGNAL_KIND_TRI;
+    case FSDB_VT_VCD_TRIAND:
+        return WP_FSDB_SIGNAL_KIND_TRIAND;
+    case FSDB_VT_VCD_TRIOR:
+        return WP_FSDB_SIGNAL_KIND_TRIOR;
+    case FSDB_VT_VCD_TRIREG:
+        return WP_FSDB_SIGNAL_KIND_TRIREG;
+    case FSDB_VT_VCD_TRI0:
+        return WP_FSDB_SIGNAL_KIND_TRI0;
+    case FSDB_VT_VCD_TRI1:
+        return WP_FSDB_SIGNAL_KIND_TRI1;
+    case FSDB_VT_VCD_WAND:
+        return WP_FSDB_SIGNAL_KIND_WAND;
+    case FSDB_VT_VCD_WIRE:
+        return WP_FSDB_SIGNAL_KIND_WIRE;
+    case FSDB_VT_VCD_WOR:
+        return WP_FSDB_SIGNAL_KIND_WOR;
+    case FSDB_VT_STRING:
+        return WP_FSDB_SIGNAL_KIND_STRING;
+    case FSDB_VT_VCD_PORT:
+        return WP_FSDB_SIGNAL_KIND_PORT;
+    case FSDB_VT_VCD_MEMORY:
+    case FSDB_VT_VHDL_MEMORY:
+        return WP_FSDB_SIGNAL_KIND_SPARSE_ARRAY;
+    case FSDB_VT_AMS_SIGNAL:
+        return WP_FSDB_SIGNAL_KIND_REAL;
+    case FSDB_VT_VHDL_SIGNAL:
+    case FSDB_VT_VHDL_VARIABLE:
+    case FSDB_VT_VHDL_CONSTANT:
+    case FSDB_VT_SV_VARIABLE:
+        return WP_FSDB_SIGNAL_KIND_LOGIC;
+    default:
+        return WP_FSDB_SIGNAL_KIND_UNKNOWN;
+    }
+}
+
+wp_fsdb_datatype_kind map_datatype_kind(fsdbTreeCBType type) {
+    switch (type) {
+    case FSDB_TREE_CBT_DT_ENUM:
+    case FSDB_TREE_CBT_DT_ENUM2:
+    case FSDB_TREE_CBT_DT_ENUM3:
+    case FSDB_TREE_CBT_DT_ATTR_ENUM:
+    case FSDB_TREE_CBT_DT_ATTR_SV_ENUM:
+        return WP_FSDB_DATATYPE_KIND_ENUM;
+    case FSDB_TREE_CBT_DT_ATTR_LOGIC:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LOGIC:
+    case FSDB_TREE_CBT_DT_ATTR_SV_REG:
+        return WP_FSDB_DATATYPE_KIND_LOGIC;
+    case FSDB_TREE_CBT_DT_ATTR_BOOL:
+        return WP_FSDB_DATATYPE_KIND_BIT;
+    case FSDB_TREE_CBT_DT_ATTR_INT32:
+    case FSDB_TREE_CBT_DT_ATTR_SV_INT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_INTEGER:
+        return WP_FSDB_DATATYPE_KIND_INT;
+    case FSDB_TREE_CBT_DT_ATTR_UINT32:
+    case FSDB_TREE_CBT_DT_ATTR_SV_UINT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_UINTEGER:
+        return WP_FSDB_DATATYPE_KIND_UINT;
+    case FSDB_TREE_CBT_DT_ATTR_INT64:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LONG_INT:
+        return WP_FSDB_DATATYPE_KIND_LONG_INT;
+    case FSDB_TREE_CBT_DT_ATTR_UINT64:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LONG_UINT:
+        return WP_FSDB_DATATYPE_KIND_LONG_UINT;
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_INT:
+        return WP_FSDB_DATATYPE_KIND_SHORT_INT;
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_UINT:
+        return WP_FSDB_DATATYPE_KIND_SHORT_UINT;
+    case FSDB_TREE_CBT_DT_ATTR_SV_BYTE_INT:
+        return WP_FSDB_DATATYPE_KIND_BYTE;
+    case FSDB_TREE_CBT_DT_ATTR_SV_BYTE_UINT:
+        return WP_FSDB_DATATYPE_KIND_UBYTE;
+    case FSDB_TREE_CBT_DT_FLOAT:
+    case FSDB_TREE_CBT_DT_ATTR_FLOAT:
+    case FSDB_TREE_CBT_DT_ATTR_DOUBLE:
+    case FSDB_TREE_CBT_DT_ATTR_SV_REAL:
+        return WP_FSDB_DATATYPE_KIND_REAL;
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_REAL:
+        return WP_FSDB_DATATYPE_KIND_SHORT_REAL;
+    case FSDB_TREE_CBT_DT_ATTR_SV_TIME:
+        return WP_FSDB_DATATYPE_KIND_TIME;
+    case FSDB_TREE_CBT_DT_ATTR_STRING:
+    case FSDB_TREE_CBT_DT_ATTR_SV_STRING:
+    case FSDB_TREE_CBT_DT_ATTR_RAW_STRING:
+        return WP_FSDB_DATATYPE_KIND_STRING;
+    case FSDB_TREE_CBT_DT_ATTR_EVENT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_EVENT:
+        return WP_FSDB_DATATYPE_KIND_EVENT;
+    default:
+        return WP_FSDB_DATATYPE_KIND_UNKNOWN;
+    }
+}
+
+bool datatype_id_from_record(fsdbTreeCBType type, void *tree_cb_data, uint32_t *out) {
+    if (out == nullptr || tree_cb_data == nullptr) {
+        return false;
+    }
+
+    switch (type) {
+    case FSDB_TREE_CBT_DT_ENUM: {
+        auto *record = static_cast<fsdbTreeCBDataEnum *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_ENUM2: {
+        auto *record = static_cast<fsdbTreeCBDataEnum2 *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_ENUM3: {
+        auto *record = static_cast<fsdbTreeCBDataEnum3 *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_INT:
+    case FSDB_TREE_CBT_DT_INT_H_N_L: {
+        auto *record = static_cast<fsdbTreeCBDataInt *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+struct tree_callback_context {
+    wp_fsdb_tree_callback callback;
+    void *user;
+    bool aborted;
+};
+
+bool_T emit_tree_event(
+    tree_callback_context *context,
+    wp_fsdb_tree_event event,
+    const wp_fsdb_scope_record *scope,
+    const wp_fsdb_signal_record *signal,
+    const wp_fsdb_datatype_record *datatype
+) {
+    if (context == nullptr || context->callback == nullptr) {
+        return static_cast<bool_T>(1);
+    }
+    const int rc = context->callback(
+        static_cast<uint32_t>(event),
+        scope,
+        signal,
+        datatype,
+        context->user
+    );
+    if (rc != 0) {
+        context->aborted = true;
+        return static_cast<bool_T>(0);
+    }
+    return static_cast<bool_T>(1);
+}
+
+bool_T datatype_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *tree_cb_data) {
+    auto *context = static_cast<tree_callback_context *>(client_data);
+    uint32_t idcode = 0;
+    if (!datatype_id_from_record(cb_type, tree_cb_data, &idcode)) {
+        return static_cast<bool_T>(1);
+    }
+
+    wp_fsdb_datatype_record record{};
+    record.idcode = idcode;
+    record.kind = static_cast<uint32_t>(map_datatype_kind(cb_type));
+    return emit_tree_event(context, WP_FSDB_TREE_EVENT_DATATYPE, nullptr, nullptr, &record);
+}
+
+bool_T scope_var_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *tree_cb_data) {
+    auto *context = static_cast<tree_callback_context *>(client_data);
+    switch (cb_type) {
+    case FSDB_TREE_CBT_BEGIN_TREE:
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_BEGIN_TREE, nullptr, nullptr, nullptr);
+    case FSDB_TREE_CBT_SCOPE:
+    case FSDB_TREE_CBT_EVENT_SCOPE:
+    case FSDB_TREE_CBT_MDF_SCOPE: {
+        auto *scope = static_cast<fsdbTreeCBDataScope *>(tree_cb_data);
+        wp_fsdb_scope_record record{};
+        record.name = scope == nullptr ? nullptr : scope->name;
+        record.kind = static_cast<uint32_t>(scope == nullptr ? WP_FSDB_SCOPE_KIND_UNKNOWN : map_scope_kind(scope->type));
+        record.hidden = scope != nullptr && scope->is_hidden_scope ? 1 : 0;
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_SCOPE, &record, nullptr, nullptr);
+    }
+    case FSDB_TREE_CBT_VAR:
+    case FSDB_TREE_CBT_SV_VAR:
+    case FSDB_TREE_CBT_ENUM_VAR:
+    case FSDB_TREE_CBT_EVENT_VAR:
+    case FSDB_TREE_CBT_MDF_VAR:
+    case FSDB_TREE_CBT_PACKED_VAR:
+    case FSDB_TREE_CBT_PACKED_COMP_VAR: {
+        auto *var = static_cast<fsdbTreeCBDataVar *>(tree_cb_data);
+        wp_fsdb_signal_record record{};
+        record.name = var == nullptr ? nullptr : var->name;
+        record.idcode = var == nullptr ? 0 : static_cast<uint64_t>(var->u.idcode);
+        record.has_bit_range = var != nullptr && var->lbitnum >= 0 && var->rbitnum >= 0 ? 1 : 0;
+        record.left = var == nullptr ? 0 : static_cast<int32_t>(var->lbitnum);
+        record.right = var == nullptr ? 0 : static_cast<int32_t>(var->rbitnum);
+        record.has_datatype_id = var != nullptr && var->dtidcode != 0 ? 1 : 0;
+        record.datatype_id = var == nullptr ? 0 : static_cast<uint32_t>(var->dtidcode);
+        record.kind = static_cast<uint32_t>(var == nullptr ? WP_FSDB_SIGNAL_KIND_UNKNOWN : map_signal_kind(var->type));
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_SIGNAL, nullptr, &record, nullptr);
+    }
+    case FSDB_TREE_CBT_UPSCOPE:
+    case FSDB_TREE_CBT_EVENT_UPSCOPE:
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_UPSCOPE, nullptr, nullptr, nullptr);
+    case FSDB_TREE_CBT_END_TREE:
+    case FSDB_TREE_CBT_END_EVENT_TREE:
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_END_TREE, nullptr, nullptr, nullptr);
+    case FSDB_TREE_CBT_END_ALL_TREE:
+        return emit_tree_event(context, WP_FSDB_TREE_EVENT_END_ALL_TREE, nullptr, nullptr, nullptr);
+    default:
+        return static_cast<bool_T>(1);
+    }
+}
+
 }  // namespace
 
 extern "C" wp_fsdb_status wp_fsdb_probe(
@@ -139,6 +422,7 @@ extern "C" wp_fsdb_status wp_fsdb_probe(
     }
 
     try {
+        std::lock_guard<std::mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         *is_fsdb = ffrObject::ffrIsFSDB(const_cast<char *>(path)) ? 1 : 0;
@@ -162,6 +446,7 @@ extern "C" wp_fsdb_status wp_fsdb_open(
     *out = nullptr;
 
     try {
+        std::lock_guard<std::mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         if (!ffrObject::ffrIsFSDB(const_cast<char *>(path))) {
@@ -194,6 +479,7 @@ extern "C" void wp_fsdb_close(wp_fsdb_reader *reader) {
     }
 
     try {
+        std::lock_guard<std::mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         if (reader->object != nullptr) {
             reader->object->ffrClose();
@@ -222,6 +508,7 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
     out->xtag_type = 0;
 
     try {
+        std::lock_guard<std::mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
@@ -261,6 +548,61 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
         return fail(
             error_message,
             std::string("FSDB Reader: metadata read failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_read_scope_var_tree(
+    wp_fsdb_reader *reader,
+    wp_fsdb_tree_callback callback,
+    void *user,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (reader == nullptr || reader->object == nullptr || callback == nullptr) {
+        return fail(error_message, "FSDB Reader: hierarchy traversal received a null argument");
+    }
+
+    try {
+        std::lock_guard<std::mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        tree_callback_context context{callback, user, false};
+        if (reader->object->ffrHasDataTypeDef()) {
+            uint_T block_index = 0;
+            if (reader->object->ffrReadDataTypeDefByBlkIdx2(
+                    datatype_tree_callback,
+                    &context,
+                    block_index
+                ) != FSDB_RC_SUCCESS) {
+                if (context.aborted) {
+                    return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+                }
+                return fail(error_message, "FSDB Reader: failed to read FSDB datatype definitions");
+            }
+            if (context.aborted) {
+                return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+            }
+        }
+
+        if (reader->object->ffrReadScopeVarTree2(scope_var_tree_callback, &context) != FSDB_RC_SUCCESS) {
+            if (context.aborted) {
+                return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+            }
+            return fail(error_message, "FSDB Reader: failed to read FSDB scope/variable tree");
+        }
+        if (context.aborted) {
+            return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+        }
+
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: hierarchy traversal failed: ") + error.what()
         );
     } catch (...) {
         return fail_unknown_exception(error_message);

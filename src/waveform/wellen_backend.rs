@@ -72,7 +72,10 @@ impl WellenBackend {
         })
     }
 
-    pub fn scopes_depth_first(&self, max_depth: Option<usize>) -> Vec<ScopeEntry> {
+    pub fn scopes_depth_first(
+        &self,
+        max_depth: Option<usize>,
+    ) -> Result<Vec<ScopeEntry>, WavepeekError> {
         let hierarchy = self.inner.hierarchy();
         let mut roots: Vec<ScopeRef> = hierarchy.scopes().collect();
         sort_scope_refs(hierarchy, &mut roots);
@@ -82,7 +85,7 @@ impl WellenBackend {
             collect_scope_entries(hierarchy, scope_ref, 0, max_depth, &mut entries);
         }
 
-        entries
+        Ok(entries)
     }
 
     pub fn signals_in_scope(&self, scope_path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
@@ -1166,7 +1169,9 @@ mod tests {
         let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-        let scopes = waveform.scopes_depth_first(Some(5));
+        let scopes = waveform
+            .scopes_depth_first(Some(5))
+            .expect("scope traversal should succeed");
 
         assert_eq!(
             scopes,
@@ -1200,8 +1205,12 @@ mod tests {
         let fixture = write_fixture(RECURSIVE_TEST_VCD, "recursive-sample.vcd");
 
         let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-        let bounded = waveform.scopes_depth_first(Some(1));
-        let unbounded = waveform.scopes_depth_first(None);
+        let bounded = waveform
+            .scopes_depth_first(Some(1))
+            .expect("bounded scope traversal should succeed");
+        let unbounded = waveform
+            .scopes_depth_first(None)
+            .expect("unbounded scope traversal should succeed");
 
         let bounded_paths = bounded
             .iter()

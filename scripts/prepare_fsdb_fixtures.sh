@@ -10,10 +10,15 @@ if ! command -v vcd2fsdb >/dev/null 2>&1; then
   exit 1
 fi
 
-sources=(
-  "$repo_root/tests/fixtures/hand/scope_mixed_kinds.vcd"
-  "$repo_root/tests/fixtures/hand/signal_recursive_depth.vcd"
-)
+sources=()
+while IFS= read -r -d '' source; do
+  sources+=("$source")
+done < <(find "$repo_root/tests/fixtures/hand" -type f -name '*.vcd' -print0 | sort -z)
+
+if [ "${#sources[@]}" -eq 0 ]; then
+  echo "error: no VCD fixtures found under tests/fixtures/hand" >&2
+  exit 1
+fi
 
 for source in "${sources[@]}"; do
   base="$(basename "${source%.vcd}")"
@@ -21,8 +26,15 @@ for source in "${sources[@]}"; do
   tmp="$output.tmp.$$"
   rm -f "$tmp"
   log_dir="$repo_root/vcd2fsdbLog"
+  converter_log="$tmp.log"
   rm -rf "$log_dir"
-  vcd2fsdb "$source" -o "$tmp"
+  if ! vcd2fsdb "$source" -o "$tmp" >"$converter_log" 2>&1; then
+    cat "$converter_log" >&2
+    rm -f "$tmp" "$converter_log"
+    rm -rf "$log_dir"
+    exit 1
+  fi
+  rm -f "$converter_log"
   rm -rf "$log_dir"
   mv "$tmp" "$output"
 done

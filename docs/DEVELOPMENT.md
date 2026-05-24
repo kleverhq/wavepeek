@@ -56,8 +56,11 @@ Common commands:
 - Tests:
   - `make test`
   - `make test-aux`
-- Optional FSDB build smoke when a local Verdi FSDB Reader SDK is available:
+- Optional FSDB checks when a local Verdi FSDB Reader SDK is available:
   - `make check-fsdb-build`
+  - `make lint-fsdb`
+  - `make prepare-fsdb-fixtures`
+  - `make test-fsdb`
 - Coverage:
   - `make coverage-src`
   - `make coverage-src-check`
@@ -89,14 +92,21 @@ The source-coverage gate tracks `src/**` only, ignores `/tests/`, and currently 
 The optional `fsdb` Cargo feature is intentionally excluded from default lint,
 test, coverage, pre-commit, and CI paths because it requires a licensed local
 Synopsys Verdi FSDB Reader SDK. Use `make check-fsdb-build` on Verdi-equipped
-Linux x86_64 machines; this target depends on `require-verdi` and fails clearly
-when `VERDI_HOME` does not identify a usable SDK. Use `make check-fsdb-env` for
-a non-failing availability probe that prints a skip line on no-Verdi machines.
-Set `WAVEPEEK_FSDB_ENV_VERBOSE=1` only when you need local path diagnostics from
-the environment checker. This feature is currently a repository-local build
-smoke and is not a supported library-consumer contract; downstream crates should
-not enable it until the FSDB backend and packaging story are explicitly
-promoted.
+Linux x86_64 machines; this target depends on `require-verdi`, verifies the
+feature-enabled build/link path, and runs native metadata and hierarchy smokes
+against the bundled Verdi example FSDB. Use `make lint-fsdb` for feature-enabled
+clippy. Use `make prepare-fsdb-fixtures` to generate ignored FSDB files from the
+checked-in VCD fixtures under `tests/fixtures/hand/`; the target validates
+`vcd2fsdb`, writes through temporary files, and must not be committed. Use
+`make test-fsdb` for the supported FSDB regression path: it prepares generated
+fixtures, runs the native smokes, and verifies Reader-backed `info`, `scope`,
+and `signal` behavior through generated fixture parity plus bundled example
+smoke coverage. Use `make check-fsdb-env` for a non-failing availability probe
+that prints a skip line on no-Verdi machines. Set `WAVEPEEK_FSDB_ENV_VERBOSE=1`
+only when you need local path diagnostics from the environment checker. This
+feature is currently a repository-local build smoke and is not a supported
+library-consumer contract; downstream crates should not enable it until the FSDB
+backend and packaging story are explicitly promoted.
 
 ## Verdi SDK / FSDB Development
 

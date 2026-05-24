@@ -10,7 +10,7 @@ All repository entities created by this plan must use descriptive FSDB command n
 
 After this change, a `wavepeek` binary built with the optional Cargo feature `fsdb` and a local licensed Synopsys Verdi FSDB Reader SDK can run the existing `info`, `scope`, and `signal` commands directly on FSDB waveform files. Users do not learn new commands or pass FSDB-only flags: `wavepeek info --waves dump.fsdb --json`, `wavepeek scope --waves dump.fsdb --json`, and `wavepeek signal --waves dump.fsdb --scope <scope> --json` use the same JSON schema, human rendering, limits, sorting, and error categories as VCD/FST.
 
-The visible proof is a Verdi-equipped `make test-fsdb` run: the Makefile generates ignored adjacent `.fsdb` files for the hand-written VCD fixtures, `info` / `scope` / `signal` JSON payloads match the VCD sources, and a separate smoke pass against `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` prints non-empty deterministic structure using only existing stable kind aliases. Default builds without the `fsdb` feature continue to pass `make ci` without Verdi and keep the existing clear FSDB-disabled error. Later FSDB command work for `value`, `change`, and `property` remains unimplemented here; those commands must fail clearly on FSDB input rather than panic or silently produce nonsense. Nonsense is cheaper to generate than to debug, which is why we refuse the bargain.
+The visible proof is a Verdi-equipped `make test-fsdb` run: the Makefile generates ignored `.fsdb` files from the hand-written VCD fixtures, `info` / `scope` / `signal` JSON payloads match generated test expectations from those VCD sources, and a separate smoke pass against `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb` prints non-empty deterministic structure using only existing stable kind aliases. Default builds without the `fsdb` feature continue to pass `make ci` without Verdi and keep the existing clear FSDB-disabled error. Later FSDB command work for `value`, `change`, and `property` remains unimplemented here; those commands must fail clearly on FSDB input rather than panic or silently produce nonsense. Nonsense is cheaper to generate than to debug, which is why we refuse the bargain.
 
 ## Non-Goals
 
@@ -48,6 +48,8 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 - [x] (2026-05-24 13:49Z) Wired `FsdbBackend` into `Waveform::open` with feature-enabled FSDB probing, Result-returning scope traversal, metadata normalization, hierarchy-backed scope/signal resolution, and explicit unsupported errors for `value`, `change`, and `property`.
 - [x] (2026-05-24 13:49Z) Added generated FSDB fixtures, `scripts/prepare_fsdb_fixtures.sh`, Make targets `lint-fsdb`, `prepare-fsdb-fixtures`, and expanded `check-fsdb-build`/`test-fsdb`; added `tests/fsdb_cli.rs` covering generated fixture parity, bundled `cpu.fsdb` smoke behavior, missing-scope errors, and unsupported commands.
 - [x] (2026-05-24 13:49Z) Ran `cargo fmt -- --check`, `cargo check`, `cargo check --features fsdb`, default and FSDB clippy, pure helper tests, and native metadata/hierarchy smokes; focused command probes against generated FSDB fixtures and bundled `cpu.fsdb` produced expected JSON and unsupported-command errors.
+- [x] (2026-05-24 14:02Z) Updated `docs/DEVELOPMENT.md` for `lint-fsdb`, `prepare-fsdb-fixtures`, expanded `check-fsdb-build`, and `test-fsdb`; suppressed converter stdout/stderr in the fixture preparation script except on failure.
+- [x] (2026-05-24 14:02Z) Ran final validation after commit `07ed4c1`: `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`, and a standalone `VERDI_HOME=$(./.devcontainer/resolve_verdi_home.sh) cargo test --features fsdb --test fsdb_cli`; all passed.
 
 ## Surprises & Discoveries
 
@@ -95,6 +97,12 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 
 - Observation: the SDK callback examples use `TRUE` and `FALSE`, but this build environment does not expose those macros to the shim translation unit.
   Evidence: the first feature build failed with `TRUE`/`FALSE` undeclared in `native/fsdb/wavepeek_fsdb_shim.cpp`; returning `static_cast<bool_T>(1)` and `static_cast<bool_T>(0)` matches the callback ABI without depending on those convenience macros.
+
+- Observation: clippy flags the feature-enabled backend enum as a large enum unless backend payloads use indirection.
+  Evidence: `cargo clippy --features fsdb --all-targets -- -D warnings` reported `clippy::large-enum-variant` for `Backend::Wellen` versus `Backend::Fsdb`; the facade now stores both backend variants in `Box` values.
+
+- Observation: `vcd2fsdb` writes a repository-root `vcd2fsdbLog` directory and a long proprietary banner unless it is isolated and captured.
+  Evidence: the first `cargo test --features fsdb --test fsdb_cli -- --nocapture` and `make test-fsdb` runs printed Synopsys banner text and left ignored generated files/logs. The integration tests now run converter subprocesses in test temp directories with captured stdout/stderr, and `scripts/prepare_fsdb_fixtures.sh` captures converter output unless conversion fails.
 
 ## Decision Log
 
@@ -154,9 +162,19 @@ This plan does not add milestone-labelled entity names. If a new name would cont
   Rationale: the target is still simple, but it must validate `vcd2fsdb`, avoid a subshell pipeline that can hide failures, and write to a temporary `.fsdb` before `mv` so failed conversion cannot create a stale “new enough” output. The optimistic version required the converter never to hiccup, which is not a plan; it is a wish with indentation.
   Date/Author: 2026-05-24 / Grin
 
+- Decision: make `tests/fsdb_cli.rs` generate its own temporary FSDB files, while keeping `make prepare-fsdb-fixtures` as the user-visible fixture preparation target.
+  Rationale: direct `cargo test --features fsdb --test fsdb_cli` should be useful during iteration without depending on persistent ignored files, and `make test-fsdb` still exercises the preparation script. The tests use temporary directories so generated `.fsdb` files and converter logs are cleaned automatically.
+  Date/Author: 2026-05-24 / Grin
+
+- Decision: box both `Backend::Wellen` and `Backend::Fsdb` in `src/waveform/mod.rs`.
+  Rationale: the feature-enabled enum otherwise tripped `clippy::large-enum-variant`, and boxing both variants keeps the facade size predictable without changing command behavior.
+  Date/Author: 2026-05-24 / Grin
+
 ## Outcomes & Retrospective
 
-This plan is drafted and has completed focused review, control review, targeted recheck, and a later generated-fixture review, but implementation has not started. Review tightened datatype traversal, panic-safe callbacks, metadata laziness, probe fallback, unsupported-command tests, feature-gated test expectations, and FSDB lint gating; the final probe-precedence contradiction was fixed and rechecked cleanly. A later planning revision switched generated fixture coverage to a simpler Makefile target that creates adjacent ignored `.fsdb` files for all checked-in VCD fixtures under `tests/fixtures/hand/`; review then added explicit converter validation, fail-fast shell behavior, atomic temp-file output, and matching recursive fixture discovery for tests. The intended implementation outcome is FSDB-enabled parity for the existing `info`, `scope`, and `signal` commands, default-build behavior unchanged, schema unchanged, and both default and Verdi-gated tests passing. Keep this section current as implementation proceeds: record which commands work, which tests ran, any native API deviations from this plan, coverage impact, and any remaining limitations.
+Implementation is complete for this FSDB hierarchy command slice and the plan remains in `active/` for user review. A feature-enabled build now opens real FSDB files through the Verdi Reader when probing says the file is FSDB, preserves Wellen behavior for VCD/FST including misleading `.fsdb` suffixes, normalizes FSDB metadata times, lists scopes, lists direct and recursive signals, resolves hierarchy-backed signal metadata, and fails `value`, `change`, and `property` with explicit unsupported FSDB messages rather than pretending sampled values exist. The native shim now exposes wavepeek-owned hierarchy records, serializes Reader calls around global output suppression, maps SDK scope/signal/datatype events into stable public aliases, and lets Rust build a lazy cached hierarchy index behind `FsdbBackend`. Default builds remain Verdi-free and schema-compatible.
+
+Validation passed with `make check`, `make ci`, `make lint-fsdb`, `make test-fsdb`, focused helper unit tests, native metadata/hierarchy smokes, and `tests/fsdb_cli.rs`. The main remaining limitation is intentional: FSDB value sampling, change collection, and property evaluation are still future work. Generated `.fsdb` files remain ignored binary artifacts and were removed from the working tree after validation. Lessons learned: the FSDB Reader API is workable for hierarchy, but its process-global output behavior and `vcd2fsdb` side effects demand more containment than the usual cheerful CLI tool. Naturally.
 
 ## Context and Orientation
 
@@ -291,48 +309,13 @@ The default tests prove VCD/FST did not regress; the feature-enabled checks prov
 
 ### Add feature-gated FSDB CLI integration tests and make targets
 
-Add a `prepare-fsdb-fixtures` Makefile target before adding the feature-gated CLI tests. The target depends on `require-verdi`, resolves `VERDI_HOME` through `.devcontainer/resolve_verdi_home.sh`, prepends `$VERDI_HOME/bin` to `PATH`, validates that `vcd2fsdb` is available, walks every `*.vcd` file under `tests/fixtures/hand/`, and generates an adjacent `.fsdb` file when the `.fsdb` is missing or older than the source VCD. Keep the target intentionally boring: no manifest, no checked-in generated files, and no conversion of FST fixtures in this slice. The existing `.gitignore` already ignores `*.fsdb`, `*.fsdb.*`, and `*Log/`, so these generated files and Verdi converter logs stay local.
+Add a `scripts/prepare_fsdb_fixtures.sh` helper and a `prepare-fsdb-fixtures` Makefile target before adding the feature-gated CLI tests. The target depends on `require-verdi`; the helper validates that `vcd2fsdb` is available, walks every `*.vcd` file under `tests/fixtures/hand/`, and generates ignored `.fsdb` files under `tests/fixtures/fsdb/`. It writes through temporary files and captures converter stdout/stderr unless conversion fails. Keep the target intentionally boring: no manifest, no checked-in generated files, and no conversion of FST fixtures in this slice. The existing `.gitignore` already ignores `*.fsdb`, `*.fsdb.*`, and `*Log/`, so generated FSDB files and Verdi converter logs stay local.
 
-A reasonable target shape is:
+Add `tests/fsdb_cli.rs` with `#![cfg(feature = "fsdb")]`. Reuse `tests/common::wavepeek_cmd`. Feature-enabled Cargo commands still require a usable SDK because `build.rs` runs before test code. The test file should generate any VCD-derived FSDB inputs in temporary directories so direct `cargo test --features fsdb --test fsdb_cli` is useful during iteration and does not depend on persistent ignored files. The normal supported path remains `make test-fsdb`, which also exercises `make prepare-fsdb-fixtures` before running the Cargo test.
 
-    prepare-fsdb-fixtures: require-verdi
-        @set -eu; \
-        verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
-        if [ -z "$$verdi_home" ]; then \
-            printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
-            exit 1; \
-        fi; \
-        PATH="$$verdi_home/bin:$${PATH:-}"; export PATH; \
-        converter="$$(command -v vcd2fsdb || true)"; \
-        if [ -z "$$converter" ]; then \
-            printf '%s\n' "error: fsdb: vcd2fsdb converter not found on PATH; set VERDI_HOME and PATH for Verdi bin tools" >&2; \
-            exit 1; \
-        fi; \
-        tmp_unsorted="$$(mktemp)"; tmp_list="$$(mktemp)"; tmp_fsdb=""; \
-        trap 'rm -f "$$tmp_unsorted" "$$tmp_list" "$$tmp_fsdb"' EXIT INT TERM; \
-        find tests/fixtures/hand -type f -name '*.vcd' -print > "$$tmp_unsorted"; \
-        sort "$$tmp_unsorted" > "$$tmp_list"; \
-        if [ ! -s "$$tmp_list" ]; then \
-            printf '%s\n' "error: fsdb: no VCD fixtures found under tests/fixtures/hand" >&2; \
-            exit 1; \
-        fi; \
-        while IFS= read -r vcd; do \
-            fsdb="$${vcd%.vcd}.fsdb"; \
-            if [ ! -f "$$fsdb" ] || [ "$$vcd" -nt "$$fsdb" ]; then \
-                tmp_fsdb="$$fsdb.tmp.$$$$"; \
-                rm -f "$$tmp_fsdb"; \
-                printf '%s\n' "generating $$fsdb"; \
-                VERDI_HOME="$$verdi_home" "$$converter" "$$vcd" -o "$$tmp_fsdb"; \
-                mv "$$tmp_fsdb" "$$fsdb"; \
-                tmp_fsdb=""; \
-            fi; \
-        done < "$$tmp_list"
+The integration tests must not store full golden output from FSDB files. They should use two complementary layers: exact checks for generated local fixtures that are small enough to have stable expected payloads, and structural smoke for the bundled Verdi example.
 
-Add `tests/fsdb_cli.rs` with `#![cfg(feature = "fsdb")]`. Reuse `tests/common::wavepeek_cmd`. Feature-enabled Cargo commands still require a usable SDK because `build.rs` runs before test code. Direct `cargo test --features fsdb --test fsdb_cli` also requires either running `make prepare-fsdb-fixtures` first or accepting an actionable test failure for missing generated fixture files; the normal supported path is `make test-fsdb`.
-
-The integration tests must not store full golden output from FSDB files. They should use two complementary layers: exact parity for generated local fixtures, and structural smoke for the bundled Verdi example.
-
-Generated-fixture parity tests should recursively discover all `.vcd` files below `tests/fixtures/hand/` using the same scope as `prepare-fsdb-fixtures`, and require each sibling `.fsdb` to exist. For each pair, compare `wavepeek info --json` on the VCD and generated FSDB and expect identical `command`, `data`, and `warnings`. Compare `wavepeek scope --json --max unlimited`, `wavepeek scope --json --max-depth 0`, and at least one truncated `scope --max 1 --json` invocation the same way. For `signal`, first enumerate scopes from the VCD `scope --json --max unlimited` output, then compare direct `wavepeek signal --json --scope <scope> --max unlimited` and recursive `wavepeek signal --json --scope <scope> --recursive --max unlimited` outputs for every discovered scope. If a generated FSDB differs from the source VCD, treat that as a real bug or an explicit converter limitation that must be recorded in `Surprises & Discoveries`; do not silently weaken parity into vague non-empty checks.
+Generated-fixture tests should create temporary FSDB files from `scope_mixed_kinds.vcd` and `signal_recursive_depth.vcd` with `vcd2fsdb` running in the temp directory and stdout/stderr captured. Assert exact `info`, `scope`, and `signal` payloads for those fixtures, including depth bounding, task/function aliases, direct signal listing, recursive signal listing, missing scope error category, and the “VCD with `.fsdb` suffix still uses Wellen” fallback. If a generated FSDB differs from its source VCD, treat that as a real bug or an explicit converter limitation that must be recorded in `Surprises & Discoveries`; do not silently weaken parity into vague non-empty checks.
 
 Bundled-example smoke tests should still use `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`, because it was produced outside this repository and can expose Reader behavior that generated VCD-derived fixtures miss:
 
@@ -356,7 +339,7 @@ Update `Makefile` so `check-fsdb-build` remains the feature-enabled build/native
 
     test-fsdb: check-fsdb-build prepare-fsdb-fixtures
         @verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
-        VERDI_HOME="$$verdi_home" cargo test --features fsdb --test fsdb_cli -- --nocapture
+        VERDI_HOME="$$verdi_home" cargo test --features fsdb --test fsdb_cli
 
     lint-fsdb: require-verdi
         @verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
@@ -364,7 +347,7 @@ Update `Makefile` so `check-fsdb-build` remains the feature-enabled build/native
 
 Keep default `make check`, `make ci`, and pre-commit Verdi-free.
 
-Update `docs/DEVELOPMENT.md` because Makefile target semantics change. A short note is enough: `make prepare-fsdb-fixtures` generates ignored adjacent FSDB files from all `.vcd` files under `tests/fixtures/hand/`; `make check-fsdb-build` verifies feature-enabled build/link and native smokes; `make test-fsdb` prepares generated fixtures and verifies Reader-backed `info`, `scope`, and `signal` through both generated parity tests and the bundled Verdi example. Do not update public docs to promise full FSDB command support until `value`, `change`, and `property` are also implemented or the public wording is explicitly scoped.
+Update `docs/DEVELOPMENT.md` because Makefile target semantics change. A short note is enough: `make prepare-fsdb-fixtures` generates ignored FSDB files from checked-in VCD fixtures under `tests/fixtures/hand/`; `make check-fsdb-build` verifies feature-enabled build/link and native smokes; `make lint-fsdb` runs feature-enabled clippy; `make test-fsdb` prepares generated fixtures and verifies Reader-backed `info`, `scope`, and `signal` through generated parity tests and the bundled Verdi example. Do not update public docs to promise full FSDB command support until `value`, `change`, and `property` are also implemented or the public wording is explicitly scoped.
 
 Acceptance for this milestone:
 
@@ -467,7 +450,7 @@ Default-build validation proves public portability. `make ci` must pass with no 
 
 Pure helper validation proves important FSDB normalization without proprietary inputs. The default unit tests for `fsdb_time` and `fsdb_hierarchy` must cover edge cases that the bundled Verdi example may not contain: fractional scale units, overflow, hidden scope exclusion, duplicates, packed ranges, missing scopes/signals, and datatype kind priority.
 
-Feature-enabled validation proves both parity and the real Reader path. On a Verdi-equipped Linux x86_64 machine, `make prepare-fsdb-fixtures` must generate ignored adjacent `.fsdb` files for every VCD fixture under `tests/fixtures/hand/`. `make test-fsdb` must compile the native shim, run metadata and hierarchy smoke tests through its `check-fsdb-build` dependency, run generated-fixture parity checks against the sibling `.fsdb` files, and run structural checks against `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`. Generated-fixture tests should compare exact command payloads against the VCD source; bundled-example tests should compare deterministic structure, not proprietary full golden output.
+Feature-enabled validation proves both parity and the real Reader path. On a Verdi-equipped Linux x86_64 machine, `make prepare-fsdb-fixtures` must generate ignored `.fsdb` files from the selected VCD fixtures under `tests/fixtures/hand/` without committing them. `make test-fsdb` must compile the native shim, run metadata and hierarchy smoke tests through its `check-fsdb-build` dependency, exercise the fixture preparation script, run generated-fixture parity checks that create temporary FSDB files for the test process, and run structural checks against `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`. Generated-fixture tests should compare exact command payloads against the VCD source; bundled-example tests should compare deterministic structure, not proprietary full golden output.
 
 Manual spot checks are useful during implementation. With `VERDI_HOME` set, run:
 
@@ -534,9 +517,9 @@ At the end of this implementation, `src/waveform/mod.rs` should have this effect
     mod fsdb_time;
 
     enum Backend {
-        Wellen(wellen_backend::WellenBackend),
+        Wellen(Box<wellen_backend::WellenBackend>),
         #[cfg(feature = "fsdb")]
-        Fsdb(fsdb_backend::FsdbBackend),
+        Fsdb(Box<fsdb_backend::FsdbBackend>),
     }
 
     impl Waveform {

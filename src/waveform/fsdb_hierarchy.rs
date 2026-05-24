@@ -96,12 +96,12 @@ pub(super) struct RawSignalRecord {
     pub(super) kind: RawSignalKind,
     pub(super) left: Option<i32>,
     pub(super) right: Option<i32>,
-    pub(super) datatype_id: Option<u16>,
+    pub(super) datatype_id: Option<u32>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RawDatatypeRecord {
-    pub(super) idcode: u16,
+    pub(super) idcode: u32,
     pub(super) kind: RawDatatypeKind,
 }
 
@@ -113,7 +113,7 @@ pub(super) struct FsdbHierarchyBuilder {
     signals: Vec<FsdbSignalInfo>,
     roots: Vec<usize>,
     stack: Vec<StackEntry>,
-    datatypes: HashMap<u16, RawDatatypeKind>,
+    datatypes: HashMap<u32, RawDatatypeKind>,
 }
 
 #[derive(Debug, Clone)]
@@ -288,7 +288,7 @@ impl FsdbHierarchyBuilder {
         }
     }
 
-    fn signal_kind_alias(&self, raw_kind: RawSignalKind, datatype_id: Option<u16>) -> &'static str {
+    fn signal_kind_alias(&self, raw_kind: RawSignalKind, datatype_id: Option<u32>) -> &'static str {
         if let Some(datatype_id) = datatype_id
             && let Some(datatype_kind) = self.datatypes.get(&datatype_id)
             && let Some(alias) = datatype_signal_kind_alias(*datatype_kind)

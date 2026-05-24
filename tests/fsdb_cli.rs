@@ -1,7 +1,7 @@
 #![cfg(feature = "fsdb")]
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use assert_cmd::prelude::*;
@@ -12,17 +12,63 @@ use tempfile::{NamedTempFile, TempDir};
 mod common;
 use common::{expected_schema_url, fixture_path, wavepeek_cmd};
 
+const SCOPE_KIND_ALIASES: &[&str] = &[
+    "module",
+    "task",
+    "function",
+    "begin",
+    "fork",
+    "generate",
+    "struct",
+    "union",
+    "class",
+    "interface",
+    "package",
+    "program",
+    "unknown",
+];
+
+const SIGNAL_KIND_ALIASES: &[&str] = &[
+    "event",
+    "integer",
+    "parameter",
+    "real",
+    "reg",
+    "supply0",
+    "supply1",
+    "time",
+    "tri",
+    "triand",
+    "trior",
+    "trireg",
+    "tri0",
+    "tri1",
+    "wand",
+    "wire",
+    "wor",
+    "string",
+    "port",
+    "sparse_array",
+    "real_time",
+    "real_parameter",
+    "bit",
+    "logic",
+    "int",
+    "short_int",
+    "long_int",
+    "byte",
+    "enum",
+    "short_real",
+    "boolean",
+    "bit_vector",
+];
+
 #[test]
 fn fsdb_info_json_matches_vcd_derived_fixture() {
     let fixtures = GeneratedFsdbFixtures::new();
-    let fixture = fixtures.signal_recursive_depth();
-    let assert = wavepeek_cmd()
-        .args(["info", "--waves", path_str(&fixture).as_str(), "--json"])
-        .assert()
-        .success()
-        .stderr(predicate::str::is_empty());
+    let fixture = path_str(&fixtures.signal_recursive_depth());
+    let value = run_json_success(&["info", "--waves", fixture.as_str(), "--json"]);
 
-    let value = parse_json(&assert.get_output().stdout);
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "info");
@@ -37,32 +83,25 @@ fn fsdb_scope_json_is_sorted_and_depth_bounded() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.signal_recursive_depth());
 
-    let all = wavepeek_cmd()
-        .args([
-            "scope",
-            "--waves",
-            fixture.as_str(),
-            "--max",
-            "unlimited",
-            "--json",
-        ])
-        .assert()
-        .success();
-    let root_only = wavepeek_cmd()
-        .args([
-            "scope",
-            "--waves",
-            fixture.as_str(),
-            "--max",
-            "50",
-            "--max-depth",
-            "0",
-            "--json",
-        ])
-        .assert()
-        .success();
+    let all = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    let root_only = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "50",
+        "--max-depth",
+        "0",
+        "--json",
+    ]);
 
-    let all = parse_json(&all.get_output().stdout);
     assert_eq!(
         all["data"],
         json!([
@@ -74,7 +113,6 @@ fn fsdb_scope_json_is_sorted_and_depth_bounded() {
     );
     assert_eq!(all["warnings"], json!(["limit disabled: --max=unlimited"]));
 
-    let root_only = parse_json(&root_only.get_output().stdout);
     assert_eq!(
         root_only["data"],
         json!([{ "path": "top", "depth": 0, "kind": "module" }])
@@ -86,19 +124,15 @@ fn fsdb_scope_json_is_sorted_and_depth_bounded() {
 fn fsdb_scope_preserves_task_and_function_kind_aliases() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.scope_mixed_kinds());
-    let assert = wavepeek_cmd()
-        .args([
-            "scope",
-            "--waves",
-            fixture.as_str(),
-            "--max",
-            "unlimited",
-            "--json",
-        ])
-        .assert()
-        .success();
+    let value = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
 
-    let value = parse_json(&assert.get_output().stdout);
     assert_eq!(
         value["data"],
         json!([
@@ -115,35 +149,28 @@ fn fsdb_signal_direct_and_recursive_queries_are_stable() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.signal_recursive_depth());
 
-    let direct = wavepeek_cmd()
-        .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--max",
-            "unlimited",
-            "--json",
-        ])
-        .assert()
-        .success();
-    let recursive = wavepeek_cmd()
-        .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--recursive",
-            "--max",
-            "unlimited",
-            "--json",
-        ])
-        .assert()
-        .success();
+    let direct = run_json_success(&[
+        "signal",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    let recursive = run_json_success(&[
+        "signal",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--recursive",
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
 
-    let direct = parse_json(&direct.get_output().stdout);
     assert_eq!(
         direct["data"],
         json!([
@@ -156,7 +183,6 @@ fn fsdb_signal_direct_and_recursive_queries_are_stable() {
         json!(["limit disabled: --max=unlimited"])
     );
 
-    let recursive = parse_json(&recursive.get_output().stdout);
     assert_eq!(
         recursive["data"],
         json!([
@@ -196,65 +222,99 @@ fn fsdb_signal_reports_missing_scope_with_scope_category() {
 fn fsdb_bundled_cpu_smoke_supports_info_scope_and_signal() {
     let fixture = bundled_cpu_fsdb_path();
 
-    let info = wavepeek_cmd()
-        .args(["info", "--waves", fixture.as_str(), "--json"])
-        .assert()
-        .success();
-    let info = parse_json(&info.get_output().stdout);
-    assert_eq!(info["data"]["time_unit"], "1ns");
-    assert_eq!(info["data"]["time_start"], "0ns");
-    assert_eq!(info["data"]["time_end"], "12500ns");
+    let info = run_json_success(&["info", "--waves", fixture.as_str(), "--json"]);
+    let info_again = run_json_success(&["info", "--waves", fixture.as_str(), "--json"]);
+    assert_eq!(info, info_again);
+    assert_eq!(info["$schema"], expected_schema_url());
+    assert_eq!(info["command"], "info");
+    assert_eq!(info["warnings"], json!([]));
+    for field in ["time_unit", "time_start", "time_end"] {
+        assert!(
+            info["data"][field]
+                .as_str()
+                .is_some_and(|value| !value.is_empty()),
+            "{field} should be a non-empty string"
+        );
+    }
+    assert!(info["data"].get("time_precision").is_none());
 
-    let scope = wavepeek_cmd()
-        .args(["scope", "--waves", fixture.as_str(), "--max", "5", "--json"])
-        .assert()
-        .success();
-    let scope = parse_json(&scope.get_output().stdout);
+    let scopes = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    let scopes_again = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    assert_eq!(scopes["data"], scopes_again["data"]);
     assert_eq!(
-        scope["data"],
-        json!([
-            {"path": "system", "depth": 0, "kind": "module"},
-            {"path": "system.CHILD1", "depth": 1, "kind": "module"},
-            {"path": "system.CHILD1.FSM1_COMB", "depth": 2, "kind": "begin"},
-            {"path": "system.CHILD1.FSM1_SEQ", "depth": 2, "kind": "begin"},
-            {"path": "system.CHILD2", "depth": 1, "kind": "module"},
-        ])
+        scopes["warnings"],
+        json!(["limit disabled: --max=unlimited"])
     );
+    let scope_entries = scopes["data"]
+        .as_array()
+        .expect("scope data should be array");
+    assert!(
+        !scope_entries.is_empty(),
+        "bundled FSDB should expose scopes"
+    );
+    for entry in scope_entries {
+        assert_scope_entry(entry);
+    }
+
+    let truncated_scopes =
+        run_json_success(&["scope", "--waves", fixture.as_str(), "--max", "1", "--json"]);
     assert_eq!(
-        scope["warnings"],
-        json!(["truncated output to 5 entries (use --max to increase limit)"])
+        truncated_scopes["data"]
+            .as_array()
+            .expect("truncated scope data should be array")
+            .len(),
+        1
+    );
+    assert!(
+        truncated_scopes["warnings"][0]
+            .as_str()
+            .expect("warning should be string")
+            .contains("truncated output to 1 entries")
     );
 
-    let signal = wavepeek_cmd()
-        .args([
-            "signal",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "system",
-            "--recursive",
-            "--max",
-            "5",
-            "--json",
-        ])
-        .assert()
-        .success();
-    let signal = parse_json(&signal.get_output().stdout);
-    assert_eq!(
-        signal["data"],
-        json!([
-            {"name": "En_A", "path": "system.En_A", "kind": "wire", "width": 1},
-            {"name": "En_AB", "path": "system.En_AB", "kind": "wire", "width": 1},
-            {"name": "En_AC", "path": "system.En_AC", "kind": "wire", "width": 1},
-            {"name": "En_AD", "path": "system.En_AD", "kind": "wire", "width": 1},
-            {"name": "En_B", "path": "system.En_B", "kind": "wire", "width": 1},
-        ])
-    );
+    let root_scopes = run_json_success(&[
+        "scope",
+        "--waves",
+        fixture.as_str(),
+        "--max",
+        "50",
+        "--max-depth",
+        "0",
+        "--json",
+    ]);
+    let roots = root_scopes["data"]
+        .as_array()
+        .expect("root scope data should be array");
+    assert!(!roots.is_empty(), "bundled FSDB should expose root scopes");
+    assert!(roots.iter().all(|entry| entry["depth"] == 0));
+
+    let (signal_scope, signals) = discover_bundled_signal_listing(&fixture);
+    let signals_again = signal_listing(&fixture, signal_scope.as_str());
+    assert_eq!(signals, signals_again);
+    assert!(!signals.is_empty(), "bundled FSDB should expose signals");
+    for signal in &signals {
+        assert_signal_entry(signal);
+    }
 }
 
 #[test]
 fn fsdb_unsupported_value_change_and_property_fail_clearly() {
     let fixture = bundled_cpu_fsdb_path();
+    let signal = discover_bundled_signal_path(&fixture);
 
     for (args, expected) in [
         (
@@ -263,7 +323,7 @@ fn fsdb_unsupported_value_change_and_property_fail_clearly() {
                 "--waves",
                 fixture.as_str(),
                 "--signals",
-                "system.En_A",
+                signal.as_str(),
                 "--at",
                 "0ns",
             ],
@@ -275,7 +335,7 @@ fn fsdb_unsupported_value_change_and_property_fail_clearly() {
                 "--waves",
                 fixture.as_str(),
                 "--signals",
-                "system.En_A",
+                signal.as_str(),
                 "--from",
                 "0ns",
                 "--to",
@@ -289,7 +349,7 @@ fn fsdb_unsupported_value_change_and_property_fail_clearly() {
                 "--waves",
                 fixture.as_str(),
                 "--eval",
-                "system.En_A",
+                signal.as_str(),
                 "--from",
                 "0ns",
                 "--to",
@@ -326,18 +386,123 @@ fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_wellen_path() {
         .stderr(predicate::str::is_empty());
 }
 
+fn run_json_success(args: &[&str]) -> Value {
+    let assert = wavepeek_cmd()
+        .args(args)
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty());
+    parse_json(&assert.get_output().stdout)
+}
+
 fn parse_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("command output should be valid JSON")
 }
 
+fn assert_scope_entry(entry: &Value) {
+    let path = entry["path"].as_str().expect("scope path should be string");
+    assert!(!path.is_empty(), "scope path should not be empty");
+    assert!(!path.contains('/'), "scope path should be dot-separated");
+    assert!(
+        entry["depth"].as_u64().is_some(),
+        "scope depth should be a non-negative integer"
+    );
+    let kind = entry["kind"].as_str().expect("scope kind should be string");
+    assert!(
+        SCOPE_KIND_ALIASES.contains(&kind),
+        "scope kind {kind:?} should be public-schema compatible"
+    );
+}
+
+fn assert_signal_entry(entry: &Value) {
+    let name = entry["name"]
+        .as_str()
+        .expect("signal name should be string");
+    let path = entry["path"]
+        .as_str()
+        .expect("signal path should be string");
+    assert!(!name.is_empty(), "signal name should not be empty");
+    assert!(!path.is_empty(), "signal path should not be empty");
+    assert!(!path.contains('/'), "signal path should be dot-separated");
+    let kind = entry["kind"]
+        .as_str()
+        .expect("signal kind should be string");
+    assert!(
+        SIGNAL_KIND_ALIASES.contains(&kind),
+        "signal kind {kind:?} should be public-schema compatible"
+    );
+    if let Some(width) = entry.get("width") {
+        assert!(
+            width.as_u64().is_some_and(|width| width > 0),
+            "signal width should be a positive integer when present"
+        );
+    }
+}
+
+fn discover_bundled_signal_path(fixture: &str) -> String {
+    let (_scope, signals) = discover_bundled_signal_listing(fixture);
+    signals
+        .iter()
+        .filter_map(|signal| signal["path"].as_str())
+        .find(|path| is_simple_expr_path(path))
+        .expect("bundled FSDB should expose at least one signal usable as an expression path")
+        .to_string()
+}
+
+fn discover_bundled_signal_listing(fixture: &str) -> (String, Vec<Value>) {
+    let scopes = run_json_success(&["scope", "--waves", fixture, "--max", "unlimited", "--json"]);
+    for scope in scopes["data"]
+        .as_array()
+        .expect("scope data should be array")
+    {
+        let Some(scope_path) = scope["path"].as_str() else {
+            continue;
+        };
+        let signals = signal_listing(fixture, scope_path);
+        if !signals.is_empty() {
+            return (scope_path.to_string(), signals);
+        }
+    }
+    panic!("bundled FSDB should have at least one scope with recursive signals");
+}
+
+fn signal_listing(fixture: &str, scope: &str) -> Vec<Value> {
+    let value = run_json_success(&[
+        "signal",
+        "--waves",
+        fixture,
+        "--scope",
+        scope,
+        "--recursive",
+        "--max",
+        "5",
+        "--json",
+    ]);
+    value["data"]
+        .as_array()
+        .expect("signal data should be array")
+        .clone()
+}
+
+fn is_simple_expr_path(path: &str) -> bool {
+    path.split('.').all(|segment| {
+        let mut chars = segment.chars();
+        chars
+            .next()
+            .is_some_and(|ch| ch == '_' || ch.is_ascii_alphabetic())
+            && chars.all(|ch| ch == '_' || ch.is_ascii_alphanumeric())
+    })
+}
+
 struct GeneratedFsdbFixtures {
     _dir: TempDir,
-    scope_mixed_kinds: std::path::PathBuf,
-    signal_recursive_depth: std::path::PathBuf,
+    scope_mixed_kinds: PathBuf,
+    signal_recursive_depth: PathBuf,
 }
 
 impl GeneratedFsdbFixtures {
     fn new() -> Self {
+        require_vcd2fsdb();
         let dir = tempfile::tempdir().expect("tempdir should be created");
         let scope_mixed_kinds = convert_vcd_fixture(dir.path(), "scope_mixed_kinds.vcd");
         let signal_recursive_depth = convert_vcd_fixture(dir.path(), "signal_recursive_depth.vcd");
@@ -348,16 +513,28 @@ impl GeneratedFsdbFixtures {
         }
     }
 
-    fn scope_mixed_kinds(&self) -> std::path::PathBuf {
+    fn scope_mixed_kinds(&self) -> PathBuf {
         self.scope_mixed_kinds.clone()
     }
 
-    fn signal_recursive_depth(&self) -> std::path::PathBuf {
+    fn signal_recursive_depth(&self) -> PathBuf {
         self.signal_recursive_depth.clone()
     }
 }
 
-fn convert_vcd_fixture(dir: &Path, name: &str) -> std::path::PathBuf {
+fn require_vcd2fsdb() {
+    let status = Command::new("sh")
+        .arg("-c")
+        .arg("command -v vcd2fsdb >/dev/null 2>&1")
+        .status()
+        .expect("shell should be available to check vcd2fsdb");
+    assert!(
+        status.success(),
+        "vcd2fsdb not found on PATH; load the Verdi environment or run WAVEPEEK_IN_CONTAINER=1 make test-fsdb"
+    );
+}
+
+fn convert_vcd_fixture(dir: &Path, name: &str) -> PathBuf {
     let source = fixture_path(name);
     let output = dir.join(name.replace(".vcd", ".fsdb"));
     let converter_output = Command::new("vcd2fsdb")

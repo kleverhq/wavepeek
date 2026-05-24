@@ -20,9 +20,16 @@ if [ "${#sources[@]}" -eq 0 ]; then
   exit 1
 fi
 
+declare -A seen_outputs=()
+
 for source in "${sources[@]}"; do
   base="$(basename "${source%.vcd}")"
   output="$fixtures_dir/$base.fsdb"
+  if [ -n "${seen_outputs[$output]:-}" ]; then
+    echo "error: duplicate FSDB fixture output basename for $source and ${seen_outputs[$output]}" >&2
+    exit 1
+  fi
+  seen_outputs[$output]="$source"
   tmp="$output.tmp.$$"
   rm -f "$tmp"
   log_dir="$repo_root/vcd2fsdbLog"

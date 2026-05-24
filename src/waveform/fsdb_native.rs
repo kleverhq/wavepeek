@@ -196,9 +196,7 @@ unsafe fn handle_hierarchy_event(
                 )
             })?;
             let datatype_id = if signal.has_datatype_id != 0 {
-                Some(u16::try_from(signal.datatype_id).map_err(|_| {
-                    WavepeekError::File("FSDB datatype id exceeds supported range".to_string())
-                })?)
+                Some(signal.datatype_id)
             } else {
                 None
             };
@@ -227,9 +225,7 @@ unsafe fn handle_hierarchy_event(
                 )
             })?;
             context.builder.datatype(RawDatatypeRecord {
-                idcode: u16::try_from(datatype.idcode).map_err(|_| {
-                    WavepeekError::File("FSDB datatype id exceeds supported range".to_string())
-                })?,
+                idcode: datatype.idcode,
                 kind: raw_datatype_kind(datatype.kind),
             })?;
         }

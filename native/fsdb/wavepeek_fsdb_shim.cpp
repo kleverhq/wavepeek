@@ -25,8 +25,8 @@ bool native_verbose_enabled() {
     return value != nullptr && std::strcmp(value, "1") == 0;
 }
 
-std::mutex &reader_mutex() {
-    static std::mutex mutex;
+std::recursive_mutex &reader_mutex() {
+    static std::recursive_mutex mutex;
     return mutex;
 }
 
@@ -243,6 +243,7 @@ wp_fsdb_datatype_kind map_datatype_kind(fsdbTreeCBType type) {
     case FSDB_TREE_CBT_DT_ATTR_SV_REG:
         return WP_FSDB_DATATYPE_KIND_LOGIC;
     case FSDB_TREE_CBT_DT_ATTR_BOOL:
+    case FSDB_TREE_CBT_DT_ATTR_SV_BIT:
         return WP_FSDB_DATATYPE_KIND_BIT;
     case FSDB_TREE_CBT_DT_ATTR_INT32:
     case FSDB_TREE_CBT_DT_ATTR_SV_INT:
@@ -308,9 +309,61 @@ bool datatype_id_from_record(fsdbTreeCBType type, void *tree_cb_data, uint32_t *
         *out = static_cast<uint32_t>(record->idcode);
         return true;
     }
-    case FSDB_TREE_CBT_DT_INT:
-    case FSDB_TREE_CBT_DT_INT_H_N_L: {
+    case FSDB_TREE_CBT_DT_INT: {
         auto *record = static_cast<fsdbTreeCBDataInt *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_INT_H_N_L: {
+        auto *record = static_cast<fsdbTreeCBDataIntHnL *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_FLOAT: {
+        auto *record = static_cast<fsdbTreeCBDataFloating *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_ATTR_ENUM: {
+        auto *record = static_cast<fsdbTreeCBDataEnumAttr *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_ATTR_SV_ENUM: {
+        auto *record = static_cast<fsdbTreeCBDataSVEnumAttr *>(tree_cb_data);
+        *out = static_cast<uint32_t>(record->idcode);
+        return true;
+    }
+    case FSDB_TREE_CBT_DT_ATTR_LOGIC:
+    case FSDB_TREE_CBT_DT_ATTR_BOOL:
+    case FSDB_TREE_CBT_DT_ATTR_STRING:
+    case FSDB_TREE_CBT_DT_ATTR_INT32:
+    case FSDB_TREE_CBT_DT_ATTR_INT64:
+    case FSDB_TREE_CBT_DT_ATTR_UINT32:
+    case FSDB_TREE_CBT_DT_ATTR_UINT64:
+    case FSDB_TREE_CBT_DT_ATTR_FLOAT:
+    case FSDB_TREE_CBT_DT_ATTR_DOUBLE:
+    case FSDB_TREE_CBT_DT_ATTR_EVENT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LOGIC:
+    case FSDB_TREE_CBT_DT_ATTR_SV_REG:
+    case FSDB_TREE_CBT_DT_ATTR_SV_BIT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LONG_INT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_LONG_UINT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_INT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_UINT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_INTEGER:
+    case FSDB_TREE_CBT_DT_ATTR_SV_UINTEGER:
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_INT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_UINT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_BYTE_INT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_BYTE_UINT:
+    case FSDB_TREE_CBT_DT_ATTR_SV_REAL:
+    case FSDB_TREE_CBT_DT_ATTR_SV_SHORT_REAL:
+    case FSDB_TREE_CBT_DT_ATTR_SV_TIME:
+    case FSDB_TREE_CBT_DT_ATTR_SV_STRING:
+    case FSDB_TREE_CBT_DT_ATTR_SV_EVENT:
+    case FSDB_TREE_CBT_DT_ATTR_RAW_STRING: {
+        auto *record = static_cast<fsdbTreeCBDataAttr *>(tree_cb_data);
         *out = static_cast<uint32_t>(record->idcode);
         return true;
     }
@@ -422,7 +475,7 @@ extern "C" wp_fsdb_status wp_fsdb_probe(
     }
 
     try {
-        std::lock_guard<std::mutex> lock(reader_mutex());
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         *is_fsdb = ffrObject::ffrIsFSDB(const_cast<char *>(path)) ? 1 : 0;
@@ -446,7 +499,7 @@ extern "C" wp_fsdb_status wp_fsdb_open(
     *out = nullptr;
 
     try {
-        std::lock_guard<std::mutex> lock(reader_mutex());
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
         if (!ffrObject::ffrIsFSDB(const_cast<char *>(path))) {
@@ -479,7 +532,7 @@ extern "C" void wp_fsdb_close(wp_fsdb_reader *reader) {
     }
 
     try {
-        std::lock_guard<std::mutex> lock(reader_mutex());
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         if (reader->object != nullptr) {
             reader->object->ffrClose();
@@ -508,7 +561,7 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
     out->xtag_type = 0;
 
     try {
-        std::lock_guard<std::mutex> lock(reader_mutex());
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
@@ -566,11 +619,15 @@ extern "C" wp_fsdb_status wp_fsdb_read_scope_var_tree(
     }
 
     try {
-        std::lock_guard<std::mutex> lock(reader_mutex());
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
         tree_callback_context context{callback, user, false};
+        // The Reader invokes tree callbacks synchronously while stdout/stderr are
+        // suppressed process-wide. Keep the native lock held for the whole call;
+        // it is recursive so a future callback-side Reader helper cannot
+        // deadlock the same thread, but callback bodies should still stay small.
         if (reader->object->ffrHasDataTypeDef()) {
             uint_T block_index = 0;
             if (reader->object->ffrReadDataTypeDefByBlkIdx2(

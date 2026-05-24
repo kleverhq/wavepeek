@@ -95,9 +95,10 @@ Synopsys Verdi FSDB Reader SDK. Use `make check-fsdb-build` on Verdi-equipped
 Linux x86_64 machines; this target depends on `require-verdi`, verifies the
 feature-enabled build/link path, and runs native metadata and hierarchy smokes
 against the bundled Verdi example FSDB. Use `make lint-fsdb` for feature-enabled
-clippy. Use `make prepare-fsdb-fixtures` to generate ignored FSDB files from the
-checked-in VCD fixtures under `tests/fixtures/hand/`; the target validates
-`vcd2fsdb`, writes through temporary files, and must not be committed. Use
+clippy. Use `make prepare-fsdb-fixtures` to generate ignored FSDB files under
+`tests/fixtures/fsdb/` from the checked-in VCD fixtures in
+`tests/fixtures/hand/`; the target validates `vcd2fsdb`, writes through
+temporary files, and must not be committed. Use
 `make test-fsdb` for the supported FSDB regression path: it prepares generated
 fixtures, runs the native smokes, and verifies Reader-backed `info`, `scope`,
 and `signal` behavior through generated fixture parity plus bundled example

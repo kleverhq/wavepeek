@@ -31,10 +31,10 @@ struct RequestedSignal {
 
 pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     let mut waveform = Waveform::open(args.waves.as_path())?;
-    let metadata = waveform.metadata()?;
     if let Some(error) = waveform.unsupported_fsdb_command_error("value") {
         return Err(error);
     }
+    let metadata = waveform.metadata()?;
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
 

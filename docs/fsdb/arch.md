@@ -679,7 +679,7 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-21-fsdb-feat
 
 ### M3: FSDB `info` / `scope` / `signal`
 
-Active implementation plan: `docs/exec-plans/active/2026-05-23-fsdb-hierarchy-commands/PLAN.md`.
+Completed implementation record: `docs/exec-plans/completed/2026-05-23-fsdb-hierarchy-commands/PLAN.md`.
 
 - Connect C++ shim metadata and hierarchy callbacks.
 - Build ScopeIndex/SignalIndex.

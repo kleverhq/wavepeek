@@ -50,6 +50,7 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 - [x] (2026-05-24 13:49Z) Ran `cargo fmt -- --check`, `cargo check`, `cargo check --features fsdb`, default and FSDB clippy, pure helper tests, and native metadata/hierarchy smokes; focused command probes against generated FSDB fixtures and bundled `cpu.fsdb` produced expected JSON and unsupported-command errors.
 - [x] (2026-05-24 14:02Z) Updated `docs/DEVELOPMENT.md` for `lint-fsdb`, `prepare-fsdb-fixtures`, expanded `check-fsdb-build`, and `test-fsdb`; suppressed converter stdout/stderr in the fixture preparation script except on failure.
 - [x] (2026-05-24 14:02Z) Ran final validation after commit `07ed4c1`: `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`, and a standalone `VERDI_HOME=$(./.devcontainer/resolve_verdi_home.sh) cargo test --features fsdb --test fsdb_cli`; all passed.
+- [x] (2026-05-24 14:24Z) Isolated FSDB Makefile Cargo invocations under `CARGO_TARGET_DIR=target/fsdb` after a deliberately parallel local validation run showed default and feature-enabled Cargo commands can race over `target/debug/wavepeek`.
 
 ## Surprises & Discoveries
 
@@ -103,6 +104,9 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 
 - Observation: `vcd2fsdb` writes a repository-root `vcd2fsdbLog` directory and a long proprietary banner unless it is isolated and captured.
   Evidence: the first `cargo test --features fsdb --test fsdb_cli -- --nocapture` and `make test-fsdb` runs printed Synopsys banner text and left ignored generated files/logs. The integration tests now run converter subprocesses in test temp directories with captured stdout/stderr, and `scripts/prepare_fsdb_fixtures.sh` captures converter output unless conversion fails.
+
+- Observation: default and feature-enabled Cargo invocations can race over the same debug binary path when run in parallel.
+  Evidence: one parallel validation run combined default `make check`/`make ci` with `make test-fsdb`; `tests/fsdb_cli.rs` then launched a non-FSDB `target/debug/wavepeek`, causing the FST reader to panic on generated FSDB input. FSDB Makefile Cargo calls now set `CARGO_TARGET_DIR=target/fsdb`, and final validation is run sequentially because sharing output directories is one of those “probably fine” habits that ages badly.
 
 ## Decision Log
 
@@ -170,11 +174,15 @@ This plan does not add milestone-labelled entity names. If a new name would cont
   Rationale: the feature-enabled enum otherwise tripped `clippy::large-enum-variant`, and boxing both variants keeps the facade size predictable without changing command behavior.
   Date/Author: 2026-05-24 / Grin
 
+- Decision: run FSDB Makefile Cargo commands with `CARGO_TARGET_DIR=target/fsdb`.
+  Rationale: the feature-enabled integration tests launch the Cargo-built `wavepeek` binary. Keeping FSDB builds in their own target directory avoids accidental replacement by concurrent default-feature builds during local validation.
+  Date/Author: 2026-05-24 / Grin
+
 ## Outcomes & Retrospective
 
 Implementation is complete for this FSDB hierarchy command slice and the plan remains in `active/` for user review. A feature-enabled build now opens real FSDB files through the Verdi Reader when probing says the file is FSDB, preserves Wellen behavior for VCD/FST including misleading `.fsdb` suffixes, normalizes FSDB metadata times, lists scopes, lists direct and recursive signals, resolves hierarchy-backed signal metadata, and fails `value`, `change`, and `property` with explicit unsupported FSDB messages rather than pretending sampled values exist. The native shim now exposes wavepeek-owned hierarchy records, serializes Reader calls around global output suppression, maps SDK scope/signal/datatype events into stable public aliases, and lets Rust build a lazy cached hierarchy index behind `FsdbBackend`. Default builds remain Verdi-free and schema-compatible.
 
-Validation passed with `make check`, `make ci`, `make lint-fsdb`, `make test-fsdb`, focused helper unit tests, native metadata/hierarchy smokes, and `tests/fsdb_cli.rs`. The main remaining limitation is intentional: FSDB value sampling, change collection, and property evaluation are still future work. Generated `.fsdb` files remain ignored binary artifacts and were removed from the working tree after validation. Lessons learned: the FSDB Reader API is workable for hierarchy, but its process-global output behavior and `vcd2fsdb` side effects demand more containment than the usual cheerful CLI tool. Naturally.
+Validation passed with `make check`, `make ci`, `make lint-fsdb`, `make test-fsdb`, focused helper unit tests, native metadata/hierarchy smokes, and `tests/fsdb_cli.rs`; FSDB Make targets now use `CARGO_TARGET_DIR=target/fsdb` to avoid optional-feature binary races. The main remaining limitation is intentional: FSDB value sampling, change collection, and property evaluation are still future work. Generated `.fsdb` files remain ignored binary artifacts and were removed from the working tree after validation. Lessons learned: the FSDB Reader API is workable for hierarchy, but its process-global output behavior and `vcd2fsdb` side effects demand more containment than the usual cheerful CLI tool. Naturally.
 
 ## Context and Orientation
 
@@ -333,17 +341,17 @@ Update `Makefile` so `check-fsdb-build` remains the feature-enabled build/native
             printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
             exit 1; \
         fi; \
-        VERDI_HOME="$$verdi_home" cargo check --features fsdb && \
-        VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture && \
-        VERDI_HOME="$$verdi_home" cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
+        VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo check --features fsdb && \
+        VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture && \
+        VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
     test-fsdb: check-fsdb-build prepare-fsdb-fixtures
         @verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
-        VERDI_HOME="$$verdi_home" cargo test --features fsdb --test fsdb_cli
+        VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli
 
     lint-fsdb: require-verdi
         @verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
-        VERDI_HOME="$$verdi_home" cargo clippy --all-targets --features fsdb -- -D warnings
+        VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo clippy --all-targets --features fsdb -- -D warnings
 
 Keep default `make check`, `make ci`, and pre-commit Verdi-free.
 

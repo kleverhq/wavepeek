@@ -101,8 +101,10 @@ checked-in VCD fixtures under `tests/fixtures/hand/`; the target validates
 `make test-fsdb` for the supported FSDB regression path: it prepares generated
 fixtures, runs the native smokes, and verifies Reader-backed `info`, `scope`,
 and `signal` behavior through generated fixture parity plus bundled example
-smoke coverage. Use `make check-fsdb-env` for a non-failing availability probe
-that prints a skip line on no-Verdi machines. Set `WAVEPEEK_FSDB_ENV_VERBOSE=1`
+smoke coverage. FSDB Cargo invocations in these Make targets use
+`CARGO_TARGET_DIR=target/fsdb` so optional-feature binaries do not fight the
+default target directory during local validation. Use `make check-fsdb-env` for
+a non-failing availability probe that prints a skip line on no-Verdi machines. Set `WAVEPEEK_FSDB_ENV_VERBOSE=1`
 only when you need local path diagnostics from the environment checker. This
 feature is currently a repository-local build smoke and is not a supported
 library-consumer contract; downstream crates should not enable it until the FSDB

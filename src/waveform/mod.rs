@@ -7,10 +7,16 @@
 
 #[allow(dead_code)]
 pub(crate) mod expr_host;
+#[cfg(feature = "fsdb")]
+mod fsdb_backend;
 #[cfg(not(feature = "fsdb"))]
 mod fsdb_disabled;
+#[cfg(any(test, feature = "fsdb"))]
+mod fsdb_hierarchy;
 #[cfg(feature = "fsdb")]
 mod fsdb_native;
+#[cfg(any(test, feature = "fsdb"))]
+mod fsdb_time;
 mod types;
 mod wellen_backend;
 

@@ -40,6 +40,9 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 - [x] (2026-05-24 10:47Z) Ran targeted recheck of the generated-fixture fixes; it found one stale non-recursive `docs/DEVELOPMENT.md` wording example, which was corrected to “all `.vcd` files under `tests/fixtures/hand/`”.
 - [x] (2026-05-24 10:49Z) Ran a final tiny recheck of the recursive fixture-scope wording; it returned no substantive findings.
 - [x] (2026-05-24 10:50Z) Prepared the updated plan for commit with a conventional commit message that does not contain milestone-labelled entity names.
+- [x] (2026-05-24 12:32Z) Began implementation from clean branch `feat/fsdb` at `5ca48e1`; default `make check`, default `make ci`, `make check-fsdb-env`, and current `make check-fsdb-build` all passed before editing.
+- [x] (2026-05-24 12:44Z) Added pure Rust `fsdb_time` and `fsdb_hierarchy` helpers with no-Verdi unit coverage for scale-unit normalization, raw time overflow, sorting, depth filtering, hidden subtree exclusion, deduplication, packed range normalization, direct/recursive signal listing, missing scope/signal errors, stable kind aliases, and enum datatype override.
+- [x] (2026-05-24 12:44Z) Ran `cargo fmt -- --check`, `cargo test -q fsdb_time`, and `cargo test -q fsdb_hierarchy`; all passed after formatting.
 
 ## Surprises & Discoveries
 
@@ -78,6 +81,9 @@ This plan does not add milestone-labelled entity names. If a new name would cont
 
 - Observation: the simple Make loop still needed guardrails because shell pipelines and converter outputs are perfectly capable of lying by accident.
   Evidence: focused review noted that a piped `find | sort | while` loop can mask early failures, a direct `vcd2fsdb -o final.fsdb` can leave a partial output that appears up to date, and `require-verdi` does not by itself prove `vcd2fsdb` is on `PATH`.
+
+- Observation: the public schema has `unknown` for `scopeKind` but not for `signalKind`.
+  Evidence: the pure helper contract test failed when `RawSignalKind::Unknown` mapped to `unknown`; `schema/wavepeek.json` and `STABLE_SIGNAL_KIND_ALIASES` contain `bit_vector` but no signal-level `unknown`, so unknown FSDB signal variables now degrade to the stable `bit_vector` alias instead of emitting a schema-invalid kind.
 
 ## Decision Log
 

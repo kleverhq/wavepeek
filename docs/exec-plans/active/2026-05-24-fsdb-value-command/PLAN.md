@@ -39,7 +39,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 - [x] (2026-05-25 01:02Z) Wrapped the new native sample array safely in Rust, including owned sample cleanup, native error conversion, and decoded bit-string ownership.
 - [x] (2026-05-25 01:04Z) Implemented `FsdbBackend::sample_resolved_optional` for digital bit vectors and removed the FSDB `value` unsupported guard while leaving expression sampling unsupported.
 - [x] (2026-05-25 01:12Z) Added feature-gated FSDB CLI integration coverage for generated fixtures, bundled-example smoke, missing initial values, and unsupported real encodings.
-- [ ] Run default and feature-enabled validation gates, record outcomes, run focused reviews, apply fixes, and keep this plan updated.
+- [x] (2026-05-25 01:32Z) Ran default and feature-enabled validation gates: `make check`, `make ci`, `make lint-fsdb`, `make prepare-fsdb-fixtures`, and `make test-fsdb` all passed.
 
 ## Surprises & Discoveries
 
@@ -118,7 +118,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 
 ## Outcomes & Retrospective
 
-Implementation is underway. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real-valued signals with an unsupported non-bit-vector diagnostic, and leaves FSDB `change` / `property` explicitly unsupported. Targeted feature validation has passed so far: `cargo fmt -- --check`, `cargo check --features fsdb`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. Full final validation and review cycles are still pending; naturally the machine wants its paperwork.
+Implementation is complete pending review. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real-valued signals with an unsupported non-bit-vector diagnostic, and leaves FSDB `change` / `property` explicitly unsupported. Validation has passed: `cargo fmt -- --check`, `cargo check --features fsdb`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, `WAVEPEEK_IN_CONTAINER=1 make prepare-fsdb-fixtures`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. Focused review cycles are still pending; the paperwork goblin remains undefeated.
 
 ## Context and Orientation
 
@@ -484,6 +484,8 @@ Current implementation notes:
     Generated FSDB real probe at 0ns failed with: error: signal: signal 'top.temp' has unsupported non-bit-vector encoding
     Bundled cpu.fsdb probe succeeded at 0ns for system.i_cpu clock/addr/data with values 1'h0, 8'hxx, and 8'hxx.
     Targeted validation passed: cargo fmt -- --check; cargo check --features fsdb; cargo test -q fsdb_hierarchy --features fsdb; cargo test --features fsdb -q --test fsdb_cli -- --nocapture; WAVEPEEK_IN_CONTAINER=1 make test-fsdb.
+    Full default validation passed after implementation: WAVEPEEK_IN_CONTAINER=1 make check; WAVEPEEK_IN_CONTAINER=1 make ci with src coverage regions=94.67%, functions=95.25%, lines=95.16%.
+    Full feature validation passed after implementation: WAVEPEEK_IN_CONTAINER=1 make lint-fsdb; WAVEPEEK_IN_CONTAINER=1 make prepare-fsdb-fixtures; WAVEPEEK_IN_CONTAINER=1 make test-fsdb.
 
 ## Interfaces and Dependencies
 
@@ -550,3 +552,4 @@ The implementation may choose borrowed return types instead of cloned `FsdbSigna
 
 - 2026-05-24 / Grin: Initial active plan drafted from the FSDB architecture proposal, command-specific value research, and current hierarchy-command implementation. The plan resolves the implementation boundary around C++ bit decoding, Rust value metadata, generated VCD-derived FSDB tests, and keeping `change`/`property` unsupported.
 - 2026-05-24 / Grin: Revised after focused review to clarify generated fixture side effects, exact fixture values, delayed-value anchoring, bundled smoke candidate iteration, native transaction locking, declared range direction, path-based metadata lookup, integer time-tag checks, and proprietary metadata boundaries. A follow-up control review reported no substantive findings.
+- 2026-05-25 / Grin: Updated during implementation to record the actual batch native sampling ABI, relaxed hierarchy encoding classification after converted-vector evidence, validation results, and the final behavior before review cycles.

@@ -34,11 +34,11 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 - [x] (2026-05-24 20:51Z) Ran an independent control review over the revised plan; it returned no substantive findings.
 - [x] (2026-05-25 00:18Z) Confirmed starting branch `feat/fsdb`, current head `9d13d31`, default `make check`, default `make ci`, FSDB environment probe, and pre-change `make test-fsdb` all pass.
 - [x] (2026-05-25 00:26Z) Added checked-in VCD fixtures for value-vector parity, delayed first value, and unsupported real signal coverage; VCD-only `wavepeek value` probes match the intended Wellen contract.
-- [ ] Extend FSDB hierarchy metadata so the backend can decide whether a signal is value-sampleable before calling native traversal.
-- [ ] Add native FSDB signal load/unload and at-or-before bit-vector sampling functions through the wavepeek-owned C ABI.
-- [ ] Wrap the new native functions safely in Rust and ensure native errors, callback strings, sampled bit strings, and unload paths have clear ownership.
-- [ ] Implement `FsdbBackend::sample_resolved_optional` for digital bit vectors and remove the FSDB `value` unsupported guard.
-- [ ] Add feature-gated FSDB CLI integration coverage for generated fixtures, bundled-example smoke, and unsupported encodings.
+- [x] (2026-05-25 00:55Z) Extended FSDB hierarchy metadata with project-owned value-encoding classification so the backend can reject unsupported signal classes before native traversal.
+- [x] (2026-05-25 00:55Z) Added native FSDB batch at-or-before bit-vector sampling through the wavepeek-owned C ABI with signal-list load/unload guarding and traverse-handle cleanup.
+- [x] (2026-05-25 01:02Z) Wrapped the new native sample array safely in Rust, including owned sample cleanup, native error conversion, and decoded bit-string ownership.
+- [x] (2026-05-25 01:04Z) Implemented `FsdbBackend::sample_resolved_optional` for digital bit vectors and removed the FSDB `value` unsupported guard while leaving expression sampling unsupported.
+- [x] (2026-05-25 01:12Z) Added feature-gated FSDB CLI integration coverage for generated fixtures, bundled-example smoke, missing initial values, and unsupported real encodings.
 - [ ] Run default and feature-enabled validation gates, record outcomes, run focused reviews, apply fixes, and keep this plan updated.
 
 ## Surprises & Discoveries
@@ -60,6 +60,15 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 
 - Observation: a simple VCD real-valued signal converts through the local `vcd2fsdb` and appears through the current FSDB `signal` command as `kind: real`.
   Evidence: a local probe converted a VCD containing `$var real 64 ! temp $end`; `wavepeek signal --features fsdb` listed `top.temp` with kind `real`. This gives an actionable generated-fixture path for unsupported value encoding tests.
+
+- Observation: FSDB Reader hierarchy metadata from `fsdbTreeCBDataVar` can mark VCD-derived vector wires with `bytes_per_bit` / `vc_dt` values that are not useful as a durable prefilter for `value` support; using those fields too strictly rejected ordinary vector data converted from VCD.
+  Evidence: the first FSDB probe against converted `value_vectors.fsdb` failed with `error: signal: signal 'top.data' has unsupported non-bit-vector encoding` even though the same signal sampled correctly through `ffrGetVC()` after relaxing the prefilter.
+
+- Observation: `ffrGotoXTag()` aligns a request before the first value change to the first value change rather than failing, so native code must compare the aligned value-change time to the original query time.
+  Evidence: the delayed fixture preserves the existing contract because native sampling returns `has_value = false` when the aligned FSDB value time is greater than the requested raw time; the CLI then emits `signal 'top.late' has no value at or before requested time`.
+
+- Observation: the Verdi-bundled `cpu.fsdb` contains straightforward digital signals under `system.i_cpu` that can exercise real FSDB sampling without committing proprietary fixtures.
+  Evidence: `wavepeek value --waves $VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb --scope system.i_cpu --signals clock,addr,data --at 0ns --json` returned `clock=1'h0`, `addr=8'hxx`, and `data=8'hxx`.
 
 ## Decision Log
 
@@ -99,9 +108,17 @@ This plan does not rename existing modules for aesthetics. It extends the curren
   Rationale: names like `value_vectors.vcd` and `fsdb_value_rejects_real_signal_encoding` explain their job after roadmap labels fade. Milestone labels in filenames and APIs are stale metadata disguised as structure. Naturally they breed. Existing broad helper targets may generate ignored files from historical fixture names; do not depend on or mention those side effects for this plan.
   Date/Author: 2026-05-24 / Grin
 
+- Decision: implement the native value operation as one batch C ABI call, `wp_fsdb_sample_signal_values`, rather than exposing separate load, sample, and unload calls to Rust.
+  Rationale: the FSDB Reader signal list is reader-global mutable state, and a single native function can hold the native mutex, suppress Reader chatter, load selected signals, sample every requested idcode in order, and unload/reset through RAII guards even on failures. This is less clever than a half-transaction spread over FFI calls, which is another way of saying it has fewer places to leak state.
+  Date/Author: 2026-05-25 / Grin
+
+- Decision: classify only obvious non-vector signal classes as unsupported in hierarchy metadata and let native traversal validate bytes-per-bit at sampling time.
+  Rationale: local evidence showed VCD-derived digital vectors can carry hierarchy `bytes_per_bit` / `vc_dt` metadata that looks unsupported while `ffrGetVC()` still returns ordinary 0/1/x/z bytes. Real, string, event, sparse-array, dummy/internal, and unknown kind records are still rejected before sampling so user-facing errors name the canonical signal path.
+  Date/Author: 2026-05-25 / Grin
+
 ## Outcomes & Retrospective
 
-This plan has been drafted, reviewed, revised, and control-reviewed before implementation. The first review pass found useful sharp edges around fixture naming side effects, explicit fixture values, native transaction locking, declared range direction, path-based metadata lookup, integer time-tag checks, and bundled-FSDB smoke selection. Those fixes are now recorded in the plan. The final control pass returned no substantive findings. Implementation has not started. The intended outcome is narrow but user-visible: an FSDB-enabled `wavepeek value` command that behaves like VCD/FST for digital bit vectors, while default builds and unimplemented FSDB `change`/`property` paths remain explicit and safe. After implementation, this section must be updated with the exact commits, validation commands, review findings, fixes applied, and remaining gaps.
+Implementation is underway. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real-valued signals with an unsupported non-bit-vector diagnostic, and leaves FSDB `change` / `property` explicitly unsupported. Targeted feature validation has passed so far: `cargo fmt -- --check`, `cargo check --features fsdb`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. Full final validation and review cycles are still pending; naturally the machine wants its paperwork.
 
 ## Context and Orientation
 
@@ -123,9 +140,9 @@ The `.fst` files in this repository are binary and must never be read with the t
 
 ## Open Questions
 
-No product decision blocks this plan. The implementation agent must verify the exact local FSDB Reader function signatures for value traversal in `$VERDI_HOME/share/FsdbReader/ffrAPI.h` and may consult local SDK examples, but must not copy proprietary declarations or documentation excerpts into the repository. The expected API concepts are settled: load selected idcodes, create a value-change traverse handle for each idcode, go to the requested raw time, read the actual value-change time and value buffer, decode immediately, free the handle, and unload signals.
+No product decision blocks this plan. The exact local FSDB Reader signatures were verified from `$VERDI_HOME/share/FsdbReader/ffrAPI.h` and SDK examples without copying proprietary declarations into the repository. The implemented native path loads selected idcodes, creates one value-change traverse handle per idcode, calls `ffrGotoXTag`, reads the aligned value-change time and value buffer, decodes immediately into an owned project string, frees the handle, and unloads/reset signals through guards.
 
-Two technical details must be resolved during implementation and recorded in `Surprises & Discoveries`: whether `ffrGotoXTag` needs a glitch-number pointer in this SDK version, and exactly how it reports “no value at or before query time.” Treat a normal no-value result as `bits: None`; treat unexpected Reader failures as `WavepeekError::File`. Also verify that `FsdbBackend::metadata` or an equivalent cached check has already rejected non-integer `xtag_type` before sampling. If a lower-level test calls sampling without prior metadata, the wrapper must perform the same integer-tag guard instead of assuming the command path did it.
+The implementation resolved the two known technical questions. In this SDK, `ffrGotoXTag` accepts the requested time pointer and an optional glitch-number pointer; the shim does not need the glitch count for point sampling. When the requested time is earlier than the first value change, `ffrGotoXTag` can align to the first value change, so the shim compares aligned raw time to requested raw time and returns `bits: None` when aligned time is greater. `FsdbBackend::sample_resolved_optional` now calls `metadata()` before sampling so lower-level calls get the same non-integer time-tag rejection as the command path.
 
 ## Milestones
 
@@ -221,69 +238,53 @@ Default builds must still pass without Verdi.
 
 ### Add native signal loading and at-or-before bit-vector sampling
 
-Extend `native/fsdb/wavepeek_fsdb_shim.h` and `native/fsdb/wavepeek_fsdb_shim.cpp` with a small C ABI for value sampling. Add `#include <stddef.h>` to the shim header when introducing `size_t`; the current header only needs integer types, and literal implementation without that include would be a charmingly avoidable build failure. Good long-lived names are:
+Extend `native/fsdb/wavepeek_fsdb_shim.h` and `native/fsdb/wavepeek_fsdb_shim.cpp` with a small batch C ABI for value sampling. Add `#include <stddef.h>` to the shim header when introducing `size_t`; the previous header only needed integer types, and literal implementation without that include would be a charmingly avoidable build failure. The implemented names are:
 
-    typedef struct wp_fsdb_sampled_bits {
+    typedef struct wp_fsdb_sample_record {
+        uint64_t idcode;
         int has_value;
+        uint32_t bit_width;
+        uint64_t value_time_raw;
         char *bits;
-    } wp_fsdb_sampled_bits;
+    } wp_fsdb_sample_record;
 
-    wp_fsdb_status wp_fsdb_load_signals(
+    wp_fsdb_status wp_fsdb_sample_signal_values(
         wp_fsdb_reader *reader,
         const uint64_t *idcodes,
         size_t count,
+        uint64_t query_time_raw,
+        wp_fsdb_sample_record **out,
         char **error_message
     );
 
-    wp_fsdb_status wp_fsdb_unload_signals(
-        wp_fsdb_reader *reader,
-        char **error_message
-    );
+    void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, size_t count);
 
-    wp_fsdb_status wp_fsdb_sample_bit_vector(
-        wp_fsdb_reader *reader,
-        uint64_t idcode,
-        uint64_t raw_time,
-        uint32_t width,
-        int has_declared_range,
-        int32_t left,
-        int32_t right,
-        wp_fsdb_sampled_bits *out,
-        char **error_message
-    );
+The names describe the operation and do not contain milestone labels. The exact discriminants and structures are wavepeek-owned and mirrored only by wavepeek Rust code.
 
-    void wp_fsdb_free_sampled_bits(wp_fsdb_sampled_bits *value);
+`wp_fsdb_sample_signal_values` clears the Reader signal list, adds each requested idcode, loads those signals, samples each idcode in request order, then unloads and resets through guards. Treat an empty idcode list as success at the Rust wrapper layer. Do not load all signals. The native function holds the Reader mutex across the complete operation so no other native call can interleave with the mutable signal list.
 
-The exact names may change if the surrounding code reads better, but they must describe the operation and must not contain milestone labels.
-
-`wp_fsdb_load_signals` should clear the Reader signal list, add each unique idcode, and call the Reader load function. Treat an empty idcode list as success. Do not load all signals. `wp_fsdb_unload_signals` should release loaded value changes and be safe to call even after partial failures. If the Reader has both broad and targeted unload APIs, use the broad unload first for simplicity; optimization belongs to a later measured pass.
-
-`wp_fsdb_sample_bit_vector` should create a value-change traverse handle for one idcode after signals are loaded. It receives the declared range because some Reader buffer layouts depend on declaration direction. Convert `raw_time` into the SDK’s integer tag representation with `H = raw_time >> 32` and `L = raw_time & 0xffffffff` only after the Rust wrapper has confirmed the file metadata uses an integer `L` or `HL` time-tag type. Move the handle to the value at or before the query tag. If the Reader reports no in-core value or no suitable previous value, return `WP_FSDB_STATUS_OK` with `has_value = 0` and `bits = nullptr`. If the Reader points at a time after the query, defensively treat it as no value. If a handle cannot be created, if `ffrGetVC` fails after a successful seek, or if the value buffer contains an unsupported digital bit code for a signal that was classified as bit-vector, return a native error.
+Each sampled idcode creates a value-change traverse handle after signals are loaded. Convert `query_time_raw` into the SDK’s integer tag representation with `H = raw_time >> 32` and `L = raw_time & 0xffffffff` only after the backend has confirmed the file metadata uses an integer `L` or `HL` time-tag type. Move the handle to the value at or before the query tag. If the Reader aligns to a value-change time after the query, return `WP_FSDB_STATUS_OK` with `has_value = 0` and `bits = nullptr`. If a handle cannot be created, if `ffrGetVC` fails after a successful seek, or if the value buffer contains an unsupported digital bit code for a signal that was classified as bit-vector, return a native error.
 
 Decode the value buffer immediately while the traverse handle owns it. Allocate a NUL-terminated string of exactly `width` bit characters plus the terminator. The first implementation supports `0`, `1`, `x`, and `z` states. Unknown Verilog-style codes should map to `x` only when the SDK clearly documents them as unknown-strength variants; otherwise return unsupported. Do not let pointers from the Reader escape the native function. Always free the traverse handle on every path.
 
 Bit order is important. `format_verilog_literal(8, "00001111")` renders `8'h0f`; reversing the FSDB buffer would render `8'hf0`, which is wrong. Use generated fixture tests to prove the native decoder returns the same bit string orientation as Wellen for both descending and ascending declared ranges. If local Reader examples imply the buffer order is least-significant first or declaration-order-dependent for some case, normalize in the C++ shim or Rust wrapper so the backend-neutral bit string remains most-significant-bit first, matching Wellen and existing `format_verilog_literal` expectations. Record the evidence in `Surprises & Discoveries`.
 
-Keep the existing native safety properties: C++ exceptions do not cross FFI, errors become status plus owned strings, Reader stdout/stderr remains suppressed unless debug verbosity is explicitly enabled, and all suppressing Reader calls stay serialized by the native recursive mutex. Because load, sample, and unload operate on the same Reader object and signal list, native per-call locking is not sufficient on its own. Either expose a single native batch sampling transaction or, preferably for the first implementation, add a per-reader Rust transaction lock and keep `FsdbReader`/`FsdbBackend` non-`Send` and non-`Sync` unless there is a deliberate synchronization design. No two callers may interleave load/sample/unload on one native reader.
+Keep the existing native safety properties: C++ exceptions do not cross FFI, errors become status plus owned strings, Reader stdout/stderr remains suppressed unless debug verbosity is explicitly enabled, and all suppressing Reader calls stay serialized by the native recursive mutex. Because load, sample, and unload operate on the same Reader object and signal list, native per-call locking is not sufficient on its own. The implemented single native batch transaction avoids interleaving by keeping load/sample/unload in one mutex-protected call.
 
-Extend `src/waveform/fsdb_native.rs` with a transaction-scoped safe wrapper. The low-level FFI wrappers may remain private helpers, but `FsdbBackend` should call a single operation shaped like this:
+Extend `src/waveform/fsdb_native.rs` with a transaction-scoped safe wrapper. `FsdbBackend` calls a single operation shaped like this:
 
-    pub(super) struct FsdbBitVectorSampleRequest {
+    pub(super) struct FsdbNativeSample {
         pub(super) idcode: u64,
-        pub(super) raw_time: u64,
-        pub(super) width: u32,
-        pub(super) declared_range: Option<FsdbSignalRange>,
+        pub(super) bit_width: u32,
+        pub(super) value_time_raw: Option<u64>,
+        pub(super) bits: Option<String>,
     }
 
     impl FsdbReader {
-        pub(super) fn sample_bit_vectors_at(
-            &self,
-            idcodes_to_load: &[u64],
-            requests: &[FsdbBitVectorSampleRequest],
-        ) -> Result<Vec<Option<String>>, WavepeekError>;
+        pub(super) fn sample_signal_values(&self, idcodes: &[u64], query_time_raw: u64) -> Result<Vec<FsdbNativeSample>, WavepeekError>;
     }
 
-`sample_bit_vectors_at` must hold the per-reader transaction lock, verify integer time-tag support if that has not already been cached, call native load once, sample every request, call native unload exactly once, and release the lock only after unload. It must free native sampled strings on all paths. If both sampling and unload fail, return the sampling error and record unload failure only if the repository has an existing secondary-warning pattern; otherwise return the unload error only when no earlier error exists. Add focused unit-style smoke tests behind `#[cfg(feature = "fsdb")]`. A direct native smoke may sample a dynamically discovered bit-vector signal from `cpu.fsdb` at the dump end time and assert the result is either `Some(bits)` with the expected width and allowed characters or `None` only if the chosen signal truly has no prior value; the CLI smoke gives stronger user-visible coverage.
+`sample_signal_values` returns early for empty input, calls the native batch operation once, converts each native row into owned Rust data, and frees the native sample array on all paths. Integer time-tag support is verified in `FsdbBackend::sample_resolved_optional` by calling `metadata()` before sampling. Add focused feature-gated CLI coverage rather than proprietary native golden outputs; the CLI smoke against `cpu.fsdb` gives stronger user-visible evidence.
 
 Acceptance for this milestone on a Verdi-equipped machine:
 
@@ -302,10 +303,9 @@ Update `src/waveform/fsdb_backend.rs` so `sample_resolved_optional` implements F
 2. Ensure cached metadata has accepted the file’s integer time-tag type. The command path already reads metadata before sampling; lower-level calls must not bypass this guard.
 3. For every requested `ResolvedSignal`, fetch the corresponding FSDB value metadata from the hierarchy index by `resolved.path`.
 4. If any signal is real, string, event, dummy/internal, missing width, zero width, or otherwise unsupported, return `WavepeekError::Signal("signal '<path>' has unsupported non-bit-vector encoding")`. Use the resolved canonical path in the message.
-5. Deduplicate idcodes for native loading while preserving the original result order and keeping path-specific metadata. `Waveform::sample_signals_at_time` already deduplicates by path, but lower-level callers may not; the backend should still be robust.
-6. Build one `FsdbBitVectorSampleRequest` per original resolved entry, including idcode, raw query time, width, and declared range.
-7. Call `FsdbReader::sample_bit_vectors_at` once with the unique idcode load set and the ordered requests. Do not call separate load/sample/unload wrappers from the backend unless the wrapper holds a transaction guard across the entire sequence.
-8. Return one `SampledSignalState` per original `resolved` entry, with `bits: Some(bits)` for sampled values and `bits: None` for no prior value. The facade will turn `None` into the public `value` command error.
+5. Build one ordered idcode list from the original resolved entries. The native batch loader deduplicates only the Reader signal-list load step while still returning one sampled row per requested idcode, preserving result order.
+6. Call `FsdbReader::sample_signal_values` once with the ordered idcodes and raw query time. Do not call separate load/sample/unload wrappers from the backend.
+7. Return one `SampledSignalState` per original `resolved` entry, with `bits: Some(bits)` for sampled values and `bits: None` for no prior value. The facade will turn `None` into the public `value` command error.
 
 Do not implement `sample_expr_value`, `expr_event_occurred`, `collect_change_times_with_mode`, or `collect_expr_candidate_times_with_mode` here. They should keep returning the existing FSDB unsupported errors for `change` and `property` paths. `previous_sample_time` may continue returning `None` for FSDB because the command implemented here does not call it.
 
@@ -454,7 +454,7 @@ Full acceptance requires all of these to pass where applicable:
 
 The new VCD fixtures are durable source files and can be overwritten safely if their contents are intentionally revised. Generated `.fsdb` files under `tests/fixtures/fsdb/` are ignored artifacts; delete them and rerun `WAVEPEEK_IN_CONTAINER=1 make prepare-fsdb-fixtures` if conversion fails or if fixture contents change. Temporary converter directories created by integration tests are owned by `tempfile` and should be cleaned automatically.
 
-Native signal loading modifies Reader object state. Implement the Rust sampling wrapper so every successful load has a corresponding unload even if one signal sample fails, and so a per-reader transaction lock is held from before load until after unload. If a test fails after a native error, rerun it in a fresh process; the CLI tests already launch child processes, which is the safest recovery boundary for proprietary in-process libraries.
+Native signal loading modifies Reader object state. The implemented native batch operation holds the native Reader mutex for the whole load/sample/unload sequence and uses guards so every successful load has a corresponding unload/reset even if one signal sample fails. If a test fails after a native error, rerun it in a fresh process; the CLI tests already launch child processes, which is the safest recovery boundary for proprietary in-process libraries.
 
 If `cargo check --features fsdb` fails because `VERDI_HOME` is missing or incomplete, do not patch around the build script. Run `WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env` and fix the local environment, or limit validation to default no-Verdi gates and record that FSDB gates were not runnable.
 
@@ -479,57 +479,60 @@ Current implementation notes:
     VCD fixture probe for value_delayed.vcd at 0ns failed with: error: signal: signal 'top.late' has no value at or before requested time
     VCD fixture probe for value_real.vcd at 0ns failed with: error: signal: signal 'top.temp' has unsupported non-bit-vector encoding
 
+    Generated FSDB probe at 7ns for value_vectors.fsdb produced the same JSON value payload as the VCD fixture, including duplicate top.data rows and asc/status as 4'h3.
+    Generated FSDB delayed probe at 0ns failed with: error: signal: signal 'top.late' has no value at or before requested time
+    Generated FSDB real probe at 0ns failed with: error: signal: signal 'top.temp' has unsupported non-bit-vector encoding
+    Bundled cpu.fsdb probe succeeded at 0ns for system.i_cpu clock/addr/data with values 1'h0, 8'hxx, and 8'hxx.
+    Targeted validation passed: cargo fmt -- --check; cargo check --features fsdb; cargo test -q fsdb_hierarchy --features fsdb; cargo test --features fsdb -q --test fsdb_cli -- --nocapture; WAVEPEEK_IN_CONTAINER=1 make test-fsdb.
+
 ## Interfaces and Dependencies
 
 At the end of this work, the following internal interfaces should exist or their equivalents should be clearly documented in this plan:
 
-In `native/fsdb/wavepeek_fsdb_shim.h`, wavepeek-owned C ABI additions:
+In `native/fsdb/wavepeek_fsdb_shim.h`, wavepeek-owned C ABI additions are now:
 
-    typedef enum wp_fsdb_value_kind {
-        WP_FSDB_VALUE_KIND_BIT_VECTOR = 0,
-        WP_FSDB_VALUE_KIND_REAL = 1,
-        WP_FSDB_VALUE_KIND_STRING = 2,
-        WP_FSDB_VALUE_KIND_EVENT = 3,
-        WP_FSDB_VALUE_KIND_UNSUPPORTED = 4
-    } wp_fsdb_value_kind;
+    typedef enum wp_fsdb_value_encoding {
+        WP_FSDB_VALUE_ENCODING_BIT_VECTOR = 0,
+        WP_FSDB_VALUE_ENCODING_UNSUPPORTED = 1
+    } wp_fsdb_value_encoding;
 
-    typedef struct wp_fsdb_sampled_bits {
+    typedef struct wp_fsdb_sample_record {
+        uint64_t idcode;
         int has_value;
+        uint32_t bit_width;
+        uint64_t value_time_raw;
         char *bits;
-    } wp_fsdb_sampled_bits;
+    } wp_fsdb_sample_record;
 
-    wp_fsdb_status wp_fsdb_load_signals(wp_fsdb_reader *reader, const uint64_t *idcodes, size_t count, char **error_message);
-    wp_fsdb_status wp_fsdb_unload_signals(wp_fsdb_reader *reader, char **error_message);
-    wp_fsdb_status wp_fsdb_sample_bit_vector(wp_fsdb_reader *reader, uint64_t idcode, uint64_t raw_time, uint32_t width, int has_declared_range, int32_t left, int32_t right, wp_fsdb_sampled_bits *out, char **error_message);
-    void wp_fsdb_free_sampled_bits(wp_fsdb_sampled_bits *value);
+    wp_fsdb_status wp_fsdb_sample_signal_values(wp_fsdb_reader *reader, const uint64_t *idcodes, size_t count, uint64_t query_time_raw, wp_fsdb_sample_record **out, char **error_message);
+    void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, size_t count);
 
-The exact enum discriminants are project-owned and may change before commit if all Rust mirrors are updated together. They must not be copied from proprietary FSDB headers.
+The exact enum discriminants are project-owned. They are not copied from proprietary FSDB headers.
 
-In `src/waveform/fsdb_native.rs`:
+In `src/waveform/fsdb_native.rs`, the backend-facing interface is transaction-scoped in one method:
 
-    pub(super) struct FsdbBitVectorSampleRequest {
+    pub(super) struct FsdbNativeSample {
         pub(super) idcode: u64,
-        pub(super) raw_time: u64,
-        pub(super) width: u32,
-        pub(super) declared_range: Option<FsdbSignalRange>,
+        pub(super) bit_width: u32,
+        pub(super) value_time_raw: Option<u64>,
+        pub(super) bits: Option<String>,
     }
 
     impl FsdbReader {
-        pub(super) fn sample_bit_vectors_at(&self, idcodes_to_load: &[u64], requests: &[FsdbBitVectorSampleRequest]) -> Result<Vec<Option<String>>, WavepeekError>;
+        pub(super) fn sample_signal_values(&self, idcodes: &[u64], query_time_raw: u64) -> Result<Vec<FsdbNativeSample>, WavepeekError>;
     }
 
-Low-level `load_signals`, `unload_signals`, and `sample_bit_vector` helpers may exist privately, but the backend-facing interface must be transaction-scoped.
+The Rust wrapper owns the returned native array until it has converted each row into Rust data, then calls `wp_fsdb_free_samples` in `Drop`.
 
-In `src/waveform/fsdb_hierarchy.rs`:
+In `src/waveform/fsdb_hierarchy.rs`, the implemented durable metadata surface is intentionally smaller than the first sketch:
 
-    pub(super) enum RawValueKind { BitVector, Real, String, Event, Unsupported }
-    pub(super) enum FsdbSignalValueKind { BitVector, Real, String, Event, Unsupported }
-    pub(super) struct FsdbSignalRange { /* declared left/right bounds */ }
-    pub(super) struct FsdbSignalValueInfo { /* canonical path, idcode, SignalId, width, declared range, kind */ }
+    pub(super) enum FsdbValueEncoding { BitVector, Unsupported }
 
     impl FsdbHierarchyIndex {
-        pub(super) fn signal_value_info(&self, canonical_path: &str) -> Result<FsdbSignalValueInfo, WavepeekError>;
+        pub(super) fn signal_value_encoding(&self, canonical_path: &str) -> Result<FsdbValueEncoding, WavepeekError>;
     }
+
+The backend still relies on `ResolvedSignal.width` for public width and the native sample record for decoded width; declared range did not need a public Rust metadata type because the Reader returns bytes in renderable bit order for the covered digital fixtures.
 
 In `src/waveform/fsdb_backend.rs`:
 

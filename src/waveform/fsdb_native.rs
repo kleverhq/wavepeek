@@ -5,12 +5,13 @@ use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr::{self, NonNull};
+use std::slice;
 
 use crate::error::WavepeekError;
 
 use super::fsdb_hierarchy::{
-    FsdbHierarchyBuilder, FsdbHierarchyIndex, RawDatatypeKind, RawDatatypeRecord, RawScopeKind,
-    RawScopeRecord, RawSignalKind, RawSignalRecord,
+    FsdbHierarchyBuilder, FsdbHierarchyIndex, FsdbValueEncoding, RawDatatypeKind,
+    RawDatatypeRecord, RawScopeKind, RawScopeRecord, RawSignalKind, RawSignalRecord,
 };
 const WP_FSDB_STATUS_OK: c_uint = 0;
 
@@ -25,6 +26,14 @@ pub(super) struct FsdbNativeMetadata {
     pub(super) time_start_raw: u64,
     pub(super) time_end_raw: u64,
     pub(super) xtag_type: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct FsdbNativeSample {
+    pub(super) idcode: u64,
+    pub(super) bit_width: u32,
+    pub(super) value_time_raw: Option<u64>,
+    pub(super) bits: Option<String>,
 }
 
 impl FsdbReader {
@@ -99,6 +108,38 @@ impl FsdbReader {
 
         Ok(context.builder.finish())
     }
+
+    pub(super) fn sample_signal_values(
+        &self,
+        idcodes: &[u64],
+        query_time_raw: u64,
+    ) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if idcodes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut raw_samples = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_sample_signal_values(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                query_time_raw,
+                &mut raw_samples,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let samples = NativeSampleArray {
+            raw: raw_samples,
+            count: idcodes.len(),
+        };
+        samples.to_vec()
+    }
 }
 
 impl Drop for FsdbReader {
@@ -116,6 +157,30 @@ pub(super) fn probe(path: &Path) -> Result<bool, WavepeekError> {
         return Err(native_error(error_message));
     }
     Ok(is_fsdb != 0)
+}
+
+struct NativeSampleArray {
+    raw: *mut ffi::wp_fsdb_sample_record,
+    count: usize,
+}
+
+impl NativeSampleArray {
+    fn to_vec(&self) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if self.raw.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a null sample array".to_string(),
+            ));
+        }
+
+        let records = unsafe { slice::from_raw_parts(self.raw, self.count) };
+        records.iter().map(sample_record_to_rust).collect()
+    }
+}
+
+impl Drop for NativeSampleArray {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_free_samples(self.raw, self.count) };
+    }
 }
 
 struct HierarchyCallbackContext {
@@ -212,6 +277,7 @@ unsafe fn handle_hierarchy_event(
                 left,
                 right,
                 datatype_id,
+                value_encoding: raw_value_encoding(signal.value_encoding),
             })?;
         }
         ffi::WP_FSDB_TREE_EVENT_UPSCOPE => context.builder.upscope()?,
@@ -287,6 +353,31 @@ unsafe fn borrowed_c_string(value: *const c_char) -> Result<String, WavepeekErro
     Ok(unsafe { CStr::from_ptr(value) }
         .to_string_lossy()
         .into_owned())
+}
+
+fn sample_record_to_rust(
+    record: &ffi::wp_fsdb_sample_record,
+) -> Result<FsdbNativeSample, WavepeekError> {
+    let bits = if record.has_value != 0 {
+        if record.bits.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a sampled value without bits".to_string(),
+            ));
+        }
+        Some(
+            unsafe { CStr::from_ptr(record.bits) }
+                .to_string_lossy()
+                .into_owned(),
+        )
+    } else {
+        None
+    };
+    Ok(FsdbNativeSample {
+        idcode: record.idcode,
+        bit_width: record.bit_width,
+        value_time_raw: (record.has_value != 0).then_some(record.value_time_raw),
+        bits,
+    })
 }
 
 fn raw_scope_kind(kind: c_uint) -> RawScopeKind {
@@ -367,6 +458,13 @@ fn raw_datatype_kind(kind: c_uint) -> RawDatatypeKind {
     }
 }
 
+fn raw_value_encoding(encoding: c_uint) -> FsdbValueEncoding {
+    match encoding {
+        ffi::WP_FSDB_VALUE_ENCODING_BIT_VECTOR => FsdbValueEncoding::BitVector,
+        _ => FsdbValueEncoding::Unsupported,
+    }
+}
+
 mod ffi {
     use std::os::raw::{c_char, c_int, c_uint, c_void};
 
@@ -441,6 +539,8 @@ mod ffi {
     pub(super) const WP_FSDB_DATATYPE_KIND_STRING: c_uint = 14;
     pub(super) const WP_FSDB_DATATYPE_KIND_EVENT: c_uint = 15;
 
+    pub(super) const WP_FSDB_VALUE_ENCODING_BIT_VECTOR: c_uint = 0;
+
     #[repr(C)]
     pub(super) struct wp_fsdb_reader {
         _private: [u8; 0],
@@ -471,12 +571,22 @@ mod ffi {
         pub(super) has_datatype_id: c_int,
         pub(super) datatype_id: c_uint,
         pub(super) kind: c_uint,
+        pub(super) value_encoding: c_uint,
     }
 
     #[repr(C)]
     pub(super) struct wp_fsdb_datatype_record {
         pub(super) idcode: c_uint,
         pub(super) kind: c_uint,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_sample_record {
+        pub(super) idcode: u64,
+        pub(super) has_value: c_int,
+        pub(super) bit_width: c_uint,
+        pub(super) value_time_raw: u64,
+        pub(super) bits: *const c_char,
     }
 
     pub(super) type WpFsdbTreeCallback = Option<
@@ -512,6 +622,15 @@ mod ffi {
             user: *mut c_void,
             error_message: *mut *mut c_char,
         ) -> c_uint;
+        pub(super) fn wp_fsdb_sample_signal_values(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            query_time_raw: u64,
+            out: *mut *mut wp_fsdb_sample_record,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_free_samples(samples: *mut wp_fsdb_sample_record, count: usize);
         pub(super) fn wp_fsdb_free_string(value: *mut c_char);
         pub(super) fn wp_fsdb_free_error(value: *mut c_char);
     }

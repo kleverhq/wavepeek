@@ -219,7 +219,7 @@ fn fsdb_signal_reports_missing_scope_with_scope_category() {
 }
 
 #[test]
-fn fsdb_bundled_cpu_smoke_supports_info_scope_and_signal() {
+fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
     let fixture = bundled_cpu_fsdb_path();
 
     let info = run_json_success(&["info", "--waves", fixture.as_str(), "--json"]);
@@ -309,26 +309,125 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_and_signal() {
     for signal in &signals {
         assert_signal_entry(signal);
     }
+
+    let sample_path = discover_bundled_signal_path(&fixture);
+    let sample_time = info["data"]["time_start"]
+        .as_str()
+        .expect("bundled info should expose time_start");
+    let sampled = run_json_success(&[
+        "value",
+        "--waves",
+        fixture.as_str(),
+        "--signals",
+        sample_path.as_str(),
+        "--at",
+        sample_time,
+        "--json",
+    ]);
+    assert_eq!(sampled["command"], "value");
+    assert_eq!(sampled["warnings"], json!([]));
+    assert_eq!(sampled["data"]["time"], sample_time);
+    assert_eq!(sampled["data"]["signals"][0]["path"], sample_path);
+    assert!(
+        sampled["data"]["signals"][0]["value"]
+            .as_str()
+            .is_some_and(|value| value.contains("'h")),
+        "sampled FSDB value should render as a Verilog-style literal"
+    );
 }
 
 #[test]
-fn fsdb_unsupported_value_change_and_property_fail_clearly() {
+fn fsdb_value_json_matches_vcd_sampling_contract() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fixture = path_str(&fixtures.value_vectors());
+    let value = run_json_success(&[
+        "value",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk,data,nibble,status,asc",
+        "--at",
+        "7ns",
+        "--json",
+    ]);
+
+    assert_eq!(value["$schema"], expected_schema_url());
+    assert_eq!(value["command"], "value");
+    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["data"]["time"], "7ns");
+    assert_eq!(
+        value["data"]["signals"],
+        json!([
+            {"path": "top.data", "value": "8'h0f"},
+            {"path": "top.clk", "value": "1'h1"},
+            {"path": "top.data", "value": "8'h0f"},
+            {"path": "top.nibble", "value": "4'hx"},
+            {"path": "top.status", "value": "4'h3"},
+            {"path": "top.asc", "value": "4'h3"},
+        ])
+    );
+}
+
+#[test]
+fn fsdb_value_reports_missing_initial_value() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fixture = path_str(&fixtures.value_delayed());
+
+    wavepeek_cmd()
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "late",
+            "--at",
+            "0ns",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "signal 'top.late' has no value at or before requested time",
+        ));
+}
+
+#[test]
+fn fsdb_value_rejects_non_bit_vector_signal() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fixture = path_str(&fixtures.value_real());
+
+    wavepeek_cmd()
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "temp",
+            "--at",
+            "0ns",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "signal 'top.temp' has unsupported non-bit-vector encoding",
+        ));
+}
+
+#[test]
+fn fsdb_unsupported_change_and_property_fail_clearly() {
     let fixture = bundled_cpu_fsdb_path();
     let signal = discover_bundled_signal_path(&fixture);
 
     for (args, expected) in [
-        (
-            vec![
-                "value",
-                "--waves",
-                fixture.as_str(),
-                "--signals",
-                signal.as_str(),
-                "--at",
-                "0ns",
-            ],
-            "FSDB value sampling is not implemented yet; info, scope, and signal are supported by this build",
-        ),
         (
             vec![
                 "change",
@@ -341,7 +440,7 @@ fn fsdb_unsupported_value_change_and_property_fail_clearly() {
                 "--to",
                 "10ns",
             ],
-            "FSDB change collection is not implemented yet; info, scope, and signal are supported by this build",
+            "FSDB change collection is not implemented yet; info, scope, signal, and value are supported by this build",
         ),
         (
             vec![
@@ -355,7 +454,7 @@ fn fsdb_unsupported_value_change_and_property_fail_clearly() {
                 "--to",
                 "10ns",
             ],
-            "FSDB property evaluation is not implemented yet; info, scope, and signal are supported by this build",
+            "FSDB property evaluation is not implemented yet; info, scope, signal, and value are supported by this build",
         ),
     ] {
         wavepeek_cmd()
@@ -498,6 +597,9 @@ struct GeneratedFsdbFixtures {
     _dir: TempDir,
     scope_mixed_kinds: PathBuf,
     signal_recursive_depth: PathBuf,
+    value_vectors: PathBuf,
+    value_delayed: PathBuf,
+    value_real: PathBuf,
 }
 
 impl GeneratedFsdbFixtures {
@@ -506,10 +608,16 @@ impl GeneratedFsdbFixtures {
         let dir = tempfile::tempdir().expect("tempdir should be created");
         let scope_mixed_kinds = convert_vcd_fixture(dir.path(), "scope_mixed_kinds.vcd");
         let signal_recursive_depth = convert_vcd_fixture(dir.path(), "signal_recursive_depth.vcd");
+        let value_vectors = convert_vcd_fixture(dir.path(), "value_vectors.vcd");
+        let value_delayed = convert_vcd_fixture(dir.path(), "value_delayed.vcd");
+        let value_real = convert_vcd_fixture(dir.path(), "value_real.vcd");
         Self {
             _dir: dir,
             scope_mixed_kinds,
             signal_recursive_depth,
+            value_vectors,
+            value_delayed,
+            value_real,
         }
     }
 
@@ -519,6 +627,18 @@ impl GeneratedFsdbFixtures {
 
     fn signal_recursive_depth(&self) -> PathBuf {
         self.signal_recursive_depth.clone()
+    }
+
+    fn value_vectors(&self) -> PathBuf {
+        self.value_vectors.clone()
+    }
+
+    fn value_delayed(&self) -> PathBuf {
+        self.value_delayed.clone()
+    }
+
+    fn value_real(&self) -> PathBuf {
+        self.value_real.clone()
     }
 }
 

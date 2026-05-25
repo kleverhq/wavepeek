@@ -124,7 +124,6 @@ impl Waveform {
             Backend::Wellen(_) => None,
             #[cfg(feature = "fsdb")]
             Backend::Fsdb(_) => match command {
-                "value" => Some(fsdb_backend::unsupported_value_sampling()),
                 "change" => Some(fsdb_backend::unsupported_change_collection()),
                 "property" => Some(fsdb_backend::unsupported_property_evaluation()),
                 _ => None,

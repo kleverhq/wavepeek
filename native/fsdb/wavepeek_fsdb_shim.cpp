@@ -2,6 +2,7 @@
 
 #include "ffrAPI.h"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -10,6 +11,7 @@
 #include <mutex>
 #include <new>
 #include <string>
+#include <vector>
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -116,6 +118,13 @@ wp_fsdb_status fail_unknown_exception(char **error_message) {
 
 uint64_t tag64_to_u64(const fsdbTag64 &tag) {
     return (static_cast<uint64_t>(tag.H) << 32) | static_cast<uint64_t>(tag.L);
+}
+
+fsdbTag64 u64_to_tag64(uint64_t value) {
+    fsdbTag64 tag{};
+    tag.H = static_cast<uint32_t>(value >> 32);
+    tag.L = static_cast<uint32_t>(value & 0xffffffffu);
+    return tag;
 }
 
 struct free_deleter {
@@ -228,6 +237,35 @@ wp_fsdb_signal_kind map_signal_kind(uint_T raw_type) {
     default:
         return WP_FSDB_SIGNAL_KIND_UNKNOWN;
     }
+}
+
+bool is_known_non_vector_signal(wp_fsdb_signal_kind kind) {
+    switch (kind) {
+    case WP_FSDB_SIGNAL_KIND_EVENT:
+    case WP_FSDB_SIGNAL_KIND_REAL:
+    case WP_FSDB_SIGNAL_KIND_STRING:
+    case WP_FSDB_SIGNAL_KIND_SPARSE_ARRAY:
+    case WP_FSDB_SIGNAL_KIND_REAL_TIME:
+    case WP_FSDB_SIGNAL_KIND_REAL_PARAMETER:
+    case WP_FSDB_SIGNAL_KIND_SHORT_REAL:
+    case WP_FSDB_SIGNAL_KIND_UNKNOWN:
+        return true;
+    default:
+        return false;
+    }
+}
+
+wp_fsdb_value_encoding classify_value_encoding(
+    const fsdbTreeCBDataVar *var,
+    wp_fsdb_signal_kind kind
+) {
+    if (var == nullptr || is_known_non_vector_signal(kind)) {
+        return WP_FSDB_VALUE_ENCODING_UNSUPPORTED;
+    }
+    if (var->is_dummy_var || var->is_class_in_obj || var->is_void || var->is_unexpanded_mem_var) {
+        return WP_FSDB_VALUE_ENCODING_UNSUPPORTED;
+    }
+    return WP_FSDB_VALUE_ENCODING_BIT_VECTOR;
 }
 
 wp_fsdb_datatype_kind map_datatype_kind(fsdbTreeCBType type) {
@@ -446,7 +484,9 @@ bool_T scope_var_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *
         record.right = var == nullptr ? 0 : static_cast<int32_t>(var->rbitnum);
         record.has_datatype_id = var != nullptr && var->dtidcode != 0 ? 1 : 0;
         record.datatype_id = var == nullptr ? 0 : static_cast<uint32_t>(var->dtidcode);
-        record.kind = static_cast<uint32_t>(var == nullptr ? WP_FSDB_SIGNAL_KIND_UNKNOWN : map_signal_kind(var->type));
+        const wp_fsdb_signal_kind signal_kind = var == nullptr ? WP_FSDB_SIGNAL_KIND_UNKNOWN : map_signal_kind(var->type);
+        record.kind = static_cast<uint32_t>(signal_kind);
+        record.value_encoding = static_cast<uint32_t>(classify_value_encoding(var, signal_kind));
         return emit_tree_event(context, WP_FSDB_TREE_EVENT_SIGNAL, nullptr, &record, nullptr);
     }
     case FSDB_TREE_CBT_UPSCOPE:
@@ -460,6 +500,186 @@ bool_T scope_var_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *
     default:
         return static_cast<bool_T>(1);
     }
+}
+
+void free_sample_records(wp_fsdb_sample_record *samples, std::size_t count) {
+    if (samples == nullptr) {
+        return;
+    }
+    for (std::size_t index = 0; index < count; ++index) {
+        std::free(samples[index].bits);
+        samples[index].bits = nullptr;
+    }
+    std::free(samples);
+}
+
+struct sample_records_deleter {
+    std::size_t count = 0;
+
+    void operator()(wp_fsdb_sample_record *samples) const {
+        free_sample_records(samples, count);
+    }
+};
+
+using owned_sample_records = std::unique_ptr<wp_fsdb_sample_record, sample_records_deleter>;
+
+class signal_list_guard {
+  public:
+    explicit signal_list_guard(ffrObject *object) : object_(object) {}
+
+    signal_list_guard(const signal_list_guard &) = delete;
+    signal_list_guard &operator=(const signal_list_guard &) = delete;
+
+    ~signal_list_guard() {
+        if (object_ == nullptr) {
+            return;
+        }
+        if (loaded_) {
+            object_->ffrUnloadSignals();
+        }
+        if (reset_) {
+            object_->ffrResetSignalList();
+        }
+    }
+
+    wp_fsdb_status load(const uint64_t *idcodes, std::size_t count, char **error_message) {
+        if (object_->ffrResetSignalList() != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to reset signal list before sampling");
+        }
+        reset_ = true;
+
+        std::vector<fsdbVarIdcode> loaded_idcodes;
+        loaded_idcodes.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(idcodes[index]);
+            if (std::find(loaded_idcodes.begin(), loaded_idcodes.end(), idcode) != loaded_idcodes.end()) {
+                continue;
+            }
+            if (object_->ffrAddToSignalList(idcode) != FSDB_RC_SUCCESS) {
+                return fail(error_message, "FSDB Reader: failed to add signal to sample list");
+            }
+            loaded_idcodes.push_back(idcode);
+        }
+
+        if (object_->ffrLoadSignals() != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to load signal values");
+        }
+        loaded_ = true;
+        return WP_FSDB_STATUS_OK;
+    }
+
+  private:
+    ffrObject *object_ = nullptr;
+    bool reset_ = false;
+    bool loaded_ = false;
+};
+
+class vc_handle_guard {
+  public:
+    explicit vc_handle_guard(ffrVCTrvsHdl handle) : handle_(handle) {}
+
+    vc_handle_guard(const vc_handle_guard &) = delete;
+    vc_handle_guard &operator=(const vc_handle_guard &) = delete;
+
+    ~vc_handle_guard() {
+        if (handle_ != nullptr) {
+            handle_->ffrFree();
+        }
+    }
+
+    ffrVCTrvsHdl get() const {
+        return handle_;
+    }
+
+  private:
+    ffrVCTrvsHdl handle_ = nullptr;
+};
+
+bool bit_value_to_char(byte_T value, char *out) {
+    if (out == nullptr) {
+        return false;
+    }
+    switch (value) {
+    case FSDB_BT_VCD_0:
+        *out = '0';
+        return true;
+    case FSDB_BT_VCD_1:
+        *out = '1';
+        return true;
+    case FSDB_BT_VCD_X:
+        *out = 'x';
+        return true;
+    case FSDB_BT_VCD_Z:
+        *out = 'z';
+        return true;
+    default:
+        return false;
+    }
+}
+
+wp_fsdb_status fill_sample_record(
+    ffrObject *object,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    wp_fsdb_sample_record *record,
+    char **error_message
+) {
+    if (object == nullptr || record == nullptr) {
+        return fail(error_message, "FSDB Reader: sample fill received a null argument");
+    }
+
+    record->idcode = idcode;
+    record->has_value = 0;
+    record->bit_width = 0;
+    record->value_time_raw = 0;
+    record->bits = nullptr;
+
+    vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
+    if (handle.get() == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+    }
+
+    const uint_T bit_width = handle.get()->ffrGetBitSize();
+    if (bit_width == 0) {
+        return fail(error_message, "FSDB Reader: signal has unsupported zero-width value encoding");
+    }
+    record->bit_width = static_cast<uint32_t>(bit_width);
+
+    if (handle.get()->ffrGetBytesPerBit() != FSDB_BYTES_PER_BIT_1B) {
+        return fail(error_message, "FSDB Reader: signal has unsupported non-bit-vector encoding");
+    }
+
+    fsdbTag64 aligned_tag = u64_to_tag64(query_time_raw);
+    if (handle.get()->ffrGotoXTag(static_cast<void *>(&aligned_tag)) != FSDB_RC_SUCCESS) {
+        return WP_FSDB_STATUS_OK;
+    }
+    const uint64_t value_time_raw = tag64_to_u64(aligned_tag);
+    if (value_time_raw > query_time_raw) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    byte_T *value_change = nullptr;
+    if (handle.get()->ffrGetVC(&value_change) != FSDB_RC_SUCCESS || value_change == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to read value-change data");
+    }
+
+    char *bits = static_cast<char *>(std::malloc(static_cast<std::size_t>(bit_width) + 1));
+    if (bits == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to allocate sampled bit string");
+    }
+
+    for (uint_T bit_index = 0; bit_index < bit_width; ++bit_index) {
+        if (!bit_value_to_char(value_change[bit_index], &bits[bit_index])) {
+            std::free(bits);
+            return fail(error_message, "FSDB Reader: signal has unsupported bit value encoding");
+        }
+    }
+    bits[bit_width] = '\0';
+
+    record->has_value = 1;
+    record->value_time_raw = value_time_raw;
+    record->bits = bits;
+    return WP_FSDB_STATUS_OK;
 }
 
 }  // namespace
@@ -664,6 +884,66 @@ extern "C" wp_fsdb_status wp_fsdb_read_scope_var_tree(
     } catch (...) {
         return fail_unknown_exception(error_message);
     }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_sample_signal_values(
+    wp_fsdb_reader *reader,
+    const uint64_t *idcodes,
+    std::size_t count,
+    uint64_t query_time_raw,
+    wp_fsdb_sample_record **out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (reader == nullptr || reader->object == nullptr || out == nullptr || (count > 0 && idcodes == nullptr)) {
+        return fail(error_message, "FSDB Reader: value sampling received a null argument");
+    }
+    *out = nullptr;
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        wp_fsdb_sample_record *raw_samples = static_cast<wp_fsdb_sample_record *>(
+            std::calloc(count == 0 ? 1 : count, sizeof(wp_fsdb_sample_record))
+        );
+        if (raw_samples == nullptr) {
+            return fail(error_message, "FSDB Reader: failed to allocate sample records");
+        }
+        owned_sample_records samples(raw_samples, sample_records_deleter{count});
+
+        signal_list_guard signal_list(reader->object);
+        if (signal_list.load(idcodes, count, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        for (std::size_t index = 0; index < count; ++index) {
+            if (fill_sample_record(
+                    reader->object,
+                    idcodes[index],
+                    query_time_raw,
+                    &samples.get()[index],
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+        }
+
+        *out = samples.release();
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: value sampling failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, std::size_t count) {
+    free_sample_records(samples, count);
 }
 
 extern "C" void wp_fsdb_free_string(char *value) {

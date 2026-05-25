@@ -82,6 +82,12 @@ pub(super) enum RawDatatypeKind {
     Unknown,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum FsdbValueEncoding {
+    BitVector,
+    Unsupported,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RawScopeRecord {
     pub(super) name: String,
@@ -97,6 +103,7 @@ pub(super) struct RawSignalRecord {
     pub(super) left: Option<i32>,
     pub(super) right: Option<i32>,
     pub(super) datatype_id: Option<u32>,
+    pub(super) value_encoding: FsdbValueEncoding,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +150,7 @@ pub(super) struct FsdbSignalInfo {
     kind: String,
     width: Option<u32>,
     idcode: u64,
+    value_encoding: FsdbValueEncoding,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -240,6 +248,7 @@ impl FsdbHierarchyBuilder {
             kind,
             width,
             idcode: record.idcode,
+            value_encoding: record.value_encoding,
         });
         self.signal_by_path.insert(path, signal_index);
         self.scopes[scope_index].signals.push(signal_index);
@@ -359,6 +368,13 @@ impl FsdbHierarchyIndex {
             id: SignalId::from_backend_index(signal.idcode),
             expr_type: expr_type_from_signal(signal),
         })
+    }
+
+    pub(super) fn signal_value_encoding(
+        &self,
+        canonical_path: &str,
+    ) -> Result<FsdbValueEncoding, WavepeekError> {
+        Ok(self.signal_info(canonical_path)?.value_encoding)
     }
 
     pub(super) fn signal_count(&self) -> usize {
@@ -952,6 +968,7 @@ mod tests {
             left: None,
             right: None,
             datatype_id: None,
+            value_encoding: FsdbValueEncoding::BitVector,
         }
     }
 
@@ -969,6 +986,7 @@ mod tests {
             left: Some(left),
             right: Some(right),
             datatype_id: None,
+            value_encoding: FsdbValueEncoding::BitVector,
         }
     }
 

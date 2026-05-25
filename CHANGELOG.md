@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added a `src/**` coverage gate to CI with a `90%` minimum on lines, regions, and functions.
 - Added default-build FSDB diagnostics for `.fsdb` and `.fsdb.gz` inputs that require the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK.
+- Added FSDB-enabled `value` sampling for digital bit-vector signals, preserving VCD/FST request ordering, duplicate signal rows, Verilog literal formatting, and missing-initial-value errors.
 
 ### Changed
 - Split environment bootstrap into explicit `make dev-setup`, `make codex-setup`, and `make codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.

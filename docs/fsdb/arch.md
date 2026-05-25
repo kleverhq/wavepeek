@@ -13,7 +13,7 @@ FSDB is treated as an **optional native read backend**, not as a separate comman
 - The default wavepeek installation works as it does today: VCD/FST through `wellen`, with no Verdi dependency.
 - FSDB support is enabled explicitly at build/install time on supported Linux targets, for example with `cargo install wavepeek --features fsdb`, or through a future installer option such as `--fsdb` that enables the Cargo feature internally.
 - If a binary is built without FSDB support, opening `.fsdb` input returns a clear user-facing error.
-- If a binary is built with FSDB support, `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface.
+- If a binary is built with FSDB support, the target end state is that `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface. The current implementation supports `info`, `scope`, `signal`, and point-in-time `value` sampling for digital bit-vector signals; `change` and `property` are still planned.
 - Integration is native and in-process through the FSDB Reader API. wavepeek does not launch Verdi, VIA, Tcl, Python, Perl, or other helper utilities.
 - Development and public CI work without Verdi and without checked-in FSDB artifacts.
 - On machines where Verdi is available, FSDB tests use the small example `.fsdb` files bundled under `$VERDI_HOME` before considering any private artifact set.

@@ -1,6 +1,7 @@
 #ifndef WAVEPEEK_FSDB_SHIM_H
 #define WAVEPEEK_FSDB_SHIM_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -94,6 +95,11 @@ typedef enum wp_fsdb_datatype_kind {
     WP_FSDB_DATATYPE_KIND_UNKNOWN = 16
 } wp_fsdb_datatype_kind;
 
+typedef enum wp_fsdb_value_encoding {
+    WP_FSDB_VALUE_ENCODING_BIT_VECTOR = 0,
+    WP_FSDB_VALUE_ENCODING_UNSUPPORTED = 1
+} wp_fsdb_value_encoding;
+
 typedef struct wp_fsdb_reader wp_fsdb_reader;
 
 typedef struct wp_fsdb_metadata {
@@ -118,12 +124,21 @@ typedef struct wp_fsdb_signal_record {
     int has_datatype_id;
     uint32_t datatype_id;
     uint32_t kind;
+    uint32_t value_encoding;
 } wp_fsdb_signal_record;
 
 typedef struct wp_fsdb_datatype_record {
     uint32_t idcode;
     uint32_t kind;
 } wp_fsdb_datatype_record;
+
+typedef struct wp_fsdb_sample_record {
+    uint64_t idcode;
+    int has_value;
+    uint32_t bit_width;
+    uint64_t value_time_raw;
+    char *bits;
+} wp_fsdb_sample_record;
 
 typedef int (*wp_fsdb_tree_callback)(
     uint32_t event,
@@ -147,6 +162,15 @@ wp_fsdb_status wp_fsdb_read_scope_var_tree(
     void *user,
     char **error_message
 );
+wp_fsdb_status wp_fsdb_sample_signal_values(
+    wp_fsdb_reader *reader,
+    const uint64_t *idcodes,
+    size_t count,
+    uint64_t query_time_raw,
+    wp_fsdb_sample_record **out,
+    char **error_message
+);
+void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, size_t count);
 void wp_fsdb_free_string(char *value);
 void wp_fsdb_free_error(char *value);
 

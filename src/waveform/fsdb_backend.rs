@@ -6,7 +6,7 @@ use std::path::Path;
 use crate::error::WavepeekError;
 use crate::expr::SampledValue;
 
-use super::fsdb_hierarchy::FsdbHierarchyIndex;
+use super::fsdb_hierarchy::{FsdbHierarchyIndex, FsdbValueEncoding};
 use super::fsdb_native::{self, FsdbReader};
 use super::fsdb_time::{normalize_raw_time, parse_scale_unit};
 use super::types::{
@@ -100,10 +100,64 @@ impl FsdbBackend {
 
     pub(super) fn sample_resolved_optional(
         &mut self,
-        _resolved: &[ResolvedSignal],
-        _query_time_raw: u64,
+        resolved: &[ResolvedSignal],
+        query_time_raw: u64,
     ) -> Result<Vec<SampledSignalState>, WavepeekError> {
-        Err(unsupported_value_sampling())
+        if resolved.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        self.metadata()?;
+
+        {
+            let hierarchy = self.hierarchy()?;
+            for signal in resolved {
+                match hierarchy.signal_value_encoding(signal.path.as_str())? {
+                    FsdbValueEncoding::BitVector => {}
+                    FsdbValueEncoding::Unsupported => {
+                        return Err(unsupported_signal_value_encoding(signal.path.as_str()));
+                    }
+                }
+            }
+        }
+
+        let idcodes = resolved
+            .iter()
+            .map(|signal| signal.id.as_u64())
+            .collect::<Vec<_>>();
+        let samples = self.reader.sample_signal_values(&idcodes, query_time_raw)?;
+        if samples.len() != resolved.len() {
+            return Err(WavepeekError::Internal(
+                "FSDB Reader returned the wrong number of sampled values".to_string(),
+            ));
+        }
+
+        resolved
+            .iter()
+            .zip(samples)
+            .map(|(signal, sample)| {
+                if sample.idcode != signal.id.as_u64() {
+                    return Err(WavepeekError::Internal(
+                        "FSDB Reader returned sampled values out of order".to_string(),
+                    ));
+                }
+                if let Some(bits) = sample.bits.as_ref()
+                    && bits.len() != sample.bit_width as usize
+                {
+                    return Err(WavepeekError::File(format!(
+                        "FSDB Reader returned {} bits for {}-bit signal '{}'",
+                        bits.len(),
+                        sample.bit_width,
+                        signal.path
+                    )));
+                }
+                Ok(SampledSignalState {
+                    path: signal.path.clone(),
+                    width: sample.bit_width,
+                    bits: sample.bits,
+                })
+            })
+            .collect()
     }
 
     pub(super) fn sample_expr_value(
@@ -191,21 +245,27 @@ impl FsdbBackend {
 
 pub(super) fn unsupported_value_sampling() -> WavepeekError {
     WavepeekError::Signal(
-        "FSDB value sampling is not implemented yet; info, scope, and signal are supported by this build"
+        "FSDB expression value sampling is not implemented yet; value command sampling supports bit-vector signals only"
             .to_string(),
     )
 }
 
+fn unsupported_signal_value_encoding(path: &str) -> WavepeekError {
+    WavepeekError::Signal(format!(
+        "signal '{path}' has unsupported non-bit-vector encoding"
+    ))
+}
+
 pub(super) fn unsupported_change_collection() -> WavepeekError {
     WavepeekError::Signal(
-        "FSDB change collection is not implemented yet; info, scope, and signal are supported by this build"
+        "FSDB change collection is not implemented yet; info, scope, signal, and value are supported by this build"
             .to_string(),
     )
 }
 
 pub(super) fn unsupported_property_evaluation() -> WavepeekError {
     WavepeekError::Signal(
-        "FSDB property evaluation is not implemented yet; info, scope, and signal are supported by this build"
+        "FSDB property evaluation is not implemented yet; info, scope, signal, and value are supported by this build"
             .to_string(),
     )
 }

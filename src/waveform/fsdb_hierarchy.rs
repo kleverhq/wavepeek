@@ -241,6 +241,7 @@ impl FsdbHierarchyBuilder {
         let kind = self
             .signal_kind_alias(record.kind, record.datatype_id)
             .to_string();
+        let value_encoding = self.signal_value_encoding(record.value_encoding, record.datatype_id);
         let signal_index = self.signals.len();
         self.signals.push(FsdbSignalInfo {
             name,
@@ -248,7 +249,7 @@ impl FsdbHierarchyBuilder {
             kind,
             width,
             idcode: record.idcode,
-            value_encoding: record.value_encoding,
+            value_encoding,
         });
         self.signal_by_path.insert(path, signal_index);
         self.scopes[scope_index].signals.push(signal_index);
@@ -305,6 +306,20 @@ impl FsdbHierarchyBuilder {
             return alias;
         }
         signal_kind_alias(raw_kind)
+    }
+
+    fn signal_value_encoding(
+        &self,
+        raw_encoding: FsdbValueEncoding,
+        datatype_id: Option<u32>,
+    ) -> FsdbValueEncoding {
+        if let Some(datatype_id) = datatype_id
+            && let Some(datatype_kind) = self.datatypes.get(&datatype_id)
+            && datatype_forces_unsupported_value(*datatype_kind)
+        {
+            return FsdbValueEncoding::Unsupported;
+        }
+        raw_encoding
     }
 }
 
@@ -666,6 +681,16 @@ fn datatype_signal_kind_alias(kind: RawDatatypeKind) -> Option<&'static str> {
     }
 }
 
+fn datatype_forces_unsupported_value(kind: RawDatatypeKind) -> bool {
+    matches!(
+        kind,
+        RawDatatypeKind::Real
+            | RawDatatypeKind::ShortReal
+            | RawDatatypeKind::String
+            | RawDatatypeKind::Event
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -950,6 +975,61 @@ mod tests {
         assert_eq!(entry.kind, "enum");
         assert_eq!(entry.name, "state");
         assert_eq!(entry.width, Some(2));
+        assert_eq!(
+            index.signal_value_encoding("top.state").unwrap(),
+            FsdbValueEncoding::BitVector
+        );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_datatype_non_vectors_override_value_encoding() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        for (idcode, kind) in [
+            (11, RawDatatypeKind::Real),
+            (12, RawDatatypeKind::ShortReal),
+            (13, RawDatatypeKind::String),
+            (14, RawDatatypeKind::Event),
+        ] {
+            builder
+                .datatype(RawDatatypeRecord { idcode, kind })
+                .unwrap();
+        }
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        for (idcode, datatype_id, name) in [
+            (1, 11, "realish[3:0]"),
+            (2, 12, "short_realish[3:0]"),
+            (3, 13, "stringish[3:0]"),
+            (4, 14, "eventish[3:0]"),
+        ] {
+            let mut raw = signal_with_range(idcode, name, RawSignalKind::Logic, 3, 0);
+            raw.datatype_id = Some(datatype_id);
+            builder.signal(raw).unwrap();
+        }
+        let index = builder.finish();
+
+        for (path, kind) in [
+            ("top.realish", "real"),
+            ("top.short_realish", "short_real"),
+            ("top.stringish", "string"),
+            ("top.eventish", "event"),
+        ] {
+            let entry = index.resolve_signal(path).unwrap();
+            assert_eq!(entry.width, 4);
+            assert_eq!(
+                index.signal_value_encoding(path).unwrap(),
+                FsdbValueEncoding::Unsupported
+            );
+            assert_eq!(
+                index
+                    .signals_in_scope("top")
+                    .unwrap()
+                    .into_iter()
+                    .find(|signal| signal.path == path)
+                    .unwrap()
+                    .kind,
+                kind
+            );
+        }
     }
 
     fn scope(name: &str, kind: RawScopeKind) -> RawScopeRecord {

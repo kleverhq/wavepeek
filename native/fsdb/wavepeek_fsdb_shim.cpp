@@ -2,7 +2,6 @@
 
 #include "ffrAPI.h"
 
-#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -11,6 +10,7 @@
 #include <mutex>
 #include <new>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <fcntl.h>
@@ -548,17 +548,16 @@ class signal_list_guard {
         }
         reset_ = true;
 
-        std::vector<fsdbVarIdcode> loaded_idcodes;
+        std::unordered_set<fsdbVarIdcode> loaded_idcodes;
         loaded_idcodes.reserve(count);
         for (std::size_t index = 0; index < count; ++index) {
             const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(idcodes[index]);
-            if (std::find(loaded_idcodes.begin(), loaded_idcodes.end(), idcode) != loaded_idcodes.end()) {
+            if (!loaded_idcodes.insert(idcode).second) {
                 continue;
             }
             if (object_->ffrAddToSignalList(idcode) != FSDB_RC_SUCCESS) {
                 return fail(error_message, "FSDB Reader: failed to add signal to sample list");
             }
-            loaded_idcodes.push_back(idcode);
         }
 
         if (object_->ffrLoadSignals() != FSDB_RC_SUCCESS) {

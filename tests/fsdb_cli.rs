@@ -339,11 +339,10 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
 #[test]
 fn fsdb_value_json_matches_vcd_sampling_contract() {
     let fixtures = GeneratedFsdbFixtures::new();
-    let fixture = path_str(&fixtures.value_vectors());
-    let value = run_json_success(&[
+    let fsdb_fixture = path_str(&fixtures.value_vectors());
+    let vcd_fixture = path_str(&fixture_path("value_vectors.vcd"));
+    let args = [
         "value",
-        "--waves",
-        fixture.as_str(),
         "--scope",
         "top",
         "--signals",
@@ -351,14 +350,17 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
         "--at",
         "7ns",
         "--json",
-    ]);
+    ];
+    let fsdb_value = run_json_success_with_waves(fsdb_fixture.as_str(), &args);
+    let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
 
-    assert_eq!(value["$schema"], expected_schema_url());
-    assert_eq!(value["command"], "value");
-    assert_eq!(value["warnings"], json!([]));
-    assert_eq!(value["data"]["time"], "7ns");
+    assert_eq!(fsdb_value["$schema"], expected_schema_url());
+    assert_eq!(fsdb_value["command"], "value");
+    assert_eq!(fsdb_value["warnings"], json!([]));
+    assert_eq!(fsdb_value["data"], vcd_value["data"]);
+    assert_eq!(fsdb_value["data"]["time"], "7ns");
     assert_eq!(
-        value["data"]["signals"],
+        fsdb_value["data"]["signals"],
         json!([
             {"path": "top.data", "value": "8'h0f"},
             {"path": "top.clk", "value": "1'h1"},
@@ -371,9 +373,113 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
 }
 
 #[test]
-fn fsdb_value_reports_missing_initial_value() {
+fn fsdb_value_samples_exact_transitions_and_dump_end() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fixture = path_str(&fixtures.value_vectors());
+
+    for (time, expected) in [
+        (
+            "0ns",
+            json!([
+                {"path": "top.data", "value": "8'h00"},
+                {"path": "top.nibble", "value": "4'ha"},
+                {"path": "top.status", "value": "4'hz"},
+                {"path": "top.asc", "value": "4'hc"},
+            ]),
+        ),
+        (
+            "5ns",
+            json!([
+                {"path": "top.data", "value": "8'h0f"},
+                {"path": "top.nibble", "value": "4'hx"},
+                {"path": "top.status", "value": "4'h3"},
+                {"path": "top.asc", "value": "4'h3"},
+            ]),
+        ),
+        (
+            "10ns",
+            json!([
+                {"path": "top.data", "value": "8'hf0"},
+                {"path": "top.nibble", "value": "4'h5"},
+                {"path": "top.status", "value": "4'hx"},
+                {"path": "top.asc", "value": "4'ha"},
+            ]),
+        ),
+    ] {
+        let value = run_json_success(&[
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data,nibble,status,asc",
+            "--at",
+            time,
+            "--json",
+        ]);
+        assert_eq!(value["data"]["time"], time);
+        assert_eq!(value["data"]["signals"], expected);
+    }
+}
+
+#[test]
+fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fixture = path_str(&fixtures.value_vectors());
+
+    let relative = run_stdout_success(&[
+        "value",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk",
+        "--at",
+        "7ns",
+    ]);
+    assert!(relative.contains("@7ns\n"));
+    assert!(relative.contains("data 8'h0f\n"));
+    assert!(relative.contains("clk 1'h1\n"));
+    assert!(!relative.contains("top.data"));
+
+    let absolute = run_stdout_success(&[
+        "value",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk",
+        "--at",
+        "7ns",
+        "--abs",
+    ]);
+    assert!(absolute.contains("top.data 8'h0f\n"));
+    assert!(absolute.contains("top.clk 1'h1\n"));
+}
+
+#[test]
+fn fsdb_value_uses_previous_sample_and_reports_missing_initial_value() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.value_delayed());
+    let previous = run_json_success(&[
+        "value",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "late",
+        "--at",
+        "7ns",
+        "--json",
+    ]);
+    assert_eq!(
+        previous["data"]["signals"],
+        json!([{ "path": "top.late", "value": "1'h1" }])
+    );
 
     wavepeek_cmd()
         .args([
@@ -492,6 +598,22 @@ fn run_json_success(args: &[&str]) -> Value {
         .success()
         .stderr(predicate::str::is_empty());
     parse_json(&assert.get_output().stdout)
+}
+
+fn run_json_success_with_waves(waves: &str, args: &[&str]) -> Value {
+    let mut full_args = vec!["value", "--waves", waves];
+    full_args.extend_from_slice(&args[1..]);
+    run_json_success(&full_args)
+}
+
+fn run_stdout_success(args: &[&str]) -> String {
+    let assert = wavepeek_cmd()
+        .args(args)
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty());
+    String::from_utf8(assert.get_output().stdout.clone())
+        .expect("command output should be valid UTF-8")
 }
 
 fn parse_json(stdout: &[u8]) -> Value {

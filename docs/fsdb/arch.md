@@ -105,7 +105,7 @@ The build script must set rpath/RUNPATH to the selected Reader library directory
 
 ### 2.3 Unified command surface
 
-An FSDB-enabled binary must not require users to learn new commands:
+An FSDB-enabled binary must not require users to learn new commands. The current implementation supports `info`, `scope`, `signal`, and `value` from this surface; the `change` and `property` examples below describe the target command shape for later FSDB slices and remain explicitly unsupported today:
 
 ```sh
 wavepeek info     --waves dump.fsdb --json

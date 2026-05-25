@@ -32,8 +32,8 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 - [x] (2026-05-24 20:26Z) Drafted this active ExecPlan under `docs/exec-plans/active/2026-05-24-fsdb-value-command/PLAN.md` with descriptive names and no milestone-labelled created durable entities.
 - [x] (2026-05-24 20:43Z) Ran four read-only review lanes for plan completeness, native/FFI safety, Rust backend/test contracts, and architecture/scope risk; incorporated their substantive findings into the plan.
 - [x] (2026-05-24 20:51Z) Ran an independent control review over the revised plan; it returned no substantive findings.
-- [ ] Confirm starting branch, clean tree, and baseline default/FSDB validation before implementation.
-- [ ] Add checked-in VCD fixtures for value-vector parity, delayed first value, and unsupported real signal coverage.
+- [x] (2026-05-25 00:18Z) Confirmed starting branch `feat/fsdb`, current head `9d13d31`, default `make check`, default `make ci`, FSDB environment probe, and pre-change `make test-fsdb` all pass.
+- [x] (2026-05-25 00:26Z) Added checked-in VCD fixtures for value-vector parity, delayed first value, and unsupported real signal coverage; VCD-only `wavepeek value` probes match the intended Wellen contract.
 - [ ] Extend FSDB hierarchy metadata so the backend can decide whether a signal is value-sampleable before calling native traversal.
 - [ ] Add native FSDB signal load/unload and at-or-before bit-vector sampling functions through the wavepeek-owned C ABI.
 - [ ] Wrap the new native functions safely in Rust and ensure native errors, callback strings, sampled bit strings, and unload paths have clear ownership.
@@ -464,12 +464,20 @@ If bit-order or ascending-range tests fail, do not “fix” expected values. Co
 
 Record concise validation snippets here as implementation proceeds. Useful snippets include the baseline commit, a successful generated fixture value JSON excerpt, the real-signal unsupported error, and final `make test-fsdb` / `make ci` summaries. Do not paste Verdi header excerpts, proprietary documentation text, or full outputs from bundled FSDB designs.
 
-Current pre-implementation notes:
+Current implementation notes:
 
-    Branch before plan authoring: feat/fsdb
-    Current head observed during research: ea41520
+    Branch before implementation: feat/fsdb
+    Current head observed before implementation: 9d13d31
+    Baseline default gate: WAVEPEEK_IN_CONTAINER=1 make check passed
+    Baseline CI gate: WAVEPEEK_IN_CONTAINER=1 make ci passed with src coverage regions=94.69%, functions=95.31%, lines=95.19%
+    Baseline FSDB environment: WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env reported Verdi FSDB Reader SDK found
+    Baseline FSDB gate: WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed 8 fsdb_cli tests plus native smokes
     Existing FSDB value state: explicit unsupported error before metadata parsing
     Expected new active plan path: docs/exec-plans/active/2026-05-24-fsdb-value-command/PLAN.md
+
+    VCD fixture probe at 7ns for value_vectors.vcd produced duplicate top.data rows as 8'h0f, top.clk as 1'h1, top.nibble as 4'hx, top.status as 4'h3, and top.asc as 4'h3.
+    VCD fixture probe for value_delayed.vcd at 0ns failed with: error: signal: signal 'top.late' has no value at or before requested time
+    VCD fixture probe for value_real.vcd at 0ns failed with: error: signal: signal 'top.temp' has unsupported non-bit-vector encoding
 
 ## Interfaces and Dependencies
 

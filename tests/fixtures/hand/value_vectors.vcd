@@ -1,0 +1,33 @@
+$date
+  wavepeek value vector fixture
+$end
+$version
+  wavepeek value vector fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var wire 8 " data [7:0] $end
+$var wire 4 # nibble [3:0] $end
+$var wire 4 $ status [3:0] $end
+$var wire 4 % asc [0:3] $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+b00000000 "
+b1010 #
+bzzzz $
+b1100 %
+#5
+1!
+b00001111 "
+b10xz #
+b0011 $
+b0011 %
+#10
+0!
+b11110000 "
+b0101 #
+bxxxx $
+b1010 %

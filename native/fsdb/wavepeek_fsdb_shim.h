@@ -97,7 +97,8 @@ typedef enum wp_fsdb_datatype_kind {
 
 typedef enum wp_fsdb_value_encoding {
     WP_FSDB_VALUE_ENCODING_BIT_VECTOR = 0,
-    WP_FSDB_VALUE_ENCODING_UNSUPPORTED = 1
+    WP_FSDB_VALUE_ENCODING_UNSUPPORTED = 1,
+    WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE = 2
 } wp_fsdb_value_encoding;
 
 typedef struct wp_fsdb_reader wp_fsdb_reader;

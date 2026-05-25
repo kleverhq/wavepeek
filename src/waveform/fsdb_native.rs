@@ -461,6 +461,7 @@ fn raw_datatype_kind(kind: c_uint) -> RawDatatypeKind {
 fn raw_value_encoding(encoding: c_uint) -> FsdbValueEncoding {
     match encoding {
         ffi::WP_FSDB_VALUE_ENCODING_BIT_VECTOR => FsdbValueEncoding::BitVector,
+        ffi::WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE => FsdbValueEncoding::DatatypeCandidate,
         _ => FsdbValueEncoding::Unsupported,
     }
 }
@@ -540,6 +541,7 @@ mod ffi {
     pub(super) const WP_FSDB_DATATYPE_KIND_EVENT: c_uint = 15;
 
     pub(super) const WP_FSDB_VALUE_ENCODING_BIT_VECTOR: c_uint = 0;
+    pub(super) const WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE: c_uint = 2;
 
     #[repr(C)]
     pub(super) struct wp_fsdb_reader {

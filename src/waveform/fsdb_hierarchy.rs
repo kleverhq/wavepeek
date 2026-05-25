@@ -86,6 +86,7 @@ pub(super) enum RawDatatypeKind {
 pub(super) enum FsdbValueEncoding {
     BitVector,
     Unsupported,
+    DatatypeCandidate,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -315,11 +316,21 @@ impl FsdbHierarchyBuilder {
     ) -> FsdbValueEncoding {
         if let Some(datatype_id) = datatype_id
             && let Some(datatype_kind) = self.datatypes.get(&datatype_id)
-            && datatype_forces_unsupported_value(*datatype_kind)
         {
-            return FsdbValueEncoding::Unsupported;
+            if datatype_forces_unsupported_value(*datatype_kind) {
+                return FsdbValueEncoding::Unsupported;
+            }
+            if raw_encoding == FsdbValueEncoding::DatatypeCandidate
+                && datatype_supports_bit_vector_value(*datatype_kind)
+            {
+                return FsdbValueEncoding::BitVector;
+            }
         }
-        raw_encoding
+        if raw_encoding == FsdbValueEncoding::DatatypeCandidate {
+            FsdbValueEncoding::Unsupported
+        } else {
+            raw_encoding
+        }
     }
 }
 
@@ -691,6 +702,24 @@ fn datatype_forces_unsupported_value(kind: RawDatatypeKind) -> bool {
     )
 }
 
+fn datatype_supports_bit_vector_value(kind: RawDatatypeKind) -> bool {
+    matches!(
+        kind,
+        RawDatatypeKind::Enum
+            | RawDatatypeKind::Logic
+            | RawDatatypeKind::Bit
+            | RawDatatypeKind::Int
+            | RawDatatypeKind::UInt
+            | RawDatatypeKind::ShortInt
+            | RawDatatypeKind::ShortUInt
+            | RawDatatypeKind::LongInt
+            | RawDatatypeKind::LongUInt
+            | RawDatatypeKind::Byte
+            | RawDatatypeKind::UByte
+            | RawDatatypeKind::Time
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -978,6 +1007,50 @@ mod tests {
         assert_eq!(
             index.signal_value_encoding("top.state").unwrap(),
             FsdbValueEncoding::BitVector
+        );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_datatype_candidates_upgrade_for_vector_datatypes() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        for (idcode, kind) in [
+            (21, RawDatatypeKind::Enum),
+            (22, RawDatatypeKind::Logic),
+            (23, RawDatatypeKind::Unknown),
+        ] {
+            builder
+                .datatype(RawDatatypeRecord { idcode, kind })
+                .unwrap();
+        }
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        for (idcode, datatype_id, name) in [
+            (1, Some(21), "state[3:0]"),
+            (2, Some(22), "bits[3:0]"),
+            (3, Some(23), "mystery[3:0]"),
+            (4, None, "untyped[3:0]"),
+        ] {
+            let mut raw = signal_with_range(idcode, name, RawSignalKind::Unknown, 3, 0);
+            raw.datatype_id = datatype_id;
+            raw.value_encoding = FsdbValueEncoding::DatatypeCandidate;
+            builder.signal(raw).unwrap();
+        }
+        let index = builder.finish();
+
+        assert_eq!(
+            index.signal_value_encoding("top.state").unwrap(),
+            FsdbValueEncoding::BitVector
+        );
+        assert_eq!(
+            index.signal_value_encoding("top.bits").unwrap(),
+            FsdbValueEncoding::BitVector
+        );
+        assert_eq!(
+            index.signal_value_encoding("top.mystery").unwrap(),
+            FsdbValueEncoding::Unsupported
+        );
+        assert_eq!(
+            index.signal_value_encoding("top.untyped").unwrap(),
+            FsdbValueEncoding::Unsupported
         );
     }
 

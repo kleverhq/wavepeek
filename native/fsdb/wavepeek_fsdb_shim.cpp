@@ -248,7 +248,6 @@ bool is_known_non_vector_signal(wp_fsdb_signal_kind kind) {
     case WP_FSDB_SIGNAL_KIND_REAL_TIME:
     case WP_FSDB_SIGNAL_KIND_REAL_PARAMETER:
     case WP_FSDB_SIGNAL_KIND_SHORT_REAL:
-    case WP_FSDB_SIGNAL_KIND_UNKNOWN:
         return true;
     default:
         return false;
@@ -264,6 +263,9 @@ wp_fsdb_value_encoding classify_value_encoding(
     }
     if (var->is_dummy_var || var->is_class_in_obj || var->is_void || var->is_unexpanded_mem_var) {
         return WP_FSDB_VALUE_ENCODING_UNSUPPORTED;
+    }
+    if (kind == WP_FSDB_SIGNAL_KIND_UNKNOWN) {
+        return WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE;
     }
     return WP_FSDB_VALUE_ENCODING_BIT_VECTOR;
 }

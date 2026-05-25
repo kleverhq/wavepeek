@@ -114,7 +114,7 @@ impl FsdbBackend {
             for signal in resolved {
                 match hierarchy.signal_value_encoding(signal.path.as_str())? {
                     FsdbValueEncoding::BitVector => {}
-                    FsdbValueEncoding::Unsupported => {
+                    FsdbValueEncoding::Unsupported | FsdbValueEncoding::DatatypeCandidate => {
                         return Err(unsupported_signal_value_encoding(signal.path.as_str()));
                     }
                 }

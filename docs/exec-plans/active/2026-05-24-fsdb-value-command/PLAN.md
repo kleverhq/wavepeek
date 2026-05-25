@@ -42,6 +42,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 - [x] (2026-05-25 01:32Z) Ran default and feature-enabled validation gates: `make check`, `make ci`, `make lint-fsdb`, `make prepare-fsdb-fixtures`, and `make test-fsdb` all passed.
 - [x] (2026-05-25 02:05Z) Ran focused review lanes for native FFI, Rust backend/tests, docs/contracts, and architecture/performance. Fixed the substantive findings: datatype overrides now downgrade value sampleability for real/string/event kinds; native signal-list dedup uses an unordered set; FSDB value tests now compare VCD and generated FSDB payloads and cover exact transitions, dump end, human `--abs`, and previous-sample success; stale docs/plan text was updated.
 - [x] (2026-05-25 02:31Z) Ran an independent control pass. Fixed its finding by adding a datatype-candidate encoding path: raw unknown/datatyped FSDB signals now upgrade to bit-vector sampling when datatype metadata is vector-like, while unknown or absent datatype remains unsupported. Re-ran targeted, default, and FSDB validations.
+- [x] (2026-05-25 02:49Z) Ran a final control pass focused on the datatype-candidate fix. Fixed its native-mapping finding: FSDB datatype callbacks `DT_INT` and `DT_INT_H_N_L` now map to integer/vector-capable datatype metadata, and the candidate-upgrade regression includes integer datatype coverage. Re-ran targeted, default, FSDB, and CI validations.
 
 ## Surprises & Discoveries
 
@@ -76,7 +77,10 @@ This plan does not rename existing modules for aesthetics. It extends the curren
   Evidence: review found that value sampleability was stored before datatype overrides were considered; a new `fsdb_hierarchy_datatype_non_vectors_override_value_encoding` test now proves those overrides produce `FsdbValueEncoding::Unsupported` while preserving the public `signal.kind` alias.
 
 - Observation: raw FSDB signal kind `unknown` is too broad to treat as either always sampleable or always unsupported. It is safest as a datatype candidate: sample it only when datatype metadata says enum/logic/bit/integer/time-like vector data, reject it when datatype metadata is unknown or absent.
-  Evidence: control review found that the first datatype fix only downgraded non-vector datatypes and could still reject valid datatype-backed vectors. The new `fsdb_hierarchy_datatype_candidates_upgrade_for_vector_datatypes` test proves enum and logic datatype candidates become `BitVector`, while unknown and untyped candidates become `Unsupported`.
+  Evidence: control review found that the first datatype fix only downgraded non-vector datatypes and could still reject valid datatype-backed vectors. The new `fsdb_hierarchy_datatype_candidates_upgrade_for_vector_datatypes` test proves enum, logic, and integer datatype candidates become `BitVector`, while unknown and untyped candidates become `Unsupported`.
+
+- Observation: the FSDB Reader has integer datatype callback types whose records expose datatype ids but whose callback type is not one of the attribute-style integer constants.
+  Evidence: final control review found `datatype_id_from_record` already handled `FSDB_TREE_CBT_DT_INT` and `FSDB_TREE_CBT_DT_INT_H_N_L`, while `map_datatype_kind` left them as unknown. They now map to project-owned integer datatype metadata so datatype-candidate value sampling can accept them.
 
 ## Decision Log
 
@@ -126,7 +130,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 
 ## Outcomes & Retrospective
 
-Implementation is complete and both review cycles have been applied. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real/string/event-valued signals with an unsupported non-bit-vector diagnostic when datatype metadata says they are non-vector, and leaves FSDB `change` / `property` explicitly unsupported. Validation has passed after all review fixes: `cargo fmt`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. The active plan intentionally stays under `docs/exec-plans/active/` for user inspection.
+Implementation is complete and the review fixes have been applied. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real/string/event-valued signals with an unsupported non-bit-vector diagnostic when datatype metadata says they are non-vector, and leaves FSDB `change` / `property` explicitly unsupported. Validation has passed after all review fixes: `cargo fmt`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. The active plan intentionally stays under `docs/exec-plans/active/` for user inspection.
 
 ## Context and Orientation
 
@@ -497,6 +501,7 @@ Current implementation notes:
     Focused review cycle findings fixed: datatype override sampleability, generated FSDB/VCD parity and boundary coverage, human --abs/previous sample coverage, stale docs/plan wording, and O(n^2) native signal-list dedup.
     Post-review validation passed: cargo fmt; cargo test -q fsdb_hierarchy --features fsdb; cargo test --features fsdb -q --test fsdb_cli -- --nocapture; WAVEPEEK_IN_CONTAINER=1 make check; WAVEPEEK_IN_CONTAINER=1 make ci with src coverage regions=94.73%, functions=95.33%, lines=95.22%; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb; WAVEPEEK_IN_CONTAINER=1 make test-fsdb.
     Post-control-fix validation passed: cargo fmt; cargo test -q fsdb_hierarchy --features fsdb; cargo test --features fsdb -q --test fsdb_cli -- --nocapture; WAVEPEEK_IN_CONTAINER=1 make check; WAVEPEEK_IN_CONTAINER=1 make ci with src coverage regions=94.75%, functions=95.34%, lines=95.25%; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb; WAVEPEEK_IN_CONTAINER=1 make test-fsdb.
+    Post-final-control-fix validation passed: cargo fmt; cargo test -q fsdb_hierarchy --features fsdb; cargo test --features fsdb -q --test fsdb_cli -- --nocapture; WAVEPEEK_IN_CONTAINER=1 make check; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb; WAVEPEEK_IN_CONTAINER=1 make test-fsdb; WAVEPEEK_IN_CONTAINER=1 make ci with src coverage regions=94.75%, functions=95.34%, lines=95.25%.
 
 ## Interfaces and Dependencies
 
@@ -566,3 +571,4 @@ The implementation may choose borrowed return types instead of cloned `FsdbSigna
 - 2026-05-25 / Grin: Updated during implementation to record the actual batch native sampling ABI, relaxed hierarchy encoding classification after converted-vector evidence, validation results, and the final behavior before review cycles.
 - 2026-05-25 / Grin: Updated after the first focused review cycle to record review findings, fixes, expanded validation, and the remaining need for an independent control pass.
 - 2026-05-25 / Grin: Updated after the control review fix to record datatype-candidate value encoding, final validation evidence, and completion of review cycles while leaving the plan active for user inspection.
+- 2026-05-25 / Grin: Updated after the final control-review fix to record native integer datatype mapping and final validation evidence.

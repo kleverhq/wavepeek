@@ -1016,7 +1016,8 @@ mod tests {
         for (idcode, kind) in [
             (21, RawDatatypeKind::Enum),
             (22, RawDatatypeKind::Logic),
-            (23, RawDatatypeKind::Unknown),
+            (23, RawDatatypeKind::Int),
+            (24, RawDatatypeKind::Unknown),
         ] {
             builder
                 .datatype(RawDatatypeRecord { idcode, kind })
@@ -1026,8 +1027,9 @@ mod tests {
         for (idcode, datatype_id, name) in [
             (1, Some(21), "state[3:0]"),
             (2, Some(22), "bits[3:0]"),
-            (3, Some(23), "mystery[3:0]"),
-            (4, None, "untyped[3:0]"),
+            (3, Some(23), "count[3:0]"),
+            (4, Some(24), "mystery[3:0]"),
+            (5, None, "untyped[3:0]"),
         ] {
             let mut raw = signal_with_range(idcode, name, RawSignalKind::Unknown, 3, 0);
             raw.datatype_id = datatype_id;
@@ -1042,6 +1044,10 @@ mod tests {
         );
         assert_eq!(
             index.signal_value_encoding("top.bits").unwrap(),
+            FsdbValueEncoding::BitVector
+        );
+        assert_eq!(
+            index.signal_value_encoding("top.count").unwrap(),
             FsdbValueEncoding::BitVector
         );
         assert_eq!(

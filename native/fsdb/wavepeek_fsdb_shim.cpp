@@ -278,6 +278,9 @@ wp_fsdb_datatype_kind map_datatype_kind(fsdbTreeCBType type) {
     case FSDB_TREE_CBT_DT_ATTR_ENUM:
     case FSDB_TREE_CBT_DT_ATTR_SV_ENUM:
         return WP_FSDB_DATATYPE_KIND_ENUM;
+    case FSDB_TREE_CBT_DT_INT:
+    case FSDB_TREE_CBT_DT_INT_H_N_L:
+        return WP_FSDB_DATATYPE_KIND_INT;
     case FSDB_TREE_CBT_DT_ATTR_LOGIC:
     case FSDB_TREE_CBT_DT_ATTR_SV_LOGIC:
     case FSDB_TREE_CBT_DT_ATTR_SV_REG:

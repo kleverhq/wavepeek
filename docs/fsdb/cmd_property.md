@@ -493,6 +493,8 @@ Conversion algorithm:
 collect_candidate_times(idcode, from_raw, to_raw):
   if no VC -> empty
   goto from_raw
+  if goto failed because from_raw is before the first VC:
+      read min VC tag
   read actual_raw
 
   if actual_raw < from_raw:
@@ -504,7 +506,7 @@ collect_candidate_times(idcode, from_raw, to_raw):
       read actual_raw
 ```
 
-If `from_raw` is before the first VC, `ffrGotoXTag(from)` may align to the first VC. This is correct when `actual_raw >= from_raw`.
+If `from_raw` is before the first VC, `ffrGotoXTag(from)` may fail rather than align to the first VC. The implementation falls back to `ffrGetMinXTag`, then filters that minimum against the requested inclusive window.
 
 For multiple signals:
 

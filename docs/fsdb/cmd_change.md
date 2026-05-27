@@ -211,16 +211,15 @@ The selected set for `change` should include:
 
 ## Candidate timestamps
 
-Recommended calls:
+Current implementation calls:
 
-- `obj->ffrCreateTimeBasedVCTrvsHdl(uint_T num, fsdbVarIdcode sig_arr[])`
-  - Create a merged time-ordered traversal over candidate variables.
-- On the returned `ffrTimeBasedVCTrvsHdl`:
-  - `hdl->ffrGetVarIdcodeXTagVCSeqNum(&idcode, &xtag, &vc, &seq_num)`
-  - `hdl->ffrGotoNextVC()`
-  - `hdl->ffrFree()`
+- `obj->ffrCreateVCTrvsHdl(fsdbVarIdcode idcode)` for each selected candidate variable.
+- `hdl->ffrGotoXTag(&from_tag)` to align near the window start.
+- `hdl->ffrGetMinXTag(&tag)` when `ffrGotoXTag(from)` fails because the signal's first value change is later than `from`.
+- `hdl->ffrGetXTag(&tag)` and `hdl->ffrGotoNextVC()` to collect value-change times through `to`.
+- `hdl->ffrFree()` to release each traverse handle.
 
-The examples read the first item immediately after creating the handle, then call `ffrGotoNextVC()` until failure.
+A future optimization may use `obj->ffrCreateTimeBasedVCTrvsHdl(uint_T num, fsdbVarIdcode sig_arr[])` to create a merged time-ordered traversal, but the portable implementation does not depend on that symbol.
 
 Shape into wavepeek candidate data:
 

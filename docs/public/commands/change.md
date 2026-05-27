@@ -171,6 +171,7 @@ warning: limit disabled: --max=unlimited
 
 ## Non-obvious behavior
 
+- VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `change` supports digital bit-vector/integral signals, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
 - `--from` is inclusive for selection, but it also initializes the baseline state. `change` does not emit a row exactly at `--from`; if you need the boundary value itself, use `value`.
 - `--on` does not guarantee a row by itself. A trigger can fire, but `change` still suppresses the row if none of the requested `--signals` changed.
 - In scoped mode, use scope-relative names in `--signals` and `--on`. Without `--scope`, use canonical full paths.

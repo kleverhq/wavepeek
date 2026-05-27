@@ -43,8 +43,8 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 01:45Z) Implemented FSDB backend expression sampling, candidate collection, raw-event occurrence, and strict previous timestamp behavior in `src/waveform/fsdb_backend.rs`.
 - [x] (2026-05-27 01:45Z) Enabled FSDB `change` and `property` command flow by making the previous unsupported-command guard return `None`.
 - [x] (2026-05-27 01:52Z) Added FSDB CLI parity tests against generated fixtures and a bounded bundled-example smoke in `tests/fsdb_cli.rs`.
-- [ ] Update public docs, changelog, and FSDB architecture milestone links after implementation.
-- [ ] Run default and FSDB validation gates, request focused implementation review, fix findings, run a control pass, commit, and move this plan to `docs/exec-plans/completed/`.
+- [x] (2026-05-27 02:12Z) Updated public docs, changelog, and FSDB architecture/research notes after implementation.
+- [ ] Run default and FSDB validation gates, request focused implementation review, fix findings, run a control pass, commit, and leave this plan in `docs/exec-plans/active/` for user inspection.
 
 ## Surprises & Discoveries
 
@@ -501,6 +501,7 @@ Initial planning notes:
     VCD fixture probe excerpts after adding fixtures: change_property_core wildcard change on data emitted 5ns/7ns/15ns with values 8'h0f, 8'h1f, and 8'h2a; edge-gated change emitted 5ns and 15ns; property switch emitted 15ns assert, 25ns deassert, and 35ns assert; wildcard-inferred property on data == 8'h2a emitted 15ns match; offset-start property emitted an empty data array; raw-event VCD property emitted 10ns and 25ns matches.
     Raw event conversion probe: generated temporary FSDB signal listing preserved top.tick as kind event. Initial native candidate traversal missed this event fixture because ffrGotoXTag(0) fails when a signal's first value-change tag is later than the requested from time; after falling back to ffrGetMinXTag and filtering against the requested window, raw-event property parity emitted 10ns and 25ns matches.
     Implementation validation after native/Rust/test changes: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 16 FSDB CLI tests.
+    Documentation validation after public docs/changelog/FSDB notes: cargo fmt and WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb still passed with 16 FSDB CLI tests.
 
 ## Interfaces and Dependencies
 

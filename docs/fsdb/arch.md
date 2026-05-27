@@ -13,7 +13,7 @@ FSDB is treated as an **optional native read backend**, not as a separate comman
 - The default wavepeek installation works as it does today: VCD/FST through `wellen`, with no Verdi dependency.
 - FSDB support is enabled explicitly at build/install time on supported Linux targets, for example with `cargo install wavepeek --features fsdb`, or through a future installer option such as `--fsdb` that enables the Cargo feature internally.
 - If a binary is built without FSDB support, opening `.fsdb` input returns a clear user-facing error.
-- If a binary is built with FSDB support, the target end state is that `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface. The current implementation supports `info`, `scope`, `signal`, and point-in-time `value` sampling for digital bit-vector signals; `change` and `property` are still planned.
+- If a binary is built with FSDB support, `info`, `scope`, `signal`, `value`, `change`, and `property` work with FSDB through the same command surface for digital bit-vector/integral signals. The current implementation still rejects unsupported real and string value decoding when a command needs those values.
 - Integration is native and in-process through the FSDB Reader API. wavepeek does not launch Verdi, VIA, Tcl, Python, Perl, or other helper utilities.
 - Development and public CI work without Verdi and without checked-in FSDB artifacts.
 - On machines where Verdi is available, FSDB tests use the small example `.fsdb` files bundled under `$VERDI_HOME` before considering any private artifact set.
@@ -105,7 +105,7 @@ The build script must set rpath/RUNPATH to the selected Reader library directory
 
 ### 2.3 Unified command surface
 
-An FSDB-enabled binary must not require users to learn new commands. The current implementation supports `info`, `scope`, `signal`, and `value` from this surface; the `change` and `property` examples below describe the target command shape for later FSDB slices and remain explicitly unsupported today:
+An FSDB-enabled binary must not require users to learn new commands. The current implementation supports `info`, `scope`, `signal`, `value`, `change`, and `property` from this surface for digital bit-vector/integral signals:
 
 ```sh
 wavepeek info     --waves dump.fsdb --json
@@ -696,10 +696,12 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-24-fsdb-valu
 
 ### M5: FSDB `change` / `property` portable path
 
-- Implement candidate collection through FSDB time-based traversal.
-- Connect expression host to FSDB sampled values/events.
+Implementation record under review: `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md`.
+
+- Implement candidate collection through per-signal FSDB value-change traversal, returning sorted unique raw timestamps to Rust.
+- Connect expression host to FSDB sampled digital values and exact raw event occurrences.
 - Keep Wellen-specific optimized engines for VCD/FST; FSDB uses the portable path.
-- Add tests for wildcard, edge, bounds, and capture modes.
+- Add tests for wildcard, edge, bounds, raw events, unsupported real operands, and property capture modes.
 
 ### M6: hardening/performance
 

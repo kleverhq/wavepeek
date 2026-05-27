@@ -117,18 +117,8 @@ impl Waveform {
     }
 
     pub(crate) fn unsupported_fsdb_command_error(&self, command: &str) -> Option<WavepeekError> {
-        #[cfg(not(feature = "fsdb"))]
         let _ = command;
-
-        match &self.backend {
-            Backend::Wellen(_) => None,
-            #[cfg(feature = "fsdb")]
-            Backend::Fsdb(_) => match command {
-                "change" => Some(fsdb_backend::unsupported_change_collection()),
-                "property" => Some(fsdb_backend::unsupported_property_evaluation()),
-                _ => None,
-            },
-        }
+        None
     }
 
     pub fn scopes_depth_first(

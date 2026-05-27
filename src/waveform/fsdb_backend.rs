@@ -1,13 +1,14 @@
 //! FSDB-backed waveform adapter implementation.
 
 use std::cell::{Ref, RefCell};
+use std::collections::HashMap;
 use std::path::Path;
 
 use crate::error::WavepeekError;
-use crate::expr::SampledValue;
+use crate::expr::{ExprTypeKind, SampledValue};
 
 use super::fsdb_hierarchy::{FsdbHierarchyIndex, FsdbValueEncoding};
-use super::fsdb_native::{self, FsdbReader};
+use super::fsdb_native::{self, FsdbNativeMetadata, FsdbReader};
 use super::fsdb_time::{normalize_raw_time, parse_scale_unit};
 use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
@@ -17,14 +18,20 @@ use super::types::{
 #[derive(Debug)]
 pub(super) struct FsdbBackend {
     reader: FsdbReader,
+    raw_metadata: RefCell<Option<FsdbNativeMetadata>>,
     hierarchy: RefCell<Option<FsdbHierarchyIndex>>,
+    expr_sample_cache: HashMap<(SignalId, u64), SampledValue>,
+    event_occurrence_cache: HashMap<(SignalId, u64), bool>,
 }
 
 impl FsdbBackend {
     pub(super) fn open(path: &Path) -> Result<Self, WavepeekError> {
         Ok(Self {
             reader: FsdbReader::open(path)?,
+            raw_metadata: RefCell::new(None),
             hierarchy: RefCell::new(None),
+            expr_sample_cache: HashMap::new(),
+            event_occurrence_cache: HashMap::new(),
         })
     }
 
@@ -33,7 +40,7 @@ impl FsdbBackend {
     }
 
     pub(super) fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
-        let metadata = self.reader.metadata()?;
+        let metadata = self.raw_metadata()?;
         let unit = parse_scale_unit(metadata.scale_unit.as_str())?;
         Ok(WaveformMetadata {
             time_unit: format!("{}{}", unit.factor, unit.suffix),
@@ -94,8 +101,13 @@ impl FsdbBackend {
             .collect()
     }
 
-    pub(super) fn previous_sample_time(&self, _raw_time: u64) -> Option<u64> {
-        None
+    pub(super) fn previous_sample_time(&self, raw_time: u64) -> Option<u64> {
+        let metadata = self.raw_metadata().ok()?;
+        if raw_time <= metadata.time_start_raw {
+            None
+        } else {
+            raw_time.checked_sub(1)
+        }
     }
 
     pub(super) fn sample_resolved_optional(
@@ -107,7 +119,7 @@ impl FsdbBackend {
             return Ok(Vec::new());
         }
 
-        self.metadata()?;
+        self.raw_metadata()?;
 
         {
             let hierarchy = self.hierarchy()?;
@@ -162,18 +174,39 @@ impl FsdbBackend {
 
     pub(super) fn sample_expr_value(
         &mut self,
-        _resolved: &ExprResolvedSignal,
-        _query_time_raw: u64,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
     ) -> Result<SampledValue, WavepeekError> {
-        Err(unsupported_value_sampling())
+        let cache_key = (resolved.id, query_time_raw);
+        if let Some(value) = self.expr_sample_cache.get(&cache_key) {
+            return Ok(value.clone());
+        }
+
+        let value = self.sample_expr_value_uncached(resolved, query_time_raw)?;
+        self.expr_sample_cache.insert(cache_key, value.clone());
+        Ok(value)
     }
 
     pub(super) fn expr_event_occurred(
         &mut self,
-        _resolved: &ExprResolvedSignal,
-        _query_time_raw: u64,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
     ) -> Result<bool, WavepeekError> {
-        Err(unsupported_property_evaluation())
+        let cache_key = (resolved.id, query_time_raw);
+        if let Some(occurred) = self.event_occurrence_cache.get(&cache_key) {
+            return Ok(*occurred);
+        }
+
+        if !matches!(resolved.expr_type.kind, ExprTypeKind::Event) {
+            return Ok(false);
+        }
+
+        self.raw_metadata()?;
+        let occurred = self
+            .reader
+            .signal_event_occurred(resolved.id.as_u64(), query_time_raw)?;
+        self.event_occurrence_cache.insert(cache_key, occurred);
+        Ok(occurred)
     }
 
     pub(super) fn indexed_timestamps(&self) -> Option<&[u64]> {
@@ -202,22 +235,34 @@ impl FsdbBackend {
 
     pub(super) fn collect_change_times_with_mode(
         &mut self,
-        _resolved: &[ResolvedSignal],
-        _from_raw: u64,
-        _to_raw: u64,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
         _mode: ChangeCandidateCollectionMode,
     ) -> Result<Vec<u64>, WavepeekError> {
-        Err(unsupported_change_collection())
+        self.raw_metadata()?;
+        let idcodes = resolved
+            .iter()
+            .map(|signal| signal.id.as_u64())
+            .collect::<Vec<_>>();
+        self.reader
+            .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
     }
 
     pub(super) fn collect_expr_candidate_times_with_mode(
         &mut self,
-        _resolved: &[ExprResolvedSignal],
-        _from_raw: u64,
-        _to_raw: u64,
+        resolved: &[ExprResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
         _mode: ChangeCandidateCollectionMode,
     ) -> Result<Vec<u64>, WavepeekError> {
-        Err(unsupported_change_collection())
+        self.raw_metadata()?;
+        let idcodes = resolved
+            .iter()
+            .map(|signal| signal.id.as_u64())
+            .collect::<Vec<_>>();
+        self.reader
+            .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
     }
 
     pub(super) fn should_use_streaming_candidate_collection(
@@ -228,6 +273,49 @@ impl FsdbBackend {
         _mode: ChangeCandidateCollectionMode,
     ) -> bool {
         false
+    }
+
+    fn raw_metadata(&self) -> Result<FsdbNativeMetadata, WavepeekError> {
+        if let Some(metadata) = self.raw_metadata.borrow().as_ref() {
+            return Ok(metadata.clone());
+        }
+        let metadata = self.reader.metadata()?;
+        *self.raw_metadata.borrow_mut() = Some(metadata.clone());
+        Ok(metadata)
+    }
+
+    fn sample_expr_value_uncached(
+        &mut self,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
+    ) -> Result<SampledValue, WavepeekError> {
+        match resolved.expr_type.kind {
+            ExprTypeKind::Real | ExprTypeKind::String => {
+                return Err(unsupported_value_sampling(resolved.path.as_str()));
+            }
+            ExprTypeKind::Event => {
+                return Err(WavepeekError::Signal(format!(
+                    "raw event signal '{}' cannot be sampled as an expression value",
+                    resolved.path
+                )));
+            }
+            ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {}
+        }
+
+        let signal = ResolvedSignal {
+            path: resolved.path.clone(),
+            id: resolved.id,
+            width: resolved.expr_type.width.max(1),
+        };
+        let mut samples =
+            self.sample_resolved_optional(std::slice::from_ref(&signal), query_time_raw)?;
+        let sample = samples.pop().ok_or_else(|| {
+            WavepeekError::Internal("FSDB expression sampling returned no sample row".to_string())
+        })?;
+        Ok(SampledValue::Integral {
+            bits: sample.bits,
+            label: None,
+        })
     }
 
     fn hierarchy(&self) -> Result<Ref<'_, FsdbHierarchyIndex>, WavepeekError> {
@@ -243,29 +331,14 @@ impl FsdbBackend {
     }
 }
 
-pub(super) fn unsupported_value_sampling() -> WavepeekError {
-    WavepeekError::Signal(
-        "FSDB expression value sampling is not implemented yet; value command sampling supports bit-vector signals only"
-            .to_string(),
-    )
+pub(super) fn unsupported_value_sampling(path: &str) -> WavepeekError {
+    WavepeekError::Signal(format!(
+        "signal '{path}' has unsupported FSDB expression value encoding"
+    ))
 }
 
 fn unsupported_signal_value_encoding(path: &str) -> WavepeekError {
     WavepeekError::Signal(format!(
         "signal '{path}' has unsupported non-bit-vector encoding"
     ))
-}
-
-pub(super) fn unsupported_change_collection() -> WavepeekError {
-    WavepeekError::Signal(
-        "FSDB change collection is not implemented yet; info, scope, signal, and value are supported by this build"
-            .to_string(),
-    )
-}
-
-pub(super) fn unsupported_property_evaluation() -> WavepeekError {
-    WavepeekError::Signal(
-        "FSDB property evaluation is not implemented yet; info, scope, signal, and value are supported by this build"
-            .to_string(),
-    )
 }

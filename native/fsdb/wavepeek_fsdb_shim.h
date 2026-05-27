@@ -141,6 +141,11 @@ typedef struct wp_fsdb_sample_record {
     char *bits;
 } wp_fsdb_sample_record;
 
+typedef struct wp_fsdb_time_list {
+    uint64_t *times;
+    size_t count;
+} wp_fsdb_time_list;
+
 typedef int (*wp_fsdb_tree_callback)(
     uint32_t event,
     const wp_fsdb_scope_record *scope,
@@ -171,7 +176,24 @@ wp_fsdb_status wp_fsdb_sample_signal_values(
     wp_fsdb_sample_record **out,
     char **error_message
 );
+wp_fsdb_status wp_fsdb_collect_signal_change_times(
+    wp_fsdb_reader *reader,
+    const uint64_t *idcodes,
+    size_t count,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    wp_fsdb_time_list *out,
+    char **error_message
+);
+wp_fsdb_status wp_fsdb_signal_event_occurred(
+    wp_fsdb_reader *reader,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    int *occurred,
+    char **error_message
+);
 void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, size_t count);
+void wp_fsdb_free_time_list(wp_fsdb_time_list *list);
 void wp_fsdb_free_string(char *value);
 void wp_fsdb_free_error(char *value);
 

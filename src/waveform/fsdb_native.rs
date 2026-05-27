@@ -140,6 +140,57 @@ impl FsdbReader {
         };
         samples.to_vec()
     }
+
+    pub(super) fn collect_signal_change_times(
+        &self,
+        idcodes: &[u64],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+
+        let mut times = NativeTimeList::default();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_collect_signal_change_times(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                from_raw,
+                to_raw,
+                &mut times.raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        times.to_vec()
+    }
+
+    pub(super) fn signal_event_occurred(
+        &self,
+        idcode: u64,
+        query_time_raw: u64,
+    ) -> Result<bool, WavepeekError> {
+        let mut occurred = 0;
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_event_occurred(
+                self.raw.as_ptr(),
+                idcode,
+                query_time_raw,
+                &mut occurred,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        Ok(occurred != 0)
+    }
 }
 
 impl Drop for FsdbReader {
@@ -164,6 +215,22 @@ struct NativeSampleArray {
     count: usize,
 }
 
+#[derive(Debug)]
+struct NativeTimeList {
+    raw: ffi::wp_fsdb_time_list,
+}
+
+impl Default for NativeTimeList {
+    fn default() -> Self {
+        Self {
+            raw: ffi::wp_fsdb_time_list {
+                times: ptr::null_mut(),
+                count: 0,
+            },
+        }
+    }
+}
+
 impl NativeSampleArray {
     fn to_vec(&self) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
         if self.raw.is_null() {
@@ -180,6 +247,33 @@ impl NativeSampleArray {
 impl Drop for NativeSampleArray {
     fn drop(&mut self) {
         unsafe { ffi::wp_fsdb_free_samples(self.raw, self.count) };
+    }
+}
+
+impl NativeTimeList {
+    fn to_vec(&self) -> Result<Vec<u64>, WavepeekError> {
+        if self.raw.count == 0 {
+            return Ok(Vec::new());
+        }
+        if self.raw.times.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a null candidate time list".to_string(),
+            ));
+        }
+
+        let times = unsafe { slice::from_raw_parts(self.raw.times, self.raw.count) };
+        if times.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned an unsorted or duplicate candidate time list".to_string(),
+            ));
+        }
+        Ok(times.to_vec())
+    }
+}
+
+impl Drop for NativeTimeList {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_free_time_list(&mut self.raw) };
     }
 }
 
@@ -591,6 +685,13 @@ mod ffi {
         pub(super) bits: *const c_char,
     }
 
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(super) struct wp_fsdb_time_list {
+        pub(super) times: *mut u64,
+        pub(super) count: usize,
+    }
+
     pub(super) type WpFsdbTreeCallback = Option<
         unsafe extern "C" fn(
             c_uint,
@@ -632,7 +733,24 @@ mod ffi {
             out: *mut *mut wp_fsdb_sample_record,
             error_message: *mut *mut c_char,
         ) -> c_uint;
+        pub(super) fn wp_fsdb_collect_signal_change_times(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            from_raw: u64,
+            to_raw: u64,
+            out: *mut wp_fsdb_time_list,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_event_occurred(
+            reader: *mut wp_fsdb_reader,
+            idcode: u64,
+            query_time_raw: u64,
+            occurred: *mut c_int,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
         pub(super) fn wp_fsdb_free_samples(samples: *mut wp_fsdb_sample_record, count: usize);
+        pub(super) fn wp_fsdb_free_time_list(list: *mut wp_fsdb_time_list);
         pub(super) fn wp_fsdb_free_string(value: *mut c_char);
         pub(super) fn wp_fsdb_free_error(value: *mut c_char);
     }

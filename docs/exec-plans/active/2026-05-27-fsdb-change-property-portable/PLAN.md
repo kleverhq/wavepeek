@@ -38,11 +38,11 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 00:00Z) Ran an independent control review over the revised plan, fixed its nonzero-start fixture ambiguity, and rechecked the fix with no substantive findings.
 - [x] (2026-05-27 00:35Z) Confirmed baseline default and FSDB validation gates before implementation: `make check`, `make ci`, `make check-fsdb-env`, and `make test-fsdb` passed on the current Verdi-equipped container.
 - [x] (2026-05-27 00:58Z) Added generated-fixture VCD coverage for `change` and `property` behavior: `change_property_core.vcd`, `change_property_offset_start.vcd`, `change_property_real_output.vcd`, and `change_property_events.vcd`.
-- [ ] Add native FSDB candidate-time traversal and exact raw-event occurrence support.
-- [ ] Add safe Rust FFI wrappers for candidate times and raw-event occurrence.
-- [ ] Implement FSDB backend expression sampling, candidate collection, raw-event occurrence, and strict previous timestamp behavior.
-- [ ] Enable FSDB `change` and `property` command flow by removing the current unsupported-command guard.
-- [ ] Add FSDB CLI parity tests against generated fixtures and a bounded bundled-example smoke where robust.
+- [x] (2026-05-27 01:45Z) Added native FSDB candidate-time traversal and exact raw-event occurrence support in `native/fsdb/wavepeek_fsdb_shim.{h,cpp}`.
+- [x] (2026-05-27 01:45Z) Added safe Rust FFI wrappers for candidate times and raw-event occurrence in `src/waveform/fsdb_native.rs`.
+- [x] (2026-05-27 01:45Z) Implemented FSDB backend expression sampling, candidate collection, raw-event occurrence, and strict previous timestamp behavior in `src/waveform/fsdb_backend.rs`.
+- [x] (2026-05-27 01:45Z) Enabled FSDB `change` and `property` command flow by making the previous unsupported-command guard return `None`.
+- [x] (2026-05-27 01:52Z) Added FSDB CLI parity tests against generated fixtures and a bounded bundled-example smoke in `tests/fsdb_cli.rs`.
 - [ ] Update public docs, changelog, and FSDB architecture milestone links after implementation.
 - [ ] Run default and FSDB validation gates, request focused implementation review, fix findings, run a control pass, commit, and move this plan to `docs/exec-plans/completed/`.
 
@@ -72,8 +72,8 @@ This plan does not rename existing historical fixtures or plans merely because t
 - Observation: review found three places where the first draft was too optimistic: raw-event public support needed deterministic tests, nonzero dump starts needed explicit previous-timestamp handling, and candidate timestamp deduplication must not decide same-timestamp final values.
   Evidence: the revised plan now requires raw-event documentation to be gated by a passing FSDB raw-event test, adds `change_property_offset_start.vcd`, requires metadata-cached dump-start handling in `previous_sample_time`, and states that sampling at `t` must return the Reader's final same-time value.
 
-- Observation: local `vcd2fsdb` preserves the new raw event fixture as a public event signal, so raw-event parity can be tested deterministically in this slice.
-  Evidence: converting `tests/fixtures/hand/change_property_events.vcd` into an ignored temporary FSDB and running `wavepeek signal --scope top --json` reported `top.tick` with kind `event` and `top.armed` with kind `wire`.
+- Observation: local `vcd2fsdb` preserves the new raw event fixture as a public event signal, and exact raw-event parity can be tested deterministically after candidate traversal handles the case where `--from` is before a signal's first event.
+  Evidence: converting `tests/fixtures/hand/change_property_events.vcd` into an ignored temporary FSDB and running `wavepeek signal --scope top --json` reported `top.tick` with kind `event` and `top.armed` with kind `wire`; after fixing candidate traversal to jump to the signal's minimum value-change tag when `ffrGotoXTag(from)` fails before the first event, FSDB `property --on tick --eval armed --capture match --json` matched VCD at 10ns and 25ns.
 
 ## Decision Log
 
@@ -499,7 +499,8 @@ Initial planning notes:
     Control review result: one medium finding on the nonzero-start fixture timeline was fixed by requiring valid=1 and ready=1 at 100ns and an empty data array assertion; follow-up recheck reported no substantive findings.
     Baseline validation before editing: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make ci passed; WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env reported ok; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 13 FSDB CLI tests.
     VCD fixture probe excerpts after adding fixtures: change_property_core wildcard change on data emitted 5ns/7ns/15ns with values 8'h0f, 8'h1f, and 8'h2a; edge-gated change emitted 5ns and 15ns; property switch emitted 15ns assert, 25ns deassert, and 35ns assert; wildcard-inferred property on data == 8'h2a emitted 15ns match; offset-start property emitted an empty data array; raw-event VCD property emitted 10ns and 25ns matches.
-    Raw event conversion probe: generated temporary FSDB signal listing preserved top.tick as kind event, so the implementation will keep the raw-event parity test.
+    Raw event conversion probe: generated temporary FSDB signal listing preserved top.tick as kind event. Initial native candidate traversal missed this event fixture because ffrGotoXTag(0) fails when a signal's first value-change tag is later than the requested from time; after falling back to ffrGetMinXTag and filtering against the requested window, raw-event property parity emitted 10ns and 25ns matches.
+    Implementation validation after native/Rust/test changes: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 16 FSDB CLI tests.
 
 ## Interfaces and Dependencies
 

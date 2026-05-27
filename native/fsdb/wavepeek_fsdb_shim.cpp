@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <algorithm>
 #include <exception>
 #include <memory>
 #include <mutex>
@@ -125,6 +126,21 @@ fsdbTag64 u64_to_tag64(uint64_t value) {
     tag.H = static_cast<uint32_t>(value >> 32);
     tag.L = static_cast<uint32_t>(value & 0xffffffffu);
     return tag;
+}
+
+wp_fsdb_status require_integer_time_tags(ffrObject *object, char **error_message) {
+    if (object == nullptr) {
+        return fail(error_message, "FSDB Reader: time tag validation received a null reader");
+    }
+
+    const fsdbXTagType xtag_type = object->ffrGetXTagType();
+    if (xtag_type != FSDB_XTAG_TYPE_L && xtag_type != FSDB_XTAG_TYPE_HL) {
+        return fail(
+            error_message,
+            "FSDB Reader: unsupported non-integer FSDB time tag representation"
+        );
+    }
+    return WP_FSDB_STATUS_OK;
 }
 
 struct free_deleter {
@@ -686,6 +702,104 @@ wp_fsdb_status fill_sample_record(
     return WP_FSDB_STATUS_OK;
 }
 
+wp_fsdb_status append_change_times_for_signal(
+    ffrObject *object,
+    uint64_t idcode,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    std::vector<uint64_t> &times,
+    char **error_message
+) {
+    vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
+    if (handle.get() == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+    }
+
+    if (!handle.get()->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    fsdbTag64 tag = u64_to_tag64(from_raw);
+    if (handle.get()->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        if (handle.get()->ffrGetMinXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return WP_FSDB_STATUS_OK;
+        }
+    }
+
+    uint64_t current = tag64_to_u64(tag);
+    if (current < from_raw) {
+        if (handle.get()->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            return WP_FSDB_STATUS_OK;
+        }
+        if (handle.get()->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to read value-change time tag");
+        }
+        current = tag64_to_u64(tag);
+    }
+
+    while (current <= to_raw) {
+        times.push_back(current);
+        if (handle.get()->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            break;
+        }
+        if (handle.get()->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to read next value-change time tag");
+        }
+        current = tag64_to_u64(tag);
+    }
+
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status copy_sorted_unique_times(
+    std::vector<uint64_t> &times,
+    wp_fsdb_time_list *out,
+    char **error_message
+) {
+    std::sort(times.begin(), times.end());
+    times.erase(std::unique(times.begin(), times.end()), times.end());
+
+    out->times = nullptr;
+    out->count = times.size();
+    if (times.empty()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    out->times = static_cast<uint64_t *>(std::malloc(times.size() * sizeof(uint64_t)));
+    if (out->times == nullptr) {
+        out->count = 0;
+        return fail(error_message, "FSDB Reader: failed to allocate candidate time list");
+    }
+
+    std::copy(times.begin(), times.end(), out->times);
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status read_exact_event_occurrence(
+    ffrObject *object,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    bool &occurred,
+    char **error_message
+) {
+    occurred = false;
+    vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
+    if (handle.get() == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+    }
+
+    if (!handle.get()->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    fsdbTag64 tag = u64_to_tag64(query_time_raw);
+    if (handle.get()->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        return WP_FSDB_STATUS_OK;
+    }
+    occurred = tag64_to_u64(tag) == query_time_raw;
+    return WP_FSDB_STATUS_OK;
+}
+
 }  // namespace
 
 extern "C" wp_fsdb_status wp_fsdb_probe(
@@ -800,11 +914,8 @@ extern "C" wp_fsdb_status wp_fsdb_read_metadata(
         }
 
         const fsdbXTagType xtag_type = reader->object->ffrGetXTagType();
-        if (xtag_type != FSDB_XTAG_TYPE_L && xtag_type != FSDB_XTAG_TYPE_HL) {
-            return fail(
-                error_message,
-                "FSDB Reader: unsupported non-integer FSDB time tag representation"
-            );
+        if (require_integer_time_tags(reader->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
         }
 
         fsdbTag64 min_tag{};
@@ -946,8 +1057,132 @@ extern "C" wp_fsdb_status wp_fsdb_sample_signal_values(
     }
 }
 
+extern "C" wp_fsdb_status wp_fsdb_collect_signal_change_times(
+    wp_fsdb_reader *reader,
+    const uint64_t *idcodes,
+    std::size_t count,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    wp_fsdb_time_list *out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (reader == nullptr || reader->object == nullptr || out == nullptr || (count > 0 && idcodes == nullptr)) {
+        return fail(error_message, "FSDB Reader: candidate time collection received a null argument");
+    }
+    out->times = nullptr;
+    out->count = 0;
+    if (from_raw > to_raw || count == 0) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        if (require_integer_time_tags(reader->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        signal_list_guard signal_list(reader->object);
+        if (signal_list.load(idcodes, count, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        std::vector<uint64_t> times;
+        times.reserve(count);
+        std::unordered_set<fsdbVarIdcode> visited;
+        visited.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(idcodes[index]);
+            if (!visited.insert(idcode).second) {
+                continue;
+            }
+            if (append_change_times_for_signal(
+                    reader->object,
+                    static_cast<uint64_t>(idcode),
+                    from_raw,
+                    to_raw,
+                    times,
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+        }
+
+        return copy_sorted_unique_times(times, out, error_message);
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: candidate time collection failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_signal_event_occurred(
+    wp_fsdb_reader *reader,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    int *occurred,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (reader == nullptr || reader->object == nullptr || occurred == nullptr) {
+        return fail(error_message, "FSDB Reader: event occurrence query received a null argument");
+    }
+    *occurred = 0;
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        if (require_integer_time_tags(reader->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        const uint64_t idcodes[] = {idcode};
+        signal_list_guard signal_list(reader->object);
+        if (signal_list.load(idcodes, 1, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        bool hit = false;
+        if (read_exact_event_occurrence(
+                reader->object,
+                idcode,
+                query_time_raw,
+                hit,
+                error_message
+            ) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+        *occurred = hit ? 1 : 0;
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: event occurrence query failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
 extern "C" void wp_fsdb_free_samples(wp_fsdb_sample_record *samples, std::size_t count) {
     free_sample_records(samples, count);
+}
+
+extern "C" void wp_fsdb_free_time_list(wp_fsdb_time_list *list) {
+    if (list == nullptr) {
+        return;
+    }
+    std::free(list->times);
+    list->times = nullptr;
+    list->count = 0;
 }
 
 extern "C" void wp_fsdb_free_string(char *value) {

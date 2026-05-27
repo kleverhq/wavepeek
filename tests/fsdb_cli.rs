@@ -334,6 +334,40 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
             .is_some_and(|value| value.contains("'h")),
         "sampled FSDB value should render as a Verilog-style literal"
     );
+
+    let change = run_json_success(&[
+        "change",
+        "--waves",
+        fixture.as_str(),
+        "--signals",
+        sample_path.as_str(),
+        "--from",
+        sample_time,
+        "--to",
+        sample_time,
+        "--max",
+        "1",
+        "--json",
+    ]);
+    assert_eq!(change["command"], "change");
+    assert!(change["data"].is_array());
+
+    let property = run_json_success(&[
+        "property",
+        "--waves",
+        fixture.as_str(),
+        "--eval",
+        sample_path.as_str(),
+        "--from",
+        sample_time,
+        "--to",
+        sample_time,
+        "--capture",
+        "match",
+        "--json",
+    ]);
+    assert_eq!(property["command"], "property");
+    assert!(property["data"].is_array());
 }
 
 #[test]
@@ -529,48 +563,249 @@ fn fsdb_value_rejects_non_bit_vector_signal() {
 }
 
 #[test]
-fn fsdb_unsupported_change_and_property_fail_clearly() {
-    let fixture = bundled_cpu_fsdb_path();
-    let signal = discover_bundled_signal_path(&fixture);
+fn fsdb_change_json_matches_vcd_contracts() {
+    let fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let fsdb_fixture = path_str(&fixtures.core());
+    let vcd_fixture = path_str(&fixture_path("change_property_core.vcd"));
 
-    for (args, expected) in [
-        (
-            vec![
-                "change",
-                "--waves",
-                fixture.as_str(),
-                "--signals",
-                signal.as_str(),
-                "--from",
-                "0ns",
-                "--to",
-                "10ns",
-            ],
-            "FSDB change collection is not implemented yet; info, scope, signal, and value are supported by this build",
-        ),
-        (
-            vec![
-                "property",
-                "--waves",
-                fixture.as_str(),
-                "--eval",
-                signal.as_str(),
-                "--from",
-                "0ns",
-                "--to",
-                "10ns",
-            ],
-            "FSDB property evaluation is not implemented yet; info, scope, signal, and value are supported by this build",
-        ),
-    ] {
-        wavepeek_cmd()
-            .args(args)
-            .assert()
-            .failure()
-            .code(1)
-            .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::contains(expected));
-    }
+    let edge_args = [
+        "change",
+        "--scope",
+        "top",
+        "--signals",
+        "valid,ready,data",
+        "--from",
+        "0ns",
+        "--to",
+        "35ns",
+        "--on",
+        "posedge clk iff valid",
+        "--max",
+        "10",
+        "--json",
+    ];
+    let fsdb_edge = run_json_success_with_waves(fsdb_fixture.as_str(), &edge_args);
+    let vcd_edge = run_json_success_with_waves(vcd_fixture.as_str(), &edge_args);
+    assert_eq!(fsdb_edge["$schema"], expected_schema_url());
+    assert_eq!(fsdb_edge["command"], "change");
+    assert_eq!(fsdb_edge["warnings"], json!([]));
+    assert_eq!(fsdb_edge["data"], vcd_edge["data"]);
+    assert_eq!(
+        fsdb_edge["data"],
+        json!([
+            {"time": "5ns", "signals": [
+                {"path": "top.valid", "value": "1'h1"},
+                {"path": "top.ready", "value": "1'h0"},
+                {"path": "top.data", "value": "8'h0f"}
+            ]},
+            {"time": "15ns", "signals": [
+                {"path": "top.valid", "value": "1'h1"},
+                {"path": "top.ready", "value": "1'h1"},
+                {"path": "top.data", "value": "8'h2a"}
+            ]}
+        ])
+    );
+
+    let wildcard_args = [
+        "change",
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--from",
+        "0ns",
+        "--to",
+        "20ns",
+        "--on",
+        "*",
+        "--max",
+        "10",
+        "--json",
+    ];
+    let fsdb_wildcard = run_json_success_with_waves(fsdb_fixture.as_str(), &wildcard_args);
+    let vcd_wildcard = run_json_success_with_waves(vcd_fixture.as_str(), &wildcard_args);
+    assert_eq!(fsdb_wildcard["data"], vcd_wildcard["data"]);
+    assert_eq!(
+        fsdb_wildcard["data"],
+        json!([
+            {"time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}]},
+            {"time": "7ns", "signals": [{"path": "top.data", "value": "8'h1f"}]},
+            {"time": "15ns", "signals": [{"path": "top.data", "value": "8'h2a"}]}
+        ])
+    );
+}
+
+#[test]
+fn fsdb_property_json_matches_vcd_contracts() {
+    let fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let fsdb_core = path_str(&fixtures.core());
+    let vcd_core = path_str(&fixture_path("change_property_core.vcd"));
+
+    let switch_args = [
+        "property",
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--eval",
+        "valid && ready",
+        "--capture",
+        "switch",
+        "--json",
+    ];
+    let fsdb_switch = run_json_success_with_waves(fsdb_core.as_str(), &switch_args);
+    let vcd_switch = run_json_success_with_waves(vcd_core.as_str(), &switch_args);
+    assert_eq!(fsdb_switch["$schema"], expected_schema_url());
+    assert_eq!(fsdb_switch["command"], "property");
+    assert_eq!(fsdb_switch["warnings"], json!([]));
+    assert_eq!(fsdb_switch["data"], vcd_switch["data"]);
+    assert_eq!(
+        fsdb_switch["data"],
+        json!([
+            {"time": "15ns", "kind": "assert"},
+            {"time": "25ns", "kind": "deassert"},
+            {"time": "35ns", "kind": "assert"}
+        ])
+    );
+
+    let match_args = [
+        "property",
+        "--scope",
+        "top",
+        "--eval",
+        "data == 8'h2a",
+        "--capture",
+        "match",
+        "--json",
+    ];
+    let fsdb_match = run_json_success_with_waves(fsdb_core.as_str(), &match_args);
+    let vcd_match = run_json_success_with_waves(vcd_core.as_str(), &match_args);
+    assert_eq!(fsdb_match["data"], vcd_match["data"]);
+    assert_eq!(
+        fsdb_match["data"],
+        json!([{ "time": "15ns", "kind": "match" }])
+    );
+
+    let fsdb_offset = path_str(&fixtures.offset_start());
+    let vcd_offset = path_str(&fixture_path("change_property_offset_start.vcd"));
+    let offset_args = [
+        "property",
+        "--from",
+        "100ns",
+        "--to",
+        "110ns",
+        "--on",
+        "top.valid",
+        "--eval",
+        "top.ready",
+        "--capture",
+        "match",
+        "--json",
+    ];
+    let fsdb_offset_value = run_json_success_with_waves(fsdb_offset.as_str(), &offset_args);
+    let vcd_offset_value = run_json_success_with_waves(vcd_offset.as_str(), &offset_args);
+    assert_eq!(fsdb_offset_value["data"], vcd_offset_value["data"]);
+    assert_eq!(fsdb_offset_value["data"], json!([]));
+}
+
+#[test]
+fn fsdb_raw_event_property_matches_vcd_when_converter_preserves_events() {
+    let fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let fsdb_fixture = path_str(&fixtures.events());
+    let vcd_fixture = path_str(&fixture_path("change_property_events.vcd"));
+
+    let signal_listing = run_json_success(&[
+        "signal",
+        "--waves",
+        fsdb_fixture.as_str(),
+        "--scope",
+        "top",
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    assert_eq!(
+        signal_listing["data"],
+        json!([
+            {"name": "armed", "path": "top.armed", "kind": "wire", "width": 1},
+            {"name": "tick", "path": "top.tick", "kind": "event", "width": 1}
+        ])
+    );
+
+    let args = [
+        "property",
+        "--scope",
+        "top",
+        "--on",
+        "tick",
+        "--eval",
+        "armed",
+        "--capture",
+        "match",
+        "--json",
+    ];
+    let fsdb_value = run_json_success_with_waves(fsdb_fixture.as_str(), &args);
+    let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
+    assert_eq!(fsdb_value["data"], vcd_value["data"]);
+    assert_eq!(
+        fsdb_value["data"],
+        json!([
+            {"time": "10ns", "kind": "match"},
+            {"time": "25ns", "kind": "match"}
+        ])
+    );
+}
+
+#[test]
+fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
+    let fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let fixture = path_str(&fixtures.real_output());
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "temp",
+            "--from",
+            "0ns",
+            "--to",
+            "10ns",
+            "--on",
+            "*",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "signal 'top.temp' has unsupported non-bit-vector encoding",
+        ));
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "temp > 1.0",
+            "--capture",
+            "match",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::contains(
+            "signal 'top.temp' has unsupported FSDB expression value encoding",
+        ));
 }
 
 #[test]
@@ -601,7 +836,7 @@ fn run_json_success(args: &[&str]) -> Value {
 }
 
 fn run_json_success_with_waves(waves: &str, args: &[&str]) -> Value {
-    let mut full_args = vec!["value", "--waves", waves];
+    let mut full_args = vec![args[0], "--waves", waves];
     full_args.extend_from_slice(&args[1..]);
     run_json_success(&full_args)
 }
@@ -722,6 +957,48 @@ struct GeneratedFsdbFixtures {
     value_vectors: PathBuf,
     value_delayed: PathBuf,
     value_real: PathBuf,
+}
+
+struct GeneratedChangePropertyFsdbFixtures {
+    _dir: TempDir,
+    core: PathBuf,
+    offset_start: PathBuf,
+    events: PathBuf,
+    real_output: PathBuf,
+}
+
+impl GeneratedChangePropertyFsdbFixtures {
+    fn new() -> Self {
+        require_vcd2fsdb();
+        let dir = tempfile::tempdir().expect("tempdir should be created");
+        let core = convert_vcd_fixture(dir.path(), "change_property_core.vcd");
+        let offset_start = convert_vcd_fixture(dir.path(), "change_property_offset_start.vcd");
+        let events = convert_vcd_fixture(dir.path(), "change_property_events.vcd");
+        let real_output = convert_vcd_fixture(dir.path(), "change_property_real_output.vcd");
+        Self {
+            _dir: dir,
+            core,
+            offset_start,
+            events,
+            real_output,
+        }
+    }
+
+    fn core(&self) -> PathBuf {
+        self.core.clone()
+    }
+
+    fn offset_start(&self) -> PathBuf {
+        self.offset_start.clone()
+    }
+
+    fn events(&self) -> PathBuf {
+        self.events.clone()
+    }
+
+    fn real_output(&self) -> PathBuf {
+        self.real_output.clone()
+    }
 }
 
 impl GeneratedFsdbFixtures {

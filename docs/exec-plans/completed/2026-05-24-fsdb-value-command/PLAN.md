@@ -44,6 +44,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 - [x] (2026-05-25 02:31Z) Ran an independent control pass. Fixed its finding by adding a datatype-candidate encoding path: raw unknown/datatyped FSDB signals now upgrade to bit-vector sampling when datatype metadata is vector-like, while unknown or absent datatype remains unsupported. Re-ran targeted, default, and FSDB validations.
 - [x] (2026-05-25 02:49Z) Ran a final control pass focused on the datatype-candidate fix. Fixed its native-mapping finding: FSDB datatype callbacks `DT_INT` and `DT_INT_H_N_L` now map to integer/vector-capable datatype metadata, and the candidate-upgrade regression includes integer datatype coverage. Re-ran targeted, default, FSDB, and CI validations.
 - [x] (2026-05-25 03:02Z) Ran a fresh clean control pass after the native integer datatype fix; it reported no substantive findings.
+- [x] (2026-05-25 03:18Z) Moved the execution record from `docs/exec-plans/active/2026-05-24-fsdb-value-command/PLAN.md` to `docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md` and linked it from `docs/fsdb/arch.md` under M4.
 
 ## Surprises & Discoveries
 
@@ -131,7 +132,7 @@ This plan does not rename existing modules for aesthetics. It extends the curren
 
 ## Outcomes & Retrospective
 
-Implementation is complete and the review fixes have been applied. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real/string/event-valued signals with an unsupported non-bit-vector diagnostic when datatype metadata says they are non-vector, and leaves FSDB `change` / `property` explicitly unsupported. Validation has passed after all review fixes: `cargo fmt`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. The final clean control review reported no substantive findings. The active plan intentionally stays under `docs/exec-plans/active/` for user inspection.
+Implementation is complete and the review fixes have been applied. The FSDB-enabled `wavepeek value` command now samples digital bit-vector signals through the native Reader, preserves duplicate/request order through the existing waveform facade, emits the same Verilog literal formatting as VCD/FST, maps missing prior values to the existing signal error, rejects real/string/event-valued signals with an unsupported non-bit-vector diagnostic when datatype metadata says they are non-vector, and leaves FSDB `change` / `property` explicitly unsupported. Validation has passed after all review fixes: `cargo fmt`, `cargo test -q fsdb_hierarchy --features fsdb`, `cargo test --features fsdb -q --test fsdb_cli -- --nocapture`, `WAVEPEEK_IN_CONTAINER=1 make check`, `WAVEPEEK_IN_CONTAINER=1 make ci`, `WAVEPEEK_IN_CONTAINER=1 make lint-fsdb`, and `WAVEPEEK_IN_CONTAINER=1 make test-fsdb`. The final clean control review reported no substantive findings. The completed execution record lives at `docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md` and is linked from the FSDB architecture plan.
 
 ## Context and Orientation
 
@@ -416,7 +417,7 @@ Create or edit the following files:
 - `src/waveform/fsdb_backend.rs`: implement `sample_resolved_optional` using the hierarchy metadata and native wrappers; keep expression/change/property methods unsupported.
 - `src/waveform/mod.rs`: allow `value` to proceed for FSDB while leaving `change` and `property` blocked.
 - `tests/fsdb_cli.rs`: add FSDB value integration tests and update the unsupported-command test.
-- `docs/exec-plans/active/2026-05-24-fsdb-value-command/PLAN.md`: keep this plan current while implementation and review proceed.
+- `docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md`: completed execution record for this implementation slice.
 
 Do not edit `schema/wavepeek.json` unless validation proves a genuine existing schema bug. This work should fit the current schema.
 
@@ -486,7 +487,7 @@ Current implementation notes:
     Baseline FSDB environment: WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env reported Verdi FSDB Reader SDK found
     Baseline FSDB gate: WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed 8 fsdb_cli tests plus native smokes
     Existing FSDB value state: explicit unsupported error before metadata parsing
-    Expected new active plan path: docs/exec-plans/active/2026-05-24-fsdb-value-command/PLAN.md
+    Completed plan path: docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md
 
     VCD fixture probe at 7ns for value_vectors.vcd produced duplicate top.data rows as 8'h0f, top.clk as 1'h1, top.nibble as 4'hx, top.status as 4'h3, and top.asc as 4'h3.
     VCD fixture probe for value_delayed.vcd at 0ns failed with: error: signal: signal 'top.late' has no value at or before requested time
@@ -574,4 +575,5 @@ The implementation may choose borrowed return types instead of cloned `FsdbSigna
 - 2026-05-25 / Grin: Updated after the first focused review cycle to record review findings, fixes, expanded validation, and the remaining need for an independent control pass.
 - 2026-05-25 / Grin: Updated after the control review fix to record datatype-candidate value encoding, final validation evidence, and completion of review cycles while leaving the plan active for user inspection.
 - 2026-05-25 / Grin: Updated after the final control-review fix to record native integer datatype mapping and final validation evidence.
-- 2026-05-25 / Grin: Updated after the clean control review to record that no substantive findings remain; the plan remains active by user request.
+- 2026-05-25 / Grin: Updated after the clean control review to record that no substantive findings remained; at that time the plan stayed active by user request before the later archival move.
+- 2026-05-25 / Grin: Updated for archival move to `docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md` and for the new M4 architecture link.

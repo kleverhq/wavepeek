@@ -688,6 +688,8 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-23-fsdb-hier
 
 ### M4: FSDB `value`
 
+Completed implementation record: `docs/exec-plans/completed/2026-05-24-fsdb-value-command/PLAN.md`.
+
 - Implement signal loading, at-or-before sampling, and digital value decoding.
 - Verify bit order on synthetic fixtures.
 - Add unsupported encoding errors.

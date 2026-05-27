@@ -405,6 +405,8 @@ For enum values, set `label` only when `bits` exactly matches one of `enum_label
 
 ### Real decode
 
+Deferred research: the current FSDB implementation rejects real operands when an expression or requested output needs their value. The notes below describe the likely future decoding shape and must not be read as current behavior.
+
 For `ExprTypeKind::Real`:
 
 ```text
@@ -423,6 +425,8 @@ SampledValue::Real { value: Some(value) }
 ```
 
 ### String decode
+
+Deferred research: the current FSDB implementation rejects string operands when an expression needs their value. The notes below describe the likely future decoding shape and must not be read as current behavior.
 
 For `ExprTypeKind::String` / `FSDB_VT_STRING`:
 

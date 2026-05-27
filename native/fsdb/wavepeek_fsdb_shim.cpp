@@ -708,6 +708,7 @@ wp_fsdb_status append_change_times_for_signal(
     uint64_t from_raw,
     uint64_t to_raw,
     std::vector<uint64_t> &times,
+    std::unordered_set<uint64_t> &seen_times,
     char **error_message
 ) {
     vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
@@ -738,7 +739,9 @@ wp_fsdb_status append_change_times_for_signal(
     }
 
     while (current <= to_raw) {
-        times.push_back(current);
+        if (seen_times.insert(current).second) {
+            times.push_back(current);
+        }
         if (handle.get()->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
             break;
         }
@@ -1092,6 +1095,8 @@ extern "C" wp_fsdb_status wp_fsdb_collect_signal_change_times(
 
         std::vector<uint64_t> times;
         times.reserve(count);
+        std::unordered_set<uint64_t> seen_times;
+        seen_times.reserve(count);
         std::unordered_set<fsdbVarIdcode> visited;
         visited.reserve(count);
         for (std::size_t index = 0; index < count; ++index) {
@@ -1105,6 +1110,7 @@ extern "C" wp_fsdb_status wp_fsdb_collect_signal_change_times(
                     from_raw,
                     to_raw,
                     times,
+                    seen_times,
                     error_message
                 ) != WP_FSDB_STATUS_OK) {
                 return WP_FSDB_STATUS_ERROR;

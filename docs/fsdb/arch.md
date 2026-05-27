@@ -315,7 +315,7 @@ or a set of facade methods that return `None` for FSDB.
 Dispatch policy:
 
 - VCD/FST keep the existing baseline/fused/edge-fast engines and FST streaming candidate collection.
-- FSDB initially uses a portable engine path: candidate times through FSDB time-based traversal and sampling through FSDB traverse handles.
+- FSDB initially uses a portable engine path: candidate times through per-signal FSDB value-change traversal, then sorted unique timestamp merging in wavepeek-owned code, and sampling through FSDB traverse handles. A merged FSDB time-based traversal can be added later as an optimization after profiling.
 - An FSDB-specific fast engine can be added later if profiling shows it is needed.
 
 The Wellen refactor behind the backend boundary must be behavior-preserving. First move the existing code and replace IDs, then add the FSDB backend.
@@ -464,8 +464,8 @@ Portable FSDB implementation:
    - requested output signals for wildcard `*`;
    - explicit event/value operands from `--on`;
    - operands from `iff` expressions when they affect evaluation.
-5. Use FSDB time-based traversal for merged candidate timestamps.
-6. Group records by raw timestamp; public output remains per timestamp, not per value-change record.
+5. Use per-signal FSDB value-change traversal for candidate timestamps, then sort and deduplicate the raw timestamps in wavepeek-owned code. A merged FSDB time-based traversal is optional future optimization, not required behavior.
+6. Public output remains per timestamp, not per value-change record.
 7. At each candidate timestamp:
    - sample requested signals at-or-before `t`;
    - check requested output deltas against baseline/previous state;

@@ -624,6 +624,9 @@ fn fsdb_change_json_matches_vcd_contracts() {
     ];
     let fsdb_wildcard = run_json_success_with_waves(fsdb_fixture.as_str(), &wildcard_args);
     let vcd_wildcard = run_json_success_with_waves(vcd_fixture.as_str(), &wildcard_args);
+    assert_eq!(fsdb_wildcard["$schema"], expected_schema_url());
+    assert_eq!(fsdb_wildcard["command"], "change");
+    assert_eq!(fsdb_wildcard["warnings"], vcd_wildcard["warnings"]);
     assert_eq!(fsdb_wildcard["data"], vcd_wildcard["data"]);
     assert_eq!(
         fsdb_wildcard["data"],
@@ -633,6 +636,76 @@ fn fsdb_change_json_matches_vcd_contracts() {
             {"time": "15ns", "signals": [{"path": "top.data", "value": "8'h2a"}]}
         ])
     );
+
+    let truncated_args = [
+        "change",
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--from",
+        "0ns",
+        "--to",
+        "20ns",
+        "--on",
+        "*",
+        "--max",
+        "1",
+        "--json",
+    ];
+    let fsdb_truncated = run_json_success_with_waves(fsdb_fixture.as_str(), &truncated_args);
+    let vcd_truncated = run_json_success_with_waves(vcd_fixture.as_str(), &truncated_args);
+    assert_eq!(fsdb_truncated["warnings"], vcd_truncated["warnings"]);
+    assert_eq!(
+        fsdb_truncated["warnings"],
+        json!(["truncated output to 1 entries (use --max to increase limit)"])
+    );
+    assert_eq!(
+        fsdb_truncated["data"],
+        json!([{ "time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}] }])
+    );
+
+    let relative = run_stdout_success(&[
+        "change",
+        "--waves",
+        fsdb_fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--from",
+        "0ns",
+        "--to",
+        "7ns",
+        "--on",
+        "*",
+        "--max",
+        "10",
+    ]);
+    assert!(relative.contains("@5ns data=8'h0f\n"));
+    assert!(relative.contains("@7ns data=8'h1f\n"));
+    assert!(!relative.contains("top.data"));
+
+    let absolute = run_stdout_success(&[
+        "change",
+        "--waves",
+        fsdb_fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--from",
+        "0ns",
+        "--to",
+        "7ns",
+        "--on",
+        "*",
+        "--max",
+        "10",
+        "--abs",
+    ]);
+    assert!(absolute.contains("@5ns top.data=8'h0f\n"));
+    assert!(absolute.contains("@7ns top.data=8'h1f\n"));
 }
 
 #[test]
@@ -680,10 +753,59 @@ fn fsdb_property_json_matches_vcd_contracts() {
     ];
     let fsdb_match = run_json_success_with_waves(fsdb_core.as_str(), &match_args);
     let vcd_match = run_json_success_with_waves(vcd_core.as_str(), &match_args);
+    assert_eq!(fsdb_match["$schema"], expected_schema_url());
+    assert_eq!(fsdb_match["command"], "property");
+    assert_eq!(fsdb_match["warnings"], vcd_match["warnings"]);
     assert_eq!(fsdb_match["data"], vcd_match["data"]);
     assert_eq!(
         fsdb_match["data"],
         json!([{ "time": "15ns", "kind": "match" }])
+    );
+
+    let assert_iff_args = [
+        "property",
+        "--scope",
+        "top",
+        "--from",
+        "0ns",
+        "--to",
+        "35ns",
+        "--on",
+        "posedge clk iff valid",
+        "--eval",
+        "ready",
+        "--capture",
+        "assert",
+        "--json",
+    ];
+    let fsdb_assert = run_json_success_with_waves(fsdb_core.as_str(), &assert_iff_args);
+    let vcd_assert = run_json_success_with_waves(vcd_core.as_str(), &assert_iff_args);
+    assert_eq!(fsdb_assert["warnings"], vcd_assert["warnings"]);
+    assert_eq!(fsdb_assert["data"], vcd_assert["data"]);
+    assert_eq!(
+        fsdb_assert["data"],
+        json!([{ "time": "15ns", "kind": "assert" }])
+    );
+
+    let deassert_args = [
+        "property",
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--eval",
+        "valid && ready",
+        "--capture",
+        "deassert",
+        "--json",
+    ];
+    let fsdb_deassert = run_json_success_with_waves(fsdb_core.as_str(), &deassert_args);
+    let vcd_deassert = run_json_success_with_waves(vcd_core.as_str(), &deassert_args);
+    assert_eq!(fsdb_deassert["warnings"], vcd_deassert["warnings"]);
+    assert_eq!(fsdb_deassert["data"], vcd_deassert["data"]);
+    assert_eq!(
+        fsdb_deassert["data"],
+        json!([{ "time": "25ns", "kind": "deassert" }])
     );
 
     let fsdb_offset = path_str(&fixtures.offset_start());
@@ -775,7 +897,7 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "--to",
             "10ns",
             "--on",
-            "*",
+            "clk",
         ])
         .assert()
         .failure()

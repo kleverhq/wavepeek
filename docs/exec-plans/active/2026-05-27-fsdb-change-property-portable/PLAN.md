@@ -45,6 +45,7 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 01:52Z) Added FSDB CLI parity tests against generated fixtures and a bounded bundled-example smoke in `tests/fsdb_cli.rs`.
 - [x] (2026-05-27 02:12Z) Updated public docs, changelog, and FSDB architecture/research notes after implementation.
 - [ ] Run default and FSDB validation gates, request focused implementation review, fix findings, run a control pass, commit, and leave this plan in `docs/exec-plans/active/` for user inspection.
+- [x] (2026-05-27 02:55Z) Ran four focused read-only review lanes: native/Rust code, tests, docs/contracts, and architecture/performance. Native/Rust returned no findings. Test/docs/performance findings were fixed or explicitly deferred as noted below.
 
 ## Surprises & Discoveries
 
@@ -74,6 +75,12 @@ This plan does not rename existing historical fixtures or plans merely because t
 
 - Observation: local `vcd2fsdb` preserves the new raw event fixture as a public event signal, and exact raw-event parity can be tested deterministically after candidate traversal handles the case where `--from` is before a signal's first event.
   Evidence: converting `tests/fixtures/hand/change_property_events.vcd` into an ignored temporary FSDB and running `wavepeek signal --scope top --json` reported `top.tick` with kind `event` and `top.armed` with kind `wire`; after fixing candidate traversal to jump to the signal's minimum value-change tag when `ffrGotoXTag(from)` fails before the first event, FSDB `property --on tick --eval armed --capture match --json` matched VCD at 10ns and 25ns.
+
+- Observation: post-implementation review found that collecting every per-signal timestamp and deduplicating only after traversal can waste memory when many signals toggle at the same raw time.
+  Evidence: the C++ shim now keeps a `seen_times` set during traversal and only appends a raw timestamp the first time it appears, while retaining the final sort before crossing the FFI boundary.
+
+- Observation: post-implementation review also found a real performance risk from repeated native signal-list loading and traversal-handle creation during expression sampling on large FSDB windows.
+  Evidence: this slice already caches sampled expression values and raw-event occurrence results in `FsdbBackend`, but it still crosses the native boundary per uncached signal/time. A persistent native sampler/session would require a larger ownership design and is deferred to the M6 hardening/performance milestone rather than smuggled into this correctness slice on a Friday-afternoon architecture receipt.
 
 ## Decision Log
 
@@ -121,9 +128,13 @@ This plan does not rename existing historical fixtures or plans merely because t
   Rationale: the user explicitly asked to inspect the result before the plan is moved. This overrides the original final-step wording without changing the implementation acceptance criteria. The plan will stay active and self-contained, with completion evidence recorded here.
   Date/Author: 2026-05-27 / Grin
 
+- Decision: defer a persistent native FSDB sampler/session to the M6 hardening/performance milestone while keeping correctness caches in the Rust backend for this slice.
+  Rationale: reusing native loaded signal lists and traversal handles across arbitrary expression evaluation calls changes native reader lifetime management and memory-retention policy. The current implementation is correct, tested, and bounded by command execution, while the obvious large-file optimization deserves profiling and a dedicated design instead of an improvised cache with interesting failure modes. The shim did take the low-risk memory fix of deduplicating candidate times during traversal.
+  Date/Author: 2026-05-27 / Grin
+
 ## Outcomes & Retrospective
 
-Plan authoring, focused review, independent control review, and control-fix recheck are complete. Baseline validation and VCD fixture creation are complete; native and Rust implementation has not started. Review findings tightened raw-event acceptance, nonzero dump-start semantics, native ownership initialization, same-timestamp final-value sampling, JSON envelope parity, and the exact offset fixture timeline. The plan now describes a backend-first path that enables FSDB `change` and `property` through existing command engines, preserves default no-Verdi builds, keeps VCD/FST fast paths intact, and avoids roadmap-label names for new durable entities. Per the user's inspection request, this plan will stay in `active/` at handoff rather than being moved to `completed/` during this run.
+Plan authoring, initial focused review, independent control review, baseline validation, VCD fixture creation, implementation, documentation, and primary validation are complete. The implementation enables FSDB `change` and `property` through the existing backend-neutral engines for digital bit-vector/integral signals, with native candidate traversal, Rust FFI ownership, expression sampling, exact raw-event occurrence, nonzero-start previous timestamp handling, and generated FSDB parity coverage. The current review loop is addressing post-implementation findings around test breadth, stale FSDB research wording, and candidate timestamp memory behavior. Per the user's inspection request, this plan will stay in `active/` at handoff rather than being moved to `completed/` during this run.
 
 ## Context and Orientation
 
@@ -405,7 +416,7 @@ Also run focused commands when isolating failures:
 
 Request focused read-only review lanes before final handoff: native/FFI safety, Rust backend correctness, CLI tests/contracts, and documentation/plan completeness. Apply fixes in the main session only, rerun relevant validation, and run one fresh independent control review over the consolidated diff. Update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` after each review loop and before committing.
 
-Acceptance for final handoff is: default checks pass, FSDB checks pass where Verdi is available, review returns no substantive findings or all findings are resolved and rechecked, generated FSDB artifacts are not tracked, this plan has moved to completed, `docs/fsdb/arch.md` points to the completed plan, and `git status --short` shows only intentional source, fixture, test, documentation, and plan changes before commit.
+Acceptance for final handoff is: default checks pass, FSDB checks pass where Verdi is available, review returns no substantive findings or all findings are resolved and rechecked, generated FSDB artifacts are not tracked, this plan remains in `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` for user inspection, `docs/fsdb/arch.md` points to this active implementation record for now, and `git status --short` is clean after the final commit.
 
 ## Concrete Steps
 
@@ -429,8 +440,8 @@ Create or edit the following files during implementation:
 - `tests/fsdb_cli.rs`: add generated-fixture parity tests for FSDB `change` and `property`; remove stale command-wide unsupported assertions.
 - `docs/public/intro.md` and `docs/public/reference/command-model.md`: update FSDB support wording.
 - `CHANGELOG.md`: record the user-visible FSDB command expansion.
-- `docs/fsdb/arch.md`: after completion, link the completed implementation record.
-- `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`: final completed execution record after the plan is moved.
+- `docs/fsdb/arch.md`: link this active implementation record during user inspection; move the link only when the plan later moves to `completed/`.
+- `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md`: final active execution record for this handoff. Do not move it during this autonomous run.
 
 Do not edit `schema/wavepeek.json` unless validation proves a genuine existing schema bug. This work should fit the current schema.
 
@@ -502,6 +513,7 @@ Initial planning notes:
     Raw event conversion probe: generated temporary FSDB signal listing preserved top.tick as kind event. Initial native candidate traversal missed this event fixture because ffrGotoXTag(0) fails when a signal's first value-change tag is later than the requested from time; after falling back to ffrGetMinXTag and filtering against the requested window, raw-event property parity emitted 10ns and 25ns matches.
     Implementation validation after native/Rust/test changes: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 16 FSDB CLI tests.
     Documentation validation after public docs/changelog/FSDB notes: cargo fmt and WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb still passed with 16 FSDB CLI tests.
+    Focused review loop 1: native/Rust code lane reported no substantive findings; tests lane requested full envelope parity, more capture/iff coverage, truncation/human-output coverage, and a stronger real-output rejection trigger; docs lane requested stale plan status fixes, active-plan acceptance wording, per-signal traversal wording, and deferred real/string decode wording; architecture/performance lane requested in-traversal candidate deduplication and noted native sampler churn. Applied the test/doc/dedup fixes, documented the sampler churn as deferred M6 performance work, and reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
 
 ## Interfaces and Dependencies
 

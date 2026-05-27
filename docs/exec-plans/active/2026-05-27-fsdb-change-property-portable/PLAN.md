@@ -82,6 +82,9 @@ This plan does not rename existing historical fixtures or plans merely because t
 - Observation: post-implementation review also found a real performance risk from repeated native signal-list loading and traversal-handle creation during expression sampling on large FSDB windows.
   Evidence: this slice already caches sampled expression values and raw-event occurrence results in `FsdbBackend`, but it still crosses the native boundary per uncached signal/time. A persistent native sampler/session would require a larger ownership design and is deferred to the M6 hardening/performance milestone rather than smuggled into this correctness slice on a Friday-afternoon architecture receipt.
 
+- Observation: the first control pass found an unsupported-value edge case that tests did not cover: wildcard expression candidate collection can be the only place where an unsupported FSDB real/string operand is noticed when the selected window has no matching value-change time.
+  Evidence: `FsdbBackend::collect_expr_candidate_times_with_mode` now validates expression candidate sources before native traversal, and `fsdb_change_property_reject_unsupported_real_operands_clearly` includes a `property --on '*' --eval 'temp > 1.0' --from 6ns --to 9ns` no-candidate-window failure case.
+
 ## Decision Log
 
 - Decision: implement FSDB `change` and `property` by filling the backend-neutral portable operations rather than adding FSDB branches inside command engines.
@@ -514,6 +517,7 @@ Initial planning notes:
     Implementation validation after native/Rust/test changes: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make lint-fsdb passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 16 FSDB CLI tests.
     Documentation validation after public docs/changelog/FSDB notes: cargo fmt and WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb still passed with 16 FSDB CLI tests.
     Focused review loop 1: native/Rust code lane reported no substantive findings; tests lane requested full envelope parity, more capture/iff coverage, truncation/human-output coverage, and a stronger real-output rejection trigger; docs lane requested stale plan status fixes, active-plan acceptance wording, per-signal traversal wording, and deferred real/string decode wording; architecture/performance lane requested in-traversal candidate deduplication and noted native sampler churn. Applied the test/doc/dedup fixes, documented the sampler churn as deferred M6 performance work, and reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
+    Control review pass 1 found one medium issue: FSDB wildcard expression candidate collection could silently succeed for unsupported real/string operands if no candidate timestamp fell inside the requested window. Fixed by validating FSDB expression candidate source encodings before native traversal and adding a no-candidate-window property rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
 
 ## Interfaces and Dependencies
 

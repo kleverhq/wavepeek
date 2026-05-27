@@ -907,8 +907,8 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "signal 'top.temp' has unsupported non-bit-vector encoding",
         ));
 
-    wavepeek_cmd()
-        .args([
+    for args in [
+        vec![
             "property",
             "--waves",
             fixture.as_str(),
@@ -920,14 +920,33 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "temp > 1.0",
             "--capture",
             "match",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::contains(
-            "signal 'top.temp' has unsupported FSDB expression value encoding",
-        ));
+        ],
+        vec![
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--from",
+            "6ns",
+            "--to",
+            "9ns",
+            "--on",
+            "*",
+            "--eval",
+            "temp > 1.0",
+        ],
+    ] {
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .failure()
+            .code(1)
+            .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::contains(
+                "signal 'top.temp' has unsupported FSDB expression value encoding",
+            ));
+    }
 }
 
 #[test]

@@ -257,6 +257,7 @@ impl FsdbBackend {
         _mode: ChangeCandidateCollectionMode,
     ) -> Result<Vec<u64>, WavepeekError> {
         self.raw_metadata()?;
+        self.ensure_expr_candidate_sources_supported(resolved)?;
         let idcodes = resolved
             .iter()
             .map(|signal| signal.id.as_u64())
@@ -282,6 +283,30 @@ impl FsdbBackend {
         let metadata = self.reader.metadata()?;
         *self.raw_metadata.borrow_mut() = Some(metadata.clone());
         Ok(metadata)
+    }
+
+    fn ensure_expr_candidate_sources_supported(
+        &self,
+        resolved: &[ExprResolvedSignal],
+    ) -> Result<(), WavepeekError> {
+        let hierarchy = self.hierarchy()?;
+        for signal in resolved {
+            match signal.expr_type.kind {
+                ExprTypeKind::Event => {}
+                ExprTypeKind::Real | ExprTypeKind::String => {
+                    return Err(unsupported_value_sampling(signal.path.as_str()));
+                }
+                ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {
+                    match hierarchy.signal_value_encoding(signal.path.as_str())? {
+                        FsdbValueEncoding::BitVector => {}
+                        FsdbValueEncoding::Unsupported | FsdbValueEncoding::DatatypeCandidate => {
+                            return Err(unsupported_value_sampling(signal.path.as_str()));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     fn sample_expr_value_uncached(

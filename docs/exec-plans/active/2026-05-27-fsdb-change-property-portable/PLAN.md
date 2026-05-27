@@ -36,8 +36,8 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 00:00Z) Drafted this active ExecPlan at `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` with descriptive names and no roadmap-label names for new entities.
 - [x] (2026-05-27 00:00Z) Ran focused read-only review lanes for plan completeness, native/FFI safety, Rust backend integration, and tests/public-contract coverage; incorporated substantive findings into this plan.
 - [x] (2026-05-27 00:00Z) Ran an independent control review over the revised plan, fixed its nonzero-start fixture ambiguity, and rechecked the fix with no substantive findings.
-- [ ] Confirm baseline default and FSDB validation gates before implementation.
-- [ ] Add generated-fixture VCD coverage for `change` and `property` behavior.
+- [x] (2026-05-27 00:35Z) Confirmed baseline default and FSDB validation gates before implementation: `make check`, `make ci`, `make check-fsdb-env`, and `make test-fsdb` passed on the current Verdi-equipped container.
+- [x] (2026-05-27 00:58Z) Added generated-fixture VCD coverage for `change` and `property` behavior: `change_property_core.vcd`, `change_property_offset_start.vcd`, `change_property_real_output.vcd`, and `change_property_events.vcd`.
 - [ ] Add native FSDB candidate-time traversal and exact raw-event occurrence support.
 - [ ] Add safe Rust FFI wrappers for candidate times and raw-event occurrence.
 - [ ] Implement FSDB backend expression sampling, candidate collection, raw-event occurrence, and strict previous timestamp behavior.
@@ -71,6 +71,9 @@ This plan does not rename existing historical fixtures or plans merely because t
 
 - Observation: review found three places where the first draft was too optimistic: raw-event public support needed deterministic tests, nonzero dump starts needed explicit previous-timestamp handling, and candidate timestamp deduplication must not decide same-timestamp final values.
   Evidence: the revised plan now requires raw-event documentation to be gated by a passing FSDB raw-event test, adds `change_property_offset_start.vcd`, requires metadata-cached dump-start handling in `previous_sample_time`, and states that sampling at `t` must return the Reader's final same-time value.
+
+- Observation: local `vcd2fsdb` preserves the new raw event fixture as a public event signal, so raw-event parity can be tested deterministically in this slice.
+  Evidence: converting `tests/fixtures/hand/change_property_events.vcd` into an ignored temporary FSDB and running `wavepeek signal --scope top --json` reported `top.tick` with kind `event` and `top.armed` with kind `wire`.
 
 ## Decision Log
 
@@ -114,9 +117,13 @@ This plan does not rename existing historical fixtures or plans merely because t
   Rationale: returning `raw_time - 1` is correct only after the dump start. At a nonzero first timestamp it can turn an initial value into a false named-event change. The backend needs the raw start tick to return `None` at and before dump start.
   Date/Author: 2026-05-27 / Grin
 
+- Decision: keep this execution plan in `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` for handoff instead of moving it to `completed/` during this autonomous run.
+  Rationale: the user explicitly asked to inspect the result before the plan is moved. This overrides the original final-step wording without changing the implementation acceptance criteria. The plan will stay active and self-contained, with completion evidence recorded here.
+  Date/Author: 2026-05-27 / Grin
+
 ## Outcomes & Retrospective
 
-Plan authoring, focused review, independent control review, and control-fix recheck are complete; implementation has not started. Review findings tightened raw-event acceptance, nonzero dump-start semantics, native ownership initialization, same-timestamp final-value sampling, JSON envelope parity, and the exact offset fixture timeline. The plan now describes a backend-first path that enables FSDB `change` and `property` through existing command engines, preserves default no-Verdi builds, keeps VCD/FST fast paths intact, and avoids roadmap-label names for new durable entities. Future updates should record actual implementation progress, validation evidence, review results, and the final move to `docs/exec-plans/completed/`.
+Plan authoring, focused review, independent control review, and control-fix recheck are complete. Baseline validation and VCD fixture creation are complete; native and Rust implementation has not started. Review findings tightened raw-event acceptance, nonzero dump-start semantics, native ownership initialization, same-timestamp final-value sampling, JSON envelope parity, and the exact offset fixture timeline. The plan now describes a backend-first path that enables FSDB `change` and `property` through existing command engines, preserves default no-Verdi builds, keeps VCD/FST fast paths intact, and avoids roadmap-label names for new durable entities. Per the user's inspection request, this plan will stay in `active/` at handoff rather than being moved to `completed/` during this run.
 
 ## Context and Orientation
 
@@ -490,6 +497,9 @@ Initial planning notes:
     Existing portable engine hook points: collect_expr_candidate_times_with_mode, sample_expr_value, expr_event_occurred, sample_resolved_optional, previous_sample_time.
     Focused review findings incorporated: previous_sample_time must respect nonzero dump starts; candidate collection must not add iff-only operands beyond current engine behavior; native time-list outputs must be initialized and freed safely; candidate deduplication must not hide same-timestamp final-value sampling; raw-event support must not be documented without deterministic FSDB coverage.
     Control review result: one medium finding on the nonzero-start fixture timeline was fixed by requiring valid=1 and ready=1 at 100ns and an empty data array assertion; follow-up recheck reported no substantive findings.
+    Baseline validation before editing: WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make ci passed; WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env reported ok; WAVEPEEK_IN_CONTAINER=1 make test-fsdb passed with 13 FSDB CLI tests.
+    VCD fixture probe excerpts after adding fixtures: change_property_core wildcard change on data emitted 5ns/7ns/15ns with values 8'h0f, 8'h1f, and 8'h2a; edge-gated change emitted 5ns and 15ns; property switch emitted 15ns assert, 25ns deassert, and 35ns assert; wildcard-inferred property on data == 8'h2a emitted 15ns match; offset-start property emitted an empty data array; raw-event VCD property emitted 10ns and 25ns matches.
+    Raw event conversion probe: generated temporary FSDB signal listing preserved top.tick as kind event, so the implementation will keep the raw-event parity test.
 
 ## Interfaces and Dependencies
 

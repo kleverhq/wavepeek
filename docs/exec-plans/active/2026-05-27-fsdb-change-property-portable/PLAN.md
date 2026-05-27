@@ -44,8 +44,8 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 01:45Z) Enabled FSDB `change` and `property` command flow by making the previous unsupported-command guard return `None`.
 - [x] (2026-05-27 01:52Z) Added FSDB CLI parity tests against generated fixtures and a bounded bundled-example smoke in `tests/fsdb_cli.rs`.
 - [x] (2026-05-27 02:12Z) Updated public docs, changelog, and FSDB architecture/research notes after implementation.
-- [ ] Run default and FSDB validation gates, request focused implementation review, fix findings, run a control pass, commit, and leave this plan in `docs/exec-plans/active/` for user inspection.
 - [x] (2026-05-27 02:55Z) Ran four focused read-only review lanes: native/Rust code, tests, docs/contracts, and architecture/performance. Native/Rust returned no findings. Test/docs/performance findings were fixed or explicitly deferred as noted below.
+- [x] (2026-05-27 03:35Z) Ran default and FSDB validation gates, requested focused implementation review, fixed findings, ran two targeted control passes, committed all fixes, and left this plan in `docs/exec-plans/active/` for user inspection.
 
 ## Surprises & Discoveries
 
@@ -140,7 +140,7 @@ This plan does not rename existing historical fixtures or plans merely because t
 
 ## Outcomes & Retrospective
 
-Plan authoring, initial focused review, independent control review, baseline validation, VCD fixture creation, implementation, documentation, and primary validation are complete. The implementation enables FSDB `change` and `property` through the existing backend-neutral engines for digital bit-vector/integral signals, with native candidate traversal, Rust FFI ownership, expression sampling, exact raw-event occurrence, nonzero-start previous timestamp handling, and generated FSDB parity coverage. The current review loop is addressing post-implementation findings around test breadth, stale FSDB research wording, and candidate timestamp memory behavior. Per the user's inspection request, this plan will stay in `active/` at handoff rather than being moved to `completed/` during this run.
+Plan authoring, initial focused review, independent control review, baseline validation, VCD fixture creation, implementation, documentation, final validation, and review/fix/control cycles are complete. The implementation enables FSDB `change` and `property` through the existing backend-neutral engines for digital bit-vector/integral signals, with native candidate traversal, Rust FFI ownership, expression sampling, exact raw-event occurrence, nonzero-start previous timestamp handling, early unsupported-property-operand validation, and generated FSDB parity coverage. Review findings improved test breadth, stale FSDB research wording, candidate timestamp memory behavior, and unsupported real/string diagnostics. The final targeted control recheck reported no substantive findings. Per the user's inspection request, this plan stays in `active/` at handoff rather than being moved to `completed/` during this run.
 
 ## Context and Orientation
 
@@ -522,6 +522,7 @@ Initial planning notes:
     Focused review loop 1: native/Rust code lane reported no substantive findings; tests lane requested full envelope parity, more capture/iff coverage, truncation/human-output coverage, and a stronger real-output rejection trigger; docs lane requested stale plan status fixes, active-plan acceptance wording, per-signal traversal wording, and deferred real/string decode wording; architecture/performance lane requested in-traversal candidate deduplication and noted native sampler churn. Applied the test/doc/dedup fixes, documented the sampler churn as deferred M6 performance work, and reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
     Control review pass 1 found one medium issue: FSDB wildcard expression candidate collection could silently succeed for unsupported real/string operands if no candidate timestamp fell inside the requested window. Fixed by validating FSDB expression candidate source encodings before native traversal and adding a no-candidate-window property rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
     Targeted control recheck found the same unsupported-value class still possible for explicit property triggers with no candidates. Fixed by adding a backend-neutral `Waveform::validate_expr_values_supported` hook, calling it on all bound property eval operands before candidate collection, and adding an explicit-trigger no-candidate-window real operand rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
+    Final validation after the explicit-trigger fix commit: WAVEPEEK_IN_CONTAINER=1 make ci passed with src/** coverage regions 94.75%, functions 95.34%, lines 95.26%, average 95.12%; WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env, check-fsdb-build, lint-fsdb, prepare-fsdb-fixtures, and test-fsdb passed with 16 FSDB CLI tests. Final targeted control recheck reported no substantive findings.
 
 ## Interfaces and Dependencies
 

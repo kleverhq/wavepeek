@@ -257,7 +257,7 @@ impl FsdbBackend {
         _mode: ChangeCandidateCollectionMode,
     ) -> Result<Vec<u64>, WavepeekError> {
         self.raw_metadata()?;
-        self.ensure_expr_candidate_sources_supported(resolved)?;
+        self.validate_expr_values_supported(resolved)?;
         let idcodes = resolved
             .iter()
             .map(|signal| signal.id.as_u64())
@@ -285,7 +285,7 @@ impl FsdbBackend {
         Ok(metadata)
     }
 
-    fn ensure_expr_candidate_sources_supported(
+    pub(super) fn validate_expr_values_supported(
         &self,
         resolved: &[ExprResolvedSignal],
     ) -> Result<(), WavepeekError> {

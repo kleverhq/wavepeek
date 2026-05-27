@@ -85,6 +85,9 @@ This plan does not rename existing historical fixtures or plans merely because t
 - Observation: the first control pass found an unsupported-value edge case that tests did not cover: wildcard expression candidate collection can be the only place where an unsupported FSDB real/string operand is noticed when the selected window has no matching value-change time.
   Evidence: `FsdbBackend::collect_expr_candidate_times_with_mode` now validates expression candidate sources before native traversal, and `fsdb_change_property_reject_unsupported_real_operands_clearly` includes a `property --on '*' --eval 'temp > 1.0' --from 6ns --to 9ns` no-candidate-window failure case.
 
+- Observation: the targeted control recheck correctly pointed out that explicit event triggers could still hide unsupported property eval operands if no candidate occurred.
+  Evidence: `property::run` now resolves and validates all logical eval operands through `Waveform::validate_expr_values_supported` before candidate collection, and `fsdb_change_property_reject_unsupported_real_operands_clearly` includes the explicit `--on 'posedge clk' --from 6ns --to 9ns --eval 'temp > 1.0'` failure case.
+
 ## Decision Log
 
 - Decision: implement FSDB `change` and `property` by filling the backend-neutral portable operations rather than adding FSDB branches inside command engines.
@@ -518,6 +521,7 @@ Initial planning notes:
     Documentation validation after public docs/changelog/FSDB notes: cargo fmt and WAVEPEEK_IN_CONTAINER=1 make check passed; WAVEPEEK_IN_CONTAINER=1 make test-fsdb still passed with 16 FSDB CLI tests.
     Focused review loop 1: native/Rust code lane reported no substantive findings; tests lane requested full envelope parity, more capture/iff coverage, truncation/human-output coverage, and a stronger real-output rejection trigger; docs lane requested stale plan status fixes, active-plan acceptance wording, per-signal traversal wording, and deferred real/string decode wording; architecture/performance lane requested in-traversal candidate deduplication and noted native sampler churn. Applied the test/doc/dedup fixes, documented the sampler churn as deferred M6 performance work, and reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
     Control review pass 1 found one medium issue: FSDB wildcard expression candidate collection could silently succeed for unsupported real/string operands if no candidate timestamp fell inside the requested window. Fixed by validating FSDB expression candidate source encodings before native traversal and adding a no-candidate-window property rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
+    Targeted control recheck found the same unsupported-value class still possible for explicit property triggers with no candidates. Fixed by adding a backend-neutral `Waveform::validate_expr_values_supported` hook, calling it on all bound property eval operands before candidate collection, and adding an explicit-trigger no-candidate-window real operand rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
 
 ## Interfaces and Dependencies
 

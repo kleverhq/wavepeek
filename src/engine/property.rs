@@ -72,16 +72,20 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
+    let eval_signal_handles = referenced_signal_handles(&bound_eval);
+    let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
+    waveform
+        .borrow()
+        .validate_expr_values_supported(eval_sources.as_slice())?;
 
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
-        let handles = referenced_signal_handles(&bound_eval);
-        if handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
+        if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
             return Err(WavepeekError::Args(
                 "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
                     .to_string(),
             ));
         }
-        handles
+        eval_signal_handles.clone()
     } else {
         Vec::new()
     };
@@ -89,7 +93,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let mut candidate_sources = if tracked_signal_handles.is_empty() {
         Vec::new()
     } else {
-        candidate_sources_for_handles(&host, tracked_signal_handles.as_slice())?
+        eval_sources
     };
     candidate_sources.extend(candidate_sources_for_handles(
         &host,

@@ -936,6 +936,21 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "--eval",
             "temp > 1.0",
         ],
+        vec![
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--from",
+            "6ns",
+            "--to",
+            "9ns",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "temp > 1.0",
+        ],
     ] {
         wavepeek_cmd()
             .args(args)

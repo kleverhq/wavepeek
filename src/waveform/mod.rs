@@ -264,6 +264,20 @@ impl Waveform {
         }
     }
 
+    pub(crate) fn validate_expr_values_supported(
+        &self,
+        resolved: &[ExprResolvedSignal],
+    ) -> Result<(), WavepeekError> {
+        match &self.backend {
+            Backend::Wellen(_) => {
+                let _ = resolved;
+                Ok(())
+            }
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.validate_expr_values_supported(resolved),
+        }
+    }
+
     #[inline]
     pub(crate) fn indexed_timestamps(&self) -> Option<&[u64]> {
         match &self.backend {

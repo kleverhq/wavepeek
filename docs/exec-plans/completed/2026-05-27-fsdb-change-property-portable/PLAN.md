@@ -46,6 +46,7 @@ This plan does not rename existing historical fixtures or plans merely because t
 - [x] (2026-05-27 02:12Z) Updated public docs, changelog, and FSDB architecture/research notes after implementation.
 - [x] (2026-05-27 02:55Z) Ran four focused read-only review lanes: native/Rust code, tests, docs/contracts, and architecture/performance. Native/Rust returned no findings. Test/docs/performance findings were fixed or explicitly deferred as noted below.
 - [x] (2026-05-27 03:35Z) Ran default and FSDB validation gates, requested focused implementation review, fixed findings, ran two targeted control passes, committed all fixes, and left this plan in `docs/exec-plans/active/` for user inspection.
+- [x] (2026-05-27 04:05Z) At the user's follow-up request, moved this plan to `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md` and updated `docs/fsdb/arch.md` to point at the completed implementation record.
 
 ## Surprises & Discoveries
 
@@ -130,8 +131,8 @@ This plan does not rename existing historical fixtures or plans merely because t
   Rationale: returning `raw_time - 1` is correct only after the dump start. At a nonzero first timestamp it can turn an initial value into a false named-event change. The backend needs the raw start tick to return `None` at and before dump start.
   Date/Author: 2026-05-27 / Grin
 
-- Decision: keep this execution plan in `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` for handoff instead of moving it to `completed/` during this autonomous run.
-  Rationale: the user explicitly asked to inspect the result before the plan is moved. This overrides the original final-step wording without changing the implementation acceptance criteria. The plan will stay active and self-contained, with completion evidence recorded here.
+- Decision: keep this execution plan in `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` for the first handoff, then move it to `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md` after the user asks for completion archival.
+  Rationale: the user first asked to inspect the result before the plan was moved, then explicitly requested the move to completed. The plan records both steps so the historical path through active review and final archival is not a little mystery box with hinges.
   Date/Author: 2026-05-27 / Grin
 
 - Decision: defer a persistent native FSDB sampler/session to the M6 hardening/performance milestone while keeping correctness caches in the Rust backend for this slice.
@@ -140,7 +141,7 @@ This plan does not rename existing historical fixtures or plans merely because t
 
 ## Outcomes & Retrospective
 
-Plan authoring, initial focused review, independent control review, baseline validation, VCD fixture creation, implementation, documentation, final validation, and review/fix/control cycles are complete. The implementation enables FSDB `change` and `property` through the existing backend-neutral engines for digital bit-vector/integral signals, with native candidate traversal, Rust FFI ownership, expression sampling, exact raw-event occurrence, nonzero-start previous timestamp handling, early unsupported-property-operand validation, and generated FSDB parity coverage. Review findings improved test breadth, stale FSDB research wording, candidate timestamp memory behavior, and unsupported real/string diagnostics. The final targeted control recheck reported no substantive findings. Per the user's inspection request, this plan stays in `active/` at handoff rather than being moved to `completed/` during this run.
+Plan authoring, initial focused review, independent control review, baseline validation, VCD fixture creation, implementation, documentation, final validation, review/fix/control cycles, and user-requested archival are complete. The implementation enables FSDB `change` and `property` through the existing backend-neutral engines for digital bit-vector/integral signals, with native candidate traversal, Rust FFI ownership, expression sampling, exact raw-event occurrence, nonzero-start previous timestamp handling, early unsupported-property-operand validation, and generated FSDB parity coverage. Review findings improved test breadth, stale FSDB research wording, candidate timestamp memory behavior, and unsupported real/string diagnostics. The final targeted control recheck reported no substantive findings. The plan now lives in `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`, and `docs/fsdb/arch.md` points to that completed record.
 
 ## Context and Orientation
 
@@ -389,7 +390,7 @@ Update command docs only if their current examples become misleading for FSDB. `
 
 Update `CHANGELOG.md` under the unreleased section with a bullet describing FSDB-enabled `change` and `property` support. Mention that default builds still require the `fsdb` feature and local Verdi SDK for FSDB input.
 
-After implementation is complete and reviewed, move this plan directory from `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/` to `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/`, then update the FSDB architecture roadmap section in `docs/fsdb/arch.md` to include the completed implementation record path. Do not rename the plan directory to a roadmap label.
+After implementation is complete and reviewed, move this plan directory from `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/` to `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/`, then update the FSDB architecture roadmap section in `docs/fsdb/arch.md` to include the completed implementation record path. This archival move was done after the user's inspection request, without renaming the plan directory to a roadmap label.
 
 Acceptance for this milestone:
 
@@ -422,7 +423,7 @@ Also run focused commands when isolating failures:
 
 Request focused read-only review lanes before final handoff: native/FFI safety, Rust backend correctness, CLI tests/contracts, and documentation/plan completeness. Apply fixes in the main session only, rerun relevant validation, and run one fresh independent control review over the consolidated diff. Update `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` after each review loop and before committing.
 
-Acceptance for final handoff is: default checks pass, FSDB checks pass where Verdi is available, review returns no substantive findings or all findings are resolved and rechecked, generated FSDB artifacts are not tracked, this plan remains in `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md` for user inspection, `docs/fsdb/arch.md` points to this active implementation record for now, and `git status --short` is clean after the final commit.
+Acceptance for final handoff is: default checks pass, FSDB checks pass where Verdi is available, review returns no substantive findings or all findings are resolved and rechecked, generated FSDB artifacts are not tracked, this plan is archived at `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`, `docs/fsdb/arch.md` points to the completed implementation record, and `git status --short` is clean after the final commit.
 
 ## Concrete Steps
 
@@ -446,8 +447,8 @@ Create or edit the following files during implementation:
 - `tests/fsdb_cli.rs`: add generated-fixture parity tests for FSDB `change` and `property`; remove stale command-wide unsupported assertions.
 - `docs/public/intro.md` and `docs/public/reference/command-model.md`: update FSDB support wording.
 - `CHANGELOG.md`: record the user-visible FSDB command expansion.
-- `docs/fsdb/arch.md`: link this active implementation record during user inspection; move the link only when the plan later moves to `completed/`.
-- `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md`: final active execution record for this handoff. Do not move it during this autonomous run.
+- `docs/fsdb/arch.md`: link the completed implementation record after the user-requested archival move.
+- `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`: final completed execution record for this work.
 
 Do not edit `schema/wavepeek.json` unless validation proves a genuine existing schema bug. This work should fit the current schema.
 
@@ -508,7 +509,8 @@ Record concise validation snippets here as implementation proceeds. Useful snipp
 Initial planning notes:
 
     Branch observed while drafting: feat/fsdb
-    Active plan path: docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md
+    Original active plan path: docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md
+    Completed plan path: docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md
     Existing FSDB command state: info, scope, signal, and digital bit-vector value work; change and property are command-wide unsupported through the waveform guard.
     Existing FSDB value native operation: wp_fsdb_sample_signal_values returns owned bit strings for selected idcodes at one raw timestamp.
     Existing portable engine hook points: collect_expr_candidate_times_with_mode, sample_expr_value, expr_event_occurred, sample_resolved_optional, previous_sample_time.
@@ -523,6 +525,7 @@ Initial planning notes:
     Control review pass 1 found one medium issue: FSDB wildcard expression candidate collection could silently succeed for unsupported real/string operands if no candidate timestamp fell inside the requested window. Fixed by validating FSDB expression candidate source encodings before native traversal and adding a no-candidate-window property rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
     Targeted control recheck found the same unsupported-value class still possible for explicit property triggers with no candidates. Fixed by adding a backend-neutral `Waveform::validate_expr_values_supported` hook, calling it on all bound property eval operands before candidate collection, and adding an explicit-trigger no-candidate-window real operand rejection case. Reran cargo fmt, WAVEPEEK_IN_CONTAINER=1 make check, WAVEPEEK_IN_CONTAINER=1 make lint-fsdb, and WAVEPEEK_IN_CONTAINER=1 make test-fsdb successfully.
     Final validation after the explicit-trigger fix commit: WAVEPEEK_IN_CONTAINER=1 make ci passed with src/** coverage regions 94.75%, functions 95.34%, lines 95.26%, average 95.12%; WAVEPEEK_IN_CONTAINER=1 make check-fsdb-env, check-fsdb-build, lint-fsdb, prepare-fsdb-fixtures, and test-fsdb passed with 16 FSDB CLI tests. Final targeted control recheck reported no substantive findings.
+    User-requested archival: moved this plan to docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md and updated docs/fsdb/arch.md so M5 points at the completed record.
 
 ## Interfaces and Dependencies
 

@@ -696,7 +696,9 @@ Completed implementation record: `docs/exec-plans/completed/2026-05-24-fsdb-valu
 
 ### M5: FSDB `change` / `property` portable path
 
-Implementation record under review: `docs/exec-plans/active/2026-05-27-fsdb-change-property-portable/PLAN.md`.
+Completed implementation record: `docs/exec-plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`.
+
+Note: this milestone intentionally ships the portable correctness path. Persistent native sampler/session reuse and large-window FSDB performance tuning remain M6 work, because that needs profiling and a boring ownership design rather than another optimistic cache with a moustache.
 
 - Implement candidate collection through per-signal FSDB value-change traversal, returning sorted unique raw timestamps to Rust.
 - Connect expression host to FSDB sampled digital values and exact raw event occurrences.

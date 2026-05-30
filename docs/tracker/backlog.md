@@ -5,8 +5,8 @@
 These unresolved design questions stay here so they remain visible without
 polluting the stable design contracts.
 
-Stable user-facing contracts live under `public/reference/`, starting from
-`public/intro.md` for the public documentation map.
+Stable user-facing contracts live under `../public/reference/`, starting from
+`../public/intro.md` for the public documentation map.
 
 1. **Scope and path canonicalization.** What is the canonical path syntax and
    escaping policy for VCD escaped identifiers and other unusual names across
@@ -25,19 +25,6 @@ Stable user-facing contracts live under `public/reference/`, starting from
    criteria and priority should gate that work?
 
 ## Issues
-
-### JSON schema data-field detail hardening
-
-Affecting flows:
-- `llm-agent` — Must: stronger field typing and descriptions reduce guesswork, brittle prompt-side parsing, and schema drift in agent tooling.
-- `user-manual` — Could: humans can already rely on command docs and examples, so schema detail is mostly indirect value here.
-- `scripting` — Must: stricter machine contracts make validation, codegen, and long-lived automation less fragile.
-
-- Tighten schema coverage for `data` payload fields that currently validate only as generic strings.
-- Add explicit enum definitions for enumeration-like fields such as `scope.data[].kind` and `signal.data[].kind`, sourced from the stable aliases emitted by the waveform adapter.
-- Add concise `description` text for command payload fields so `wavepeek schema` is more self-documenting for machine clients and agent workflows.
-- Include drift protection so Rust-side emitted aliases and schema enum values stay in sync.
-- Close when `schema/wavepeek.json`, `wavepeek schema`, schema checks, and relevant contract tests cover the richer field metadata without changing existing JSON output bytes except for the schema document itself.
 
 ### Temporal property language extensions over waveforms
 

@@ -2,7 +2,7 @@
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
-Note that this document must be maintained in accordance with the `exec-plan` skill. In the current repository layout this plan starts at `docs/exec-plans/active/2026-05-30-repo-unslop-refactor/PLAN.md`. During implementation, after `docs/tracker/wip/` exists, move this exact plan to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md` and continue updating it there. Do not delete the plan until the full refactor is complete, reviewed, validated, and either handed off or intentionally cleaned for merge.
+Note that this document must be maintained in accordance with the `exec-plan` skill. This plan started at `docs/exec-plans/active/2026-05-30-repo-unslop-refactor/PLAN.md` and was moved during implementation to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md`. Continue updating this file at the tracker path until the full refactor is complete, reviewed, validated, and either handed off or intentionally cleaned for merge.
 
 ## Purpose / Big Picture
 
@@ -21,9 +21,9 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T19:22Z) Noted that the user asked to leave the plan in the current plan location first, then move it into the new tracking layout during implementation.
 - [x] (2026-05-30T19:41Z) Ran two read-only plan review lanes and incorporated findings about self-move commit commands, retained-versus-deleted breadcrumbs, public-doc relative paths, helper-test discovery, `repo_stats.py` root calculation, concise `.fst` safety wording, and `CHANGELOG.md` `Unreleased` stale-path sweeps.
 - [x] (2026-05-30T19:59Z) Updated the helper-tools milestone so `scripts/opencode_loop.py` is deleted instead of moved to a new `tools/agent/` group.
-- [ ] Implementation has not started: no repository files besides this plan have been intentionally refactored yet.
-- [ ] Move this plan to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md` once `docs/tracker/wip/` exists, and update this `Progress` section immediately after the move.
-- [ ] Complete Milestone 1: establish `docs/tracker/`, move backlog and roadmap, remove stale backlog entry, and create the WIP artifact policy.
+- [x] (2026-05-30T20:12Z) Implementation started by creating `docs/tracker/`, moving backlog and roadmap, and moving this plan to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md`.
+- [x] (2026-05-30T20:12Z) Created `docs/tracker/wip/AGENTS.md` with the branch-local WIP artifact policy and removed the stale `JSON schema data-field detail hardening` backlog issue.
+- [x] (2026-05-30T20:15Z) Complete Milestone 1: established `docs/tracker/`, moved backlog and roadmap, removed stale backlog entry, created the WIP artifact policy, and validated the move with the milestone checks.
 - [ ] Complete Milestone 2: split `docs/DEVELOPMENT.md`, move release and architecture docs into `docs/dev/`, update `README.md`, and add `CONTRIBUTING.md`.
 - [ ] Complete Milestone 3: refactor all retained non-root breadcrumbs and then the root `AGENTS.md` so breadcrumbs are concise local guidance, not duplicated maps.
 - [ ] Complete Milestone 4: replace `scripts/` with grouped `tools/` directories, update automation entrypoints, and keep helper tests running.
@@ -109,7 +109,9 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 
 ## Outcomes & Retrospective
 
-At plan creation time, no implementation has been done. The plan resolves the conflict between the user note's `make` wording and the current repository's `just` migration, chooses concrete target paths, and provides a milestone sequence with validation, commits, and review loops. The main remaining risk is stale path fallout: old docs and automation references to `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, `docs/ARCHITECTURE.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/exec-plans/`, and `scripts/` must be swept carefully.
+At plan creation time, no implementation had been done. The plan resolved the conflict between the user note's `make` wording and the current repository's `just` migration, chose concrete target paths, and provided a milestone sequence with validation, commits, and review loops. The main remaining risk is stale path fallout: old docs and automation references to `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, `docs/ARCHITECTURE.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/exec-plans/`, and `scripts/` must be swept carefully.
+
+Milestone 1 created the new tracker layout, moved the active plan into `docs/tracker/wip/`, removed the stale schema-hardening backlog entry, and documented the difference between committed WIP artifacts and ignored `tmp/` scratch. The targeted checks passed, so later milestones can point at real tracker paths instead of aspirational ones, which is always nicer than documenting a door before installing the wall.
 
 Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
 

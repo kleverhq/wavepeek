@@ -9,8 +9,8 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 - Version targets here are provisional planning markers, not guarantees.
 - `CHANGELOG.md` is the source of truth for shipped scope.
-- `docs/BACKLOG.md` may contain ideas or open questions that are not yet
-  scheduled into a milestone.
+- `backlog.md` may contain ideas or open questions that are not yet scheduled
+  into a milestone.
 
 ## Near-Term Roadmap
 

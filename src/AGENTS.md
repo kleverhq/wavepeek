@@ -8,7 +8,7 @@ This directory contains implementation code.
 
 ## Source of Truth
 
-- Development workflow and coding conventions: `../docs/DEVELOPMENT.md`
+- Development workflow and coding conventions: `../docs/dev/style.md`
 - Public docs entrypoint: `../docs/public/intro.md`
 - Cross-cutting command and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
 - Expression semantics for `change` and `property`: `../docs/public/reference/expression-language.md`

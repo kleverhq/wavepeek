@@ -24,7 +24,7 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T20:12Z) Implementation started by creating `docs/tracker/`, moving backlog and roadmap, and moving this plan to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md`.
 - [x] (2026-05-30T20:12Z) Created `docs/tracker/wip/AGENTS.md` with the branch-local WIP artifact policy and removed the stale `JSON schema data-field detail hardening` backlog issue.
 - [x] (2026-05-30T20:15Z) Complete Milestone 1: established `docs/tracker/`, moved backlog and roadmap, removed stale backlog entry, created the WIP artifact policy, and validated the move with the milestone checks.
-- [ ] Complete Milestone 2: split `docs/DEVELOPMENT.md`, move release and architecture docs into `docs/dev/`, update `README.md`, and add `CONTRIBUTING.md`.
+- [x] (2026-05-30T20:34Z) Complete Milestone 2: split `docs/DEVELOPMENT.md` into `docs/dev/`, moved release and architecture docs, updated `README.md`, added `CONTRIBUTING.md`, ran a read-only docs review, and fixed the Codex bootstrap plus `scripts/AGENTS.md` stale-link findings.
 - [ ] Complete Milestone 3: refactor all retained non-root breadcrumbs and then the root `AGENTS.md` so breadcrumbs are concise local guidance, not duplicated maps.
 - [ ] Complete Milestone 4: replace `scripts/` with grouped `tools/` directories, update automation entrypoints, and keep helper tests running.
 - [ ] Complete Milestone 5: remove `docs/exec-plans/`, sweep stale references, update changelog and repo statistics, and run the full quality gate.
@@ -56,6 +56,9 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 
 - Observation: Review of this plan caught shell validation snippets that would have succeeded or failed for the wrong reason.
   Evidence: `git ls-files <path>` exits `0` even when it prints no files, and `test ! -d scripts || git ls-files scripts | grep -q . && ...` has unsafe `&&`/`||` grouping. The plan now uses explicit `if git ls-files ... | grep -q .; then ...; fi` checks. This is why we review plans instead of admiring them from across the room.
+
+- Observation: Milestone 2 docs review caught that Codex first-time bootstrap cannot assume `just` is already usable, and that `scripts/AGENTS.md` would otherwise keep a dead `docs/DEVELOPMENT.md` link after the developer guide split.
+  Evidence: the read-only reviewer reported `docs/dev/environment.md:15` and `scripts/AGENTS.md:12`; the fix documents `bash scripts/codex_setup.sh` as the temporary bootstrap path until the tools migration and updates `scripts/AGENTS.md` to `../docs/dev/quality.md` plus `../docs/dev/automation.md`.
 
 ## Decision Log
 
@@ -112,6 +115,8 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 At plan creation time, no implementation had been done. The plan resolved the conflict between the user note's `make` wording and the current repository's `just` migration, chose concrete target paths, and provided a milestone sequence with validation, commits, and review loops. The main remaining risk is stale path fallout: old docs and automation references to `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, `docs/ARCHITECTURE.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/exec-plans/`, and `scripts/` must be swept carefully.
 
 Milestone 1 created the new tracker layout, moved the active plan into `docs/tracker/wip/`, removed the stale schema-hardening backlog entry, and documented the difference between committed WIP artifacts and ignored `tmp/` scratch. The targeted checks passed, so later milestones can point at real tracker paths instead of aspirational ones, which is always nicer than documenting a door before installing the wall.
+
+Milestone 2 replaced the monolithic developer guide with topic docs under `docs/dev/`, moved the release and architecture docs, added contributor policy, and expanded the README development map. The docs review found two practical stale/bootstrap issues and both were fixed before commit; the remaining expected churn is that `scripts/` paths in Codex docs are temporary until Milestone 4 moves helpers into `tools/`.
 
 Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
 

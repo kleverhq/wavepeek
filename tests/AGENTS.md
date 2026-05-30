@@ -8,7 +8,7 @@ This directory contains integration and fixture-driven tests.
 
 ## Source of Truth
 
-- Testing workflow and conventions: `../docs/DEVELOPMENT.md`
+- Testing workflow and conventions: `../docs/dev/testing.md`
 - Product behavior and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
 - Expression behavior for trigger and eval surfaces: `../docs/public/reference/expression-language.md`
 

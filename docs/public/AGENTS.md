@@ -11,7 +11,7 @@ This directory contains the Markdown topic corpus embedded into `wavepeek docs`.
 - Public introduction and topic map: `intro.md`
 - Command-family guidance: `commands/`
 - Stable semantics references: `reference/`
-- Documentation maintenance workflow and topic metadata rules: `../DEVELOPMENT.md`
+- Documentation maintenance workflow and topic metadata rules: `../dev/style.md`
 - Exact command reference: `../../src/cli/`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
 ## Child Maps

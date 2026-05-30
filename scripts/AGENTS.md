@@ -9,7 +9,8 @@ workflows or root `../justfile` recipes.
 
 ## Source of Truth
 
-- Developer workflow and quality gates: `../docs/DEVELOPMENT.md`
+- Developer workflow and quality gates: `../docs/dev/quality.md`
+- Helper automation guidance: `../docs/dev/automation.md`
 - CI and release automation entrypoints: `../.github/workflows/`
 - Script entrypoints and contracts: `../justfile`
 

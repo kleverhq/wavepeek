@@ -104,7 +104,16 @@ Use progressive disclosure via built-in help and docs:
 
 ## Development
 
-See `docs/DEVELOPMENT.md` for the canonical developer workflow, quality gates, and container-first setup.
+Maintainer workflow lives under `docs/dev/`:
+
+- `docs/dev/environment.md` for devcontainer, CI image, Codex, fixtures, and `tmp/`.
+- `docs/dev/quality.md` for `just check`, `just ci`, coverage, and hooks.
+- `docs/dev/testing.md` for test strategy and fixtures.
+- `docs/dev/style.md` for Rust, CLI, output, and docs conventions.
+- `docs/dev/benchmarking.md` for E2E and expression benchmark workflows.
+- `docs/dev/automation.md` for CI, `justfile`, pre-commit, and helper tools.
+- `docs/dev/git.md`, `docs/dev/changelog.md`, and `docs/dev/release.md` for contribution hygiene and releases.
+- `docs/dev/architecture.md` for internal module boundaries.
 
 ## License
 

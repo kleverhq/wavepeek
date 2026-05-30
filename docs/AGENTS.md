@@ -12,11 +12,11 @@ This file is a local navigation map for this directory.
 - Public command semantics reference: `public/reference/command-model.md`
 - Public machine-output reference: `public/reference/machine-output.md`
 - Public expression-language reference: `public/reference/expression-language.md`
-- Internal architecture and implementation map: `ARCHITECTURE.md`
-- Delivery milestones and target versions: `ROADMAP.md`
-- Development workflow, coding conventions, and docs maintenance: `DEVELOPMENT.md`
-- Release checklist and rollback notes: `RELEASE.md`
-- Active backlog, open design questions, and tech debt tracking: `BACKLOG.md`
+- Internal architecture and implementation map: `dev/architecture.md`
+- Delivery milestones and target versions: `tracker/roadmap.md`
+- Development workflow, coding conventions, and docs maintenance: `dev/`
+- Release checklist and rollback notes: `dev/release.md`
+- Active backlog, open design questions, and tech debt tracking: `tracker/backlog.md`
 - Actual shipped release history: `../CHANGELOG.md`
 
 ## Child Maps

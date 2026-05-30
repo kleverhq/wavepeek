@@ -43,10 +43,10 @@ For docs-local navigation, read `docs/AGENTS.md`.
 
 ## Core Workflow
 
-- This repository is container-first. Run `make` targets inside devcontainer/CI image.
-- Standard quality gate: `make ci`.
-- Local pre-handoff gate: `make check` (format/lint/schema/build + commit-msg check).
-- Test-inclusive gate: `make ci` (same checks + the `cargo llvm-cov`-driven source-coverage/test run).
+- This repository is container-first. Run `just` recipes inside devcontainer/CI image.
+- Standard quality gate: `just ci`.
+- Local pre-handoff gate: `just check` (format/lint/schema/build + commit-msg check).
+- Test-inclusive gate: `just ci` (same checks + the `cargo llvm-cov`-driven source-coverage/test run).
 - Use repository-root `tmp/` for scratch files, ad hoc outputs, logs, and other disposable artifacts; it is git-ignored and may be created/used freely.
 - Do not bypass hooks unless the user explicitly requests it.
 - GitHub Actions workflows live under `.github/workflows/`; use `docs/DEVELOPMENT.md` for workflow gates and `docs/RELEASE.md` for release process context.

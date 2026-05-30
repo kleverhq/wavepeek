@@ -8,13 +8,13 @@ Quality gates in this repository are container-first. Run development commands
 inside the devcontainer/CI image so tooling, fixtures, and behavior are aligned
 with CI.
 
-- `make` targets enforce container execution via `WAVEPEEK_IN_CONTAINER=1`.
-- Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target) and runs `make dev-setup` on start.
+- `just` recipes enforce container execution via `WAVEPEEK_IN_CONTAINER=1`.
+- Local interactive environment uses `.devcontainer/devcontainer.json` (`dev` target) and runs `just dev-setup` on start.
 - Automation and CI use `.devcontainer/devcontainer.ci.json` (`ci` target).
-- Codex cloud environments should set `WAVEPEEK_IN_CONTAINER=1`, run `make codex-setup` during setup, and run `make codex-resume` during maintenance.
+- Codex cloud environments should set `WAVEPEEK_IN_CONTAINER=1`, run `bash scripts/codex_setup.sh` during first setup, and run `just codex-resume` during maintenance.
 - Large RTL fixtures are pre-provisioned under `/opt/rtl-artifacts` in devcontainer/CI image builds, so those environments do not fetch fixtures at runtime.
 - Fixture path resolution prefers `WAVEPEEK_RTL_ARTIFACTS_DIR`, then `RTL_ARTIFACTS_DIR`, then `/opt/rtl-artifacts`, and finally `~/.cache/wavepeek/rtl-artifacts`.
-- Codex setup may populate the cache fallback during `make codex-setup`, and `make` propagates the resolved path to test/runtime processes as `WAVEPEEK_RTL_ARTIFACTS_DIR`.
+- Codex setup may populate the cache fallback during `bash scripts/codex_setup.sh`, and `just` propagates the resolved path to test/runtime processes as `WAVEPEEK_RTL_ARTIFACTS_DIR`.
 
 For rationale and non-obvious container decisions, see `.devcontainer/AGENTS.md`.
 
@@ -37,40 +37,42 @@ Debug mode is a repository-wide internal contract enabled only with `DEBUG=1`.
 
 ## Build / Lint / Test
 
-Use the `Makefile` targets when possible (they match CI and pre-commit hooks).
+Use root `justfile` recipes when possible (they match CI and pre-commit hooks).
 
 Common commands:
 
 - Prepare local devcontainer env and install git hooks:
-  - `make dev-setup`
-- Prepare Codex cloud env for all non-dev `make` targets:
-  - `make codex-setup`
+  - `just dev-setup`
+- Prepare Codex cloud env before `just` is assumed:
+  - `bash scripts/codex_setup.sh`
+- Repair Codex cloud env after cache resume:
+  - `just codex-resume`
 - Format:
-  - `make format`
-  - `make format-check`
+  - `just format`
+  - `just format-check`
 - Lint:
-  - `make lint`
-  - `make lint-fix` (applies clippy suggestions)
+  - `just lint`
+  - `just lint-fix` (applies clippy suggestions)
 - Type/build checks:
-  - `make check-build` (cargo check)
+  - `just check-build` (cargo check)
 - Tests:
-  - `make test`
-  - `make test-aux`
+  - `just test`
+  - `just test-aux`
 - Coverage:
-  - `make coverage-src`
-  - `make coverage-src-check`
+  - `just coverage-src`
+  - `just coverage-src-check`
 - Run all pre-commit hooks locally:
-  - `make pre-commit`
+  - `just pre-commit`
 - Validate commit message (commit-msg hook runs this):
-  - `make check-commit`
+  - `just check-commit`
 - One-shot local gate:
-  - `make check` (format-check + clippy + check-schema + cargo check + commit msg check)
+  - `just check` (format-check + clippy + check-schema + GitHub Actions lint + cargo check + commit msg check)
 - Test-inclusive CI-parity gate:
-  - `make ci` (format-check + clippy + check-schema + auxiliary Python unit tests + source coverage gate at 90% per metric for `src/**` via `cargo llvm-cov` test execution + cargo check)
+  - `just ci` (format-check + clippy + check-schema + GitHub Actions lint + auxiliary Python unit tests + source coverage gate at 90% per metric for `src/**` via `cargo llvm-cov` test execution + cargo check)
 
-`make ci` now relies on the `cargo llvm-cov` run as its single authoritative Rust test execution path; use `make test` when you want a separate explicit non-coverage Rust test run.
+`just ci` now relies on the `cargo llvm-cov` run as its single authoritative Rust test execution path; use `just test` when you want a separate explicit non-coverage Rust test run.
 - Cleanup:
-  - `make clean`
+  - `just clean`
 
 Direct Cargo equivalents (useful when iterating):
 
@@ -150,26 +152,26 @@ namespaced `*.raw.csv` files into one run directory, and writes one aggregated
 `summary.json` + `README.md`. `run --run-dir <dir>` requires `<dir>` to be empty
 unless `--missing-only` is passed.
 
-Convenience targets mirror the new workflow:
+Convenience recipes mirror the repository workflow:
 
-- `make bench-expr-update-baseline`
-- `make bench-expr-run`
+- `just bench-expr-update-baseline`
+- `just bench-expr-run`
 
 Use a fresh `<run-id>` directory for ad hoc local captures. Refresh the committed
-baseline through `make bench-expr-update-baseline` so the replace-in-place flow
-stays guarded behind one explicit target.
+baseline through `just bench-expr-update-baseline` so the replace-in-place flow
+stays guarded behind one explicit recipe.
 
 ## Pre-commit Hooks
 
-Hooks are defined in `.pre-commit-config.yaml` and installed by `make dev-setup`.
-Current hooks run (pre-commit): rustfmt, clippy, cargo check, schema contract, cargo test, auxiliary Python unit tests, and the bench/e2e smoke run+compare catalog.
+Hooks are defined in `.pre-commit-config.yaml` and installed by `just dev-setup`.
+Current hooks run (pre-commit): rustfmt, clippy, cargo check, justfile formatting, schema contract, GitHub Actions lint, cargo test, auxiliary Python unit tests, and the bench/e2e smoke run+compare catalog.
 Commit messages are validated (commit-msg) via `commitizen` (`cz check`).
 
 Notes for agents:
 
 - Do not bypass hooks (no `--no-verify`) unless the user explicitly asks.
-- If you change formatting/lints, re-run `make check` (or at least the impacted
-  targets) before proposing a commit.
+- If you change formatting/lints, re-run `just check` (or at least the impacted
+  recipes) before proposing a commit.
 
 ## Changelog Policy
 

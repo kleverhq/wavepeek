@@ -5,31 +5,43 @@ repos:
       - id: rust-format
         name: Rust format
         description: Run Rust formatting with rustfmt
-        entry: make format
+        entry: just format
         language: system
         types: [file, rust]
+        pass_filenames: false
         stages: [pre-commit]
 
       - id: rust-lint
         name: Rust lint check
         description: Run Rust linting with clippy
-        entry: make lint
+        entry: just lint
         language: system
         types: [file, rust]
+        pass_filenames: false
         stages: [pre-commit]
 
       - id: rust-check
         name: Rust build check
         description: Run Rust build checks with cargo
-        entry: make check-build
+        entry: just check-build
         language: system
         types: [file, rust]
+        pass_filenames: false
+        stages: [pre-commit]
+
+      - id: justfile-format-check
+        name: justfile format check
+        description: Validate root justfile formatting
+        entry: just format-justfile-check
+        language: system
+        files: ^justfile$
+        pass_filenames: false
         stages: [pre-commit]
 
       - id: schema-contract
         name: Schema contract check
         description: Validate canonical schema freshness and URL contract
-        entry: make check-schema
+        entry: just check-schema
         language: system
         pass_filenames: false
         stages: [pre-commit]
@@ -37,7 +49,7 @@ repos:
       - id: github-actions-lint
         name: GitHub Actions lint
         description: Run actionlint on GitHub Actions workflows
-        entry: make check-actions
+        entry: just check-actions
         language: system
         files: ^\.github/workflows/.*\.ya?ml$
         pass_filenames: false
@@ -46,7 +58,7 @@ repos:
       - id: rust-test
         name: Rust testing
         description: Run cargo tests
-        entry: make test
+        entry: just test
         language: system
         pass_filenames: false
         stages: [pre-commit]
@@ -54,7 +66,7 @@ repos:
       - id: aux-test
         name: Auxiliary test suites
         description: Run bench/e2e, bench/expr, and release-helper unit tests
-        entry: make test-aux
+        entry: just test-aux
         language: system
         pass_filenames: false
         stages: [pre-commit]
@@ -62,7 +74,7 @@ repos:
       - id: bench-e2e-smoke-commit
         name: Benchmark E2E pre-commit smoke
         description: Run lightweight bench/e2e run+compare smoke catalog
-        entry: make bench-e2e-smoke-commit
+        entry: just bench-e2e-smoke-commit
         language: system
         pass_filenames: false
         stages: [pre-commit]
@@ -71,6 +83,6 @@ repos:
         name: Commit style check
         description: Run commitizen to validate commit message
         stages: [commit-msg]
-        entry: make check-commit
+        entry: just check-commit
         pass_filenames: false
         language: system

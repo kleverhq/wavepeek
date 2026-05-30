@@ -72,7 +72,7 @@ jobs:
           cacheTo: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }},mode=max
           push: never
-          runCmd: make ci
+          runCmd: just ci
 
       - name: Build crate package in devcontainer baseline
         uses: devcontainers/ci@v0.3

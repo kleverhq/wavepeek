@@ -17,16 +17,21 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
 ## Progress
 
 - [x] (2026-05-30T11:33Z) Reviewed the current root `Makefile`, devcontainer config, GitHub workflows, pre-commit hooks, Codex setup scripts, developer docs, breadcrumb files, schema checker hint, and architecture docs for Make-specific contracts.
-- [x] (2026-05-30T11:33Z) Confirmed the branch already contains a staged `.devcontainer/Dockerfile` change that installs the `just` package next to `make`, and confirmed the rebuilt container exposes `just 1.21.0`.
+- [x] (2026-05-30T11:33Z) Confirmed the branch initially contained a staged `.devcontainer/Dockerfile` change that installed the `just` apt package next to `make`, and confirmed the rebuilt container exposed `just 1.21.0`; later review replaced that with a pinned Cargo install.
 - [x] (2026-05-30T11:33Z) Created this active execution plan for the migration.
 - [x] (2026-05-30T11:48Z) Reviewed this plan through automation, docs, and architecture lanes; addressed findings about `just` formatter instability, pre-commit filename passing, recipe list completeness, output echoing, and clean-checkout `tmp/` creation.
 - [x] (2026-05-30T11:56Z) Ran a final control review pass and clarified that stale-reference sweeps target workflow/docs references, not the `.devcontainer/Dockerfile` package name `make`.
 - [x] (2026-05-30T12:03Z) Extended the plan so root `justfile` formatting becomes a permanent guard in `format-check`, `check`, `ci`, and pre-commit rather than a one-time migration validation.
 - [x] (2026-05-30T12:07Z) Ran one targeted review of the permanent justfile formatting guard addition; reviewer returned no substantive findings.
-- [ ] Implement the root `justfile` while the existing `Makefile` is still available for comparison.
-- [ ] Rewire devcontainer, GitHub Actions, release automation, pre-commit hooks, Codex setup, scripts, docs, breadcrumbs, and changelog entries to the `just` workflow.
-- [ ] Delete the root `Makefile` after `just` parity is proven.
-- [ ] Run the validation commands, complete implementation review, fix findings, and commit the migration.
+- [x] (2026-05-30T12:17Z) Implemented the root `justfile` while the existing `Makefile` was still available for comparison, including all former Make target names plus `format-justfile` and `format-justfile-check`.
+- [x] (2026-05-30T12:17Z) Ran Milestone 1 targeted checks: `just --unstable --fmt --check`, `just --list`, `just print-coverage-src-threshold`, non-container guard failure for `just format-check`, `WAVEPEEK_IN_CONTAINER=1 just format-justfile-check`, and `WAVEPEEK_IN_CONTAINER=1 just check-schema`.
+- [x] (2026-05-30T12:17Z) Rewired devcontainer, GitHub Actions, release automation, pre-commit hooks, Codex setup, scripts, docs, breadcrumbs, and changelog entries to the `just` workflow.
+- [x] (2026-05-30T12:17Z) Ran Milestone 2 targeted checks: `just --version`, `WAVEPEEK_IN_CONTAINER=1 just dev-setup`, `WAVEPEEK_IN_CONTAINER=1 just codex-resume`, and the workflow/hook stale-entrypoint grep.
+- [x] (2026-05-30T12:17Z) Ran the Milestone 3 stale-reference sweep excluding historical execution plans; live docs and automation no longer instruct contributors to run root `make` targets.
+- [x] (2026-05-30T12:18Z) Deleted the root `Makefile` after targeted `just` parity checks passed.
+- [x] (2026-05-30T12:24Z) Ran full post-deletion validation: `just --unstable --fmt --check`, `just --list`, non-container guard smoke, `WAVEPEEK_IN_CONTAINER=1 just format-justfile-check`, `just format-check`, `just check`, `just ci`, and `just pre-commit`; all passed.
+- [x] (2026-05-30T12:24Z) Completed automation, docs, and architecture review lanes. Automation returned no substantive findings; docs and architecture found stale plan/development-doc wording and a devcontainer/Codex `just` version drift risk, which were fixed.
+- [x] (2026-05-30T12:25Z) Re-ran impacted validation after review fixes: `WAVEPEEK_IN_CONTAINER=1 just format-check`, `just check`, `just ci`, `just pre-commit`, workflow/hook stale-entrypoint grep, and broader live-doc stale-reference sweep. A final independent control review returned no substantive findings. The migration is ready for the final commit.
 
 ## Surprises & Discoveries
 
@@ -37,7 +42,7 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
   Evidence: `docs/DEVELOPMENT.md` currently tells Codex environments to run `make codex-setup`, and `scripts/codex_setup.sh` is the actual shell script that can run before a task runner exists.
 
 - Observation: The current development container already has `just` available.
-  Evidence: `just --version` returned `just 1.21.0` after the staged `.devcontainer/Dockerfile` change added `just` to the apt package list.
+  Evidence: `just --version` returned `just 1.21.0` during implementation. The final Dockerfile pins that same version through Cargo using `WAVEPEEK_JUST_VERSION` so future rebuilt containers do not depend on the Ubuntu apt package version.
 
 - Observation: `just 1.21.0` treats formatter commands as unstable.
   Evidence: `just --fmt --check --justfile tmp/comment-test.just` exited with `error: The --fmt command is currently unstable`; `just --unstable --fmt --check --justfile tmp/comment-test.just` invoked the formatter check.
@@ -49,10 +54,25 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
   Evidence: output-sensitive recipes such as threshold printing need `@` prefixes, otherwise exact-output checks may see the shell command before the intended payload.
 
 - Observation: A broad stale-reference sweep over `.devcontainer/` can hit the `make` package name in `.devcontainer/Dockerfile` even after workflow migration succeeds.
-  Evidence: the intended Dockerfile package line keeps `make` and adds `just`; that package dependency is not the root automation interface and should not be treated as a stale `make <target>` instruction.
+  Evidence: the final Dockerfile still keeps GNU Make as a utility package while installing `just` in the Rust tool layer; that package dependency is not the root automation interface and should not be treated as a stale `make <target>` instruction.
 
 - Observation: The first reviewed plan made `just --unstable --fmt --check` a migration acceptance command but did not explicitly keep that check in the future automation gates.
   Evidence: `format-check`, `check`, `ci`, and the pre-commit hook plan did not yet name a permanent justfile formatting recipe, so a later edit could let the root `justfile` drift after migration. Tiny gap, classic place for entropy to set up a folding chair.
+
+- Observation: `just --list` correctly hides `[private]` recipes while direct invocation still works for private plumbing.
+  Evidence: `just --list` showed public development recipes but not `print-coverage-src-threshold`, and `just print-coverage-src-threshold` printed only `90`.
+
+- Observation: The Codex resume path already has the correct Rust components and `just`, so the new `ensure_just` function is normally silent in the rebuilt devcontainer.
+  Evidence: `WAVEPEEK_IN_CONTAINER=1 just codex-resume` printed up-to-date Rust component lines and `Codex resume check complete. Non-dev just recipes are ready.`
+
+- Observation: Review found that installing `just` from Ubuntu apt in the devcontainer while pinning Codex to `WAVEPEEK_JUST_VERSION` would create avoidable tool drift.
+  Evidence: architecture review flagged `.devcontainer/Dockerfile:69`; the fix removes the apt `just` package and installs `just --version ${WAVEPEEK_JUST_VERSION}` with Cargo in the same Rust-tooling layer as `cargo-llvm-cov`.
+
+- Observation: Review caught stale living-plan wording after implementation was already underway.
+  Evidence: docs review flagged the previous `Outcomes & Retrospective` paragraph that still said “The migration is not implemented yet.” The plan now separates pre-migration context from the implemented current state.
+
+- Observation: This execution environment cannot locally rebuild the devcontainer image because Docker is not installed inside the running container.
+  Evidence: `docker build --target ci -f .devcontainer/Dockerfile .devcontainer` failed with `/bin/bash: line 1: docker: command not found`; Dockerfile changes were reviewed statically and will be exercised by GitHub Actions/devcontainer builders.
 
 ## Decision Log
 
@@ -100,17 +120,19 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
   Rationale: A command runner file is code. If it is not checked in the same automation paths as Rust formatting, it will drift exactly when nobody is looking, because apparently whitespace has ambitions.
   Date/Author: 2026-05-30 / Grin
 
+- Decision: Install `just` in the devcontainer via pinned Cargo install using `WAVEPEEK_JUST_VERSION`, not via an unpinned Ubuntu apt package.
+  Rationale: Codex setup already pins `just` through `.devcontainer/env_contract.sh`. Using the same version source for devcontainer/CI and Codex avoids syntax or formatter drift around the root automation file.
+  Date/Author: 2026-05-30 / Grin
+
 ## Outcomes & Retrospective
 
-The migration is not implemented yet. At plan handoff, the only implementation-adjacent change observed is the staged devcontainer package addition for `just`. The intended completed state is a repository with one root automation entrypoint, `justfile`, no live automation or maintainer documentation that tells contributors to use root `make` targets, and permanent justfile formatting coverage in `format-check`, `check`, `ci`, and pre-commit.
+The migration is complete in the working tree and ready for the final commit. The repository now has one root automation entrypoint, `justfile`; the old root `Makefile` has been deleted; devcontainer, CI, release, pre-commit, Codex, schema hints, breadcrumbs, and maintainer docs point at `just`; and permanent justfile formatting coverage is wired through `format-check`, `check`, `ci`, and pre-commit. Full post-deletion validation passed, review fixes were revalidated, and the final control review returned no substantive findings.
 
 ## Context and Orientation
 
-The repository currently uses a root `Makefile` as a command runner. A command runner is a file of named shell commands such as `check` and `ci`; unlike a real build graph, these commands usually run every time and are meant for humans and CI. The current `Makefile` exports `WAVEPEEK_RTL_ARTIFACTS_DIR`, guards most targets with `WAVEPEEK_IN_CONTAINER=1`, checks external RTL waveform fixtures, runs formatting, linting, schema validation, tests, coverage, benchmark helpers, pre-commit hooks, release builds, and cleanup.
+Before this migration, the repository used a root `Makefile` as a command runner. A command runner is a file of named shell commands such as `check` and `ci`; unlike a real build graph, these commands usually run every time and are meant for humans and CI. The old `Makefile` exported `WAVEPEEK_RTL_ARTIFACTS_DIR`, guarded most targets with `WAVEPEEK_IN_CONTAINER=1`, checked external RTL waveform fixtures, ran formatting, linting, schema validation, tests, coverage, benchmark helpers, pre-commit hooks, release builds, and cleanup.
 
-The current root `Makefile` is referenced by several repository surfaces. `.devcontainer/devcontainer.json` runs `make dev-setup` after container start. `.github/workflows/ci.yml` runs `make -s print-coverage-src-threshold` on the host and `make ci` inside the devcontainer. `.github/workflows/release.yml` runs `make ci` inside the devcontainer. `.pre-commit-config.yaml` invokes `make` targets for hooks. `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, root `AGENTS.md`, `.devcontainer/AGENTS.md`, `scripts/AGENTS.md`, `schema/AGENTS.md`, `docs/ARCHITECTURE.md`, `scripts/check_schema_contract.py`, and the changelog currently name Make or Makefile in live workflow text.
-
-`just` is the replacement command runner. A named command in `just` is called a recipe. A `justfile` recipe can depend on another recipe, can run shell commands, can use variables, and can be listed with `just --list`. The implementation should use `bash` with strict flags so shell failures are visible: `bash -euo pipefail -c` means exit on the first failing command, reject unset shell variables, and fail a pipeline when any command in it fails.
+`just` is the replacement command runner. A named command in `just` is called a recipe. The completed root `justfile` carries those former Make target names as callable recipes, adds `format-justfile` and `format-justfile-check`, and is the only root automation surface. A `justfile` recipe can depend on another recipe, can run shell commands, can use variables, and can be listed with `just --list`. This implementation uses `bash` with strict flags so shell failures are visible: `bash -euo pipefail -c` means exit on the first failing command, reject unset shell variables, and fail a pipeline when any command in it fails.
 
 The repository is container-first. Recipes that build, test, run hooks, touch fixtures, or rely on container-installed tools must keep the current guard: if `WAVEPEEK_IN_CONTAINER` is not `1`, print `error: container: this target must run inside a wavepeek-managed container environment (set WAVEPEEK_IN_CONTAINER=1)` to stderr and exit non-zero. `print-coverage-src-threshold`, if kept for diagnostics, must remain callable outside the container because the old workflow used it before the devcontainer existed.
 
@@ -182,7 +204,7 @@ Milestone 1 is accepted when these commands run from `/workspaces/wavepeek` and 
 
 Expected observations: `just --unstable --fmt --check` exits `0`; `just --list` shows the public development recipes including `format-justfile` and `format-justfile-check`; `just print-coverage-src-threshold` prints only `90` unless the environment overrides it; the `WAVEPEEK_IN_CONTAINER=0` command fails before invoking Cargo and prints the same container error shape as the old Make target; `WAVEPEEK_IN_CONTAINER=1 just format-justfile-check` passes; `WAVEPEEK_IN_CONTAINER=1 just check-schema` passes in the rebuilt container.
 
-Milestone 2 rewires automation entrypoints from `make` to `just`. Update `.devcontainer/devcontainer.json` so `postStartCommand` runs `just dev-setup`. Leave `.devcontainer/devcontainer.ci.json` unchanged unless implementation discovers it needs an explicit command; CI passes the command from GitHub Actions. Keep the staged `.devcontainer/Dockerfile` package addition for `just`, and verify both `dev` and `ci` Docker targets inherit it. In `.github/workflows/ci.yml`, delete the host-side `Load coverage threshold from Makefile` step and change both devcontainer `runCmd` values to `just ci`. In `.github/workflows/release.yml`, change the release quality gate `runCmd` to `just ci`. In `.pre-commit-config.yaml`, change every hook entry from `make <target>` to `just <target>`, add `pass_filenames: false` to the Rust `format`, `lint`, and `check-build` hooks so pre-commit does not append file paths that `just` would parse as extra recipe names, and add a dedicated `justfile-format-check` hook with `entry: just format-justfile-check`, `files: ^justfile$`, `language: system`, `pass_filenames: false`, and `stages: [pre-commit]`.
+Milestone 2 rewires automation entrypoints from `make` to `just`. Update `.devcontainer/devcontainer.json` so `postStartCommand` runs `just dev-setup`. Leave `.devcontainer/devcontainer.ci.json` unchanged unless implementation discovers it needs an explicit command; CI passes the command from GitHub Actions. In `.devcontainer/Dockerfile`, install `just` through Cargo with `WAVEPEEK_JUST_VERSION` from `.devcontainer/env_contract.sh` so devcontainer/CI and Codex share the same pinned runner version. In `.github/workflows/ci.yml`, delete the host-side `Load coverage threshold from Makefile` step and change both devcontainer `runCmd` values to `just ci`. In `.github/workflows/release.yml`, change the release quality gate `runCmd` to `just ci`. In `.pre-commit-config.yaml`, change every hook entry from `make <target>` to `just <target>`, add `pass_filenames: false` to the Rust `format`, `lint`, and `check-build` hooks so pre-commit does not append file paths that `just` would parse as extra recipe names, and add a dedicated `justfile-format-check` hook with `entry: just format-justfile-check`, `files: ^justfile$`, `language: system`, `pass_filenames: false`, and `stages: [pre-commit]`.
 
 Also update the Codex projection. Add a pinned `WAVEPEEK_JUST_VERSION` to `.devcontainer/env_contract.sh` unless the implementation chooses a better existing version source and records that decision here. Add an `ensure_just` function to `scripts/codex_env_common.sh` that installs `just` when absent or at the wrong version, preferably with `cargo install --locked just --version "$WAVEPEEK_JUST_VERSION"` after the Rust toolchain is selected. Call it from `ensure_codex_tooling`. Update `scripts/codex_setup.sh` and `scripts/codex_resume.sh` log text from “make targets” to “just recipes”. The first setup command in docs must be the direct shell script because `just` may not exist yet.
 
@@ -267,7 +289,7 @@ Run all commands from `/workspaces/wavepeek`. The intended environment is the re
        git add justfile .devcontainer .github .pre-commit-config.yaml scripts docs AGENTS.md schema CHANGELOG.md Makefile
        git commit -m "chore(dev): migrate automation to just"
 
-   If `git add Makefile` warns because the file is deleted, use `git add -A Makefile` or `git add -A` after inspecting `git status`. The final commit should include the staged `.devcontainer/Dockerfile` `just` package addition unless it was already committed separately.
+   If `git add Makefile` warns because the file is deleted, use `git add -A Makefile` or `git add -A` after inspecting `git status`. The final commit should include the `.devcontainer/Dockerfile` change that installs pinned `just` via Cargo.
 
 ## Validation and Acceptance
 
@@ -292,10 +314,9 @@ Do not hand-edit generated coverage artifacts or benchmark run outputs while val
 
 ## Artifacts and Notes
 
-The expected staged Dockerfile change before this plan was written is:
+The final devcontainer installs GNU Make as a utility package but installs `just` through the pinned Rust tool layer, using `WAVEPEEK_JUST_VERSION` from `.devcontainer/env_contract.sh`:
 
-    -    ca-certificates curl git make libatomic1 \
-    +    ca-certificates curl git make just libatomic1 \
+    /home/ubuntu/.cargo/bin/cargo install --locked just --version ${WAVEPEEK_JUST_VERSION} --root /home/ubuntu/.local
 
 The expected non-container guard remains:
 
@@ -305,7 +326,7 @@ The final stale-reference sweep may still mention `make` in historical changelog
 
 ## Interfaces and Dependencies
 
-The final root automation interface is `justfile`, consumed by `just`. The minimum version known to work at plan time is `just 1.21.0`, because that is what the rebuilt container exposes. The implementation may use `just` features available in that version, including `[private]` recipe attributes, `env_var_or_default`, variable interpolation with `{{...}}`, recipe dependencies, and `just --unstable --fmt --check`.
+The final root automation interface is `justfile`, consumed by `just`. The pinned version is `just 1.21.0` via `WAVEPEEK_JUST_VERSION` in `.devcontainer/env_contract.sh`, and that version is installed by both the devcontainer Dockerfile and Codex setup. The implementation may use `just` features available in that version, including `[private]` recipe attributes, `env_var_or_default`, variable interpolation with `{{...}}`, recipe dependencies, and `just --unstable --fmt --check`.
 
 The final callable recipe names should match the old Make target names, with new public `format-justfile` and `format-justfile-check` recipes added for the new root automation file. Private helper recipes should include `print-coverage-src-threshold`, `require-container`, `check-rtl-artifacts`, and `coverage-src-data` under their existing names with `[private]`, unless implementation records a deliberate compatibility exception in this plan. The external tools and scripts remain the same: Cargo owns Rust compilation and tests, `cargo llvm-cov` owns source coverage data, `actionlint` checks GitHub Actions workflows, `pre-commit` runs local hooks, `commitizen` validates commit messages, `bench/e2e/perf.py` and `bench/expr/perf.py` own benchmark harness workflows, and `scripts/check_schema_contract.py` validates the canonical schema artifact.
 
@@ -316,3 +337,5 @@ Revision Note: 2026-05-30 / Grin - Review findings from automation, docs, and ar
 Revision Note: 2026-05-30 / Grin - A final control pass found that the stale-reference sweep could confuse the Dockerfile package name `make` with a stale automation command. The plan now narrows the sweep to workflow/docs/hook/script entrypoints and explicitly allows the package name when it is not presented as a root command runner.
 
 Revision Note: 2026-05-30 / Grin - The plan now makes root `justfile` formatting a permanent guard, not just a migration-time check. It adds `format-justfile` and `format-justfile-check`, requires `format-check`, `check`, `ci`, and pre-commit coverage for that check, and adds explicit acceptance criteria for the dedicated hook. A focused review of this addition returned no substantive findings.
+
+Revision Note: 2026-05-30 / Grin - Implementation completed the no-shim migration from `Makefile` to root `justfile`, rewired automation and live docs, replaced the initial unpinned apt `just` package with a pinned Cargo install in the devcontainer, recorded review findings and fixes, and captured final validation/control-review evidence.

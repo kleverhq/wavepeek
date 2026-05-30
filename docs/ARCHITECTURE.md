@@ -34,7 +34,7 @@ The repository ships agent-facing workflow assets and deterministic `--json` con
 | Serialization | `serde` + `serde_json` | Standard JSON rendering for machine contracts and schema export |
 | Pattern matching | `regex` | Shared filtering surface for hierarchy and signal discovery |
 | Error handling | `thiserror` | Typed error enums without runtime boxing |
-| Build automation | Cargo + Make | Cargo owns compilation; the Makefile exposes repository quality gates |
+| Build automation | Cargo + just | Cargo owns compilation; the root `justfile` exposes repository quality gates |
 
 ### High-Level Execution Layers
 

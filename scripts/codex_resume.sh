@@ -12,4 +12,4 @@ source "$SCRIPT_DIR/codex_env_common.sh"
 
 ensure_codex_tooling
 
-log "Codex resume check complete."
+log "Codex resume check complete. Non-dev just recipes are ready."

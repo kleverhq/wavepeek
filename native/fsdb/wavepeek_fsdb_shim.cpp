@@ -630,6 +630,12 @@ class vc_handle_guard {
         return handle_;
     }
 
+    ffrVCTrvsHdl release() {
+        ffrVCTrvsHdl handle = handle_;
+        handle_ = nullptr;
+        return handle;
+    }
+
   private:
     ffrVCTrvsHdl handle_ = nullptr;
 };
@@ -946,6 +952,13 @@ struct wp_fsdb_signal_session {
                loaded_idcodes.end();
     }
 
+    wp_fsdb_status require_open(char **error_message) const {
+        if (object != nullptr) {
+            return WP_FSDB_STATUS_OK;
+        }
+        return fail(error_message, "FSDB Reader: signal session is closed");
+    }
+
     wp_fsdb_status require_idcode(uint64_t raw_idcode, char **error_message) const {
         if (has_idcode(raw_idcode)) {
             return WP_FSDB_STATUS_OK;
@@ -966,6 +979,9 @@ struct wp_fsdb_signal_session {
             return fail(error_message, "FSDB Reader: cached traversal requested a null output");
         }
         *out = nullptr;
+        if (require_open(error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
         if (require_idcode(raw_idcode, error_message) != WP_FSDB_STATUS_OK) {
             return WP_FSDB_STATUS_ERROR;
         }
@@ -989,15 +1005,15 @@ struct wp_fsdb_signal_session {
             cached_handles.erase(evict);
         }
 
-        ffrVCTrvsHdl handle = object->ffrCreateVCTrvsHdl(idcode);
-        if (handle == nullptr) {
+        vc_handle_guard handle(object->ffrCreateVCTrvsHdl(idcode));
+        if (handle.get() == nullptr) {
             return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
         }
 
-        auto cached = std::make_unique<cached_vc_handle>(handle);
+        auto cached = std::make_unique<cached_vc_handle>(handle.release());
         cached->last_used = use;
-        *out = handle;
-        cached_handles.emplace(idcode, std::move(cached));
+        auto inserted = cached_handles.emplace(idcode, std::move(cached));
+        *out = inserted.first->second->handle;
         return WP_FSDB_STATUS_OK;
     }
 
@@ -1105,9 +1121,7 @@ extern "C" void wp_fsdb_close(wp_fsdb_reader *reader) {
         std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         if (reader->active_signal_session != nullptr) {
-            wp_fsdb_signal_session *session = reader->active_signal_session;
-            reader->active_signal_session = nullptr;
-            delete session;
+            reader->active_signal_session->close_noexcept();
         }
         if (reader->object != nullptr) {
             reader->object->ffrClose();
@@ -1547,6 +1561,9 @@ extern "C" wp_fsdb_status wp_fsdb_signal_session_collect_change_times(
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
+        if (session->require_open(error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
         if (require_integer_time_tags(session->object, error_message) != WP_FSDB_STATUS_OK) {
             return WP_FSDB_STATUS_ERROR;
         }
@@ -1612,6 +1629,9 @@ extern "C" wp_fsdb_status wp_fsdb_signal_session_event_occurred(
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
+        if (session->require_open(error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
         if (require_integer_time_tags(session->object, error_message) != WP_FSDB_STATUS_OK) {
             return WP_FSDB_STATUS_ERROR;
         }

@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import subprocess
 import sys
 from typing import Any
 
@@ -28,14 +29,33 @@ def collect_canonical_fsdb_paths(value: Any, out: set[str]) -> None:
             collect_canonical_fsdb_paths(item, out)
 
 
+def resolve_rtl_artifacts_dir() -> Path | None:
+    for env_name in ("WAVEPEEK_RTL_ARTIFACTS_DIR", "RTL_ARTIFACTS_DIR"):
+        value = os.environ.get(env_name)
+        if value:
+            return Path(value)
+
+    repo = Path(__file__).resolve().parents[1]
+    helper = repo / ".devcontainer" / "resolve_rtl_artifacts_dir.sh"
+    try:
+        resolved = subprocess.check_output([str(helper)], text=True).strip()
+    except (OSError, subprocess.CalledProcessError) as error:
+        print(
+            f"error: file: failed to resolve RTL artifact directory with {helper}: {error}",
+            file=sys.stderr,
+        )
+        return None
+    return Path(resolved) if resolved else None
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: check_fsdb_bench_artifacts.py <tests_fsdb.json>", file=sys.stderr)
         return 2
 
-    rtl_dir_value = os.environ.get("WAVEPEEK_RTL_ARTIFACTS_DIR")
-    if not rtl_dir_value:
-        print("error: file: WAVEPEEK_RTL_ARTIFACTS_DIR is not set", file=sys.stderr)
+    rtl_dir = resolve_rtl_artifacts_dir()
+    if rtl_dir is None:
+        print("error: file: failed to resolve RTL artifact directory", file=sys.stderr)
         return 1
 
     catalog_path = Path(argv[1])
@@ -51,7 +71,6 @@ def main(argv: list[str]) -> int:
     required: set[str] = set()
     collect_canonical_fsdb_paths(catalog, required)
 
-    rtl_dir = Path(rtl_dir_value)
     missing = sorted(path for path in required if not (rtl_dir / path).is_file())
     if missing:
         for path in missing:

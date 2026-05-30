@@ -148,6 +148,10 @@ prepare-fsdb-fixtures: require-verdi
 check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts
 	$(PYTHON) scripts/check_fsdb_bench_artifacts.py "$(BENCH_E2E_FSDB_TESTS)"
 
+## Prepare and verify FSDB benchmark artifacts in dependency order
+prepare-and-check-fsdb-rtl-artifacts: check-rtl-artifacts prepare-fsdb-fixtures
+	$(PYTHON) scripts/check_fsdb_bench_artifacts.py "$(BENCH_E2E_FSDB_TESTS)"
+
 ## Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
 	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
@@ -169,7 +173,7 @@ check-fsdb-build: require-verdi
 	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 ## Run optional FSDB build smoke tests
-test-fsdb: check-fsdb-build check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts
+test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
 	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
 	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli
 
@@ -196,13 +200,13 @@ bench-e2e-run: check-rtl-artifacts build-release
 	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Refresh FSDB benchmark e2e baseline artifacts
-bench-e2e-fsdb-update-baseline: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
 	rm -rf "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 	mkdir -p "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 
 ## Run FSDB benchmark e2e suite
-bench-e2e-fsdb-run: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
 	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)"
 
 ## Refresh expression benchmark baseline artifacts
@@ -225,7 +229,7 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100
 
 ## Run lightweight FSDB benchmark e2e smoke for pre-commit
-bench-e2e-fsdb-smoke-commit: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
 		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$$tmp_revised" --filter '^(info_picorv32_ez|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$$' && \
 		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)"

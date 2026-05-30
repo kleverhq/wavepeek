@@ -61,6 +61,7 @@ Common commands:
   - `make lint-fsdb`
   - `make prepare-fsdb-fixtures`
   - `make test-fsdb`
+  - `make bench-e2e-fsdb-smoke-commit`
 - Coverage:
   - `make coverage-src`
   - `make coverage-src-check`
@@ -97,12 +98,19 @@ feature-enabled build/link path, and runs native metadata and hierarchy smokes
 against the bundled Verdi example FSDB. Use `make lint-fsdb` for feature-enabled
 clippy. Use `make prepare-fsdb-fixtures` to generate ignored FSDB files under
 `tests/fixtures/fsdb/` from the checked-in VCD fixtures in
-`tests/fixtures/hand/`; the target validates `vcd2fsdb`, writes through
-temporary files, and must not be committed. Use
+`tests/fixtures/hand/` and neighboring `.fsdb` copies for every direct `*.fst`
+file under the resolved RTL artifact directory; the target validates `vcd2fsdb`
+and uses `fst2vcd` for RTL artifact conversion, writes through temporary files,
+and must not be committed. Use
 `make test-fsdb` for the supported FSDB regression path: it prepares generated
 fixtures, runs the native smokes, and verifies Reader-backed `info`, `scope`,
-and `signal` behavior through generated fixture parity plus bundled example
-smoke coverage. FSDB Cargo invocations in these Make targets use
+`signal`, `value`, `change`, `property`, and hardening behavior through
+generated fixture parity plus bundled example smoke coverage. Use
+`make bench-e2e-fsdb-smoke-commit` for the lightweight FSDB benchmark smoke;
+`make bench-e2e-fsdb-run` and `make bench-e2e-fsdb-update-baseline` use the
+FSDB benchmark catalog at `bench/e2e/tests_fsdb.json` with the FSDB release
+binary at `target/fsdb/release/wavepeek`. FSDB Cargo invocations in these Make
+targets use
 `CARGO_TARGET_DIR=target/fsdb` so optional-feature binaries do not fight the
 default target directory during local validation. Use `make check-fsdb-env` for
 a non-failing availability probe that prints a skip line on no-Verdi machines. Set `WAVEPEEK_FSDB_ENV_VERBOSE=1`
@@ -135,8 +143,9 @@ waveforms; the SDK may be referenced, but not vendored. In particular:
   or the required Reader/Writer/converter tools are unavailable. Default CI and
   normal pre-commit hooks must remain Verdi-free.
 - The devcontainer may provide wrapper commands for Verdi tools such as
-  `vcd2fsdb`, `fsdb2vcd`, `fsdbdebug`, `fsdbreport`, and `fsdbextract`; call
-  those wrappers from `PATH` instead of hard-coding `$VERDI_HOME/bin/...`.
+  `vcd2fsdb`, `fst2vcd`, `fsdb2vcd`, `fsdbdebug`, `fsdbreport`, and
+  `fsdbextract`; call those wrappers from `PATH` instead of hard-coding
+  `$VERDI_HOME/bin/...`.
 
 ## CLI E2E Benchmark Harness
 
@@ -157,8 +166,10 @@ use it for any internal microbenchmarks.
   - `python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>`
 - Compare revised run against golden run with regression threshold:
   - `python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5`
+- Compare only functional JSON artifacts, useful for FSDB-vs-FST parity runs:
+  - `python3 bench/e2e/perf.py compare --functional-only --revised <dir> --golden <dir>`
 
-Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. Per-test `runs`/`warmup` values are configured there.
+Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. The FSDB benchmark catalog lives in `bench/e2e/tests_fsdb.json` and mirrors the default catalog with `/opt/rtl-artifacts/*.fsdb` wave paths. Per-test `runs`/`warmup` values are configured there.
 
 For focused optimization campaigns, keep dedicated run directories under `bench/e2e/runs/` (for example, `change-stateless-golden`, `change-stateless-m2`, `change-stateless-m3`, `change-stateless-m4`, `change-stateless-final-matrix`) and compare against either the campaign golden run or shared `bench/e2e/runs/baseline` as appropriate.
 
@@ -174,7 +185,7 @@ Each benchmark run writes two per-test artifacts plus a run-level report:
 
 `run --compare` and `report --compare` annotate timing deltas in `README.md`, add `🟢`/`🔴` markers when absolute delta is at least 3%, and include a functional parity marker (`✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart).
 
-`compare` is a blocking gate for matched tests: it exits with code `1` for mean or median timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals and are reported as warnings. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail compare.
+`compare` is a blocking gate for matched tests: it exits with code `1` for mean or median timing threshold violations, functional `data` mismatch, or missing/invalid `<test_name>.wavepeek.json` artifacts. Empty timeout artifacts (`{}`) are treated as non-blocking timeout signals in timing mode and are reported as warnings. With `--functional-only`, timing artifacts are not required, timeout artifacts are failures, revised-only tests fail, and golden-only tests fail unless `--allow-golden-extra` is supplied for an intentional filtered smoke. `warnings` are ignored for functional parity to avoid false regressions from warning text churn during refactors. Tests present only on one side are reported as warnings and do not fail timing compare.
 
 ## Expression Microbenchmarks
 

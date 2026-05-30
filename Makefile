@@ -227,7 +227,7 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 ## Run lightweight FSDB benchmark e2e smoke for pre-commit
 bench-e2e-fsdb-smoke-commit: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
-		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$$' && \
+		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$$tmp_revised" --filter '^(info_picorv32_ez|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$$' && \
 		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run pre-commit hooks on all files

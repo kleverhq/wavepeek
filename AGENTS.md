@@ -6,11 +6,11 @@ then follow referenced paths to deeper docs.
 ## Start Here
 
 - Public docs entrypoint and contracts: `docs/public/intro.md`, `docs/public/reference/`
-- Delivery milestones and versions: `docs/ROADMAP.md`
-- Development workflow and coding conventions: `docs/DEVELOPMENT.md`
-- Release checklist and rollback notes: `docs/RELEASE.md`
-- Active backlog, open design questions, and tech debt: `docs/BACKLOG.md`
-- Execution plans (active/completed): `docs/exec-plans/`
+- Delivery milestones and versions: `docs/tracker/roadmap.md`
+- Development workflow and coding conventions: `docs/dev/`
+- Release checklist and rollback notes: `docs/dev/release.md`
+- Active backlog, open design questions, and tech debt: `docs/tracker/backlog.md`
+- Branch-local tracked work artifacts: `docs/tracker/wip/`
 - Actual shipped changes by release: `CHANGELOG.md`
 
 For docs-local navigation, read `docs/AGENTS.md`.
@@ -49,7 +49,7 @@ For docs-local navigation, read `docs/AGENTS.md`.
 - Test-inclusive gate: `just ci` (same checks + the `cargo llvm-cov`-driven source-coverage/test run).
 - Use repository-root `tmp/` for scratch files, ad hoc outputs, logs, and other disposable artifacts; it is git-ignored and may be created/used freely.
 - Do not bypass hooks unless the user explicitly requests it.
-- GitHub Actions workflows live under `.github/workflows/`; use `docs/DEVELOPMENT.md` for workflow gates and `docs/RELEASE.md` for release process context.
+- GitHub Actions workflows live under `.github/workflows/`; use `docs/dev/quality.md` for workflow gates and `docs/dev/release.md` for release process context.
 
 ## Critical Tool Safety Rule
 

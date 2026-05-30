@@ -9,7 +9,7 @@ repeatable performance scenarios.
 
 ## Source of Truth
 
-- Container-first workflow and commands: `../docs/DEVELOPMENT.md`
+- Container-first workflow and commands: `../docs/dev/benchmarking.md`
 - Runtime and output contracts to preserve while optimizing: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
 
 ## Areas

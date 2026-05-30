@@ -1,6 +1,6 @@
 # Architecture
 
-This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `public/reference/command-model.md` and `public/reference/machine-output.md`.
+This file holds the internal engineering view of wavepeek: non-functional requirements, module boundaries, dependencies, execution strategy, and testing strategy. It does not restate the exact CLI flag surface. For command semantics and machine-output guarantees, use `docs/public/reference/command-model.md` and `docs/public/reference/machine-output.md`.
 
 ## Non-Functional Requirements
 
@@ -130,7 +130,7 @@ Development dependencies include `assert_cmd`, `predicates`, `tempfile`, `insta`
 
 ## Expression Engine Architecture
 
-The `change` and `property` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `public/reference/expression-language.md`; this section describes how the implementation is arranged.
+The `change` and `property` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `docs/public/reference/expression-language.md`; this section describes how the implementation is arranged.
 
 The pipeline is:
 

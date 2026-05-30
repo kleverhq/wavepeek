@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
 - Reused command-scoped FSDB Reader signal sessions and bounded lazy traversal handles for FSDB value, change, and property workloads to reduce repeated native signal-list churn while preserving existing command output contracts.
 - Normalized FSDB hierarchy spellings from converted RTL artifacts, including Verdi/VCD escaped identifiers, synthetic FST-style array-element scopes, scalar bit-select suffixes, and duplicate signal rows, so full FSDB benchmark functional output matches the FST baseline.
+- Split tracked CLI E2E benchmark baselines into explicit `bench/e2e/runs/baseline_fst` and `bench/e2e/runs/baseline_fsdb` directories, replacing the former ambiguous `bench/e2e/runs/baseline` path.
 
 ## [0.5.0] - 2026-05-15
 

@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "command": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_any",
+      "mean": 0.19144278220000002,
+      "stddev": 0.0022007816648876625,
+      "median": 0.192250213,
+      "user": 0.0944164,
+      "system": 0.0685604,
+      "min": 0.188248359,
+      "max": 0.19359424800000002,
+      "times": [
+        0.188248359,
+        0.192949958,
+        0.192250213,
+        0.19017113300000002,
+        0.19359424800000002
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

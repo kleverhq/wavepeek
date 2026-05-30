@@ -1,0 +1,4008 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "testbench.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.trace_file",
+        "value": "32'h80000003"
+      },
+      {
+        "path": "testbench.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.count_cycle",
+        "value": "16'hbeb9"
+      },
+      {
+        "path": "testbench.top.cycle_counter",
+        "value": "32'h0003beb9"
+      },
+      {
+        "path": "testbench.top.firmware_file",
+        "value": "1024'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006669726d776172652f6669726d776172652e686578"
+      },
+      {
+        "path": "testbench.top.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.async_axi_transaction",
+        "value": "5'h1f"
+      },
+      {
+        "path": "testbench.top.mem.axi_test",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.delay_axi_transaction",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.mem.fast_axi_transaction",
+        "value": "3'h7"
+      },
+      {
+        "path": "testbench.top.mem.fast_raddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_waddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_rinsn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr",
+        "value": "32'h10000000"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.verbose",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.xorshift64_state",
+        "value": "64'h0139408dcbbf7a44"
+      },
+      {
+        "path": "testbench.top.uut.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wait",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wr",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.uut.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.xfer_done",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_add_sub",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_eq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_lts",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_ltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0_q",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_q",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shl",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shr",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait_2",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.compressed_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_cycle",
+        "value": "64'h000000000003beb9"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_instr",
+        "value": "64'h000000000000cbb8"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpu_state",
+        "value": "8'h40"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_rs1",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_wrdata",
+        "value": "32'h0000c79a"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_write",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.current_pc",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_ascii_state",
+        "value": "128'h00000000000000000000006665746368"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_addr",
+        "value": "32'h0000c796"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs1val",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs1val_valid",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs2val",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs2val_valid",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_valid_insn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_imm_j",
+        "value": "32'h00000640"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rd",
+        "value": "6'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs",
+        "value": "6'hxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs1",
+        "value": "6'h0b"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_pseudo_trigger",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_pseudo_trigger_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_trigger",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_trigger_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.do_waitirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_add",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_addi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_and",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_andi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_auipc",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_beq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bge",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bgeu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_blt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bne",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_ecall_ebreak",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_fence",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_getq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_jal",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_jalr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lbu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lui",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_maskirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_or",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_ori",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdcycle",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdcycleh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdinstr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdinstrh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_retirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_setq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sll",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slli",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slti",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sltiu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sra",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srai",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srl",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srli",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sub",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_timer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_waitirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_xor",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_xori",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_active",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_delay",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_mask",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_pending",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_state",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_alu_reg_imm",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_alu_reg_reg",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_beq_bne_blt_bge_bltu_bgeu",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_compare",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_jalr_addi_slti_sltiu_xori_ori_andi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lb_lh_lw_lbu_lhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lbu_lhu_lw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lui_auipc_jal",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lui_auipc_jal_jalr_addi_add_sub",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_rdcycle_rdcycleh_rdinstr_rdinstrh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sb_sh_sw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sll_srl_sra",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_slli_srli_srai",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_slti_blt_slt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sltiu_bltu_sltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.last_mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_branch",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_compr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_rd",
+        "value": "6'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_stalu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_store",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_trace",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.launch_next_insn",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_16bit_buffer",
+        "value": "16'hc581"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_busy",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_prefetch",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_rdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_rinst",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_done",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_addr",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword_reg",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword_xfer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_read",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_secondword",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_use_prefetched_high_word",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_write",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_latched",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_latched_noshuffle",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_q",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_word",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_state",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wordsize",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_xfer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.new_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_insn_opcode",
+        "value": "32'hxxxxc581"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_irq_pending",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_pc",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_rd",
+        "value": "32'h2a4422a3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_timeout",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_timeout_counter",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_wait",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_wr",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.prefetched_high_word",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_next_pc",
+        "value": "32'h0000c79a"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_op1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_op2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_out",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_pc",
+        "value": "32'h0000c796"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_sh",
+        "value": "5'hxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_rdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_rinst",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.timer",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.i",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_any_mul",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_any_mulh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mul",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulhsu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_rs1_signed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_rs2_signed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.j",
+        "value": "32'h00000040"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_counter",
+        "value": "7'h1e"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_finish",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_start",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_waiting",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rd",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rdt",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rdx",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rs1",
+        "value": "64'h0000000002dd14a0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rd",
+        "value": "32'h2a4422a3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wait_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rd",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rdx",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rs1",
+        "value": "64'h0000000005ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.this_rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.dividend",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.divisor",
+        "value": "63'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_any_div_rem",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_div",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_divu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_rem",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_remu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.outsign",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wait_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.quotient",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.quotient_msk",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.running",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.start",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.trace_file",
+        "value": "32'h80000003"
+      },
+      {
+        "path": "testbench.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.count_cycle",
+        "value": "16'hbeb9"
+      },
+      {
+        "path": "testbench.top.cycle_counter",
+        "value": "32'h0003beb9"
+      },
+      {
+        "path": "testbench.top.firmware_file",
+        "value": "1024'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006669726d776172652f6669726d776172652e686578"
+      },
+      {
+        "path": "testbench.top.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.async_axi_transaction",
+        "value": "5'h1f"
+      },
+      {
+        "path": "testbench.top.mem.axi_test",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.delay_axi_transaction",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.mem.fast_axi_transaction",
+        "value": "3'h7"
+      },
+      {
+        "path": "testbench.top.mem.fast_raddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_waddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_rinsn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr",
+        "value": "32'h10000000"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.verbose",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.xorshift64_state",
+        "value": "64'h0139408dcbbf7a44"
+      },
+      {
+        "path": "testbench.top.uut.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wait",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wr",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.uut.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.xfer_done",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_add_sub",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_eq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_lts",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_ltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0_q",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_q",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shl",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shr",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait_2",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.compressed_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_cycle",
+        "value": "64'h000000000003beb9"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_instr",
+        "value": "64'h000000000000cbb8"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpu_state",
+        "value": "8'h40"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_rs1",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_wrdata",
+        "value": "32'h0000c79a"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cpuregs_write",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.current_pc",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_ascii_state",
+        "value": "128'h00000000000000000000006665746368"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_addr",
+        "value": "32'h0000c796"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_next",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs1val",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs1val_valid",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs2val",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_rs2val_valid",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.dbg_valid_insn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_imm_j",
+        "value": "32'h00000640"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rd",
+        "value": "6'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs",
+        "value": "6'hxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs1",
+        "value": "6'h0b"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoded_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_pseudo_trigger",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_pseudo_trigger_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_trigger",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.decoder_trigger_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.do_waitirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_add",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_addi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_and",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_andi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_auipc",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_beq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bge",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bgeu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_blt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_bne",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_ecall_ebreak",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_fence",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_getq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_jal",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_jalr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lbu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lui",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_lw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_maskirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_or",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_ori",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdcycle",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdcycleh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdinstr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_rdinstrh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_retirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_setq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sll",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slli",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_slti",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sltiu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sra",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srai",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srl",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_srli",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sub",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_sw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_timer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_waitirq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_xor",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.instr_xori",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_active",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_delay",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_mask",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_pending",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.irq_state",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_alu_reg_imm",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_alu_reg_reg",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_beq_bne_blt_bge_bltu_bgeu",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_compare",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_jalr_addi_slti_sltiu_xori_ori_andi",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lb_lh_lw_lbu_lhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lbu_lhu_lw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lui_auipc_jal",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_lui_auipc_jal_jalr_addi_add_sub",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_rdcycle_rdcycleh_rdinstr_rdinstrh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sb_sh_sw",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sll_srl_sra",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_slli_srli_srai",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_slti_blt_slt",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.is_sltiu_bltu_sltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.last_mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_branch",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_compr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lb",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_is_lu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_rd",
+        "value": "6'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_stalu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_store",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.latched_trace",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.launch_next_insn",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_16bit_buffer",
+        "value": "16'hc581"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_busy",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_prefetch",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_rdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_rinst",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_do_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_done",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_addr",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword_reg",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_firstword_xfer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_read",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_secondword",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_use_prefetched_high_word",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_wdata",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_write",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_la_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_latched",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_latched_noshuffle",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_q",
+        "value": "32'h0xxx8401"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_rdata_word",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_state",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wordsize",
+        "value": "2'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.mem_xfer",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.new_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_insn_opcode",
+        "value": "32'hxxxxc581"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_irq_pending",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.next_pc",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_div_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_int_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_rd",
+        "value": "32'h2a4422a3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_mul_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_timeout",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_timeout_counter",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_wait",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.pcpi_wr",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.prefetched_high_word",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.q_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_next_pc",
+        "value": "32'h0000c79a"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_op1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_op2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_out",
+        "value": "32'h0000c76c"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_pc",
+        "value": "32'h0000c796"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.reg_sh",
+        "value": "5'hxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_rdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_rinst",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.set_mem_do_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.timer",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.i",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_any_mul",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_any_mulh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mul",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulh",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulhsu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_mulhu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_rs1_signed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.instr_rs2_signed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.j",
+        "value": "32'h00000040"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_counter",
+        "value": "7'h1e"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_finish",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_start",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.mul_waiting",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rd",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rdt",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rdx",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rs1",
+        "value": "64'h0000000002dd14a0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.next_rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rd",
+        "value": "32'h2a4422a3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wait_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.pcpi_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rd",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rdx",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rs1",
+        "value": "64'h0000000005ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk1.pcpi_mul.this_rs2",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.dividend",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.divisor",
+        "value": "63'h0000000000000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_any_div_rem",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_div",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_divu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_rem",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.instr_remu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.outsign",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rd",
+        "value": "32'hxxxxxxxx"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wait_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.pcpi_wr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.quotient",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.quotient_msk",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.running",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.genblk2.pcpi_div.start",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.trace_file",
+        "value": "32'h80000003"
+      },
+      {
+        "path": "testbench.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.count_cycle",
+        "value": "16'hbeb9"
+      },
+      {
+        "path": "testbench.top.cycle_counter",
+        "value": "32'h0003beb9"
+      },
+      {
+        "path": "testbench.top.firmware_file",
+        "value": "1024'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000006669726d776172652f6669726d776172652e686578"
+      },
+      {
+        "path": "testbench.top.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.async_axi_transaction",
+        "value": "5'h1f"
+      },
+      {
+        "path": "testbench.top.mem.axi_test",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.delay_axi_transaction",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.mem.fast_axi_transaction",
+        "value": "3'h7"
+      },
+      {
+        "path": "testbench.top.mem.fast_raddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_waddr",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.fast_wdata",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.latched_raddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_rinsn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr",
+        "value": "32'h10000000"
+      },
+      {
+        "path": "testbench.top.mem.latched_waddr_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.latched_wdata_en",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.latched_wstrb",
+        "value": "4'hf"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.mem.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.tests_passed",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.verbose",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.mem.xorshift64_state",
+        "value": "64'h0139408dcbbf7a44"
+      },
+      {
+        "path": "testbench.top.uut.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.eoi",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.irq",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_insn",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rd",
+        "value": "32'hzzzzzzzz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_ready",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs1",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_rs2",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wait",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.pcpi_wr",
+        "value": "1'hz"
+      },
+      {
+        "path": "testbench.top.uut.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.trace_data",
+        "value": "36'h000000007"
+      },
+      {
+        "path": "testbench.top.uut.trace_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.trap",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.ack_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_addr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_araddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arprot",
+        "value": "3'h4"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_arvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awaddr",
+        "value": "32'h0000c798"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awprot",
+        "value": "3'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_awvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_bvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_rvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_axi_wvalid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_rdata",
+        "value": "32'hc581fc08"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wdata",
+        "value": "32'h00000020"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.mem_wstrb",
+        "value": "4'h0"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.resetn",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.axi_adapter.xfer_done",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_add_sub",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_eq",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_lts",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_ltu",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_0_q",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_out_q",
+        "value": "32'h00000001"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shl",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_shr",
+        "value": "32'h05ba2940"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.alu_wait_2",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_ascii_instr",
+        "value": "64'h0000000000626e65"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_imm",
+        "value": "32'hffffffd6"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_opcode",
+        "value": "32'hfc081be3"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rd",
+        "value": "5'h17"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs1",
+        "value": "5'h10"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.cached_insn_rs2",
+        "value": "5'h00"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clear_prefetched_high_word_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.compressed_instr",
+        "value": "1'h1"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_cycle",
+        "value": "64'h000000000003beb9"
+      },
+      {
+        "path": "testbench.top.uut.picorv32_core.count_instr",
+        "value": "64'h000000000000cbb8"
+      }
+    ],
+    "time": "2455330000ps"
+  },
+  "warnings": []
+}

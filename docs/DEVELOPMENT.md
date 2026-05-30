@@ -169,9 +169,9 @@ use it for any internal microbenchmarks.
 - Compare only functional JSON artifacts, useful for FSDB-vs-FST parity runs:
   - `python3 bench/e2e/perf.py compare --functional-only --revised <dir> --golden <dir>`
 
-Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. The FSDB benchmark catalog lives in `bench/e2e/tests_fsdb.json` and mirrors the default catalog with `/opt/rtl-artifacts/*.fsdb` wave paths. Per-test `runs`/`warmup` values are configured there.
+Benchmark test definitions live in `bench/e2e/tests.json` as a flat explicit list. The committed FST baseline lives in `bench/e2e/runs/baseline_fst`. The FSDB benchmark catalog lives in `bench/e2e/tests_fsdb.json` and mirrors the default catalog with `/opt/rtl-artifacts/*.fsdb` wave paths; its committed baseline lives in `bench/e2e/runs/baseline_fsdb`. Per-test `runs`/`warmup` values are configured in the catalogs.
 
-For focused optimization campaigns, keep dedicated run directories under `bench/e2e/runs/` (for example, `change-stateless-golden`, `change-stateless-m2`, `change-stateless-m3`, `change-stateless-m4`, `change-stateless-final-matrix`) and compare against either the campaign golden run or shared `bench/e2e/runs/baseline` as appropriate.
+For focused optimization campaigns, keep dedicated run directories under `bench/e2e/runs/` (for example, `change-stateless-golden`, `change-stateless-m2`, `change-stateless-m3`, `change-stateless-m4`, `change-stateless-final-matrix`) and compare against either the campaign golden run, shared `bench/e2e/runs/baseline_fst`, or FSDB-specific `bench/e2e/runs/baseline_fsdb` as appropriate.
 
 Set `WAVEPEEK_BIN` to choose the wavepeek binary for command composition.
 

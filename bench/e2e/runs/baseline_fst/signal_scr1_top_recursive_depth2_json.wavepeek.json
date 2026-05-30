@@ -1,0 +1,3869 @@
+{
+  "data": [
+    {
+      "kind": "wire",
+      "name": "clk",
+      "path": "TOP.clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_ARCH_MTVEC_BASE",
+      "path": "TOP.$unit.SCR1_ARCH_MTVEC_BASE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_ARCH_RST_VECTOR",
+      "path": "TOP.$unit.SCR1_ARCH_RST_VECTOR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_CYCLE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_CYCLEH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLEH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_HDU_MBASE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_HDU_MSPAN",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_HPMCOUNTER_MASK",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_INSTRET",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_INSTRETH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRETH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_BASE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_BASE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_CICSR",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CICSR",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_CISV",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_CISV",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_EOI",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_EOI",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_ICSR",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ICSR",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_IDX",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IDX",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_IPR",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_IPR",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_ISVR",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_ISVR",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_IPIC_SOI",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_IPIC_SOI",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MARCHID",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MARCHID",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MCAUSE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MCAUSE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MCOUNTEN",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MCOUNTEN",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MCYCLE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MCYCLEH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MCYCLEH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MEPC",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MEPC",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MHARTID",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MHARTID",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MHPMCOUNTERH_MASK",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTERH_MASK",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MHPMCOUNTER_MASK",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMCOUNTER_MASK",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MHPMEVENT_MASK",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MHPMEVENT_MASK",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MIE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MIE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MIMPID",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MIMPID",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MINSTRET",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRET",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MINSTRETH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MINSTRETH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MIP",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MIP",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MISA",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MISA",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MSCRATCH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MSCRATCH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MSTATUS",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MSTATUS",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MTVAL",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MTVAL",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MTVEC",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MTVEC",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_MVENDORID",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_MVENDORID",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_MBASE",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MBASE",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_MSPAN",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_MSPAN",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_OFFS_TDATA1",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA1",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_OFFS_TDATA2",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TDATA2",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_OFFS_TINFO",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TINFO",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_OFFS_TSELECT",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_TSELECT",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_OFFS_W",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_OFFS_W",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_TDATA1",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA1",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_TDATA2",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TDATA2",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_TINFO",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TINFO",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TDU_TSELECT",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TDU_TSELECT",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TIME",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TIME",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_TIMEH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_TIMEH",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_ADDR_WIDTH",
+      "path": "TOP.$unit.SCR1_CSR_ADDR_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_CMD_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_CSR_CMD_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_CMD_WIDTH_E",
+      "path": "TOP.$unit.SCR1_CSR_CMD_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_COUNTERS_WIDTH",
+      "path": "TOP.$unit.SCR1_CSR_COUNTERS_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MARCHID",
+      "path": "TOP.$unit.SCR1_CSR_MARCHID",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MCOUNTEN_CY_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_CY_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MCOUNTEN_IR_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MCOUNTEN_IR_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MEIE_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MEIE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MEIE_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MSIE_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MSIE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MSIE_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MTIE_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIE_MTIE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIE_MTIE_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIMPID",
+      "path": "TOP.$unit.SCR1_CSR_MIMPID",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIP_MEIP_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIP_MEIP_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIP_MSIP_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIP_MSIP_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MIP_MTIP_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MIP_MTIP_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MISA",
+      "path": "TOP.$unit.SCR1_CSR_MISA",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MIE_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MIE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MIE_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MPIE_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MPIE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPIE_RST_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MPP",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MSTATUS_MPP_OFFSET",
+      "path": "TOP.$unit.SCR1_CSR_MSTATUS_MPP_OFFSET",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_BASE_RO_BITS",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RO_BITS",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_BASE_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_RST_VAL",
+      "width": 26
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_BASE_VAL_BITS",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_VAL_BITS",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_BASE_WR_RST_VAL",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_WR_RST_VAL",
+      "width": 26
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_BASE_ZERO_BITS",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_BASE_ZERO_BITS",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_MODE_DIRECT",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_DIRECT",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MTVEC_MODE_VECTORED",
+      "path": "TOP.$unit.SCR1_CSR_MTVEC_MODE_VECTORED",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_MVENDORID",
+      "path": "TOP.$unit.SCR1_CSR_MVENDORID",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_OP_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_CSR_OP_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CSR_OP_WIDTH_E",
+      "path": "TOP.$unit.SCR1_CSR_OP_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTAUTO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTAUTO",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_BUSY",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_BUSY",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_CMDERR_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_CMDERR_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_CMDERR_WDTH",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_CMDERR_WDTH",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_DATACOUNT_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_DATACOUNT_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_DATACOUNT_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_PROGBUFSIZE_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDA_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDA_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDA_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDB",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDB",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDC_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDC_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDC_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDC_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDD_HI",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDD_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_ABSTRACTCS_RESERVEDD_LO",
+      "path": "TOP.$unit.SCR1_DBG_ABSTRACTCS_RESERVEDD_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_AAMPOSTINC",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMPOSTINC",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMSIZE_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_AAMVIRTUAL",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_AAMVIRTUAL",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDA_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_RESERVEDB_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSMEM_WRITE",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSMEM_WRITE",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_POSTEXEC",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_POSTEXEC",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_REGNO_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_REGNO_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_REGNO_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_REGNO_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_RESERVEDA",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_RESERVEDA",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_RESERVEDB",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_RESERVEDB",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_SIZE_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_SIZE_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_SIZE_WDTH",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_SIZE_WDTH",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_TRANSFER",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_TRANSFER",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_ACCESSREG_WRITE",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_ACCESSREG_WRITE",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_TYPE_HI",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_TYPE_LO",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_COMMAND_TYPE_WDTH",
+      "path": "TOP.$unit.SCR1_DBG_COMMAND_TYPE_WDTH",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DATA0",
+      "path": "TOP.$unit.SCR1_DBG_DATA0",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DATA1",
+      "path": "TOP.$unit.SCR1_DBG_DATA1",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_ACKHAVERESET",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_ACKHAVERESET",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_DMACTIVE",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_DMACTIVE",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HALTREQ",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HALTREQ",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HARTRESET",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTRESET",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HARTSELHI_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELHI_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HARTSELHI_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELHI_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HARTSELLO_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELLO_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HARTSELLO_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HARTSELLO_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_HASEL",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_HASEL",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_NDMRESET",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_NDMRESET",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_RESERVEDA_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDA_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_RESERVEDA_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDA_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_RESERVEDB",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESERVEDB",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMCONTROL_RESUMEREQ",
+      "path": "TOP.$unit.SCR1_DBG_DMCONTROL_RESUMEREQ",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_ADDR_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_ADDR_WIDTH",
+      "width": 6
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_CH_ID_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_CH_ID_WIDTH",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_DATA_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_DATA_WIDTH",
+      "width": 6
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_DR_DMI_ACCESS_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_DR_DMI_ACCESS_WIDTH",
+      "width": 6
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_DR_DTMCS_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_DR_DTMCS_WIDTH",
+      "width": 6
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMI_OP_WIDTH",
+      "path": "TOP.$unit.SCR1_DBG_DMI_OP_WIDTH",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLHALTED",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLHALTED",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLHAVERESET",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLHAVERESET",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLNONEXISTENT",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLNONEXISTENT",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLRESUMEACK",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLRESUMEACK",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLRUNNING",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLRUNNING",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ALLUNAVAIL",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ALLUNAVAIL",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYHALTED",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYHALTED",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYHAVERESET",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYHAVERESET",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYNONEXISTENT",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYNONEXISTENT",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYRESUMEACK",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYRESUMEACK",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYRUNNING",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYRUNNING",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_ANYUNAVAIL",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_ANYUNAVAIL",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_AUTHBUSY",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_AUTHBUSY",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_AUTHENTICATED",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_AUTHENTICATED",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_DEVTREEVALID",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_DEVTREEVALID",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_IMPEBREAK",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_IMPEBREAK",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_RESERVEDA",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDA",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_RESERVEDB_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDB_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_RESERVEDB_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDB_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_RESERVEDC_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDC_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_RESERVEDC_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_RESERVEDC_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_VERSION_HI",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_VERSION_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_DMSTATUS_VERSION_LO",
+      "path": "TOP.$unit.SCR1_DBG_DMSTATUS_VERSION_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HALTSUM0",
+      "path": "TOP.$unit.SCR1_DBG_HALTSUM0",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_DATAACCESS",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAACCESS",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_DATAADDR_HI",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAADDR_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_DATAADDR_LO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATAADDR_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_DATASIZE_HI",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATASIZE_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_DATASIZE_LO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_DATASIZE_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_NSCRATCH_HI",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_NSCRATCH_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_NSCRATCH_LO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_NSCRATCH_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_RESERVEDA_HI",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDA_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_RESERVEDA_LO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDA_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_RESERVEDB_HI",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDB_HI",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_HARTINFO_RESERVEDB_LO",
+      "path": "TOP.$unit.SCR1_DBG_HARTINFO_RESERVEDB_LO",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF0",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF0",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF1",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF1",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF2",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF2",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF3",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF3",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF4",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF4",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_DBG_PROGBUF5",
+      "path": "TOP.$unit.SCR1_DBG_PROGBUF5",
+      "width": 7
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_EXC_CODE_IRQ_M_EXTERNAL",
+      "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_EXTERNAL",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_EXC_CODE_IRQ_M_SOFTWARE",
+      "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_SOFTWARE",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_EXC_CODE_IRQ_M_TIMER",
+      "path": "TOP.$unit.SCR1_EXC_CODE_IRQ_M_TIMER",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_EXC_CODE_RESET",
+      "path": "TOP.$unit.SCR1_EXC_CODE_RESET",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_EXC_CODE_WIDTH_E",
+      "path": "TOP.$unit.SCR1_EXC_CODE_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_GPR_FIELD_WIDTH",
+      "path": "TOP.$unit.SCR1_GPR_FIELD_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_CORE_INSTR_WIDTH",
+      "path": "TOP.$unit.SCR1_HDU_CORE_INSTR_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DATA_REG_WIDTH",
+      "path": "TOP.$unit.SCR1_HDU_DATA_REG_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_ADDR_DCSR",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DCSR",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_ADDR_DPC",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DPC",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_ADDR_DSCRATCH0",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DSCRATCH0",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_ADDR_DSCRATCH1",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_ADDR_DSCRATCH1",
+      "width": 12
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_OFFS_DCSR",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DCSR",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_OFFS_DPC",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DPC",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_OFFS_DSCRATCH0",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DSCRATCH0",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DBGCSR_OFFS_DSCRATCH1",
+      "path": "TOP.$unit.SCR1_HDU_DBGCSR_OFFS_DSCRATCH1",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DEBUGCSR_ADDR_SPAN",
+      "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_ADDR_SPAN",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DEBUGCSR_ADDR_WIDTH",
+      "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_ADDR_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_DEBUGCSR_DCSR_XDEBUGVER",
+      "path": "TOP.$unit.SCR1_HDU_DEBUGCSR_DCSR_XDEBUGVER",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_PBUF_ADDR_SPAN",
+      "path": "TOP.$unit.SCR1_HDU_PBUF_ADDR_SPAN",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_HDU_PBUF_ADDR_WIDTH",
+      "path": "TOP.$unit.SCR1_HDU_PBUF_ADDR_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IALU_CMD_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_IALU_CMD_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IALU_CMD_WIDTH_E",
+      "path": "TOP.$unit.SCR1_IALU_CMD_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IALU_OP_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_IALU_OP_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IALU_OP_WIDTH_E",
+      "path": "TOP.$unit.SCR1_IALU_OP_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_CICSR",
+      "path": "TOP.$unit.SCR1_IPIC_CICSR",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_CISV",
+      "path": "TOP.$unit.SCR1_IPIC_CISV",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_EOI",
+      "path": "TOP.$unit.SCR1_IPIC_EOI",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_IE",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_IE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_IM",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_IM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_INV",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_INV",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_IP",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_IP",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_IS",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_IS",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_LN_LSB",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_LN_LSB",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_LN_MSB",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_LN_MSB",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_PRV_LSB",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_PRV_LSB",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ICSR_PRV_MSB",
+      "path": "TOP.$unit.SCR1_IPIC_ICSR_PRV_MSB",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_IDX",
+      "path": "TOP.$unit.SCR1_IPIC_IDX",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_IPR",
+      "path": "TOP.$unit.SCR1_IPIC_IPR",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_ISVR",
+      "path": "TOP.$unit.SCR1_IPIC_ISVR",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_PRV_M",
+      "path": "TOP.$unit.SCR1_IPIC_PRV_M",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IPIC_SOI",
+      "path": "TOP.$unit.SCR1_IPIC_SOI",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_IDX_WIDTH",
+      "path": "TOP.$unit.SCR1_IRQ_IDX_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_LINES_NUM",
+      "path": "TOP.$unit.SCR1_IRQ_LINES_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_LINES_WIDTH",
+      "path": "TOP.$unit.SCR1_IRQ_LINES_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_VECT_NUM",
+      "path": "TOP.$unit.SCR1_IRQ_VECT_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_VECT_WIDTH",
+      "path": "TOP.$unit.SCR1_IRQ_VECT_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_IRQ_VOID_VECT_NUM",
+      "path": "TOP.$unit.SCR1_IRQ_VOID_VECT_NUM",
+      "width": 5
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_LSU_CMD_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_LSU_CMD_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_LSU_CMD_WIDTH_E",
+      "path": "TOP.$unit.SCR1_LSU_CMD_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_MISA_MXL_32",
+      "path": "TOP.$unit.SCR1_MISA_MXL_32",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_MTVEC_BASE_WR_BITS",
+      "path": "TOP.$unit.SCR1_MTVEC_BASE_WR_BITS",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_RD_WB_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_RD_WB_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_RD_WB_WIDTH_E",
+      "path": "TOP.$unit.SCR1_RD_WB_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_RST_VECTOR",
+      "path": "TOP.$unit.SCR1_RST_VECTOR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SCU_DR_SYSCTRL_ADDR_WIDTH",
+      "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_ADDR_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SCU_DR_SYSCTRL_DATA_WIDTH",
+      "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_DATA_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SCU_DR_SYSCTRL_OP_WIDTH",
+      "path": "TOP.$unit.SCR1_SCU_DR_SYSCTRL_OP_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SIM_EXIT_ADDR",
+      "path": "TOP.$unit.SCR1_SIM_EXIT_ADDR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SIM_EXT_IRQ_ADDR",
+      "path": "TOP.$unit.SCR1_SIM_EXT_IRQ_ADDR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SIM_PRINT_ADDR",
+      "path": "TOP.$unit.SCR1_SIM_PRINT_ADDR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SIM_SOFT_IRQ_ADDR",
+      "path": "TOP.$unit.SCR1_SIM_SOFT_IRQ_ADDR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SUM2_OP_ALL_NUM_E",
+      "path": "TOP.$unit.SCR1_SUM2_OP_ALL_NUM_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_SUM2_OP_WIDTH_E",
+      "path": "TOP.$unit.SCR1_SUM2_OP_WIDTH_E",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_BLD_ID_VALUE",
+      "path": "TOP.$unit.SCR1_TAP_BLD_ID_VALUE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_DR_BLD_ID_WIDTH",
+      "path": "TOP.$unit.SCR1_TAP_DR_BLD_ID_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_DR_BYPASS_WIDTH",
+      "path": "TOP.$unit.SCR1_TAP_DR_BYPASS_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_DR_IDCODE_WIDTH",
+      "path": "TOP.$unit.SCR1_TAP_DR_IDCODE_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_INSTRUCTION_WIDTH",
+      "path": "TOP.$unit.SCR1_TAP_INSTRUCTION_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TAP_STATE_WIDTH",
+      "path": "TOP.$unit.SCR1_TAP_STATE_WIDTH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TCM_ADDR_MASK",
+      "path": "TOP.$unit.SCR1_TCM_ADDR_MASK",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TCM_ADDR_PATTERN",
+      "path": "TOP.$unit.SCR1_TCM_ADDR_PATTERN",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ADDR_W",
+      "path": "TOP.$unit.SCR1_TDU_ADDR_W",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ALLTRIG_NUM",
+      "path": "TOP.$unit.SCR1_TDU_ALLTRIG_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_DATA_W",
+      "path": "TOP.$unit.SCR1_TDU_DATA_W",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_ACTION_HI",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_ACTION_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_ACTION_LO",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_ACTION_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_COUNT_HI",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_COUNT_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_COUNT_LO",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_COUNT_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_DMODE",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_DMODE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_HIT",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_HIT",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_M",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_M",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_RESERVEDA",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDA",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_RESERVEDA_VAL",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDA_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_RESERVEDB_HI",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_RESERVEDB_LO",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_RESERVEDB_VAL",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_RESERVEDB_VAL",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_S",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_S",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_TYPE_VAL",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_TYPE_VAL",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_ICOUNT_U",
+      "path": "TOP.$unit.SCR1_TDU_ICOUNT_U",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_ACTION_HI",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_ACTION_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_ACTION_LO",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_ACTION_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_CHAIN",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_CHAIN",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_EXECUTE",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_EXECUTE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_HIT",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_HIT",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_LOAD",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_LOAD",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_M",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_M",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_MASKMAX_HI",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_MASKMAX_LO",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_MASKMAX_VAL",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_MASKMAX_VAL",
+      "width": 6
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_MATCH_HI",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_MATCH_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_MATCH_LO",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_MATCH_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_RESERVEDA",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDA",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_RESERVEDA_VAL",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDA_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_RESERVEDB_HI",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDB_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_RESERVEDB_LO",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_RESERVEDB_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_S",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_S",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_SELECT",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_SELECT",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_SELECT_VAL",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_SELECT_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_STORE",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_STORE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_TIMING",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_TIMING",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_TIMING_VAL",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_TIMING_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_TYPE_VAL",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_TYPE_VAL",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MCONTROL_U",
+      "path": "TOP.$unit.SCR1_TDU_MCONTROL_U",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_MTRIG_NUM",
+      "path": "TOP.$unit.SCR1_TDU_MTRIG_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_TDATA1_DMODE",
+      "path": "TOP.$unit.SCR1_TDU_TDATA1_DMODE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_TDATA1_DMODE_VAL",
+      "path": "TOP.$unit.SCR1_TDU_TDATA1_DMODE_VAL",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_TDATA1_TYPE_HI",
+      "path": "TOP.$unit.SCR1_TDU_TDATA1_TYPE_HI",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_TDATA1_TYPE_LO",
+      "path": "TOP.$unit.SCR1_TDU_TDATA1_TYPE_LO",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TDU_TRIG_NUM",
+      "path": "TOP.$unit.SCR1_TDU_TRIG_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TIMER_ADDR_MASK",
+      "path": "TOP.$unit.SCR1_TIMER_ADDR_MASK",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_TIMER_ADDR_PATTERN",
+      "path": "TOP.$unit.SCR1_TIMER_ADDR_PATTERN",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "ADDR_START",
+      "path": "TOP.scr1_top_tb_axi.ADDR_START",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "ADDR_TRAP_DEFAULT",
+      "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_DEFAULT",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "ADDR_TRAP_VECTOR",
+      "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_VECTOR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "ARCH",
+      "path": "TOP.scr1_top_tb_axi.ARCH",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "COMPLIANCE",
+      "path": "TOP.scr1_top_tb_axi.COMPLIANCE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_MEM_SIZE",
+      "path": "TOP.scr1_top_tb_axi.SCR1_MEM_SIZE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "TIMEOUT",
+      "path": "TOP.scr1_top_tb_axi.TIMEOUT",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "clk",
+      "path": "TOP.scr1_top_tb_axi.clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "dmem_req_ack_stall",
+      "path": "TOP.scr1_top_tb_axi.dmem_req_ack_stall",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "f_info",
+      "path": "TOP.scr1_top_tb_axi.f_info",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "f_results",
+      "path": "TOP.scr1_top_tb_axi.f_results",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "fuse_mhartid",
+      "path": "TOP.scr1_top_tb_axi.fuse_mhartid",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "get_filename__Vstatic__i",
+      "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__i",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "get_filename__Vstatic__j",
+      "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__j",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "get_filename__Vstatic__res",
+      "path": "TOP.scr1_top_tb_axi.get_filename__Vstatic__res",
+      "width": 256
+    },
+    {
+      "kind": "wire",
+      "name": "get_ref_filename__Vstatic__i",
+      "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__i",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "get_ref_filename__Vstatic__j",
+      "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__j",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "get_ref_filename__Vstatic__pattern_arch",
+      "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__pattern_arch",
+      "width": 23
+    },
+    {
+      "kind": "wire",
+      "name": "get_ref_filename__Vstatic__pattern_compliance",
+      "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__pattern_compliance",
+      "width": 80
+    },
+    {
+      "kind": "wire",
+      "name": "get_ref_filename__Vstatic__res",
+      "path": "TOP.scr1_top_tb_axi.get_ref_filename__Vstatic__res",
+      "width": 256
+    },
+    {
+      "kind": "wire",
+      "name": "identify_test__Vstatic__pattern_arch",
+      "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__pattern_arch",
+      "width": 23
+    },
+    {
+      "kind": "wire",
+      "name": "identify_test__Vstatic__pattern_compliance",
+      "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__pattern_compliance",
+      "width": 80
+    },
+    {
+      "kind": "wire",
+      "name": "identify_test__Vstatic__res",
+      "path": "TOP.scr1_top_tb_axi.identify_test__Vstatic__res",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "imem_req_ack_stall",
+      "path": "TOP.scr1_top_tb_axi.imem_req_ack_stall",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_araddr",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arburst",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arcache",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arlen",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arlock",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arprot",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arqos",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arregion",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arsize",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_aruser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_aruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_arvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awaddr",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awaddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awburst",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awcache",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awlen",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awlock",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awprot",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awqos",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awregion",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awsize",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awuser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_awvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bresp",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_buser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_buser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_bvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rlast",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rresp",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_ruser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_ruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_rvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wlast",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wstrb",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wstrb",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wuser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_dmem_wvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_araddr",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_araddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arburst",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arcache",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arlen",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arlock",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arprot",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arqos",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arregion",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arsize",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_aruser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_aruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_arvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awaddr",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awaddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awburst",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awcache",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awlen",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awlock",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awprot",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awqos",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awregion",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awsize",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awuser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_awvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_bid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_bready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bresp",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_bresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_buser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_buser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_bvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rdata",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rlast",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rresp",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_ruser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_ruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_rvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wdata",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wlast",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wready",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wstrb",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wstrb",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wuser",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wvalid",
+      "path": "TOP.scr1_top_tb_axi.io_axi_imem_wvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "irq_lines",
+      "path": "TOP.scr1_top_tb_axi.irq_lines",
+      "width": 16
+    },
+    {
+      "kind": "wire",
+      "name": "remove_trailing_whitespaces__Vstatic__i",
+      "path": "TOP.scr1_top_tb_axi.remove_trailing_whitespaces__Vstatic__i",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "rst_cnt",
+      "path": "TOP.scr1_top_tb_axi.rst_cnt",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "rst_init",
+      "path": "TOP.scr1_top_tb_axi.rst_init",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rst_n",
+      "path": "TOP.scr1_top_tb_axi.rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rtc_clk",
+      "path": "TOP.scr1_top_tb_axi.rtc_clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "soft_irq",
+      "path": "TOP.scr1_top_tb_axi.soft_irq",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tck",
+      "path": "TOP.scr1_top_tb_axi.tck",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tdi",
+      "path": "TOP.scr1_top_tb_axi.tdi",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tdo",
+      "path": "TOP.scr1_top_tb_axi.tdo",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tdo_en",
+      "path": "TOP.scr1_top_tb_axi.tdo_en",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "test_file",
+      "path": "TOP.scr1_top_tb_axi.test_file",
+      "width": 256
+    },
+    {
+      "kind": "wire",
+      "name": "test_running",
+      "path": "TOP.scr1_top_tb_axi.test_running",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tests_passed",
+      "path": "TOP.scr1_top_tb_axi.tests_passed",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tests_total",
+      "path": "TOP.scr1_top_tb_axi.tests_total",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tms",
+      "path": "TOP.scr1_top_tb_axi.tms",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "trst_n",
+      "path": "TOP.scr1_top_tb_axi.trst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "watchdogs_cnt",
+      "path": "TOP.scr1_top_tb_axi.watchdogs_cnt",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "N_IF",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.N_IF",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "SIZE",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.SIZE",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "W_ADR",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_ADR",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "W_DATA",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_DATA",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "W_ID",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.W_ID",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "arready",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "arvalid",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arvalid",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "awready",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "awvalid",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awvalid",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "bready",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "bvalid",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bvalid",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "clk",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "irq_lines",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.irq_lines",
+      "width": 16
+    },
+    {
+      "kind": "wire",
+      "name": "irq_lines_reg",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.irq_lines_reg",
+      "width": 16
+    },
+    {
+      "kind": "wire",
+      "name": "rlast",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rlast",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "rready",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rvalid",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rvalid",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "soft_irq",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.soft_irq",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "soft_irq_reg",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.soft_irq_reg",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "test_file",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.test_file",
+      "width": 256
+    },
+    {
+      "kind": "wire",
+      "name": "test_file_init",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.test_file_init",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "wlast",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wlast",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "wready",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "wvalid",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wvalid",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "SCR1_CLUSTER_TOP_RST_SYNC_STAGES_NUM",
+      "path": "TOP.scr1_top_tb_axi.i_top.SCR1_CLUSTER_TOP_RST_SYNC_STAGES_NUM",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_idle",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_idle",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_dmem_width",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_dmem_width",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_idle",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_idle",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_imem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_imem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "axi_reinit",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_reinit",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "axi_rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.axi_rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "clk",
+      "path": "TOP.scr1_top_tb_axi.i_top.clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "core_dmem_width",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_dmem_width",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "core_imem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_imem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "core_rst_n_local",
+      "path": "TOP.scr1_top_tb_axi.i_top.core_rst_n_local",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "cpu_rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.cpu_rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "cpu_rst_n_sync",
+      "path": "TOP.scr1_top_tb_axi.i_top.cpu_rst_n_sync",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "fuse_idcode",
+      "path": "TOP.scr1_top_tb_axi.i_top.fuse_idcode",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "fuse_mhartid",
+      "path": "TOP.scr1_top_tb_axi.i_top.fuse_mhartid",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_araddr",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_araddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arburst",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arcache",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arlen",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arlock",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arprot",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arqos",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arregion",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arsize",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_aruser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_aruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_arvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_arvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awaddr",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awaddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awburst",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awcache",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awlen",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awlock",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awprot",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awqos",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awregion",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awsize",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awuser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_awvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_awvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bresp",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_buser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_buser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_bvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_bvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rlast",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rresp",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_ruser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_ruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_rvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_rvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wlast",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wstrb",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wstrb",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wuser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_dmem_wvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_dmem_wvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_araddr",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_araddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arburst",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arcache",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arlen",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arlock",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arprot",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arqos",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arregion",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arsize",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_aruser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_aruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_arvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_arvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awaddr",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awaddr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awburst",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awburst",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awcache",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awcache",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awlen",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awlen",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awlock",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awlock",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awprot",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awprot",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awqos",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awqos",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awregion",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awregion",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awsize",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awsize",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awuser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_awvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_awvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bresp",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_buser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_buser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_bvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_bvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rid",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rlast",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rresp",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rresp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_ruser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_ruser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_rvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_rvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wlast",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wlast",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wready",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wready",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wstrb",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wstrb",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wuser",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wuser",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "io_axi_imem_wvalid",
+      "path": "TOP.scr1_top_tb_axi.i_top.io_axi_imem_wvalid",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "irq_lines",
+      "path": "TOP.scr1_top_tb_axi.i_top.irq_lines",
+      "width": 16
+    },
+    {
+      "kind": "wire",
+      "name": "pwrup_rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.pwrup_rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "pwrup_rst_n_sync",
+      "path": "TOP.scr1_top_tb_axi.i_top.pwrup_rst_n_sync",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rst_n_sync",
+      "path": "TOP.scr1_top_tb_axi.i_top.rst_n_sync",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "rtc_clk",
+      "path": "TOP.scr1_top_tb_axi.i_top.rtc_clk",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "soft_irq",
+      "path": "TOP.scr1_top_tb_axi.i_top.soft_irq",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "sys_rdc_qlfy_o",
+      "path": "TOP.scr1_top_tb_axi.i_top.sys_rdc_qlfy_o",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "sys_rst_n_o",
+      "path": "TOP.scr1_top_tb_axi.i_top.sys_rst_n_o",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tapc_trst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.tapc_trst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tck",
+      "path": "TOP.scr1_top_tb_axi.i_top.tck",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_dmem_width",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_dmem_width",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tcm_imem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.tcm_imem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "tdi",
+      "path": "TOP.scr1_top_tb_axi.i_top.tdi",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tdo",
+      "path": "TOP.scr1_top_tb_axi.i_top.tdo",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "tdo_en",
+      "path": "TOP.scr1_top_tb_axi.i_top.tdo_en",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "test_mode",
+      "path": "TOP.scr1_top_tb_axi.i_top.test_mode",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "test_rst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.test_rst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_addr",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_addr",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_cmd",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_cmd",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_rdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_rdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_req",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_req",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_req_ack",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_req_ack",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_resp",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_resp",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_wdata",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_wdata",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "timer_dmem_width",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_dmem_width",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "timer_irq",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_irq",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "timer_val",
+      "path": "TOP.scr1_top_tb_axi.i_top.timer_val",
+      "width": 64
+    },
+    {
+      "kind": "wire",
+      "name": "tms",
+      "path": "TOP.scr1_top_tb_axi.i_top.tms",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "trst_n",
+      "path": "TOP.scr1_top_tb_axi.i_top.trst_n",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "f_test",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5.f_test",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "test_error",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5.test_error",
+      "width": 1
+    },
+    {
+      "kind": "wire",
+      "name": "test_pass",
+      "path": "TOP.scr1_top_tb_axi.unnamedblk5.test_pass",
+      "width": 1
+    }
+  ],
+  "warnings": []
+}

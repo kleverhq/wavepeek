@@ -6,9 +6,9 @@ export WAVEPEEK_RTL_ARTIFACTS_DIR := $(RTL_ARTIFACTS_DIR)
 REQUIRED_RTL_ARTIFACTS := $(shell . ./.devcontainer/env_contract.sh && printf '%s\n' "$$WAVEPEEK_RTL_ARTIFACT_FILES")
 SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
-BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
+BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline_fst
 BENCH_E2E_FSDB_TESTS := bench/e2e/tests_fsdb.json
-BENCH_E2E_FSDB_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/fsdb-baseline
+BENCH_E2E_FSDB_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline_fsdb
 BENCH_EXPR_RUNS_DIR := bench/expr/runs
 BENCH_EXPR_BASELINE_DIR := $(BENCH_EXPR_RUNS_DIR)/baseline
 WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
@@ -205,9 +205,9 @@ bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-relea
 	mkdir -p "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 
-## Run FSDB benchmark e2e suite
+## Run FSDB benchmark e2e suite with FSDB baseline compare
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)"
+	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --compare "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 
 ## Refresh expression benchmark baseline artifacts
 bench-expr-update-baseline: require-container
@@ -232,7 +232,7 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
 		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$$' && \
-		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)"
+		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$$tmp_revised" --golden "$(BENCH_E2E_FSDB_BASELINE_DIR)"
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

@@ -1,0 +1,408 @@
+{
+  "data": {
+    "signals": [
+      {
+        "path": "TOP.TestDriver.clock",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.dump_start",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.failure",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.fsdbfile",
+        "value": "2048'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.max_cycles",
+        "value": "64'h0000000000989680"
+      },
+      {
+        "path": "TOP.TestDriver.printf_cond",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.rand_value",
+        "value": "32'he23cbb39"
+      },
+      {
+        "path": "TOP.TestDriver.reason",
+        "value": "256'h0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.reset",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.stderr",
+        "value": "32'h80000002"
+      },
+      {
+        "path": "TOP.TestDriver.success",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.trace_count",
+        "value": "64'h00000000000c4183"
+      },
+      {
+        "path": "TOP.TestDriver.vcdfile",
+        "value": "2048'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002f6f70742f63686970796172642f73696d732f766572696c61746f722f6f75747075742f63686970796172642e6861726e6573732e546573744861726e6573732e4475616c526f636b6574436f6e6669672f6468727973746f6e652e667374"
+      },
+      {
+        "path": "TOP.TestDriver.vcdplusfile",
+        "value": "2048'h00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.verbose",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.clock",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.io_success",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.reset",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_burst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_cache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_id",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_len",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_lock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_prot",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_qos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_size",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_ready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_addr",
+        "value": "32'h00000000"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_burst",
+        "value": "2'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_cache",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_id",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_len",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_lock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_prot",
+        "value": "3'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_qos",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_size",
+        "value": "3'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_ready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_id",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_ready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_data",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_id",
+        "value": "4'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_last",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_resp",
+        "value": "2'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_data",
+        "value": "64'h0000000000000000"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_last",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_strb",
+        "value": "8'h00"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_ready",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_clock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.clock_en",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.clock_tap",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.clock_uncore",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.custom_boot",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.jtag_TCK",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.jtag_TDI",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.jtag_TDO",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.jtag_TMS",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.reset_io",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_clock_in",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_in_bits_phit",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_in_ready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_in_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_out_bits_phit",
+        "value": "32'h00000004"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_out_ready",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.serial_tl_0_out_valid",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.uart_0_rxd",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.uart_0_txd",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.clock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.io_d",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.io_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.reset",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.clock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.io_d",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.io_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.reset",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.sync_0",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.sync_1",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.debug_reset_syncd_debug_reset_sync.output_chain.sync_2",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.clock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.io_d",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.io_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.reset",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.clock",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.io_d",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.io_q",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.reset",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.sync_0",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.sync_1",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.dmactiveAck_dmactiveAck.output_chain.sync_2",
+        "value": "1'h0"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.gated_clock_debug_clock_gate.en",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.gated_clock_debug_clock_gate.en_latched",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.TestDriver.testHarness.chiptop0.gated_clock_debug_clock_gate.in",
+        "value": "1'h0"
+      }
+    ],
+    "time": "803202750ps"
+  },
+  "warnings": []
+}

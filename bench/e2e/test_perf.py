@@ -109,14 +109,14 @@ class PerfHelpersTest(unittest.TestCase):
 
     def test_report_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
-        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/baseline"])
+        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/baseline_fst"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
         override_args = parser.parse_args(
             [
                 "report",
                 "--run-dir",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--tests",
                 "bench/e2e/tests_fsdb.json",
             ]
@@ -157,9 +157,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
             ]
@@ -170,9 +170,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
                 "-v",
@@ -184,9 +184,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
                 "--verbose",

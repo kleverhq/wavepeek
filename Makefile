@@ -7,9 +7,12 @@ REQUIRED_RTL_ARTIFACTS := $(shell . ./.devcontainer/env_contract.sh && printf '%
 SCHEMA_PATH := schema/wavepeek.json
 BENCH_E2E_RUNS_DIR := bench/e2e/runs
 BENCH_E2E_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/baseline
+BENCH_E2E_FSDB_TESTS := bench/e2e/tests_fsdb.json
+BENCH_E2E_FSDB_BASELINE_DIR := $(BENCH_E2E_RUNS_DIR)/fsdb-baseline
 BENCH_EXPR_RUNS_DIR := bench/expr/runs
 BENCH_EXPR_BASELINE_DIR := $(BENCH_EXPR_RUNS_DIR)/baseline
 WAVEPEEK_RELEASE_BIN := ./target/release/wavepeek
+WAVEPEEK_FSDB_RELEASE_BIN := ./target/fsdb/release/wavepeek
 CODEX_SETUP_SCRIPT := scripts/codex_setup.sh
 CODEX_RESUME_SCRIPT := scripts/codex_resume.sh
 PYTHON := python3 -B
@@ -137,9 +140,22 @@ lint-fsdb: require-verdi
 	fi; \
 	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
 
-## Prepare generated FSDB fixtures from checked-in VCD fixtures
+## Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
 prepare-fsdb-fixtures: require-verdi
 	bash scripts/prepare_fsdb_fixtures.sh
+
+## Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
+check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts
+	$(PYTHON) scripts/check_fsdb_bench_artifacts.py "$(BENCH_E2E_FSDB_TESTS)"
+
+## Build release binary with optional FSDB support
+build-release-fsdb: require-verdi
+	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
+	if [ -z "$$verdi_home" ]; then \
+		printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
+		exit 1; \
+	fi; \
+	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
 
 ## Build and smoke-test optional FSDB support
 check-fsdb-build: require-verdi
@@ -153,7 +169,7 @@ check-fsdb-build: require-verdi
 	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 ## Run optional FSDB build smoke tests
-test-fsdb: check-fsdb-build prepare-fsdb-fixtures
+test-fsdb: check-fsdb-build check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts
 	@verdi_home="$$(.devcontainer/resolve_verdi_home.sh)"; \
 	VERDI_HOME="$$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli
 
@@ -179,6 +195,16 @@ bench-e2e-update-baseline: check-rtl-artifacts build-release
 bench-e2e-run: check-rtl-artifacts build-release
 	WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --compare "$(BENCH_E2E_BASELINE_DIR)"
 
+## Refresh FSDB benchmark e2e baseline artifacts
+bench-e2e-fsdb-update-baseline: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+	rm -rf "$(BENCH_E2E_FSDB_BASELINE_DIR)"
+	mkdir -p "$(BENCH_E2E_FSDB_BASELINE_DIR)"
+	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$(BENCH_E2E_FSDB_BASELINE_DIR)"
+
+## Run FSDB benchmark e2e suite
+bench-e2e-fsdb-run: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+	WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)"
+
 ## Refresh expression benchmark baseline artifacts
 bench-expr-update-baseline: require-container
 	@tmp_parent="$$(mktemp -d)"; tmp_baseline="$$tmp_parent/baseline"; trap 'rm -rf "$$tmp_parent"' EXIT; \
@@ -197,6 +223,12 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
 		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$$tmp_revised" && \
 		WAVEPEEK_BIN="$(WAVEPEEK_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)" --max-negative-delta-pct 100
+
+## Run lightweight FSDB benchmark e2e smoke for pre-commit
+bench-e2e-fsdb-smoke-commit: check-rtl-artifacts prepare-fsdb-fixtures check-fsdb-rtl-artifacts build-release-fsdb
+	@tmp_revised="$$(mktemp -d)"; trap 'rm -rf "$$tmp_revised"' EXIT; \
+		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py run --tests "$(BENCH_E2E_FSDB_TESTS)" --run-dir "$$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$$' && \
+		WAVEPEEK_BIN="$(WAVEPEEK_FSDB_RELEASE_BIN)" $(PYTHON) bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$$tmp_revised" --golden "$(BENCH_E2E_BASELINE_DIR)"
 
 ## Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

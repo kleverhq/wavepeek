@@ -122,8 +122,9 @@ RUN install -d -m 0755 -o ubuntu -g ubuntu \
 # Ensure /workspaces exists and is writable
 RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /workspaces
 
-# Provision pinned RTL fixtures for tests
-COPY --from=rtl_artifacts /opt/rtl-artifacts /opt/rtl-artifacts
+# Provision pinned RTL fixtures for tests and keep the generated-local FSDB
+# benchmark copies writable by the non-root devcontainer user.
+COPY --from=rtl_artifacts --chown=ubuntu:ubuntu /opt/rtl-artifacts /opt/rtl-artifacts
 
 # Switch to non-root user
 USER ubuntu

@@ -6,40 +6,40 @@
         "value": "1'h1"
       },
       {
-        "path": "TOP.$unit.SCR1_ARCH_MTVEC_BASE",
-        "value": "32'h000001c0"
-      },
-      {
-        "path": "TOP.$unit.SCR1_ARCH_RST_VECTOR",
+        "path": "TOP.scr1_top_tb_axi.ADDR_START",
         "value": "32'h00000200"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLE",
-        "value": "12'hc00"
+        "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_DEFAULT",
+        "value": "32'h000001c0"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_CYCLEH",
-        "value": "12'hc80"
+        "path": "TOP.scr1_top_tb_axi.ADDR_TRAP_VECTOR",
+        "value": "32'h00000240"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE",
-        "value": "12'h7b0"
+        "path": "TOP.scr1_top_tb_axi.ARCH",
+        "value": "32'h00000001"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN",
-        "value": "12'h004"
+        "path": "TOP.scr1_top_tb_axi.COMPLIANCE",
+        "value": "32'h00000002"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK",
-        "value": "7'h64"
+        "path": "TOP.scr1_top_tb_axi.SCR1_MEM_SIZE",
+        "value": "32'h00100000"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK",
-        "value": "7'h60"
+        "path": "TOP.scr1_top_tb_axi.TIMEOUT",
+        "value": "32'h001e8480"
       },
       {
-        "path": "TOP.$unit.SCR1_CSR_ADDR_INSTRET",
-        "value": "12'hc02"
+        "path": "TOP.scr1_top_tb_axi.clk",
+        "value": "1'h1"
+      },
+      {
+        "path": "TOP.scr1_top_tb_axi.dmem_req_ack_stall",
+        "value": "32'hffffffff"
       }
     ],
     "time": "940092ps"

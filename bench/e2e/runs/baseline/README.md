@@ -1,6 +1,6 @@
 # CLI E2E Bench Run: baseline
 
-- Generated at (UTC): 2026-03-28T21:58:35Z
+- Generated at (UTC): 2026-05-30T12:39:40Z
 - Hyperfine JSON files: 142
 - Wavepeek JSON files: 142
 
@@ -162,16 +162,16 @@
 | value_picorv32_signals_1000 | 2.195246 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1000 |
 | value_chipyard_clusteredrocketconfig_dhrystone_signals_1000 | 0.959873 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1000 |
 | value_chipyard_dualrocketconfig_dhrystone_signals_1000 | 0.942282 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1000 |
+| value_scr1_signals_1000 | 0.599525 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1000 |
 | value_chipyard_clusteredrocketconfig_dhrystone_signals_100 | 0.551040 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=100 |
 | value_chipyard_dualrocketconfig_dhrystone_signals_100 | 0.542050 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=100 |
 | value_picorv32_signals_100 | 0.440168 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=100 |
-| value_scr1_signals_1000 | 0.399200 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1000 |
 | value_chipyard_clusteredrocketconfig_dhrystone_signals_10 | 0.240559 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=10 |
 | value_chipyard_clusteredrocketconfig_dhrystone_signals_1 | 0.223092 | waves=/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst size=165M signal_count=1 |
 | value_chipyard_dualrocketconfig_dhrystone_signals_10 | 0.189885 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=10 |
 | value_picorv32_signals_10 | 0.189698 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=10 |
 | value_chipyard_dualrocketconfig_dhrystone_signals_1 | 0.188840 | waves=/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst size=76M signal_count=1 |
+| value_scr1_signals_100 | 0.140835 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=100 |
 | value_picorv32_signals_1 | 0.089329 | waves=/opt/rtl-artifacts/picorv32_test_vcd.fst size=13M signal_count=1 |
-| value_scr1_signals_100 | 0.057485 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=100 |
+| value_scr1_signals_10 | 0.056797 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=10 |
 | value_scr1_signals_1 | 0.056792 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=1 |
-| value_scr1_signals_10 | 0.056514 | waves=/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst size=4M signal_count=10 |

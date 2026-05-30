@@ -187,7 +187,8 @@ impl FsdbHierarchyBuilder {
             return Ok(());
         }
 
-        let name = normalize_name(record.name.as_str())?;
+        let raw_name = normalize_name(record.name.as_str())?;
+        let (name, _) = normalize_vcd_escaped_identifier(raw_name.as_str());
         let parent = self.stack.iter().rev().find_map(|entry| entry.scope_index);
         let path = match parent {
             Some(parent_idx) => format!("{}.{}", self.scopes[parent_idx].path, name),
@@ -234,10 +235,8 @@ impl FsdbHierarchyBuilder {
 
         let (name, width) =
             normalize_signal_name_and_width(record.name.as_str(), record.left, record.right)?;
+        let (scope_index, name) = self.scope_for_signal_name(scope_index, name);
         let path = format!("{}.{}", self.scopes[scope_index].path, name);
-        if self.signal_by_path.contains_key(path.as_str()) {
-            return Ok(());
-        }
 
         let kind = self
             .signal_kind_alias(record.kind, record.datatype_id)
@@ -252,7 +251,7 @@ impl FsdbHierarchyBuilder {
             idcode: record.idcode,
             value_encoding,
         });
-        self.signal_by_path.insert(path, signal_index);
+        self.signal_by_path.entry(path).or_insert(signal_index);
         self.scopes[scope_index].signals.push(signal_index);
         Ok(())
     }
@@ -260,6 +259,47 @@ impl FsdbHierarchyBuilder {
     pub(super) fn datatype(&mut self, record: RawDatatypeRecord) -> Result<(), WavepeekError> {
         self.datatypes.insert(record.idcode, record.kind);
         Ok(())
+    }
+
+    fn scope_for_signal_name(&mut self, scope_index: usize, name: String) -> (usize, String) {
+        let mut parts = name.rsplitn(2, '.');
+        let signal_name = parts.next().unwrap_or(name.as_str());
+        let Some(scope_prefix) = parts.next() else {
+            return (scope_index, name);
+        };
+        if scope_prefix.is_empty() || signal_name.is_empty() {
+            return (scope_index, name);
+        }
+
+        let mut parent = scope_index;
+        for part in scope_prefix.split('.') {
+            if part.is_empty() {
+                return (scope_index, name);
+            }
+            parent = self.synthetic_scope(parent, part);
+        }
+        (parent, signal_name.to_string())
+    }
+
+    fn synthetic_scope(&mut self, parent: usize, name: &str) -> usize {
+        let path = format!("{}.{}", self.scopes[parent].path, name);
+        if let Some(existing) = self.scope_by_path.get(path.as_str()).copied() {
+            return existing;
+        }
+
+        let scope_index = self.scopes.len();
+        self.scopes.push(ScopeNode {
+            name: name.to_string(),
+            path: path.clone(),
+            kind: "unknown".to_string(),
+            depth: self.scopes[parent].depth + 1,
+            parent: Some(parent),
+            children: Vec::new(),
+            signals: Vec::new(),
+        });
+        self.scope_by_path.insert(path, scope_index);
+        push_unique(&mut self.scopes[parent].children, scope_index);
+        scope_index
     }
 
     pub(super) fn upscope(&mut self) -> Result<(), WavepeekError> {
@@ -585,7 +625,7 @@ fn normalize_signal_name_and_width(
         _ => None,
     };
     let name = match (left, right) {
-        (Some(left), Some(right)) if left != right => {
+        (Some(left), Some(right)) => {
             let suffix = format!("[{left}:{right}]");
             raw_name
                 .strip_suffix(suffix.as_str())
@@ -594,7 +634,73 @@ fn normalize_signal_name_and_width(
         }
         _ => raw_name,
     };
+    let (mut name, was_escaped) = normalize_vcd_escaped_identifier(name.as_str());
+    if was_escaped {
+        if width == Some(1) {
+            name = strip_scalar_bit_select_suffix(name.as_str()).unwrap_or(name);
+        } else if let (Some(left), Some(right)) = (left, right)
+            && left == right
+        {
+            name = normalize_scalar_bit_select_name(name.as_str(), left).unwrap_or(name);
+        } else {
+            name = normalize_scalar_bit_select_name_from_suffix(name.as_str()).unwrap_or(name);
+        }
+    } else {
+        name = strip_scalar_bit_select_suffix(name.as_str()).unwrap_or(name);
+    }
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err(WavepeekError::File(
+            "FSDB Reader hierarchy emitted an empty signal name".to_string(),
+        ));
+    }
     Ok((name, width))
+}
+
+fn normalize_vcd_escaped_identifier(name: &str) -> (String, bool) {
+    let Some(rest) = name.strip_prefix('\\') else {
+        return (name.to_string(), false);
+    };
+    (rest.trim_end().to_string(), true)
+}
+
+fn normalize_scalar_bit_select_name(name: &str, bit: i32) -> Option<String> {
+    let suffix = format!("[{bit}]");
+    scalar_bit_select_base(name, suffix.as_str()).map(|base| format!("{base}.{suffix}"))
+}
+
+fn normalize_scalar_bit_select_name_from_suffix(name: &str) -> Option<String> {
+    let suffix_start = name.rfind('[')?;
+    let suffix = name.get(suffix_start..)?;
+    if !suffix.ends_with(']') {
+        return None;
+    }
+    let digits = suffix.strip_prefix('[')?.strip_suffix(']')?;
+    if digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    scalar_bit_select_base(name, suffix).map(|base| format!("{base}.{suffix}"))
+}
+
+fn strip_scalar_bit_select_suffix(name: &str) -> Option<String> {
+    let suffix_start = name.rfind('[')?;
+    let suffix = name.get(suffix_start..)?;
+    if !suffix.ends_with(']') {
+        return None;
+    }
+    let digits = suffix.strip_prefix('[')?.strip_suffix(']')?;
+    if digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+        return None;
+    }
+    scalar_bit_select_base(name, suffix).map(str::to_string)
+}
+
+fn scalar_bit_select_base<'a>(name: &'a str, suffix: &str) -> Option<&'a str> {
+    let base = name.strip_suffix(suffix)?;
+    if base.is_empty() || base.ends_with('.') || base.contains('[') || base.contains(']') {
+        return None;
+    }
+    Some(base)
 }
 
 fn bit_width(left: i32, right: i32) -> Result<u32, WavepeekError> {
@@ -820,7 +926,7 @@ mod tests {
     }
 
     #[test]
-    fn fsdb_hierarchy_deduplicates_scopes_and_signals() {
+    fn fsdb_hierarchy_deduplicates_scopes_and_preserves_duplicate_signals() {
         let mut builder = FsdbHierarchyBuilder::new();
         for id in [1, 2] {
             builder.scope(scope("top", RawScopeKind::Module)).unwrap();
@@ -832,7 +938,9 @@ mod tests {
         let index = builder.finish();
 
         assert_eq!(index.scopes_depth_first(None).len(), 1);
-        assert_eq!(index.signals_in_scope("top").unwrap().len(), 1);
+        let signals = index.signals_in_scope("top").unwrap();
+        assert_eq!(signals.len(), 2);
+        assert!(signals.iter().all(|signal| signal.path == "top.clk"));
         assert_eq!(
             index.resolve_signal("top.clk").unwrap().id,
             SignalId::from_backend_index(1)
@@ -858,14 +966,45 @@ mod tests {
         builder
             .signal(signal_with_range(3, "B[3]", RawSignalKind::Wire, 3, 3))
             .unwrap();
-        let signals = builder.finish().signals_in_scope("top").unwrap();
+        builder
+            .signal(signal_with_range(
+                4,
+                "\\araddr[0] ",
+                RawSignalKind::Wire,
+                31,
+                0,
+            ))
+            .unwrap();
+        builder
+            .signal(signal_with_range(
+                5,
+                "\\q_err[0] ",
+                RawSignalKind::Wire,
+                0,
+                0,
+            ))
+            .unwrap();
+        builder
+            .signal(signal(6, "\\ready ", RawSignalKind::Wire))
+            .unwrap();
+        let index = builder.finish();
+        let signals = index.signals_in_scope("top").unwrap();
 
         assert_eq!(signals[0].name, "A");
         assert_eq!(signals[0].width, Some(4));
-        assert_eq!(signals[1].name, "B[3]");
+        assert_eq!(signals[1].name, "B");
         assert_eq!(signals[1].width, Some(1));
         assert_eq!(signals[2].name, "a[0][1]");
         assert_eq!(signals[2].width, Some(8));
+        assert_eq!(signals[3].name, "q_err");
+        assert_eq!(signals[3].width, Some(1));
+        assert_eq!(signals[4].name, "ready");
+        assert_eq!(signals[4].width, None);
+
+        let escaped_array_element = index.resolve_signal("top.araddr.[0]").unwrap();
+        assert_eq!(escaped_array_element.width, 32);
+        assert_eq!(escaped_array_element.id, SignalId::from_backend_index(4));
+        assert_eq!(index.scope_index("top.araddr").unwrap(), 1);
     }
 
     #[test]

@@ -29,7 +29,7 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T21:22Z) Complete Milestone 4: moved tracked helper scripts into grouped `tools/` directories with READMEs, deleted obsolete `opencode_loop.py`, updated `justfile` and release workflow entrypoints, ran targeted helper/automation validation, completed the automation review, and fixed its findings.
 - [x] (2026-05-30T21:36Z) Complete Milestone 5 implementation pass: removed tracked `docs/exec-plans/`, swept stale old-doc and `scripts/` references, updated `CHANGELOG.md`, updated `tools/repo/repo_stats.py`, and ran the full validation gates (`just format-check`, `just check`, `just ci`) successfully.
 - [x] (2026-05-30T21:52Z) Completed final control review; the read-only reviewer reported `No substantive findings.`
-- [ ] Finalize outcomes, either leave this plan in `docs/tracker/wip/` for handoff or remove it as the last WIP cleanup before merge, and record the decision in this plan before deletion if deletion is chosen.
+- [x] (2026-05-30T21:57Z) Chose merge-ready cleanup instead of handoff: this plan records final outcomes and will be removed in the final cleanup commit while leaving `docs/tracker/wip/AGENTS.md` in place.
 
 ## Surprises & Discoveries
 
@@ -116,6 +116,10 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
   Rationale: `tmp/` is git-ignored scratch space and may contain artifacts owned by other agents or the user. The new docs should say to use it, not to sweep it like a tiny digital landfill fire.
   Date/Author: 2026-05-30 / Grin
 
+- Decision: Treat the branch as merge-ready and remove this WIP plan as the final cleanup artifact.
+  Rationale: all implementation milestones are complete, targeted review iterations are resolved, the full validation gate has passed, and the final control review reported no substantive findings. The new WIP policy says branch-local artifacts should be cleared before merge unless a maintainer needs handoff context; this branch no longer needs that crutch.
+  Date/Author: 2026-05-30 / Grin
+
 ## Outcomes & Retrospective
 
 At plan creation time, no implementation had been done. The plan resolved the conflict between the user note's `make` wording and the current repository's `just` migration, chose concrete target paths, and provided a milestone sequence with validation, commits, and review loops. The main remaining risk is stale path fallout: old docs and automation references to `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, `docs/ARCHITECTURE.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `docs/exec-plans/`, and `scripts/` must be swept carefully.
@@ -130,7 +134,7 @@ Milestone 4 replaced tracked `scripts/` helper code with grouped `tools/` direct
 
 Milestone 5 removed the old tracked execution-plan archive, swept live references to old uppercase maintainer docs and `scripts/` paths, added the current contributor-doc/tool-layout note to `CHANGELOG.md`, and simplified repo statistics so WIP tracker artifacts are counted separately without mentioning deleted exec plans. The full validation sequence passed: `WAVEPEEK_IN_CONTAINER=1 just format-check`, `WAVEPEEK_IN_CONTAINER=1 just check`, and `WAVEPEEK_IN_CONTAINER=1 just ci`. The final control review reported no substantive findings, which is refreshingly dull in exactly the way review should be.
 
-Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
+Final cleanup chooses the merge-ready path: this WIP plan will be deleted after this retrospective is committed, leaving `docs/tracker/wip/AGENTS.md` as the reusable policy breadcrumb. The branch now has a split maintainer-doc tree, concise breadcrumbs, grouped helper tools, current release notes, no tracked `scripts/`, no tracked `docs/exec-plans/`, no stale live references to the retired paths, and validation evidence from the full quality gate plus review lanes. Remaining work: none known.
 
 ## Context and Orientation
 

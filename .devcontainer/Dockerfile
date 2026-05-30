@@ -66,7 +66,7 @@ COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
 # Install necessary system dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl git make libatomic1 \
+    ca-certificates curl git make just libatomic1 \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
     python3 \

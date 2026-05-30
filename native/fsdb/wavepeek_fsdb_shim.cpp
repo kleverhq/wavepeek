@@ -1010,7 +1010,8 @@ struct wp_fsdb_signal_session {
             return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
         }
 
-        auto cached = std::make_unique<cached_vc_handle>(handle.release());
+        auto cached = std::make_unique<cached_vc_handle>(handle.get());
+        handle.release();
         cached->last_used = use;
         auto inserted = cached_handles.emplace(idcode, std::move(cached));
         *out = inserted.first->second->handle;

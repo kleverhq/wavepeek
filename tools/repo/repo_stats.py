@@ -126,8 +126,6 @@ def main() -> None:
         parts = path.relative_to(REPO_ROOT).parts
         if parts[:3] == ("docs", "tracker", "wip"):
             continue
-        if parts[:2] == ("docs", "exec-plans"):
-            continue
         markdown_files.append(path)
     wip_tracker_files = iter_files(REPO_ROOT / "docs" / "tracker" / "wip", (".md",))
     test_fixture_json_files = iter_test_fixture_json_files()

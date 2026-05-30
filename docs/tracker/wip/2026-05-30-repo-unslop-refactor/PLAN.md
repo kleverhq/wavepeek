@@ -27,8 +27,8 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T20:34Z) Complete Milestone 2: split `docs/DEVELOPMENT.md` into `docs/dev/`, moved release and architecture docs, updated `README.md`, added `CONTRIBUTING.md`, ran a read-only docs review, and fixed the Codex bootstrap plus `scripts/AGENTS.md` stale-link findings.
 - [x] (2026-05-30T20:53Z) Complete Milestone 3: refactored retained breadcrumbs into concise source-of-truth/local-guidance notes, simplified root `AGENTS.md`, ran a read-only breadcrumb review, and fixed premature helper-path wording in `.devcontainer/AGENTS.md` and `schema/AGENTS.md`.
 - [x] (2026-05-30T21:22Z) Complete Milestone 4: moved tracked helper scripts into grouped `tools/` directories with READMEs, deleted obsolete `opencode_loop.py`, updated `justfile` and release workflow entrypoints, ran targeted helper/automation validation, completed the automation review, and fixed its findings.
-- [ ] Complete Milestone 5: remove `docs/exec-plans/`, sweep stale references, update changelog and repo statistics, and run the full quality gate.
-- [ ] Complete required review iterations after the relevant milestones and fix every substantive finding before proceeding.
+- [x] (2026-05-30T21:36Z) Complete Milestone 5 implementation pass: removed tracked `docs/exec-plans/`, swept stale old-doc and `scripts/` references, updated `CHANGELOG.md`, updated `tools/repo/repo_stats.py`, and ran the full validation gates (`just format-check`, `just check`, `just ci`) successfully.
+- [x] (2026-05-30T21:52Z) Completed final control review; the read-only reviewer reported `No substantive findings.`
 - [ ] Finalize outcomes, either leave this plan in `docs/tracker/wip/` for handoff or remove it as the last WIP cleanup before merge, and record the decision in this plan before deletion if deletion is chosen.
 
 ## Surprises & Discoveries
@@ -127,6 +127,8 @@ Milestone 2 replaced the monolithic developer guide with topic docs under `docs/
 Milestone 3 cut the breadcrumb network down from directory-tour boilerplate to scoped source-of-truth pointers and local operational warnings. Review found two premature future-path references and one temporary `scripts/` churn concern; the actionable path bugs were fixed, and `scripts/AGENTS.md` is allowed to survive only until Milestone 4 deletes or relocates the helper directory.
 
 Milestone 4 replaced tracked `scripts/` helper code with grouped `tools/` directories, each with a short README where useful, and updated `justfile`, release workflow, schema, coverage, Codex, and repo-stat entrypoints. Targeted validation passed, including helper tests, `just test-aux`, `just check-schema`, `just check-actions`, and `tools/repo/repo_stats.py`; the automation review found three stale/path details and they were fixed before commit.
+
+Milestone 5 removed the old tracked execution-plan archive, swept live references to old uppercase maintainer docs and `scripts/` paths, added the current contributor-doc/tool-layout note to `CHANGELOG.md`, and simplified repo statistics so WIP tracker artifacts are counted separately without mentioning deleted exec plans. The full validation sequence passed: `WAVEPEEK_IN_CONTAINER=1 just format-check`, `WAVEPEEK_IN_CONTAINER=1 just check`, and `WAVEPEEK_IN_CONTAINER=1 just ci`. The final control review reported no substantive findings, which is refreshingly dull in exactly the way review should be.
 
 Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
 

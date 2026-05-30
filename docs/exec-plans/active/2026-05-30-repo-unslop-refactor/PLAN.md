@@ -20,6 +20,7 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T19:22Z) Reviewed the current repository shape: root `AGENTS.md`, all tracked `AGENTS.md` breadcrumbs, `docs/DEVELOPMENT.md`, `docs/RELEASE.md`, `docs/ARCHITECTURE.md`, `docs/BACKLOG.md`, `docs/ROADMAP.md`, `README.md`, `CHANGELOG.md`, `justfile`, `.github/workflows/`, `.pre-commit-config.yaml`, and the current `scripts/` helpers.
 - [x] (2026-05-30T19:22Z) Noted that the user asked to leave the plan in the current plan location first, then move it into the new tracking layout during implementation.
 - [x] (2026-05-30T19:41Z) Ran two read-only plan review lanes and incorporated findings about self-move commit commands, retained-versus-deleted breadcrumbs, public-doc relative paths, helper-test discovery, `repo_stats.py` root calculation, concise `.fst` safety wording, and `CHANGELOG.md` `Unreleased` stale-path sweeps.
+- [x] (2026-05-30T19:59Z) Updated the helper-tools milestone so `scripts/opencode_loop.py` is deleted instead of moved to a new `tools/agent/` group.
 - [ ] Implementation has not started: no repository files besides this plan have been intentionally refactored yet.
 - [ ] Move this plan to `docs/tracker/wip/2026-05-30-repo-unslop-refactor/PLAN.md` once `docs/tracker/wip/` exists, and update this `Progress` section immediately after the move.
 - [ ] Complete Milestone 1: establish `docs/tracker/`, move backlog and roadmap, remove stale backlog entry, and create the WIP artifact policy.
@@ -88,6 +89,10 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 
 - Decision: Add `tools/AGENTS.md` as a concise local breadcrumb after moving helper scripts.
   Rationale: helper automation is a safety-sensitive area with CI entrypoints, deterministic-output expectations, and test placement rules. A short breadcrumb adds useful local guidance without recreating a directory map.
+  Date/Author: 2026-05-30 / Grin
+
+- Decision: Delete `scripts/opencode_loop.py` instead of moving it under `tools/agent/`.
+  Rationale: the user clarified that the OpenCode loop helper is no longer needed. Keeping a dead agent-helper group would be tidy-looking clutter, which is still clutter wearing a little hat.
   Date/Author: 2026-05-30 / Grin
 
 - Decision: Remove the bulky root `Critical Tool Safety Rule` section but preserve a concise binary-waveform safety bullet in the root core workflow.
@@ -295,10 +300,9 @@ Use this target layout unless implementation discovers a clearly better grouping
 - `tools/release/README.md`, `tools/release/extract_release_notes.py`, and `tools/release/test_extract_release_notes.py`.
 - `tools/codex/README.md`, `tools/codex/codex_env_common.sh`, `tools/codex/codex_setup.sh`, and `tools/codex/codex_resume.sh`.
 - `tools/repo/README.md` and `tools/repo/repo_stats.py`.
-- `tools/agent/README.md` and `tools/agent/opencode_loop.py`.
 - `tools/AGENTS.md` for concise helper-tool guidance.
 
-Use `git mv` for tracked files. Do not move `scripts/__pycache__/`; it is generated state and should remain untracked or ignored. If it is accidentally tracked in the local checkout, stop and inspect with `git ls-files scripts/__pycache__` before deciding. Generated Python cache files do not belong in the new `tools/` tree.
+Use `git mv` for tracked files that remain useful. Delete `scripts/opencode_loop.py` with `git rm` and do not create `tools/agent/`; that helper is no longer needed. Do not move `scripts/__pycache__/`; it is generated state and should remain untracked or ignored. If it is accidentally tracked in the local checkout, stop and inspect with `git ls-files scripts/__pycache__` before deciding. Generated Python cache files do not belong in the new `tools/` tree.
 
 Update `tools/codex/*.sh` after moving them. The scripts currently compute `SCRIPT_DIR` and source `codex_env_common.sh` from the same directory, so same-directory moves should remain simple. In `tools/codex/codex_env_common.sh`, update `REPO_ROOT` calculation from `SCRIPT_DIR/..` to `SCRIPT_DIR/../..` because the script will be two levels below the repository root. Check any comments that mention `scripts/` and update them to `tools/codex/`.
 
@@ -326,6 +330,7 @@ Each new `tools/*/README.md` should be short. Include what the tool group is for
 Run targeted validation:
 
     test -d tools
+    test ! -e tools/agent
     if git ls-files scripts | grep -q .; then echo "tracked scripts remain" >&2; exit 1; fi
     python3 -B -m unittest tools/release/test_extract_release_notes.py
     python3 -B -m unittest tools/coverage/test_check_coverage.py
@@ -540,10 +545,8 @@ The final path contracts are:
     tools/codex/codex_resume.sh
     tools/repo/README.md
     tools/repo/repo_stats.py
-    tools/agent/README.md
-    tools/agent/opencode_loop.py
 
-The root `justfile` remains the task interface. At completion these recipes must still work with the same names: `dev-setup`, `codex-setup`, `codex-resume`, `format`, `format-check`, `lint`, `lint-fix`, `check-build`, `test`, `coverage-src`, `coverage-src-check`, `test-aux`, `check-schema`, `check-actions`, `pre-commit`, `check-commit`, `check`, `ci`, `fix`, and `clean`.
+The root `justfile` remains the task interface. At completion these recipes must still work with the same names: `dev-setup`, `codex-setup`, `codex-resume`, `format`, `format-check`, `lint`, `lint-fix`, `check-build`, `test`, `coverage-src`, `coverage-src-check`, `test-aux`, `check-schema`, `check-actions`, `pre-commit`, `check-commit`, `check`, `ci`, `fix`, and `clean`. There is intentionally no final `tools/agent/` interface; `scripts/opencode_loop.py` is removed as obsolete helper code.
 
 The release workflow interface remains `.github/workflows/release.yml`; it should call `python3 -B tools/release/extract_release_notes.py --version "$version"`. The schema checker interface remains `just check-schema`; internally it should call `tools/schema/check_schema_contract.py`. The source coverage checker interface remains `just coverage-src` and `just coverage-src-check`; internally they should call `tools/coverage/check_coverage.py`.
 

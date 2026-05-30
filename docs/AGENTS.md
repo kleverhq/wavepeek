@@ -1,34 +1,16 @@
-# Documentation Guide
+# Documentation Guidance
 
-This file is a local navigation map for this directory.
+## Source of Truth
 
-## Parent Map
+- Public user docs: `public/intro.md`, `public/reference/`
+- Maintainer docs: `dev/`
+- Tracking docs: `tracker/backlog.md`, `tracker/roadmap.md`, `tracker/wip/`
+- Packaged skill source: `skills/wavepeek.md`
+- Shipped release history: `../CHANGELOG.md`
 
-- Repository map: `../AGENTS.md`
+## Local Guidance
 
-## Canonical Docs
-
-- Public user-facing docs entrypoint: `public/intro.md`
-- Public command semantics reference: `public/reference/command-model.md`
-- Public machine-output reference: `public/reference/machine-output.md`
-- Public expression-language reference: `public/reference/expression-language.md`
-- Internal architecture and implementation map: `dev/architecture.md`
-- Delivery milestones and target versions: `tracker/roadmap.md`
-- Development workflow, coding conventions, and docs maintenance: `dev/`
-- Release checklist and rollback notes: `dev/release.md`
-- Active backlog, open design questions, and tech debt tracking: `tracker/backlog.md`
-- Actual shipped release history: `../CHANGELOG.md`
-
-## Child Maps
-
-- Public embedded docs corpus: `public/AGENTS.md`
-- Packaged skills: `skills/AGENTS.md`
-- Execution plans: `exec-plans/AGENTS.md`
-
-## Execution Plans
-
-- Active plans: `exec-plans/active/`
-- Completed plans: `exec-plans/completed/`
-
-Use completed plans for historical context only. For new complex work,
-create/update plans in `exec-plans/active/`.
+- Keep public embedded docs under `public/` focused on user-visible behavior and offline command guidance.
+- Keep maintainer workflow, style, release, and architecture guidance under `dev/`.
+- Keep branch-local tracked artifacts under `tracker/wip/` and clear them before merge unless a maintainer wants handoff context.
+- Do not use breadcrumbs as directory indexes; point to the authoritative doc and add only local gotchas.

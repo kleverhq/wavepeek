@@ -25,7 +25,7 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T20:12Z) Created `docs/tracker/wip/AGENTS.md` with the branch-local WIP artifact policy and removed the stale `JSON schema data-field detail hardening` backlog issue.
 - [x] (2026-05-30T20:15Z) Complete Milestone 1: established `docs/tracker/`, moved backlog and roadmap, removed stale backlog entry, created the WIP artifact policy, and validated the move with the milestone checks.
 - [x] (2026-05-30T20:34Z) Complete Milestone 2: split `docs/DEVELOPMENT.md` into `docs/dev/`, moved release and architecture docs, updated `README.md`, added `CONTRIBUTING.md`, ran a read-only docs review, and fixed the Codex bootstrap plus `scripts/AGENTS.md` stale-link findings.
-- [ ] Complete Milestone 3: refactor all retained non-root breadcrumbs and then the root `AGENTS.md` so breadcrumbs are concise local guidance, not duplicated maps.
+- [x] (2026-05-30T20:53Z) Complete Milestone 3: refactored retained breadcrumbs into concise source-of-truth/local-guidance notes, simplified root `AGENTS.md`, ran a read-only breadcrumb review, and fixed premature helper-path wording in `.devcontainer/AGENTS.md` and `schema/AGENTS.md`.
 - [ ] Complete Milestone 4: replace `scripts/` with grouped `tools/` directories, update automation entrypoints, and keep helper tests running.
 - [ ] Complete Milestone 5: remove `docs/exec-plans/`, sweep stale references, update changelog and repo statistics, and run the full quality gate.
 - [ ] Complete required review iterations after the relevant milestones and fix every substantive finding before proceeding.
@@ -59,6 +59,9 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 
 - Observation: Milestone 2 docs review caught that Codex first-time bootstrap cannot assume `just` is already usable, and that `scripts/AGENTS.md` would otherwise keep a dead `docs/DEVELOPMENT.md` link after the developer guide split.
   Evidence: the read-only reviewer reported `docs/dev/environment.md:15` and `scripts/AGENTS.md:12`; the fix documents `bash scripts/codex_setup.sh` as the temporary bootstrap path until the tools migration and updates `scripts/AGENTS.md` to `../docs/dev/quality.md` plus `../docs/dev/automation.md`.
+
+- Observation: Milestone 3 review caught a different flavor of stale-reference trap: breadcrumbs that point to `tools/...` before the paths exist are just future broken links wearing a nice hat.
+  Evidence: the read-only reviewer reported `.devcontainer/AGENTS.md:20` and `schema/AGENTS.md:6`; the fix makes `.devcontainer/AGENTS.md` location-neutral by pointing to `docs/dev/environment.md` and `docs/dev/automation.md`, and keeps `schema/AGENTS.md` anchored on the stable `just check-schema` interface until the tool path exists.
 
 ## Decision Log
 
@@ -117,6 +120,8 @@ At plan creation time, no implementation had been done. The plan resolved the co
 Milestone 1 created the new tracker layout, moved the active plan into `docs/tracker/wip/`, removed the stale schema-hardening backlog entry, and documented the difference between committed WIP artifacts and ignored `tmp/` scratch. The targeted checks passed, so later milestones can point at real tracker paths instead of aspirational ones, which is always nicer than documenting a door before installing the wall.
 
 Milestone 2 replaced the monolithic developer guide with topic docs under `docs/dev/`, moved the release and architecture docs, added contributor policy, and expanded the README development map. The docs review found two practical stale/bootstrap issues and both were fixed before commit; the remaining expected churn is that `scripts/` paths in Codex docs are temporary until Milestone 4 moves helpers into `tools/`.
+
+Milestone 3 cut the breadcrumb network down from directory-tour boilerplate to scoped source-of-truth pointers and local operational warnings. Review found two premature future-path references and one temporary `scripts/` churn concern; the actionable path bugs were fixed, and `scripts/AGENTS.md` is allowed to survive only until Milestone 4 deletes or relocates the helper directory.
 
 Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
 

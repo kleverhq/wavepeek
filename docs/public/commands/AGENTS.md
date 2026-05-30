@@ -1,10 +1,4 @@
-# Public Command Topics Guide
-
-This directory contains user-facing `wavepeek docs` topics for top-level command families.
-
-## Parent Map
-
-- Public docs map: `../AGENTS.md`
+# Public Command Topic Guidance
 
 ## Source of Truth
 
@@ -13,6 +7,9 @@ This directory contains user-facing `wavepeek docs` topics for top-level command
 - Stable command semantics: `../reference/command-model.md`
 - Machine output behavior: `../reference/machine-output.md`
 - Expression syntax for `change` and `property`: `../reference/expression-language.md`
+- Topic metadata and docs style rules: `../../dev/style.md`
 - Exact command reference: `../../../src/cli/`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
-Command topics may explain intent and guidance, but must not duplicate exact flag tables from generated help.
+## Local Guidance
+
+Command topics may explain intent, workflows, examples, and troubleshooting. Keep generated help as the exact flag authority; copying it here creates two places for entropy to breed.

@@ -1,17 +1,11 @@
-# Schema Guide
-
-This directory contains canonical JSON schema artifacts shipped with the
-repository.
-
-## Parent Map
-
-- Repository map: `../AGENTS.md`
+# Schema Guidance
 
 ## Source of Truth
 
 - Schema generation and validation entrypoints: `../justfile` (`update-schema`, `check-schema`)
-- Schema contract checker: `../scripts/check_schema_contract.py`
-- CLI schema command and JSON envelope contract: `../docs/public/reference/machine-output.md`
+- Schema contract checking interface: `../justfile` (`check-schema`)
+- Machine-output contract: `../docs/public/reference/machine-output.md`
 
-Prefer updating schema artifacts via `just update-schema` and validating with
-`just check-schema`.
+## Local Guidance
+
+Regenerate schema artifacts with `just update-schema` and validate with `just check-schema`. Do not hand-edit `wavepeek.json` unless you are deliberately repairing generated output and can prove the runtime schema matches afterward.

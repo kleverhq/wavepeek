@@ -1,21 +1,13 @@
-# Performance Guide
-
-This directory hosts performance work: benchmarks, measurement harnesses, and
-repeatable performance scenarios.
-
-## Parent Map
-
-- Repository map: `../AGENTS.md`
+# Performance Guidance
 
 ## Source of Truth
 
-- Container-first workflow and commands: `../docs/dev/benchmarking.md`
-- Runtime and output contracts to preserve while optimizing: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
+- Benchmark workflows: `../docs/dev/benchmarking.md`
+- Runtime behavior contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
 
-## Areas
+## Local Guidance
 
-- CLI end-to-end performance scenarios: `e2e/`
-- Expression microbenchmark harness and runs: `expr/AGENTS.md`
-
-Run performance scenarios in the devcontainer/CI environment to keep fixture
-availability and runtime behavior aligned with project gates.
+- Run benchmarks in the devcontainer or CI image so fixture paths, tool versions, and environment variables match project gates.
+- Keep benchmark harnesses deterministic and stdlib-only unless a maintainer accepts a dependency change.
+- End-to-end CLI scenarios live under `e2e/`; expression microbenchmarks carry extra local rules in `expr/AGENTS.md`.
+- Preserve functional payload parity while optimizing; faster wrong answers are just wrong answers wearing racing stripes.

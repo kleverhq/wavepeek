@@ -1,31 +1,26 @@
-# Devcontainer Notes For Agents
+# Devcontainer Guidance
 
-This directory is designed so local development and CI share one foundation while paying different runtime costs.
+## Scope
 
-## Parent Map
+This directory owns local and CI container definitions, fixture provisioning, and environment-contract helpers.
 
-- Repository map: `../AGENTS.md`
+## Source of Truth
 
-## Why this layout exists
-- `Dockerfile` uses multi-stage targets to separate heavy tool builds, a shared base layer, and final `ci`/`dev` profiles. This keeps CI and local environments aligned while preserving layer reuse and rebuild speed.
-- `devcontainer.json` and `devcontainer.ci.json` intentionally point to different targets in the same Dockerfile. Local sessions use `dev` (interactive + GUI tools), while automation uses `ci` (lean, predictable runtime) to avoid maintaining two drifting images.
+- Container workflow: `../docs/dev/environment.md`
+- Quality gates: `../docs/dev/quality.md`
+- Container configs and provisioning: `Dockerfile`, `devcontainer.json`, `devcontainer.ci.json`, `env_contract.sh`, `resolve_rtl_artifacts_dir.sh`
 
-## Non-obvious decisions
-- The workspace mounts the repository parent as the container workspace root (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
-- OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `initialize.sh` to create mount sources before container startup.
-- Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
-- `postStartCommand: just dev-setup` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
-- `.devcontainer/env_contract.sh` and `.devcontainer/resolve_rtl_artifacts_dir.sh` are the shared devcontainer/Codex environment contract; if `.devcontainer/Dockerfile`, either helper, fixture versions, or container-provided tools change, update `scripts/codex_setup.sh`, `scripts/codex_resume.sh`, and `scripts/codex_env_common.sh` in the same change.
-- `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
-- The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
-- CI enables UID remapping (`updateRemoteUserUID: true`) so bind-mounted workspaces stay writable for non-root build/test commands.
-- GitHub Actions creates a transient `.devcontainer.json` symlink to `devcontainer.ci.json` because newer `devcontainer up` validates the config filename even though the canonical CI config keeps its clearer name.
+## Local Guidance
 
-## RTL fixture provisioning
-- Large waveform fixtures are baked into the image at build time by a dedicated Docker stage (`rtl_artifacts`).
-- Fixture payload is controlled by `env_contract.sh` and is shared by both `ci` and `dev` targets through the common `base` stage.
-- Test/runtime commands never download fixtures from the network; `just ci`/`just pre-commit` assert the local fixture payload is present.
+- `Dockerfile` uses shared build stages with separate `ci` and `dev` targets; keep CI lean while preserving local GUI/tooling support.
+- The workspace mounts the repository parent so sibling worktrees behave normally in parallel branch workflows.
+- `initialize.sh` prepares host mount sources for OpenCode, Claude Code, Codex, Pi, and GitHub CLI state before container startup.
+- Host networking is intentional for VPN-heavy environments.
+- `postStartCommand: just dev-setup` reconverges tools and hooks after rebuilds or reopen flows.
+- `env_contract.sh` and `resolve_rtl_artifacts_dir.sh` are coupled to Codex setup/resume helpers. Use `../docs/dev/environment.md` and `../docs/dev/automation.md` for the current helper entrypoints, and update the helpers with these files when fixture or environment contracts change.
+- The dev profile forces X11 for waveform GUI tooling; CI enables UID remapping so non-root build/test commands can write the workspace.
+- GitHub Actions creates a transient `.devcontainer.json` symlink to `devcontainer.ci.json`; keep that workflow compatibility in mind when renaming configs.
 
-## Bumping fixture version
-1. Update `WAVEPEEK_RTL_ARTIFACTS_VERSION` in `env_contract.sh`.
-2. Rebuild both container targets and run `just ci` + `just pre-commit` inside container to verify payload and tests.
+## Safety
+
+Large waveform fixtures are baked into the image by the `rtl_artifacts` stage. Runtime tests should not download them from the network. When bumping `WAVEPEEK_RTL_ARTIFACTS_VERSION`, rebuild both container targets and run `just ci` plus `just pre-commit` inside the container.

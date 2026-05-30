@@ -1,63 +1,24 @@
-# Agent Guide (wavepeek)
-
-This file is a repository map for coding agents. Use it as the first entry point,
-then follow referenced paths to deeper docs.
-
-## Start Here
-
-- Public docs entrypoint and contracts: `docs/public/intro.md`, `docs/public/reference/`
-- Delivery milestones and versions: `docs/tracker/roadmap.md`
-- Development workflow and coding conventions: `docs/dev/`
-- Release checklist and rollback notes: `docs/dev/release.md`
-- Active backlog, open design questions, and tech debt: `docs/tracker/backlog.md`
-- Branch-local tracked work artifacts: `docs/tracker/wip/`
-- Actual shipped changes by release: `CHANGELOG.md`
-
-For docs-local navigation, read `docs/AGENTS.md`.
-
-## Child Maps
-
-- Devcontainer setup notes: `.devcontainer/AGENTS.md`
-- Performance and benchmark work: `bench/AGENTS.md`
-- Documentation map: `docs/AGENTS.md`
-- Schema contract assets: `schema/AGENTS.md`
-- Release/support scripts: `scripts/AGENTS.md`
-- Source code: `src/AGENTS.md`
-- Test suites: `tests/AGENTS.md`
-
-## Breadcrumb Policy (`AGENTS.md` Network)
-
-- Treat each `AGENTS.md` as a local map, not a full manual.
-- Keep this root file short; canonical policy and product details live in `docs/`.
-- Add a local `AGENTS.md` only for key navigation nodes or when a directory needs ad hoc agent guidance that is not obvious from its parent map.
-- Do not create `AGENTS.md` files just because a directory has tracked files; prefer the nearest parent map unless a local file materially improves navigation or workflow safety.
-- Each local `AGENTS.md` that exists should include paths:
-  - back to the nearest parent map (or root `AGENTS.md`),
-  - sideways to canonical source-of-truth docs/files for that area,
-  - forward to child directories that also define `AGENTS.md`.
-- Write file and directory paths as plain code spans, for example `docs/AGENTS.md`; do not use full Markdown links.
-- Resolve every path relative to the `AGENTS.md` file that contains it, not relative to the repository root.
-- Keep breadcrumbs concise and non-duplicative; prefer path references over copied guidance.
-- Update breadcrumb paths whenever directories with local maps are added, moved, repurposed, or removed.
-- Skip leaf, one-off, generated, vendor-style, or self-evident directories unless a local map materially improves navigation or workflow safety.
-
 ## Core Workflow
 
-- This repository is container-first. Run `just` recipes inside devcontainer/CI image.
+- `wavepeek` is a Rust CLI for deterministic `.vcd` and `.fst` waveform inspection.
+- Development is container-first; run repository gates in the devcontainer/CI image.
+- Development tasks are run through root `justfile` recipes, not `make`.
 - Standard quality gate: `just ci`.
-- Local pre-handoff gate: `just check` (format/lint/schema/build + commit-msg check).
-- Test-inclusive gate: `just ci` (same checks + the `cargo llvm-cov`-driven source-coverage/test run).
-- Use repository-root `tmp/` for scratch files, ad hoc outputs, logs, and other disposable artifacts; it is git-ignored and may be created/used freely.
+- Local pre-handoff gate: `just check`.
+- Use repository-root `tmp/` for disposable scratch, logs, and ad hoc outputs, but never delete arbitrary existing files there because they may belong to the user or another agent.
+- Treat binary waveform dumps such as `.fst` as binary data; inspect them through `wavepeek`, fixtures, or purpose-built tools rather than text-reading them directly.
 - Do not bypass hooks unless the user explicitly requests it.
-- GitHub Actions workflows live under `.github/workflows/`; use `docs/dev/quality.md` for workflow gates and `docs/dev/release.md` for release process context.
+- Read the nearest applicable `AGENTS.md` before editing files; local breadcrumbs may contain extra rules and gotchas.
 
-## Critical Tool Safety Rule
+## Map
 
-- Treat all `.fst` files as binary files, not text.
-- NEVER call the `Read` tool on `.fst` files under any circumstances.
-- If information from a `.fst` file is needed, use a non-`Read` workflow and ask the user for guidance when required.
-
-## Devcontainer Notes
-
-For non-obvious container decisions, fixture provisioning, and environment
-rationale, see `.devcontainer/AGENTS.md`.
+- `src/` — Rust source code and embedded docs runtime.
+- `tests/` — integration tests, fixtures, and test helpers.
+- `tools/` — helper automation after the migration from `scripts/`.
+- `bench/` — end-to-end and expression benchmark harnesses.
+- `.github/workflows/` — CI and release workflows.
+- `.devcontainer/` — local and CI container setup.
+- `docs/dev/` — maintainer workflow, quality, style, release, and architecture docs.
+- `docs/tracker/` — backlog, roadmap, and branch-local WIP artifacts.
+- `docs/public/` — embedded user documentation for `wavepeek docs`.
+- `schema/` — canonical machine-output schema artifacts.

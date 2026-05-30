@@ -3,7 +3,7 @@
 ## Source of Truth
 
 - Schema generation and validation entrypoints: `../justfile` (`update-schema`, `check-schema`)
-- Schema contract checking interface: `../justfile` (`check-schema`)
+- Schema contract checker: `../tools/schema/check_schema_contract.py`
 - Machine-output contract: `../docs/public/reference/machine-output.md`
 
 ## Local Guidance

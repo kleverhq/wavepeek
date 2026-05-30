@@ -9,8 +9,8 @@ bench_e2e_baseline_dir := bench_e2e_runs_dir / "baseline"
 bench_expr_runs_dir := "bench/expr/runs"
 bench_expr_baseline_dir := bench_expr_runs_dir / "baseline"
 wavepeek_release_bin := "./target/release/wavepeek"
-codex_setup_script := "scripts/codex_setup.sh"
-codex_resume_script := "scripts/codex_resume.sh"
+codex_setup_script := "tools/codex/codex_setup.sh"
+codex_resume_script := "tools/codex/codex_resume.sh"
 python := "python3 -B"
 coverage_src_threshold := env_var_or_default("COVERAGE_SRC_THRESHOLD", "90")
 
@@ -47,7 +47,7 @@ update-schema: require-container
 
 # Validate canonical schema freshness and JSON contract URL
 check-schema: require-container
-    @{{ python }} scripts/check_schema_contract.py "{{ schema_path }}"
+    @{{ python }} tools/schema/check_schema_contract.py "{{ schema_path }}"
 
 # Lint GitHub Actions workflows
 check-actions: require-container
@@ -115,7 +115,7 @@ coverage-src-data: require-container check-rtl-artifacts
 
 # Report source coverage for src/**/*.rs via cargo-llvm-cov
 coverage-src: coverage-src-data
-    {{ python }} scripts/check_coverage.py \
+    {{ python }} tools/coverage/check_coverage.py \
         --summary-json tmp/coverage/coverage-src-summary.json \
         --min-regions 0 \
         --min-functions 0 \
@@ -123,7 +123,7 @@ coverage-src: coverage-src-data
 
 # Enforce minimum source coverage for src/**/*.rs
 coverage-src-check: coverage-src-data
-    {{ python }} scripts/check_coverage.py \
+    {{ python }} tools/coverage/check_coverage.py \
         --summary-json tmp/coverage/coverage-src-summary.json \
         --min-regions {{ coverage_src_threshold }} \
         --min-functions {{ coverage_src_threshold }} \
@@ -134,8 +134,8 @@ coverage-src-check: coverage-src-data
 test-aux: require-container
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
-    {{ python }} -m unittest scripts/test_extract_release_notes.py
-    {{ python }} -m unittest scripts/test_check_coverage.py
+    {{ python }} -m unittest tools/release/test_extract_release_notes.py
+    {{ python }} -m unittest tools/coverage/test_check_coverage.py
 
 # Build release binary
 build-release: require-container

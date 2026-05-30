@@ -12,7 +12,7 @@ Run `just dev-setup` after opening or rebuilding the devcontainer. It verifies t
 
 ## Codex Cloud Setup
 
-For first-time Codex bootstrap, run `bash scripts/codex_setup.sh` until the helper-tool migration in this branch moves that entrypoint under `tools/codex/`. This direct script path exists because the first bootstrap may need to install or repair tools before `just` recipes are safe to assume. After the environment has `just`, use `just codex-resume` for maintenance after cache resume.
+For first-time Codex bootstrap, run `bash tools/codex/codex_setup.sh`. This direct script path exists because the first bootstrap may need to install or repair tools before `just` recipes are safe to assume. After the environment has `just`, use `just codex-resume` for maintenance after cache resume.
 
 Codex setup may populate the cache fallback for RTL fixtures, then `just` propagates the resolved path to runtime and test processes as `WAVEPEEK_RTL_ARTIFACTS_DIR`.
 

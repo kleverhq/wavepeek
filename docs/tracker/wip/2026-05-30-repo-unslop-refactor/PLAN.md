@@ -26,7 +26,7 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 - [x] (2026-05-30T20:15Z) Complete Milestone 1: established `docs/tracker/`, moved backlog and roadmap, removed stale backlog entry, created the WIP artifact policy, and validated the move with the milestone checks.
 - [x] (2026-05-30T20:34Z) Complete Milestone 2: split `docs/DEVELOPMENT.md` into `docs/dev/`, moved release and architecture docs, updated `README.md`, added `CONTRIBUTING.md`, ran a read-only docs review, and fixed the Codex bootstrap plus `scripts/AGENTS.md` stale-link findings.
 - [x] (2026-05-30T20:53Z) Complete Milestone 3: refactored retained breadcrumbs into concise source-of-truth/local-guidance notes, simplified root `AGENTS.md`, ran a read-only breadcrumb review, and fixed premature helper-path wording in `.devcontainer/AGENTS.md` and `schema/AGENTS.md`.
-- [ ] Complete Milestone 4: replace `scripts/` with grouped `tools/` directories, update automation entrypoints, and keep helper tests running.
+- [x] (2026-05-30T21:22Z) Complete Milestone 4: moved tracked helper scripts into grouped `tools/` directories with READMEs, deleted obsolete `opencode_loop.py`, updated `justfile` and release workflow entrypoints, ran targeted helper/automation validation, completed the automation review, and fixed its findings.
 - [ ] Complete Milestone 5: remove `docs/exec-plans/`, sweep stale references, update changelog and repo statistics, and run the full quality gate.
 - [ ] Complete required review iterations after the relevant milestones and fix every substantive finding before proceeding.
 - [ ] Finalize outcomes, either leave this plan in `docs/tracker/wip/` for handoff or remove it as the last WIP cleanup before merge, and record the decision in this plan before deletion if deletion is chosen.
@@ -62,6 +62,9 @@ This plan does not change the public `wavepeek` CLI behavior, command semantics,
 
 - Observation: Milestone 3 review caught a different flavor of stale-reference trap: breadcrumbs that point to `tools/...` before the paths exist are just future broken links wearing a nice hat.
   Evidence: the read-only reviewer reported `.devcontainer/AGENTS.md:20` and `schema/AGENTS.md:6`; the fix makes `.devcontainer/AGENTS.md` location-neutral by pointing to `docs/dev/environment.md` and `docs/dev/automation.md`, and keeps `schema/AGENTS.md` anchored on the stable `just check-schema` interface until the tool path exists.
+
+- Observation: The automation review found three migration edges after the `tools/` move: `repo_stats.py` would count historical `docs/exec-plans/` as normal Markdown before the archive is deleted, `CHANGELOG.md` still named the old Codex bootstrap path, and the ShellCheck source hint in `tools/codex/codex_env_common.sh` was one directory too shallow.
+  Evidence: the reviewer reported `tools/repo/repo_stats.py:127`, `CHANGELOG.md:15`, and `tools/codex/codex_env_common.sh:13`; the fixes kept `docs/exec-plans/` excluded until Milestone 5 removes it, updated the Unreleased Codex path to `bash tools/codex/codex_setup.sh`, and changed the ShellCheck hint to `../../.devcontainer/env_contract.sh`.
 
 ## Decision Log
 
@@ -122,6 +125,8 @@ Milestone 1 created the new tracker layout, moved the active plan into `docs/tra
 Milestone 2 replaced the monolithic developer guide with topic docs under `docs/dev/`, moved the release and architecture docs, added contributor policy, and expanded the README development map. The docs review found two practical stale/bootstrap issues and both were fixed before commit; the remaining expected churn is that `scripts/` paths in Codex docs are temporary until Milestone 4 moves helpers into `tools/`.
 
 Milestone 3 cut the breadcrumb network down from directory-tour boilerplate to scoped source-of-truth pointers and local operational warnings. Review found two premature future-path references and one temporary `scripts/` churn concern; the actionable path bugs were fixed, and `scripts/AGENTS.md` is allowed to survive only until Milestone 4 deletes or relocates the helper directory.
+
+Milestone 4 replaced tracked `scripts/` helper code with grouped `tools/` directories, each with a short README where useful, and updated `justfile`, release workflow, schema, coverage, Codex, and repo-stat entrypoints. Targeted validation passed, including helper tests, `just test-aux`, `just check-schema`, `just check-actions`, and `tools/repo/repo_stats.py`; the automation review found three stale/path details and they were fixed before commit.
 
 Add a new retrospective entry after each major milestone and again at completion. If the final branch removes this plan from `docs/tracker/wip/` before merge, write the final retrospective before deleting the plan and include the removal in the final commit message.
 

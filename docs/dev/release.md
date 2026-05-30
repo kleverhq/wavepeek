@@ -43,7 +43,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 11. Validate the schema publication endpoint for the tag: `https://raw.githubusercontent.com/kleverhq/wavepeek/vX.Y.Z/schema/wavepeek.json` should resolve to the committed schema artifact.
 12. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, and release notes match the changelog section.
 
-The release workflow extracts notes through the helper group owned by `tools/release/` after the helper-tool migration. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command.
+The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command.
 
 ## Rollback
 

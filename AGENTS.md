@@ -14,7 +14,7 @@
 
 - `src/` — Rust source code and embedded docs runtime.
 - `tests/` — integration tests, fixtures, and test helpers.
-- `tools/` — helper automation after the migration from `scripts/`.
+- `tools/` — helper automation used by `just` recipes and workflows.
 - `bench/` — end-to-end and expression benchmark harnesses.
 - `.github/workflows/` — CI and release workflows.
 - `.devcontainer/` — local and CI container setup.

@@ -9,7 +9,7 @@ import pathlib
 import re
 
 
-REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 SKIP_DIR_NAMES = {
     ".git",
@@ -116,17 +116,20 @@ def main() -> None:
     tests_rust_files = iter_files(REPO_ROOT / "tests", (".rs",))
 
     collateral_files = iter_files(REPO_ROOT / "bench", (".py", ".rs"))
-    collateral_files.extend(iter_files(REPO_ROOT / "scripts", (".py", ".rs")))
+    collateral_files.extend(iter_files(REPO_ROOT / "tools", (".py", ".rs")))
     collateral_files.sort()
     collateral_test_files = [path for path in collateral_files if is_test_file(path)]
     collateral_code_files = [path for path in collateral_files if not is_test_file(path)]
 
-    markdown_files = [
-        path
-        for path in iter_files(REPO_ROOT, (".md",))
-        if path.relative_to(REPO_ROOT).parts[:2] != ("docs", "exec-plans")
-    ]
-    exec_plan_files = iter_files(REPO_ROOT / "docs" / "exec-plans", (".md",))
+    markdown_files = []
+    for path in iter_files(REPO_ROOT, (".md",)):
+        parts = path.relative_to(REPO_ROOT).parts
+        if parts[:3] == ("docs", "tracker", "wip"):
+            continue
+        if parts[:2] == ("docs", "exec-plans"):
+            continue
+        markdown_files.append(path)
+    wip_tracker_files = iter_files(REPO_ROOT / "docs" / "tracker" / "wip", (".md",))
     test_fixture_json_files = iter_test_fixture_json_files()
 
     tests_rust_count = sum(
@@ -139,7 +142,7 @@ def main() -> None:
     collateral_code_lines = total_lines(collateral_code_files)
     collateral_test_lines = total_lines(collateral_test_files)
     markdown_lines = total_lines(markdown_files)
-    exec_plan_lines = total_lines(exec_plan_files)
+    wip_tracker_lines = total_lines(wip_tracker_files)
     test_fixture_json_lines = total_lines(test_fixture_json_files)
     total_code_lines = (
         src_rust_lines
@@ -150,11 +153,11 @@ def main() -> None:
 
     print(f"Source Rust code: {src_rust_lines:,} lines")
     print(f"Rust tests: {tests_rust_lines:,} lines, {tests_rust_count:,} tests")
-    print(f"Collateral code (bench, scripts): {collateral_code_lines:,} lines")
-    print(f"Collateral tests (bench, scripts): {collateral_test_lines:,} lines")
+    print(f"Collateral code (bench, tools): {collateral_code_lines:,} lines")
+    print(f"Collateral tests (bench, tools): {collateral_test_lines:,} lines")
     print(f"Test fixtures (JSON): {test_fixture_json_lines:,} lines")
-    print(f"Markdown docs (excluding exec-plans): {markdown_lines:,} lines")
-    print(f"Exec plans: {exec_plan_lines:,} lines")
+    print(f"Markdown docs (excluding WIP tracker artifacts): {markdown_lines:,} lines")
+    print(f"WIP tracker artifacts: {wip_tracker_lines:,} lines")
     print()
     print(f"Total code: {total_code_lines:,} lines")
     print(f"Total documentation: {markdown_lines:,} lines")

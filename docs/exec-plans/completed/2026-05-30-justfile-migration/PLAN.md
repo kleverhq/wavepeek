@@ -31,7 +31,8 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
 - [x] (2026-05-30T12:18Z) Deleted the root `Makefile` after targeted `just` parity checks passed.
 - [x] (2026-05-30T12:24Z) Ran full post-deletion validation: `just --unstable --fmt --check`, `just --list`, non-container guard smoke, `WAVEPEEK_IN_CONTAINER=1 just format-justfile-check`, `just format-check`, `just check`, `just ci`, and `just pre-commit`; all passed.
 - [x] (2026-05-30T12:24Z) Completed automation, docs, and architecture review lanes. Automation returned no substantive findings; docs and architecture found stale plan/development-doc wording and a devcontainer/Codex `just` version drift risk, which were fixed.
-- [x] (2026-05-30T12:25Z) Re-ran impacted validation after review fixes: `WAVEPEEK_IN_CONTAINER=1 just format-check`, `just check`, `just ci`, `just pre-commit`, workflow/hook stale-entrypoint grep, and broader live-doc stale-reference sweep. A final independent control review returned no substantive findings. The migration is ready for the final commit.
+- [x] (2026-05-30T12:25Z) Re-ran impacted validation after review fixes: `WAVEPEEK_IN_CONTAINER=1 just format-check`, `just check`, `just ci`, `just pre-commit`, workflow/hook stale-entrypoint grep, and broader live-doc stale-reference sweep. A final independent control review returned no substantive findings.
+- [x] (2026-05-30T12:34Z) Committed the migration as `d5d3183 chore(dev): migrate automation to just`, moved this execution plan from `docs/exec-plans/active/` to `docs/exec-plans/completed/`, and recorded the archival state.
 
 ## Surprises & Discoveries
 
@@ -126,7 +127,7 @@ This plan does not change `wavepeek` CLI behavior, JSON output, schema shape, be
 
 ## Outcomes & Retrospective
 
-The migration is complete in the working tree and ready for the final commit. The repository now has one root automation entrypoint, `justfile`; the old root `Makefile` has been deleted; devcontainer, CI, release, pre-commit, Codex, schema hints, breadcrumbs, and maintainer docs point at `just`; and permanent justfile formatting coverage is wired through `format-check`, `check`, `ci`, and pre-commit. Full post-deletion validation passed, review fixes were revalidated, and the final control review returned no substantive findings.
+The migration is complete and committed as `d5d3183 chore(dev): migrate automation to just`. The repository now has one root automation entrypoint, `justfile`; the old root `Makefile` has been deleted; devcontainer, CI, release, pre-commit, Codex, schema hints, breadcrumbs, and maintainer docs point at `just`; and permanent justfile formatting coverage is wired through `format-check`, `check`, `ci`, and pre-commit. Full post-deletion validation passed, review fixes were revalidated, the final control review returned no substantive findings, and this plan is archived under `docs/exec-plans/completed/2026-05-30-justfile-migration/PLAN.md`.
 
 ## Context and Orientation
 
@@ -339,3 +340,5 @@ Revision Note: 2026-05-30 / Grin - A final control pass found that the stale-ref
 Revision Note: 2026-05-30 / Grin - The plan now makes root `justfile` formatting a permanent guard, not just a migration-time check. It adds `format-justfile` and `format-justfile-check`, requires `format-check`, `check`, `ci`, and pre-commit coverage for that check, and adds explicit acceptance criteria for the dedicated hook. A focused review of this addition returned no substantive findings.
 
 Revision Note: 2026-05-30 / Grin - Implementation completed the no-shim migration from `Makefile` to root `justfile`, rewired automation and live docs, replaced the initial unpinned apt `just` package with a pinned Cargo install in the devcontainer, recorded review findings and fixes, and captured final validation/control-review evidence.
+
+Revision Note: 2026-05-30 / Grin - Archived the completed plan by moving it from `docs/exec-plans/active/2026-05-30-justfile-migration/PLAN.md` to `docs/exec-plans/completed/2026-05-30-justfile-migration/PLAN.md` after commit `d5d3183` landed.

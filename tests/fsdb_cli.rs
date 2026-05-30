@@ -1,5 +1,6 @@
 #![cfg(feature = "fsdb")]
 
+use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -965,6 +966,110 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
 }
 
 #[test]
+fn fsdb_repeated_value_change_property_queries_are_stable() {
+    let vector_fixtures = GeneratedFsdbFixtures::new();
+    let property_fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let value_fixture = path_str(&vector_fixtures.value_vectors());
+    let property_fixture = path_str(&property_fixtures.core());
+
+    let value_args = [
+        "value",
+        "--waves",
+        value_fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data,clk",
+        "--at",
+        "7ns",
+        "--json",
+    ];
+    let first_value = run_json_success(&value_args);
+    let second_value = run_json_success(&value_args);
+    assert_eq!(first_value, second_value);
+
+    let change_args = [
+        "change",
+        "--waves",
+        property_fixture.as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data,valid,ready",
+        "--from",
+        "0ns",
+        "--to",
+        "35ns",
+        "--on",
+        "posedge clk iff valid",
+        "--max",
+        "unlimited",
+        "--json",
+    ];
+    let first_change = run_json_success(&change_args);
+    let second_change = run_json_success(&change_args);
+    assert_eq!(first_change, second_change);
+
+    let property_args = [
+        "property",
+        "--waves",
+        property_fixture.as_str(),
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--eval",
+        "valid && ready",
+        "--capture",
+        "switch",
+        "--json",
+    ];
+    let first_property = run_json_success(&property_args);
+    let second_property = run_json_success(&property_args);
+    assert_eq!(first_property, second_property);
+}
+
+#[test]
+fn fsdb_file_failures_are_clean_file_errors() {
+    let temp_dir = tempfile::tempdir().expect("tempdir should be created");
+    let missing = temp_dir.path().join("missing.fsdb");
+    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&missing).as_str()]);
+
+    let empty = temp_dir.path().join("empty.fsdb");
+    fs::write(&empty, []).expect("empty temp FSDB should be writable");
+    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&empty).as_str()]);
+
+    let garbage = temp_dir.path().join("garbage.fsdb");
+    fs::write(&garbage, b"not an fsdb and not a waveform\n")
+        .expect("garbage temp FSDB should be writable");
+    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&garbage).as_str()]);
+
+    let fixtures = GeneratedChangePropertyFsdbFixtures::new();
+    let truncated = temp_dir.path().join("truncated.fsdb");
+    fs::copy(fixtures.core(), &truncated).expect("fixture copy should succeed");
+    let len = fs::metadata(&truncated)
+        .expect("truncated fixture metadata should be readable")
+        .len();
+    fs::OpenOptions::new()
+        .write(true)
+        .open(&truncated)
+        .expect("truncated fixture should open for writing")
+        .set_len((len / 3).max(1))
+        .expect("truncated fixture length should be set");
+    assert_clean_fsdb_file_error(&[
+        "value",
+        "--waves",
+        path_str(&truncated).as_str(),
+        "--scope",
+        "top",
+        "--signals",
+        "data",
+        "--at",
+        "0ns",
+    ]);
+}
+
+#[test]
 fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_wellen_path() {
     let mut file = NamedTempFile::with_suffix(".fsdb").expect("temp file should be created");
     file.write_all(
@@ -1005,6 +1110,23 @@ fn run_stdout_success(args: &[&str]) -> String {
         .stderr(predicate::str::is_empty());
     String::from_utf8(assert.get_output().stdout.clone())
         .expect("command output should be valid UTF-8")
+}
+
+fn assert_clean_fsdb_file_error(args: &[&str]) {
+    let assert = wavepeek_cmd()
+        .args(args)
+        .assert()
+        .failure()
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("error: file:"));
+    let stderr = String::from_utf8(assert.get_output().stderr.clone())
+        .expect("stderr should be valid UTF-8");
+    for forbidden in ["Novas", "SpringSoft", "Verdi"] {
+        assert!(
+            !stderr.contains(forbidden),
+            "stderr should not leak native banner text {forbidden:?}: {stderr}"
+        );
+    }
 }
 
 fn parse_json(stdout: &[u8]) -> Value {

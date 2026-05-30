@@ -1,14 +1,14 @@
 //! FSDB-backed waveform adapter implementation.
 
 use std::cell::{Ref, RefCell};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 use crate::error::WavepeekError;
 use crate::expr::{ExprTypeKind, SampledValue};
 
 use super::fsdb_hierarchy::{FsdbHierarchyIndex, FsdbValueEncoding};
-use super::fsdb_native::{self, FsdbNativeMetadata, FsdbReader};
+use super::fsdb_native::{self, FsdbNativeMetadata, FsdbReader, FsdbSignalSession};
 use super::fsdb_time::{normalize_raw_time, parse_scale_unit};
 use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
@@ -20,6 +20,8 @@ pub(super) struct FsdbBackend {
     reader: FsdbReader,
     raw_metadata: RefCell<Option<FsdbNativeMetadata>>,
     hierarchy: RefCell<Option<FsdbHierarchyIndex>>,
+    signal_session: Option<FsdbSignalSession>,
+    loaded_session_idcodes: BTreeSet<u64>,
     expr_sample_cache: HashMap<(SignalId, u64), SampledValue>,
     event_occurrence_cache: HashMap<(SignalId, u64), bool>,
 }
@@ -30,6 +32,8 @@ impl FsdbBackend {
             reader: FsdbReader::open(path)?,
             raw_metadata: RefCell::new(None),
             hierarchy: RefCell::new(None),
+            signal_session: None,
+            loaded_session_idcodes: BTreeSet::new(),
             expr_sample_cache: HashMap::new(),
             event_occurrence_cache: HashMap::new(),
         })
@@ -137,7 +141,9 @@ impl FsdbBackend {
             .iter()
             .map(|signal| signal.id.as_u64())
             .collect::<Vec<_>>();
-        let samples = self.reader.sample_signal_values(&idcodes, query_time_raw)?;
+        let samples = self
+            .ensure_signal_session(&idcodes)?
+            .sample_signal_values(&idcodes, query_time_raw)?;
         if samples.len() != resolved.len() {
             return Err(WavepeekError::Internal(
                 "FSDB Reader returned the wrong number of sampled values".to_string(),
@@ -202,8 +208,9 @@ impl FsdbBackend {
         }
 
         self.raw_metadata()?;
+        let idcodes = [resolved.id.as_u64()];
         let occurred = self
-            .reader
+            .ensure_signal_session(&idcodes)?
             .signal_event_occurred(resolved.id.as_u64(), query_time_raw)?;
         self.event_occurrence_cache.insert(cache_key, occurred);
         Ok(occurred)
@@ -245,7 +252,10 @@ impl FsdbBackend {
             .iter()
             .map(|signal| signal.id.as_u64())
             .collect::<Vec<_>>();
-        self.reader
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+        self.ensure_signal_session(&idcodes)?
             .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
     }
 
@@ -262,7 +272,10 @@ impl FsdbBackend {
             .iter()
             .map(|signal| signal.id.as_u64())
             .collect::<Vec<_>>();
-        self.reader
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+        self.ensure_signal_session(&idcodes)?
             .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
     }
 
@@ -274,6 +287,40 @@ impl FsdbBackend {
         _mode: ChangeCandidateCollectionMode,
     ) -> bool {
         false
+    }
+
+    fn ensure_signal_session(
+        &mut self,
+        idcodes: &[u64],
+    ) -> Result<&FsdbSignalSession, WavepeekError> {
+        if idcodes.is_empty() {
+            return Err(WavepeekError::Internal(
+                "FSDB signal session requested without idcodes".to_string(),
+            ));
+        }
+
+        let requested = idcodes.iter().copied().collect::<BTreeSet<_>>();
+        let can_reuse =
+            self.signal_session.is_some() && requested.is_subset(&self.loaded_session_idcodes);
+        if can_reuse {
+            return self.signal_session.as_ref().ok_or_else(|| {
+                WavepeekError::Internal("FSDB signal session cache disappeared".to_string())
+            });
+        }
+
+        let mut new_loaded = self.loaded_session_idcodes.clone();
+        new_loaded.extend(requested.iter().copied());
+        let new_idcodes = new_loaded.iter().copied().collect::<Vec<_>>();
+
+        self.signal_session = None;
+        self.loaded_session_idcodes.clear();
+        let session = self.reader.open_signal_session(&new_idcodes)?;
+        self.loaded_session_idcodes = new_loaded;
+        self.signal_session = Some(session);
+        Ok(self
+            .signal_session
+            .as_ref()
+            .expect("FSDB signal session was just opened"))
     }
 
     fn raw_metadata(&self) -> Result<FsdbNativeMetadata, WavepeekError> {

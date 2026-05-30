@@ -11,14 +11,18 @@
 #include <mutex>
 #include <new>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include <fcntl.h>
 #include <unistd.h>
 
+struct wp_fsdb_signal_session;
+
 struct wp_fsdb_reader {
     ffrObject *object;
+    wp_fsdb_signal_session *active_signal_session;
 };
 
 namespace {
@@ -155,6 +159,21 @@ void clear_error(char **error_message) {
     if (error_message != nullptr) {
         *error_message = nullptr;
     }
+}
+
+wp_fsdb_status reject_active_signal_session(
+    wp_fsdb_reader *reader,
+    const char *operation,
+    char **error_message
+) {
+    if (reader != nullptr && reader->active_signal_session != nullptr) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: cannot perform one-shot ") + operation +
+                " while an FSDB signal session is active"
+        );
+    }
+    return WP_FSDB_STATUS_OK;
 }
 
 wp_fsdb_scope_kind map_scope_kind(uint_T raw_type) {
@@ -637,14 +656,14 @@ bool bit_value_to_char(byte_T value, char *out) {
     }
 }
 
-wp_fsdb_status fill_sample_record(
-    ffrObject *object,
+wp_fsdb_status fill_sample_record_from_handle(
+    ffrVCTrvsHdl handle,
     uint64_t idcode,
     uint64_t query_time_raw,
     wp_fsdb_sample_record *record,
     char **error_message
 ) {
-    if (object == nullptr || record == nullptr) {
+    if (handle == nullptr || record == nullptr) {
         return fail(error_message, "FSDB Reader: sample fill received a null argument");
     }
 
@@ -654,23 +673,18 @@ wp_fsdb_status fill_sample_record(
     record->value_time_raw = 0;
     record->bits = nullptr;
 
-    vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
-    if (handle.get() == nullptr) {
-        return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
-    }
-
-    const uint_T bit_width = handle.get()->ffrGetBitSize();
+    const uint_T bit_width = handle->ffrGetBitSize();
     if (bit_width == 0) {
         return fail(error_message, "FSDB Reader: signal has unsupported zero-width value encoding");
     }
     record->bit_width = static_cast<uint32_t>(bit_width);
 
-    if (handle.get()->ffrGetBytesPerBit() != FSDB_BYTES_PER_BIT_1B) {
+    if (handle->ffrGetBytesPerBit() != FSDB_BYTES_PER_BIT_1B) {
         return fail(error_message, "FSDB Reader: signal has unsupported non-bit-vector encoding");
     }
 
     fsdbTag64 aligned_tag = u64_to_tag64(query_time_raw);
-    if (handle.get()->ffrGotoXTag(static_cast<void *>(&aligned_tag)) != FSDB_RC_SUCCESS) {
+    if (handle->ffrGotoXTag(static_cast<void *>(&aligned_tag)) != FSDB_RC_SUCCESS) {
         return WP_FSDB_STATUS_OK;
     }
     const uint64_t value_time_raw = tag64_to_u64(aligned_tag);
@@ -679,7 +693,7 @@ wp_fsdb_status fill_sample_record(
     }
 
     byte_T *value_change = nullptr;
-    if (handle.get()->ffrGetVC(&value_change) != FSDB_RC_SUCCESS || value_change == nullptr) {
+    if (handle->ffrGetVC(&value_change) != FSDB_RC_SUCCESS || value_change == nullptr) {
         return fail(error_message, "FSDB Reader: failed to read value-change data");
     }
 
@@ -702,6 +716,79 @@ wp_fsdb_status fill_sample_record(
     return WP_FSDB_STATUS_OK;
 }
 
+wp_fsdb_status fill_sample_record(
+    ffrObject *object,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    wp_fsdb_sample_record *record,
+    char **error_message
+) {
+    if (object == nullptr) {
+        return fail(error_message, "FSDB Reader: sample fill received a null reader");
+    }
+    vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
+    if (handle.get() == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+    }
+    return fill_sample_record_from_handle(
+        handle.get(),
+        idcode,
+        query_time_raw,
+        record,
+        error_message
+    );
+}
+
+wp_fsdb_status append_change_times_for_handle(
+    ffrVCTrvsHdl handle,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    std::vector<uint64_t> &times,
+    std::unordered_set<uint64_t> &seen_times,
+    char **error_message
+) {
+    if (handle == nullptr) {
+        return fail(error_message, "FSDB Reader: change-time traversal received a null handle");
+    }
+
+    if (!handle->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    fsdbTag64 tag = u64_to_tag64(from_raw);
+    if (handle->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        if (handle->ffrGetMinXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return WP_FSDB_STATUS_OK;
+        }
+    }
+
+    uint64_t current = tag64_to_u64(tag);
+    if (current < from_raw) {
+        if (handle->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            return WP_FSDB_STATUS_OK;
+        }
+        if (handle->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to read value-change time tag");
+        }
+        current = tag64_to_u64(tag);
+    }
+
+    while (current <= to_raw) {
+        if (seen_times.insert(current).second) {
+            times.push_back(current);
+        }
+        if (handle->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            break;
+        }
+        if (handle->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to read next value-change time tag");
+        }
+        current = tag64_to_u64(tag);
+    }
+
+    return WP_FSDB_STATUS_OK;
+}
+
 wp_fsdb_status append_change_times_for_signal(
     ffrObject *object,
     uint64_t idcode,
@@ -716,42 +803,14 @@ wp_fsdb_status append_change_times_for_signal(
         return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
     }
 
-    if (!handle.get()->ffrHasIncoreVC()) {
-        return WP_FSDB_STATUS_OK;
-    }
-
-    fsdbTag64 tag = u64_to_tag64(from_raw);
-    if (handle.get()->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
-        if (handle.get()->ffrGetMinXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
-            return WP_FSDB_STATUS_OK;
-        }
-    }
-
-    uint64_t current = tag64_to_u64(tag);
-    if (current < from_raw) {
-        if (handle.get()->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
-            return WP_FSDB_STATUS_OK;
-        }
-        if (handle.get()->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
-            return fail(error_message, "FSDB Reader: failed to read value-change time tag");
-        }
-        current = tag64_to_u64(tag);
-    }
-
-    while (current <= to_raw) {
-        if (seen_times.insert(current).second) {
-            times.push_back(current);
-        }
-        if (handle.get()->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
-            break;
-        }
-        if (handle.get()->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
-            return fail(error_message, "FSDB Reader: failed to read next value-change time tag");
-        }
-        current = tag64_to_u64(tag);
-    }
-
-    return WP_FSDB_STATUS_OK;
+    return append_change_times_for_handle(
+        handle.get(),
+        from_raw,
+        to_raw,
+        times,
+        seen_times,
+        error_message
+    );
 }
 
 wp_fsdb_status copy_sorted_unique_times(
@@ -778,6 +837,29 @@ wp_fsdb_status copy_sorted_unique_times(
     return WP_FSDB_STATUS_OK;
 }
 
+wp_fsdb_status read_exact_event_occurrence_from_handle(
+    ffrVCTrvsHdl handle,
+    uint64_t query_time_raw,
+    bool &occurred,
+    char **error_message
+) {
+    occurred = false;
+    if (handle == nullptr) {
+        return fail(error_message, "FSDB Reader: event traversal received a null handle");
+    }
+
+    if (!handle->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    fsdbTag64 tag = u64_to_tag64(query_time_raw);
+    if (handle->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        return WP_FSDB_STATUS_OK;
+    }
+    occurred = tag64_to_u64(tag) == query_time_raw;
+    return WP_FSDB_STATUS_OK;
+}
+
 wp_fsdb_status read_exact_event_occurrence(
     ffrObject *object,
     uint64_t idcode,
@@ -785,25 +867,172 @@ wp_fsdb_status read_exact_event_occurrence(
     bool &occurred,
     char **error_message
 ) {
-    occurred = false;
     vc_handle_guard handle(object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcode)));
     if (handle.get() == nullptr) {
         return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
     }
 
-    if (!handle.get()->ffrHasIncoreVC()) {
-        return WP_FSDB_STATUS_OK;
-    }
-
-    fsdbTag64 tag = u64_to_tag64(query_time_raw);
-    if (handle.get()->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
-        return WP_FSDB_STATUS_OK;
-    }
-    occurred = tag64_to_u64(tag) == query_time_raw;
-    return WP_FSDB_STATUS_OK;
+    return read_exact_event_occurrence_from_handle(
+        handle.get(),
+        query_time_raw,
+        occurred,
+        error_message
+    );
 }
 
+constexpr std::size_t MAX_CACHED_TRAVERSE_HANDLES = 64;
+
+struct cached_vc_handle {
+    explicit cached_vc_handle(ffrVCTrvsHdl raw_handle) : handle(raw_handle) {}
+
+    cached_vc_handle(const cached_vc_handle &) = delete;
+    cached_vc_handle &operator=(const cached_vc_handle &) = delete;
+
+    ~cached_vc_handle() {
+        if (handle != nullptr) {
+            handle->ffrFree();
+            handle = nullptr;
+        }
+    }
+
+    ffrVCTrvsHdl handle = nullptr;
+    uint64_t last_used = 0;
+};
+
 }  // namespace
+
+struct wp_fsdb_signal_session {
+    explicit wp_fsdb_signal_session(wp_fsdb_reader *owner)
+        : reader(owner), object(owner == nullptr ? nullptr : owner->object) {}
+
+    wp_fsdb_signal_session(const wp_fsdb_signal_session &) = delete;
+    wp_fsdb_signal_session &operator=(const wp_fsdb_signal_session &) = delete;
+
+    ~wp_fsdb_signal_session() {
+        close_noexcept();
+    }
+
+    wp_fsdb_status load(const uint64_t *idcodes, std::size_t count, char **error_message) {
+        if (object == nullptr) {
+            return fail(error_message, "FSDB Reader: signal session received a null reader");
+        }
+        if (object->ffrResetSignalList() != FSDB_RC_SUCCESS) {
+            return fail(error_message, "FSDB Reader: failed to reset signal list for signal session");
+        }
+        reset = true;
+
+        loaded_idcodes.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(idcodes[index]);
+            if (!loaded_idcodes.insert(idcode).second) {
+                continue;
+            }
+            if (object->ffrAddToSignalList(idcode) != FSDB_RC_SUCCESS) {
+                return fail(error_message, "FSDB Reader: failed to add signal to session list");
+            }
+        }
+
+        if (!loaded_idcodes.empty()) {
+            if (object->ffrLoadSignals() != FSDB_RC_SUCCESS) {
+                return fail(error_message, "FSDB Reader: failed to load signal session values");
+            }
+            loaded = true;
+        }
+        return WP_FSDB_STATUS_OK;
+    }
+
+    bool has_idcode(uint64_t raw_idcode) const {
+        return loaded_idcodes.find(static_cast<fsdbVarIdcode>(raw_idcode)) !=
+               loaded_idcodes.end();
+    }
+
+    wp_fsdb_status require_idcode(uint64_t raw_idcode, char **error_message) const {
+        if (has_idcode(raw_idcode)) {
+            return WP_FSDB_STATUS_OK;
+        }
+        return fail(
+            error_message,
+            "FSDB Reader: idcode " + std::to_string(raw_idcode) +
+                " is not loaded in the FSDB signal session"
+        );
+    }
+
+    wp_fsdb_status cached_handle_for(
+        uint64_t raw_idcode,
+        ffrVCTrvsHdl *out,
+        char **error_message
+    ) {
+        if (out == nullptr) {
+            return fail(error_message, "FSDB Reader: cached traversal requested a null output");
+        }
+        *out = nullptr;
+        if (require_idcode(raw_idcode, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(raw_idcode);
+        const uint64_t use = ++use_counter;
+        auto found = cached_handles.find(idcode);
+        if (found != cached_handles.end()) {
+            found->second->last_used = use;
+            *out = found->second->handle;
+            return WP_FSDB_STATUS_OK;
+        }
+
+        if (cached_handles.size() >= MAX_CACHED_TRAVERSE_HANDLES && !cached_handles.empty()) {
+            auto evict = cached_handles.begin();
+            for (auto iter = cached_handles.begin(); iter != cached_handles.end(); ++iter) {
+                if (iter->second->last_used < evict->second->last_used) {
+                    evict = iter;
+                }
+            }
+            cached_handles.erase(evict);
+        }
+
+        ffrVCTrvsHdl handle = object->ffrCreateVCTrvsHdl(idcode);
+        if (handle == nullptr) {
+            return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+        }
+
+        auto cached = std::make_unique<cached_vc_handle>(handle);
+        cached->last_used = use;
+        *out = handle;
+        cached_handles.emplace(idcode, std::move(cached));
+        return WP_FSDB_STATUS_OK;
+    }
+
+    void close_noexcept() noexcept {
+        try {
+            cached_handles.clear();
+            if (object != nullptr) {
+                if (loaded) {
+                    object->ffrUnloadSignals();
+                    loaded = false;
+                }
+                if (reset) {
+                    object->ffrResetSignalList();
+                    reset = false;
+                }
+            }
+            loaded_idcodes.clear();
+            if (reader != nullptr && reader->active_signal_session == this) {
+                reader->active_signal_session = nullptr;
+            }
+            reader = nullptr;
+            object = nullptr;
+        } catch (...) {
+            // Native close paths are best-effort; C ABI close cannot return errors.
+        }
+    }
+
+    wp_fsdb_reader *reader = nullptr;
+    ffrObject *object = nullptr;
+    bool reset = false;
+    bool loaded = false;
+    uint64_t use_counter = 0;
+    std::unordered_set<fsdbVarIdcode> loaded_idcodes;
+    std::unordered_map<fsdbVarIdcode, std::unique_ptr<cached_vc_handle>> cached_handles;
+};
 
 extern "C" wp_fsdb_status wp_fsdb_probe(
     const char *path,
@@ -852,7 +1081,7 @@ extern "C" wp_fsdb_status wp_fsdb_open(
             return fail(error_message, "FSDB Reader: ffrOpen3 failed");
         }
 
-        wp_fsdb_reader *reader = new (std::nothrow) wp_fsdb_reader{object};
+        wp_fsdb_reader *reader = new (std::nothrow) wp_fsdb_reader{object, nullptr};
         if (reader == nullptr) {
             object->ffrClose();
             return fail(error_message, "FSDB Reader: failed to allocate reader handle");
@@ -875,6 +1104,11 @@ extern "C" void wp_fsdb_close(wp_fsdb_reader *reader) {
     try {
         std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
+        if (reader->active_signal_session != nullptr) {
+            wp_fsdb_signal_session *session = reader->active_signal_session;
+            reader->active_signal_session = nullptr;
+            delete session;
+        }
         if (reader->object != nullptr) {
             reader->object->ffrClose();
             reader->object = nullptr;
@@ -1022,6 +1256,10 @@ extern "C" wp_fsdb_status wp_fsdb_sample_signal_values(
         std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
+        if (reject_active_signal_session(reader, "value sampling", error_message) !=
+            WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
 
         wp_fsdb_sample_record *raw_samples = static_cast<wp_fsdb_sample_record *>(
             std::calloc(count == 0 ? 1 : count, sizeof(wp_fsdb_sample_record))
@@ -1083,6 +1321,10 @@ extern "C" wp_fsdb_status wp_fsdb_collect_signal_change_times(
         std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
+        if (reject_active_signal_session(reader, "candidate time collection", error_message) !=
+            WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
 
         if (require_integer_time_tags(reader->object, error_message) != WP_FSDB_STATUS_OK) {
             return WP_FSDB_STATUS_ERROR;
@@ -1145,6 +1387,10 @@ extern "C" wp_fsdb_status wp_fsdb_signal_event_occurred(
         std::lock_guard<std::recursive_mutex> lock(reader_mutex());
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
+        if (reject_active_signal_session(reader, "event occurrence query", error_message) !=
+            WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
 
         if (require_integer_time_tags(reader->object, error_message) != WP_FSDB_STATUS_OK) {
             return WP_FSDB_STATUS_ERROR;
@@ -1175,6 +1421,238 @@ extern "C" wp_fsdb_status wp_fsdb_signal_event_occurred(
         );
     } catch (...) {
         return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_open_signal_session(
+    wp_fsdb_reader *reader,
+    const uint64_t *idcodes,
+    std::size_t count,
+    wp_fsdb_signal_session **out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (out == nullptr || reader == nullptr || reader->object == nullptr ||
+        (count > 0 && idcodes == nullptr)) {
+        return fail(error_message, "FSDB Reader: signal session open received a null argument");
+    }
+    *out = nullptr;
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+        if (reader->active_signal_session != nullptr) {
+            return fail(error_message, "FSDB Reader: a signal session is already active");
+        }
+
+        auto session = std::make_unique<wp_fsdb_signal_session>(reader);
+        if (session->load(idcodes, count, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        reader->active_signal_session = session.get();
+        *out = session.release();
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: signal session open failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_signal_session_sample(
+    wp_fsdb_signal_session *session,
+    const uint64_t *idcodes,
+    std::size_t count,
+    uint64_t query_time_raw,
+    wp_fsdb_sample_record **out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (session == nullptr || out == nullptr || (count > 0 && idcodes == nullptr)) {
+        return fail(error_message, "FSDB Reader: signal session sampling received a null argument");
+    }
+    *out = nullptr;
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        wp_fsdb_sample_record *raw_samples = static_cast<wp_fsdb_sample_record *>(
+            std::calloc(count == 0 ? 1 : count, sizeof(wp_fsdb_sample_record))
+        );
+        if (raw_samples == nullptr) {
+            return fail(error_message, "FSDB Reader: failed to allocate session sample records");
+        }
+        owned_sample_records samples(raw_samples, sample_records_deleter{count});
+
+        for (std::size_t index = 0; index < count; ++index) {
+            ffrVCTrvsHdl handle = nullptr;
+            if (session->cached_handle_for(idcodes[index], &handle, error_message) !=
+                WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+            if (fill_sample_record_from_handle(
+                    handle,
+                    idcodes[index],
+                    query_time_raw,
+                    &samples.get()[index],
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+        }
+
+        *out = samples.release();
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: signal session sampling failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_signal_session_collect_change_times(
+    wp_fsdb_signal_session *session,
+    const uint64_t *idcodes,
+    std::size_t count,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    wp_fsdb_time_list *out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (session == nullptr || out == nullptr || (count > 0 && idcodes == nullptr)) {
+        return fail(
+            error_message,
+            "FSDB Reader: signal session candidate collection received a null argument"
+        );
+    }
+    out->times = nullptr;
+    out->count = 0;
+    if (from_raw > to_raw || count == 0) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        if (require_integer_time_tags(session->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        std::vector<uint64_t> times;
+        times.reserve(count);
+        std::unordered_set<uint64_t> seen_times;
+        seen_times.reserve(count);
+        std::unordered_set<fsdbVarIdcode> visited;
+        visited.reserve(count);
+        for (std::size_t index = 0; index < count; ++index) {
+            if (session->require_idcode(idcodes[index], error_message) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+            const fsdbVarIdcode idcode = static_cast<fsdbVarIdcode>(idcodes[index]);
+            if (!visited.insert(idcode).second) {
+                continue;
+            }
+
+            vc_handle_guard handle(session->object->ffrCreateVCTrvsHdl(idcode));
+            if (handle.get() == nullptr) {
+                return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+            }
+            if (append_change_times_for_handle(
+                    handle.get(),
+                    from_raw,
+                    to_raw,
+                    times,
+                    seen_times,
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+        }
+
+        return copy_sorted_unique_times(times, out, error_message);
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: signal session candidate collection failed: ") +
+                error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" wp_fsdb_status wp_fsdb_signal_session_event_occurred(
+    wp_fsdb_signal_session *session,
+    uint64_t idcode,
+    uint64_t query_time_raw,
+    int *occurred,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (session == nullptr || occurred == nullptr) {
+        return fail(error_message, "FSDB Reader: signal session event query received a null argument");
+    }
+    *occurred = 0;
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        if (require_integer_time_tags(session->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        ffrVCTrvsHdl handle = nullptr;
+        if (session->cached_handle_for(idcode, &handle, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        bool hit = false;
+        if (read_exact_event_occurrence_from_handle(
+                handle,
+                query_time_raw,
+                hit,
+                error_message
+            ) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+        *occurred = hit ? 1 : 0;
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: signal session event query failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
+extern "C" void wp_fsdb_close_signal_session(wp_fsdb_signal_session *session) {
+    if (session == nullptr) {
+        return;
+    }
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        delete session;
+    } catch (...) {
+        // C ABI close functions cannot report errors safely.
     }
 }
 

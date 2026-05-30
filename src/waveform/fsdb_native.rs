@@ -5,6 +5,7 @@ use std::os::raw::{c_char, c_int, c_uint, c_void};
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
 use std::ptr::{self, NonNull};
+use std::rc::Rc;
 use std::slice;
 
 use crate::error::WavepeekError;
@@ -15,9 +16,20 @@ use super::fsdb_hierarchy::{
 };
 const WP_FSDB_STATUS_OK: c_uint = 0;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(super) struct FsdbReader {
+    inner: Rc<FsdbReaderInner>,
+}
+
+#[derive(Debug)]
+struct FsdbReaderInner {
     raw: NonNull<ffi::wp_fsdb_reader>,
+}
+
+#[derive(Debug)]
+pub(super) struct FsdbSignalSession {
+    raw: NonNull<ffi::wp_fsdb_signal_session>,
+    _owner: Rc<FsdbReaderInner>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,7 +61,9 @@ impl FsdbReader {
         let raw = NonNull::new(raw).ok_or_else(|| {
             WavepeekError::File("FSDB Reader returned a null reader handle".to_string())
         })?;
-        Ok(Self { raw })
+        Ok(Self {
+            inner: Rc::new(FsdbReaderInner { raw }),
+        })
     }
 
     pub(super) fn metadata(&self) -> Result<FsdbNativeMetadata, WavepeekError> {
@@ -61,7 +75,11 @@ impl FsdbReader {
         };
         let mut error_message = ptr::null_mut();
         let status = unsafe {
-            ffi::wp_fsdb_read_metadata(self.raw.as_ptr(), &mut raw_metadata, &mut error_message)
+            ffi::wp_fsdb_read_metadata(
+                self.inner.raw.as_ptr(),
+                &mut raw_metadata,
+                &mut error_message,
+            )
         };
         if status != WP_FSDB_STATUS_OK {
             return Err(native_error(error_message));
@@ -85,7 +103,7 @@ impl FsdbReader {
         let mut error_message = ptr::null_mut();
         let status = unsafe {
             ffi::wp_fsdb_read_scope_var_tree(
-                self.raw.as_ptr(),
+                self.inner.raw.as_ptr(),
                 Some(hierarchy_callback),
                 (&mut context as *mut HierarchyCallbackContext).cast::<c_void>(),
                 &mut error_message,
@@ -122,7 +140,7 @@ impl FsdbReader {
         let mut error_message = ptr::null_mut();
         let status = unsafe {
             ffi::wp_fsdb_sample_signal_values(
-                self.raw.as_ptr(),
+                self.inner.raw.as_ptr(),
                 idcodes.as_ptr(),
                 idcodes.len(),
                 query_time_raw,
@@ -155,7 +173,7 @@ impl FsdbReader {
         let mut error_message = ptr::null_mut();
         let status = unsafe {
             ffi::wp_fsdb_collect_signal_change_times(
-                self.raw.as_ptr(),
+                self.inner.raw.as_ptr(),
                 idcodes.as_ptr(),
                 idcodes.len(),
                 from_raw,
@@ -179,6 +197,118 @@ impl FsdbReader {
         let mut error_message = ptr::null_mut();
         let status = unsafe {
             ffi::wp_fsdb_signal_event_occurred(
+                self.inner.raw.as_ptr(),
+                idcode,
+                query_time_raw,
+                &mut occurred,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        Ok(occurred != 0)
+    }
+
+    pub(super) fn open_signal_session(
+        &self,
+        idcodes: &[u64],
+    ) -> Result<FsdbSignalSession, WavepeekError> {
+        let mut raw = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_open_signal_session(
+                self.inner.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                &mut raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        let raw = NonNull::new(raw).ok_or_else(|| {
+            WavepeekError::File("FSDB Reader returned a null signal session handle".to_string())
+        })?;
+        Ok(FsdbSignalSession {
+            raw,
+            _owner: Rc::clone(&self.inner),
+        })
+    }
+}
+
+impl FsdbSignalSession {
+    pub(super) fn sample_signal_values(
+        &self,
+        idcodes: &[u64],
+        query_time_raw: u64,
+    ) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if idcodes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut raw_samples = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_sample(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                query_time_raw,
+                &mut raw_samples,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let samples = NativeSampleArray {
+            raw: raw_samples,
+            count: idcodes.len(),
+        };
+        samples.to_vec()
+    }
+
+    pub(super) fn collect_signal_change_times(
+        &self,
+        idcodes: &[u64],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+
+        let mut times = NativeTimeList::default();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_collect_change_times(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                from_raw,
+                to_raw,
+                &mut times.raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        times.to_vec()
+    }
+
+    pub(super) fn signal_event_occurred(
+        &self,
+        idcode: u64,
+        query_time_raw: u64,
+    ) -> Result<bool, WavepeekError> {
+        let mut occurred = 0;
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_event_occurred(
                 self.raw.as_ptr(),
                 idcode,
                 query_time_raw,
@@ -193,9 +323,15 @@ impl FsdbReader {
     }
 }
 
-impl Drop for FsdbReader {
+impl Drop for FsdbReaderInner {
     fn drop(&mut self) {
         unsafe { ffi::wp_fsdb_close(self.raw.as_ptr()) };
+    }
+}
+
+impl Drop for FsdbSignalSession {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_close_signal_session(self.raw.as_ptr()) };
     }
 }
 
@@ -643,6 +779,11 @@ mod ffi {
     }
 
     #[repr(C)]
+    pub(super) struct wp_fsdb_signal_session {
+        _private: [u8; 0],
+    }
+
+    #[repr(C)]
     pub(super) struct wp_fsdb_metadata {
         pub(super) scale_unit: *mut c_char,
         pub(super) time_start_raw: u64,
@@ -749,6 +890,38 @@ mod ffi {
             occurred: *mut c_int,
             error_message: *mut *mut c_char,
         ) -> c_uint;
+        pub(super) fn wp_fsdb_open_signal_session(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            out: *mut *mut wp_fsdb_signal_session,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_sample(
+            session: *mut wp_fsdb_signal_session,
+            idcodes: *const u64,
+            count: usize,
+            query_time_raw: u64,
+            out: *mut *mut wp_fsdb_sample_record,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_collect_change_times(
+            session: *mut wp_fsdb_signal_session,
+            idcodes: *const u64,
+            count: usize,
+            from_raw: u64,
+            to_raw: u64,
+            out: *mut wp_fsdb_time_list,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_event_occurred(
+            session: *mut wp_fsdb_signal_session,
+            idcode: u64,
+            query_time_raw: u64,
+            occurred: *mut c_int,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_close_signal_session(session: *mut wp_fsdb_signal_session);
         pub(super) fn wp_fsdb_free_samples(samples: *mut wp_fsdb_sample_record, count: usize);
         pub(super) fn wp_fsdb_free_time_list(list: *mut wp_fsdb_time_list);
         pub(super) fn wp_fsdb_free_string(value: *mut c_char);

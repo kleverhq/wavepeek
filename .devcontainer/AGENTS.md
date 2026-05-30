@@ -14,7 +14,7 @@ This directory is designed so local development and CI share one foundation whil
 - The workspace mounts the repository parent as the container workspace root (not just this repo) so sibling git worktrees work naturally during parallel branch workflows.
 - OpenCode, Claude Code, Codex, Pi, and GitHub CLI state are bind-mounted from the host; `initializeCommand` runs `initialize.sh` to create mount sources before container startup.
 - Host networking is used because bridge networking often breaks routing in VPN-heavy environments.
-- `postStartCommand: make dev-setup` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
+- `postStartCommand: just dev-setup` runs on each start to re-converge tools/hooks after rebuilds and reopen flows, instead of assuming one-time setup remains valid.
 - `.devcontainer/env_contract.sh` and `.devcontainer/resolve_rtl_artifacts_dir.sh` are the shared devcontainer/Codex environment contract; if `.devcontainer/Dockerfile`, either helper, fixture versions, or container-provided tools change, update `scripts/codex_setup.sh`, `scripts/codex_resume.sh`, and `scripts/codex_env_common.sh` in the same change.
 - `safe.directory` is configured automatically so Git inside the container does not block the workspace as dubious when ownership/UID mapping differs.
 - The dev profile forces X11 (`WINIT_UNIX_BACKEND=x11`) because this is the most reliable backend for waveform GUI tooling in common VS Code devcontainer setups.
@@ -24,8 +24,8 @@ This directory is designed so local development and CI share one foundation whil
 ## RTL fixture provisioning
 - Large waveform fixtures are baked into the image at build time by a dedicated Docker stage (`rtl_artifacts`).
 - Fixture payload is controlled by `env_contract.sh` and is shared by both `ci` and `dev` targets through the common `base` stage.
-- Test/runtime commands never download fixtures from the network; `make ci`/`make pre-commit` assert the local fixture payload is present.
+- Test/runtime commands never download fixtures from the network; `just ci`/`just pre-commit` assert the local fixture payload is present.
 
 ## Bumping fixture version
 1. Update `WAVEPEEK_RTL_ARTIFACTS_VERSION` in `env_contract.sh`.
-2. Rebuild both container targets and run `make ci` + `make pre-commit` inside container to verify payload and tests.
+2. Rebuild both container targets and run `just ci` + `just pre-commit` inside container to verify payload and tests.

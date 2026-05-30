@@ -6,7 +6,7 @@ set -euo pipefail
 # especially `.devcontainer/env_contract.sh`, and update this script whenever
 # the devcontainer image contents or environment guarantees change.
 # Interactive dev-only agent tooling such as OpenCode stays intentionally out of
-# this Codex projection unless non-dev make targets begin to require it.
+# this Codex projection unless non-dev just recipes begin to require it.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -37,6 +37,10 @@ ensure_safe_directory() {
 
 ensure_local_bin_dir() {
     mkdir -p "$WAVEPEEK_CODEX_BIN_DIR"
+    case ":$PATH:" in
+        *":$WAVEPEEK_CODEX_BIN_DIR:"*) ;;
+        *) export PATH="$WAVEPEEK_CODEX_BIN_DIR:$PATH" ;;
+    esac
 }
 
 ensure_bashrc_line() {
@@ -84,6 +88,21 @@ ensure_cargo_llvm_cov() {
 
     log "Installing cargo-llvm-cov ${WAVEPEEK_CARGO_LLVM_COV_VERSION}"
     cargo install --locked cargo-llvm-cov --version "$WAVEPEEK_CARGO_LLVM_COV_VERSION"
+}
+
+ensure_just() {
+    local current_version=""
+
+    if command -v just >/dev/null 2>&1; then
+        current_version="$(just --version | awk '{print $2}')"
+    fi
+
+    if [ "$current_version" = "$WAVEPEEK_JUST_VERSION" ]; then
+        return
+    fi
+
+    log "Installing just ${WAVEPEEK_JUST_VERSION}"
+    cargo install --locked just --version "$WAVEPEEK_JUST_VERSION" --root "${HOME}/.local"
 }
 
 install_actionlint() {
@@ -238,6 +257,7 @@ ensure_codex_tooling() {
     ensure_local_bin_dir
     persist_shell_env
     ensure_rust_toolchain
+    ensure_just
     ensure_cargo_llvm_cov
     ensure_actionlint
     ensure_hyperfine

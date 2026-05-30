@@ -24,10 +24,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Load coverage threshold from Makefile
-        run: |
-          echo "COVERAGE_SRC_THRESHOLD=$(make -s print-coverage-src-threshold)" >> "$GITHUB_ENV"
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -57,7 +53,7 @@ jobs:
           cacheTo: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }},mode=max
           push: never
-          runCmd: COVERAGE_SRC_THRESHOLD=${{ env.COVERAGE_SRC_THRESHOLD }} make ci
+          runCmd: just ci
 
       - name: Run checks in devcontainer baseline (cache read-only)
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
@@ -65,7 +61,7 @@ jobs:
         with:
           configFile: .devcontainer/.devcontainer.json
           push: never
-          runCmd: COVERAGE_SRC_THRESHOLD=${{ env.COVERAGE_SRC_THRESHOLD }} make ci
+          runCmd: just ci
 
       - name: Summarize source coverage
         if: always()

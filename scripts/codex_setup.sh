@@ -13,4 +13,4 @@ source "$SCRIPT_DIR/codex_env_common.sh"
 ensure_codex_tooling
 ensure_cargo_fetch
 
-log "Codex setup complete. Non-dev make targets are ready."
+log "Codex setup complete. Non-dev just recipes are ready."

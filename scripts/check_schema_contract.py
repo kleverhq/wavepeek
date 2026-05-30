@@ -13,7 +13,7 @@ import tomllib
 def fail(message: str, *, hint_update_schema: bool = False) -> None:
     print(message, file=sys.stderr)
     if hint_update_schema:
-        print("hint: run make update-schema", file=sys.stderr)
+        print("hint: run just update-schema", file=sys.stderr)
     raise SystemExit(1)
 
 

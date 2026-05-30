@@ -33,13 +33,13 @@ This runbook covers the production release flow for `wavepeek`.
 5. Regenerate canonical schema artifact:
 
    ```bash
-   make update-schema
+   just update-schema
    ```
 
 6. Run local checks:
 
    ```bash
-   make ci
+   just ci
    ```
 
 7. Commit release prep:
@@ -60,7 +60,7 @@ This runbook covers the production release flow for `wavepeek`.
 9. Wait for `.github/workflows/release.yml` to finish.
 10. Check workflow logs for:
     - tag/version validation
-    - `make ci`
+    - `just ci`
     - `cargo package --locked`
     - release-note extraction from `CHANGELOG.md`
     - `cargo publish --locked`

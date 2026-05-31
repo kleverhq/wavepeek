@@ -138,7 +138,8 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     /home/ubuntu/.cargo/bin/rustup toolchain install ${WAVEPEEK_RUST_VERSION} --profile minimal && \
     /home/ubuntu/.cargo/bin/rustup default ${WAVEPEEK_RUST_VERSION} && \
     /home/ubuntu/.cargo/bin/rustup component add rustfmt clippy llvm-tools-preview --toolchain ${WAVEPEEK_RUST_VERSION} && \
-    /home/ubuntu/.cargo/bin/cargo install --locked cargo-llvm-cov --version ${WAVEPEEK_CARGO_LLVM_COV_VERSION}
+    /home/ubuntu/.cargo/bin/cargo install --locked cargo-llvm-cov --version ${WAVEPEEK_CARGO_LLVM_COV_VERSION} && \
+    /home/ubuntu/.cargo/bin/cargo install --locked just --version ${WAVEPEEK_JUST_VERSION} --root /home/ubuntu/.local
 
 # ---- CI Image ----------------------------------------------------------------
 FROM base AS ci

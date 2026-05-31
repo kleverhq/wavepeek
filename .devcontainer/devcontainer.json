@@ -28,7 +28,7 @@
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,
     "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
-    "postStartCommand": "make dev-setup",
+    "postStartCommand": "just dev-setup",
     "customizations": {
         "vscode": {
             "settings": {

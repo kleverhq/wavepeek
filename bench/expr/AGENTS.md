@@ -1,35 +1,16 @@
-# Expression Microbench Guide
-
-This directory contains expression-engine microbenchmark Rust targets, the
-explicit suite catalog, the unified performance harness, and committed run
-artifacts.
-
-Rust Criterion targets for this area live at:
-
-- `expr_syntax.rs` (lexer/parser scenarios)
-- `expr_logical.rs` (standalone logical bind/eval scenarios)
-- `expr_event.rs` (standalone event bind/match scenarios)
-- `expr_waveform_host.rs` (waveform-backed metadata scenarios)
-
-All four targets are wired through `../../Cargo.toml` `[[bench]]` metadata. The
-workflow is owned by `suites.json` plus `perf.py`, which produce one grouped run
-directory such as `runs/baseline/`.
-
-## Parent Maps
-
-- Performance map: `../AGENTS.md`
-- Repository map: `../../AGENTS.md`
+# Expression Microbenchmark Guidance
 
 ## Source of Truth
 
-- Benchmark workflow and command contracts: `../../docs/DEVELOPMENT.md`
-- Expression semantics and shipped rollout context: `../../docs/public/reference/expression-language.md`, `../../docs/ROADMAP.md`
+- Benchmark workflow: `../../docs/dev/benchmarking.md`
+- Expression semantics: `../../docs/public/reference/expression-language.md`
+- Planning context: `../../docs/tracker/roadmap.md`
+- Criterion bench registration: `../../Cargo.toml`
 
-## Run Artifacts
+## Local Guidance
 
-Committed exported runs live under `runs/`. The durable committed state is
-`runs/baseline/`; other run directories are temporary local or review artifacts
-unless a later plan explicitly promotes them. Run directories should keep
-namespaced exported `*.raw.csv`, one machine-readable `summary.json`, and a
-human-readable `README.md`. Scenario ordering and schema are stable;
-generation-time provenance fields can vary from capture to capture.
+- Rust Criterion targets in this area are `expr_syntax.rs`, `expr_logical.rs`, `expr_event.rs`, and `expr_waveform_host.rs`.
+- `suites.json` plus `perf.py` own the suite catalog and grouped run-directory format.
+- Committed exported runs live under `runs/`; `runs/baseline/` is the durable baseline.
+- Treat other run directories as local or review artifacts unless a plan explicitly promotes them.
+- Keep exported `*.raw.csv`, `summary.json`, and `README.md` schema stable; provenance fields may vary between captures.

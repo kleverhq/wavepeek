@@ -1,22 +1,15 @@
-# Public Docs Guide
-
-This directory contains the Markdown topic corpus embedded into `wavepeek docs`.
-
-## Parent Map
-
-- Documentation map: `../AGENTS.md`
+# Public Docs Guidance
 
 ## Source of Truth
 
 - Public introduction and topic map: `intro.md`
 - Command-family guidance: `commands/`
 - Stable semantics references: `reference/`
-- Documentation maintenance workflow and topic metadata rules: `../DEVELOPMENT.md`
+- Topic metadata and docs style rules: `../dev/style.md`
 - Exact command reference: `../../src/cli/`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
-## Child Maps
+## Local Guidance
 
-- Command topics: `commands/AGENTS.md`
-- Reference topics: `reference/AGENTS.md`
-
-Keep topic IDs stable, slash-separated, and user-facing. Do not duplicate exact flag tables from generated help.
+- Keep topic IDs stable, slash-separated, and user-facing.
+- Do not duplicate exact flag tables from generated help; explain intent, workflows, edge cases, and contracts that help cannot express cleanly.
+- `wavepeek docs export` includes public topics only, not packaged skills.

@@ -106,7 +106,7 @@ Use progressive disclosure via built-in help and docs:
 
 ## Development
 
-See `docs/DEVELOPMENT.md` for the canonical developer workflow, quality gates, and container-first setup.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

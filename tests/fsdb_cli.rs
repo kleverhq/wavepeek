@@ -1327,7 +1327,7 @@ fn require_vcd2fsdb() {
         .expect("shell should be available to check vcd2fsdb");
     assert!(
         status.success(),
-        "vcd2fsdb not found on PATH; load the Verdi environment or run WAVEPEEK_IN_CONTAINER=1 make test-fsdb"
+        "vcd2fsdb not found on PATH; load the Verdi environment or run WAVEPEEK_IN_CONTAINER=1 just test-fsdb"
     );
 }
 

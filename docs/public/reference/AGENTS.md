@@ -1,10 +1,4 @@
-# Public Reference Topics Guide
-
-This directory contains stable user-facing semantics references embedded into `wavepeek docs`.
-
-## Parent Map
-
-- Public docs map: `../AGENTS.md`
+# Public Reference Topic Guidance
 
 ## Source of Truth
 
@@ -12,6 +6,9 @@ This directory contains stable user-facing semantics references embedded into `w
 - Machine output, warnings, and exit behavior: `machine-output.md`
 - Expression language syntax and semantics: `expression-language.md`
 - Exact JSON schema: `../../../schema/wavepeek.json` and `wavepeek schema`
+- Topic metadata and docs style rules: `../../dev/style.md`
 - Exact command reference: `../../../src/cli/`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 
-Keep these topics focused on stable behavior that code or schema alone do not explain clearly enough.
+## Local Guidance
+
+Keep these topics focused on stable behavior that code, generated help, or schema alone do not explain clearly enough. Avoid release planning, maintainer process, or speculative future syntax here.

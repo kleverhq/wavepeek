@@ -12,10 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added default-build FSDB diagnostics for `.fsdb` and `.fsdb.gz` inputs that require the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK.
 - Added FSDB-enabled `value` sampling for digital bit-vector signals, preserving VCD/FST request ordering, duplicate signal rows, Verilog literal formatting, and missing-initial-value errors.
 - Added FSDB-enabled `change` and `property` support for digital bit-vector/integral signals, including candidate-time traversal, expression sampling, raw-event occurrence checks, and VCD parity coverage from generated FSDB fixtures.
-- Added FSDB benchmark fixture preparation, catalog, and Make targets for Verdi-equipped development environments, including functional-only FSDB-vs-FST benchmark comparison support.
+- Added FSDB benchmark fixture preparation, catalog, and `just` recipes for Verdi-equipped development environments, including functional-only FSDB-vs-FST benchmark comparison support.
 
 ### Changed
-- Split environment bootstrap into explicit `make dev-setup`, `make codex-setup`, and `make codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
+- Migrated repository automation from root `Makefile` targets to root `justfile` recipes, including CI, devcontainer, pre-commit, release, Codex, and maintainer documentation entrypoints.
+- Reorganized contributor-facing repository maintenance docs into `docs/dev/`, tracking docs into `docs/tracker/`, branch-local tracked WIP artifacts into `docs/tracker/wip/`, and helper automation into grouped `tools/` directories.
+- Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
 - Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
 - Reused command-scoped FSDB Reader signal sessions and bounded lazy traversal handles for FSDB value, change, and property workloads to reduce repeated native signal-list churn while preserving existing command output contracts.

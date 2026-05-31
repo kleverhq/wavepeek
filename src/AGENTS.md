@@ -1,24 +1,19 @@
-# Source Code Guide
-
-This directory contains implementation code.
-
-## Parent Map
-
-- Repository agent map: `../AGENTS.md`
+# Source Code Guidance
 
 ## Source of Truth
 
-- Development workflow and coding conventions: `../docs/DEVELOPMENT.md`
-- Public docs entrypoint: `../docs/public/intro.md`
-- Cross-cutting command and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
+- Rust style and CLI constraints: `../docs/dev/style.md`
+- Internal architecture: `../docs/dev/architecture.md`
+- Public command and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
 - Expression semantics for `change` and `property`: `../docs/public/reference/expression-language.md`
 
 ## Embedded Docs Runtime
 
-- Runtime loader and helpers for `wavepeek docs` live under `docs/`.
-- Packaged Markdown topic source: `../docs/public/`
-- Packaged skill source: `../docs/skills/wavepeek.md`
-- Completed implementation plan for the original docs runtime: `../docs/exec-plans/completed/2026-04-18-self-documenting-cli-docs/PLAN.md`
+- Runtime loader and helpers for `wavepeek docs` live under `docs/` in this source tree.
+- Packaged Markdown topic source lives at `../docs/public/`.
+- Packaged skill source lives at `../docs/skills/wavepeek.md`.
 - Keep metadata sourced from embedded Markdown files rather than duplicated as hand-maintained Rust literals.
 
-If guidance conflicts with local context, follow the docs above.
+## Local Guidance
+
+Keep `../docs/dev/architecture.md` consistent when module boundaries, execution layers, or ownership responsibilities change. Public behavior changes must update the relevant public reference docs and tests in the same slice.

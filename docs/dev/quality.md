@@ -25,4 +25,4 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 
 Schema freshness failures usually mean the runtime schema output changed; regenerate with `just update-schema` only if the schema change is intended. Coverage failures should be fixed by adding meaningful tests, not by lowering thresholds. If `just check-commit` fails before any commit exists because `.git/COMMIT_EDITMSG` is missing or stale, create the commit normally and let the commit-msg hook validate the actual message.
 
-Keep stdout and stderr from project tools deterministic. If a gate reports unstable output, treat that as a product-contract problem rather than noisy tooling. The machine spirits dislike nondeterminism, and for once they are right.
+Keep stdout and stderr from project tools deterministic. If a gate reports unstable output, treat that as a product-contract problem rather than noisy tooling.

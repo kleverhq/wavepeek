@@ -2,13 +2,26 @@
 
 - `wavepeek` is a Rust CLI for deterministic `.vcd` and `.fst` waveform inspection.
 - Development is container-first; run repository gates in the devcontainer/CI image.
-- Development tasks are run through root `justfile` recipes, not `make`.
+- Development tasks are run through root `justfile` recipes.
 - Standard quality gate: `just ci`.
 - Local pre-handoff gate: `just check`.
 - Use repository-root `tmp/` for disposable scratch, logs, and ad hoc outputs, but never delete arbitrary existing files there because they may belong to the user or another agent.
 - Treat binary waveform dumps such as `.fst` as binary data; inspect them through `wavepeek`, fixtures, or purpose-built tools rather than text-reading them directly.
 - Do not bypass hooks unless the user explicitly requests it.
 - Read the nearest applicable `AGENTS.md` before editing files; local breadcrumbs may contain extra rules and gotchas.
+
+## Development
+
+Maintainer workflow lives under `docs/dev/`:
+
+- `docs/dev/environment.md` for devcontainer, CI image, Codex, fixtures, and `tmp/`.
+- `docs/dev/quality.md` for `just check`, `just ci`, coverage, and hooks.
+- `docs/dev/testing.md` for test strategy and fixtures.
+- `docs/dev/style.md` for Rust, CLI, output, and docs conventions.
+- `docs/dev/benchmarking.md` for E2E and expression benchmark workflows.
+- `docs/dev/automation.md` for CI, `justfile`, pre-commit, and helper tools.
+- `docs/dev/git.md`, `docs/dev/changelog.md`, and `docs/dev/release.md` for contribution hygiene and releases.
+- `docs/dev/architecture.md` for internal module boundaries.
 
 ## Map
 

@@ -9,7 +9,7 @@ Temporary FSDB branch collateral: architecture notes, Verdi research notes, comm
 - FSDB integration architecture proposal: `arch.md`
 - Local Verdi installation map for FSDB work: `verdi_home_map.md`
 - Command-specific FSDB Reader API research: `cmd_info.md`, `cmd_scope.md`, `cmd_signal.md`, `cmd_value.md`, `cmd_change.md`, `cmd_property.md`
-- Active FSDB execution plan: `plans/active/2026-05-28-fsdb-hardening-performance/PLAN.md`
+- Completed FSDB execution plans: `plans/completed/`
 
 ## Local Guidance
 

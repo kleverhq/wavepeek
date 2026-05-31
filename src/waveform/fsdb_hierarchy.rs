@@ -152,6 +152,7 @@ pub(super) struct FsdbSignalInfo {
     width: Option<u32>,
     idcode: u64,
     value_encoding: FsdbValueEncoding,
+    datatype_kind: Option<RawDatatypeKind>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -238,10 +239,13 @@ impl FsdbHierarchyBuilder {
         let (scope_index, name) = self.scope_for_signal_name(scope_index, name);
         let path = format!("{}.{}", self.scopes[scope_index].path, name);
 
+        let datatype_kind = record
+            .datatype_id
+            .and_then(|datatype_id| self.datatypes.get(&datatype_id).copied());
         let kind = self
-            .signal_kind_alias(record.kind, record.datatype_id)
+            .signal_kind_alias(record.kind, datatype_kind)
             .to_string();
-        let value_encoding = self.signal_value_encoding(record.value_encoding, record.datatype_id);
+        let value_encoding = self.signal_value_encoding(record.value_encoding, datatype_kind);
         let signal_index = self.signals.len();
         self.signals.push(FsdbSignalInfo {
             name,
@@ -250,6 +254,7 @@ impl FsdbHierarchyBuilder {
             width,
             idcode: record.idcode,
             value_encoding,
+            datatype_kind,
         });
         self.signal_by_path.entry(path).or_insert(signal_index);
         self.scopes[scope_index].signals.push(signal_index);
@@ -339,10 +344,13 @@ impl FsdbHierarchyBuilder {
         }
     }
 
-    fn signal_kind_alias(&self, raw_kind: RawSignalKind, datatype_id: Option<u32>) -> &'static str {
-        if let Some(datatype_id) = datatype_id
-            && let Some(datatype_kind) = self.datatypes.get(&datatype_id)
-            && let Some(alias) = datatype_signal_kind_alias(*datatype_kind)
+    fn signal_kind_alias(
+        &self,
+        raw_kind: RawSignalKind,
+        datatype_kind: Option<RawDatatypeKind>,
+    ) -> &'static str {
+        if let Some(datatype_kind) = datatype_kind
+            && let Some(alias) = datatype_signal_kind_alias(datatype_kind)
         {
             return alias;
         }
@@ -352,16 +360,14 @@ impl FsdbHierarchyBuilder {
     fn signal_value_encoding(
         &self,
         raw_encoding: FsdbValueEncoding,
-        datatype_id: Option<u32>,
+        datatype_kind: Option<RawDatatypeKind>,
     ) -> FsdbValueEncoding {
-        if let Some(datatype_id) = datatype_id
-            && let Some(datatype_kind) = self.datatypes.get(&datatype_id)
-        {
-            if datatype_forces_unsupported_value(*datatype_kind) {
+        if let Some(datatype_kind) = datatype_kind {
+            if datatype_forces_unsupported_value(datatype_kind) {
                 return FsdbValueEncoding::Unsupported;
             }
             if raw_encoding == FsdbValueEncoding::DatatypeCandidate
-                && datatype_supports_bit_vector_value(*datatype_kind)
+                && datatype_supports_bit_vector_value(datatype_kind)
             {
                 return FsdbValueEncoding::BitVector;
             }
@@ -565,12 +571,28 @@ fn expr_type_from_signal(signal: &FsdbSignalInfo) -> ExprType {
             enum_type_id: None,
             enum_labels: None,
         },
-        "byte" => integer_expr_type(IntegerLikeKind::Byte, 8),
-        "short_int" => integer_expr_type(IntegerLikeKind::Shortint, 16),
-        "int" => integer_expr_type(IntegerLikeKind::Int, 32),
-        "long_int" => integer_expr_type(IntegerLikeKind::Longint, 64),
-        "integer" => integer_expr_type(IntegerLikeKind::Integer, 32),
-        "time" => integer_expr_type(IntegerLikeKind::Time, 64),
+        "byte" => integer_expr_type(
+            IntegerLikeKind::Byte,
+            8,
+            !matches!(signal.datatype_kind, Some(RawDatatypeKind::UByte)),
+        ),
+        "short_int" => integer_expr_type(
+            IntegerLikeKind::Shortint,
+            16,
+            !matches!(signal.datatype_kind, Some(RawDatatypeKind::ShortUInt)),
+        ),
+        "int" => integer_expr_type(
+            IntegerLikeKind::Int,
+            32,
+            !matches!(signal.datatype_kind, Some(RawDatatypeKind::UInt)),
+        ),
+        "long_int" => integer_expr_type(
+            IntegerLikeKind::Longint,
+            64,
+            !matches!(signal.datatype_kind, Some(RawDatatypeKind::LongUInt)),
+        ),
+        "integer" => integer_expr_type(IntegerLikeKind::Integer, 32, true),
+        "time" => integer_expr_type(IntegerLikeKind::Time, 64, false),
         "enum" => ExprType {
             kind: ExprTypeKind::EnumCore,
             storage,
@@ -592,13 +614,13 @@ fn expr_type_from_signal(signal: &FsdbSignalInfo) -> ExprType {
     }
 }
 
-fn integer_expr_type(kind: IntegerLikeKind, width: u32) -> ExprType {
+fn integer_expr_type(kind: IntegerLikeKind, width: u32, is_signed: bool) -> ExprType {
     ExprType {
         kind: ExprTypeKind::IntegerLike(kind),
         storage: ExprStorage::Scalar,
         width,
         is_four_state: matches!(kind, IntegerLikeKind::Integer | IntegerLikeKind::Time),
-        is_signed: !matches!(kind, IntegerLikeKind::Time),
+        is_signed,
         enum_type_id: None,
         enum_labels: None,
     }
@@ -1147,6 +1169,72 @@ mod tests {
             index.signal_value_encoding("top.state").unwrap(),
             FsdbValueEncoding::BitVector
         );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_datatype_signedness_drives_expression_types() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        for (idcode, kind) in [
+            (31, RawDatatypeKind::Byte),
+            (32, RawDatatypeKind::UByte),
+            (33, RawDatatypeKind::ShortInt),
+            (34, RawDatatypeKind::ShortUInt),
+            (35, RawDatatypeKind::Int),
+            (36, RawDatatypeKind::UInt),
+            (37, RawDatatypeKind::LongInt),
+            (38, RawDatatypeKind::LongUInt),
+        ] {
+            builder
+                .datatype(RawDatatypeRecord { idcode, kind })
+                .unwrap();
+        }
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        for (idcode, datatype_id, name, left, right) in [
+            (1, 31, "sbyte[7:0]", 7, 0),
+            (2, 32, "ubyte[7:0]", 7, 0),
+            (3, 33, "sshort[15:0]", 15, 0),
+            (4, 34, "ushort[15:0]", 15, 0),
+            (5, 35, "sint[31:0]", 31, 0),
+            (6, 36, "uint[31:0]", 31, 0),
+            (7, 37, "slong[63:0]", 63, 0),
+            (8, 38, "ulong[63:0]", 63, 0),
+        ] {
+            let mut raw = signal_with_range(idcode, name, RawSignalKind::Unknown, left, right);
+            raw.datatype_id = Some(datatype_id);
+            builder.signal(raw).unwrap();
+        }
+        let index = builder.finish();
+
+        for (path, kind, is_signed, public_kind) in [
+            ("top.sbyte", IntegerLikeKind::Byte, true, "byte"),
+            ("top.ubyte", IntegerLikeKind::Byte, false, "byte"),
+            ("top.sshort", IntegerLikeKind::Shortint, true, "short_int"),
+            ("top.ushort", IntegerLikeKind::Shortint, false, "short_int"),
+            ("top.sint", IntegerLikeKind::Int, true, "int"),
+            ("top.uint", IntegerLikeKind::Int, false, "int"),
+            ("top.slong", IntegerLikeKind::Longint, true, "long_int"),
+            ("top.ulong", IntegerLikeKind::Longint, false, "long_int"),
+        ] {
+            let resolved = index.resolve_expr_signal(path).unwrap();
+            assert_eq!(
+                resolved.expr_type.kind,
+                ExprTypeKind::IntegerLike(kind),
+                "{path}"
+            );
+            assert_eq!(resolved.expr_type.is_signed, is_signed, "{path}");
+            assert!(!resolved.expr_type.is_four_state, "{path}");
+            assert_eq!(
+                index
+                    .signals_in_scope("top")
+                    .unwrap()
+                    .into_iter()
+                    .find(|signal| signal.path == path)
+                    .unwrap()
+                    .kind,
+                public_kind,
+                "{path}"
+            );
+        }
     }
 
     #[test]

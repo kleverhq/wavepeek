@@ -10,7 +10,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: `value`, `change`, and `property` can sample a non-final same-time value and diverge from deterministic VCD/FST behavior.
    - Suggested fix: use glitch/sequence-aware traversal to select the final value at `query_time_raw`, then add FSDB/VCD parity tests for same-time updates.
 
-2. APPROVED `native/fsdb/wavepeek_fsdb_shim.cpp:1220` — datatype traversal reads only datatype block index `0` via `ffrReadDataTypeDefByBlkIdx2`.
+2. DONE `native/fsdb/wavepeek_fsdb_shim.cpp:1220` — datatype traversal reads only datatype block index `0` via `ffrReadDataTypeDefByBlkIdx2`.
    - Impact: FSDBs with datatype definitions in later blocks can miss enum/SV datatype records, leading to misclassified or unsupported signals.
    - Suggested fix: iterate all datatype-definition blocks, or use a traversal API that covers every block before reading the scope/var tree.
 

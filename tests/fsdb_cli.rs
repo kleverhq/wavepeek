@@ -303,6 +303,30 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
     assert!(!roots.is_empty(), "bundled FSDB should expose root scopes");
     assert!(roots.iter().all(|entry| entry["depth"] == 0));
 
+    let root_scope = roots[0]["path"]
+        .as_str()
+        .expect("root scope path should be a string");
+    let datatype_signals = run_json_success(&[
+        "signal",
+        "--waves",
+        fixture.as_str(),
+        "--scope",
+        root_scope,
+        "--recursive",
+        "--max",
+        "unlimited",
+        "--json",
+    ]);
+    let datatype_signal_entries = datatype_signals["data"]
+        .as_array()
+        .expect("datatype signal data should be array");
+    assert!(
+        datatype_signal_entries
+            .iter()
+            .any(|entry| entry["kind"].as_str() == Some("enum")),
+        "bundled FSDB should expose datatype-backed enum signals"
+    );
+
     let (signal_scope, signals) = discover_bundled_signal_listing(&fixture);
     let signals_again = signal_listing(&fixture, signal_scope.as_str());
     assert_eq!(signals, signals_again);

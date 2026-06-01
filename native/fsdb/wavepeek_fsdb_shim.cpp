@@ -7,6 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <exception>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <new>
@@ -455,6 +456,7 @@ struct tree_callback_context {
     wp_fsdb_tree_callback callback;
     void *user;
     bool aborted;
+    std::size_t datatype_callbacks;
 };
 
 bool_T emit_tree_event(
@@ -483,6 +485,10 @@ bool_T emit_tree_event(
 
 bool_T datatype_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *tree_cb_data) {
     auto *context = static_cast<tree_callback_context *>(client_data);
+    if (context != nullptr) {
+        ++context->datatype_callbacks;
+    }
+
     uint32_t idcode = 0;
     if (!datatype_id_from_record(cb_type, tree_cb_data, &idcode)) {
         return static_cast<bool_T>(1);
@@ -492,6 +498,58 @@ bool_T datatype_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *t
     record.idcode = idcode;
     record.kind = static_cast<uint32_t>(map_datatype_kind(cb_type));
     return emit_tree_event(context, WP_FSDB_TREE_EVENT_DATATYPE, nullptr, nullptr, &record);
+}
+
+wp_fsdb_status read_datatype_definitions(
+    ffrObject *object,
+    tree_callback_context *context,
+    char **error_message
+) {
+    if (object == nullptr || context == nullptr) {
+        return fail(error_message, "FSDB Reader: datatype traversal received a null argument");
+    }
+    if (!object->ffrHasDataTypeDef()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    uint_T next_block_index = 0;
+    while (true) {
+        const uint_T requested_block_index = next_block_index;
+        const std::size_t callbacks_before = context->datatype_callbacks;
+        uint_T last_block_index = requested_block_index;
+        if (object->ffrReadDataTypeDefByBlkIdx2(
+                datatype_tree_callback,
+                context,
+                last_block_index
+            ) != FSDB_RC_SUCCESS) {
+            if (context->aborted) {
+                return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+            }
+            return fail(error_message, "FSDB Reader: failed to read FSDB datatype definitions");
+        }
+        if (context->aborted) {
+            return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
+        }
+        if (context->datatype_callbacks == callbacks_before) {
+            return WP_FSDB_STATUS_OK;
+        }
+        if (last_block_index < requested_block_index) {
+            return fail(
+                error_message,
+                "FSDB Reader: datatype traversal returned a lower block index"
+            );
+        }
+        // The Reader reports the greatest datatype block traversed. If one
+        // call advanced beyond the requested block, it covered the intervening
+        // blocks too; otherwise advance explicitly instead of rereading block 0.
+        if (last_block_index > requested_block_index) {
+            return WP_FSDB_STATUS_OK;
+        }
+        if (next_block_index == std::numeric_limits<uint_T>::max()) {
+            return fail(error_message, "FSDB Reader: datatype block index overflow");
+        }
+        next_block_index += 1;
+    }
 }
 
 bool_T scope_var_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *tree_cb_data) {
@@ -1372,26 +1430,14 @@ extern "C" wp_fsdb_status wp_fsdb_read_scope_var_tree(
         scoped_output_suppressor output_suppressor;
         suppress_reader_messages();
 
-        tree_callback_context context{callback, user, false};
+        tree_callback_context context{callback, user, false, 0};
         // The Reader invokes tree callbacks synchronously while stdout/stderr are
         // suppressed process-wide. Keep the native lock held for the whole call;
         // it is recursive so a future callback-side Reader helper cannot
         // deadlock the same thread, but callback bodies should still stay small.
-        if (reader->object->ffrHasDataTypeDef()) {
-            uint_T block_index = 0;
-            if (reader->object->ffrReadDataTypeDefByBlkIdx2(
-                    datatype_tree_callback,
-                    &context,
-                    block_index
-                ) != FSDB_RC_SUCCESS) {
-                if (context.aborted) {
-                    return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
-                }
-                return fail(error_message, "FSDB Reader: failed to read FSDB datatype definitions");
-            }
-            if (context.aborted) {
-                return fail(error_message, "FSDB Reader: hierarchy traversal aborted by callback");
-            }
+        if (read_datatype_definitions(reader->object, &context, error_message) !=
+            WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
         }
 
         if (reader->object->ffrReadScopeVarTree2(scope_var_tree_callback, &context) != FSDB_RC_SUCCESS) {

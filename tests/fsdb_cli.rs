@@ -459,6 +459,91 @@ fn fsdb_value_samples_exact_transitions_and_dump_end() {
 }
 
 #[test]
+fn fsdb_value_change_and_property_use_final_same_time_update() {
+    let dir = tempfile::tempdir().expect("tempdir should be created");
+    let fsdb_fixture = path_str(&convert_vcd_fixture(dir.path(), "same_time_updates.vcd"));
+    let vcd_fixture = path_str(&fixture_path("same_time_updates.vcd"));
+
+    for time in ["5ns", "7ns"] {
+        let args = [
+            "value",
+            "--scope",
+            "top",
+            "--signals",
+            "glitch,bus",
+            "--at",
+            time,
+            "--json",
+        ];
+        let fsdb_value = run_json_success_with_waves(fsdb_fixture.as_str(), &args);
+        let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
+        assert_eq!(fsdb_value["data"], vcd_value["data"]);
+        assert_eq!(
+            fsdb_value["data"]["signals"],
+            json!([
+                {"path": "top.glitch", "value": "1'h1"},
+                {"path": "top.bus", "value": "2'h2"}
+            ])
+        );
+    }
+
+    let change_args = [
+        "change",
+        "--scope",
+        "top",
+        "--signals",
+        "glitch,bus",
+        "--from",
+        "0ns",
+        "--to",
+        "10ns",
+        "--on",
+        "*",
+        "--max",
+        "unlimited",
+        "--json",
+    ];
+    let fsdb_change = run_json_success_with_waves(fsdb_fixture.as_str(), &change_args);
+    let vcd_change = run_json_success_with_waves(vcd_fixture.as_str(), &change_args);
+    assert_eq!(fsdb_change["data"], vcd_change["data"]);
+    assert_eq!(
+        fsdb_change["data"],
+        json!([
+            {"time": "5ns", "signals": [
+                {"path": "top.glitch", "value": "1'h1"},
+                {"path": "top.bus", "value": "2'h2"}
+            ]},
+            {"time": "10ns", "signals": [
+                {"path": "top.glitch", "value": "1'h0"},
+                {"path": "top.bus", "value": "2'h0"}
+            ]}
+        ])
+    );
+
+    let property_args = [
+        "property",
+        "--scope",
+        "top",
+        "--eval",
+        "glitch && bus == 2'h2",
+        "--from",
+        "0ns",
+        "--to",
+        "10ns",
+        "--capture",
+        "match",
+        "--json",
+    ];
+    let fsdb_property = run_json_success_with_waves(fsdb_fixture.as_str(), &property_args);
+    let vcd_property = run_json_success_with_waves(vcd_fixture.as_str(), &property_args);
+    assert_eq!(fsdb_property["data"], vcd_property["data"]);
+    assert_eq!(
+        fsdb_property["data"],
+        json!([{ "time": "5ns", "kind": "match" }])
+    );
+}
+
+#[test]
 fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.value_vectors());

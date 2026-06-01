@@ -12,6 +12,7 @@
 #include <new>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <unordered_set>
 #include <vector>
 
@@ -662,6 +663,173 @@ bool bit_value_to_char(byte_T value, char *out) {
     }
 }
 
+struct vc_position {
+    uint64_t time_raw = 0;
+    fsdbSeqNum seq_num = FSDB_EMPTY_SEQ_NUM;
+};
+
+struct sampled_bit_vector {
+    bool has_value = false;
+    uint64_t time_raw = 0;
+    fsdbSeqNum seq_num = FSDB_EMPTY_SEQ_NUM;
+    std::string bits;
+};
+
+wp_fsdb_status read_current_vc_position(
+    ffrVCTrvsHdl handle,
+    vc_position *position,
+    char **error_message
+) {
+    if (handle == nullptr || position == nullptr) {
+        return fail(error_message, "FSDB Reader: value-change position read received a null argument");
+    }
+
+    fsdbTag64 tag{};
+    if (handle->ffrGetXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        return fail(error_message, "FSDB Reader: failed to read value-change time tag");
+    }
+
+    fsdbSeqNum seq_num = FSDB_EMPTY_SEQ_NUM;
+    if (handle->ffrGetSeqNum(&seq_num) != FSDB_RC_SUCCESS) {
+        seq_num = FSDB_EMPTY_SEQ_NUM;
+    }
+
+    position->time_raw = tag64_to_u64(tag);
+    position->seq_num = seq_num;
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status decode_current_vc_bits(
+    ffrVCTrvsHdl handle,
+    uint_T bit_width,
+    std::string *bits,
+    char **error_message
+) {
+    if (handle == nullptr || bits == nullptr) {
+        return fail(error_message, "FSDB Reader: value-change decode received a null argument");
+    }
+
+    byte_T *value_change = nullptr;
+    if (handle->ffrGetVC(&value_change) != FSDB_RC_SUCCESS || value_change == nullptr) {
+        return fail(error_message, "FSDB Reader: failed to read value-change data");
+    }
+
+    bits->assign(static_cast<std::size_t>(bit_width), '\0');
+    for (uint_T bit_index = 0; bit_index < bit_width; ++bit_index) {
+        if (!bit_value_to_char(value_change[bit_index], &(*bits)[bit_index])) {
+            return fail(error_message, "FSDB Reader: signal has unsupported bit value encoding");
+        }
+    }
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status capture_current_bit_vector_sample(
+    ffrVCTrvsHdl handle,
+    uint_T bit_width,
+    const vc_position &position,
+    sampled_bit_vector *sample,
+    char **error_message
+) {
+    if (sample == nullptr) {
+        return fail(error_message, "FSDB Reader: sample capture received a null output");
+    }
+
+    std::string bits;
+    if (decode_current_vc_bits(handle, bit_width, &bits, error_message) != WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
+    }
+
+    sample->has_value = true;
+    sample->time_raw = position.time_raw;
+    sample->seq_num = position.seq_num;
+    sample->bits.swap(bits);
+    return WP_FSDB_STATUS_OK;
+}
+
+bool position_is_not_before_selected(
+    const vc_position &candidate,
+    const sampled_bit_vector &selected
+) {
+    if (!selected.has_value) {
+        return true;
+    }
+    if (candidate.time_raw != selected.time_raw) {
+        return candidate.time_raw > selected.time_raw;
+    }
+    if (candidate.seq_num != FSDB_EMPTY_SEQ_NUM && selected.seq_num != FSDB_EMPTY_SEQ_NUM) {
+        return candidate.seq_num >= selected.seq_num;
+    }
+    return true;
+}
+
+wp_fsdb_status read_final_sample_at_or_before(
+    ffrVCTrvsHdl handle,
+    uint64_t query_time_raw,
+    uint_T bit_width,
+    sampled_bit_vector *sample,
+    char **error_message
+) {
+    if (handle == nullptr || sample == nullptr) {
+        return fail(error_message, "FSDB Reader: final sample read received a null argument");
+    }
+
+    sample->has_value = false;
+    sample->bits.clear();
+
+    if (!handle->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    fsdbTag64 aligned_tag = u64_to_tag64(query_time_raw);
+    int glitch_num = 0;
+    if (handle->ffrGotoXTag(static_cast<void *>(&aligned_tag), &glitch_num) != FSDB_RC_SUCCESS) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    vc_position position;
+    if (read_current_vc_position(handle, &position, error_message) != WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
+    }
+    if (position.time_raw > query_time_raw) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    // Ask the Reader to expose glitch metadata, then drain only records at the
+    // aligned timestamp. Some dumps surface equal-time updates as separate
+    // positions; sequence numbers break ties when present, and traversal order
+    // is the fallback for older files. Stop as soon as time advances so normal
+    // sampling stays one-position work after ffrGotoXTag().
+    const uint64_t aligned_time_raw = position.time_raw;
+    sampled_bit_vector selected;
+    while (position.time_raw == aligned_time_raw) {
+        if (position_is_not_before_selected(position, selected)) {
+            sampled_bit_vector candidate;
+            if (capture_current_bit_vector_sample(
+                    handle,
+                    bit_width,
+                    position,
+                    &candidate,
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+            selected = std::move(candidate);
+        }
+
+        if (handle->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            break;
+        }
+        if (read_current_vc_position(handle, &position, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+    }
+
+    if (selected.has_value) {
+        *sample = std::move(selected);
+    }
+    return WP_FSDB_STATUS_OK;
+}
+
 wp_fsdb_status fill_sample_record_from_handle(
     ffrVCTrvsHdl handle,
     uint64_t idcode,
@@ -689,35 +857,29 @@ wp_fsdb_status fill_sample_record_from_handle(
         return fail(error_message, "FSDB Reader: signal has unsupported non-bit-vector encoding");
     }
 
-    fsdbTag64 aligned_tag = u64_to_tag64(query_time_raw);
-    if (handle->ffrGotoXTag(static_cast<void *>(&aligned_tag)) != FSDB_RC_SUCCESS) {
-        return WP_FSDB_STATUS_OK;
+    sampled_bit_vector sample;
+    if (read_final_sample_at_or_before(
+            handle,
+            query_time_raw,
+            bit_width,
+            &sample,
+            error_message
+        ) != WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
     }
-    const uint64_t value_time_raw = tag64_to_u64(aligned_tag);
-    if (value_time_raw > query_time_raw) {
+    if (!sample.has_value) {
         return WP_FSDB_STATUS_OK;
     }
 
-    byte_T *value_change = nullptr;
-    if (handle->ffrGetVC(&value_change) != FSDB_RC_SUCCESS || value_change == nullptr) {
-        return fail(error_message, "FSDB Reader: failed to read value-change data");
-    }
-
-    char *bits = static_cast<char *>(std::malloc(static_cast<std::size_t>(bit_width) + 1));
+    char *bits = static_cast<char *>(std::malloc(sample.bits.size() + 1));
     if (bits == nullptr) {
         return fail(error_message, "FSDB Reader: failed to allocate sampled bit string");
     }
-
-    for (uint_T bit_index = 0; bit_index < bit_width; ++bit_index) {
-        if (!bit_value_to_char(value_change[bit_index], &bits[bit_index])) {
-            std::free(bits);
-            return fail(error_message, "FSDB Reader: signal has unsupported bit value encoding");
-        }
-    }
-    bits[bit_width] = '\0';
+    std::memcpy(bits, sample.bits.data(), sample.bits.size());
+    bits[sample.bits.size()] = '\0';
 
     record->has_value = 1;
-    record->value_time_raw = value_time_raw;
+    record->value_time_raw = sample.time_raw;
     record->bits = bits;
     return WP_FSDB_STATUS_OK;
 }

@@ -6,7 +6,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
 
 ### Medium
 
-1. APPROVED `native/fsdb/wavepeek_fsdb_shim.cpp:693` — FSDB point sampling calls `ffrGotoXTag()` and then `ffrGetVC()` once, without resolving multiple value changes/glitches at the same timestamp.
+1. DONE `native/fsdb/wavepeek_fsdb_shim.cpp:693` — FSDB point sampling calls `ffrGotoXTag()` and then `ffrGetVC()` once, without resolving multiple value changes/glitches at the same timestamp.
    - Impact: `value`, `change`, and `property` can sample a non-final same-time value and diverge from deterministic VCD/FST behavior.
    - Suggested fix: use glitch/sequence-aware traversal to select the final value at `query_time_raw`, then add FSDB/VCD parity tests for same-time updates.
 

@@ -1,6 +1,10 @@
-# Pi Loop Helper
+# Agent Helper Scripts
 
-`pi_loop.py` runs non-interactive `pi` repeatedly with the same prompt.
+This directory holds small optional helpers for orchestrating coding-agent runs.
+
+## `pi_loop.py`
+
+Runs non-interactive `pi` repeatedly with the same prompt. This is useful for iterative review/fix loops where each turn should start without a persisted pi session.
 
 ```bash
 tools/agent/pi_loop.py 5 "review the current diff"

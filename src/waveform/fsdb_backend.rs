@@ -198,13 +198,16 @@ impl FsdbBackend {
         resolved: &ExprResolvedSignal,
         query_time_raw: u64,
     ) -> Result<bool, WavepeekError> {
+        if !matches!(&resolved.expr_type.kind, ExprTypeKind::Event) {
+            return Err(WavepeekError::Internal(format!(
+                "signal '{}' is not a raw event",
+                resolved.path
+            )));
+        }
+
         let cache_key = (resolved.id, query_time_raw);
         if let Some(occurred) = self.event_occurrence_cache.get(&cache_key) {
             return Ok(*occurred);
-        }
-
-        if !matches!(resolved.expr_type.kind, ExprTypeKind::Event) {
-            return Ok(false);
         }
 
         self.raw_metadata()?;
@@ -426,4 +429,80 @@ fn unsupported_signal_value_encoding(path: &str) -> WavepeekError {
     WavepeekError::Signal(format!(
         "signal '{path}' has unsupported non-bit-vector encoding"
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::{Path, PathBuf};
+    use std::process::{Command, Stdio};
+
+    use super::*;
+
+    #[test]
+    fn fsdb_expr_event_occurred_rejects_non_event_signal() {
+        let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
+        let mut backend = FsdbBackend::open(fixture.path()).expect("FSDB fixture should open");
+
+        let tick = backend
+            .resolve_expr_signal("top.tick")
+            .expect("raw event signal should resolve");
+        assert!(matches!(&tick.expr_type.kind, ExprTypeKind::Event));
+        assert!(
+            backend
+                .expr_event_occurred(&tick, 10)
+                .expect("raw event should be queryable")
+        );
+
+        let armed = backend
+            .resolve_expr_signal("top.armed")
+            .expect("ordinary signal should resolve");
+        assert!(!matches!(&armed.expr_type.kind, ExprTypeKind::Event));
+        let error = backend
+            .expr_event_occurred(&armed, 10)
+            .expect_err("ordinary signals must not be queryable as raw events");
+        assert!(
+            error
+                .to_string()
+                .contains("signal 'top.armed' is not a raw event"),
+            "unexpected error: {error}"
+        );
+    }
+
+    struct GeneratedFsdbFixture {
+        _dir: tempfile::TempDir,
+        path: PathBuf,
+    }
+
+    impl GeneratedFsdbFixture {
+        fn from_vcd(name: &str) -> Self {
+            let dir = tempfile::tempdir().expect("tempdir should be created");
+            let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests")
+                .join("fixtures")
+                .join("hand")
+                .join(name);
+            let path = dir.path().join(name.replace(".vcd", ".fsdb"));
+            let converter_output = Command::new("vcd2fsdb")
+                .current_dir(dir.path())
+                .arg(&source)
+                .arg("-o")
+                .arg(&path)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .expect("vcd2fsdb should be available from the Verdi environment");
+            assert!(
+                converter_output.status.success(),
+                "vcd2fsdb should convert {}; stdout:\n{}\nstderr:\n{}",
+                source.display(),
+                String::from_utf8_lossy(&converter_output.stdout),
+                String::from_utf8_lossy(&converter_output.stderr)
+            );
+            Self { _dir: dir, path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
+        }
+    }
 }

@@ -192,6 +192,7 @@ check-fsdb-build: require-verdi
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
     @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
+    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
     VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli
 
 # Run auxiliary Python/unit test suites

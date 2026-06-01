@@ -26,7 +26,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: scalar array elements such as `mem[3]` can collapse to `mem`; escaped identifiers containing `.` or `/` can be split into synthetic scopes after `/` is rewritten to `.`.
    - Suggested fix: preserve an escaped/local-name flag and only strip bit-select suffixes or synthesize scopes when FSDB metadata proves the name is a packed bit select or flattened hierarchy artifact.
 
-6. APPROVED `src/waveform/fsdb_backend.rs:206` — FSDB `expr_event_occurred` returns `Ok(false)` for non-event signals, while the Wellen backend reports an error.
+6. DONE `src/waveform/fsdb_backend.rs:206` — FSDB `expr_event_occurred` returns `Ok(false)` for non-event signals, while the Wellen backend reports an error.
    - Impact: user mistakes such as using a non-event signal as a raw event can silently produce empty `change`/`property` results instead of a diagnostic.
    - Suggested fix: return a `WavepeekError` matching the Wellen “is not a raw event” behavior before caching/querying.
 

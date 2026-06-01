@@ -507,6 +507,7 @@ unsafe fn handle_hierarchy_event(
                 kind: raw_signal_kind(signal.kind),
                 left,
                 right,
+                packed_component: signal.packed_component != 0,
                 datatype_id,
                 value_encoding: raw_value_encoding(signal.value_encoding),
             })?;
@@ -849,6 +850,7 @@ mod ffi {
         pub(super) has_datatype_id: c_int,
         pub(super) datatype_id: c_uint,
         pub(super) kind: c_uint,
+        pub(super) packed_component: c_int,
         pub(super) value_encoding: c_uint,
     }
 

@@ -22,7 +22,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: hierarchy traversal can collapse distinct scopes or show repeated signal paths that resolve to a different underlying idcode.
    - Suggested fix: detect/report ambiguous canonical path collisions, or preserve unique instances with unambiguous public paths; do not append duplicate signal entries that cannot be resolved consistently.
 
-5. APPROVED `src/waveform/fsdb_hierarchy.rs:239`, `src/waveform/fsdb_hierarchy.rs:636`, and `src/waveform/fsdb_hierarchy.rs:671` — signal-name normalization rewrites legal local names too aggressively.
+5. DONE `src/waveform/fsdb_hierarchy.rs:239`, `src/waveform/fsdb_hierarchy.rs:636`, and `src/waveform/fsdb_hierarchy.rs:671` — signal-name normalization rewrites legal local names too aggressively.
    - Impact: scalar array elements such as `mem[3]` can collapse to `mem`; escaped identifiers containing `.` or `/` can be split into synthetic scopes after `/` is rewritten to `.`.
    - Suggested fix: preserve an escaped/local-name flag and only strip bit-select suffixes or synthesize scopes when FSDB metadata proves the name is a packed bit select or flattened hierarchy artifact.
 

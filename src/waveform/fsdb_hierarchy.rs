@@ -103,6 +103,7 @@ pub(super) struct RawSignalRecord {
     pub(super) kind: RawSignalKind,
     pub(super) left: Option<i32>,
     pub(super) right: Option<i32>,
+    pub(super) packed_component: bool,
     pub(super) datatype_id: Option<u32>,
     pub(super) value_encoding: FsdbValueEncoding,
 }
@@ -172,6 +173,13 @@ struct StackEntry {
     scope_index: Option<usize>,
     hidden: bool,
     raw_components: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct NormalizedSignalName {
+    name: String,
+    width: Option<u32>,
+    synthetic_scopes: Vec<String>,
 }
 
 impl FsdbHierarchyBuilder {
@@ -274,9 +282,14 @@ impl FsdbHierarchyBuilder {
             return Ok(());
         };
 
-        let (name, range_width) =
-            normalize_signal_name_and_width(record.name.as_str(), record.left, record.right)?;
-        let (scope_index, name) = self.scope_for_signal_name(scope_index, name)?;
+        let normalized_name = normalize_signal_name_and_width(
+            record.name.as_str(),
+            record.left,
+            record.right,
+            record.packed_component,
+        )?;
+        let range_width = normalized_name.width;
+        let (scope_index, name) = self.scope_for_signal_name(scope_index, normalized_name)?;
         let path = format!("{}.{}", self.scopes[scope_index].path, name);
 
         let datatype = record
@@ -320,25 +333,13 @@ impl FsdbHierarchyBuilder {
     fn scope_for_signal_name(
         &mut self,
         scope_index: usize,
-        name: String,
+        normalized: NormalizedSignalName,
     ) -> Result<(usize, String), WavepeekError> {
-        let mut parts = name.rsplitn(2, '.');
-        let signal_name = parts.next().unwrap_or(name.as_str());
-        let Some(scope_prefix) = parts.next() else {
-            return Ok((scope_index, name));
-        };
-        if scope_prefix.is_empty() || signal_name.is_empty() {
-            return Ok((scope_index, name));
-        }
-
         let mut parent = scope_index;
-        for part in scope_prefix.split('.') {
-            if part.is_empty() {
-                return Ok((scope_index, name));
-            }
-            parent = self.synthetic_scope(parent, part)?;
+        for part in &normalized.synthetic_scopes {
+            parent = self.synthetic_scope(parent, part.as_str())?;
         }
-        Ok((parent, signal_name.to_string()))
+        Ok((parent, normalized.name))
     }
 
     fn synthetic_scope(&mut self, parent: usize, name: &str) -> Result<usize, WavepeekError> {
@@ -843,43 +844,57 @@ fn normalize_signal_name_and_width(
     raw_name: &str,
     left: Option<i32>,
     right: Option<i32>,
-) -> Result<(String, Option<u32>), WavepeekError> {
-    let raw_name = normalize_name(raw_name)?;
+    packed_component: bool,
+) -> Result<NormalizedSignalName, WavepeekError> {
+    let raw_name = raw_hierarchy_name(raw_name)?;
+    let (mut name, was_escaped) = normalize_vcd_escaped_identifier(raw_name.as_str());
+    if !was_escaped {
+        name = name.replace('/', ".");
+    }
+
     let width = match (left, right) {
         (Some(left), Some(right)) => Some(bit_width(left, right)?),
         _ => None,
     };
-    let name = match (left, right) {
-        (Some(left), Some(right)) => {
-            let suffix = format!("[{left}:{right}]");
-            raw_name
-                .strip_suffix(suffix.as_str())
-                .unwrap_or(raw_name.as_str())
-                .to_string()
+    let mut synthetic_scopes = Vec::new();
+    if let (Some(left), Some(right)) = (left, right) {
+        if !was_escaped && left != right {
+            name = strip_packed_range_suffix(name.as_str(), left, right);
         }
-        _ => raw_name,
-    };
-    let (mut name, was_escaped) = normalize_vcd_escaped_identifier(name.as_str());
-    if was_escaped {
-        if width == Some(1) {
-            name = strip_scalar_bit_select_suffix(name.as_str()).unwrap_or(name);
-        } else if let (Some(left), Some(right)) = (left, right)
-            && left == right
+        if left == right && packed_component {
+            name = strip_packed_component_bit_suffix(name.as_str(), left);
+        }
+        if width.is_some_and(|width| width > 1)
+            && let Some((base, suffix)) = split_numeric_index_suffix(name.as_str())
+            && (!was_escaped || (!base.contains('.') && !base.contains('/')))
         {
-            name = normalize_scalar_bit_select_name(name.as_str(), left).unwrap_or(name);
-        } else {
-            name = normalize_scalar_bit_select_name_from_suffix(name.as_str()).unwrap_or(name);
+            synthetic_scopes.push(base.to_string());
+            name = suffix.to_string();
         }
-    } else {
-        name = strip_scalar_bit_select_suffix(name.as_str()).unwrap_or(name);
     }
+
+    if !was_escaped {
+        split_unescaped_synthetic_scope_components(&mut synthetic_scopes);
+        if synthetic_scopes.is_empty()
+            && let Some((scope_components, signal_name)) =
+                split_unescaped_flattened_signal_name(name.as_str())
+        {
+            synthetic_scopes = scope_components;
+            name = signal_name;
+        }
+    }
+
     let name = name.trim().to_string();
-    if name.is_empty() {
+    if name.is_empty() || synthetic_scopes.iter().any(|part| part.trim().is_empty()) {
         return Err(WavepeekError::File(
             "FSDB Reader hierarchy emitted an empty signal name".to_string(),
         ));
     }
-    Ok((name, width))
+    Ok(NormalizedSignalName {
+        name,
+        width,
+        synthetic_scopes,
+    })
 }
 
 fn normalize_vcd_escaped_identifier(name: &str) -> (String, bool) {
@@ -889,12 +904,27 @@ fn normalize_vcd_escaped_identifier(name: &str) -> (String, bool) {
     (rest.trim_end().to_string(), true)
 }
 
-fn normalize_scalar_bit_select_name(name: &str, bit: i32) -> Option<String> {
-    let suffix = format!("[{bit}]");
-    scalar_bit_select_base(name, suffix.as_str()).map(|base| format!("{base}.{suffix}"))
+fn strip_packed_range_suffix(name: &str, left: i32, right: i32) -> String {
+    let suffix = format!("[{left}:{right}]");
+    name.strip_suffix(suffix.as_str())
+        .filter(|base| !base.is_empty())
+        .unwrap_or(name)
+        .to_string()
 }
 
-fn normalize_scalar_bit_select_name_from_suffix(name: &str) -> Option<String> {
+fn strip_packed_component_bit_suffix(name: &str, bit: i32) -> String {
+    for suffix in [format!("[{bit}]"), format!("[{bit}:{bit}]")] {
+        if let Some(base) = name
+            .strip_suffix(suffix.as_str())
+            .filter(|base| !base.is_empty())
+        {
+            return base.to_string();
+        }
+    }
+    name.to_string()
+}
+
+fn split_numeric_index_suffix(name: &str) -> Option<(&str, &str)> {
     let suffix_start = name.rfind('[')?;
     let suffix = name.get(suffix_start..)?;
     if !suffix.ends_with(']') {
@@ -904,20 +934,29 @@ fn normalize_scalar_bit_select_name_from_suffix(name: &str) -> Option<String> {
     if digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
         return None;
     }
-    scalar_bit_select_base(name, suffix).map(|base| format!("{base}.{suffix}"))
+    scalar_bit_select_base(name, suffix).map(|base| (base, suffix))
 }
 
-fn strip_scalar_bit_select_suffix(name: &str) -> Option<String> {
-    let suffix_start = name.rfind('[')?;
-    let suffix = name.get(suffix_start..)?;
-    if !suffix.ends_with(']') {
+fn split_unescaped_synthetic_scope_components(synthetic_scopes: &mut Vec<String>) {
+    *synthetic_scopes = synthetic_scopes
+        .iter()
+        .flat_map(|scope| scope.split('.').map(str::to_string))
+        .collect();
+}
+
+fn split_unescaped_flattened_signal_name(name: &str) -> Option<(Vec<String>, String)> {
+    let (scope_prefix, signal_name) = name.rsplit_once('.')?;
+    if scope_prefix.is_empty() || signal_name.is_empty() {
         return None;
     }
-    let digits = suffix.strip_prefix('[')?.strip_suffix(']')?;
-    if digits.is_empty() || !digits.chars().all(|ch| ch.is_ascii_digit()) {
+    let scope_components = scope_prefix
+        .split('.')
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    if scope_components.iter().any(|part| part.is_empty()) {
         return None;
     }
-    scalar_bit_select_base(name, suffix).map(str::to_string)
+    Some((scope_components, signal_name.to_string()))
 }
 
 fn scalar_bit_select_base<'a>(name: &'a str, suffix: &str) -> Option<&'a str> {
@@ -1278,6 +1317,184 @@ mod tests {
     }
 
     #[test]
+    fn fsdb_hierarchy_preserves_scalar_array_element_suffixes() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        builder
+            .signal(signal(1, "mem[3]", RawSignalKind::Wire))
+            .unwrap();
+        builder
+            .signal(signal_with_range(2, "flags[3]", RawSignalKind::Wire, 0, 0))
+            .unwrap();
+        builder
+            .signal(signal_with_range(3, "flags[0]", RawSignalKind::Wire, 0, 0))
+            .unwrap();
+        builder
+            .signal(signal_with_range(
+                4,
+                "flags[0:0]",
+                RawSignalKind::Wire,
+                0,
+                0,
+            ))
+            .unwrap();
+        let index = builder.finish();
+
+        assert_eq!(
+            index.signals_in_scope("top").unwrap(),
+            vec![
+                SignalEntry {
+                    name: "flags[0:0]".to_string(),
+                    path: "top.flags[0:0]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(1),
+                },
+                SignalEntry {
+                    name: "flags[0]".to_string(),
+                    path: "top.flags[0]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(1),
+                },
+                SignalEntry {
+                    name: "flags[3]".to_string(),
+                    path: "top.flags[3]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(1),
+                },
+                SignalEntry {
+                    name: "mem[3]".to_string(),
+                    path: "top.mem[3]".to_string(),
+                    kind: "wire".to_string(),
+                    width: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_preserves_escaped_local_names_with_separators() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        builder
+            .signal(signal(1, "\\dot.name ", RawSignalKind::Wire))
+            .unwrap();
+        builder
+            .signal(signal(2, "\\slash/name ", RawSignalKind::Wire))
+            .unwrap();
+        builder
+            .signal(signal_with_range(
+                3,
+                "\\wide.dot[0] ",
+                RawSignalKind::Wire,
+                31,
+                0,
+            ))
+            .unwrap();
+        builder
+            .signal(signal_with_range(
+                4,
+                "\\wide/slash[0] ",
+                RawSignalKind::Wire,
+                31,
+                0,
+            ))
+            .unwrap();
+        let index = builder.finish();
+
+        assert_eq!(
+            index.signals_in_scope("top").unwrap(),
+            vec![
+                SignalEntry {
+                    name: "dot.name".to_string(),
+                    path: "top.dot.name".to_string(),
+                    kind: "wire".to_string(),
+                    width: None,
+                },
+                SignalEntry {
+                    name: "slash/name".to_string(),
+                    path: "top.slash/name".to_string(),
+                    kind: "wire".to_string(),
+                    width: None,
+                },
+                SignalEntry {
+                    name: "wide.dot[0]".to_string(),
+                    path: "top.wide.dot[0]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(32),
+                },
+                SignalEntry {
+                    name: "wide/slash[0]".to_string(),
+                    path: "top.wide/slash[0]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(32),
+                },
+            ]
+        );
+        assert!(index.signals_in_scope("top.dot").is_err());
+        assert!(index.signals_in_scope("top.slash").is_err());
+        assert!(index.signals_in_scope("top.wide").is_err());
+    }
+
+    #[test]
+    fn fsdb_hierarchy_preserves_escaped_range_looking_local_names() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        builder
+            .signal(signal_with_range(
+                1,
+                "\\range.dot[31:0] ",
+                RawSignalKind::Wire,
+                31,
+                0,
+            ))
+            .unwrap();
+        let index = builder.finish();
+
+        assert_eq!(
+            index.signals_in_scope("top").unwrap(),
+            vec![SignalEntry {
+                name: "range.dot[31:0]".to_string(),
+                path: "top.range.dot[31:0]".to_string(),
+                kind: "wire".to_string(),
+                width: Some(32),
+            }]
+        );
+        assert!(index.signals_in_scope("top.range").is_err());
+    }
+
+    #[test]
+    fn fsdb_hierarchy_normalizes_metadata_backed_packed_components() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        let mut array_bit = signal_with_range(1, "arr[0][3]", RawSignalKind::Wire, 3, 3);
+        array_bit.packed_component = true;
+        builder.signal(array_bit).unwrap();
+        let mut escaped_scalar_range =
+            signal_with_range(2, "\\q_err[0:0] ", RawSignalKind::Wire, 0, 0);
+        escaped_scalar_range.packed_component = true;
+        builder.signal(escaped_scalar_range).unwrap();
+        let index = builder.finish();
+
+        assert_eq!(
+            index.signals_in_scope("top").unwrap(),
+            vec![
+                SignalEntry {
+                    name: "arr[0]".to_string(),
+                    path: "top.arr[0]".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(1),
+                },
+                SignalEntry {
+                    name: "q_err".to_string(),
+                    path: "top.q_err".to_string(),
+                    kind: "wire".to_string(),
+                    width: Some(1),
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn fsdb_hierarchy_normalizes_packed_range_suffixes() {
         let mut builder = FsdbHierarchyBuilder::new();
         builder.scope(scope("top", RawScopeKind::Module)).unwrap();
@@ -1293,9 +1510,9 @@ mod tests {
                 0,
             ))
             .unwrap();
-        builder
-            .signal(signal_with_range(3, "B[3]", RawSignalKind::Wire, 3, 3))
-            .unwrap();
+        let mut packed_bit = signal_with_range(3, "B[3]", RawSignalKind::Wire, 3, 3);
+        packed_bit.packed_component = true;
+        builder.signal(packed_bit).unwrap();
         builder
             .signal(signal_with_range(
                 4,
@@ -1305,15 +1522,9 @@ mod tests {
                 0,
             ))
             .unwrap();
-        builder
-            .signal(signal_with_range(
-                5,
-                "\\q_err[0] ",
-                RawSignalKind::Wire,
-                0,
-                0,
-            ))
-            .unwrap();
+        let mut escaped_packed_bit = signal_with_range(5, "\\q_err[0] ", RawSignalKind::Wire, 0, 0);
+        escaped_packed_bit.packed_component = true;
+        builder.signal(escaped_packed_bit).unwrap();
         builder
             .signal(signal(6, "\\ready ", RawSignalKind::Wire))
             .unwrap();
@@ -1804,6 +2015,7 @@ mod tests {
             kind,
             left: None,
             right: None,
+            packed_component: false,
             datatype_id: None,
             value_encoding: FsdbValueEncoding::BitVector,
         }
@@ -1822,6 +2034,7 @@ mod tests {
             kind,
             left: Some(left),
             right: Some(right),
+            packed_component: false,
             datatype_id: None,
             value_encoding: FsdbValueEncoding::BitVector,
         }

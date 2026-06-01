@@ -1093,6 +1093,7 @@ bool_T scope_var_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *
         record.datatype_id = var == nullptr ? 0 : static_cast<uint32_t>(var->dtidcode);
         const wp_fsdb_signal_kind signal_kind = var == nullptr ? WP_FSDB_SIGNAL_KIND_UNKNOWN : map_signal_kind(var->type);
         record.kind = static_cast<uint32_t>(signal_kind);
+        record.packed_component = cb_type == FSDB_TREE_CBT_PACKED_COMP_VAR ? 1 : 0;
         record.value_encoding = static_cast<uint32_t>(classify_value_encoding(var, signal_kind));
         return emit_tree_event(context, WP_FSDB_TREE_EVENT_SIGNAL, nullptr, &record, nullptr);
     }

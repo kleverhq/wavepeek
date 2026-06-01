@@ -126,6 +126,7 @@ typedef struct wp_fsdb_signal_record {
     int has_datatype_id;
     uint32_t datatype_id;
     uint32_t kind;
+    int packed_component;
     uint32_t value_encoding;
 } wp_fsdb_signal_record;
 

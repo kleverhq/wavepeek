@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use crate::error::WavepeekError;
-use crate::expr::{ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind};
+use crate::expr::{EnumLabelInfo, ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind};
 
 use super::types::{ExprResolvedSignal, ResolvedSignal, ScopeEntry, SignalEntry, SignalId};
 
@@ -111,6 +111,10 @@ pub(super) struct RawSignalRecord {
 pub(super) struct RawDatatypeRecord {
     pub(super) idcode: u32,
     pub(super) kind: RawDatatypeKind,
+    pub(super) type_name: Option<String>,
+    pub(super) bit_width: Option<u32>,
+    pub(super) is_signed: Option<bool>,
+    pub(super) enum_labels: Option<Vec<EnumLabelInfo>>,
 }
 
 #[derive(Debug)]
@@ -121,7 +125,7 @@ pub(super) struct FsdbHierarchyBuilder {
     signals: Vec<FsdbSignalInfo>,
     roots: Vec<usize>,
     stack: Vec<StackEntry>,
-    datatypes: HashMap<u32, RawDatatypeKind>,
+    datatypes: HashMap<u32, RawDatatypeRecord>,
 }
 
 #[derive(Debug, Clone)]
@@ -152,7 +156,7 @@ pub(super) struct FsdbSignalInfo {
     width: Option<u32>,
     idcode: u64,
     value_encoding: FsdbValueEncoding,
-    datatype_kind: Option<RawDatatypeKind>,
+    datatype: Option<RawDatatypeRecord>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -234,17 +238,20 @@ impl FsdbHierarchyBuilder {
             return Ok(());
         };
 
-        let (name, width) =
+        let (name, range_width) =
             normalize_signal_name_and_width(record.name.as_str(), record.left, record.right)?;
         let (scope_index, name) = self.scope_for_signal_name(scope_index, name);
         let path = format!("{}.{}", self.scopes[scope_index].path, name);
 
-        let datatype_kind = record
+        let datatype = record
             .datatype_id
-            .and_then(|datatype_id| self.datatypes.get(&datatype_id).copied());
+            .and_then(|datatype_id| self.datatypes.get(&datatype_id).cloned());
+        let datatype_kind = datatype.as_ref().map(|datatype| datatype.kind);
         let kind = self
             .signal_kind_alias(record.kind, datatype_kind)
             .to_string();
+        let width =
+            range_width.or_else(|| datatype.as_ref().and_then(|datatype| datatype.bit_width));
         let value_encoding = self.signal_value_encoding(record.value_encoding, datatype_kind);
         let signal_index = self.signals.len();
         self.signals.push(FsdbSignalInfo {
@@ -254,7 +261,7 @@ impl FsdbHierarchyBuilder {
             width,
             idcode: record.idcode,
             value_encoding,
-            datatype_kind,
+            datatype,
         });
         self.signal_by_path.entry(path).or_insert(signal_index);
         self.scopes[scope_index].signals.push(signal_index);
@@ -262,7 +269,7 @@ impl FsdbHierarchyBuilder {
     }
 
     pub(super) fn datatype(&mut self, record: RawDatatypeRecord) -> Result<(), WavepeekError> {
-        self.datatypes.insert(record.idcode, record.kind);
+        self.datatypes.insert(record.idcode, record);
         Ok(())
     }
 
@@ -543,6 +550,8 @@ fn expr_type_from_signal(signal: &FsdbSignalInfo) -> ExprType {
     } else {
         ExprStorage::Scalar
     };
+    let datatype = signal.datatype.as_ref();
+    let datatype_kind = datatype.map(|datatype| datatype.kind);
     match signal.kind.as_str() {
         "real" | "real_time" | "real_parameter" | "short_real" => ExprType {
             kind: ExprTypeKind::Real,
@@ -574,40 +583,36 @@ fn expr_type_from_signal(signal: &FsdbSignalInfo) -> ExprType {
         "byte" => integer_expr_type(
             IntegerLikeKind::Byte,
             8,
-            !matches!(signal.datatype_kind, Some(RawDatatypeKind::UByte)),
+            datatype_signedness(datatype)
+                .unwrap_or(!matches!(datatype_kind, Some(RawDatatypeKind::UByte))),
         ),
         "short_int" => integer_expr_type(
             IntegerLikeKind::Shortint,
             16,
-            !matches!(signal.datatype_kind, Some(RawDatatypeKind::ShortUInt)),
+            datatype_signedness(datatype)
+                .unwrap_or(!matches!(datatype_kind, Some(RawDatatypeKind::ShortUInt))),
         ),
         "int" => integer_expr_type(
             IntegerLikeKind::Int,
             32,
-            !matches!(signal.datatype_kind, Some(RawDatatypeKind::UInt)),
+            datatype_signedness(datatype)
+                .unwrap_or(!matches!(datatype_kind, Some(RawDatatypeKind::UInt))),
         ),
         "long_int" => integer_expr_type(
             IntegerLikeKind::Longint,
             64,
-            !matches!(signal.datatype_kind, Some(RawDatatypeKind::LongUInt)),
+            datatype_signedness(datatype)
+                .unwrap_or(!matches!(datatype_kind, Some(RawDatatypeKind::LongUInt))),
         ),
         "integer" => integer_expr_type(IntegerLikeKind::Integer, 32, true),
         "time" => integer_expr_type(IntegerLikeKind::Time, 64, false),
-        "enum" => ExprType {
-            kind: ExprTypeKind::EnumCore,
-            storage,
-            width,
-            is_four_state: true,
-            is_signed: false,
-            enum_type_id: None,
-            enum_labels: None,
-        },
+        "enum" => enum_expr_type(datatype, storage, width),
         _ => ExprType {
             kind: ExprTypeKind::BitVector,
             storage,
             width,
             is_four_state: !matches!(signal.kind.as_str(), "bit" | "boolean"),
-            is_signed: false,
+            is_signed: datatype_signedness(datatype).unwrap_or(false),
             enum_type_id: None,
             enum_labels: None,
         },
@@ -624,6 +629,96 @@ fn integer_expr_type(kind: IntegerLikeKind, width: u32, is_signed: bool) -> Expr
         enum_type_id: None,
         enum_labels: None,
     }
+}
+
+fn enum_expr_type(
+    datatype: Option<&RawDatatypeRecord>,
+    storage: ExprStorage,
+    width: u32,
+) -> ExprType {
+    let is_signed = datatype_signedness(datatype).unwrap_or(false);
+    let enum_labels = datatype
+        .and_then(|datatype| datatype.enum_labels.clone())
+        .map(|labels| normalize_enum_labels_for_width(labels, width, is_signed))
+        .filter(|labels| !labels.is_empty());
+    let enum_type_id = datatype.and_then(|datatype| {
+        datatype
+            .type_name
+            .as_ref()
+            .filter(|name| !name.trim().is_empty())
+            .cloned()
+            .or_else(|| {
+                enum_labels
+                    .as_ref()
+                    .map(|_| format!("fsdb-dt:{}", datatype.idcode))
+            })
+    });
+    ExprType {
+        kind: ExprTypeKind::EnumCore,
+        storage,
+        width,
+        is_four_state: true,
+        is_signed,
+        enum_type_id,
+        enum_labels,
+    }
+}
+
+fn normalize_enum_labels_for_width(
+    labels: Vec<EnumLabelInfo>,
+    width: u32,
+    is_signed: bool,
+) -> Vec<EnumLabelInfo> {
+    labels
+        .into_iter()
+        .map(|label| EnumLabelInfo {
+            name: label.name,
+            bits: resize_enum_label_bits(label.bits.as_str(), width, is_signed),
+        })
+        .collect()
+}
+
+fn resize_enum_label_bits(bits: &str, width: u32, is_signed: bool) -> String {
+    let target_width = width as usize;
+    if bits.is_empty() || bits.len() == target_width {
+        return bits.to_string();
+    }
+    if bits.len() > target_width {
+        return bits[bits.len() - target_width..].to_string();
+    }
+
+    let extension = if is_signed {
+        bits.as_bytes()[0] as char
+    } else {
+        '0'
+    };
+    let mut resized = String::with_capacity(target_width);
+    resized.extend(std::iter::repeat_n(extension, target_width - bits.len()));
+    resized.push_str(bits);
+    resized
+}
+
+fn datatype_signedness(datatype: Option<&RawDatatypeRecord>) -> Option<bool> {
+    let datatype = datatype?;
+    datatype.is_signed.or(match datatype.kind {
+        RawDatatypeKind::Int
+        | RawDatatypeKind::ShortInt
+        | RawDatatypeKind::LongInt
+        | RawDatatypeKind::Byte => Some(true),
+        RawDatatypeKind::UInt
+        | RawDatatypeKind::ShortUInt
+        | RawDatatypeKind::LongUInt
+        | RawDatatypeKind::UByte
+        | RawDatatypeKind::Time => Some(false),
+        RawDatatypeKind::Enum
+        | RawDatatypeKind::Logic
+        | RawDatatypeKind::Bit
+        | RawDatatypeKind::Real
+        | RawDatatypeKind::ShortReal
+        | RawDatatypeKind::String
+        | RawDatatypeKind::Event
+        | RawDatatypeKind::Unknown => None,
+    })
 }
 
 fn normalize_name(name: &str) -> Result<String, WavepeekError> {
@@ -1150,10 +1245,7 @@ mod tests {
     fn fsdb_hierarchy_datatype_enum_overrides_signal_kind() {
         let mut builder = FsdbHierarchyBuilder::new();
         builder
-            .datatype(RawDatatypeRecord {
-                idcode: 7,
-                kind: RawDatatypeKind::Enum,
-            })
+            .datatype(raw_datatype(7, RawDatatypeKind::Enum))
             .unwrap();
         builder.scope(scope("top", RawScopeKind::Module)).unwrap();
         let mut raw = signal_with_range(1, "state[1:0]", RawSignalKind::Logic, 1, 0);
@@ -1184,9 +1276,7 @@ mod tests {
             (37, RawDatatypeKind::LongInt),
             (38, RawDatatypeKind::LongUInt),
         ] {
-            builder
-                .datatype(RawDatatypeRecord { idcode, kind })
-                .unwrap();
+            builder.datatype(raw_datatype(idcode, kind)).unwrap();
         }
         builder.scope(scope("top", RawScopeKind::Module)).unwrap();
         for (idcode, datatype_id, name, left, right) in [
@@ -1238,6 +1328,147 @@ mod tests {
     }
 
     #[test]
+    fn fsdb_hierarchy_datatype_enum_metadata_drives_expression_type() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder
+            .datatype(RawDatatypeRecord {
+                idcode: 41,
+                kind: RawDatatypeKind::Enum,
+                type_name: Some("pkg::state_t".to_string()),
+                bit_width: Some(2),
+                is_signed: Some(false),
+                enum_labels: Some(vec![
+                    EnumLabelInfo {
+                        name: "IDLE".to_string(),
+                        bits: "00".to_string(),
+                    },
+                    EnumLabelInfo {
+                        name: "BUSY".to_string(),
+                        bits: "01".to_string(),
+                    },
+                ]),
+            })
+            .unwrap();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        let mut raw = signal(1, "state", RawSignalKind::Logic);
+        raw.datatype_id = Some(41);
+        builder.signal(raw).unwrap();
+        let index = builder.finish();
+
+        let entry = index.signals_in_scope("top").unwrap().pop().unwrap();
+        assert_eq!(entry.kind, "enum");
+        assert_eq!(entry.width, Some(2));
+
+        let resolved = index.resolve_expr_signal("top.state").unwrap();
+        assert_eq!(resolved.expr_type.kind, ExprTypeKind::EnumCore);
+        assert_eq!(resolved.expr_type.width, 2);
+        assert_eq!(
+            resolved.expr_type.enum_type_id.as_deref(),
+            Some("pkg::state_t")
+        );
+        assert_eq!(
+            resolved.expr_type.enum_labels,
+            Some(vec![
+                EnumLabelInfo {
+                    name: "IDLE".to_string(),
+                    bits: "00".to_string(),
+                },
+                EnumLabelInfo {
+                    name: "BUSY".to_string(),
+                    bits: "01".to_string(),
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_datatype_enum_labels_follow_signal_width() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder
+            .datatype(RawDatatypeRecord {
+                idcode: 44,
+                kind: RawDatatypeKind::Enum,
+                type_name: Some("pkg::narrow_state_t".to_string()),
+                bit_width: Some(4),
+                is_signed: Some(false),
+                enum_labels: Some(vec![
+                    EnumLabelInfo {
+                        name: "ONE".to_string(),
+                        bits: "0001".to_string(),
+                    },
+                    EnumLabelInfo {
+                        name: "THREE".to_string(),
+                        bits: "0011".to_string(),
+                    },
+                ]),
+            })
+            .unwrap();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        let mut raw = signal_with_range(1, "state[1:0]", RawSignalKind::Logic, 1, 0);
+        raw.datatype_id = Some(44);
+        builder.signal(raw).unwrap();
+        let index = builder.finish();
+
+        let resolved = index.resolve_expr_signal("top.state").unwrap();
+        assert_eq!(resolved.expr_type.width, 2);
+        assert_eq!(
+            resolved.expr_type.enum_labels,
+            Some(vec![
+                EnumLabelInfo {
+                    name: "ONE".to_string(),
+                    bits: "01".to_string(),
+                },
+                EnumLabelInfo {
+                    name: "THREE".to_string(),
+                    bits: "11".to_string(),
+                },
+            ])
+        );
+    }
+
+    #[test]
+    fn fsdb_hierarchy_datatype_signedness_drives_packed_vectors() {
+        let mut builder = FsdbHierarchyBuilder::new();
+        builder
+            .datatype(RawDatatypeRecord {
+                idcode: 42,
+                kind: RawDatatypeKind::Logic,
+                type_name: Some("signed_logic_t".to_string()),
+                bit_width: Some(8),
+                is_signed: Some(true),
+                enum_labels: None,
+            })
+            .unwrap();
+        builder
+            .datatype(RawDatatypeRecord {
+                idcode: 43,
+                kind: RawDatatypeKind::Bit,
+                type_name: Some("unsigned_bit_t".to_string()),
+                bit_width: Some(8),
+                is_signed: Some(false),
+                enum_labels: None,
+            })
+            .unwrap();
+        builder.scope(scope("top", RawScopeKind::Module)).unwrap();
+        for (idcode, datatype_id, name, kind) in [
+            (1, 42, "signed_data", RawSignalKind::Logic),
+            (2, 43, "unsigned_data", RawSignalKind::Bit),
+        ] {
+            let mut raw = signal(idcode, name, kind);
+            raw.datatype_id = Some(datatype_id);
+            builder.signal(raw).unwrap();
+        }
+        let index = builder.finish();
+
+        for (path, is_signed) in [("top.signed_data", true), ("top.unsigned_data", false)] {
+            let resolved = index.resolve_expr_signal(path).unwrap();
+            assert_eq!(resolved.expr_type.kind, ExprTypeKind::BitVector, "{path}");
+            assert_eq!(resolved.expr_type.width, 8, "{path}");
+            assert_eq!(resolved.expr_type.is_signed, is_signed, "{path}");
+        }
+    }
+
+    #[test]
     fn fsdb_hierarchy_datatype_candidates_upgrade_for_vector_datatypes() {
         let mut builder = FsdbHierarchyBuilder::new();
         for (idcode, kind) in [
@@ -1246,9 +1477,7 @@ mod tests {
             (23, RawDatatypeKind::Int),
             (24, RawDatatypeKind::Unknown),
         ] {
-            builder
-                .datatype(RawDatatypeRecord { idcode, kind })
-                .unwrap();
+            builder.datatype(raw_datatype(idcode, kind)).unwrap();
         }
         builder.scope(scope("top", RawScopeKind::Module)).unwrap();
         for (idcode, datatype_id, name) in [
@@ -1296,9 +1525,7 @@ mod tests {
             (13, RawDatatypeKind::String),
             (14, RawDatatypeKind::Event),
         ] {
-            builder
-                .datatype(RawDatatypeRecord { idcode, kind })
-                .unwrap();
+            builder.datatype(raw_datatype(idcode, kind)).unwrap();
         }
         builder.scope(scope("top", RawScopeKind::Module)).unwrap();
         for (idcode, datatype_id, name) in [
@@ -1343,6 +1570,17 @@ mod tests {
             name: name.to_string(),
             kind,
             hidden: false,
+        }
+    }
+
+    fn raw_datatype(idcode: u32, kind: RawDatatypeKind) -> RawDatatypeRecord {
+        RawDatatypeRecord {
+            idcode,
+            kind,
+            type_name: None,
+            bit_width: None,
+            is_signed: None,
+            enum_labels: None,
         }
     }
 

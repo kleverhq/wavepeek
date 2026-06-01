@@ -9,6 +9,7 @@ use std::rc::Rc;
 use std::slice;
 
 use crate::error::WavepeekError;
+use crate::expr::EnumLabelInfo;
 
 use super::fsdb_hierarchy::{
     FsdbHierarchyBuilder, FsdbHierarchyIndex, FsdbValueEncoding, RawDatatypeKind,
@@ -523,6 +524,12 @@ unsafe fn handle_hierarchy_event(
             context.builder.datatype(RawDatatypeRecord {
                 idcode: datatype.idcode,
                 kind: raw_datatype_kind(datatype.kind),
+                type_name: unsafe { borrowed_optional_c_string(datatype.name) },
+                bit_width: (datatype.has_bit_width != 0).then_some(datatype.bit_width),
+                is_signed: (datatype.has_is_signed != 0).then_some(datatype.is_signed != 0),
+                enum_labels: unsafe {
+                    enum_labels_from_native(datatype.enum_labels, datatype.enum_label_count)?
+                },
             })?;
         }
         _ => {}
@@ -583,6 +590,40 @@ unsafe fn borrowed_c_string(value: *const c_char) -> Result<String, WavepeekErro
     Ok(unsafe { CStr::from_ptr(value) }
         .to_string_lossy()
         .into_owned())
+}
+
+unsafe fn borrowed_optional_c_string(value: *const c_char) -> Option<String> {
+    if value.is_null() {
+        return None;
+    }
+    let value = unsafe { CStr::from_ptr(value) }
+        .to_string_lossy()
+        .into_owned();
+    (!value.trim().is_empty()).then_some(value)
+}
+
+unsafe fn enum_labels_from_native(
+    labels: *const ffi::wp_fsdb_enum_label_record,
+    count: usize,
+) -> Result<Option<Vec<EnumLabelInfo>>, WavepeekError> {
+    if count == 0 {
+        return Ok(None);
+    }
+    if labels.is_null() {
+        return Err(WavepeekError::File(
+            "FSDB Reader emitted enum label metadata without label data".to_string(),
+        ));
+    }
+
+    let labels = unsafe { slice::from_raw_parts(labels, count) };
+    let mut decoded = Vec::with_capacity(labels.len());
+    for label in labels {
+        decoded.push(EnumLabelInfo {
+            name: unsafe { borrowed_c_string(label.name)? },
+            bits: unsafe { borrowed_c_string(label.bits)? },
+        });
+    }
+    Ok((!decoded.is_empty()).then_some(decoded))
 }
 
 fn sample_record_to_rust(
@@ -812,9 +853,22 @@ mod ffi {
     }
 
     #[repr(C)]
+    pub(super) struct wp_fsdb_enum_label_record {
+        pub(super) name: *const c_char,
+        pub(super) bits: *const c_char,
+    }
+
+    #[repr(C)]
     pub(super) struct wp_fsdb_datatype_record {
         pub(super) idcode: c_uint,
         pub(super) kind: c_uint,
+        pub(super) name: *const c_char,
+        pub(super) has_bit_width: c_int,
+        pub(super) bit_width: c_uint,
+        pub(super) has_is_signed: c_int,
+        pub(super) is_signed: c_int,
+        pub(super) enum_label_count: usize,
+        pub(super) enum_labels: *const wp_fsdb_enum_label_record,
     }
 
     #[repr(C)]

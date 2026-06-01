@@ -129,9 +129,21 @@ typedef struct wp_fsdb_signal_record {
     uint32_t value_encoding;
 } wp_fsdb_signal_record;
 
+typedef struct wp_fsdb_enum_label_record {
+    const char *name;
+    const char *bits;
+} wp_fsdb_enum_label_record;
+
 typedef struct wp_fsdb_datatype_record {
     uint32_t idcode;
     uint32_t kind;
+    const char *name;
+    int has_bit_width;
+    uint32_t bit_width;
+    int has_is_signed;
+    int is_signed;
+    size_t enum_label_count;
+    const wp_fsdb_enum_label_record *enum_labels;
 } wp_fsdb_datatype_record;
 
 typedef struct wp_fsdb_sample_record {

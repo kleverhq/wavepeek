@@ -14,7 +14,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: FSDBs with datatype definitions in later blocks can miss enum/SV datatype records, leading to misclassified or unsupported signals.
    - Suggested fix: iterate all datatype-definition blocks, or use a traversal API that covers every block before reading the scope/var tree.
 
-3. APPROVED `src/waveform/fsdb_hierarchy.rs:597` — FSDB expression metadata is incomplete: enum signals expose `EnumCore` with `enum_labels: None`, and packed/vector/enum values are hard-coded `is_signed: false`.
+3. DONE `src/waveform/fsdb_hierarchy.rs:597` — FSDB expression metadata is incomplete: enum signals expose `EnumCore` with `enum_labels: None`, and packed/vector/enum values are hard-coded `is_signed: false`.
    - Impact: `type(state)::LABEL` can bind as enum-typed and fail later, while signed comparisons/arithmetic can disagree with VCD/FST.
    - Suggested fix: carry signedness and enum labels from FSDB datatype records into `FsdbSignalInfo`/`ExprType`; otherwise reject/document unsupported enum-label and signed-vector semantics earlier.
 

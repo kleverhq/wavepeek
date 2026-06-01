@@ -368,51 +368,549 @@ wp_fsdb_datatype_kind map_datatype_kind(fsdbTreeCBType type) {
     }
 }
 
-bool datatype_id_from_record(fsdbTreeCBType type, void *tree_cb_data, uint32_t *out) {
+bool bit_value_to_char(byte_T value, char *out);
+
+uint32_t bit_width_from_bounds(int left, int right) {
+    const int64_t left64 = static_cast<int64_t>(left);
+    const int64_t right64 = static_cast<int64_t>(right);
+    const uint64_t diff = left64 >= right64
+        ? static_cast<uint64_t>(left64 - right64)
+        : static_cast<uint64_t>(right64 - left64);
+    if (diff >= static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+        return 0;
+    }
+    return static_cast<uint32_t>(diff + 1);
+}
+
+uint32_t datatype_default_bit_width(wp_fsdb_datatype_kind kind) {
+    switch (kind) {
+    case WP_FSDB_DATATYPE_KIND_BYTE:
+    case WP_FSDB_DATATYPE_KIND_UBYTE:
+        return 8;
+    case WP_FSDB_DATATYPE_KIND_SHORT_INT:
+    case WP_FSDB_DATATYPE_KIND_SHORT_UINT:
+        return 16;
+    case WP_FSDB_DATATYPE_KIND_INT:
+    case WP_FSDB_DATATYPE_KIND_UINT:
+        return 32;
+    case WP_FSDB_DATATYPE_KIND_LONG_INT:
+    case WP_FSDB_DATATYPE_KIND_LONG_UINT:
+    case WP_FSDB_DATATYPE_KIND_TIME:
+        return 64;
+    default:
+        return 0;
+    }
+}
+
+bool datatype_kind_signedness(wp_fsdb_datatype_kind kind, bool *out) {
+    if (out == nullptr) {
+        return false;
+    }
+    switch (kind) {
+    case WP_FSDB_DATATYPE_KIND_INT:
+    case WP_FSDB_DATATYPE_KIND_SHORT_INT:
+    case WP_FSDB_DATATYPE_KIND_LONG_INT:
+    case WP_FSDB_DATATYPE_KIND_BYTE:
+        *out = true;
+        return true;
+    case WP_FSDB_DATATYPE_KIND_UINT:
+    case WP_FSDB_DATATYPE_KIND_SHORT_UINT:
+    case WP_FSDB_DATATYPE_KIND_LONG_UINT:
+    case WP_FSDB_DATATYPE_KIND_UBYTE:
+    case WP_FSDB_DATATYPE_KIND_TIME:
+        *out = false;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool datatype_kind_uses_radix_signedness(wp_fsdb_datatype_kind kind) {
+    return kind == WP_FSDB_DATATYPE_KIND_LOGIC || kind == WP_FSDB_DATATYPE_KIND_BIT;
+}
+
+bool attr_radix_signedness(fsdbAttrRadix radix, bool *out) {
+    if (out == nullptr) {
+        return false;
+    }
+    switch (radix) {
+    case FSDB_ATTR_RADIX_DEC:
+        *out = true;
+        return true;
+    case FSDB_ATTR_RADIX_UNSIGNED:
+        *out = false;
+        return true;
+    default:
+        return false;
+    }
+}
+
+void set_record_bit_width(wp_fsdb_datatype_record *record, uint32_t width) {
+    if (record == nullptr || width == 0) {
+        return;
+    }
+    record->has_bit_width = 1;
+    record->bit_width = width;
+}
+
+void set_record_signedness(wp_fsdb_datatype_record *record, bool is_signed) {
+    if (record == nullptr) {
+        return;
+    }
+    record->has_is_signed = 1;
+    record->is_signed = is_signed ? 1 : 0;
+}
+
+bool enum_value_type_is_logic(byte_T val_type) {
+    switch (val_type) {
+    case FSDB_ENUM_VALUE_TYPE_LOGIC:
+    case FSDB_ENUM_VALUE_TYPE_VERILOG_LOGIC:
+    case FSDB_ENUM_VALUE_TYPE_VHDL_LOGIC:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool enum_value_type_signedness(byte_T val_type, bool *out) {
+    if (out == nullptr) {
+        return false;
+    }
+    switch (val_type) {
+    case FSDB_ENUM_VALUE_TYPE_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_LONG:
+    case FSDB_ENUM_VALUE_TYPE_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_BYTE:
+    case FSDB_ENUM_VALUE_TYPE_SV_LONG:
+    case FSDB_ENUM_VALUE_TYPE_SV_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_SV_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_SV_BYTE:
+        *out = true;
+        return true;
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_LONG:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_BYTE:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_LONG:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_BYTE:
+        *out = false;
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool enum_attr_signedness(byte_T val_type, fsdbAttrRadix radix, bool *out) {
+    if (enum_value_type_signedness(val_type, out)) {
+        return true;
+    }
+    if (enum_value_type_is_logic(val_type)) {
+        return attr_radix_signedness(radix, out);
+    }
+    return false;
+}
+
+uint32_t enum_integral_default_bit_width(byte_T val_type) {
+    switch (val_type) {
+    case FSDB_ENUM_VALUE_TYPE_LONG:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_LONG:
+    case FSDB_ENUM_VALUE_TYPE_SV_LONG:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_LONG:
+        return 64;
+    case FSDB_ENUM_VALUE_TYPE_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_SV_SHORT:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_SHORT:
+        return 16;
+    case FSDB_ENUM_VALUE_TYPE_BYTE:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_BYTE:
+    case FSDB_ENUM_VALUE_TYPE_SV_BYTE:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_BYTE:
+        return 8;
+    case FSDB_ENUM_VALUE_TYPE_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_UNSIGN_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_SV_INTEGER:
+    case FSDB_ENUM_VALUE_TYPE_SV_UNSIGN_INTEGER:
+        return 32;
+    default:
+        return 0;
+    }
+}
+
+enum class enum_value_len_mode {
+    bit_width,
+    byte_count,
+};
+
+uint32_t enum_value_bit_width(
+    byte_T val_type,
+    uint_T val_len,
+    uint32_t bit_width_hint,
+    enum_value_len_mode len_mode
+) {
+    if (bit_width_hint != 0) {
+        return bit_width_hint;
+    }
+    if (enum_value_type_is_logic(val_type) || len_mode == enum_value_len_mode::bit_width) {
+        return static_cast<uint32_t>(val_len);
+    }
+    if (val_len != 0 && val_len <= std::numeric_limits<uint32_t>::max() / 8) {
+        return static_cast<uint32_t>(val_len * 8);
+    }
+    return enum_integral_default_bit_width(val_type);
+}
+
+std::size_t enum_integral_value_byte_count(
+    byte_T val_type,
+    uint_T val_len,
+    uint32_t bit_width,
+    enum_value_len_mode len_mode
+) {
+    if (len_mode == enum_value_len_mode::byte_count && val_len != 0) {
+        return static_cast<std::size_t>(val_len);
+    }
+    if (len_mode == enum_value_len_mode::bit_width && val_len != 0) {
+        return static_cast<std::size_t>((val_len + 7) / 8);
+    }
+    const uint32_t default_width = enum_integral_default_bit_width(val_type);
+    if (default_width != 0) {
+        return static_cast<std::size_t>((default_width + 7) / 8);
+    }
+    return static_cast<std::size_t>((bit_width + 7) / 8);
+}
+
+bool enum_logic_value_to_char(byte_T val_type, byte_T value, char *out) {
+    if (val_type == FSDB_ENUM_VALUE_TYPE_VHDL_LOGIC) {
+        if (out == nullptr) {
+            return false;
+        }
+        switch (value) {
+        case FSDB_BT_VHDL_STD_LOGIC_0:
+        case FSDB_BT_VHDL_STD_LOGIC_L:
+            *out = '0';
+            return true;
+        case FSDB_BT_VHDL_STD_LOGIC_1:
+        case FSDB_BT_VHDL_STD_LOGIC_H:
+            *out = '1';
+            return true;
+        case FSDB_BT_VHDL_STD_LOGIC_Z:
+            *out = 'z';
+            return true;
+        case FSDB_BT_VHDL_STD_LOGIC_U:
+        case FSDB_BT_VHDL_STD_LOGIC_X:
+        case FSDB_BT_VHDL_STD_LOGIC_W:
+        case FSDB_BT_VHDL_STD_LOGIC_DASH:
+            *out = 'x';
+            return true;
+        default:
+            return false;
+        }
+    }
+    return bit_value_to_char(value, out);
+}
+
+bool decode_logic_enum_bits(
+    const byte_T *value,
+    byte_T val_type,
+    uint32_t bit_width,
+    std::string *bits
+) {
+    if (value == nullptr || bits == nullptr || bit_width == 0) {
+        return false;
+    }
+    bits->assign(static_cast<std::size_t>(bit_width), '\0');
+    for (uint32_t bit_index = 0; bit_index < bit_width; ++bit_index) {
+        if (!enum_logic_value_to_char(val_type, value[bit_index], &(*bits)[bit_index])) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool decode_integral_enum_bits(
+    const byte_T *value,
+    byte_T val_type,
+    uint_T val_len,
+    uint32_t bit_width_hint,
+    enum_value_len_mode len_mode,
+    std::string *bits
+) {
+    const uint32_t bit_width = enum_value_bit_width(val_type, val_len, bit_width_hint, len_mode);
+    if (value == nullptr || bits == nullptr || bit_width == 0 || bit_width > 64) {
+        return false;
+    }
+    const std::size_t byte_count =
+        enum_integral_value_byte_count(val_type, val_len, bit_width, len_mode);
+    if (byte_count == 0 || byte_count > sizeof(uint64_t)) {
+        return false;
+    }
+
+    uint64_t raw_value = 0;
+    for (std::size_t byte_index = 0; byte_index < byte_count; ++byte_index) {
+        raw_value |= static_cast<uint64_t>(value[byte_index]) << (byte_index * 8);
+    }
+
+    bits->assign(static_cast<std::size_t>(bit_width), '0');
+    for (uint32_t bit_index = 0; bit_index < bit_width; ++bit_index) {
+        const uint32_t shift = bit_width - bit_index - 1;
+        (*bits)[bit_index] = ((raw_value >> shift) & 1u) != 0 ? '1' : '0';
+    }
+    return true;
+}
+
+bool decode_enum_value_bits(
+    const byte_T *value,
+    byte_T val_type,
+    uint_T val_len,
+    uint32_t bit_width_hint,
+    enum_value_len_mode len_mode,
+    std::string *bits
+) {
+    if (enum_value_type_is_logic(val_type)) {
+        const uint32_t bit_width =
+            enum_value_bit_width(val_type, val_len, bit_width_hint, len_mode);
+        return decode_logic_enum_bits(value, val_type, bit_width, bits);
+    }
+    return decode_integral_enum_bits(value, val_type, val_len, bit_width_hint, len_mode, bits);
+}
+
+uint32_t enum_ordinal_bit_width(uint_T literal_count) {
+    if (literal_count <= 1) {
+        return 1;
+    }
+    uint_T largest_ordinal = literal_count - 1;
+    uint32_t width = 0;
+    while (largest_ordinal != 0) {
+        ++width;
+        largest_ordinal >>= 1;
+    }
+    return width;
+}
+
+std::string ordinal_enum_bits(uint_T ordinal, uint32_t bit_width) {
+    std::string bits(static_cast<std::size_t>(bit_width), '0');
+    for (uint32_t bit_index = 0; bit_index < bit_width; ++bit_index) {
+        const uint32_t shift = bit_width - bit_index - 1;
+        bits[bit_index] = ((ordinal >> shift) & 1u) != 0 ? '1' : '0';
+    }
+    return bits;
+}
+
+void copy_ordinal_enum_labels(
+    uint_T literal_count,
+    char **literal_arr,
+    uint32_t bit_width,
+    std::vector<std::string> *label_bits,
+    std::vector<wp_fsdb_enum_label_record> *labels
+) {
+    if (literal_count == 0 || literal_arr == nullptr || label_bits == nullptr || labels == nullptr) {
+        return;
+    }
+
+    label_bits->reserve(literal_count);
+    labels->reserve(literal_count);
+    for (uint_T index = 0; index < literal_count; ++index) {
+        if (literal_arr[index] == nullptr) {
+            continue;
+        }
+        label_bits->push_back(ordinal_enum_bits(index, bit_width));
+        wp_fsdb_enum_label_record label{};
+        label.name = literal_arr[index];
+        label.bits = label_bits->back().c_str();
+        labels->push_back(label);
+    }
+}
+
+void copy_enum_labels(
+    uint_T literal_count,
+    char **literal_arr,
+    byte_T **val_arr,
+    byte_T val_type,
+    uint_T val_len,
+    uint32_t bit_width_hint,
+    enum_value_len_mode len_mode,
+    std::vector<std::string> *label_bits,
+    std::vector<wp_fsdb_enum_label_record> *labels
+) {
+    if (literal_count == 0 || literal_arr == nullptr || val_arr == nullptr ||
+        label_bits == nullptr || labels == nullptr) {
+        return;
+    }
+
+    label_bits->reserve(literal_count);
+    labels->reserve(literal_count);
+    for (uint_T index = 0; index < literal_count; ++index) {
+        if (literal_arr[index] == nullptr || val_arr[index] == nullptr) {
+            continue;
+        }
+        std::string decoded_bits;
+        if (!decode_enum_value_bits(
+                val_arr[index],
+                val_type,
+                val_len,
+                bit_width_hint,
+                len_mode,
+                &decoded_bits
+            )) {
+            continue;
+        }
+        label_bits->push_back(std::move(decoded_bits));
+        wp_fsdb_enum_label_record label{};
+        label.name = literal_arr[index];
+        label.bits = label_bits->back().c_str();
+        labels->push_back(label);
+    }
+}
+
+bool populate_datatype_record(
+    fsdbTreeCBType type,
+    void *tree_cb_data,
+    wp_fsdb_datatype_record *out,
+    std::vector<std::string> *label_bits,
+    std::vector<wp_fsdb_enum_label_record> *labels
+) {
     if (out == nullptr || tree_cb_data == nullptr) {
         return false;
     }
 
+    *out = wp_fsdb_datatype_record{};
+    const auto kind = map_datatype_kind(type);
+    out->kind = static_cast<uint32_t>(kind);
+    bool is_signed = false;
+    if (datatype_kind_signedness(kind, &is_signed)) {
+        set_record_signedness(out, is_signed);
+    }
+    set_record_bit_width(out, datatype_default_bit_width(kind));
+
     switch (type) {
     case FSDB_TREE_CBT_DT_ENUM: {
         auto *record = static_cast<fsdbTreeCBDataEnum *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
-        return true;
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        const uint32_t bit_width = enum_ordinal_bit_width(record->numLiteral);
+        set_record_bit_width(out, bit_width);
+        copy_ordinal_enum_labels(
+            record->numLiteral,
+            record->arrLiteral,
+            bit_width,
+            label_bits,
+            labels
+        );
+        break;
     }
     case FSDB_TREE_CBT_DT_ENUM2: {
         auto *record = static_cast<fsdbTreeCBDataEnum2 *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
-        return true;
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        out->name = record->name;
+        const uint32_t bit_width = enum_value_bit_width(
+            record->val_type,
+            record->val_len,
+            0,
+            enum_value_len_mode::byte_count
+        );
+        set_record_bit_width(out, bit_width);
+        if (enum_value_type_signedness(record->val_type, &is_signed)) {
+            set_record_signedness(out, is_signed);
+        }
+        copy_enum_labels(
+            record->literal_count,
+            record->literal_arr,
+            record->val_arr,
+            record->val_type,
+            record->val_len,
+            bit_width,
+            enum_value_len_mode::byte_count,
+            label_bits,
+            labels
+        );
+        break;
     }
     case FSDB_TREE_CBT_DT_ENUM3: {
         auto *record = static_cast<fsdbTreeCBDataEnum3 *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
-        return true;
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        out->name = record->name;
+        const uint32_t bit_width = bit_width_from_bounds(record->lbitnum, record->rbitnum);
+        set_record_bit_width(out, bit_width);
+        if (enum_value_type_signedness(record->val_type, &is_signed)) {
+            set_record_signedness(out, is_signed);
+        }
+        copy_enum_labels(
+            record->literal_count,
+            record->literal_arr,
+            record->val_arr,
+            record->val_type,
+            record->val_len,
+            bit_width,
+            enum_value_len_mode::bit_width,
+            label_bits,
+            labels
+        );
+        break;
     }
     case FSDB_TREE_CBT_DT_INT: {
         auto *record = static_cast<fsdbTreeCBDataInt *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
+        out->idcode = static_cast<uint32_t>(record->idcode);
         return true;
     }
     case FSDB_TREE_CBT_DT_INT_H_N_L: {
         auto *record = static_cast<fsdbTreeCBDataIntHnL *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
+        out->idcode = static_cast<uint32_t>(record->idcode);
         return true;
     }
     case FSDB_TREE_CBT_DT_FLOAT: {
         auto *record = static_cast<fsdbTreeCBDataFloating *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
+        out->idcode = static_cast<uint32_t>(record->idcode);
         return true;
     }
     case FSDB_TREE_CBT_DT_ATTR_ENUM: {
         auto *record = static_cast<fsdbTreeCBDataEnumAttr *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
-        return true;
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        out->name = record->name;
+        const uint32_t bit_width = enum_value_bit_width(
+            record->val_type,
+            record->val_len,
+            0,
+            enum_value_len_mode::byte_count
+        );
+        set_record_bit_width(out, bit_width);
+        if (enum_attr_signedness(record->val_type, record->radix, &is_signed)) {
+            set_record_signedness(out, is_signed);
+        }
+        copy_enum_labels(
+            record->literal_count,
+            record->literal_arr,
+            record->val_arr,
+            record->val_type,
+            record->val_len,
+            bit_width,
+            enum_value_len_mode::byte_count,
+            label_bits,
+            labels
+        );
+        break;
     }
     case FSDB_TREE_CBT_DT_ATTR_SV_ENUM: {
         auto *record = static_cast<fsdbTreeCBDataSVEnumAttr *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
-        return true;
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        out->name = record->name;
+        const uint32_t bit_width = bit_width_from_bounds(record->lbitnum, record->rbitnum);
+        set_record_bit_width(out, bit_width);
+        if (enum_attr_signedness(record->val_type, record->radix, &is_signed)) {
+            set_record_signedness(out, is_signed);
+        }
+        copy_enum_labels(
+            record->literal_count,
+            record->literal_arr,
+            record->val_arr,
+            record->val_type,
+            record->val_len,
+            bit_width,
+            enum_value_len_mode::bit_width,
+            label_bits,
+            labels
+        );
+        break;
     }
     case FSDB_TREE_CBT_DT_ATTR_LOGIC:
     case FSDB_TREE_CBT_DT_ATTR_BOOL:
@@ -444,12 +942,23 @@ bool datatype_id_from_record(fsdbTreeCBType type, void *tree_cb_data, uint32_t *
     case FSDB_TREE_CBT_DT_ATTR_SV_EVENT:
     case FSDB_TREE_CBT_DT_ATTR_RAW_STRING: {
         auto *record = static_cast<fsdbTreeCBDataAttr *>(tree_cb_data);
-        *out = static_cast<uint32_t>(record->idcode);
+        out->idcode = static_cast<uint32_t>(record->idcode);
+        out->name = record->name;
+        if (datatype_kind_uses_radix_signedness(kind) &&
+            attr_radix_signedness(record->radix, &is_signed)) {
+            set_record_signedness(out, is_signed);
+        }
         return true;
     }
     default:
         return false;
     }
+
+    if (labels != nullptr && !labels->empty()) {
+        out->enum_label_count = labels->size();
+        out->enum_labels = labels->data();
+    }
+    return true;
 }
 
 struct tree_callback_context {
@@ -489,14 +998,13 @@ bool_T datatype_tree_callback(fsdbTreeCBType cb_type, void *client_data, void *t
         ++context->datatype_callbacks;
     }
 
-    uint32_t idcode = 0;
-    if (!datatype_id_from_record(cb_type, tree_cb_data, &idcode)) {
+    std::vector<std::string> label_bits;
+    std::vector<wp_fsdb_enum_label_record> labels;
+    wp_fsdb_datatype_record record{};
+    if (!populate_datatype_record(cb_type, tree_cb_data, &record, &label_bits, &labels)) {
         return static_cast<bool_T>(1);
     }
 
-    wp_fsdb_datatype_record record{};
-    record.idcode = idcode;
-    record.kind = static_cast<uint32_t>(map_datatype_kind(cb_type));
     return emit_tree_event(context, WP_FSDB_TREE_EVENT_DATATYPE, nullptr, nullptr, &record);
 }
 

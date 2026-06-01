@@ -5,7 +5,7 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
 
 use crate::error::WavepeekError;
-use crate::expr::{ExprTypeKind, SampledValue};
+use crate::expr::{ExprType, ExprTypeKind, SampledValue};
 
 use super::fsdb_hierarchy::{FsdbHierarchyIndex, FsdbValueEncoding};
 use super::fsdb_native::{self, FsdbNativeMetadata, FsdbReader, FsdbSignalSession};
@@ -384,9 +384,13 @@ impl FsdbBackend {
         let sample = samples.pop().ok_or_else(|| {
             WavepeekError::Internal("FSDB expression sampling returned no sample row".to_string())
         })?;
+        let label = sample
+            .bits
+            .as_deref()
+            .and_then(|bits| enum_label_for_bits(&resolved.expr_type, bits));
         Ok(SampledValue::Integral {
             bits: sample.bits,
-            label: None,
+            label,
         })
     }
 
@@ -407,6 +411,15 @@ pub(super) fn unsupported_value_sampling(path: &str) -> WavepeekError {
     WavepeekError::Signal(format!(
         "signal '{path}' has unsupported FSDB expression value encoding"
     ))
+}
+
+fn enum_label_for_bits(expr_type: &ExprType, bits: &str) -> Option<String> {
+    expr_type
+        .enum_labels
+        .as_deref()?
+        .iter()
+        .find(|label| label.bits == bits)
+        .map(|label| label.name.clone())
 }
 
 fn unsupported_signal_value_encoding(path: &str) -> WavepeekError {

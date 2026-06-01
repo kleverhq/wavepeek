@@ -26,6 +26,8 @@ The shared environment contract lives in `.devcontainer/env_contract.sh` and `.d
 
 FSDB work is optional and local-only unless a task explicitly says otherwise. The devcontainer sets `VERDI_HOME=/opt/verdi`, which is normally a host-mounted cache location. `.devcontainer/resolve_verdi_home.sh` and `tools/codex/check_fsdb_env.py` verify that the mount contains a usable Synopsys Verdi FSDB Reader SDK before any FSDB build, test, fixture, or benchmark recipe runs.
 
+Feature-enabled binaries link to local Verdi shared libraries, but `build.rs` does not embed the absolute Reader library directory as an ELF rpath by default. The FSDB `just` recipes prepend the selected Reader library directory to `LD_LIBRARY_PATH` when they run tests or binaries. Direct `cargo test --features fsdb`, `cargo run --features fsdb`, or release-binary invocations need the same runtime library path; resolve it with `python3 -B tools/codex/check_fsdb_env.py --require --print-libdir`. `WAVEPEEK_FSDB_EMBED_RPATH=1` is a local opt-in for throwaway builds that deliberately accept a non-relocatable binary and machine-specific path leakage; use it sparingly.
+
 Do not commit Verdi headers, libraries, installed documentation, generated bindings that copy proprietary declarations, converter logs, or `.fsdb` waveform files. Generated FSDB fixtures belong in ignored paths such as `tests/fixtures/fsdb/`, neighboring ignored RTL artifact copies, or repository-root `tmp/`. The devcontainer provides wrapper commands such as `vcd2fsdb`, `fst2vcd`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`; call those wrappers from `PATH` instead of hard-coding `$VERDI_HOME/bin/...`.
 
 ## Debug Mode

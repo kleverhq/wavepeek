@@ -135,12 +135,21 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         action="store_true",
         help="treat missing Verdi as an error instead of an optional skip",
     )
+    parser.add_argument(
+        "--print-libdir",
+        action="store_true",
+        help="print the selected FSDB Reader library directory after validation",
+    )
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     verdi_home, libdir = validate_sdk(required=args.require)
+    if args.print_libdir:
+        print(libdir)
+        return
+
     verbose = verbose_output_enabled()
     if verbose:
         print(f"ok: fsdb: Verdi FSDB Reader SDK found at {verdi_home} (libdir {libdir})")

@@ -181,19 +181,33 @@ build-release-fsdb: require-verdi
 # Build and smoke-test optional FSDB support
 check-fsdb-build: require-verdi
     @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
+    fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
     if [ -z "$verdi_home" ]; then \
         printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
         exit 1; \
     fi; \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo check --features fsdb && \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture && \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
+    export VERDI_HOME="$verdi_home"; \
+    export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
+    export CARGO_TARGET_DIR=target/fsdb; \
+    cargo check --features fsdb; \
+    cargo build --features fsdb; \
+    readelf_output="$(readelf -d target/fsdb/debug/wavepeek)"; \
+    if printf '%s\n' "$readelf_output" | grep -Eq '\((RPATH|RUNPATH)\)|\(NEEDED\).*Shared library: \[/'; then \
+        printf '%s\n' "error: fsdb: built binary must not contain an ELF RPATH/RUNPATH or absolute DT_NEEDED path" >&2; \
+        exit 1; \
+    fi; \
+    cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture; \
+    cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
     @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli
+    fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    export VERDI_HOME="$verdi_home"; \
+    export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
+    export CARGO_TARGET_DIR=target/fsdb; \
+    cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
+    cargo test --features fsdb --test fsdb_cli
 
 # Run auxiliary Python/unit test suites
 test-aux: require-container
@@ -219,12 +233,16 @@ bench-e2e-run: check-rtl-artifacts build-release
 
 # Refresh FSDB benchmark e2e baseline artifacts
 bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    rm -rf "{{ bench_e2e_fsdb_baseline_dir }}"
-    mkdir -p "{{ bench_e2e_fsdb_baseline_dir }}"
+    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
+    rm -rf "{{ bench_e2e_fsdb_baseline_dir }}"; \
+    mkdir -p "{{ bench_e2e_fsdb_baseline_dir }}"; \
     WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "{{ bench_e2e_fsdb_baseline_dir }}"
 
 # Run FSDB benchmark e2e suite with FSDB baseline compare
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
+    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --compare "{{ bench_e2e_fsdb_baseline_dir }}"
 
 # Refresh expression benchmark baseline artifacts
@@ -248,7 +266,8 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
+    @tmp_revised="$(mktemp -d)"; fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; trap 'rm -rf "$tmp_revised"' EXIT; \
+        export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$' && \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$tmp_revised" --golden "{{ bench_e2e_fsdb_baseline_dir }}"
 

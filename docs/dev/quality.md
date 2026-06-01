@@ -23,7 +23,7 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 
 ## Optional FSDB Gates
 
-The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK and is intentionally excluded from default `just lint`, `just check`, `just ci`, and pre-commit paths. Use the Verdi-equipped recipes only on Linux x86_64 environments where `.devcontainer/resolve_verdi_home.sh` can resolve a usable SDK.
+The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK and is intentionally excluded from default `just lint`, `just check`, `just ci`, and pre-commit paths. Use the Verdi-equipped recipes only on Linux x86_64 environments where `.devcontainer/resolve_verdi_home.sh` can resolve a usable SDK. FSDB binaries do not embed the Verdi library directory as an rpath by default, so the recipes that run feature-enabled tests or binaries set `LD_LIBRARY_PATH` for that invocation.
 
 - `just check-fsdb-env` probes availability and treats missing Verdi as a skip.
 - `just check-fsdb-build` validates the feature-enabled build/link path plus native Reader smokes.

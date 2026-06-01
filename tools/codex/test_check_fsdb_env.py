@@ -108,6 +108,26 @@ class CheckFsdbEnvTest(unittest.TestCase):
         self.assertEqual(result.stdout.count("\n"), 1)
         self.assertNotIn(str(root), result.stdout)
 
+    def test_print_libdir_emits_selected_reader_library_directory_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            reader_root = root / "share" / "FsdbReader"
+            libdir = reader_root / "linux64_gcc950"
+            libdir.mkdir(parents=True)
+            for header in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
+                (reader_root / header).write_text("", encoding="utf-8")
+            for library in ("libnffr.so", "libnsys.so"):
+                (libdir / library).write_text("", encoding="utf-8")
+
+            result = self.run_script(
+                {"VERDI_HOME": str(root), "WAVEPEEK_FSDB_ABI": "linux64_gcc950"},
+                args=["--print-libdir"],
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, f"{libdir}\n")
+        self.assertEqual(result.stderr, "")
+
 
 if __name__ == "__main__":
     unittest.main()

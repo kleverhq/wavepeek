@@ -5,6 +5,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=VERDI_HOME");
     println!("cargo:rerun-if-env-changed=WAVEPEEK_FSDB_READER_LIBDIR");
     println!("cargo:rerun-if-env-changed=WAVEPEEK_FSDB_ABI");
+    println!("cargo:rerun-if-env-changed=WAVEPEEK_FSDB_EMBED_RPATH");
     println!("cargo:rerun-if-changed=native/fsdb/wavepeek_fsdb_shim.cpp");
     println!("cargo:rerun-if-changed=native/fsdb/wavepeek_fsdb_shim.h");
 
@@ -101,15 +102,32 @@ fn compile_fsdb_shim(sdk: &FsdbSdk) {
 }
 
 fn emit_fsdb_link_settings(sdk: &FsdbSdk) {
-    let nffr = sdk.libdir.join("libnffr.so");
-    let nsys = sdk.libdir.join("libnsys.so");
-
     println!("cargo:rustc-link-search=native={}", sdk.libdir.display());
     println!("cargo:rustc-link-lib=dylib=nffr");
     println!("cargo:rustc-link-lib=dylib=nsys");
     println!("cargo:rustc-link-arg=-Wl,--no-as-needed");
-    println!("cargo:rustc-link-arg={}", nffr.display());
-    println!("cargo:rustc-link-arg={}", nsys.display());
+    println!("cargo:rustc-link-arg=-lnffr");
+    println!("cargo:rustc-link-arg=-lnsys");
     println!("cargo:rustc-link-arg=-Wl,--as-needed");
-    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", sdk.libdir.display());
+
+    if embed_fsdb_rpath_enabled() {
+        println!("cargo:rustc-link-arg=-Wl,-rpath,{}", sdk.libdir.display());
+    }
+}
+
+fn embed_fsdb_rpath_enabled() -> bool {
+    let Some(value) = env::var_os("WAVEPEEK_FSDB_EMBED_RPATH") else {
+        return false;
+    };
+    if value.is_empty() {
+        return false;
+    }
+
+    match value.to_string_lossy().to_ascii_lowercase().as_str() {
+        "1" | "true" | "yes" | "on" => true,
+        "0" | "false" | "no" | "off" => false,
+        _ => {
+            panic!("WAVEPEEK_FSDB_EMBED_RPATH must be unset or one of 1/true/yes/on/0/false/no/off")
+        }
+    }
 }

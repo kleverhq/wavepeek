@@ -30,7 +30,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: user mistakes such as using a non-event signal as a raw event can silently produce empty `change`/`property` results instead of a diagnostic.
    - Suggested fix: return a `WavepeekError` matching the Wellen “is not a raw event” behavior before caching/querying.
 
-7. APPROVED `build.rs:114` — FSDB feature builds embed the absolute local Verdi library directory as an ELF rpath.
+7. DONE `build.rs:114` — FSDB feature builds embed the absolute local Verdi library directory as an ELF rpath.
    - Impact: feature-enabled binaries are non-reproducible/non-relocatable and leak machine-specific SDK paths.
    - Suggested fix: avoid absolute rpath by default; use documented `LD_LIBRARY_PATH`, an explicit opt-in, or a relocatable `$ORIGIN` strategy.
 

@@ -18,7 +18,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: `type(state)::LABEL` can bind as enum-typed and fail later, while signed comparisons/arithmetic can disagree with VCD/FST.
    - Suggested fix: carry signedness and enum labels from FSDB datatype records into `FsdbSignalInfo`/`ExprType`; otherwise reject/document unsupported enum-label and signed-vector semantics earlier.
 
-4. APPROVED `src/waveform/fsdb_hierarchy.rs:200` and `src/waveform/fsdb_hierarchy.rs:259` — duplicate normalized scope/signal paths are handled inconsistently: duplicate scopes reuse the first `scope_by_path` entry, while duplicate signals are appended but `signal_by_path` resolves only the first.
+4. DONE `src/waveform/fsdb_hierarchy.rs:200` and `src/waveform/fsdb_hierarchy.rs:259` — duplicate normalized scope/signal paths are handled inconsistently: duplicate scopes reuse the first `scope_by_path` entry, while duplicate signals are appended but `signal_by_path` resolves only the first.
    - Impact: hierarchy traversal can collapse distinct scopes or show repeated signal paths that resolve to a different underlying idcode.
    - Suggested fix: detect/report ambiguous canonical path collisions, or preserve unique instances with unambiguous public paths; do not append duplicate signal entries that cannot be resolved consistently.
 

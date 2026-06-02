@@ -1252,5 +1252,62 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
 
+class JustfileBaselineRecipeTest(unittest.TestCase):
+    JUSTFILE_PATH = pathlib.Path(__file__).resolve().parents[2] / "justfile"
+
+    @classmethod
+    def _recipe_body(cls, recipe_name: str) -> str:
+        lines = cls.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
+        recipe_prefix = f"{recipe_name}:"
+        for line_index, line in enumerate(lines):
+            if not line.startswith(recipe_prefix):
+                continue
+            body: list[str] = []
+            for body_line in lines[line_index + 1 :]:
+                if not body_line.startswith((" ", "\t")):
+                    break
+                body.append(body_line.strip())
+            return "\n".join(body)
+        raise AssertionError(f"recipe not found: {recipe_name}")
+
+    def assert_recipe_replaces_baseline_after_successful_run(
+        self,
+        recipe_name: str,
+        baseline_dir_variable: str,
+    ) -> None:
+        body = self._recipe_body(recipe_name)
+        baseline_dir = f"{{{{ {baseline_dir_variable} }}}}"
+
+        temp_index = body.find('tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/')
+        run_index = body.find("bench/e2e/perf.py run")
+        run_dir_index = body.find('--run-dir "$tmp_baseline"')
+        remove_index = body.find(f'rm -rf "{baseline_dir}"')
+        move_index = body.find(f'mv "$tmp_baseline" "{baseline_dir}"')
+
+        self.assertNotEqual(temp_index, -1, body)
+        self.assertNotEqual(run_index, -1, body)
+        self.assertNotEqual(run_dir_index, -1, body)
+        self.assertNotEqual(remove_index, -1, body)
+        self.assertNotEqual(move_index, -1, body)
+        self.assertLess(temp_index, run_index, body)
+        self.assertLess(run_index, remove_index, body)
+        self.assertLess(remove_index, move_index, body)
+        self.assertNotIn(f'--run-dir "{baseline_dir}"', body)
+
+    def test_e2e_baseline_update_replaces_baseline_only_after_successful_run(self) -> None:
+        self.assert_recipe_replaces_baseline_after_successful_run(
+            "bench-e2e-update-baseline",
+            "bench_e2e_baseline_dir",
+        )
+
+    def test_fsdb_e2e_baseline_update_replaces_baseline_only_after_successful_run(
+        self,
+    ) -> None:
+        self.assert_recipe_replaces_baseline_after_successful_run(
+            "bench-e2e-fsdb-update-baseline",
+            "bench_e2e_fsdb_baseline_dir",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

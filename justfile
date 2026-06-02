@@ -224,9 +224,10 @@ build-release: require-container
 
 # Refresh benchmark e2e baseline artifacts
 bench-e2e-update-baseline: check-rtl-artifacts build-release
-    rm -rf "{{ bench_e2e_baseline_dir }}"
-    mkdir -p "{{ bench_e2e_baseline_dir }}"
-    WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --run-dir "{{ bench_e2e_baseline_dir }}"
+    @mkdir -p "{{ bench_e2e_runs_dir }}"; tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/baseline_fst.tmp.XXXXXX")"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
+        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --run-dir "$tmp_baseline" && \
+        rm -rf "{{ bench_e2e_baseline_dir }}" && \
+        mv "$tmp_baseline" "{{ bench_e2e_baseline_dir }}"
 
 # Run benchmark e2e suite with baseline compare
 bench-e2e-run: check-rtl-artifacts build-release
@@ -234,11 +235,12 @@ bench-e2e-run: check-rtl-artifacts build-release
 
 # Refresh FSDB benchmark e2e baseline artifacts
 bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
-    export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
-    rm -rf "{{ bench_e2e_fsdb_baseline_dir }}"; \
-    mkdir -p "{{ bench_e2e_fsdb_baseline_dir }}"; \
-    WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "{{ bench_e2e_fsdb_baseline_dir }}"
+    @mkdir -p "{{ bench_e2e_runs_dir }}"; tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/baseline_fsdb.tmp.XXXXXX")"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
+        fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+        export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
+        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_baseline" && \
+        rm -rf "{{ bench_e2e_fsdb_baseline_dir }}" && \
+        mv "$tmp_baseline" "{{ bench_e2e_fsdb_baseline_dir }}"
 
 # Run FSDB benchmark e2e suite with FSDB baseline compare
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb

@@ -54,7 +54,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
     - Impact: regressions in `scope`, `signal`, `value`, `change`, or `property` `.fsdb` suffix handling can slip through.
     - Suggested fix: add a table-driven disabled-feature test for each command with minimal required args against a temp `.fsdb` path.
 
-13. APPROVED `justfile:211` and `justfile:221` — e2e baseline update recipes delete committed baseline directories before the replacement run succeeds.
+13. DONE `justfile:211` and `justfile:221` — e2e baseline update recipes delete committed baseline directories before the replacement run succeeds.
     - Impact: failed/interrupted runs can leave partial baseline trees ready to be committed.
     - Suggested fix: use the temp-dir/replace-after-success pattern already used by `bench-expr-update-baseline`.
 

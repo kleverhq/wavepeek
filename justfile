@@ -216,7 +216,7 @@ test-aux: require-container
     {{ python }} -m unittest discover -s .devcontainer -p "test_*.py"
     {{ python }} -m unittest tools/release/test_extract_release_notes.py
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
-    {{ python }} -m unittest tools/codex/test_check_fsdb_env.py
+    {{ python }} -m unittest discover -s tools/codex -p "test_*.py"
 
 # Build release binary
 build-release: require-container

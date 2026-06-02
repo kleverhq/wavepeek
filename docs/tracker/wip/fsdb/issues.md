@@ -38,7 +38,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: shell startup files can prompt, mutate host state, or fail inconsistently before the container starts. Lovely place for a haunted `.bashrc` to join the build.
    - Suggested fix: pass an explicit host environment value such as `${localEnv:VERDI_HOME}`/`HOST_VERDI_HOME` into mount setup instead of probing via `$SHELL -lc`.
 
-9. APPROVED `tools/codex/prepare_fsdb_fixtures.sh:23` — fixture preparation unconditionally removes repository-root `vcd2fsdbLog`.
+9. DONE `tools/codex/prepare_fsdb_fixtures.sh:23` — fixture preparation unconditionally removes repository-root `vcd2fsdbLog`.
    - Impact: pre-existing user/agent data outside `tmp/` can be deleted just because it matches Verdi’s log directory name.
    - Suggested fix: run converters from a dedicated temp working directory, or only remove a log path created by this helper.
 

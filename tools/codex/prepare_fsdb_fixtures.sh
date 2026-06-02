@@ -20,20 +20,24 @@ resolve_rtl_artifacts_dir() {
 }
 
 cleanup_converter_logs() {
-  rm -rf "$repo_root/vcd2fsdbLog"
+  local work_dir="$1"
+  rm -rf "$work_dir/vcd2fsdbLog"
 }
 
 run_converter() {
   local label="$1"
   local stdout_log="$2"
   local stderr_log="$3"
+  local work_dir
   shift 3
 
   rm -f "$stdout_log" "$stderr_log"
-  cleanup_converter_logs
-  if "$@" >"$stdout_log" 2>"$stderr_log"; then
+  work_dir="$(mktemp -d "$tmp_root/converter.XXXXXX")"
+  cleanup_converter_logs "$work_dir"
+  if (cd "$work_dir" && "$@") >"$stdout_log" 2>"$stderr_log"; then
     rm -f "$stdout_log" "$stderr_log"
-    cleanup_converter_logs
+    cleanup_converter_logs "$work_dir"
+    rm -rf "$work_dir"
     return 0
   fi
 
@@ -47,7 +51,8 @@ run_converter() {
     cat "$stderr_log" >&2
   fi
   rm -f "$stdout_log" "$stderr_log"
-  cleanup_converter_logs
+  cleanup_converter_logs "$work_dir"
+  rm -rf "$work_dir"
   return 1
 }
 
@@ -164,6 +169,7 @@ convert_rtl_fst_artifacts() {
     printf '%s\n' "error: fsdb fixture: set WAVEPEEK_RTL_ARTIFACTS_DIR or RTL_ARTIFACTS_DIR to a writable complete artifact directory" >&2
     exit 1
   fi
+  rtl_dir="$(cd "$rtl_dir" && pwd)"
 
   while IFS= read -r -d '' source; do
     sources+=("$source")

@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOST_VERDI_HOME="${HOST_VERDI_HOME-}"
-if [ -z "$HOST_VERDI_HOME" ] && [ "$#" -gt 0 ]; then
-    HOST_VERDI_HOME="$1"
-fi
-if [ -z "$HOST_VERDI_HOME" ]; then
-    HOST_VERDI_HOME="${VERDI_HOME-}"
-fi
+# Host-side Verdi SDK path. Inside the container VERDI_HOME is /opt/verdi.
+HOST_VERDI_HOME="${VERDI_HOME-}"
 
 WAVEPEEK_STATE_DIR="$HOME/.cache/wavepeek"
 WAVEPEEK_VERDI_MOUNT_SOURCE="$WAVEPEEK_STATE_DIR/verdi"

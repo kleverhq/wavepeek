@@ -40,14 +40,14 @@ class DevcontainerInitializeTest(unittest.TestCase):
             text=True,
         )
 
-    def test_uses_explicit_host_verdi_home_argument(self) -> None:
+    def test_uses_host_verdi_home_env(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             home = root / "home"
             verdi_home = root / "verdi sdk"
             verdi_home.mkdir(parents=True)
 
-            result = self.run_initialize(home, args=[str(verdi_home)])
+            result = self.run_initialize(home, env_overrides={"VERDI_HOME": str(verdi_home)})
 
             self.assertEqual(result.returncode, 0, result.stderr)
             mount_source = home / ".cache" / "wavepeek" / "verdi"
@@ -82,7 +82,7 @@ class DevcontainerInitializeTest(unittest.TestCase):
             self.assertTrue(mount_source.is_dir())
             self.assertFalse(mount_source.is_symlink())
 
-    def test_devcontainer_passes_local_verdi_home_explicitly(self) -> None:
+    def test_devcontainer_runs_initialize_without_arguments(self) -> None:
         devcontainer = json.loads(DEVCONTAINER_PATH.read_text(encoding="utf-8"))
 
         self.assertEqual(
@@ -90,7 +90,6 @@ class DevcontainerInitializeTest(unittest.TestCase):
             [
                 "bash",
                 "${localWorkspaceFolder}/.devcontainer/initialize.sh",
-                "${localEnv:VERDI_HOME}",
             ],
         )
 

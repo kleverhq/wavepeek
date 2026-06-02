@@ -62,7 +62,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
     - Impact: users on unsupported targets can follow the public guidance and hit a build-time panic.
     - Suggested fix: document “FSDB support is currently Linux x86_64 only” wherever FSDB installation/support is advertised.
 
-15. APPROVED `docs/public/reference/expression-language.md:138` — the expression reference still says supported operand metadata comes from VCD/FST dumps.
+15. DONE `docs/public/reference/expression-language.md:138` — the expression reference still says supported operand metadata comes from VCD/FST dumps.
     - Impact: this contradicts the new FSDB-enabled `change`/`property` surface and makes FSDB expression support look unsupported.
     - Suggested fix: include FSDB-enabled builds in the wording while preserving the digital bit-vector/integral limitation and real/string caveats.
 

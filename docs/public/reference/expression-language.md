@@ -135,8 +135,11 @@ references such as `type(enum_operand_reference)::LABEL` (for example,
 
 Boolean expressions operate on typed operands. Operands may carry 2-state or
 4-state values internally; final property decisions are reduced to 2-state.
-The supported groups match the values and type metadata recoverable from
-VCD/FST waveform dumps.
+The supported groups match the values and type metadata recoverable from VCD
+and FST waveform dumps, and from FSDB waveform dumps in FSDB-enabled builds.
+Dump-derived operands remain limited to the digital bit-vector and integral
+surfaces that the active backend can recover; `real` and `string` support
+follows only the explicit literal, cast, and operator caveats below.
 
 - `bit-vector`
   - `bit` - width `1`, sign `unsigned`, states `2-state`

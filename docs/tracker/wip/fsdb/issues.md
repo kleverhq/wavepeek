@@ -58,7 +58,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
     - Impact: failed/interrupted runs can leave partial baseline trees ready to be committed.
     - Suggested fix: use the temp-dir/replace-after-success pattern already used by `bench-expr-update-baseline`.
 
-14. APPROVED `README.md:8`, `README.md:27`, and `build.rs:18` — public FSDB install/support wording omits the Linux x86_64 restriction enforced by the build script.
+14. DONE `README.md:8`, `README.md:27`, and `build.rs:18` — public FSDB install/support wording omits the Linux x86_64 restriction enforced by the build script.
     - Impact: users on unsupported targets can follow the public guidance and hit a build-time panic.
     - Suggested fix: document “FSDB support is currently Linux x86_64 only” wherever FSDB installation/support is advertised.
 

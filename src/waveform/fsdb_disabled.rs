@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::error::WavepeekError;
 
-pub(crate) const FSDB_DISABLED_MESSAGE: &str = "FSDB input requires a wavepeek binary built with FSDB support; reinstall with --features fsdb and provide a licensed VERDI_HOME";
+pub(crate) const FSDB_DISABLED_MESSAGE: &str = "FSDB support is currently Linux x86_64 only; FSDB input requires a wavepeek binary built with --features fsdb and a licensed VERDI_HOME";
 
 pub(crate) fn looks_like_fsdb_path(path: &Path) -> bool {
     let Some(file_name) = path.file_name() else {

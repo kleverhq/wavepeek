@@ -16,7 +16,7 @@ fn main() {
     let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
     if target_os != "linux" || target_arch != "x86_64" {
-        panic!("FSDB support is Linux x86_64 only in this build spike");
+        panic!("FSDB support is currently Linux x86_64 only; target is {target_os}/{target_arch}");
     }
 
     let sdk = resolve_fsdb_sdk();

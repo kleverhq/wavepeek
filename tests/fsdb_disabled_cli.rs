@@ -10,7 +10,7 @@ use tempfile::NamedTempFile;
 mod common;
 use common::wavepeek_cmd;
 
-const FSDB_DISABLED_STDERR: &str = "error: file: FSDB input requires a wavepeek binary built with FSDB support; reinstall with --features fsdb and provide a licensed VERDI_HOME\n";
+const FSDB_DISABLED_STDERR: &str = "error: file: FSDB support is currently Linux x86_64 only; FSDB input requires a wavepeek binary built with --features fsdb and a licensed VERDI_HOME\n";
 
 fn write_temp_file(bytes: &[u8], suffix: &str) -> NamedTempFile {
     let mut file = tempfile::Builder::new()

@@ -28,7 +28,7 @@ See more with '--help'
 General conventions:
 - Waveform-inspection commands require `--waves <FILE>`.
 - VCD/FST input is available in every build.
-- FSDB input requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+- FSDB support is currently Linux x86_64 only and requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 - Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
@@ -178,7 +178,7 @@ struct OptionalFeatureHelp {
 const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[OptionalFeatureHelp {
     name: "FSDB",
     enabled: cfg!(feature = "fsdb"),
-    disabled_hint: "reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK",
+    disabled_hint: "FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK",
 }];
 
 const ROOT_NEXT_STEPS: &str = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill";

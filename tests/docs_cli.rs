@@ -266,6 +266,23 @@ fn docs_show_summary_prints_only_stored_summary_text() {
 }
 
 #[test]
+fn public_docs_describe_fsdb_target_restriction() {
+    for topic_id in [
+        "intro",
+        "commands/change",
+        "commands/property",
+        "reference/command-model",
+    ] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+
+        assert!(
+            output.contains("FSDB support is currently Linux x86_64 only"),
+            "topic {topic_id} should describe the FSDB target restriction"
+        );
+    }
+}
+
+#[test]
 fn unsupported_docs_json_modes_are_argument_errors() {
     let export_dir = tempdir().expect("tempdir should be created");
     let export_target = export_dir.path().join("wavepeek-docs");

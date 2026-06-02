@@ -11,7 +11,7 @@ const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 10] = [
 #[cfg(feature = "fsdb")]
 const EXPECTED_FSDB_FEATURE_STATUS: &str = "FSDB - enabled";
 #[cfg(not(feature = "fsdb"))]
-const EXPECTED_FSDB_FEATURE_STATUS: &str = "FSDB - disabled (reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)";
+const EXPECTED_FSDB_FEATURE_STATUS: &str = "FSDB - disabled (FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)";
 
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
     let mut command = wavepeek_cmd();
@@ -173,7 +173,7 @@ fn top_level_help_documents_general_conventions() {
             "VCD/FST input is available in every build.",
         ))
         .stdout(predicate::str::contains(
-            "FSDB input requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.",
+            "FSDB support is currently Linux x86_64 only and requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.",
         ))
         .stdout(predicate::str::contains("Optional features:"))
         .stdout(predicate::str::contains(EXPECTED_FSDB_FEATURE_STATUS))

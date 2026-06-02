@@ -148,12 +148,7 @@ check-fsdb-env: require-container
 
 # Lint optional FSDB support
 lint-fsdb: require-verdi
-    @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
-    if [ -z "$verdi_home" ]; then \
-        printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
-        exit 1; \
-    fi; \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
+    CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
 
 # Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
 prepare-fsdb-fixtures: require-verdi
@@ -171,22 +166,11 @@ prepare-and-check-fsdb-rtl-artifacts: require-verdi
 
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
-    @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
-    if [ -z "$verdi_home" ]; then \
-        printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
-        exit 1; \
-    fi; \
-    VERDI_HOME="$verdi_home" CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
+    CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
 
 # Build and smoke-test optional FSDB support
 check-fsdb-build: require-verdi
-    @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
-    fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
-    if [ -z "$verdi_home" ]; then \
-        printf '%s\n' "error: fsdb: environment checker succeeded but no usable VERDI_HOME could be resolved" >&2; \
-        exit 1; \
-    fi; \
-    export VERDI_HOME="$verdi_home"; \
+    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
     export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     export CARGO_TARGET_DIR=target/fsdb; \
     cargo check --features fsdb; \
@@ -201,9 +185,7 @@ check-fsdb-build: require-verdi
 
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
-    @verdi_home="$(.devcontainer/resolve_verdi_home.sh)"; \
-    fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
-    export VERDI_HOME="$verdi_home"; \
+    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
     export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     export CARGO_TARGET_DIR=target/fsdb; \
     cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \

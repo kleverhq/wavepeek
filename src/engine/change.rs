@@ -202,9 +202,6 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     }
 
     let waveform = open_shared_waveform(args.waves.as_path())?;
-    if let Some(error) = waveform.borrow().unsupported_fsdb_command_error("change") {
-        return Err(error);
-    }
     let metadata = waveform.borrow().metadata()?;
 
     let requested_signals = {

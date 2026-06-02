@@ -116,11 +116,6 @@ impl Waveform {
         }
     }
 
-    pub(crate) fn unsupported_fsdb_command_error(&self, command: &str) -> Option<WavepeekError> {
-        let _ = command;
-        None
-    }
-
     pub fn scopes_depth_first(
         &self,
         max_depth: Option<usize>,

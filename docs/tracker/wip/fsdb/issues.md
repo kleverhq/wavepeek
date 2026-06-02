@@ -80,7 +80,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
     - Impact: unrelated threads/tests writing during that window can silently lose output; failures in fd handling are also hard to reason about.
     - Suggested fix: rely on Reader suppression APIs where possible, or confine fd redirection to a checked process-wide guard with clearly bounded critical sections.
 
-19. APPROVED `src/waveform/mod.rs:119` — `unsupported_fsdb_command_error` is an FSDB-specific hook exposed through the backend-neutral facade but currently always returns `None`.
+19. DONE `src/waveform/mod.rs:119` — `unsupported_fsdb_command_error` is an FSDB-specific hook exposed through the backend-neutral facade but currently always returns `None`.
     - Impact: stale FSDB branching remains in format-agnostic engine paths and invites future capability-gating sprawl.
     - Suggested fix: remove the hook/call sites, or replace it with a generic backend capability API only when commands actually need one.
 

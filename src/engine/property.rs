@@ -42,9 +42,6 @@ pub struct PropertyCaptureRow {
 
 pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let waveform = open_shared_waveform(args.waves.as_path())?;
-    if let Some(error) = waveform.borrow().unsupported_fsdb_command_error("property") {
-        return Err(error);
-    }
     let metadata = waveform.borrow().metadata()?;
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;

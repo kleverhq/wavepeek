@@ -50,7 +50,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
     - Impact: Verdi/version-dependent conversion can make FSDB tests fail for environment reasons rather than wavepeek behavior.
     - Suggested fix: add a converter capability check/skip for this case, or use a fixture construct whose conversion is guaranteed.
 
-12. APPROVED `tests/fsdb_disabled_cli.rs:24` — disabled-FSDB coverage only exercises `info`.
+12. DONE `tests/fsdb_disabled_cli.rs:24` — disabled-FSDB coverage only exercises `info`.
     - Impact: regressions in `scope`, `signal`, `value`, `change`, or `property` `.fsdb` suffix handling can slip through.
     - Suggested fix: add a table-driven disabled-feature test for each command with minimal required args against a temp `.fsdb` path.
 

@@ -21,12 +21,46 @@ fn write_temp_file(bytes: &[u8], suffix: &str) -> NamedTempFile {
     file
 }
 
-fn assert_disabled_for_path(path: &Path) {
+struct DisabledFsdbCase {
+    command: &'static str,
+    extra_args: &'static [&'static str],
+}
+
+const DISABLED_FSDB_COMMAND_CASES: &[DisabledFsdbCase] = &[
+    DisabledFsdbCase {
+        command: "info",
+        extra_args: &[],
+    },
+    DisabledFsdbCase {
+        command: "scope",
+        extra_args: &[],
+    },
+    DisabledFsdbCase {
+        command: "signal",
+        extra_args: &["--scope", "top"],
+    },
+    DisabledFsdbCase {
+        command: "value",
+        extra_args: &["--at", "0ns", "--signals", "top.clk"],
+    },
+    DisabledFsdbCase {
+        command: "change",
+        extra_args: &["--signals", "top.clk"],
+    },
+    DisabledFsdbCase {
+        command: "property",
+        extra_args: &["--eval", "1"],
+    },
+];
+
+fn assert_disabled_for_command(path: &Path, case: &DisabledFsdbCase) {
     let mut command = wavepeek_cmd();
     let path = path.to_string_lossy().into_owned();
 
     command
-        .args(["info", "--waves", path.as_str()])
+        .arg(case.command)
+        .args(["--waves", path.as_str()])
+        .args(case.extra_args)
         .assert()
         .failure()
         .code(2)
@@ -34,25 +68,31 @@ fn assert_disabled_for_path(path: &Path) {
         .stderr(predicate::eq(FSDB_DISABLED_STDERR));
 }
 
-#[test]
-fn info_reports_feature_required_for_invalid_fsdb_suffix() {
-    let file = write_temp_file(b"not-a-waveform", ".fsdb");
+fn assert_info_disabled_for_path(path: &Path) {
+    assert_disabled_for_command(path, &DISABLED_FSDB_COMMAND_CASES[0]);
+}
 
-    assert_disabled_for_path(file.path());
+#[test]
+fn waveform_commands_report_feature_required_for_invalid_fsdb_suffix() {
+    for case in DISABLED_FSDB_COMMAND_CASES {
+        let file = write_temp_file(b"not-a-waveform", ".fsdb");
+
+        assert_disabled_for_command(file.path(), case);
+    }
 }
 
 #[test]
 fn info_reports_feature_required_for_invalid_uppercase_fsdb_suffix() {
     let file = write_temp_file(b"not-a-waveform", ".FSDB");
 
-    assert_disabled_for_path(file.path());
+    assert_info_disabled_for_path(file.path());
 }
 
 #[test]
 fn info_reports_feature_required_for_invalid_fsdb_gz_suffix() {
     let file = write_temp_file(b"not-a-waveform", ".fsdb.gz");
 
-    assert_disabled_for_path(file.path());
+    assert_info_disabled_for_path(file.path());
 }
 
 #[test]

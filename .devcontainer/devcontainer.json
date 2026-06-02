@@ -11,7 +11,11 @@
     "runArgs": [
         "--network=host"
     ],
-    "initializeCommand": "bash \"${localWorkspaceFolder}/.devcontainer/initialize.sh\"",
+    "initializeCommand": [
+        "bash",
+        "${localWorkspaceFolder}/.devcontainer/initialize.sh",
+        "${localEnv:VERDI_HOME}"
+    ],
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
     "mounts": [

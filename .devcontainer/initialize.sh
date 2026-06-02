@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HOST_VERDI_HOME="${VERDI_HOME-}"
-if [ -z "$HOST_VERDI_HOME" ] && [ -n "${SHELL-}" ] && [ -x "$SHELL" ]; then
-    HOST_VERDI_HOME="$($SHELL -lc 'printf "%s" "${VERDI_HOME-}"' 2>/dev/null || true)"
+HOST_VERDI_HOME="${HOST_VERDI_HOME-}"
+if [ -z "$HOST_VERDI_HOME" ] && [ "$#" -gt 0 ]; then
+    HOST_VERDI_HOME="$1"
+fi
+if [ -z "$HOST_VERDI_HOME" ]; then
+    HOST_VERDI_HOME="${VERDI_HOME-}"
 fi
 
 WAVEPEEK_STATE_DIR="$HOME/.cache/wavepeek"

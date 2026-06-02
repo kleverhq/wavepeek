@@ -34,7 +34,7 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: feature-enabled binaries are non-reproducible/non-relocatable and leak machine-specific SDK paths.
    - Suggested fix: avoid absolute rpath by default; use documented `LD_LIBRARY_PATH`, an explicit opt-in, or a relocatable `$ORIGIN` strategy.
 
-8. APPROVED `.devcontainer/initialize.sh:6` — devcontainer initialization executes the host user’s login shell to discover `VERDI_HOME`.
+8. DONE `.devcontainer/initialize.sh:6` — devcontainer initialization executes the host user’s login shell to discover `VERDI_HOME`.
    - Impact: shell startup files can prompt, mutate host state, or fail inconsistently before the container starts. Lovely place for a haunted `.bashrc` to join the build.
    - Suggested fix: pass an explicit host environment value such as `${localEnv:VERDI_HOME}`/`HOST_VERDI_HOME` into mount setup instead of probing via `$SHELL -lc`.
 

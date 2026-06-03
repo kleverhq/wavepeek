@@ -40,28 +40,7 @@ jobs:
           sha256sum .devcontainer/Dockerfile
 
       - name: Validate tag matches Cargo.toml version
-        run: |
-          python3 - <<'PY'
-          import os
-          import tomllib
-
-          tag = os.environ["GITHUB_REF_NAME"]
-          if not tag.startswith("v"):
-              raise SystemExit(f"error: expected tag that starts with 'v', got {tag!r}")
-
-          tag_version = tag[1:]
-          with open("Cargo.toml", "rb") as fh:
-              package = tomllib.load(fh)["package"]
-          crate_version = package["version"]
-
-          if tag_version != crate_version:
-              raise SystemExit(
-                  "error: tag version "
-                  f"({tag_version}) does not match Cargo.toml version ({crate_version})"
-              )
-
-          print(f"tag_version={tag_version}")
-          PY
+        run: python3 -B tools/release/validate_tag_version.py
 
       - name: Run release quality gate in devcontainer baseline
         uses: devcontainers/ci@v0.3

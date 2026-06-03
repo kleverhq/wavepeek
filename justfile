@@ -194,7 +194,7 @@ test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
 test-aux: require-container
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
-    {{ python }} -m unittest tools/release/test_extract_release_notes.py
+    {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
     {{ python }} -m unittest discover -s tools/codex -p "test_*.py"
 

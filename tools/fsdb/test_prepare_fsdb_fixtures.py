@@ -17,7 +17,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             sandbox = pathlib.Path(temp_dir)
             repo = sandbox / "repo"
-            script = repo / "tools" / "codex" / "prepare_fsdb_fixtures.sh"
+            script = repo / "tools" / "fsdb" / "prepare_fsdb_fixtures.sh"
             hand_fixtures = repo / "tests" / "fixtures" / "hand"
             rtl_artifacts = repo / "rtl-artifacts"
             bin_dir = sandbox / "bin"

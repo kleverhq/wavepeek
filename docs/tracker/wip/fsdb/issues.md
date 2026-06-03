@@ -38,11 +38,11 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: shell startup files can prompt, mutate host state, or fail inconsistently before the container starts. Lovely place for a haunted `.bashrc` to join the build.
    - Suggested fix: pass an explicit host environment value such as `${localEnv:VERDI_HOME}`/`HOST_VERDI_HOME` into mount setup instead of probing via `$SHELL -lc`.
 
-9. DONE `tools/codex/prepare_fsdb_fixtures.sh:23` — fixture preparation unconditionally removes repository-root `vcd2fsdbLog`.
+9. DONE `tools/fsdb/prepare_fsdb_fixtures.sh:23` — fixture preparation unconditionally removes repository-root `vcd2fsdbLog`.
    - Impact: pre-existing user/agent data outside `tmp/` can be deleted just because it matches Verdi’s log directory name.
    - Suggested fix: run converters from a dedicated temp working directory, or only remove a log path created by this helper.
 
-10. DECLINED `tests/fsdb_cli.rs:1361`, `tests/fsdb_cli.rs:314`, and `tools/codex/check_fsdb_env.py:11` — FSDB tests depend on `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`, but the environment checker validates only SDK headers/libs; the smoke test also picks the first syntactically simple signal and samples at `time_start` without proving it is value-compatible.
+10. DECLINED `tests/fsdb_cli.rs:1361`, `tests/fsdb_cli.rs:314`, and `tools/fsdb/check_fsdb_env.py:11` — FSDB tests depend on `$VERDI_HOME/share/VIA/demo/waveform/cpu.fsdb`, but the environment checker validates only SDK headers/libs; the smoke test also picks the first syntactically simple signal and samples at `time_start` without proving it is value-compatible.
     - Impact: otherwise-valid Verdi installs or CI images can fail for missing/changing demo fixtures or arbitrary signal ordering/value availability.
     - Suggested fix: use generated/checked fixtures for the smoke path, or make the env checker explicitly require `cpu.fsdb`; choose a known-compatible signal or probe/filter by kind, width, and value availability.
 

@@ -31,7 +31,7 @@ require-container:
 
 [private]
 require-verdi: require-container
-    @{{ python }} tools/codex/check_fsdb_env.py --require >/dev/null
+    @{{ python }} tools/fsdb/check_fsdb_env.py --require >/dev/null
 
 [private]
 check-rtl-artifacts: require-container
@@ -138,7 +138,7 @@ coverage-src-check: coverage-src-data
 # Check local FSDB Reader SDK availability
 check-fsdb-env: require-container
     @set +e; \
-    {{ python }} tools/codex/check_fsdb_env.py; \
+    {{ python }} tools/fsdb/check_fsdb_env.py; \
     status="$?"; \
     if [ "$status" -eq 77 ]; then \
         exit 0; \
@@ -151,17 +151,17 @@ lint-fsdb: require-verdi
 
 # Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
 prepare-fsdb-fixtures: require-verdi
-    bash tools/codex/prepare_fsdb_fixtures.sh
+    bash tools/fsdb/prepare_fsdb_fixtures.sh
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
 check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts
-    {{ python }} tools/codex/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
+    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
 # Prepare and verify FSDB benchmark artifacts in dependency order
 prepare-and-check-fsdb-rtl-artifacts: require-verdi
     just check-rtl-artifacts
     just prepare-fsdb-fixtures
-    {{ python }} tools/codex/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
+    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
@@ -169,7 +169,7 @@ build-release-fsdb: require-verdi
 
 # Build and smoke-test optional FSDB support
 check-fsdb-build: require-verdi
-    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    @fsdb_libdir="$({{ python }} tools/fsdb/check_fsdb_env.py --require --print-libdir)"; \
     export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     export CARGO_TARGET_DIR=target/fsdb; \
     cargo check --features fsdb; \
@@ -184,7 +184,7 @@ check-fsdb-build: require-verdi
 
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
-    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    @fsdb_libdir="$({{ python }} tools/fsdb/check_fsdb_env.py --require --print-libdir)"; \
     export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     export CARGO_TARGET_DIR=target/fsdb; \
     cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
@@ -196,7 +196,7 @@ test-aux: require-container
     {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
-    {{ python }} -m unittest discover -s tools/codex -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/fsdb -p "test_*.py"
 
 # Build release binary
 build-release: require-container
@@ -216,7 +216,7 @@ bench-e2e-run: check-rtl-artifacts build-release
 # Refresh FSDB benchmark e2e baseline artifacts
 bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
     @mkdir -p "{{ bench_e2e_runs_dir }}"; tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/baseline_fsdb.tmp.XXXXXX")"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
-        fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+        fsdb_libdir="$({{ python }} tools/fsdb/check_fsdb_env.py --require --print-libdir)"; \
         export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_baseline" && \
         rm -rf "{{ bench_e2e_fsdb_baseline_dir }}" && \
@@ -224,7 +224,7 @@ bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-relea
 
 # Run FSDB benchmark e2e suite with FSDB baseline compare
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    @fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; \
+    @fsdb_libdir="$({{ python }} tools/fsdb/check_fsdb_env.py --require --print-libdir)"; \
     export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
     WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --compare "{{ bench_e2e_fsdb_baseline_dir }}"
 
@@ -249,7 +249,7 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    @tmp_revised="$(mktemp -d)"; fsdb_libdir="$({{ python }} tools/codex/check_fsdb_env.py --require --print-libdir)"; trap 'rm -rf "$tmp_revised"' EXIT; \
+    @tmp_revised="$(mktemp -d)"; fsdb_libdir="$({{ python }} tools/fsdb/check_fsdb_env.py --require --print-libdir)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         export LD_LIBRARY_PATH="$fsdb_libdir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"; \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$' && \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$tmp_revised" --golden "{{ bench_e2e_fsdb_baseline_dir }}"

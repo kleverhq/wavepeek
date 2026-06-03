@@ -531,7 +531,7 @@ FSDB Reader may write warnings/info directly. Suppress or intercept those messag
 
 The devcontainer may mount host Verdi at `/opt/verdi` and set `VERDI_HOME=/opt/verdi`. Treat Verdi as available only if the expected SDK files/libs exist, not merely because the environment variable is set. An empty mount directory means “Verdi unavailable”.
 
-Use `tools/codex/check_fsdb_env.py` for local Verdi/FSDB SDK validation.
+Use `tools/fsdb/check_fsdb_env.py` for local Verdi/FSDB SDK validation.
 
 Checks:
 

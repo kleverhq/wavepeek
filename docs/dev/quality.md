@@ -4,16 +4,16 @@
 
 ## Standard Gates
 
-Use `just check` before handing off local work. It runs formatting checks, clippy, schema contract validation, GitHub Actions linting, `cargo check`, and commit-message validation.
+Use `just check` before handing off local work. It runs formatting checks, clippy, schema contract validation, GitHub Actions linting, `cargo check`, commit-message validation, and the FSDB build gate when Verdi is available.
 
-Use `just ci` when tests should be included. It runs the same static checks plus auxiliary Python unit tests, the source coverage gate, and `cargo check`. The Rust test execution used by CI is the `cargo llvm-cov` run behind `just coverage-src-check`; use `just test` when you want an explicit non-coverage Rust test pass while iterating.
+Use `just ci` when tests should be included. It runs the same static checks plus auxiliary Python unit tests, the source coverage gate, `cargo check`, and the FSDB regression path when Verdi is available. The Rust test execution used by CI is the `cargo llvm-cov` run behind `just coverage-src-check`; use `just test` when you want an explicit non-coverage Rust test pass while iterating. `just test` also runs the FSDB regression path when Verdi is available.
 
-Use `just pre-commit` to run all installed pre-commit hooks across the repository. Hooks are installed by `just dev-setup` and must not be bypassed unless a maintainer explicitly asks.
+Use `just pre-commit` to run all installed pre-commit hooks across the repository. Hooks are installed by `just dev-setup` and must not be bypassed unless a maintainer explicitly asks. The hook path inherits the same conditional FSDB lint, test, and benchmark smoke behavior from the `just` recipes.
 
 ## Focused Recipes
 
 - `just format` and `just format-check` run rustfmt and the justfile formatter.
-- `just lint` runs clippy with warnings denied; `just lint-fix` applies safe clippy suggestions when useful.
+- `just lint` runs clippy with warnings denied, plus feature-enabled FSDB clippy when Verdi is available; `just lint-fix` applies safe clippy suggestions when useful.
 - `just check-build` runs `cargo check`.
 - `just check-schema` validates `schema/wavepeek.json` against the runtime schema contract.
 - `just check-actions` runs `actionlint` for `.github/workflows/`.
@@ -23,14 +23,14 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 
 ## Optional FSDB Gates
 
-The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK and is intentionally excluded from default `just lint`, `just check`, `just ci`, and pre-commit paths. Use the Verdi-equipped recipes only on Linux x86_64 environments where `tools/fsdb/check_fsdb_env.py` can validate a usable SDK. FSDB binaries embed the selected Verdi library directory as an rpath/RUNPATH by default, so the Verdi-equipped recipes do not require `LD_LIBRARY_PATH` setup.
+The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK. `just lint`, `just check`, and `just ci` probe the local environment: when `tools/fsdb/check_fsdb_env.py` validates a usable SDK, they run the relevant FSDB gates; when Verdi is absent, they print a skip message and continue. FSDB binaries embed the selected Verdi library directory as an rpath/RUNPATH by default, so the Verdi-equipped recipes do not require `LD_LIBRARY_PATH` setup.
 
 - `just check-fsdb-env` probes availability and treats missing Verdi as a skip.
-- `just check-fsdb-build` validates the feature-enabled build/link path plus native Reader smokes.
-- `just lint-fsdb` runs feature-enabled clippy under `CARGO_TARGET_DIR=target/fsdb`.
+- `just lint-fsdb` runs feature-enabled clippy under `CARGO_TARGET_DIR=target/fsdb`; it is included in `just lint` when Verdi is available.
+- `just check-fsdb-build` validates the feature-enabled build/link path plus native Reader smokes; it is included in `just check` when Verdi is available.
 - `just prepare-fsdb-fixtures` generates ignored FSDB fixtures from committed VCD fixtures and RTL FST artifacts.
-- `just test-fsdb` runs the supported FSDB regression path.
-- `just bench-e2e-fsdb-smoke-commit` runs a lightweight functional-only FSDB benchmark smoke.
+- `just test-fsdb` runs the supported FSDB regression path; it is included in `just test` and `just ci` when Verdi is available.
+- `just bench-e2e-fsdb-smoke-commit` runs a lightweight functional-only FSDB benchmark smoke; it is included in `just bench-e2e-smoke-commit` when Verdi is available.
 
 ## Interpreting Failures
 

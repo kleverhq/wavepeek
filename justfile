@@ -34,6 +34,22 @@ require-verdi: require-container
     @{{ python }} tools/fsdb/check_fsdb_env.py --require >/dev/null
 
 [private]
+run-if-verdi recipe: require-container
+    @set +e; \
+    output="$({{ python }} tools/fsdb/check_fsdb_env.py 2>&1)"; \
+    status="$?"; \
+    set -e; \
+    if [ "$status" -eq 0 ]; then \
+        printf '%s\n' "$output"; \
+        just "{{ recipe }}"; \
+    elif [ "$status" -eq 77 ]; then \
+        printf '%s\n' "$output"; \
+    else \
+        printf '%s\n' "$output" >&2; \
+        exit "$status"; \
+    fi
+
+[private]
 check-rtl-artifacts: require-container
     @. ./.devcontainer/env_contract.sh; \
     for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
@@ -108,6 +124,7 @@ format-check: require-container
 # Lint with clippy
 lint: require-container
     cargo clippy --all-targets -- -D warnings
+    just run-if-verdi lint-fsdb
 
 # Fix linting with clippy
 lint-fix: require-container
@@ -120,6 +137,7 @@ check-build: require-container
 # Run tests with cargo
 test: require-container check-rtl-artifacts
     cargo test -q
+    just run-if-verdi test-fsdb
 
 [private]
 coverage-src-data: require-container check-rtl-artifacts
@@ -252,6 +270,7 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised" && \
         WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare --revised "$tmp_revised" --golden "{{ bench_e2e_baseline_dir }}" --max-negative-delta-pct 100
+    @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
@@ -269,9 +288,11 @@ check-commit: require-container
 
 # Check everything
 check: format-check lint check-schema check-actions check-bench-e2e-fsdb-catalog check-build check-commit
+    @just run-if-verdi check-fsdb-build
 
 # CI quality gate (no commit-msg hook)
 ci: format-check lint check-schema check-actions test-aux coverage-src-check check-build
+    @just run-if-verdi test-fsdb
 
 # Fix everything
 fix: format lint-fix update-schema

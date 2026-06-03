@@ -2714,9 +2714,69 @@
     },
     {
       "kind": "wire",
+      "name": "araddr[0] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.araddr[0] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "araddr[1] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.araddr[1] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "arburst[0] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arburst[0] [1:0]",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "arburst[1] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arburst[1] [1:0]",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "arid[0] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arid[0] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "arid[1] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arid[1] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "arlen[0] [7:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arlen[0] [7:0]",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "arlen[1] [7:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arlen[1] [7:0]",
+      "width": 8
+    },
+    {
+      "kind": "wire",
       "name": "arready",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.arready",
       "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "arsize[0] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arsize[0] [2:0]",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "arsize[1] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.arsize[1] [2:0]",
+      "width": 3
     },
     {
       "kind": "wire",
@@ -2726,9 +2786,81 @@
     },
     {
       "kind": "wire",
+      "name": "awaddr[0] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr[0] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "awaddr[1] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr[1] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "awaddr_hold[0] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr_hold[0] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "awaddr_hold[1] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awaddr_hold[1] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "awid[0] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awid[0] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "awid[1] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awid[1] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "awlen[0] [7:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awlen[0] [7:0]",
+      "width": 8
+    },
+    {
+      "kind": "wire",
+      "name": "awlen[1] [7:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awlen[1] [7:0]",
+      "width": 8
+    },
+    {
+      "kind": "wire",
       "name": "awready",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.awready",
       "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "awsize[0] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize[0] [2:0]",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "awsize[1] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize[1] [2:0]",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "awsize_hold[0] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize_hold[0] [2:0]",
+      "width": 3
+    },
+    {
+      "kind": "wire",
+      "name": "awsize_hold[1] [2:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.awsize_hold[1] [2:0]",
+      "width": 3
     },
     {
       "kind": "wire",
@@ -2738,8 +2870,32 @@
     },
     {
       "kind": "wire",
+      "name": "bid[0] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bid[0] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "bid[1] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bid[1] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
       "name": "bready",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.bready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "bresp[0] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bresp[0] [1:0]",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "bresp[1] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.bresp[1] [1:0]",
       "width": 2
     },
     {
@@ -2768,6 +2924,30 @@
     },
     {
       "kind": "wire",
+      "name": "rdata[0] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rdata[0] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "rdata[1] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rdata[1] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "rid[0] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rid[0] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "rid[1] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rid[1] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
       "name": "rlast",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.rlast",
       "width": 2
@@ -2776,6 +2956,18 @@
       "kind": "wire",
       "name": "rready",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.rready",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "rresp[0] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rresp[0] [1:0]",
+      "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "rresp[1] [1:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.rresp[1] [1:0]",
       "width": 2
     },
     {
@@ -2816,6 +3008,18 @@
     },
     {
       "kind": "wire",
+      "name": "wdata[0] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wdata[0] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
+      "name": "wdata[1] [31:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wdata[1] [31:0]",
+      "width": 32
+    },
+    {
+      "kind": "wire",
       "name": "wlast",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.wlast",
       "width": 2
@@ -2825,6 +3029,18 @@
       "name": "wready",
       "path": "TOP.scr1_top_tb_axi.i_memory_tb.wready",
       "width": 2
+    },
+    {
+      "kind": "wire",
+      "name": "wstrb[0] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wstrb[0] [3:0]",
+      "width": 4
+    },
+    {
+      "kind": "wire",
+      "name": "wstrb[1] [3:0]",
+      "path": "TOP.scr1_top_tb_axi.i_memory_tb.wstrb[1] [3:0]",
+      "width": 4
     },
     {
       "kind": "wire",

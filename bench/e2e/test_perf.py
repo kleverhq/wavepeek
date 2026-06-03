@@ -374,12 +374,15 @@ class PerfHelpersTest(unittest.TestCase):
             (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
         )
 
+        artifact_prefix = (
+            os.environ.get("RTL_ARTIFACTS_DIR", "/opt/rtl-artifacts").rstrip("/") + "/"
+        )
+
         def normalize(value: object) -> object:
             if isinstance(value, str):
-                return value.replace("/opt/rtl-artifacts/", "@@ARTIFACTS@@/").replace(
-                    ".fsdb",
-                    ".fst",
-                )
+                if value.startswith(artifact_prefix) and value.endswith(".fsdb"):
+                    return value[: -len(".fsdb")] + ".fst"
+                return value
             if isinstance(value, list):
                 return [normalize(item) for item in value]
             if isinstance(value, dict):

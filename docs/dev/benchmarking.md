@@ -4,7 +4,7 @@ Benchmark work must run in the devcontainer or CI image so fixture availability,
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`; committed FST baseline artifacts live under `bench/e2e/runs/baseline_fst/`. FSDB benchmark definitions live in `bench/e2e/tests_fsdb.json`; committed FSDB baseline artifacts live under `bench/e2e/runs/baseline_fsdb/`.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`; committed FST baseline artifacts live under `bench/e2e/runs/baseline_fst/`. FSDB benchmark definitions live in `bench/e2e/tests_fsdb.json`; that file is generated from `tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths, so update `tests.json` first and refresh the FSDB catalog instead of editing both by hand. Committed FSDB baseline artifacts live under `bench/e2e/runs/baseline_fsdb/`.
 
 Common commands:
 
@@ -14,6 +14,8 @@ Common commands:
     python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>
     python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5
     python3 bench/e2e/perf.py compare --functional-only --revised <fsdb-run> --golden bench/e2e/runs/baseline_fst
+    just update-bench-e2e-fsdb-catalog
+    just check-bench-e2e-fsdb-catalog
 
 Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test threshold violations, functional `data` mismatches, or missing/invalid artifacts. Functional-only compare skips timing thresholds but still fails data mismatches, invalid or missing JSON artifacts, timeout payloads, and unmatched tests unless `--allow-golden-extra` is intentionally used for a filtered smoke.
 

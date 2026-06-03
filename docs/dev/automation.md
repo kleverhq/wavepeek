@@ -21,6 +21,6 @@ Pre-commit configuration lives in `.pre-commit-config.yaml`. Hooks should stay d
 
 Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path.
 
-Expected groups are coverage checking, schema contract checking, release-note extraction, Codex environment setup, FSDB local-environment helpers, and repository statistics. FSDB environment probes and fixture converters live under `tools/fsdb/` and are surfaced through `just` recipes. Keep helper stdout/stderr stable and return explicit non-zero exits on failure.
+Expected groups are coverage checking, schema contract checking, release-note extraction, Codex environment setup, FSDB local-environment helpers, and repository statistics. FSDB environment probes, fixture converters, and benchmark catalog checks live under `tools/fsdb/` and are surfaced through `just` recipes. Keep helper stdout/stderr stable and return explicit non-zero exits on failure.
 
 During path moves, update `justfile`, affected workflow YAML, hooks, docs, and helper tests in the same change. Nothing says reliability like a helper script confidently living at yesterday's address.

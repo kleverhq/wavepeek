@@ -1,11 +1,13 @@
 # FSDB Tools
 
-This group owns local FSDB environment probes, fixture preparation, and benchmark artifact checks surfaced through `just` recipes.
+This group owns local FSDB environment probes, fixture preparation, benchmark catalog generation, and benchmark artifact checks surfaced through `just` recipes.
 
 Normal entrypoints:
 
     just check-fsdb-env
     just prepare-fsdb-fixtures
+    just update-bench-e2e-fsdb-catalog
+    just check-bench-e2e-fsdb-catalog
     just test-fsdb
     just bench-e2e-fsdb-smoke-commit
 

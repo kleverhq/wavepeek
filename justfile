@@ -58,6 +58,14 @@ check-schema: require-container
 check-actions: require-container
     actionlint .github/workflows/*.yml
 
+# Regenerate FSDB benchmark catalog from the FST benchmark catalog
+update-bench-e2e-fsdb-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py
+
+# Validate FSDB benchmark catalog freshness
+check-bench-e2e-fsdb-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py --check
+
 # Prepare local devcontainer environment and install git hooks
 dev-setup: require-container
     rustup show >/dev/null
@@ -150,7 +158,7 @@ lint-fsdb: require-verdi
     CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
 
 # Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
-prepare-fsdb-fixtures: require-verdi
+prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog
     bash tools/fsdb/prepare_fsdb_fixtures.sh
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
@@ -192,6 +200,7 @@ test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
 
 # Run auxiliary Python/unit test suites
 test-aux: require-container
+    @just check-bench-e2e-fsdb-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
@@ -263,7 +272,7 @@ check-commit: require-container
     cz check --commit-msg-file "$(git rev-parse --git-path COMMIT_EDITMSG)"
 
 # Check everything
-check: format-check lint check-schema check-actions check-build check-commit
+check: format-check lint check-schema check-actions check-bench-e2e-fsdb-catalog check-build check-commit
 
 # CI quality gate (no commit-msg hook)
 ci: format-check lint check-schema check-actions test-aux coverage-src-check check-build

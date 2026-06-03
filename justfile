@@ -1,7 +1,6 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-rtl_artifacts_dir := `./.devcontainer/resolve_rtl_artifacts_dir.sh`
-export WAVEPEEK_RTL_ARTIFACTS_DIR := rtl_artifacts_dir
+export RTL_ARTIFACTS_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$RTL_ARTIFACTS_DIR"`
 schema_path := "schema/wavepeek.json"
 bench_e2e_runs_dir := "bench/e2e/runs"
 bench_e2e_baseline_dir := "bench/e2e/runs/baseline_fst"
@@ -38,8 +37,8 @@ require-verdi: require-container
 check-rtl-artifacts: require-container
     @. ./.devcontainer/env_contract.sh; \
     for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
-        if [ ! -f "${WAVEPEEK_RTL_ARTIFACTS_DIR}/$fixture" ]; then \
-            printf '%s\n' "error: file: required fixture missing at ${WAVEPEEK_RTL_ARTIFACTS_DIR}/$fixture" >&2; \
+        if [ ! -f "${RTL_ARTIFACTS_DIR}/$fixture" ]; then \
+            printf '%s\n' "error: file: required fixture missing at ${RTL_ARTIFACTS_DIR}/$fixture" >&2; \
             exit 1; \
         fi; \
     done

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import pathlib
-import shutil
 import subprocess
 import tempfile
 import textwrap
@@ -20,22 +19,21 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             repo = sandbox / "repo"
             script = repo / "tools" / "codex" / "prepare_fsdb_fixtures.sh"
             hand_fixtures = repo / "tests" / "fixtures" / "hand"
-            rtl_artifacts = sandbox / "rtl-artifacts"
+            rtl_artifacts = repo / "rtl-artifacts"
             bin_dir = sandbox / "bin"
             root_log = repo / "vcd2fsdbLog"
             sentinel = root_log / "sentinel.txt"
 
             script.parent.mkdir(parents=True)
-            shutil.copy2(SCRIPT_PATH, script)
+            script.write_text(SCRIPT_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            os.chmod(script, 0o755)
+            (repo / ".devcontainer").mkdir()
+            (repo / ".devcontainer" / "env_contract.sh").write_text(
+                f'RTL_ARTIFACTS_DIR="{rtl_artifacts}"\n', encoding="utf-8"
+            )
             hand_fixtures.mkdir(parents=True)
             rtl_artifacts.mkdir()
             bin_dir.mkdir()
-            (repo / ".devcontainer").mkdir()
-            (repo / ".devcontainer" / "resolve_rtl_artifacts_dir.sh").write_text(
-                "#!/usr/bin/env sh\nset -eu\nprintf '%s\\n' \"$WAVEPEEK_RTL_ARTIFACTS_DIR\"\n",
-                encoding="utf-8",
-            )
-            os.chmod(repo / ".devcontainer" / "resolve_rtl_artifacts_dir.sh", 0o755)
             (hand_fixtures / "tiny.vcd").write_text(
                 "$date today $end\n$enddefinitions $end\n",
                 encoding="utf-8",
@@ -70,7 +68,6 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
 
             env = os.environ.copy()
             env["PATH"] = f"{bin_dir}{os.pathsep}{env['PATH']}"
-            env["WAVEPEEK_RTL_ARTIFACTS_DIR"] = str(rtl_artifacts)
             result = subprocess.run(
                 ["bash", str(script)],
                 check=False,

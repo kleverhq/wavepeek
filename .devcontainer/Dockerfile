@@ -40,15 +40,13 @@ FROM ubuntu:24.04 AS rtl_artifacts
 
 ENV DEBIAN_FRONTEND=noninteractive
 COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
-ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
-
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 RUN . /tmp/wavepeek-env-contract.sh && \
-    mkdir -p ${RTL_ARTIFACTS_DIR} && \
+    mkdir -p "${RTL_ARTIFACTS_DIR}" && \
     for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do \
       curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
         "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"; \
@@ -106,6 +104,9 @@ RUN . /tmp/wavepeek-env-contract.sh && \
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
+# Runtime processes do not inherit variables sourced in RUN steps, so the image
+# exports the same fixture location that .devcontainer/env_contract.sh defines.
+ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
 
 # Ensure the devcontainer user exists
 RUN if ! id -u ubuntu >/dev/null 2>&1; then useradd -m -s /bin/bash ubuntu; fi
@@ -124,7 +125,7 @@ RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /worksp
 
 # Provision pinned RTL fixtures for tests and keep the generated-local FSDB
 # benchmark copies writable by the non-root devcontainer user.
-COPY --from=rtl_artifacts --chown=ubuntu:ubuntu /opt/rtl-artifacts /opt/rtl-artifacts
+COPY --from=rtl_artifacts --chown=ubuntu:ubuntu /opt/rtl-artifacts ${RTL_ARTIFACTS_DIR}
 
 # Switch to non-root user
 USER ubuntu

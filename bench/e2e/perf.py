@@ -22,8 +22,6 @@ TESTS_PATH = SCRIPT_DIR / "tests.json"
 DEFAULT_RUNS_DIR = SCRIPT_DIR / "runs"
 README_NAME = "README.md"
 WAVEPEEK_BIN_ENV = "WAVEPEEK_BIN"
-CANONICAL_RTL_ARTIFACTS_DIR = pathlib.Path("/opt/rtl-artifacts")
-RTL_ARTIFACTS_DIR_ENVS = ("WAVEPEEK_RTL_ARTIFACTS_DIR", "RTL_ARTIFACTS_DIR")
 EMOJI_THRESHOLD_PCT = 3.0
 METRICS = ("mean", "stddev", "median", "min", "max")
 COMPARE_TIMING_METRICS = ("mean", "median")
@@ -72,41 +70,6 @@ def normalize_path(path_value: str) -> pathlib.Path:
 def ensure_existing_dir(path: pathlib.Path, label: str) -> None:
     if not path.exists() or not path.is_dir():
         fail(f"error: {label}: directory does not exist: {path}")
-
-
-def resolve_rtl_artifacts_dir() -> pathlib.Path:
-    for env_name in RTL_ARTIFACTS_DIR_ENVS:
-        value = os.environ.get(env_name)
-        if value:
-            return normalize_path(value)
-    if CANONICAL_RTL_ARTIFACTS_DIR.is_dir() and os.access(
-        CANONICAL_RTL_ARTIFACTS_DIR, os.R_OK
-    ):
-        return CANONICAL_RTL_ARTIFACTS_DIR
-    return pathlib.Path.home().joinpath(".cache", "wavepeek", "rtl-artifacts").resolve()
-
-
-def remap_rtl_artifact_path(value: str) -> str:
-    canonical = str(CANONICAL_RTL_ARTIFACTS_DIR)
-    if value == canonical:
-        return str(resolve_rtl_artifacts_dir())
-    prefix = canonical + "/"
-    if not value.startswith(prefix):
-        return value
-    artifacts_dir = resolve_rtl_artifacts_dir()
-    if artifacts_dir == CANONICAL_RTL_ARTIFACTS_DIR:
-        return value
-    return str(artifacts_dir / value[len(prefix) :])
-
-
-def remap_rtl_artifact_values(value: Any) -> Any:
-    if isinstance(value, str):
-        return remap_rtl_artifact_path(value)
-    if isinstance(value, list):
-        return [remap_rtl_artifact_values(item) for item in value]
-    if isinstance(value, dict):
-        return {str(key): remap_rtl_artifact_values(item) for key, item in value.items()}
-    return value
 
 
 def load_tests(tests_path: pathlib.Path) -> list[dict[str, Any]]:
@@ -161,8 +124,8 @@ def load_tests(tests_path: pathlib.Path) -> list[dict[str, Any]]:
                 "category": category,
                 "runs": runs_value,
                 "warmup": warmup_value,
-                "command": remap_rtl_artifact_values(command_tokens),
-                "meta": remap_rtl_artifact_values(meta),
+                "command": command_tokens,
+                "meta": meta,
             }
         )
         seen.add(name)

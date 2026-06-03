@@ -388,48 +388,6 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(normalize(fsdb_payload), normalize(fst_payload))
 
-    def test_load_tests_remaps_canonical_artifact_root(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = pathlib.Path(temp_dir)
-            catalog = root / "tests.json"
-            artifact_dir = root / "artifacts"
-            artifact_dir.mkdir()
-            catalog.write_text(
-                json.dumps(
-                    {
-                        "tests": [
-                            {
-                                "name": "sample",
-                                "category": "info",
-                                "runs": 1,
-                                "warmup": 0,
-                                "command": [
-                                    "{wavepeek_bin}",
-                                    "info",
-                                    "--waves",
-                                    "/opt/rtl-artifacts/sample.fst",
-                                    "--json",
-                                ],
-                                "meta": {
-                                    "waves": "/opt/rtl-artifacts/sample.fst",
-                                    "nested": ["/opt/rtl-artifacts/other.fst"],
-                                },
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-            with mock.patch.dict(
-                os.environ,
-                {"WAVEPEEK_RTL_ARTIFACTS_DIR": str(artifact_dir)},
-            ):
-                [test] = perf.load_tests(catalog)
-
-        self.assertIn(str(artifact_dir / "sample.fst"), test["command"])
-        self.assertEqual(test["meta"]["waves"], str(artifact_dir / "sample.fst"))
-        self.assertEqual(test["meta"]["nested"], [str(artifact_dir / "other.fst")])
-
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)

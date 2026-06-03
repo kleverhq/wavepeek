@@ -8,7 +8,7 @@ This directory owns local and CI container definitions, fixture provisioning, an
 
 - Container workflow: `../docs/dev/environment.md`
 - Quality gates: `../docs/dev/quality.md`
-- Container configs and provisioning: `Dockerfile`, `devcontainer.json`, `devcontainer.ci.json`, `env_contract.sh`, `resolve_rtl_artifacts_dir.sh`
+- Container configs and provisioning: `Dockerfile`, `devcontainer.json`, `devcontainer.ci.json`, `env_contract.sh`
 
 ## Local Guidance
 
@@ -17,7 +17,7 @@ This directory owns local and CI container definitions, fixture provisioning, an
 - `initialize.sh` prepares host mount sources for OpenCode, Claude Code, Codex, Pi, and GitHub CLI state before container startup.
 - Host networking is intentional for VPN-heavy environments.
 - `postStartCommand: just dev-setup` reconverges tools and hooks after rebuilds or reopen flows.
-- `env_contract.sh` and `resolve_rtl_artifacts_dir.sh` are coupled to Codex setup/resume helpers. Use `../docs/dev/environment.md` and `../docs/dev/automation.md` for the current helper entrypoints, and update the helpers with these files when fixture or environment contracts change.
+- `env_contract.sh` is coupled to Codex setup/resume helpers. Use `../docs/dev/environment.md` and `../docs/dev/automation.md` for the current helper entrypoints, and update the helpers with these files when fixture or environment contracts change.
 - The dev profile forces X11 for waveform GUI tooling; CI enables UID remapping so non-root build/test commands can write the workspace.
 - GitHub Actions creates a transient `.devcontainer.json` symlink to `devcontainer.ci.json`; keep that workflow compatibility in mind when renaming configs.
 

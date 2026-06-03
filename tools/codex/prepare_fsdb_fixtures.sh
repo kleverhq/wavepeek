@@ -2,8 +2,12 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../../.devcontainer/env_contract.sh
+source "$repo_root/.devcontainer/env_contract.sh"
+
 hand_fixtures_dir="$repo_root/tests/fixtures/hand"
 fsdb_fixtures_dir="$repo_root/tests/fixtures/fsdb"
+rtl_artifacts_dir="$RTL_ARTIFACTS_DIR"
 tmp_root="$repo_root/tmp/fsdb-fixtures"
 
 require_tool() {
@@ -13,10 +17,6 @@ require_tool() {
     printf '%s\n' "error: fsdb fixture: $tool not found on PATH; $hint" >&2
     exit 1
   fi
-}
-
-resolve_rtl_artifacts_dir() {
-  "$repo_root/.devcontainer/resolve_rtl_artifacts_dir.sh"
 }
 
 cleanup_converter_logs() {
@@ -163,13 +163,12 @@ convert_rtl_fst_artifacts() {
   local source
   local output
 
-  rtl_dir="$(resolve_rtl_artifacts_dir)"
+  rtl_dir="$rtl_artifacts_dir"
   if [ ! -d "$rtl_dir" ]; then
-    printf '%s\n' "error: fsdb fixture: resolved RTL artifact directory does not exist: $rtl_dir" >&2
-    printf '%s\n' "error: fsdb fixture: set WAVEPEEK_RTL_ARTIFACTS_DIR or RTL_ARTIFACTS_DIR to a writable complete artifact directory" >&2
+    printf '%s\n' "error: fsdb fixture: RTL artifact directory does not exist: $rtl_dir" >&2
+    printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
     exit 1
   fi
-  rtl_dir="$(cd "$rtl_dir" && pwd)"
 
   while IFS= read -r -d '' source; do
     sources+=("$source")
@@ -181,8 +180,8 @@ convert_rtl_fst_artifacts() {
   fi
 
   if [ ! -w "$rtl_dir" ]; then
-    printf '%s\n' "error: fsdb fixture: resolved RTL artifact directory is not writable: $rtl_dir" >&2
-    printf '%s\n' "error: fsdb fixture: set WAVEPEEK_RTL_ARTIFACTS_DIR or RTL_ARTIFACTS_DIR to a writable complete artifact directory" >&2
+    printf '%s\n' "error: fsdb fixture: RTL artifact directory is not writable: $rtl_dir" >&2
+    printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
     exit 1
   fi
 

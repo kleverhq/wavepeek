@@ -16,13 +16,13 @@ The devcontainer may prepare host-side mount sources under `~/.cache/wavepeek`, 
 
 For first-time Codex bootstrap, run `bash tools/codex/codex_setup.sh`. This direct script path exists because the first bootstrap may need to install or repair tools before `just` recipes are safe to assume. After the environment has `just`, use `just codex-resume` for maintenance after cache resume.
 
-Codex setup may populate the cache fallback for RTL fixtures, then `just` propagates the resolved path to runtime and test processes as `WAVEPEEK_RTL_ARTIFACTS_DIR`.
+Codex setup uses the same RTL fixture location as the devcontainer and may populate missing fixtures under `RTL_ARTIFACTS_DIR`.
 
-## Fixture Location Resolution
+## Fixture Location
 
-Large RTL fixtures are baked into the devcontainer and CI image under `/opt/rtl-artifacts`. Runtime path resolution prefers `WAVEPEEK_RTL_ARTIFACTS_DIR`, then `RTL_ARTIFACTS_DIR`, then `/opt/rtl-artifacts`, and finally `~/.cache/wavepeek/rtl-artifacts`.
+Large RTL fixtures are baked into the devcontainer and CI image under `RTL_ARTIFACTS_DIR`, which the container sets to `/opt/rtl-artifacts`. That path is the only supported runtime fixture location.
 
-The shared environment contract lives in `.devcontainer/env_contract.sh` and `.devcontainer/resolve_rtl_artifacts_dir.sh`. Update those files, container provisioning, and Codex helper behavior together when fixture versions or layout change.
+The shared environment contract lives in `.devcontainer/env_contract.sh`. Update that file, container provisioning, and Codex helper behavior together when fixture versions or layout change.
 
 ## Verdi / FSDB Development
 

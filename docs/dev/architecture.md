@@ -197,7 +197,7 @@ The reason for the multi-engine design is simple: a single internal strategy cou
 | Level | What | How | Fixtures |
 |-------|------|-----|----------|
 | Unit tests | Individual helpers and modules in `engine/`, `expr/`, and `waveform/` | `#[cfg(test)]` plus `cargo test` | Hand-crafted inline or small `.vcd` fixtures |
-| Integration tests | Full CLI invocations | `assert_cmd` suites under `tests/` | Hand fixtures plus container-provisioned artifacts under `/opt/rtl-artifacts` |
+| Integration tests | Full CLI invocations | `assert_cmd` suites under `tests/` | Hand fixtures plus container-provisioned artifacts under `RTL_ARTIFACTS_DIR` |
 | Expression tests | Parser, binder, and evaluator behavior | Unit tests in `src/expr/` plus integration-style suites in `tests/` | Pure string cases and structured expression fixtures |
 
 ### Fixture Strategy

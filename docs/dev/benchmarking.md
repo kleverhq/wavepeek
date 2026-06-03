@@ -17,7 +17,7 @@ Common commands:
 
 Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test threshold violations, functional `data` mismatches, or missing/invalid artifacts. Functional-only compare skips timing thresholds but still fails data mismatches, invalid or missing JSON artifacts, timeout payloads, and unmatched tests unless `--allow-golden-extra` is intentionally used for a filtered smoke.
 
-Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment. FSDB benchmark preparation writes generated `.fsdb` artifacts next to the resolved RTL `.fst` files; keep those binary artifacts ignored.
+Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment. FSDB benchmark preparation writes generated `.fsdb` artifacts next to the RTL `.fst` files under `RTL_ARTIFACTS_DIR`; keep those binary artifacts ignored.
 
 ## Expression Microbenchmarks
 

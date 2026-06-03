@@ -267,17 +267,21 @@ fn docs_show_summary_prints_only_stored_summary_text() {
 
 #[test]
 fn public_docs_describe_fsdb_target_restriction() {
-    for topic_id in [
-        "intro",
-        "commands/change",
-        "commands/property",
-        "reference/command-model",
-    ] {
+    for topic_id in ["intro", "reference/command-model"] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);
 
         assert!(
             output.contains("FSDB support is currently Linux x86_64 only"),
             "topic {topic_id} should describe the FSDB target restriction"
+        );
+    }
+
+    for topic_id in ["commands/change", "commands/property"] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+
+        assert!(
+            output.contains("FSDB works only in binaries built with the `fsdb` Cargo feature"),
+            "topic {topic_id} should describe FSDB build requirements"
         );
     }
 }

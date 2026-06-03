@@ -2,14 +2,13 @@
 
 ## Scope
 
-Temporary FSDB branch collateral: architecture notes, Verdi research notes, command-specific API notes, and FSDB execution plans.
+Temporary FSDB branch collateral: architecture notes, Verdi research notes, and command-specific API notes.
 
 ## Source of Truth
 
 - FSDB integration architecture proposal: `arch.md`
 - Local Verdi installation map for FSDB work: `verdi_home_map.md`
 - Command-specific FSDB Reader API research: `cmd_info.md`, `cmd_scope.md`, `cmd_signal.md`, `cmd_value.md`, `cmd_change.md`, `cmd_property.md`
-- Completed FSDB execution plans: `plans/completed/`
 
 ## Local Guidance
 

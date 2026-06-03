@@ -138,7 +138,7 @@ Full trigger and expression syntax is defined in `reference/expression-language`
 
 ## Non-obvious behavior
 
-- VCD and FST work in default builds. FSDB support is currently Linux x86_64 only. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `property` supports digital bit-vector/integral expressions, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
+- VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `property` supports digital bit-vector/integral expressions, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
 - No output is still success. It usually means no selected timestamp satisfied the requested capture mode.
 - The default capture mode is `switch`, not `match`.
 - `property` prints only time and result kind. If you also need sampled values, use `change`.

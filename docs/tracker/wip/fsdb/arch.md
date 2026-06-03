@@ -648,16 +648,12 @@ For wavepeek, use the GTKWave/Vaporview model: store **project-owned** source co
 
 ### M0: build spike
 
-Completed implementation record: `plans/completed/2026-05-21-fsdb-build-spike/PLAN.md`.
-
 - Verify Linux-only build gating and default `linux64` with the devcontainer compiler, plus explicit override through `WAVEPEEK_FSDB_READER_LIBDIR` / `WAVEPEEK_FSDB_ABI` for alternatives such as `linux64_gcc950`.
 - Build a minimal C++ shim that opens FSDB and reads metadata.
 - Verify that builds fail cleanly without `$VERDI_HOME` only when `--features fsdb` is enabled.
 - Update `just ci`, `just check`, and related automation so public/no-Verdi gates do not use `--all-features` after the Verdi-gated feature exists.
 
 ### M1: backend refactor without FSDB
-
-Completed implementation record: `plans/completed/2026-05-21-fsdb-backend-refactor/PLAN.md`.
 
 - Move the current `src/waveform/mod.rs` implementation into WellenBackend.
 - Introduce backend-neutral `SignalId`, `ResolvedSignal`, and `ExprResolvedSignal`.
@@ -666,15 +662,11 @@ Completed implementation record: `plans/completed/2026-05-21-fsdb-backend-refact
 
 ### M2: FSDB-disabled UX
 
-Completed implementation record: `plans/completed/2026-05-21-fsdb-feature-required-error/PLAN.md`.
-
 - Add `.fsdb` path detection for the default binary.
 - Add tests for the clear error without a real FSDB fixture.
 - Update public docs after the optional FSDB feature is accepted.
 
 ### M3: FSDB `info` / `scope` / `signal`
-
-Completed implementation record: `plans/completed/2026-05-23-fsdb-hierarchy-commands/PLAN.md`.
 
 - Connect C++ shim metadata and hierarchy callbacks.
 - Build ScopeIndex/SignalIndex.
@@ -683,15 +675,11 @@ Completed implementation record: `plans/completed/2026-05-23-fsdb-hierarchy-comm
 
 ### M4: FSDB `value`
 
-Completed implementation record: `plans/completed/2026-05-24-fsdb-value-command/PLAN.md`.
-
 - Implement signal loading, at-or-before sampling, and digital value decoding.
 - Verify bit order on synthetic fixtures.
 - Add unsupported encoding errors.
 
 ### M5: FSDB `change` / `property` portable path
-
-Completed implementation record: `plans/completed/2026-05-27-fsdb-change-property-portable/PLAN.md`.
 
 Note: this milestone intentionally ships the portable correctness path. Persistent native sampler/session reuse and large-window FSDB performance tuning remain M6 work, because that needs profiling and a boring ownership design rather than another optimistic cache with a moustache.
 

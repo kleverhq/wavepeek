@@ -15,6 +15,7 @@ This directory owns local and CI container definitions, fixture provisioning, an
 - `Dockerfile` uses shared build stages with separate `ci` and `dev` targets; keep CI lean while preserving local GUI/tooling support.
 - The workspace mounts the repository parent so sibling worktrees behave normally in parallel branch workflows.
 - `initialize.sh` prepares host mount sources for OpenCode, Claude Code, Codex, Pi, and GitHub CLI state before container startup.
+- `verdi-tool-wrapper.sh` exposes selected Verdi FSDB utilities on `PATH` and invokes their launchers with bash for compatibility.
 - Host networking is intentional for VPN-heavy environments.
 - `postStartCommand: just dev-setup` reconverges tools and hooks after rebuilds or reopen flows.
 - `env_contract.sh` is coupled to Codex setup/resume helpers. Use `../docs/dev/environment.md` and `../docs/dev/automation.md` for the current helper entrypoints, and update the helpers with these files when fixture or environment contracts change.

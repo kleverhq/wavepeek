@@ -167,6 +167,8 @@ RUN apt-get update && \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Expose selected Verdi FSDB utilities useful for debugging and exploration.
+# The wrapper preserves tool-name dispatch and invokes launchers with bash.
 COPY verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
 RUN chmod 0755 /usr/local/bin/wavepeek-verdi-tool && \
     for tool in \

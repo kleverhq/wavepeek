@@ -22,9 +22,9 @@ Install:
 cargo install wavepeek
 # or from source
 cargo install --path .
+# or with FSDB support (requires valid $VERDI_HOME)
+cargo install wavepeek --features fsdb
 ```
-
-Default binaries support VCD/FST. FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 
 Run a complete inspection flow:
 

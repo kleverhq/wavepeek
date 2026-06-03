@@ -30,9 +30,9 @@ Review scope: current `feat/fsdb` branch diff against `main` (`main...HEAD`, mer
    - Impact: user mistakes such as using a non-event signal as a raw event can silently produce empty `change`/`property` results instead of a diagnostic.
    - Suggested fix: return a `WavepeekError` matching the Wellen “is not a raw event” behavior before caching/querying.
 
-7. DONE `build.rs:114` — FSDB feature builds embed the absolute local Verdi library directory as an ELF rpath.
+7. DECLINED `build.rs:114` — FSDB feature builds embed the absolute local Verdi library directory as an ELF rpath/RUNPATH.
    - Impact: feature-enabled binaries are non-reproducible/non-relocatable and leak machine-specific SDK paths.
-   - Suggested fix: avoid absolute rpath by default; use documented `LD_LIBRARY_PATH`, an explicit opt-in, or a relocatable `$ORIGIN` strategy.
+   - Decision: FSDB-enabled builds are already machine-local because they link to a licensed Verdi SDK, and the maintainer prefers runnable local binaries over requiring users and recipes to manage `LD_LIBRARY_PATH`. `WAVEPEEK_FSDB_EMBED_RPATH=0` remains available for packaging or custom loader setups.
 
 8. DONE `.devcontainer/initialize.sh:6` — devcontainer initialization executes the host user’s login shell to discover `VERDI_HOME`.
    - Impact: shell startup files can prompt, mutate host state, or fail inconsistently before the container starts. Lovely place for a haunted `.bashrc` to join the build.

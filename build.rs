@@ -117,17 +117,17 @@ fn emit_fsdb_link_settings(sdk: &FsdbSdk) {
 
 fn embed_fsdb_rpath_enabled() -> bool {
     let Some(value) = env::var_os("WAVEPEEK_FSDB_EMBED_RPATH") else {
-        return false;
+        return true;
     };
     if value.is_empty() {
-        return false;
+        return true;
     }
 
     match value.to_string_lossy().to_ascii_lowercase().as_str() {
         "1" | "true" | "yes" | "on" => true,
         "0" | "false" | "no" | "off" => false,
         _ => {
-            panic!("WAVEPEEK_FSDB_EMBED_RPATH must be unset or one of 1/true/yes/on/0/false/no/off")
+            panic!("WAVEPEEK_FSDB_EMBED_RPATH must be one of 1/true/yes/on/0/false/no/off")
         }
     }
 }

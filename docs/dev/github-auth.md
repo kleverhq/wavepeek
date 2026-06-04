@@ -75,12 +75,12 @@ Avoid permissions such as `Administration`, `Secrets`, `Webhooks`, `Security adv
 For a clean host-side `~/.config/wavepeek` directory, run the one-shot setup helper from the repository root:
 
 ```bash
-bash tools/repo/setup_github_env.sh '<github-token>'
+bash tools/repo/setup_github_env.sh
 ```
 
-The helper writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. It prints the created paths but not the token. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves the directory untouched; edit the env files manually in that case instead of asking the tiny shell script to develop opinions. Nobody wants that.
+The helper prompts for the token without echoing it, writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. It prints the created paths but not the token. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves the directory untouched; edit the env files manually in that case instead of asking the tiny shell script to develop opinions. Nobody wants that.
 
-Typing the token as a command argument can place it in shell history. If that matters for your host setup, disable history for that command, use a temporary shell with history off, or create `~/.config/wavepeek/github.maintainer.env` manually with your password manager.
+The helper rejects positional arguments so the documented path does not put the token in shell history or expose it through process argv. For non-interactive use, pipe exactly one token line into the script and mind your shell history there too.
 
 Manual `github.maintainer.env` content has this shape:
 

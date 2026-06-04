@@ -291,8 +291,9 @@ Add a small one-shot host helper for maintainers preparing a clean local GitHub 
 The helper contract is intentionally plain:
 
 - path: `tools/repo/setup_github_env.sh`;
-- invocation: `bash tools/repo/setup_github_env.sh <github-token>`;
-- first positional argument is the token;
+- invocation: `bash tools/repo/setup_github_env.sh`;
+- the helper prompts for the token without echoing it, and may read one token line from stdin for non-interactive use;
+- positional arguments are rejected so the documented path does not expose the token through shell history or process argv;
 - if `~/.config/wavepeek` exists and is not empty, exit non-zero, print a short message, and tell the maintainer to edit the env files manually;
 - if the directory does not exist or exists but is empty, create `github.empty.env`, `github.maintainer.env`, and `github.env -> github.maintainer.env`;
 - do not print the token;
@@ -313,7 +314,7 @@ The document should cover:
   - `~/.config/wavepeek/github.env` as the active file or symlink;
   - optional token-bearing maintainer env files for trusted work only;
 - maintainer fine-grained PAT recommendations;
-- the one-shot `tools/repo/setup_github_env.sh <github-token>` clean-directory setup helper;
+- the one-shot `tools/repo/setup_github_env.sh` clean-directory setup helper;
 - how to activate maintainer credentials for trusted local work;
 - why switching back to `github.empty.env` only changes newly created container environments and does not protect a readable host token file from malicious PR-controlled `initializeCommand`;
 - safe external-PR review options such as removing the token-bearing file, using a password manager, using a separate host account/VM/codespace, or creating the container from trusted base-branch config before checking out the PR;
@@ -466,12 +467,12 @@ Repository rules
 For a clean host-side `~/.config/wavepeek` directory, create and activate the maintainer env files with the one-shot helper:
 
 ```bash
-bash tools/repo/setup_github_env.sh '<github-token>'
+bash tools/repo/setup_github_env.sh
 ```
 
-The helper writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves manual edits to the maintainer.
+The helper prompts for the token without echoing it, writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves manual edits to the maintainer.
 
-Typing the token as a command argument can place it in shell history. Maintainers who care about that should disable history for the command, use a temporary shell with history off, or create the env files manually through a password manager.
+The helper rejects positional arguments so the documented path does not put the token in shell history or expose it through process argv. For non-interactive use, pipe exactly one token line into the script and mind shell history there too.
 
 Manual `github.maintainer.env` content has this shape:
 
@@ -588,7 +589,7 @@ With `~/.config/wavepeek/github.env` pointing to `github.empty.env` and any main
 
 ### Documentation and helper case
 
-1. `tools/repo/setup_github_env.sh` exists, accepts the token as its first argument, initializes a clean `~/.config/wavepeek`, and refuses to modify a non-empty existing config directory.
+1. `tools/repo/setup_github_env.sh` exists, prompts for the token without echoing it, initializes a clean `~/.config/wavepeek`, rejects positional arguments, and refuses to modify a non-empty existing config directory.
 2. `docs/dev/github-auth.md` exists and is the durable source of truth for optional devcontainer GitHub authentication.
 3. `docs/dev/environment.md`, `docs/dev/git.md`, and `docs/dev/automation.md` point to `github-auth.md` instead of duplicating the full runbook.
 4. `.devcontainer/AGENTS.md` no longer claims that host GitHub CLI state is mounted or prepared.

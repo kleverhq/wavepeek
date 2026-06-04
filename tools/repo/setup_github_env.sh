@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -eu
 
-if [ "$#" -ne 1 ]; then
-    printf '%s\n' "usage: $0 <github-token>" >&2
+if [ "$#" -ne 0 ]; then
+    printf '%s\n' "usage: $0" >&2
+    printf '%s\n' "reads the GitHub token from the terminal or stdin" >&2
     exit 2
 fi
 
-token="$1"
 config_dir="$HOME/.config/wavepeek"
 
 if [ -e "$config_dir" ] && [ ! -d "$config_dir" ]; then
@@ -19,6 +19,25 @@ if [ -d "$config_dir" ] && [ -n "$(ls -A "$config_dir")" ]; then
     printf '%s\n' "error: $config_dir exists and is not empty" >&2
     printf '%s\n' "edit the GitHub auth env files manually." >&2
     printf '%s\n' "expected active file: $config_dir/github.env" >&2
+    exit 1
+fi
+
+if [ -t 0 ]; then
+    printf '%s' "GitHub token: " >&2
+    if ! IFS= read -r -s token; then
+        printf '\n%s\n' "error: failed to read GitHub token" >&2
+        exit 1
+    fi
+    printf '\n' >&2
+else
+    if ! IFS= read -r token; then
+        printf '%s\n' "error: failed to read GitHub token" >&2
+        exit 1
+    fi
+fi
+
+if [ -z "$token" ]; then
+    printf '%s\n' "error: GitHub token must not be empty" >&2
     exit 1
 fi
 

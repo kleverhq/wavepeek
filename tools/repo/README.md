@@ -10,6 +10,6 @@ Normal entrypoint:
 
 Optional one-shot host setup for devcontainer GitHub auth:
 
-    bash tools/repo/setup_github_env.sh <github-token>
+    bash tools/repo/setup_github_env.sh
 
-`setup_github_env.sh` writes `~/.config/wavepeek/github.empty.env`, `github.maintainer.env`, and an active `github.env` symlink for trusted maintainer work. If `~/.config/wavepeek` already exists and is not empty, the helper exits and leaves manual edits to the maintainer.
+`setup_github_env.sh` prompts for a token, writes `~/.config/wavepeek/github.empty.env`, `github.maintainer.env`, and an active `github.env` symlink for trusted maintainer work. If `~/.config/wavepeek` already exists and is not empty, the helper exits and leaves manual edits to the maintainer.

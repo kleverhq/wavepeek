@@ -266,6 +266,41 @@ fn docs_show_summary_prints_only_stored_summary_text() {
 }
 
 #[test]
+fn public_docs_describe_fsdb_target_restriction() {
+    for topic_id in ["intro", "reference/command-model"] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+
+        assert!(
+            output.contains("FSDB support is currently Linux x86_64 only"),
+            "topic {topic_id} should describe the FSDB target restriction"
+        );
+    }
+
+    for topic_id in ["commands/change", "commands/property"] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+
+        assert!(
+            output.contains("FSDB works only in binaries built with the `fsdb` Cargo feature"),
+            "topic {topic_id} should describe FSDB build requirements"
+        );
+    }
+}
+
+#[test]
+fn expression_reference_describes_fsdb_metadata_support() {
+    let output = successful_stdout_text(&["docs", "show", "reference/expression-language"]);
+
+    assert!(
+        output.contains("FSDB waveform dumps in FSDB-enabled builds"),
+        "expression reference should include FSDB-enabled expression metadata support"
+    );
+    assert!(
+        !output.contains("recoverable from\nVCD/FST waveform dumps"),
+        "expression reference should not describe expression metadata as VCD/FST-only"
+    );
+}
+
+#[test]
 fn unsupported_docs_json_modes_are_argument_errors() {
     let export_dir = tempdir().expect("tempdir should be created");
     let export_target = export_dir.path().join("wavepeek-docs");

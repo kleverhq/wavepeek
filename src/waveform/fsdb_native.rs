@@ -1,0 +1,1062 @@
+#![allow(dead_code)]
+
+use std::ffi::{CStr, CString};
+use std::os::raw::{c_char, c_int, c_uint, c_void};
+use std::os::unix::ffi::OsStrExt;
+use std::path::Path;
+use std::ptr::{self, NonNull};
+use std::rc::Rc;
+use std::slice;
+
+use crate::error::WavepeekError;
+use crate::expr::EnumLabelInfo;
+
+use super::fsdb_hierarchy::{
+    FsdbHierarchyBuilder, FsdbHierarchyIndex, FsdbValueEncoding, RawDatatypeKind,
+    RawDatatypeRecord, RawScopeKind, RawScopeRecord, RawSignalKind, RawSignalRecord,
+};
+const WP_FSDB_STATUS_OK: c_uint = 0;
+
+#[derive(Debug, Clone)]
+pub(super) struct FsdbReader {
+    inner: Rc<FsdbReaderInner>,
+}
+
+#[derive(Debug)]
+struct FsdbReaderInner {
+    raw: NonNull<ffi::wp_fsdb_reader>,
+}
+
+#[derive(Debug)]
+pub(super) struct FsdbSignalSession {
+    raw: NonNull<ffi::wp_fsdb_signal_session>,
+    _owner: Rc<FsdbReaderInner>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct FsdbNativeMetadata {
+    pub(super) scale_unit: String,
+    pub(super) time_start_raw: u64,
+    pub(super) time_end_raw: u64,
+    pub(super) xtag_type: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct FsdbNativeSample {
+    pub(super) idcode: u64,
+    pub(super) bit_width: u32,
+    pub(super) value_time_raw: Option<u64>,
+    pub(super) bits: Option<String>,
+}
+
+impl FsdbReader {
+    pub(super) fn open(path: &Path) -> Result<Self, WavepeekError> {
+        let path = c_path(path)?;
+        let mut raw = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe { ffi::wp_fsdb_open(path.as_ptr(), &mut raw, &mut error_message) };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let raw = NonNull::new(raw).ok_or_else(|| {
+            WavepeekError::File("FSDB Reader returned a null reader handle".to_string())
+        })?;
+        Ok(Self {
+            inner: Rc::new(FsdbReaderInner { raw }),
+        })
+    }
+
+    pub(super) fn metadata(&self) -> Result<FsdbNativeMetadata, WavepeekError> {
+        let mut raw_metadata = ffi::wp_fsdb_metadata {
+            scale_unit: ptr::null_mut(),
+            time_start_raw: 0,
+            time_end_raw: 0,
+            xtag_type: 0,
+        };
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_read_metadata(
+                self.inner.raw.as_ptr(),
+                &mut raw_metadata,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let scale_unit = unsafe { take_native_string(raw_metadata.scale_unit)? };
+        Ok(FsdbNativeMetadata {
+            scale_unit,
+            time_start_raw: raw_metadata.time_start_raw,
+            time_end_raw: raw_metadata.time_end_raw,
+            xtag_type: raw_metadata.xtag_type,
+        })
+    }
+
+    pub(super) fn read_hierarchy(&self) -> Result<FsdbHierarchyIndex, WavepeekError> {
+        let mut context = HierarchyCallbackContext {
+            builder: FsdbHierarchyBuilder::new(),
+            error: None,
+            panicked: false,
+        };
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_read_scope_var_tree(
+                self.inner.raw.as_ptr(),
+                Some(hierarchy_callback),
+                (&mut context as *mut HierarchyCallbackContext).cast::<c_void>(),
+                &mut error_message,
+            )
+        };
+
+        if let Some(error) = context.error.take() {
+            unsafe { ffi::wp_fsdb_free_error(error_message) };
+            return Err(error);
+        }
+        if context.panicked {
+            unsafe { ffi::wp_fsdb_free_error(error_message) };
+            return Err(WavepeekError::Internal(
+                "FSDB hierarchy callback panicked".to_string(),
+            ));
+        }
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        Ok(context.builder.finish())
+    }
+
+    pub(super) fn sample_signal_values(
+        &self,
+        idcodes: &[u64],
+        query_time_raw: u64,
+    ) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if idcodes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut raw_samples = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_sample_signal_values(
+                self.inner.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                query_time_raw,
+                &mut raw_samples,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let samples = NativeSampleArray {
+            raw: raw_samples,
+            count: idcodes.len(),
+        };
+        samples.to_vec()
+    }
+
+    pub(super) fn collect_signal_change_times(
+        &self,
+        idcodes: &[u64],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+
+        let mut times = NativeTimeList::default();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_collect_signal_change_times(
+                self.inner.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                from_raw,
+                to_raw,
+                &mut times.raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        times.to_vec()
+    }
+
+    pub(super) fn signal_event_occurred(
+        &self,
+        idcode: u64,
+        query_time_raw: u64,
+    ) -> Result<bool, WavepeekError> {
+        let mut occurred = 0;
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_event_occurred(
+                self.inner.raw.as_ptr(),
+                idcode,
+                query_time_raw,
+                &mut occurred,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        Ok(occurred != 0)
+    }
+
+    pub(super) fn open_signal_session(
+        &self,
+        idcodes: &[u64],
+    ) -> Result<FsdbSignalSession, WavepeekError> {
+        let mut raw = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_open_signal_session(
+                self.inner.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                &mut raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        let raw = NonNull::new(raw).ok_or_else(|| {
+            WavepeekError::File("FSDB Reader returned a null signal session handle".to_string())
+        })?;
+        Ok(FsdbSignalSession {
+            raw,
+            _owner: Rc::clone(&self.inner),
+        })
+    }
+}
+
+impl FsdbSignalSession {
+    pub(super) fn sample_signal_values(
+        &self,
+        idcodes: &[u64],
+        query_time_raw: u64,
+    ) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if idcodes.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let mut raw_samples = ptr::null_mut();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_sample(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                query_time_raw,
+                &mut raw_samples,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+
+        let samples = NativeSampleArray {
+            raw: raw_samples,
+            count: idcodes.len(),
+        };
+        samples.to_vec()
+    }
+
+    pub(super) fn collect_signal_change_times(
+        &self,
+        idcodes: &[u64],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<u64>, WavepeekError> {
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+
+        let mut times = NativeTimeList::default();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_collect_change_times(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                from_raw,
+                to_raw,
+                &mut times.raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        times.to_vec()
+    }
+
+    pub(super) fn signal_event_occurred(
+        &self,
+        idcode: u64,
+        query_time_raw: u64,
+    ) -> Result<bool, WavepeekError> {
+        let mut occurred = 0;
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_event_occurred(
+                self.raw.as_ptr(),
+                idcode,
+                query_time_raw,
+                &mut occurred,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        Ok(occurred != 0)
+    }
+}
+
+impl Drop for FsdbReaderInner {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_close(self.raw.as_ptr()) };
+    }
+}
+
+impl Drop for FsdbSignalSession {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_close_signal_session(self.raw.as_ptr()) };
+    }
+}
+
+pub(super) fn probe(path: &Path) -> Result<bool, WavepeekError> {
+    let path = c_path(path)?;
+    let mut is_fsdb: c_int = 0;
+    let mut error_message = ptr::null_mut();
+    let status = unsafe { ffi::wp_fsdb_probe(path.as_ptr(), &mut is_fsdb, &mut error_message) };
+    if status != WP_FSDB_STATUS_OK {
+        return Err(native_error(error_message));
+    }
+    Ok(is_fsdb != 0)
+}
+
+struct NativeSampleArray {
+    raw: *mut ffi::wp_fsdb_sample_record,
+    count: usize,
+}
+
+#[derive(Debug)]
+struct NativeTimeList {
+    raw: ffi::wp_fsdb_time_list,
+}
+
+impl Default for NativeTimeList {
+    fn default() -> Self {
+        Self {
+            raw: ffi::wp_fsdb_time_list {
+                times: ptr::null_mut(),
+                count: 0,
+            },
+        }
+    }
+}
+
+impl NativeSampleArray {
+    fn to_vec(&self) -> Result<Vec<FsdbNativeSample>, WavepeekError> {
+        if self.raw.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a null sample array".to_string(),
+            ));
+        }
+
+        let records = unsafe { slice::from_raw_parts(self.raw, self.count) };
+        records.iter().map(sample_record_to_rust).collect()
+    }
+}
+
+impl Drop for NativeSampleArray {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_free_samples(self.raw, self.count) };
+    }
+}
+
+impl NativeTimeList {
+    fn to_vec(&self) -> Result<Vec<u64>, WavepeekError> {
+        if self.raw.count == 0 {
+            return Ok(Vec::new());
+        }
+        if self.raw.times.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a null candidate time list".to_string(),
+            ));
+        }
+
+        let times = unsafe { slice::from_raw_parts(self.raw.times, self.raw.count) };
+        if times.windows(2).any(|pair| pair[0] >= pair[1]) {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned an unsorted or duplicate candidate time list".to_string(),
+            ));
+        }
+        Ok(times.to_vec())
+    }
+}
+
+impl Drop for NativeTimeList {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_free_time_list(&mut self.raw) };
+    }
+}
+
+struct HierarchyCallbackContext {
+    builder: FsdbHierarchyBuilder,
+    error: Option<WavepeekError>,
+    panicked: bool,
+}
+
+unsafe extern "C" fn hierarchy_callback(
+    event: c_uint,
+    scope: *const ffi::wp_fsdb_scope_record,
+    signal: *const ffi::wp_fsdb_signal_record,
+    datatype: *const ffi::wp_fsdb_datatype_record,
+    user: *mut c_void,
+) -> c_int {
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| unsafe {
+        let Some(context) = user.cast::<HierarchyCallbackContext>().as_mut() else {
+            return Err(WavepeekError::Internal(
+                "FSDB hierarchy callback received null user data".to_string(),
+            ));
+        };
+        if context.error.is_some() || context.panicked {
+            return Err(WavepeekError::Internal(
+                "FSDB hierarchy callback called after failure".to_string(),
+            ));
+        }
+        handle_hierarchy_event(context, event, scope, signal, datatype)
+    }));
+
+    match result {
+        Ok(Ok(())) => 0,
+        Ok(Err(error)) => {
+            unsafe {
+                if let Some(context) = user.cast::<HierarchyCallbackContext>().as_mut()
+                    && context.error.is_none()
+                {
+                    context.error = Some(error);
+                }
+            }
+            1
+        }
+        Err(_) => {
+            unsafe {
+                if let Some(context) = user.cast::<HierarchyCallbackContext>().as_mut() {
+                    context.panicked = true;
+                }
+            }
+            1
+        }
+    }
+}
+
+unsafe fn handle_hierarchy_event(
+    context: &mut HierarchyCallbackContext,
+    event: c_uint,
+    scope: *const ffi::wp_fsdb_scope_record,
+    signal: *const ffi::wp_fsdb_signal_record,
+    datatype: *const ffi::wp_fsdb_datatype_record,
+) -> Result<(), WavepeekError> {
+    match event {
+        ffi::WP_FSDB_TREE_EVENT_BEGIN_TREE => context.builder.begin_tree(),
+        ffi::WP_FSDB_TREE_EVENT_SCOPE => {
+            let scope = unsafe { scope.as_ref() }.ok_or_else(|| {
+                WavepeekError::File(
+                    "FSDB Reader emitted a scope event without scope data".to_string(),
+                )
+            })?;
+            context.builder.scope(RawScopeRecord {
+                name: unsafe { borrowed_c_string(scope.name)? },
+                kind: raw_scope_kind(scope.kind),
+                hidden: scope.hidden != 0,
+            })?;
+        }
+        ffi::WP_FSDB_TREE_EVENT_SIGNAL => {
+            let signal = unsafe { signal.as_ref() }.ok_or_else(|| {
+                WavepeekError::File(
+                    "FSDB Reader emitted a signal event without signal data".to_string(),
+                )
+            })?;
+            let datatype_id = if signal.has_datatype_id != 0 {
+                Some(signal.datatype_id)
+            } else {
+                None
+            };
+            let (left, right) = if signal.has_bit_range != 0 {
+                (Some(signal.left), Some(signal.right))
+            } else {
+                (None, None)
+            };
+            context.builder.signal(RawSignalRecord {
+                idcode: signal.idcode,
+                name: unsafe { borrowed_c_string(signal.name)? },
+                kind: raw_signal_kind(signal.kind),
+                left,
+                right,
+                packed_component: signal.packed_component != 0,
+                datatype_id,
+                value_encoding: raw_value_encoding(signal.value_encoding),
+            })?;
+        }
+        ffi::WP_FSDB_TREE_EVENT_UPSCOPE => context.builder.upscope()?,
+        ffi::WP_FSDB_TREE_EVENT_END_TREE | ffi::WP_FSDB_TREE_EVENT_END_ALL_TREE => {
+            context.builder.end_tree();
+        }
+        ffi::WP_FSDB_TREE_EVENT_DATATYPE => {
+            let datatype = unsafe { datatype.as_ref() }.ok_or_else(|| {
+                WavepeekError::File(
+                    "FSDB Reader emitted a datatype event without datatype data".to_string(),
+                )
+            })?;
+            context.builder.datatype(RawDatatypeRecord {
+                idcode: datatype.idcode,
+                kind: raw_datatype_kind(datatype.kind),
+                type_name: unsafe { borrowed_optional_c_string(datatype.name) },
+                bit_width: (datatype.has_bit_width != 0).then_some(datatype.bit_width),
+                is_signed: (datatype.has_is_signed != 0).then_some(datatype.is_signed != 0),
+                enum_labels: unsafe {
+                    enum_labels_from_native(datatype.enum_labels, datatype.enum_label_count)?
+                },
+            })?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+fn c_path(path: &Path) -> Result<CString, WavepeekError> {
+    CString::new(path.as_os_str().as_bytes()).map_err(|_| {
+        WavepeekError::File(format!(
+            "FSDB Reader path contains an interior NUL byte: '{}'",
+            path.display()
+        ))
+    })
+}
+
+fn native_error(error_message: *mut c_char) -> WavepeekError {
+    let message = unsafe { take_error_string(error_message) };
+    if message.starts_with("FSDB Reader") {
+        WavepeekError::File(message)
+    } else {
+        WavepeekError::File(format!("FSDB Reader: {message}"))
+    }
+}
+
+unsafe fn take_error_string(error_message: *mut c_char) -> String {
+    if error_message.is_null() {
+        return "FSDB Reader native call failed without an error message".to_string();
+    }
+
+    let message = unsafe { CStr::from_ptr(error_message) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe { ffi::wp_fsdb_free_error(error_message) };
+    message
+}
+
+unsafe fn take_native_string(value: *mut c_char) -> Result<String, WavepeekError> {
+    if value.is_null() {
+        return Err(WavepeekError::File(
+            "FSDB Reader returned a null string".to_string(),
+        ));
+    }
+
+    let result = unsafe { CStr::from_ptr(value) }
+        .to_string_lossy()
+        .into_owned();
+    unsafe { ffi::wp_fsdb_free_string(value) };
+    Ok(result)
+}
+
+unsafe fn borrowed_c_string(value: *const c_char) -> Result<String, WavepeekError> {
+    if value.is_null() {
+        return Err(WavepeekError::File(
+            "FSDB Reader emitted a null hierarchy string".to_string(),
+        ));
+    }
+    Ok(unsafe { CStr::from_ptr(value) }
+        .to_string_lossy()
+        .into_owned())
+}
+
+unsafe fn borrowed_optional_c_string(value: *const c_char) -> Option<String> {
+    if value.is_null() {
+        return None;
+    }
+    let value = unsafe { CStr::from_ptr(value) }
+        .to_string_lossy()
+        .into_owned();
+    (!value.trim().is_empty()).then_some(value)
+}
+
+unsafe fn enum_labels_from_native(
+    labels: *const ffi::wp_fsdb_enum_label_record,
+    count: usize,
+) -> Result<Option<Vec<EnumLabelInfo>>, WavepeekError> {
+    if count == 0 {
+        return Ok(None);
+    }
+    if labels.is_null() {
+        return Err(WavepeekError::File(
+            "FSDB Reader emitted enum label metadata without label data".to_string(),
+        ));
+    }
+
+    let labels = unsafe { slice::from_raw_parts(labels, count) };
+    let mut decoded = Vec::with_capacity(labels.len());
+    for label in labels {
+        decoded.push(EnumLabelInfo {
+            name: unsafe { borrowed_c_string(label.name)? },
+            bits: unsafe { borrowed_c_string(label.bits)? },
+        });
+    }
+    Ok((!decoded.is_empty()).then_some(decoded))
+}
+
+fn sample_record_to_rust(
+    record: &ffi::wp_fsdb_sample_record,
+) -> Result<FsdbNativeSample, WavepeekError> {
+    let bits = if record.has_value != 0 {
+        if record.bits.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a sampled value without bits".to_string(),
+            ));
+        }
+        Some(
+            unsafe { CStr::from_ptr(record.bits) }
+                .to_string_lossy()
+                .into_owned(),
+        )
+    } else {
+        None
+    };
+    Ok(FsdbNativeSample {
+        idcode: record.idcode,
+        bit_width: record.bit_width,
+        value_time_raw: (record.has_value != 0).then_some(record.value_time_raw),
+        bits,
+    })
+}
+
+fn raw_scope_kind(kind: c_uint) -> RawScopeKind {
+    match kind {
+        ffi::WP_FSDB_SCOPE_KIND_MODULE => RawScopeKind::Module,
+        ffi::WP_FSDB_SCOPE_KIND_TASK => RawScopeKind::Task,
+        ffi::WP_FSDB_SCOPE_KIND_FUNCTION => RawScopeKind::Function,
+        ffi::WP_FSDB_SCOPE_KIND_BEGIN => RawScopeKind::Begin,
+        ffi::WP_FSDB_SCOPE_KIND_FORK => RawScopeKind::Fork,
+        ffi::WP_FSDB_SCOPE_KIND_GENERATE => RawScopeKind::Generate,
+        ffi::WP_FSDB_SCOPE_KIND_STRUCT => RawScopeKind::Struct,
+        ffi::WP_FSDB_SCOPE_KIND_UNION => RawScopeKind::Union,
+        ffi::WP_FSDB_SCOPE_KIND_CLASS => RawScopeKind::Class,
+        ffi::WP_FSDB_SCOPE_KIND_INTERFACE => RawScopeKind::Interface,
+        ffi::WP_FSDB_SCOPE_KIND_PACKAGE => RawScopeKind::Package,
+        ffi::WP_FSDB_SCOPE_KIND_PROGRAM => RawScopeKind::Program,
+        _ => RawScopeKind::Unknown,
+    }
+}
+
+fn raw_signal_kind(kind: c_uint) -> RawSignalKind {
+    match kind {
+        ffi::WP_FSDB_SIGNAL_KIND_EVENT => RawSignalKind::Event,
+        ffi::WP_FSDB_SIGNAL_KIND_INTEGER => RawSignalKind::Integer,
+        ffi::WP_FSDB_SIGNAL_KIND_PARAMETER => RawSignalKind::Parameter,
+        ffi::WP_FSDB_SIGNAL_KIND_REAL => RawSignalKind::Real,
+        ffi::WP_FSDB_SIGNAL_KIND_REG => RawSignalKind::Reg,
+        ffi::WP_FSDB_SIGNAL_KIND_SUPPLY0 => RawSignalKind::Supply0,
+        ffi::WP_FSDB_SIGNAL_KIND_SUPPLY1 => RawSignalKind::Supply1,
+        ffi::WP_FSDB_SIGNAL_KIND_TIME => RawSignalKind::Time,
+        ffi::WP_FSDB_SIGNAL_KIND_TRI => RawSignalKind::Tri,
+        ffi::WP_FSDB_SIGNAL_KIND_TRIAND => RawSignalKind::TriAnd,
+        ffi::WP_FSDB_SIGNAL_KIND_TRIOR => RawSignalKind::TriOr,
+        ffi::WP_FSDB_SIGNAL_KIND_TRIREG => RawSignalKind::TriReg,
+        ffi::WP_FSDB_SIGNAL_KIND_TRI0 => RawSignalKind::Tri0,
+        ffi::WP_FSDB_SIGNAL_KIND_TRI1 => RawSignalKind::Tri1,
+        ffi::WP_FSDB_SIGNAL_KIND_WAND => RawSignalKind::WAnd,
+        ffi::WP_FSDB_SIGNAL_KIND_WIRE => RawSignalKind::Wire,
+        ffi::WP_FSDB_SIGNAL_KIND_WOR => RawSignalKind::WOr,
+        ffi::WP_FSDB_SIGNAL_KIND_STRING => RawSignalKind::String,
+        ffi::WP_FSDB_SIGNAL_KIND_PORT => RawSignalKind::Port,
+        ffi::WP_FSDB_SIGNAL_KIND_SPARSE_ARRAY => RawSignalKind::SparseArray,
+        ffi::WP_FSDB_SIGNAL_KIND_REAL_TIME => RawSignalKind::RealTime,
+        ffi::WP_FSDB_SIGNAL_KIND_REAL_PARAMETER => RawSignalKind::RealParameter,
+        ffi::WP_FSDB_SIGNAL_KIND_BIT => RawSignalKind::Bit,
+        ffi::WP_FSDB_SIGNAL_KIND_LOGIC => RawSignalKind::Logic,
+        ffi::WP_FSDB_SIGNAL_KIND_INT => RawSignalKind::Int,
+        ffi::WP_FSDB_SIGNAL_KIND_SHORT_INT => RawSignalKind::ShortInt,
+        ffi::WP_FSDB_SIGNAL_KIND_LONG_INT => RawSignalKind::LongInt,
+        ffi::WP_FSDB_SIGNAL_KIND_BYTE => RawSignalKind::Byte,
+        ffi::WP_FSDB_SIGNAL_KIND_ENUM => RawSignalKind::Enum,
+        ffi::WP_FSDB_SIGNAL_KIND_SHORT_REAL => RawSignalKind::ShortReal,
+        ffi::WP_FSDB_SIGNAL_KIND_BOOLEAN => RawSignalKind::Boolean,
+        ffi::WP_FSDB_SIGNAL_KIND_BIT_VECTOR => RawSignalKind::BitVector,
+        _ => RawSignalKind::Unknown,
+    }
+}
+
+fn raw_datatype_kind(kind: c_uint) -> RawDatatypeKind {
+    match kind {
+        ffi::WP_FSDB_DATATYPE_KIND_ENUM => RawDatatypeKind::Enum,
+        ffi::WP_FSDB_DATATYPE_KIND_LOGIC => RawDatatypeKind::Logic,
+        ffi::WP_FSDB_DATATYPE_KIND_BIT => RawDatatypeKind::Bit,
+        ffi::WP_FSDB_DATATYPE_KIND_INT => RawDatatypeKind::Int,
+        ffi::WP_FSDB_DATATYPE_KIND_UINT => RawDatatypeKind::UInt,
+        ffi::WP_FSDB_DATATYPE_KIND_SHORT_INT => RawDatatypeKind::ShortInt,
+        ffi::WP_FSDB_DATATYPE_KIND_SHORT_UINT => RawDatatypeKind::ShortUInt,
+        ffi::WP_FSDB_DATATYPE_KIND_LONG_INT => RawDatatypeKind::LongInt,
+        ffi::WP_FSDB_DATATYPE_KIND_LONG_UINT => RawDatatypeKind::LongUInt,
+        ffi::WP_FSDB_DATATYPE_KIND_BYTE => RawDatatypeKind::Byte,
+        ffi::WP_FSDB_DATATYPE_KIND_UBYTE => RawDatatypeKind::UByte,
+        ffi::WP_FSDB_DATATYPE_KIND_REAL => RawDatatypeKind::Real,
+        ffi::WP_FSDB_DATATYPE_KIND_SHORT_REAL => RawDatatypeKind::ShortReal,
+        ffi::WP_FSDB_DATATYPE_KIND_TIME => RawDatatypeKind::Time,
+        ffi::WP_FSDB_DATATYPE_KIND_STRING => RawDatatypeKind::String,
+        ffi::WP_FSDB_DATATYPE_KIND_EVENT => RawDatatypeKind::Event,
+        _ => RawDatatypeKind::Unknown,
+    }
+}
+
+fn raw_value_encoding(encoding: c_uint) -> FsdbValueEncoding {
+    match encoding {
+        ffi::WP_FSDB_VALUE_ENCODING_BIT_VECTOR => FsdbValueEncoding::BitVector,
+        ffi::WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE => FsdbValueEncoding::DatatypeCandidate,
+        _ => FsdbValueEncoding::Unsupported,
+    }
+}
+
+mod ffi {
+    use std::os::raw::{c_char, c_int, c_uint, c_void};
+
+    pub(super) const WP_FSDB_TREE_EVENT_BEGIN_TREE: c_uint = 0;
+    pub(super) const WP_FSDB_TREE_EVENT_SCOPE: c_uint = 1;
+    pub(super) const WP_FSDB_TREE_EVENT_SIGNAL: c_uint = 2;
+    pub(super) const WP_FSDB_TREE_EVENT_UPSCOPE: c_uint = 3;
+    pub(super) const WP_FSDB_TREE_EVENT_END_TREE: c_uint = 4;
+    pub(super) const WP_FSDB_TREE_EVENT_END_ALL_TREE: c_uint = 5;
+    pub(super) const WP_FSDB_TREE_EVENT_DATATYPE: c_uint = 6;
+
+    pub(super) const WP_FSDB_SCOPE_KIND_MODULE: c_uint = 0;
+    pub(super) const WP_FSDB_SCOPE_KIND_TASK: c_uint = 1;
+    pub(super) const WP_FSDB_SCOPE_KIND_FUNCTION: c_uint = 2;
+    pub(super) const WP_FSDB_SCOPE_KIND_BEGIN: c_uint = 3;
+    pub(super) const WP_FSDB_SCOPE_KIND_FORK: c_uint = 4;
+    pub(super) const WP_FSDB_SCOPE_KIND_GENERATE: c_uint = 5;
+    pub(super) const WP_FSDB_SCOPE_KIND_STRUCT: c_uint = 6;
+    pub(super) const WP_FSDB_SCOPE_KIND_UNION: c_uint = 7;
+    pub(super) const WP_FSDB_SCOPE_KIND_CLASS: c_uint = 8;
+    pub(super) const WP_FSDB_SCOPE_KIND_INTERFACE: c_uint = 9;
+    pub(super) const WP_FSDB_SCOPE_KIND_PACKAGE: c_uint = 10;
+    pub(super) const WP_FSDB_SCOPE_KIND_PROGRAM: c_uint = 11;
+
+    pub(super) const WP_FSDB_SIGNAL_KIND_EVENT: c_uint = 0;
+    pub(super) const WP_FSDB_SIGNAL_KIND_INTEGER: c_uint = 1;
+    pub(super) const WP_FSDB_SIGNAL_KIND_PARAMETER: c_uint = 2;
+    pub(super) const WP_FSDB_SIGNAL_KIND_REAL: c_uint = 3;
+    pub(super) const WP_FSDB_SIGNAL_KIND_REG: c_uint = 4;
+    pub(super) const WP_FSDB_SIGNAL_KIND_SUPPLY0: c_uint = 5;
+    pub(super) const WP_FSDB_SIGNAL_KIND_SUPPLY1: c_uint = 6;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TIME: c_uint = 7;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRI: c_uint = 8;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRIAND: c_uint = 9;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRIOR: c_uint = 10;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRIREG: c_uint = 11;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRI0: c_uint = 12;
+    pub(super) const WP_FSDB_SIGNAL_KIND_TRI1: c_uint = 13;
+    pub(super) const WP_FSDB_SIGNAL_KIND_WAND: c_uint = 14;
+    pub(super) const WP_FSDB_SIGNAL_KIND_WIRE: c_uint = 15;
+    pub(super) const WP_FSDB_SIGNAL_KIND_WOR: c_uint = 16;
+    pub(super) const WP_FSDB_SIGNAL_KIND_STRING: c_uint = 17;
+    pub(super) const WP_FSDB_SIGNAL_KIND_PORT: c_uint = 18;
+    pub(super) const WP_FSDB_SIGNAL_KIND_SPARSE_ARRAY: c_uint = 19;
+    pub(super) const WP_FSDB_SIGNAL_KIND_REAL_TIME: c_uint = 20;
+    pub(super) const WP_FSDB_SIGNAL_KIND_REAL_PARAMETER: c_uint = 21;
+    pub(super) const WP_FSDB_SIGNAL_KIND_BIT: c_uint = 22;
+    pub(super) const WP_FSDB_SIGNAL_KIND_LOGIC: c_uint = 23;
+    pub(super) const WP_FSDB_SIGNAL_KIND_INT: c_uint = 24;
+    pub(super) const WP_FSDB_SIGNAL_KIND_SHORT_INT: c_uint = 25;
+    pub(super) const WP_FSDB_SIGNAL_KIND_LONG_INT: c_uint = 26;
+    pub(super) const WP_FSDB_SIGNAL_KIND_BYTE: c_uint = 27;
+    pub(super) const WP_FSDB_SIGNAL_KIND_ENUM: c_uint = 28;
+    pub(super) const WP_FSDB_SIGNAL_KIND_SHORT_REAL: c_uint = 29;
+    pub(super) const WP_FSDB_SIGNAL_KIND_BOOLEAN: c_uint = 30;
+    pub(super) const WP_FSDB_SIGNAL_KIND_BIT_VECTOR: c_uint = 31;
+
+    pub(super) const WP_FSDB_DATATYPE_KIND_ENUM: c_uint = 0;
+    pub(super) const WP_FSDB_DATATYPE_KIND_LOGIC: c_uint = 1;
+    pub(super) const WP_FSDB_DATATYPE_KIND_BIT: c_uint = 2;
+    pub(super) const WP_FSDB_DATATYPE_KIND_INT: c_uint = 3;
+    pub(super) const WP_FSDB_DATATYPE_KIND_UINT: c_uint = 4;
+    pub(super) const WP_FSDB_DATATYPE_KIND_SHORT_INT: c_uint = 5;
+    pub(super) const WP_FSDB_DATATYPE_KIND_SHORT_UINT: c_uint = 6;
+    pub(super) const WP_FSDB_DATATYPE_KIND_LONG_INT: c_uint = 7;
+    pub(super) const WP_FSDB_DATATYPE_KIND_LONG_UINT: c_uint = 8;
+    pub(super) const WP_FSDB_DATATYPE_KIND_BYTE: c_uint = 9;
+    pub(super) const WP_FSDB_DATATYPE_KIND_UBYTE: c_uint = 10;
+    pub(super) const WP_FSDB_DATATYPE_KIND_REAL: c_uint = 11;
+    pub(super) const WP_FSDB_DATATYPE_KIND_SHORT_REAL: c_uint = 12;
+    pub(super) const WP_FSDB_DATATYPE_KIND_TIME: c_uint = 13;
+    pub(super) const WP_FSDB_DATATYPE_KIND_STRING: c_uint = 14;
+    pub(super) const WP_FSDB_DATATYPE_KIND_EVENT: c_uint = 15;
+
+    pub(super) const WP_FSDB_VALUE_ENCODING_BIT_VECTOR: c_uint = 0;
+    pub(super) const WP_FSDB_VALUE_ENCODING_DATATYPE_CANDIDATE: c_uint = 2;
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_reader {
+        _private: [u8; 0],
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_signal_session {
+        _private: [u8; 0],
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_metadata {
+        pub(super) scale_unit: *mut c_char,
+        pub(super) time_start_raw: u64,
+        pub(super) time_end_raw: u64,
+        pub(super) xtag_type: u32,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_scope_record {
+        pub(super) name: *const c_char,
+        pub(super) kind: c_uint,
+        pub(super) hidden: c_int,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_signal_record {
+        pub(super) name: *const c_char,
+        pub(super) idcode: u64,
+        pub(super) has_bit_range: c_int,
+        pub(super) left: i32,
+        pub(super) right: i32,
+        pub(super) has_datatype_id: c_int,
+        pub(super) datatype_id: c_uint,
+        pub(super) kind: c_uint,
+        pub(super) packed_component: c_int,
+        pub(super) value_encoding: c_uint,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_enum_label_record {
+        pub(super) name: *const c_char,
+        pub(super) bits: *const c_char,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_datatype_record {
+        pub(super) idcode: c_uint,
+        pub(super) kind: c_uint,
+        pub(super) name: *const c_char,
+        pub(super) has_bit_width: c_int,
+        pub(super) bit_width: c_uint,
+        pub(super) has_is_signed: c_int,
+        pub(super) is_signed: c_int,
+        pub(super) enum_label_count: usize,
+        pub(super) enum_labels: *const wp_fsdb_enum_label_record,
+    }
+
+    #[repr(C)]
+    pub(super) struct wp_fsdb_sample_record {
+        pub(super) idcode: u64,
+        pub(super) has_value: c_int,
+        pub(super) bit_width: c_uint,
+        pub(super) value_time_raw: u64,
+        pub(super) bits: *const c_char,
+    }
+
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(super) struct wp_fsdb_time_list {
+        pub(super) times: *mut u64,
+        pub(super) count: usize,
+    }
+
+    pub(super) type WpFsdbTreeCallback = Option<
+        unsafe extern "C" fn(
+            c_uint,
+            *const wp_fsdb_scope_record,
+            *const wp_fsdb_signal_record,
+            *const wp_fsdb_datatype_record,
+            *mut c_void,
+        ) -> c_int,
+    >;
+
+    unsafe extern "C" {
+        pub(super) fn wp_fsdb_probe(
+            path: *const c_char,
+            is_fsdb: *mut c_int,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_open(
+            path: *const c_char,
+            out: *mut *mut wp_fsdb_reader,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_close(reader: *mut wp_fsdb_reader);
+        pub(super) fn wp_fsdb_read_metadata(
+            reader: *mut wp_fsdb_reader,
+            out: *mut wp_fsdb_metadata,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_read_scope_var_tree(
+            reader: *mut wp_fsdb_reader,
+            callback: WpFsdbTreeCallback,
+            user: *mut c_void,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_sample_signal_values(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            query_time_raw: u64,
+            out: *mut *mut wp_fsdb_sample_record,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_collect_signal_change_times(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            from_raw: u64,
+            to_raw: u64,
+            out: *mut wp_fsdb_time_list,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_event_occurred(
+            reader: *mut wp_fsdb_reader,
+            idcode: u64,
+            query_time_raw: u64,
+            occurred: *mut c_int,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_open_signal_session(
+            reader: *mut wp_fsdb_reader,
+            idcodes: *const u64,
+            count: usize,
+            out: *mut *mut wp_fsdb_signal_session,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_sample(
+            session: *mut wp_fsdb_signal_session,
+            idcodes: *const u64,
+            count: usize,
+            query_time_raw: u64,
+            out: *mut *mut wp_fsdb_sample_record,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_collect_change_times(
+            session: *mut wp_fsdb_signal_session,
+            idcodes: *const u64,
+            count: usize,
+            from_raw: u64,
+            to_raw: u64,
+            out: *mut wp_fsdb_time_list,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_event_occurred(
+            session: *mut wp_fsdb_signal_session,
+            idcode: u64,
+            query_time_raw: u64,
+            occurred: *mut c_int,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
+        pub(super) fn wp_fsdb_close_signal_session(session: *mut wp_fsdb_signal_session);
+        pub(super) fn wp_fsdb_free_samples(samples: *mut wp_fsdb_sample_record, count: usize);
+        pub(super) fn wp_fsdb_free_time_list(list: *mut wp_fsdb_time_list);
+        pub(super) fn wp_fsdb_free_string(value: *mut c_char);
+        pub(super) fn wp_fsdb_free_error(value: *mut c_char);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::{FsdbReader, probe};
+    use crate::waveform::{STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES};
+
+    #[test]
+    fn fsdb_reader_metadata_smoke() {
+        let path = cpu_fsdb_path();
+
+        assert!(probe(&path).expect("FSDB probe failed"));
+        let reader = FsdbReader::open(&path).expect("FSDB open failed");
+        let metadata = reader.metadata().expect("FSDB metadata read failed");
+
+        assert!(!metadata.scale_unit.is_empty());
+        assert!(metadata.time_end_raw >= metadata.time_start_raw);
+    }
+
+    #[test]
+    fn fsdb_reader_hierarchy_smoke() {
+        let path = cpu_fsdb_path();
+        let reader = FsdbReader::open(&path).expect("FSDB open failed");
+        let first = reader
+            .read_hierarchy()
+            .expect("FSDB hierarchy read should succeed");
+        let second = reader
+            .read_hierarchy()
+            .expect("FSDB hierarchy reread should succeed");
+
+        let first_scopes = first.scopes_depth_first(None);
+        let second_scopes = second.scopes_depth_first(None);
+        assert!(
+            !first_scopes.is_empty(),
+            "bundled FSDB should expose scopes"
+        );
+        assert_eq!(first_scopes, second_scopes);
+        for scope in &first_scopes {
+            assert!(!scope.path.is_empty());
+            assert!(!scope.path.contains('/'));
+            assert!(STABLE_SCOPE_KIND_ALIASES.contains(&scope.kind.as_str()));
+        }
+
+        let mut non_empty_signal_listing = None;
+        for scope in &first_scopes {
+            let signals = first
+                .signals_in_scope_recursive(scope.path.as_str(), None)
+                .expect("scope from listing should be queryable");
+            if !signals.is_empty() {
+                non_empty_signal_listing = Some(signals);
+                break;
+            }
+        }
+        let signals = non_empty_signal_listing.expect("bundled FSDB should expose signals");
+        for signal in signals {
+            assert!(!signal.path.is_empty());
+            assert!(!signal.path.contains('/'));
+            assert!(STABLE_SIGNAL_KIND_ALIASES.contains(&signal.kind.as_str()));
+            if let Some(width) = signal.width {
+                assert!(width > 0);
+            }
+        }
+    }
+
+    fn cpu_fsdb_path() -> PathBuf {
+        PathBuf::from(
+            std::env::var_os("VERDI_HOME").expect("VERDI_HOME must be set for FSDB smoke tests"),
+        )
+        .join("share")
+        .join("VIA")
+        .join("demo")
+        .join("waveform")
+        .join("cpu.fsdb")
+    }
+}

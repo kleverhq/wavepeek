@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added a `src/**` coverage gate to CI with a `90%` minimum on lines, regions, and functions.
+- Added an optional FSDB backend for `.fsdb` and `.fsdb.gz` inputs: FSDB-enabled builds support `info`, `scope`, `signal`, `value`, `change`, and `property` for digital bit-vector/integral data, while default builds report the required `fsdb` feature and Verdi SDK; FSDB real and string value decoding remains unsupported.
+- Added FSDB benchmark fixtures, catalog generation, baselines, smoke recipes, and FSDB-vs-FST comparison support for Verdi-equipped development environments.
+- Added FSDB-aware devcontainer and `just` automation, including Verdi environment probing, fixture preparation, optional quality gates, and container wrappers for Verdi FSDB tools.
 
 ### Changed
 - Migrated repository automation from root `Makefile` targets to root `justfile` recipes, including CI, devcontainer, pre-commit, release, Codex, and maintainer documentation entrypoints.

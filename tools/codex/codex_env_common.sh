@@ -14,7 +14,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 source "${REPO_ROOT}/.devcontainer/env_contract.sh"
 
 readonly WAVEPEEK_CODEX_BIN_DIR="${HOME}/.local/bin"
-readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR="$("${REPO_ROOT}/.devcontainer/resolve_rtl_artifacts_dir.sh")"
+readonly WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH="$RTL_ARTIFACTS_DIR"
+export RTL_ARTIFACTS_DIR="$WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH"
+
 log() {
     printf '%s\n' "$*"
 }
@@ -58,8 +60,7 @@ ensure_bashrc_line() {
 
 persist_shell_env() {
     ensure_bashrc_line 'export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"'
-    ensure_bashrc_line "export RTL_ARTIFACTS_DIR=\"$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR\""
-    ensure_bashrc_line "export WAVEPEEK_RTL_ARTIFACTS_DIR=\"$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR\""
+    ensure_bashrc_line "export RTL_ARTIFACTS_DIR=\"$WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH\""
 }
 
 ensure_rust_toolchain() {
@@ -224,7 +225,7 @@ ensure_pipx_package() {
 }
 
 ensure_rtl_artifacts_dir() {
-    mkdir -p "$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR"
+    mkdir -p "$WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH"
 }
 
 ensure_rtl_artifacts() {
@@ -234,7 +235,7 @@ ensure_rtl_artifacts() {
     ensure_rtl_artifacts_dir
 
     for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do
-        if [ -f "$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR/$artifact" ]; then
+        if [ -f "$WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH/$artifact" ]; then
             continue
         fi
 
@@ -242,7 +243,7 @@ ensure_rtl_artifacts() {
         tmp_file="$(mktemp)"
         curl -fsSL -o "$tmp_file" \
             "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"
-        install -m 0644 "$tmp_file" "$WAVEPEEK_CODEX_RTL_ARTIFACTS_DIR/$artifact"
+        install -m 0644 "$tmp_file" "$WAVEPEEK_CODEX_RTL_ARTIFACTS_PATH/$artifact"
         rm -f "$tmp_file"
     done
 }

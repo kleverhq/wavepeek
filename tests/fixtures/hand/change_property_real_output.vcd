@@ -1,0 +1,21 @@
+$date
+  wavepeek change property real output fixture
+$end
+$version
+  wavepeek change property real output fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var real 1 " temp $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+r0.5 "
+#5
+1!
+r1.5 "
+#10
+0!
+r2.5 "

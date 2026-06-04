@@ -8,7 +8,8 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 - `just codex-setup` and `just codex-resume` prepare Codex cloud sessions.
 - `just check`, `just ci`, and `just pre-commit` are the main quality gates.
 - `just update-schema` regenerates `schema/wavepeek.json`; `just check-schema` validates it.
-- `just bench-e2e-run`, `just bench-e2e-update-baseline`, `just bench-expr-run`, and `just bench-expr-update-baseline` own benchmark flows.
+- `just bench-e2e-run`, `just bench-e2e-update-baseline`, `just bench-expr-run`, and `just bench-expr-update-baseline` own default benchmark flows.
+- `just check-fsdb-env`, `just test-fsdb`, `just lint-fsdb`, and `just bench-e2e-fsdb-smoke-commit` own optional Verdi/FSDB flows; see `fsdb.md` for the full contract.
 
 ## Workflows and Hooks
 
@@ -18,8 +19,6 @@ Pre-commit configuration lives in `.pre-commit-config.yaml`. Hooks should stay d
 
 ## Helper Tool Layout
 
-Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path.
-
-Expected groups are coverage checking, schema contract checking, release-note extraction, Codex environment setup, and repository statistics. Keep helper stdout/stderr stable and return explicit non-zero exits on failure.
+Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure.
 
 During path moves, update `justfile`, affected workflow YAML, hooks, docs, and helper tests in the same change. Nothing says reliability like a helper script confidently living at yesterday's address.

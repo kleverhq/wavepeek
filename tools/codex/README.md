@@ -1,6 +1,6 @@
 # Codex Tools
 
-This group owns Codex cloud setup and resume helpers. They are a manual projection of the devcontainer environment contract in `.devcontainer/env_contract.sh` and `.devcontainer/resolve_rtl_artifacts_dir.sh`.
+This group owns Codex cloud setup and resume helpers. They are a manual projection of the devcontainer environment contract in `.devcontainer/env_contract.sh`.
 
 Normal entrypoints:
 

@@ -1,0 +1,13 @@
+{
+  "data": [
+    {
+      "kind": "assert",
+      "time": "801285000ps"
+    },
+    {
+      "kind": "deassert",
+      "time": "801287000ps"
+    }
+  ],
+  "warnings": []
+}

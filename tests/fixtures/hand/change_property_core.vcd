@@ -1,0 +1,54 @@
+$date
+  wavepeek change property core fixture
+$end
+$version
+  wavepeek change property core fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! clk $end
+$var wire 1 " valid $end
+$var wire 1 # ready $end
+$var wire 8 $ data [7:0] $end
+$var wire 2 % state [1:0] $end
+$var wire 1 & pulse $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+0"
+0#
+b00000000 $
+b00 %
+0&
+#5
+1!
+1"
+b00001111 $
+b01 %
+#7
+b00011111 $
+#10
+0!
+1#
+1&
+#15
+1!
+b00101010 $
+b10 %
+0&
+#20
+0!
+0"
+#25
+1!
+0#
+b11 %
+#30
+0!
+1"
+1#
+b00111100 $
+#35
+1!
+b00 %

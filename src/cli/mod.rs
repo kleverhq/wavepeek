@@ -21,21 +21,20 @@ use crate::output;
 #[command(
     name = "wavepeek",
     disable_version_flag = true,
-    about = "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.\nSee more with '--help'",
-    long_about = r#"wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.
+    about = "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.\nSee more with '--help'",
+    long_about = r#"wavepeek is a machine-friendly command-line tool for RTL waveform inspection.
 See more with '--help'
 
 General conventions:
 - Waveform-inspection commands require `--waves <FILE>`.
+- VCD/FST input is available in every build.
+- FSDB support is currently Linux x86_64 only and requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 - Output is bounded by default (e.g. with `--max` or similar) and recursive traversals are depth-bounded.
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
-- Errors follow `error: <category>: <message>`.
-
-Use `wavepeek <command> --help` or `wavepeek help <command-path...>` for full command reference help, `wavepeek docs` for narrative guidance, and `wavepeek skill` for the packaged agent skill."#,
+- Errors follow `error: <category>: <message>`."#,
     after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
-    after_long_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
     help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
 )]
 pub struct Cli {
@@ -170,6 +169,40 @@ Use this command to fetch the machine-readable contract consumed by JSON-mode cl
     Skill(skill::SkillArgs),
 }
 
+struct OptionalFeatureHelp {
+    name: &'static str,
+    enabled: bool,
+    disabled_hint: &'static str,
+}
+
+const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[OptionalFeatureHelp {
+    name: "FSDB",
+    enabled: cfg!(feature = "fsdb"),
+    disabled_hint: "FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK",
+}];
+
+const ROOT_NEXT_STEPS: &str = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill";
+
+fn root_after_long_help() -> String {
+    let mut help = String::from("Optional features:\n");
+    for feature in OPTIONAL_FEATURES {
+        if feature.enabled {
+            help.push_str("- ");
+            help.push_str(feature.name);
+            help.push_str(" - enabled\n");
+        } else {
+            help.push_str("- ");
+            help.push_str(feature.name);
+            help.push_str(" - disabled (");
+            help.push_str(feature.disabled_hint);
+            help.push_str(")\n");
+        }
+    }
+    help.push('\n');
+    help.push_str(ROOT_NEXT_STEPS);
+    help
+}
+
 pub fn run() -> Result<(), WavepeekError> {
     let argv: Vec<_> = std::env::args_os().collect();
     let parse_argv = if argv.len() == 1 {
@@ -235,7 +268,7 @@ fn is_command_line_override(matches: &clap::ArgMatches, arg: &str) -> bool {
 }
 
 fn build_cli_command() -> clap::Command {
-    let mut command = Cli::command();
+    let mut command = Cli::command().after_long_help(root_after_long_help());
     if let Some(help) = command.find_subcommand_mut("help") {
         *help = help.clone().about("Show help for the given subcommand(s)");
     }

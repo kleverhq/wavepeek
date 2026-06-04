@@ -12,7 +12,7 @@ Benchmarks are maintained through `bench/e2e/perf.py` for end-to-end CLI scenari
 
 ### Compatibility
 
-The tool is intended to stay OS-agnostic across Linux, macOS, and Windows.
+The default VCD/FST tool is intended to stay OS-agnostic across Linux, macOS, and Windows. Optional FSDB support is Linux x86_64-only because it links against the local Verdi FSDB Reader SDK; see `fsdb.md`.
 
 ### Output Stability
 
@@ -42,14 +42,14 @@ wavepeek is organized as three execution layers plus two shared support modules.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
-3. **Waveform layer** (`src/waveform/`) is the thin adapter over `wellen` for file opening, format detection, hierarchy traversal, and sampled-value access.
+3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Default builds dispatch VCD/FST work to the Wellen backend; feature-enabled FSDB builds can dispatch `.fsdb` inputs to the FSDB backend and native shim. FSDB-specific build and SDK details live in `fsdb.md`.
 4. **Embedded docs runtime** (`src/docs/`) loads packaged public topics and the packaged agent skill from repository Markdown assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode and strict JSON mode.
 
 Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump, runs once, and exits.
-- The engine is format-agnostic for waveform commands. VCD versus FST handling stays in the waveform layer.
+- The engine is format-agnostic for waveform commands. VCD/FST Wellen handling and optional FSDB Reader handling stay behind the waveform facade.
 - Docs and skill helper surfaces keep their source of truth in packaged Markdown instead of duplicated Rust string tables.
 - JSON contracts are stabilized through the checked-in schema artifact at `schema/wavepeek.json`.
 
@@ -97,8 +97,15 @@ src/
 │   ├── host.rs          # Host trait + signal/type/value bridge types
 │   ├── sema.rs          # Typed binders for event and logical expressions
 │   └── eval.rs          # Typed event matcher and logical evaluator
-├── waveform/            # Thin adapter over `wellen`
-│   ├── mod.rs           # File loading, format detection, query helpers
+├── waveform/            # Backend-neutral waveform facade plus concrete backends
+│   ├── mod.rs           # Public facade, backend dispatch, and query helpers
+│   ├── types.rs         # Shared waveform metadata, signal, sample, and backend-facing types
+│   ├── wellen_backend.rs # Default VCD/FST backend using `wellen`
+│   ├── fsdb_disabled.rs # Default-build diagnostics for FSDB-looking inputs
+│   ├── fsdb_backend.rs  # Feature-gated FSDB backend over the native Reader shim
+│   ├── fsdb_native.rs   # Feature-gated Rust FFI wrapper for the native shim
+│   ├── fsdb_hierarchy.rs # FSDB hierarchy normalization and kind/value mapping
+│   ├── fsdb_time.rs     # FSDB time-unit parsing and conversion helpers
 │   └── expr_host.rs     # Waveform-backed expression host bridge
 ├── output.rs            # Shared output formatting (JSON + human)
 └── error.rs             # `WavepeekError` enum and exit mapping
@@ -111,7 +118,7 @@ src/
 | `cli/` | clap, dispatch, help text | waveform parsing internals, output serialization details |
 | `engine/` | domain logic, waveform API, shared semantics helpers | clap parsing flow |
 | `expr/` | expression AST, types, evaluation | CLI, output formatting, `wellen` |
-| `waveform/` | `wellen` API and dump access | CLI behavior, output formatting |
+| `waveform/` | backend dispatch, Wellen VCD/FST access, optional FSDB Reader access | CLI behavior, output formatting |
 | `output` | JSON and human rendering | waveform access, clap parsing |
 | `error` | all stable error variants | everything else |
 
@@ -119,12 +126,13 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `wellen` | ~0.20 | VCD and FST parsing | Core waveform dependency |
+| `wellen` | ~0.20 | VCD and FST parsing | Core default waveform dependency |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope rendering and schema export |
 | `regex` | ~1 | Pattern matching | Shared filter support |
 | `thiserror` | ~2 | Error derivation | Typed errors with explicit exit mapping |
+| `cc` | ~1 | Native build integration | Build dependency used only when compiling optional FSDB support |
 
 Development dependencies include `assert_cmd`, `predicates`, `tempfile`, `insta`, and `criterion` to cover integration tests, fixture handling, snapshots, and benchmarks.
 
@@ -189,7 +197,7 @@ The reason for the multi-engine design is simple: a single internal strategy cou
 | Level | What | How | Fixtures |
 |-------|------|-----|----------|
 | Unit tests | Individual helpers and modules in `engine/`, `expr/`, and `waveform/` | `#[cfg(test)]` plus `cargo test` | Hand-crafted inline or small `.vcd` fixtures |
-| Integration tests | Full CLI invocations | `assert_cmd` suites under `tests/` | Hand fixtures plus container-provisioned artifacts under `/opt/rtl-artifacts` |
+| Integration tests | Full CLI invocations | `assert_cmd` suites under `tests/` | Hand fixtures plus container-provisioned artifacts under `RTL_ARTIFACTS_DIR` |
 | Expression tests | Parser, binder, and evaluator behavior | Unit tests in `src/expr/` plus integration-style suites in `tests/` | Pure string cases and structured expression fixtures |
 
 ### Fixture Strategy

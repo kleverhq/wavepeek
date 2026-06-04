@@ -170,7 +170,7 @@ pub(crate) fn candidate_sources_for_handles(
     let mut seen = HashSet::new();
     for handle in handles {
         let resolved = host.resolved_signal_for_handle(*handle)?;
-        if seen.insert(resolved.signal_ref) {
+        if seen.insert(resolved.id) {
             sources.push(resolved);
         }
     }
@@ -182,12 +182,14 @@ fn collect_logical_handles(
     seen: &mut HashSet<SignalHandle>,
     handles: &mut Vec<SignalHandle>,
 ) {
-    match &node.kind {
-        BoundLogicalKind::SignalRef { handle } | BoundLogicalKind::Triggered { handle } => {
-            if seen.insert(*handle) {
-                handles.push(*handle);
-            }
+    if let Some(handle) = node.kind.direct_signal_handle() {
+        if seen.insert(handle) {
+            handles.push(handle);
         }
+        return;
+    }
+
+    match &node.kind {
         BoundLogicalKind::Parenthesized { expr }
         | BoundLogicalKind::Cast { expr, .. }
         | BoundLogicalKind::Unary { expr, .. }
@@ -228,10 +230,7 @@ fn collect_logical_handles(
                 collect_logical_handles(item, seen, handles);
             }
         }
-        BoundLogicalKind::IntegralLiteral { .. }
-        | BoundLogicalKind::RealLiteral { .. }
-        | BoundLogicalKind::StringLiteral { .. }
-        | BoundLogicalKind::EnumLabel { .. } => {}
+        _ => {}
     }
 }
 

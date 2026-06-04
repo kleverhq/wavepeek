@@ -8,6 +8,11 @@ const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 10] = [
     "info", "scope", "signal", "value", "change", "property", "schema", "docs", "skill", "help",
 ];
 
+#[cfg(feature = "fsdb")]
+const EXPECTED_FSDB_FEATURE_STATUS: &str = "FSDB - enabled";
+#[cfg(not(feature = "fsdb"))]
+const EXPECTED_FSDB_FEATURE_STATUS: &str = "FSDB - disabled (FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)";
+
 fn successful_stdout(args: &[&str]) -> Vec<u8> {
     let mut command = wavepeek_cmd();
     let assert = command.args(args).assert().success();
@@ -118,7 +123,7 @@ fn no_args_prints_top_level_help_and_exits_zero() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.",
         ))
         .stdout(predicate::str::contains("Usage: wavepeek"))
         .stderr(predicate::str::is_empty());
@@ -133,7 +138,7 @@ fn help_lists_expected_subcommands() {
         .assert()
         .success()
         .stdout(predicate::str::contains(
-            "wavepeek is a machine-friendly command-line tool for VCD/FST waveform inspection.",
+            "wavepeek is a machine-friendly command-line tool for RTL waveform inspection.",
         ))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("info"))
@@ -164,6 +169,14 @@ fn top_level_help_documents_general_conventions() {
         .stdout(predicate::str::contains(
             "Waveform-inspection commands require `--waves <FILE>`.",
         ))
+        .stdout(predicate::str::contains(
+            "VCD/FST input is available in every build.",
+        ))
+        .stdout(predicate::str::contains(
+            "FSDB support is currently Linux x86_64 only and requires a build compiled with Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.",
+        ))
+        .stdout(predicate::str::contains("Optional features:"))
+        .stdout(predicate::str::contains(EXPECTED_FSDB_FEATURE_STATUS))
         .stdout(
             predicate::str::contains(
                 "Waveform-inspection commands keep their primary inputs as named flags",
@@ -252,6 +265,10 @@ fn top_level_short_help_is_compact_and_points_to_next_layers() {
     assert!(
         !short_help.contains("General conventions:"),
         "top-level short help should stay compact and omit long-form conventions"
+    );
+    assert!(
+        !short_help.contains("Optional features:"),
+        "top-level short help should stay compact and omit build feature status"
     );
     assert!(
         short_help.len() < long_help.len(),
@@ -436,7 +453,7 @@ fn change_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(
             help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
         );
@@ -489,7 +506,7 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(
             help.contains("Start of inclusive time range (e.g. 1234ns; omitted means dump start)")
         );
@@ -580,7 +597,7 @@ fn info_help_uses_aligned_summary_and_simple_option_docs() {
         assert!(help.contains("Input options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(help.contains("Machine-readable JSON output"));
         assert!(!help.contains("(`--waves <FILE>` is required)"));
         assert!(!help.contains("(contract: see `wavepeek schema`)"));
@@ -622,7 +639,7 @@ fn scope_help_uses_aligned_summary_behavior_and_simple_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(help.contains(
             "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
         ));
@@ -664,7 +681,7 @@ fn signal_help_uses_aligned_summary_behavior_and_simple_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(help.contains("Exact scope path (e.g. top.cpu)"));
         assert!(help.contains(
             "Maximum number of entries (`unlimited` disables truncation, value must be > 0)"
@@ -717,7 +734,7 @@ fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Selection options:"));
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
-        assert!(help.contains("Path to VCD/FST waveform file"));
+        assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
         assert!(help.contains("Time point with explicit units (e.g. 1337ns)"));
         assert!(help.contains("Canonical scope path for scope-relative signal names"));
         assert!(help.contains(

@@ -221,7 +221,7 @@
         "--waves",
         "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
         "--signals",
-        "TOP.clk,TOP.$unit.SCR1_ARCH_MTVEC_BASE,TOP.$unit.SCR1_ARCH_RST_VECTOR,TOP.$unit.SCR1_CSR_ADDR_CYCLE,TOP.$unit.SCR1_CSR_ADDR_CYCLEH,TOP.$unit.SCR1_CSR_ADDR_HDU_MBASE,TOP.$unit.SCR1_CSR_ADDR_HDU_MSPAN,TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTERH_MASK,TOP.$unit.SCR1_CSR_ADDR_HPMCOUNTER_MASK,TOP.$unit.SCR1_CSR_ADDR_INSTRET",
+        "TOP.clk,TOP.scr1_top_tb_axi.ADDR_START,TOP.scr1_top_tb_axi.ADDR_TRAP_DEFAULT,TOP.scr1_top_tb_axi.ADDR_TRAP_VECTOR,TOP.scr1_top_tb_axi.ARCH,TOP.scr1_top_tb_axi.COMPLIANCE,TOP.scr1_top_tb_axi.SCR1_MEM_SIZE,TOP.scr1_top_tb_axi.TIMEOUT,TOP.scr1_top_tb_axi.clk,TOP.scr1_top_tb_axi.dmem_req_ack_stall",
         "--at",
         "940092ps"
       ],

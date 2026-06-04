@@ -1,4 +1,6 @@
 *
 !.gitignore
-!baseline/
-!baseline/**
+!baseline_fst/
+!baseline_fst/**
+!baseline_fsdb/
+!baseline_fsdb/**

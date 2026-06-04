@@ -1,0 +1,28 @@
+{
+  "results": [
+    {
+      "command": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_any",
+      "mean": 0.1407013982,
+      "stddev": 0.00125647149105648,
+      "median": 0.140800637,
+      "user": 0.0792248,
+      "system": 0.0363698,
+      "min": 0.139472954,
+      "max": 0.142658364,
+      "times": [
+        0.142658364,
+        0.140800637,
+        0.13972910500000002,
+        0.139472954,
+        0.140845931
+      ],
+      "exit_codes": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    }
+  ]
+}

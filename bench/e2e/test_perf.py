@@ -55,6 +55,11 @@ class PerfHelpersTest(unittest.TestCase):
             "meta": {},
         }
 
+    @staticmethod
+    def _write_wavepeek_artifact(path: pathlib.Path, data: object | None = None) -> None:
+        payload = {"data": [{"id": 1}] if data is None else data, "warnings": []}
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
     def test_test_has_complete_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = pathlib.Path(temp_dir)
@@ -102,6 +107,39 @@ class PerfHelpersTest(unittest.TestCase):
         override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_commit.json"])
         self.assertEqual(override_args.tests, "bench/e2e/tests_commit.json")
 
+    def test_report_parser_tests_flag_defaults_and_override(self) -> None:
+        parser = perf.build_parser()
+        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/baseline_fst"])
+        self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
+
+        override_args = parser.parse_args(
+            [
+                "report",
+                "--run-dir",
+                "bench/e2e/runs/baseline_fst",
+                "--tests",
+                "bench/e2e/tests_fsdb.json",
+            ]
+        )
+        self.assertEqual(override_args.tests, "bench/e2e/tests_fsdb.json")
+
+    def test_compare_parser_functional_only_flags(self) -> None:
+        parser = perf.build_parser()
+        args = parser.parse_args(
+            [
+                "compare",
+                "--revised",
+                "revised",
+                "--golden",
+                "golden",
+                "--functional-only",
+                "--allow-golden-extra",
+            ]
+        )
+        self.assertTrue(args.functional_only)
+        self.assertTrue(args.allow_golden_extra)
+        self.assertIsNone(args.max_negative_delta_pct)
+
     def test_run_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
         default_args = parser.parse_args(["run"])
@@ -119,9 +157,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
             ]
@@ -132,9 +170,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
                 "-v",
@@ -146,9 +184,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--golden",
-                "bench/e2e/runs/baseline",
+                "bench/e2e/runs/baseline_fst",
                 "--max-negative-delta-pct",
                 "5",
                 "--verbose",
@@ -330,6 +368,29 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertIn(name, full_by_name)
             self.assertEqual(test["command"], full_by_name[name]["command"])
 
+    def test_tests_fsdb_catalog_matches_fst_catalog_except_extension(self) -> None:
+        fst_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
+        fsdb_payload = json.loads(
+            (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
+        )
+
+        artifact_prefix = (
+            os.environ.get("RTL_ARTIFACTS_DIR", "/opt/rtl-artifacts").rstrip("/") + "/"
+        )
+
+        def normalize(value: object) -> object:
+            if isinstance(value, str):
+                if value.startswith(artifact_prefix) and value.endswith(".fsdb"):
+                    return value[: -len(".fsdb")] + ".fst"
+                return value
+            if isinstance(value, list):
+                return [normalize(item) for item in value]
+            if isinstance(value, dict):
+                return {key: normalize(item) for key, item in value.items()}
+            return value
+
+        self.assertEqual(normalize(fsdb_payload), normalize(fst_payload))
+
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -399,6 +460,36 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         load_tests_mock.assert_called_once_with((run_from / "fixtures/tests.json").resolve())
+
+    def test_cmd_report_resolves_relative_tests_path_from_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_from = root / "nested"
+            run_dir = root / "run"
+            run_from.mkdir()
+            run_dir.mkdir()
+            args = argparse.Namespace(
+                run_dir=str(run_dir),
+                compare=None,
+                tests="fixtures/tests_fsdb.json",
+            )
+            load_tests_mock = mock.Mock(return_value=[self._sample_test("sample")])
+
+            previous_cwd = pathlib.Path.cwd()
+            try:
+                os.chdir(run_from)
+                stdout = io.StringIO()
+                with (
+                    mock.patch.object(perf, "load_tests", load_tests_mock),
+                    mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
+                    mock.patch("sys.stdout", stdout),
+                ):
+                    exit_code = perf.cmd_report(args)
+            finally:
+                os.chdir(previous_cwd)
+
+        self.assertEqual(exit_code, 0)
+        load_tests_mock.assert_called_once_with((run_from / "fixtures/tests_fsdb.json").resolve())
 
     def test_cmd_list_outputs_names_only(self) -> None:
         args = argparse.Namespace(filter=None, tests=str(perf.TESTS_PATH))
@@ -614,14 +705,8 @@ class PerfHelpersTest(unittest.TestCase):
 
             self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 1.0)
             self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
-            (revised / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
-                encoding="utf-8",
-            )
-            (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
-                encoding="utf-8",
-            )
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
 
             args = argparse.Namespace(
                 revised=str(revised),
@@ -635,6 +720,177 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("use --verbose for detailed logs", stdout.getvalue())
+
+    def test_cmd_compare_functional_only_success_without_hyperfine(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                verbose=False,
+            )
+            stdout = io.StringIO()
+            with mock.patch("sys.stdout", stdout):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("functional checks passed", stdout.getvalue())
+
+    def test_cmd_compare_functional_only_fails_on_revised_extra(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(revised / "extra.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("tests only in revised run: extra", stderr.getvalue())
+
+    def test_cmd_compare_functional_only_allows_golden_extra_when_requested(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "extra.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                verbose=False,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_cmd_compare_functional_only_fails_on_golden_extra_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "extra.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("tests only in golden run: extra", stderr.getvalue())
+
+    def test_cmd_compare_functional_only_fails_on_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json", data=[{"id": 1}])
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json", data=[{"id": 2}])
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("mismatched fields data", stderr.getvalue())
+
+    def test_cmd_compare_functional_only_fails_on_timeout_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            (revised / "sample.wavepeek.json").write_text("{}\n", encoding="utf-8")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("timeout artifact", stderr.getvalue())
+
+    def test_cmd_compare_requires_threshold_outside_functional_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=False,
+                allow_golden_extra=False,
+                verbose=False,
+            )
+            with self.assertRaises(SystemExit) as error:
+                perf.cmd_compare(args)
+
+        self.assertIn("--max-negative-delta-pct is required", str(error.exception))
 
     def test_build_functional_command_appends_json_once(self) -> None:
         command = ["wavepeek", "info", "--waves", "/tmp/a.fst"]
@@ -955,6 +1211,63 @@ class PerfHelpersTest(unittest.TestCase):
             exit_code = perf.cmd_compare(args)
 
         self.assertEqual(exit_code, 0)
+
+
+class JustfileBaselineRecipeTest(unittest.TestCase):
+    JUSTFILE_PATH = pathlib.Path(__file__).resolve().parents[2] / "justfile"
+
+    @classmethod
+    def _recipe_body(cls, recipe_name: str) -> str:
+        lines = cls.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
+        recipe_prefix = f"{recipe_name}:"
+        for line_index, line in enumerate(lines):
+            if not line.startswith(recipe_prefix):
+                continue
+            body: list[str] = []
+            for body_line in lines[line_index + 1 :]:
+                if not body_line.startswith((" ", "\t")):
+                    break
+                body.append(body_line.strip())
+            return "\n".join(body)
+        raise AssertionError(f"recipe not found: {recipe_name}")
+
+    def assert_recipe_replaces_baseline_after_successful_run(
+        self,
+        recipe_name: str,
+        baseline_dir_variable: str,
+    ) -> None:
+        body = self._recipe_body(recipe_name)
+        baseline_dir = f"{{{{ {baseline_dir_variable} }}}}"
+
+        temp_index = body.find('tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/')
+        run_index = body.find("bench/e2e/perf.py run")
+        run_dir_index = body.find('--run-dir "$tmp_baseline"')
+        remove_index = body.find(f'rm -rf "{baseline_dir}"')
+        move_index = body.find(f'mv "$tmp_baseline" "{baseline_dir}"')
+
+        self.assertNotEqual(temp_index, -1, body)
+        self.assertNotEqual(run_index, -1, body)
+        self.assertNotEqual(run_dir_index, -1, body)
+        self.assertNotEqual(remove_index, -1, body)
+        self.assertNotEqual(move_index, -1, body)
+        self.assertLess(temp_index, run_index, body)
+        self.assertLess(run_index, remove_index, body)
+        self.assertLess(remove_index, move_index, body)
+        self.assertNotIn(f'--run-dir "{baseline_dir}"', body)
+
+    def test_e2e_baseline_update_replaces_baseline_only_after_successful_run(self) -> None:
+        self.assert_recipe_replaces_baseline_after_successful_run(
+            "bench-e2e-update-baseline",
+            "bench_e2e_baseline_dir",
+        )
+
+    def test_fsdb_e2e_baseline_update_replaces_baseline_only_after_successful_run(
+        self,
+    ) -> None:
+        self.assert_recipe_replaces_baseline_after_successful_run(
+            "bench-e2e-fsdb-update-baseline",
+            "bench_e2e_fsdb_baseline_dir",
+        )
 
 
 if __name__ == "__main__":

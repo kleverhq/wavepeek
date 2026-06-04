@@ -4,7 +4,7 @@ use clap::Args;
 
 #[derive(Debug, Args)]
 pub struct ValueArgs {
-    /// Path to VCD/FST waveform file
+    /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Time point with explicit units (e.g. 1337ns)

@@ -13,7 +13,7 @@ repos:
 
       - id: rust-lint
         name: Rust lint check
-        description: Run Rust linting with clippy
+        description: Run Rust linting with clippy, including FSDB clippy when Verdi is available
         entry: just lint
         language: system
         types: [file, rust]
@@ -57,7 +57,7 @@ repos:
 
       - id: rust-test
         name: Rust testing
-        description: Run cargo tests
+        description: Run cargo tests, including FSDB tests when Verdi is available
         entry: just test
         language: system
         pass_filenames: false
@@ -73,7 +73,7 @@ repos:
 
       - id: bench-e2e-smoke-commit
         name: Benchmark E2E pre-commit smoke
-        description: Run lightweight bench/e2e run+compare smoke catalog
+        description: Run lightweight bench/e2e smoke, including FSDB smoke when Verdi is available
         entry: just bench-e2e-smoke-commit
         language: system
         pass_filenames: false

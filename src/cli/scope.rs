@@ -6,7 +6,7 @@ use crate::cli::limits::LimitArg;
 
 #[derive(Debug, Args)]
 pub struct ScopeArgs {
-    /// Path to VCD/FST waveform file
+    /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Maximum traversal depth (`unlimited` disables depth truncation)

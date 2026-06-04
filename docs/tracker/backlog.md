@@ -24,7 +24,7 @@ Stable user-facing contracts live under `../public/reference/`, starting from
 6. **GHW support scope.** If GHW support is added after MVP, what acceptance
    criteria and priority should gate that work?
 
-## Issues
+## Proposals
 
 ### Temporal property language extensions over waveforms
 
@@ -67,4 +67,13 @@ Affecting flows:
 
 ## Tech Debt
 
-No open command-integration debt is tracked here right now.
+### FSDB real/string value sampling
+
+Affecting flows:
+- `llm-agent` — Should: agents may need to inspect analog-like or message-carrying signals from FSDB dumps, but today must route around them.
+- `user-manual` — Should: users can discover real/string signals in FSDB hierarchy, then hit unsupported-value errors when asking value-oriented questions.
+- `scripting` — Could: scripts can often reformulate checks through related bit-vector signals, but direct typed sampling would avoid format-specific gaps.
+
+- FSDB hierarchy recovery can identify `real`, `short_real`, and `string`-like signals, but the native FSDB sample ABI currently returns only bit-vector payloads.
+- `value`/`change` therefore reject these signals as unsupported non-bit-vector encodings, and FSDB expression sampling rejects `ExprTypeKind::Real` and `ExprTypeKind::String` even though the expression engine has typed real/string payloads for other backends.
+- Close when the FSDB native shim exposes typed real/string samples, Rust backend plumbing returns `SampledValue::Real`/`SampledValue::String`, public output/schema behavior is intentionally defined, and FSDB fixtures cover value, change/property, and unsupported-edge cases.

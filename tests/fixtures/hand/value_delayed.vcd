@@ -1,0 +1,18 @@
+$date
+  wavepeek delayed value fixture
+$end
+$version
+  wavepeek delayed value fixture
+$end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! anchor $end
+$var wire 1 " late $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+#5
+1"
+#10
+0"

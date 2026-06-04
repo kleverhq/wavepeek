@@ -760,10 +760,124 @@ def cmd_report(args: argparse.Namespace) -> int:
     if compare_dir is not None:
         ensure_existing_dir(compare_dir, "report")
 
-    tests = load_tests(TESTS_PATH)
+    tests_path = normalize_path(getattr(args, "tests", str(TESTS_PATH)))
+    tests = load_tests(tests_path)
     tests_by_name = {str(test["name"]): test for test in tests}
     report_path = write_report(run_dir, tests_by_name, compare_dir)
     print(f"info: report updated at {report_path}")
+    return 0
+
+
+def wavepeek_artifact_names(run_dir: pathlib.Path) -> set[str]:
+    return {
+        artifact_test_name(path, WAVEPEEK_SUFFIX)
+        for path in sorted(run_dir.glob(f"*{WAVEPEEK_SUFFIX}"))
+    }
+
+
+def compare_functional_only(
+    revised_dir: pathlib.Path,
+    golden_dir: pathlib.Path,
+    allow_golden_extra: bool,
+    verbose: bool,
+) -> int:
+    revised_names = wavepeek_artifact_names(revised_dir)
+    golden_names = wavepeek_artifact_names(golden_dir)
+    if not revised_names:
+        fail(f"error: compare: no wavepeek JSON files found in {revised_dir}")
+    if not golden_names:
+        fail(f"error: compare: no wavepeek JSON files found in {golden_dir}")
+
+    matched = sorted(revised_names & golden_names)
+    revised_only = sorted(revised_names - golden_names)
+    golden_only = sorted(golden_names - revised_names)
+
+    functional_mismatches: list[str] = []
+    functional_artifact_errors: list[str] = []
+    functional_timeouts: list[str] = []
+
+    if not matched:
+        functional_artifact_errors.append("no matching wavepeek artifacts between revised and golden")
+    if revised_only:
+        functional_artifact_errors.append(
+            "tests only in revised run: " + ", ".join(revised_only)
+        )
+    if golden_only and not allow_golden_extra:
+        functional_artifact_errors.append(
+            "tests only in golden run: " + ", ".join(golden_only)
+        )
+
+    for test_name in matched:
+        revised_payload, revised_error = load_wavepeek_artifact_for_compare(
+            revised_dir,
+            test_name,
+            "revised",
+        )
+        golden_payload, golden_error = load_wavepeek_artifact_for_compare(
+            golden_dir,
+            test_name,
+            "golden",
+        )
+
+        if revised_error is not None:
+            functional_artifact_errors.append(f"{test_name}: {revised_error}")
+        if golden_error is not None:
+            functional_artifact_errors.append(f"{test_name}: {golden_error}")
+        if revised_payload is None or golden_payload is None:
+            continue
+
+        revised_timed_out = is_timeout_functional_payload(revised_payload)
+        golden_timed_out = is_timeout_functional_payload(golden_payload)
+        if revised_timed_out or golden_timed_out:
+            timeout_sides: list[str] = []
+            if revised_timed_out:
+                timeout_sides.append("revised")
+            if golden_timed_out:
+                timeout_sides.append("golden")
+            functional_timeouts.append(
+                f"{test_name}: timeout artifact on {', '.join(timeout_sides)}"
+            )
+            continue
+
+        diff_fields = functional_diff_fields(revised_payload, golden_payload)
+        if diff_fields:
+            functional_mismatches.append(
+                f"{test_name}: mismatched fields {', '.join(diff_fields)}"
+            )
+
+    if verbose:
+        if golden_only and allow_golden_extra:
+            print(
+                "warning: compare: ignored tests only in golden run: "
+                + ", ".join(golden_only),
+                file=sys.stderr,
+            )
+        if functional_timeouts:
+            print("error: compare: timeout functional artifacts detected:", file=sys.stderr)
+            for issue in functional_timeouts:
+                print(f"  - {issue}", file=sys.stderr)
+        if functional_mismatches:
+            print("error: compare: functional mismatch detected:", file=sys.stderr)
+            for issue in functional_mismatches:
+                print(f"  - {issue}", file=sys.stderr)
+        if functional_artifact_errors:
+            print("error: compare: functional artifact errors detected:", file=sys.stderr)
+            for issue in functional_artifact_errors:
+                print(f"  - {issue}", file=sys.stderr)
+
+    if functional_timeouts or functional_mismatches or functional_artifact_errors:
+        if not verbose:
+            print(
+                "error: compare: functional checks failed "
+                "(use --verbose for detailed logs)",
+                file=sys.stderr,
+            )
+        return 1
+
+    if verbose:
+        print("info: compare: functional checks passed")
+    else:
+        print("ok: compare: functional checks passed (use --verbose for detailed logs)")
     return 0
 
 
@@ -773,8 +887,23 @@ def cmd_compare(args: argparse.Namespace) -> int:
     ensure_existing_dir(revised_dir, "compare")
     ensure_existing_dir(golden_dir, "compare")
 
-    threshold = float(args.max_negative_delta_pct)
+    functional_only = bool(getattr(args, "functional_only", False))
+    allow_golden_extra = bool(getattr(args, "allow_golden_extra", False))
     verbose = bool(getattr(args, "verbose", False))
+
+    if allow_golden_extra and not functional_only:
+        fail("error: compare: --allow-golden-extra requires --functional-only")
+    if functional_only:
+        return compare_functional_only(
+            revised_dir,
+            golden_dir,
+            allow_golden_extra,
+            verbose,
+        )
+
+    if args.max_negative_delta_pct is None:
+        fail("error: compare: --max-negative-delta-pct is required unless --functional-only is set")
+    threshold = float(args.max_negative_delta_pct)
     if threshold < 0:
         fail("error: compare: --max-negative-delta-pct must be non-negative")
 
@@ -944,15 +1073,30 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser = subparsers.add_parser("report", help="generate/update README.md for a run")
     report_parser.add_argument("--run-dir", required=True, help="run directory")
     report_parser.add_argument("--compare", default=None, help="baseline run directory for README deltas")
+    report_parser.add_argument(
+        "--tests",
+        default=str(TESTS_PATH),
+        help="path to benchmark tests catalog JSON",
+    )
 
     compare_parser = subparsers.add_parser("compare", help="check revised run against golden")
     compare_parser.add_argument("--revised", required=True, help="revised run directory")
     compare_parser.add_argument("--golden", required=True, help="golden run directory")
     compare_parser.add_argument(
         "--max-negative-delta-pct",
-        required=True,
+        required=False,
         type=float,
         help="fail when mean or median delta goes below negative threshold",
+    )
+    compare_parser.add_argument(
+        "--functional-only",
+        action="store_true",
+        help="compare only wavepeek JSON artifacts and skip timing artifacts",
+    )
+    compare_parser.add_argument(
+        "--allow-golden-extra",
+        action="store_true",
+        help="with --functional-only, allow extra artifacts in the golden directory",
     )
     compare_parser.add_argument(
         "-v",

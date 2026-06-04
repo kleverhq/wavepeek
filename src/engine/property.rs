@@ -14,7 +14,7 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
-use crate::waveform::ChangeCandidateCollectionMode;
+use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -69,16 +69,20 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
+    let eval_signal_handles = referenced_signal_handles(&bound_eval);
+    let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
+    waveform
+        .borrow()
+        .validate_expr_values_supported(eval_sources.as_slice())?;
 
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
-        let handles = referenced_signal_handles(&bound_eval);
-        if handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
+        if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
             return Err(WavepeekError::Args(
                 "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
                     .to_string(),
             ));
         }
-        handles
+        eval_signal_handles.clone()
     } else {
         Vec::new()
     };
@@ -86,14 +90,14 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let mut candidate_sources = if tracked_signal_handles.is_empty() {
         Vec::new()
     } else {
-        candidate_sources_for_handles(&host, tracked_signal_handles.as_slice())?
+        eval_sources
     };
     candidate_sources.extend(candidate_sources_for_handles(
         &host,
         &event_candidate_handles(&bound_event),
     )?);
     let mut seen = std::collections::HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.signal_ref));
+    candidate_sources.retain(|signal| seen.insert(signal.id));
 
     let candidate_times = waveform
         .borrow_mut()
@@ -105,10 +109,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         )?;
     let candidate_schedule = {
         let waveform_ref = waveform.borrow();
-        build_candidate_schedule(
-            waveform_ref.timestamps_raw_slice(),
-            candidate_times.as_slice(),
-        )?
+        build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
     };
 
     let mut rows = Vec::new();
@@ -186,24 +187,12 @@ fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
 }
 
 fn build_candidate_schedule(
-    timestamps: &[u64],
+    waveform: &Waveform,
     candidate_times: &[u64],
 ) -> Result<Vec<(u64, Option<u64>)>, WavepeekError> {
     candidate_times
         .iter()
-        .map(|timestamp| {
-            let index = timestamps.binary_search(timestamp).map_err(|_| {
-                WavepeekError::Internal(format!(
-                    "candidate timestamp '{timestamp}' is missing from waveform time table"
-                ))
-            })?;
-            let previous = if index == 0 {
-                None
-            } else {
-                Some(timestamps[index - 1])
-            };
-            Ok((*timestamp, previous))
-        })
+        .map(|timestamp| Ok((*timestamp, waveform.previous_sample_time(*timestamp))))
         .collect()
 }
 
@@ -259,7 +248,7 @@ mod tests {
     use crate::cli::property::{CaptureMode, PropertyArgs};
     use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
-    use crate::waveform::WaveformMetadata;
+    use crate::waveform::{Waveform, WaveformMetadata};
 
     const TEST_VCD: &str = concat!(
         "$date\n  today\n$end\n",
@@ -333,15 +322,12 @@ mod tests {
     }
 
     #[test]
-    fn candidate_schedule_tracks_previous_timestamp_and_rejects_unknown_times() {
-        let schedule = build_candidate_schedule(&[0, 5, 10], &[0, 10]).expect("schedule");
-        assert_eq!(schedule, vec![(0, None), (10, Some(5))]);
+    fn candidate_schedule_tracks_previous_timestamp_for_indexed_and_between_times() {
+        let fixture = write_fixture(TEST_VCD, "property-schedule.vcd");
+        let waveform = Waveform::open(fixture.path()).expect("waveform should open");
 
-        let error = build_candidate_schedule(&[0, 5, 10], &[7]).expect_err("missing time");
-        assert_eq!(
-            error.to_string(),
-            "error: internal: candidate timestamp '7' is missing from waveform time table"
-        );
+        let schedule = build_candidate_schedule(&waveform, &[0, 7, 10]).expect("schedule");
+        assert_eq!(schedule, vec![(0, None), (7, Some(5)), (10, Some(5))]);
     }
 
     #[test]

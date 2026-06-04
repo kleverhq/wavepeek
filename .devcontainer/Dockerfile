@@ -40,15 +40,13 @@ FROM ubuntu:24.04 AS rtl_artifacts
 
 ENV DEBIAN_FRONTEND=noninteractive
 COPY --from=env_contract /wavepeek-env-contract.sh /tmp/wavepeek-env-contract.sh
-ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
-
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 RUN . /tmp/wavepeek-env-contract.sh && \
-    mkdir -p ${RTL_ARTIFACTS_DIR} && \
+    mkdir -p "${RTL_ARTIFACTS_DIR}" && \
     for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do \
       curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
         "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"; \
@@ -106,6 +104,9 @@ RUN . /tmp/wavepeek-env-contract.sh && \
 
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
+# Runtime processes do not inherit variables sourced in RUN steps, so the image
+# exports the same fixture location that .devcontainer/env_contract.sh defines.
+ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
 
 # Ensure the devcontainer user exists
 RUN if ! id -u ubuntu >/dev/null 2>&1; then useradd -m -s /bin/bash ubuntu; fi
@@ -122,8 +123,9 @@ RUN install -d -m 0755 -o ubuntu -g ubuntu \
 # Ensure /workspaces exists and is writable
 RUN mkdir -p /workspaces && chown ubuntu:ubuntu /workspaces && chmod 775 /workspaces
 
-# Provision pinned RTL fixtures for tests
-COPY --from=rtl_artifacts /opt/rtl-artifacts /opt/rtl-artifacts
+# Provision pinned RTL fixtures for tests and keep the generated-local FSDB
+# benchmark copies writable by the non-root devcontainer user.
+COPY --from=rtl_artifacts --chown=ubuntu:ubuntu /opt/rtl-artifacts ${RTL_ARTIFACTS_DIR}
 
 # Switch to non-root user
 USER ubuntu
@@ -158,11 +160,25 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nano tmux openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
+    libxt6t64 libxmu6 libnuma1 \
     jq ripgrep ugrep pdfgrep poppler-utils fd-find tree gh \
     perl-doc z3 gtkwave \
     python3 pipx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Expose selected Verdi FSDB utilities useful for debugging and exploration.
+# The wrapper preserves tool-name dispatch and invokes launchers with bash.
+COPY verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
+RUN chmod 0755 /usr/local/bin/wavepeek-verdi-tool && \
+    for tool in \
+        vcd2fsdb fsdb2vcd fsdbdebug fsdbreport fsdbextract fsdbmerge \
+        fsdbjoin fsdbrecover fsdbsanitycheck fsdbqry fsdbdir fsdbedit \
+        fsdbmangle fsdb2saif fsdb2ns txt2fsdb merge_multi_swp_fsdb \
+        waveutils parallelWaveExpand; \
+    do \
+        ln -sf wavepeek-verdi-tool "/usr/local/bin/$tool"; \
+    done
 
 USER ubuntu
 

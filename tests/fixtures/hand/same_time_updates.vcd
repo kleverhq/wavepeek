@@ -1,0 +1,27 @@
+$date
+  wavepeek same-time fixture
+$end
+$version wavepeek test $end
+$timescale 1ns $end
+$scope module top $end
+$var wire 1 ! glitch $end
+$var wire 2 " bus $end
+$var wire 1 # clk $end
+$upscope $end
+$enddefinitions $end
+#0
+0!
+b00 "
+0#
+#5
+1!
+0!
+1!
+b01 "
+b11 "
+b10 "
+1#
+#10
+0!
+b00 "
+0#

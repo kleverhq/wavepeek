@@ -40,7 +40,7 @@ if [ -n "$token" ]; then
 
           repo="${WAVEPEEK_UPSTREAM_REPO:-kleverhq/wavepeek}"
           case "$path" in
-            "$repo"|"$repo.git")
+            "$repo"|"$repo/"|"$repo.git"|"$repo.git/")
               echo username=x-access-token
               echo password="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
               ;;

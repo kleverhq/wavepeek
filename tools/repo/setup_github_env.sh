@@ -7,7 +7,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 token="$1"
-config_dir="${WAVEPEEK_GITHUB_CONFIG_DIR:-$HOME/.config/wavepeek}"
+config_dir="$HOME/.config/wavepeek"
 
 if [ -e "$config_dir" ] && [ ! -d "$config_dir" ]; then
     printf '%s\n' "error: $config_dir exists and is not a directory" >&2
@@ -22,8 +22,9 @@ if [ -d "$config_dir" ] && [ -n "$(ls -A "$config_dir")" ]; then
     exit 1
 fi
 
+umask 077
 mkdir -p "$config_dir"
-chmod 700 "$config_dir" 2>/dev/null || true
+chmod 700 "$config_dir"
 
 : > "$config_dir/github.empty.env"
 {
@@ -35,7 +36,7 @@ ln -s "github.maintainer.env" "$config_dir/github.env"
 
 chmod 600 \
     "$config_dir/github.empty.env" \
-    "$config_dir/github.maintainer.env" 2>/dev/null || true
+    "$config_dir/github.maintainer.env"
 
 printf '%s\n' "ok: wrote $config_dir/github.maintainer.env"
 printf '%s\n' "ok: activated $config_dir/github.env"

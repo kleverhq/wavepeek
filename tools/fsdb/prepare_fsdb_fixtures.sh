@@ -9,6 +9,62 @@ hand_fixtures_dir="$repo_root/tests/fixtures/hand"
 fsdb_fixtures_dir="$repo_root/tests/fixtures/fsdb"
 rtl_artifacts_dir="$RTL_ARTIFACTS_DIR"
 tmp_root="$repo_root/tmp/fsdb-fixtures"
+mode="all"
+rtl_filter=""
+
+usage() {
+  cat >&2 <<'EOF'
+usage: prepare_fsdb_fixtures.sh [--hand-only | --rtl-only] [--rtl-filter <regex>]
+
+By default, prepare both hand-written VCD-derived FSDB test fixtures and RTL
+FST-derived FSDB benchmark artifacts. Use --rtl-filter with --rtl-only, or the
+default mode, to restrict RTL FST basenames matched for benchmark smoke paths.
+EOF
+}
+
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --hand-only)
+        if [ "$mode" = "rtl" ]; then
+          printf '%s\n' "error: fsdb fixture: --hand-only and --rtl-only are mutually exclusive" >&2
+          exit 2
+        fi
+        mode="hand"
+        ;;
+      --rtl-only)
+        if [ "$mode" = "hand" ]; then
+          printf '%s\n' "error: fsdb fixture: --hand-only and --rtl-only are mutually exclusive" >&2
+          exit 2
+        fi
+        mode="rtl"
+        ;;
+      --rtl-filter)
+        shift
+        if [ "$#" -eq 0 ] || [ -z "$1" ]; then
+          printf '%s\n' "error: fsdb fixture: --rtl-filter requires a non-empty regex" >&2
+          exit 2
+        fi
+        rtl_filter="$1"
+        ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      *)
+        printf '%s\n' "error: fsdb fixture: unknown argument: $1" >&2
+        usage
+        exit 2
+        ;;
+    esac
+    shift
+  done
+
+  if [ "$mode" = "hand" ] && [ -n "$rtl_filter" ]; then
+    printf '%s\n' "error: fsdb fixture: --rtl-filter cannot be used with --hand-only" >&2
+    exit 2
+  fi
+}
 
 require_tool() {
   local tool="$1"
@@ -160,6 +216,7 @@ convert_vcd_fixtures() {
 convert_rtl_fst_artifacts() {
   local rtl_dir
   local sources=()
+  local filtered_sources=()
   local source
   local output
 
@@ -174,7 +231,20 @@ convert_rtl_fst_artifacts() {
     sources+=("$source")
   done < <(find "$rtl_dir" -maxdepth 1 -type f -name '*.fst' -print0 | sort -z)
 
+  if [ -n "$rtl_filter" ]; then
+    for source in "${sources[@]}"; do
+      if [[ "$(basename "$source")" =~ $rtl_filter ]]; then
+        filtered_sources+=("$source")
+      fi
+    done
+    sources=("${filtered_sources[@]}")
+  fi
+
   if [ "${#sources[@]}" -eq 0 ]; then
+    if [ -n "$rtl_filter" ]; then
+      printf '%s\n' "error: fsdb fixture: no RTL FST artifacts under $rtl_dir matched filter: $rtl_filter" >&2
+      exit 1
+    fi
     printf '%s\n' "info: fsdb fixture: no RTL FST artifacts found under $rtl_dir"
     return 0
   fi
@@ -194,10 +264,25 @@ convert_rtl_fst_artifacts() {
 }
 
 main() {
+  parse_args "$@"
   require_tool vcd2fsdb "load the Verdi environment before preparing FSDB fixtures"
   mkdir -p "$tmp_root"
-  convert_vcd_fixtures
-  convert_rtl_fst_artifacts
+  case "$mode" in
+    all)
+      convert_vcd_fixtures
+      convert_rtl_fst_artifacts
+      ;;
+    hand)
+      convert_vcd_fixtures
+      ;;
+    rtl)
+      convert_rtl_fst_artifacts
+      ;;
+    *)
+      printf '%s\n' "error: fsdb fixture: internal invalid mode: $mode" >&2
+      exit 2
+      ;;
+  esac
 }
 
 main "$@"

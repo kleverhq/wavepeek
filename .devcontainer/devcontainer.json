@@ -33,7 +33,7 @@
     ],
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,
-    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && bash .devcontainer/setup-github-auth.sh",
+    "postCreateCommand": "git config --global --add safe.directory \"$PWD\" && bash .devcontainer/setup-github-auth.sh",
     "postStartCommand": "just dev-setup",
     "customizations": {
         "vscode": {

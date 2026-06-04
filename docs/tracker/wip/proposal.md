@@ -105,15 +105,16 @@ External contributors working from forks should not need a `kleverhq/wavepeek` t
 
 When a maintainer reviews an external PR from a fork, they must be able to run the dev container without a GitHub write token.
 
-The recommended local pattern is to maintain two host-side env files and switch `github.env` between them:
+The required default is an empty host-side env file:
 
 ```text
-~/.config/wavepeek/github.maintainer.env
 ~/.config/wavepeek/github.empty.env
-~/.config/wavepeek/github.env -> symlink to one of the above
+~/.config/wavepeek/github.env -> github.empty.env
 ```
 
-Important: Docker reads `--env-file` at container creation time. After switching the symlink, recreate/rebuild/reopen the dev container so the environment is actually changed.
+Maintainers may point `github.env` at a token-bearing env file for trusted work. However, symlink switching alone is not a complete external-PR defense if a token-bearing file remains at a readable host path such as `~/.config/wavepeek/github.maintainer.env`. Devcontainer `initializeCommand` runs on the host before Docker reads `--env-file`; malicious PR code could modify `.devcontainer/initialize.sh` and read any token file the host user can read. For untrusted PR review, the maintainer token file must be removed from the host user's readable filesystem, kept in a password manager or equivalent store, isolated in a separate host account/VM/codespace, or avoided by creating the container from a trusted base-branch configuration before checking out the PR.
+
+Important: Docker reads `--env-file` at container creation time. After switching the active env file, recreate or rebuild the dev container. Merely attaching to an existing container keeps the old environment.
 
 ## Required repository changes
 
@@ -155,7 +156,7 @@ Target shape for the relevant fields:
     "source=${localEnv:HOME}/.pi,target=/home/ubuntu/.pi,type=bind",
     "source=${localEnv:HOME}/.cache/wavepeek/verdi,target=/opt/verdi,type=bind"
   ],
-  "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} && bash .devcontainer/setup-github-auth.sh"
+  "postCreateCommand": "git config --global --add safe.directory \"$PWD\" && bash .devcontainer/setup-github-auth.sh"
 }
 ```
 
@@ -293,12 +294,13 @@ The document should cover:
 - why the devcontainer does not mount host `~/.config/gh`;
 - the host-side env-file layout:
   - `~/.config/wavepeek/github.empty.env`;
-  - `~/.config/wavepeek/github.maintainer.env`;
   - `~/.config/wavepeek/github.env` as the active file or symlink;
+  - optional token-bearing maintainer env files for trusted work only;
 - maintainer fine-grained PAT recommendations;
 - how to activate maintainer credentials for trusted local work;
-- how to switch back to `github.empty.env` before reviewing untrusted external PR code;
-- the requirement to recreate/rebuild/reopen the devcontainer after changing `github.env`, because Docker reads `--env-file` at container creation time;
+- why switching back to `github.empty.env` only changes newly created container environments and does not protect a readable host token file from malicious PR-controlled `initializeCommand`;
+- safe external-PR review options such as removing the token-bearing file, using a password manager, using a separate host account/VM/codespace, or creating the container from trusted base-branch config before checking out the PR;
+- the requirement to recreate or rebuild the devcontainer after changing `github.env`, because Docker reads `--env-file` at container creation time;
 - why `GH_REPO` is intentionally not set globally;
 - using `WAVEPEEK_UPSTREAM_REPO=kleverhq/wavepeek` and explicit `gh -R "$WAVEPEEK_UPSTREAM_REPO" ...` commands when scripts need the upstream repository;
 - fork contributor remote layout and the browser-first PR flow;
@@ -444,20 +446,24 @@ Dependabot secrets
 Repository rules
 ```
 
-Create the local env file on the host:
+Create the local env file on the host without putting the token in shell history:
 
 ```bash
 mkdir -p ~/.config/wavepeek
 chmod 700 ~/.config/wavepeek
-
-cat > ~/.config/wavepeek/github.maintainer.env <<'EOF'
-GH_TOKEN=github_pat_REPLACE_WITH_REAL_TOKEN
-GITHUB_TOKEN=github_pat_REPLACE_WITH_REAL_TOKEN
-WAVEPEEK_GITHUB_ROLE=maintainer
-EOF
-
+umask 077
+read -r -s -p "GitHub token: " wavepeek_github_token
+printf '\n'
+{
+  printf 'GH_TOKEN=%s\n' "$wavepeek_github_token"
+  printf 'GITHUB_TOKEN=%s\n' "$wavepeek_github_token"
+  printf 'WAVEPEEK_GITHUB_ROLE=maintainer\n'
+} > ~/.config/wavepeek/github.maintainer.env
+unset wavepeek_github_token
 chmod 600 ~/.config/wavepeek/github.maintainer.env
 ```
+
+Do not run this snippet with shell tracing enabled. If a password manager or another secret store is available, prefer generating `github.env` from it only for trusted work and removing the generated file afterward.
 
 Activate the maintainer token for local trusted work:
 
@@ -465,13 +471,15 @@ Activate the maintainer token for local trusted work:
 ln -sf github.maintainer.env ~/.config/wavepeek/github.env
 ```
 
-Deactivate the maintainer token before reviewing untrusted external PR code:
+For trusted work, switching `github.env` controls what Docker injects into newly created containers. After switching the symlink, recreate or rebuild the dev container. Docker does not live-reload values from `--env-file` into an existing container.
+
+Before reviewing untrusted external PR code, also make any token-bearing maintainer env file unavailable to the host user that will run the PR's devcontainer configuration. Switching `github.env` to the empty file is necessary but not sufficient when `initializeCommand` comes from the PR checkout.
 
 ```bash
 ln -sf github.empty.env ~/.config/wavepeek/github.env
+# Also remove the token-bearing file, use a separate host account/VM, or create
+# the container from trusted base-branch devcontainer config before checkout.
 ```
-
-After switching the symlink, recreate/rebuild/reopen the dev container. Docker does not live-reload values from `--env-file` into an existing container.
 
 ## External contributor flow
 
@@ -510,13 +518,13 @@ Do not require this CLI path. The browser PR flow must remain sufficient.
 
 Treat code from fork PRs as untrusted. Do not run untrusted PR code in a container that has a write-capable `GH_TOKEN` or `GITHUB_TOKEN` for `kleverhq/wavepeek`.
 
-Before opening a dev container for external PR review:
+Also do not leave a readable maintainer token file at a predictable host path when the PR checkout controls `.devcontainer/initialize.sh`. Before opening a dev container for external PR review, make the token unavailable to the host user or use a trusted base-branch devcontainer configuration, then point the active env file at the empty default:
 
 ```bash
 ln -sf github.empty.env ~/.config/wavepeek/github.env
 ```
 
-Then recreate the container and verify inside it:
+Then recreate or rebuild the container and verify inside it:
 
 ```bash
 printenv GH_TOKEN
@@ -560,12 +568,13 @@ With `~/.config/wavepeek/github.env` pointing to a valid maintainer env file:
 
 ### External PR review case
 
-With `~/.config/wavepeek/github.env` pointing to `github.empty.env`:
+With `~/.config/wavepeek/github.env` pointing to `github.empty.env` and any maintainer token-bearing file removed, unavailable to the host user, or isolated away from PR-controlled host commands:
 
-1. Recreated dev container has no `GH_TOKEN` or `GITHUB_TOKEN` in the environment.
+1. Rebuilt/recreated dev container has no `GH_TOKEN` or `GITHUB_TOKEN` in the environment.
 2. The setup script does not fail.
 3. The agent inside the container has no write-capable GitHub token for `kleverhq/wavepeek`.
 4. Project build/test commands still run normally.
+5. The documentation does not imply that symlink switching alone protects a readable host token file from malicious PR-controlled `initializeCommand`.
 
 ### Documentation case
 
@@ -592,17 +601,19 @@ Container no-token check:
 
 ```bash
 ln -sf github.empty.env ~/.config/wavepeek/github.env
-# Recreate/rebuild/reopen the dev container after this.
+# Recreate or rebuild the dev container after this; do not merely attach to an existing one.
 printenv GH_TOKEN
 printenv GITHUB_TOKEN
 test ! -e /home/ubuntu/.config/gh/hosts.yml
 ```
 
+For untrusted external PR review, also verify by process: the maintainer token-bearing file is removed, kept in a store unavailable to repo-controlled host commands, or isolated in a separate host account/VM/codespace before the PR checkout's `initializeCommand` can run.
+
 Maintainer token check:
 
 ```bash
 ln -sf github.maintainer.env ~/.config/wavepeek/github.env
-# Recreate/rebuild/reopen the dev container after this.
+# Recreate or rebuild the dev container after this; do not merely attach to an existing one.
 gh repo view kleverhq/wavepeek
 gh pr list -R kleverhq/wavepeek --limit 5
 gh issue list -R kleverhq/wavepeek --limit 5

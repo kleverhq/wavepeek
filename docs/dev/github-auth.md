@@ -72,32 +72,25 @@ Workflows: Read and write
 
 Avoid permissions such as `Administration`, `Secrets`, `Webhooks`, `Security advisories`, `Dependabot secrets`, and `Repository rules` unless there is a specific reviewed reason.
 
-Create the maintainer env file on the host without putting the token in shell history:
+For a clean host-side `~/.config/wavepeek` directory, run the one-shot setup helper from the repository root:
 
 ```bash
-mkdir -p ~/.config/wavepeek
-chmod 700 ~/.config/wavepeek
-umask 077
-read -r -s -p "GitHub token: " wavepeek_github_token
-printf '\n'
-{
-  printf 'GH_TOKEN=%s\n' "$wavepeek_github_token"
-  printf 'GITHUB_TOKEN=%s\n' "$wavepeek_github_token"
-  printf 'WAVEPEEK_GITHUB_ROLE=maintainer\n'
-} > ~/.config/wavepeek/github.maintainer.env
-unset wavepeek_github_token
-chmod 600 ~/.config/wavepeek/github.maintainer.env
+bash tools/repo/setup_github_env.sh '<github-token>'
 ```
 
-Do not run that snippet with shell tracing enabled. If you prefer a password manager or another secret store, generate `github.env` from it only for trusted work and remove the generated file afterward.
+The helper writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. It prints the created paths but not the token. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves the directory untouched; edit the env files manually in that case instead of asking the tiny shell script to develop opinions. Nobody wants that.
 
-Activate it for trusted local work:
+Typing the token as a command argument can place it in shell history. If that matters for your host setup, disable history for that command, use a temporary shell with history off, or create `~/.config/wavepeek/github.maintainer.env` manually with your password manager.
 
-```bash
-ln -sf github.maintainer.env ~/.config/wavepeek/github.env
+Manual `github.maintainer.env` content has this shape:
+
+```text
+GH_TOKEN=<github-token>
+GITHUB_TOKEN=<github-token>
+WAVEPEEK_GITHUB_ROLE=maintainer
 ```
 
-Then recreate or rebuild the devcontainer. If using an editor reopen flow, make sure it creates a new container instead of attaching to the existing one.
+Then point `~/.config/wavepeek/github.env` at that file and recreate or rebuild the devcontainer. If using an editor reopen flow, make sure it creates a new container instead of attaching to the existing one.
 
 Inside the recreated container, validation should work for a token with sufficient access:
 

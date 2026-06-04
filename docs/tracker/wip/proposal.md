@@ -284,7 +284,23 @@ Notes:
 - The script must not write a PAT into `.git/config`, `.config/gh`, shell history, or any repository file.
 - The repo-local Git credential helper is acceptable because it stores only shell logic, not the token.
 
-### Change 4: add `docs/dev/github-auth.md`
+### Change 4: add `tools/repo/setup_github_env.sh`
+
+Add a small one-shot host helper for maintainers preparing a clean local GitHub auth env directory before rebuilding the devcontainer.
+
+The helper contract is intentionally plain:
+
+- path: `tools/repo/setup_github_env.sh`;
+- invocation: `bash tools/repo/setup_github_env.sh <github-token>`;
+- first positional argument is the token;
+- if `~/.config/wavepeek` exists and is not empty, exit non-zero, print a short message, and tell the maintainer to edit the env files manually;
+- if the directory does not exist or exists but is empty, create `github.empty.env`, `github.maintainer.env`, and `github.env -> github.maintainer.env`;
+- do not print the token;
+- keep the script simple. This is a bootstrap helper, not a tiny compliance department with a clipboard.
+
+Update `tools/repo/README.md` and auxiliary tests for this helper.
+
+### Change 5: add `docs/dev/github-auth.md`
 
 Add a new maintainer runbook that is the source of truth for optional GitHub authentication in the devcontainer.
 
@@ -297,6 +313,7 @@ The document should cover:
   - `~/.config/wavepeek/github.env` as the active file or symlink;
   - optional token-bearing maintainer env files for trusted work only;
 - maintainer fine-grained PAT recommendations;
+- the one-shot `tools/repo/setup_github_env.sh <github-token>` clean-directory setup helper;
 - how to activate maintainer credentials for trusted local work;
 - why switching back to `github.empty.env` only changes newly created container environments and does not protect a readable host token file from malicious PR-controlled `initializeCommand`;
 - safe external-PR review options such as removing the token-bearing file, using a password manager, using a separate host account/VM/codespace, or creating the container from trusted base-branch config before checking out the PR;
@@ -322,7 +339,7 @@ Recommended structure:
 ## Troubleshooting
 ```
 
-### Change 5: update `docs/dev/environment.md`
+### Change 6: update `docs/dev/environment.md`
 
 Add a short devcontainer subsection, for example `## Optional GitHub Authentication`, that explains:
 
@@ -334,7 +351,7 @@ Add a short devcontainer subsection, for example `## Optional GitHub Authenticat
 
 Also adjust the existing host-state paragraph so it mentions both wavepeek-managed cache state under `~/.cache/wavepeek` and optional configuration state under `~/.config/wavepeek`. Do not imply that `~/.config/gh` is mounted or prepared.
 
-### Change 6: update `docs/dev/git.md`
+### Change 7: update `docs/dev/git.md`
 
 Add a short GitHub/fork hygiene section that explains:
 
@@ -346,7 +363,7 @@ Add a short GitHub/fork hygiene section that explains:
 
 Keep this section brief and point readers to `github-auth.md` for token handling and security details.
 
-### Change 7: update `docs/dev/automation.md`
+### Change 8: update `docs/dev/automation.md`
 
 Add a small devcontainer lifecycle-helper note that explains:
 
@@ -356,7 +373,7 @@ Add a small devcontainer lifecycle-helper note that explains:
 
 Do not turn `automation.md` into a second GitHub-auth runbook. The source of truth should remain `github-auth.md`.
 
-### Change 8: update breadcrumbs and root maintainer map
+### Change 9: update breadcrumbs and root maintainer map
 
 Update `.devcontainer/AGENTS.md` because its current guidance says `initialize.sh` prepares GitHub CLI state. After this change, that is stale and unsafe.
 
@@ -377,7 +394,7 @@ Update root `AGENTS.md` so the `docs/dev/` map includes:
 
 No update is required for `docs/AGENTS.md` unless the final documentation layout changes in a way that invalidates its existing source-of-truth bullets.
 
-### Change 9: update `CHANGELOG.md`
+### Change 10: update `CHANGELOG.md`
 
 Add an `Unreleased` entry, preferably under `Changed`, such as:
 
@@ -446,29 +463,22 @@ Dependabot secrets
 Repository rules
 ```
 
-Create the local env file on the host without putting the token in shell history:
+For a clean host-side `~/.config/wavepeek` directory, create and activate the maintainer env files with the one-shot helper:
 
 ```bash
-mkdir -p ~/.config/wavepeek
-chmod 700 ~/.config/wavepeek
-umask 077
-read -r -s -p "GitHub token: " wavepeek_github_token
-printf '\n'
-{
-  printf 'GH_TOKEN=%s\n' "$wavepeek_github_token"
-  printf 'GITHUB_TOKEN=%s\n' "$wavepeek_github_token"
-  printf 'WAVEPEEK_GITHUB_ROLE=maintainer\n'
-} > ~/.config/wavepeek/github.maintainer.env
-unset wavepeek_github_token
-chmod 600 ~/.config/wavepeek/github.maintainer.env
+bash tools/repo/setup_github_env.sh '<github-token>'
 ```
 
-Do not run this snippet with shell tracing enabled. If a password manager or another secret store is available, prefer generating `github.env` from it only for trusted work and removing the generated file afterward.
+The helper writes `github.empty.env`, `github.maintainer.env`, and an active `github.env -> github.maintainer.env` symlink. If `~/.config/wavepeek` already exists and is not empty, it exits with an error and leaves manual edits to the maintainer.
 
-Activate the maintainer token for local trusted work:
+Typing the token as a command argument can place it in shell history. Maintainers who care about that should disable history for the command, use a temporary shell with history off, or create the env files manually through a password manager.
 
-```bash
-ln -sf github.maintainer.env ~/.config/wavepeek/github.env
+Manual `github.maintainer.env` content has this shape:
+
+```text
+GH_TOKEN=<github-token>
+GITHUB_TOKEN=<github-token>
+WAVEPEEK_GITHUB_ROLE=maintainer
 ```
 
 For trusted work, switching `github.env` controls what Docker injects into newly created containers. After switching the symlink, recreate or rebuild the dev container. Docker does not live-reload values from `--env-file` into an existing container.
@@ -576,14 +586,15 @@ With `~/.config/wavepeek/github.env` pointing to `github.empty.env` and any main
 4. Project build/test commands still run normally.
 5. The documentation does not imply that symlink switching alone protects a readable host token file from malicious PR-controlled `initializeCommand`.
 
-### Documentation case
+### Documentation and helper case
 
-1. `docs/dev/github-auth.md` exists and is the durable source of truth for optional devcontainer GitHub authentication.
-2. `docs/dev/environment.md`, `docs/dev/git.md`, and `docs/dev/automation.md` point to `github-auth.md` instead of duplicating the full runbook.
-3. `.devcontainer/AGENTS.md` no longer claims that host GitHub CLI state is mounted or prepared.
-4. Root `AGENTS.md` mentions `docs/dev/github-auth.md` in the maintainer documentation map.
-5. `CHANGELOG.md` records the devcontainer GitHub-auth workflow change under `Unreleased`.
-6. `docs/public/**` remains untouched unless an unrelated user-facing CLI documentation change is made.
+1. `tools/repo/setup_github_env.sh` exists, accepts the token as its first argument, initializes a clean `~/.config/wavepeek`, and refuses to modify a non-empty existing config directory.
+2. `docs/dev/github-auth.md` exists and is the durable source of truth for optional devcontainer GitHub authentication.
+3. `docs/dev/environment.md`, `docs/dev/git.md`, and `docs/dev/automation.md` point to `github-auth.md` instead of duplicating the full runbook.
+4. `.devcontainer/AGENTS.md` no longer claims that host GitHub CLI state is mounted or prepared.
+5. Root `AGENTS.md` mentions `docs/dev/github-auth.md` in the maintainer documentation map.
+6. `CHANGELOG.md` records the devcontainer GitHub-auth workflow change under `Unreleased`.
+7. `docs/public/**` remains untouched unless an unrelated user-facing CLI documentation change is made.
 
 ## Tests and checks to run
 
@@ -594,7 +605,9 @@ Syntax checks:
 ```bash
 bash -n .devcontainer/initialize.sh
 bash -n .devcontainer/setup-github-auth.sh
+bash -n tools/repo/setup_github_env.sh
 python -m json.tool .devcontainer/devcontainer.json >/dev/null
+python -m unittest discover -s tools/repo -p "test_*.py"
 ```
 
 Container no-token check:

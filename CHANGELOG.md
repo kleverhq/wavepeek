@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added a one-shot host setup helper for optional devcontainer GitHub auth env files.
 - Added a `src/**` coverage gate to CI with a `90%` minimum on lines, regions, and functions.
 - Added an optional FSDB backend for `.fsdb` and `.fsdb.gz` inputs: FSDB-enabled builds support `info`, `scope`, `signal`, `value`, `change`, and `property` for digital bit-vector/integral data, while default builds report the required `fsdb` feature and Verdi SDK; FSDB real and string value decoding remains unsupported.
 - Added FSDB benchmark fixtures, catalog generation, baselines, smoke recipes, and FSDB-vs-FST comparison support for Verdi-equipped development environments.

@@ -13,7 +13,7 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 
 ## Devcontainer Lifecycle Helpers
 
-`.devcontainer/initialize.sh` runs on the host before container creation and prepares bind-mount and env-file prerequisites. `.devcontainer/setup-github-auth.sh` runs inside the container from `postCreateCommand` and configures optional repo-local GitHub auth.
+`.devcontainer/initialize.sh` runs on the host before container creation and prepares bind-mount and env-file prerequisites. `.devcontainer/setup-github-auth.sh` runs inside the container from `postCreateCommand` and configures optional repo-local GitHub auth. `tools/repo/setup_github_env.sh` is the optional one-shot host bootstrap for a clean GitHub auth env directory.
 
 When changing those helpers, keep `.devcontainer/devcontainer.json`, `environment.md`, and `github-auth.md` aligned. Do not duplicate the GitHub-auth runbook here; that way lies the traditional swamp of stale docs with confident headings.
 

@@ -24,7 +24,7 @@ Stable user-facing contracts live under `../public/reference/`, starting from
 6. **GHW support scope.** If GHW support is added after MVP, what acceptance
    criteria and priority should gate that work?
 
-## Issues
+## Proposals
 
 ### Temporal property language extensions over waveforms
 

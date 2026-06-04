@@ -9,10 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added a `src/**` coverage gate to CI with a `90%` minimum on lines, regions, and functions.
-- Added default-build FSDB diagnostics for `.fsdb` and `.fsdb.gz` inputs that require the `fsdb` Cargo feature and the Synopsys Verdi FSDB Reader SDK.
-- Added FSDB-enabled `value` sampling for digital bit-vector signals, preserving VCD/FST request ordering, duplicate signal rows, Verilog literal formatting, and missing-initial-value errors.
-- Added FSDB-enabled `change` and `property` support for digital bit-vector/integral signals, including candidate-time traversal, expression sampling, raw-event occurrence checks, and VCD parity coverage from generated FSDB fixtures.
-- Added FSDB benchmark fixture preparation, catalog, and `just` recipes for Verdi-equipped development environments, including functional-only FSDB-vs-FST benchmark comparison support.
+- Added an optional FSDB backend for `.fsdb` and `.fsdb.gz` inputs: FSDB-enabled builds support `info`, `scope`, `signal`, `value`, `change`, and `property` for digital bit-vector/integral data, while default builds report the required `fsdb` feature and Verdi SDK; FSDB real and string value decoding remains unsupported.
+- Added FSDB benchmark fixtures, catalog generation, baselines, smoke recipes, and FSDB-vs-FST comparison support for Verdi-equipped development environments.
+- Added FSDB-aware devcontainer and `just` automation, including Verdi environment probing, fixture preparation, optional quality gates, and container wrappers for Verdi FSDB tools.
 
 ### Changed
 - Migrated repository automation from root `Makefile` targets to root `justfile` recipes, including CI, devcontainer, pre-commit, release, Codex, and maintainer documentation entrypoints.
@@ -20,9 +19,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
 - Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
-- Reused command-scoped FSDB Reader signal sessions and bounded lazy traversal handles for FSDB value, change, and property workloads to reduce repeated native signal-list churn while preserving existing command output contracts.
-- Normalized FSDB hierarchy spellings from converted RTL artifacts, including Verdi/VCD escaped identifiers, synthetic FST-style array-element scopes, scalar bit-select suffixes, and duplicate signal rows, so full FSDB benchmark functional output matches the FST baseline.
-- Split tracked CLI E2E benchmark baselines into explicit `bench/e2e/runs/baseline_fst` and `bench/e2e/runs/baseline_fsdb` directories, replacing the former ambiguous `bench/e2e/runs/baseline` path.
 
 ## [0.5.0] - 2026-05-15
 

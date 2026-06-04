@@ -5,7 +5,7 @@
 [![CI](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml)
 [![crates.io](https://img.shields.io/crates/v/wavepeek.svg)](https://crates.io/crates/wavepeek)
 
-`wavepeek` is a deterministic CLI for inspecting RTL waveforms in scripts, CI, and LLM-driven workflows. Default builds support VCD/FST; FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+`wavepeek` is a deterministic CLI for inspecting RTL waveforms (`.vcd`, `.fst`, `.fsdb`) in scripts, CI, and LLM-driven workflows.
 
 ## Why
 
@@ -25,6 +25,9 @@ cargo install --path .
 # or with FSDB support (requires valid $VERDI_HOME)
 cargo install wavepeek --features fsdb
 ```
+
+Default builds support VCD/FST.
+FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 
 Run a complete inspection flow:
 

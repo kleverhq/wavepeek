@@ -6,6 +6,7 @@ Normal entrypoints:
 
     just check-fsdb-env
     just prepare-fsdb-fixtures
+    just prepare-fsdb-test-fixtures
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
     just test-fsdb

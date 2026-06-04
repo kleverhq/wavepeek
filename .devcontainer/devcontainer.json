@@ -6,10 +6,14 @@
     },
     "containerEnv": {
         "WAVEPEEK_IN_CONTAINER": "1",
-        "VERDI_HOME": "/opt/verdi"
+        "VERDI_HOME": "/opt/verdi",
+        "WAVEPEEK_UPSTREAM_REPO": "kleverhq/wavepeek",
+        "GH_PROMPT_DISABLED": "1"
     },
     "runArgs": [
-        "--network=host"
+        "--network=host",
+        "--env-file",
+        "${localEnv:HOME}/.config/wavepeek/github.env"
     ],
     "initializeCommand": [
         "bash",
@@ -19,7 +23,6 @@
     "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
     "mounts": [
         "source=${localEnv:HOME}/.config/opencode,target=/home/ubuntu/.config/opencode,type=bind",
-        "source=${localEnv:HOME}/.config/gh,target=/home/ubuntu/.config/gh,type=bind",
         "source=${localEnv:HOME}/.local/share/opencode,target=/home/ubuntu/.local/share/opencode,type=bind",
         "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind",
         "source=${localEnv:HOME}/.claude,target=/home/ubuntu/.claude,type=bind",
@@ -30,7 +33,7 @@
     ],
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,
-    "postCreateCommand": "git config --global --add safe.directory ${containerWorkspaceFolder}",
+    "postCreateCommand": "git config --global --add safe.directory \"$PWD\" && bash .devcontainer/setup-github-auth.sh",
     "postStartCommand": "just dev-setup",
     "customizations": {
         "vscode": {

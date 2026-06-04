@@ -238,6 +238,7 @@ test-aux: require-container
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
     {{ python }} -m unittest discover -s tools/fsdb -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/repo -p "test_*.py"
 
 # Build release binary
 build-release: require-container

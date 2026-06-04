@@ -23,14 +23,9 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 
 ## Optional FSDB Gates
 
-The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK. `just lint`, `just check`, and `just ci` probe the local environment: when `tools/fsdb/check_fsdb_env.py` validates a usable SDK, they run the relevant FSDB gates; when Verdi is absent, they print a skip message and continue. FSDB binaries embed the selected Verdi library directory as an rpath/RUNPATH by default, so the Verdi-equipped recipes do not require `LD_LIBRARY_PATH` setup.
+The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK. `just lint`, `just check`, `just test`, `just ci`, and the benchmark pre-commit smoke probe the local environment: when `tools/fsdb/check_fsdb_env.py` validates a usable SDK, they run the relevant FSDB gates; when Verdi is absent, they print a skip message and continue.
 
-- `just check-fsdb-env` probes availability and treats missing Verdi as a skip.
-- `just lint-fsdb` runs feature-enabled clippy under `CARGO_TARGET_DIR=target/fsdb`; it is included in `just lint` when Verdi is available.
-- `just check-fsdb-build` validates the feature-enabled build/link path plus native Reader smokes; it is included in `just check` when Verdi is available.
-- `just prepare-fsdb-fixtures` generates ignored FSDB fixtures from committed VCD fixtures and RTL FST artifacts.
-- `just test-fsdb` runs the supported FSDB regression path; it is included in `just test` and `just ci` when Verdi is available.
-- `just bench-e2e-fsdb-smoke-commit` runs a lightweight functional-only FSDB benchmark smoke; it is included in `just bench-e2e-smoke-commit` when Verdi is available.
+Focused FSDB recipes include `just check-fsdb-env`, `just lint-fsdb`, `just check-fsdb-build`, `just prepare-fsdb-fixtures`, `just test-fsdb`, and `just bench-e2e-fsdb-smoke-commit`. The detailed FSDB gate and SDK contract lives in `fsdb.md`.
 
 ## Interpreting Failures
 

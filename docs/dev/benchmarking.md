@@ -4,7 +4,7 @@ Benchmark work must run in the devcontainer or CI image so fixture availability,
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`; committed FST baseline artifacts live under `bench/e2e/runs/baseline_fst/`. FSDB benchmark definitions live in `bench/e2e/tests_fsdb.json`; that file is generated from `tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths, so update `tests.json` first and refresh the FSDB catalog instead of editing both by hand. Committed FSDB baseline artifacts live under `bench/e2e/runs/baseline_fsdb/`.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`; committed FST baseline artifacts live under `bench/e2e/runs/baseline_fst/`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`, with committed baseline artifacts under `bench/e2e/runs/baseline_fsdb/`; `fsdb.md` owns the FSDB catalog and fixture details.
 
 Common commands:
 
@@ -19,7 +19,7 @@ Common commands:
 
 Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test threshold violations, functional `data` mismatches, or missing/invalid artifacts. Functional-only compare skips timing thresholds but still fails data mismatches, invalid or missing JSON artifacts, timeout payloads, and unmatched tests unless `--allow-golden-extra` is intentionally used for a filtered smoke.
 
-Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment. FSDB benchmark preparation writes generated `.fsdb` artifacts next to the RTL `.fst` files under `RTL_ARTIFACTS_DIR`; keep those binary artifacts ignored.
+Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment; see `fsdb.md` for generated FSDB artifacts and repository-safety rules.
 
 ## Expression Microbenchmarks
 

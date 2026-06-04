@@ -12,7 +12,7 @@ Benchmarks are maintained through `bench/e2e/perf.py` for end-to-end CLI scenari
 
 ### Compatibility
 
-The tool is intended to stay OS-agnostic across Linux, macOS, and Windows.
+The default VCD/FST tool is intended to stay OS-agnostic across Linux, macOS, and Windows. Optional FSDB support is Linux x86_64-only because it links against the local Verdi FSDB Reader SDK; see `fsdb.md`.
 
 ### Output Stability
 
@@ -42,7 +42,7 @@ wavepeek is organized as three execution layers plus two shared support modules.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
-3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Default builds dispatch VCD/FST work to the Wellen backend; feature-enabled FSDB builds can dispatch `.fsdb` inputs to the FSDB backend and native shim.
+3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Default builds dispatch VCD/FST work to the Wellen backend; feature-enabled FSDB builds can dispatch `.fsdb` inputs to the FSDB backend and native shim. FSDB-specific build and SDK details live in `fsdb.md`.
 4. **Embedded docs runtime** (`src/docs/`) loads packaged public topics and the packaged agent skill from repository Markdown assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode and strict JSON mode.
 

@@ -12,7 +12,7 @@ Auxiliary Python tests cover repository tooling and benchmark harnesses. Run the
 
 Prefer small hand-written `.vcd` fixtures for edge cases. Large representative `.fst` and related RTL artifacts are provisioned by the devcontainer and CI image, not downloaded during tests. Fixture path resolution is documented in `environment.md` and enforced by `just test`, `just ci`, and `just pre-commit`.
 
-Optional FSDB tests require Verdi. `just prepare-fsdb-fixtures` converts committed VCD fixtures into ignored files under `tests/fixtures/fsdb/` and converts RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR` into neighboring `.fsdb` files for benchmark parity. `just test-fsdb` prepares and verifies those generated inputs before running `tests/fsdb_cli.rs` with `--features fsdb`.
+Optional FSDB tests require Verdi. `just test-fsdb` prepares generated FSDB fixtures and runs `tests/fsdb_cli.rs` with `--features fsdb`; `fsdb.md` owns the detailed SDK and fixture contract.
 
 Do not read `.fst` or `.fsdb` dumps as text. Treat binary waveform dumps as binary data and inspect them through `wavepeek`, fixture helpers, Verdi tools, or binary-safe metadata commands.
 

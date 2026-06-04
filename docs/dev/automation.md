@@ -9,7 +9,7 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 - `just check`, `just ci`, and `just pre-commit` are the main quality gates.
 - `just update-schema` regenerates `schema/wavepeek.json`; `just check-schema` validates it.
 - `just bench-e2e-run`, `just bench-e2e-update-baseline`, `just bench-expr-run`, and `just bench-expr-update-baseline` own default benchmark flows.
-- `just check-fsdb-env`, `just test-fsdb`, `just lint-fsdb`, and `just bench-e2e-fsdb-smoke-commit` own optional Verdi/FSDB flows.
+- `just check-fsdb-env`, `just test-fsdb`, `just lint-fsdb`, and `just bench-e2e-fsdb-smoke-commit` own optional Verdi/FSDB flows; see `fsdb.md` for the full contract.
 
 ## Workflows and Hooks
 

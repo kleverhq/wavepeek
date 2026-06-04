@@ -1,6 +1,6 @@
 # FSDB Tools
 
-This group owns local FSDB environment probes, fixture preparation, benchmark catalog generation, and benchmark artifact checks surfaced through `just` recipes.
+This group owns local FSDB environment probes, fixture preparation, benchmark catalog generation, and benchmark artifact checks surfaced through `just` recipes. The full FSDB development contract lives in `../../docs/dev/fsdb.md`.
 
 Normal entrypoints:
 

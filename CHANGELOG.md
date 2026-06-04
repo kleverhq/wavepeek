@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrated repository automation from root `Makefile` targets to root `justfile` recipes, including CI, devcontainer, pre-commit, release, Codex, and maintainer documentation entrypoints.
 - Reorganized contributor-facing repository maintenance docs into `docs/dev/`, tracking docs into `docs/tracker/`, branch-local tracked WIP artifacts into `docs/tracker/wip/`, and helper automation into grouped `tools/` directories.
 - Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
+- Replaced the devcontainer host GitHub CLI config mount with optional zero-secret repo-scoped GitHub authentication via a host env-file.
 - Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
 

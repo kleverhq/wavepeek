@@ -10,7 +10,13 @@ Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Set it only inside a wa
 
 Run `just dev-setup` after opening or rebuilding the devcontainer. It verifies tool availability and installs the pre-commit and commit-msg hooks.
 
-The devcontainer may prepare host-side mount sources under `~/.cache/wavepeek`, including the Verdi mount source at `~/.cache/wavepeek/verdi`. Treat that directory as wavepeek-managed cache state: do not place manual installs or durable files there.
+The devcontainer may prepare host-side state under `~/.cache/wavepeek` and `~/.config/wavepeek`, including the Verdi mount source at `~/.cache/wavepeek/verdi` and the optional GitHub auth env file at `~/.config/wavepeek/github.env`. Treat `~/.cache/wavepeek` as wavepeek-managed cache state: do not place manual installs or durable files there.
+
+## Optional GitHub Authentication
+
+The devcontainer starts without GitHub credentials by default. `.devcontainer/initialize.sh` creates an empty host-side `~/.config/wavepeek/github.env` outside the repository, `.devcontainer/devcontainer.json` passes it through Docker `--env-file`, and `.devcontainer/setup-github-auth.sh` configures repo-local GitHub auth only when `GH_TOKEN` or `GITHUB_TOKEN` is present.
+
+The devcontainer intentionally does not mount host `~/.config/gh`. Maintainer setup, external-PR safety rules, and verification commands live in `github-auth.md`.
 
 ## Codex Cloud Setup
 

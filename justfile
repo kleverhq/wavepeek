@@ -6,6 +6,8 @@ bench_e2e_runs_dir := "bench/e2e/runs"
 bench_e2e_baseline_dir := "bench/e2e/runs/baseline_fst"
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
 bench_e2e_fsdb_baseline_dir := "bench/e2e/runs/baseline_fsdb"
+bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
+bench_e2e_fsdb_smoke_artifact_filter := "^(picorv32_test_ez_vcd|scr1_max_axi_riscv_compliance)[.]fst$"
 bench_expr_runs_dir := "bench/expr/runs"
 bench_expr_baseline_dir := "bench/expr/runs/baseline"
 wavepeek_release_bin := "./target/release/wavepeek"
@@ -179,6 +181,10 @@ lint-fsdb: require-verdi
 prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog
     bash tools/fsdb/prepare_fsdb_fixtures.sh
 
+# Prepare generated FSDB fixtures from hand-written VCD test fixtures only
+prepare-fsdb-test-fixtures: require-verdi
+    bash tools/fsdb/prepare_fsdb_fixtures.sh --hand-only
+
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
 check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
@@ -188,6 +194,13 @@ prepare-and-check-fsdb-rtl-artifacts: require-verdi
     just check-rtl-artifacts
     just prepare-fsdb-fixtures
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
+
+# Prepare and verify only FSDB RTL artifacts required by the pre-commit smoke
+prepare-and-check-fsdb-smoke-rtl-artifacts: require-verdi
+    just check-rtl-artifacts
+    just check-bench-e2e-fsdb-catalog
+    bash tools/fsdb/prepare_fsdb_fixtures.sh --rtl-only --rtl-filter '{{ bench_e2e_fsdb_smoke_artifact_filter }}'
+    {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
 
 # Build release binary with optional FSDB support
 build-release-fsdb: require-verdi
@@ -212,7 +225,7 @@ check-fsdb-build: require-verdi
     cargo test --features fsdb --lib fsdb_reader_hierarchy_smoke -- --nocapture
 
 # Run optional FSDB build smoke tests
-test-fsdb: check-fsdb-build prepare-and-check-fsdb-rtl-artifacts
+test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
     @export CARGO_TARGET_DIR=target/fsdb; \
     cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
     cargo test --features fsdb --test fsdb_cli
@@ -274,9 +287,9 @@ bench-e2e-smoke-commit: check-rtl-artifacts build-release
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
-bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-rtl-artifacts build-release-fsdb
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$' && \
+        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}' && \
         WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$tmp_revised" --golden "{{ bench_e2e_fsdb_baseline_dir }}"
 
 # Run pre-commit hooks on all files

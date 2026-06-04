@@ -8,7 +8,7 @@ Use `just check` before handing off local work. It runs formatting checks, clipp
 
 Use `just ci` when tests should be included. It runs the same static checks plus auxiliary Python unit tests, the source coverage gate, `cargo check`, and the FSDB regression path when Verdi is available. The Rust test execution used by CI is the `cargo llvm-cov` run behind `just coverage-src-check`; use `just test` when you want an explicit non-coverage Rust test pass while iterating. `just test` also runs the FSDB regression path when Verdi is available.
 
-Use `just pre-commit` to run all installed pre-commit hooks across the repository. Hooks are installed by `just dev-setup` and must not be bypassed unless a maintainer explicitly asks. The hook path inherits the same conditional FSDB lint, test, and benchmark smoke behavior from the `just` recipes.
+Use `just pre-commit` to run all installed pre-commit hooks across the repository. Hooks are installed by `just dev-setup` and must not be bypassed unless a maintainer explicitly asks. The hook path inherits conditional FSDB lint, test, and benchmark smoke behavior from the `just` recipes when Verdi is available, but the FSDB pre-commit benchmark smoke prepares only its small filtered RTL fixture set instead of the full FSDB benchmark catalog.
 
 ## Focused Recipes
 
@@ -25,7 +25,7 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 
 The optional `fsdb` Cargo feature requires a local Synopsys Verdi FSDB Reader SDK. `just lint`, `just check`, `just test`, `just ci`, and the benchmark pre-commit smoke probe the local environment: when `tools/fsdb/check_fsdb_env.py` validates a usable SDK, they run the relevant FSDB gates; when Verdi is absent, they print a skip message and continue.
 
-Focused FSDB recipes include `just check-fsdb-env`, `just lint-fsdb`, `just check-fsdb-build`, `just prepare-fsdb-fixtures`, `just test-fsdb`, and `just bench-e2e-fsdb-smoke-commit`. The detailed FSDB gate and SDK contract lives in `fsdb.md`.
+Focused FSDB recipes include `just check-fsdb-env`, `just lint-fsdb`, `just check-fsdb-build`, `just prepare-fsdb-fixtures`, `just prepare-fsdb-test-fixtures`, `just test-fsdb`, and `just bench-e2e-fsdb-smoke-commit`. The detailed FSDB gate and SDK contract lives in `fsdb.md`.
 
 ## Interpreting Failures
 

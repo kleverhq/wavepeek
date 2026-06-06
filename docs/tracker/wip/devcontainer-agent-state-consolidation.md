@@ -27,6 +27,8 @@ This plan does not remove or migrate a user's existing top-level `~/.claude`, `~
 - [x] (2026-06-06 01:39Z) Completed post-implementation review iterations: initial code/docs/security review, focused follow-ups, a fresh control pass, and final Verdi self-link verification. All substantive findings were fixed; the final focused verification reported no substantive findings.
 - [x] (2026-06-06 01:43Z) Re-ran `bash -n .devcontainer/initialize.sh`, `tools/repo` unit tests, `just check`, and `just test-aux`; all passed after the final review fix.
 - [x] (2026-06-06 01:45Z) Prepared the completed implementation change set for commit.
+- [x] (2026-06-06 01:52Z) Committed the implementation as `6b4fea8 chore(devcontainer): consolidate agent state`.
+- [x] (2026-06-06 01:56Z) Removed the remaining active breadcrumb mention of OpenCode so active docs and config only retain historical WIP references.
 
 ## Surprises & Discoveries
 
@@ -63,7 +65,7 @@ This plan does not remove or migrate a user's existing top-level `~/.claude`, `~
 
 ## Outcomes & Retrospective
 
-Implementation and review are complete. The working tree now has a devcontainer configuration where every host bind source for coding-agent and Verdi state begins with `${localEnv:HOME}/.config/wavepeek-dev/`, the GitHub env file is passed from `${localEnv:HOME}/.config/wavepeek-dev/github.env`, and active provisioning no longer installs, mounts, or recommends OpenCode. The host initializer rejects symlinked `~/.config/wavepeek-dev` roots, refuses wrong-type managed mount sources without deleting them, avoids unsafe `github.empty.env` symlinks, and guards the Verdi same-directory case so it does not create self-referential symlinks. Targeted validation, `just check`, and `just test-aux` passed after the final fix.
+Implementation, review, validation, and the main implementation commit are complete. The committed devcontainer configuration has every host bind source for coding-agent and Verdi state beginning with `${localEnv:HOME}/.config/wavepeek-dev/`, the GitHub env file is passed from `${localEnv:HOME}/.config/wavepeek-dev/github.env`, and active provisioning no longer installs, mounts, or recommends OpenCode. The host initializer rejects symlinked `~/.config/wavepeek-dev` roots, refuses wrong-type managed mount sources without deleting them, avoids unsafe `github.empty.env` symlinks, and guards the Verdi same-directory case so it does not create self-referential symlinks. Targeted validation, `just check`, and `just test-aux` passed after the final fix.
 
 ## Context and Orientation
 
@@ -195,6 +197,10 @@ Revision note, 2026-06-06: Incorporated follow-up review findings by making even
 Revision note, 2026-06-06: Incorporated final focused review finding by making invalid managed symlinks fail without replacement and adding a regression test.
 
 Revision note, 2026-06-06: Incorporated control-pass finding by guarding the Verdi same-directory case before replacing an existing managed Verdi symlink, preventing accidental self-referential symlinks.
+
+Revision note, 2026-06-06: Recorded the main implementation commit hash for handoff.
+
+Revision note, 2026-06-06: Dropped the remaining active breadcrumb mention of OpenCode; only historical WIP context still names it.
 
 ### Interfaces and Dependencies
 

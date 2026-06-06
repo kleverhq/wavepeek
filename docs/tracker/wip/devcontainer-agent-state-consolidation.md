@@ -6,7 +6,7 @@ Note that this document must be maintained in accordance with the `exec-plan` sk
 
 ## Purpose / Big Picture
 
-A local `wavepeek` devcontainer currently prepares and mounts coding-agent state from several host home-directory locations, including `~/.claude`, `~/.codex`, `~/.pi`, `~/.cache/wavepeek`, and OpenCode-specific directories. After this change, a fresh host should only need one project-owned host directory, `~/.config/wavepeek-dev`, for wavepeek-managed devcontainer state. Existing user-level Claude, Codex, and Pi state can still be reused by placing symlinks inside that one directory, but the initialization script must stop creating new top-level dotfiles in the user's home directory.
+Before this work, the local `wavepeek` devcontainer prepared and mounted coding-agent state from several host home-directory locations, including `~/.claude`, `~/.codex`, `~/.pi`, `~/.cache/wavepeek`, and OpenCode-specific directories. After this change, a fresh host should only need one project-owned host directory, `~/.config/wavepeek-dev`, for wavepeek-managed devcontainer state. Existing user-level Claude, Codex, and Pi state can still be reused by placing symlinks inside that one directory, but the initialization script must stop creating new top-level dotfiles in the user's home directory.
 
 The user-visible result is visible before a container starts: `.devcontainer/initialize.sh` creates `~/.config/wavepeek-dev/github.env`, `~/.config/wavepeek-dev/verdi`, `~/.config/wavepeek-dev/claude`, `~/.config/wavepeek-dev/claude.json`, `~/.config/wavepeek-dev/codex`, and `~/.config/wavepeek-dev/pi`. `.devcontainer/devcontainer.json` passes the GitHub env file from `~/.config/wavepeek-dev` through Docker `--env-file`, and bind-mounts only agent and Verdi state from that same directory. OpenCode is no longer installed, mounted, or recommended.
 
@@ -20,21 +20,22 @@ This plan does not remove or migrate a user's existing top-level `~/.claude`, `~
 - [x] (2026-06-06 00:03Z) Inspected current devcontainer config, host initialization script, Dockerfile agent installation block, GitHub-auth docs, FSDB docs, and helper scripts that reference old host paths.
 - [x] (2026-06-06 00:08Z) Created this initial ExecPlan with the intended implementation and validation strategy.
 - [x] (2026-06-06 00:18Z) Requested and incorporated read-only code/devcontainer-shell and docs/breadcrumbs reviews of this ExecPlan before implementation.
-- [ ] Update devcontainer host-state setup and mounts.
-- [ ] Remove OpenCode installation, mounts, extension, version constant, and stale references.
-- [ ] Update docs and helper scripts to use `~/.config/wavepeek-dev`.
-- [ ] Run targeted validation and repository quality gates.
-- [ ] Request post-implementation review, apply any fixes, and run a final control review.
-- [ ] Commit the completed change set.
+- [x] (2026-06-06 00:47Z) Updated `.devcontainer/initialize.sh` and `.devcontainer/devcontainer.json` so GitHub env-file, Verdi, Claude Code, Codex, and Pi host sources are under `~/.config/wavepeek-dev`.
+- [x] (2026-06-06 00:47Z) Removed OpenCode installation, state mounts, VS Code extension recommendation, version constant, and stale active provisioning references.
+- [x] (2026-06-06 00:52Z) Updated docs, breadcrumbs, and GitHub helper scripts to use `~/.config/wavepeek-dev`, and annotated the old WIP proposal as historical.
+- [x] (2026-06-06 00:59Z) Ran targeted shell/JSON syntax checks, isolated initializer scenarios, `tools/repo` unit tests, `just check`, and `just test-aux`; all passed.
+- [x] (2026-06-06 01:39Z) Completed post-implementation review iterations: initial code/docs/security review, focused follow-ups, a fresh control pass, and final Verdi self-link verification. All substantive findings were fixed; the final focused verification reported no substantive findings.
+- [x] (2026-06-06 01:43Z) Re-ran `bash -n .devcontainer/initialize.sh`, `tools/repo` unit tests, `just check`, and `just test-aux`; all passed after the final review fix.
+- [x] (2026-06-06 01:45Z) Prepared the completed implementation change set for commit.
 
 ## Surprises & Discoveries
 
-- Observation: The current host initialization script creates top-level `~/.claude`, `~/.codex`, `~/.pi`, and `~/.claude.json` placeholders on every host before the devcontainer starts.
-  Evidence: `.devcontainer/initialize.sh` has those paths in its `mkdir -p` list and writes `{}` to `$HOME/.claude.json` when missing.
-- Observation: OpenCode is present in three independent surfaces: Docker image installation, host bind mounts, and VS Code extension recommendation.
-  Evidence: `.devcontainer/Dockerfile` installs a pinned OpenCode release, `.devcontainer/devcontainer.json` mounts three `opencode` host paths, and the VS Code extensions list includes `sst-dev.opencode`.
-- Observation: GitHub authentication is already env-file based and does not mount host `~/.config/gh`, but the path still uses `~/.config/wavepeek`.
-  Evidence: `.devcontainer/devcontainer.json` passes `${localEnv:HOME}/.config/wavepeek/github.env` with `--env-file`, and `docs/dev/github-auth.md` documents that layout.
+- Observation: Before implementation, the host initialization script created top-level `~/.claude`, `~/.codex`, `~/.pi`, and `~/.claude.json` placeholders on every host before the devcontainer starts.
+  Evidence: The pre-change `.devcontainer/initialize.sh` had those paths in its `mkdir -p` list and wrote `{}` to `$HOME/.claude.json` when missing.
+- Observation: Before implementation, OpenCode was present in three independent surfaces: Docker image installation, host bind mounts, and VS Code extension recommendation.
+  Evidence: The pre-change `.devcontainer/Dockerfile` installed a pinned OpenCode release, `.devcontainer/devcontainer.json` mounted three `opencode` host paths, and the VS Code extensions list included `sst-dev.opencode`.
+- Observation: Before implementation, GitHub authentication was already env-file based and did not mount host `~/.config/gh`, but the path still used `~/.config/wavepeek`.
+  Evidence: The pre-change `.devcontainer/devcontainer.json` passed `${localEnv:HOME}/.config/wavepeek/github.env` with `--env-file`, and `docs/dev/github-auth.md` documented that layout.
 - Observation: Plan review found that a kind-agnostic legacy symlink helper would be unsafe if a user had a file where a directory was expected, or a directory where `claude.json` was expected.
   Evidence: Pre-implementation review reported that stray `~/.codex` or `~/.pi` files, or a `~/.claude.json` directory, could produce bad bind mounts or container startup failures.
 - Observation: Plan review found that blindly recreating `~/.config/wavepeek-dev/verdi` could delete real contents if `VERDI_HOME` points to that path or if the path is a non-empty managed directory.
@@ -56,21 +57,21 @@ This plan does not remove or migrate a user's existing top-level `~/.claude`, `~
 - Decision: Remove OpenCode from the local dev image and VS Code recommendations, not merely stop mounting its state.
   Rationale: The user asked to fully remove OpenCode. Leaving a binary or extension recommendation would keep a half-removed agent surface, which is how configuration fossils breed.
   Date/Author: 2026-06-06 / Grin
-- Decision: Make `tools/repo/setup_github_env.sh` validate only GitHub env-file conflicts inside `~/.config/wavepeek-dev`, not require the entire directory to be empty.
-  Rationale: After consolidation, unrelated managed entries such as `claude`, `codex`, `pi`, and `verdi` are supposed to exist there. The helper should refuse unsafe GitHub file conflicts without treating a healthy shared state directory as contaminated.
+- Decision: Make `tools/repo/setup_github_env.sh` validate only GitHub env-file conflicts inside `~/.config/wavepeek-dev`, not require the entire directory to be empty. It should accept the default `github.empty.env` plus `github.env -> github.empty.env` files created by `initialize.sh`, but refuse to overwrite an existing maintainer token file or non-default active `github.env`.
+  Rationale: After consolidation, unrelated managed entries such as `claude`, `codex`, `pi`, and `verdi` are supposed to exist there, and the initializer may already have created the safe empty GitHub defaults. The helper should refuse unsafe GitHub file conflicts without treating a healthy shared state directory as contaminated.
   Date/Author: 2026-06-06 / Grin
 
 ## Outcomes & Retrospective
 
-No implementation has been completed yet. The expected outcome is a devcontainer configuration where every host bind source for coding-agent and Verdi state begins with `${localEnv:HOME}/.config/wavepeek-dev/`, the GitHub env file is passed from `${localEnv:HOME}/.config/wavepeek-dev/github.env`, and no repository file still provisions OpenCode.
+Implementation and review are complete. The working tree now has a devcontainer configuration where every host bind source for coding-agent and Verdi state begins with `${localEnv:HOME}/.config/wavepeek-dev/`, the GitHub env file is passed from `${localEnv:HOME}/.config/wavepeek-dev/github.env`, and active provisioning no longer installs, mounts, or recommends OpenCode. The host initializer rejects symlinked `~/.config/wavepeek-dev` roots, refuses wrong-type managed mount sources without deleting them, avoids unsafe `github.empty.env` symlinks, and guards the Verdi same-directory case so it does not create self-referential symlinks. Targeted validation, `just check`, and `just test-aux` passed after the final fix.
 
 ## Context and Orientation
 
 The local development container is configured by `.devcontainer/devcontainer.json`. That JSON file describes environment variables, Docker run arguments, host-to-container bind mounts, and VS Code extensions for the interactive `wavepeek` development environment. A bind mount makes a host file or directory appear at a container path; Docker requires the host source to exist or it may create root-owned placeholders, so this repository runs `.devcontainer/initialize.sh` on the host before container creation.
 
-The host initialization script `.devcontainer/initialize.sh` currently creates several host paths. It creates GitHub env files under `~/.config/wavepeek`, creates a Verdi mount source under `~/.cache/wavepeek/verdi`, and creates top-level agent paths such as `~/.claude`, `~/.codex`, and `~/.pi`. Verdi is the optional Synopsys waveform SDK used for FSDB development; inside the container it is always expected at `/opt/verdi` through the `VERDI_HOME=/opt/verdi` environment variable.
+Before this change, the host initialization script `.devcontainer/initialize.sh` created several host paths. It created GitHub env files under `~/.config/wavepeek`, created a Verdi mount source under `~/.cache/wavepeek/verdi`, and created top-level agent paths such as `~/.claude`, `~/.codex`, and `~/.pi`. After implementation, the script creates only `~/.config/wavepeek-dev` as the wavepeek-managed host root, and places agent, Verdi, and GitHub env-file mount sources there. Verdi is the optional Synopsys waveform SDK used for FSDB development; inside the container it is always expected at `/opt/verdi` through the `VERDI_HOME=/opt/verdi` environment variable.
 
-OpenCode is another coding agent. In this repository it is installed by `.devcontainer/Dockerfile`, has host state mounts in `.devcontainer/devcontainer.json`, and is recommended as a VS Code extension. The requested end state removes it entirely from the devcontainer.
+OpenCode is another coding agent. Before this change, it was installed by `.devcontainer/Dockerfile`, had host state mounts in `.devcontainer/devcontainer.json`, and was recommended as a VS Code extension. After implementation, OpenCode is removed from the devcontainer image, mounts, and extension recommendations.
 
 GitHub auth is optional maintainer state. `.devcontainer/devcontainer.json` passes one host env file to Docker with `--env-file`; `.devcontainer/setup-github-auth.sh` configures repo-local Git credentials inside the container only when `GH_TOKEN` or `GITHUB_TOKEN` is present. `tools/repo/setup_github_env.sh` is a host helper that writes the optional token env files. Documentation for this flow lives in `docs/dev/github-auth.md`.
 
@@ -92,7 +93,7 @@ Then update `.devcontainer/devcontainer.json`. Change the Docker `--env-file` fr
 
 Then update `.devcontainer/Dockerfile` and `.devcontainer/env_contract.sh`. In the Dockerfile, keep the npm install of `@openai/codex` and `@earendil-works/pi-coding-agent`, but remove the pinned OpenCode `curl`/`tar` install block. In the environment contract, remove `WAVEPEEK_OPENCODE_VERSION` because nothing should consume it after OpenCode is gone.
 
-Then update documentation and helper scripts. Change `tools/repo/setup_github_env.sh` to write to `~/.config/wavepeek-dev`, but do not keep its old "config directory must be empty" rule. Instead, make it reject only pre-existing `github.empty.env`, `github.maintainer.env`, or `github.env` entries, because unrelated managed entries in that directory are expected after consolidation. Update `tools/repo/README.md`, `docs/dev/environment.md`, `docs/dev/github-auth.md`, and `docs/dev/fsdb.md` to describe the new single host state root. Update `.devcontainer/AGENTS.md` to remove OpenCode and old paths, and to say `initialize.sh` prepares Claude Code, Codex, Pi, Verdi, and optional GitHub env-file sources under `~/.config/wavepeek-dev`. Remove the stale OpenCode sentence from `tools/codex/codex_env_common.sh` because OpenCode is no longer an interactive dev-only exception.
+Then update documentation and helper scripts. Change `tools/repo/setup_github_env.sh` to write to `~/.config/wavepeek-dev`, but do not keep its old "config directory must be empty" rule. Instead, make it tolerate unrelated managed entries plus the default `github.empty.env` and `github.env -> github.empty.env` created by `initialize.sh`, while refusing to overwrite an existing `github.maintainer.env` or a non-default active `github.env`. Update `tools/repo/README.md`, `docs/dev/environment.md`, `docs/dev/github-auth.md`, and `docs/dev/fsdb.md` to describe the new single host state root. Update `.devcontainer/AGENTS.md` to remove OpenCode and old paths, and to say `initialize.sh` prepares Claude Code, Codex, Pi, Verdi, and optional GitHub env-file sources under `~/.config/wavepeek-dev`. Remove the stale OpenCode sentence from `tools/codex/codex_env_common.sh` because OpenCode is no longer an interactive dev-only exception.
 
 Finally, search the repository for stale active references. Active config and docs should not contain `opencode`, `.cache/wavepeek`, or the exact old path `.config/wavepeek/` except where a document intentionally explains the old path as historical migration context. Because `docs/tracker/wip/proposal.md` is an old branch-local GitHub-auth proposal that currently documents old paths, either update it if keeping it useful is cheap or explicitly note that it is historical. Do not delete unrelated WIP files without evidence that this task owns them.
 
@@ -141,9 +142,9 @@ The documented GitHub auth helper writes `~/.config/wavepeek-dev/github.empty.en
 
 ### Idempotence and Recovery
 
-`.devcontainer/initialize.sh` must be safe to run repeatedly. Re-running it should keep `github.env` if it already exists, keep or recreate `github.empty.env`, and keep valid managed agent placeholders or symlinks. For Verdi, it may unlink an existing `verdi` symlink or replace an empty directory, but it must not delete a non-empty real directory and must not remove the target of a symlink. It should not remove top-level user agent state, should not overwrite token-bearing GitHub env files, and should not delete non-empty managed agent state under `~/.config/wavepeek-dev`.
+`.devcontainer/initialize.sh` must be safe to run repeatedly. Re-running it should keep `github.env` if it already exists, keep or recreate `github.empty.env`, and keep valid managed agent placeholders or symlinks. For Verdi, it may unlink an existing `verdi` symlink only when switching to a different valid host Verdi directory, and it may replace an empty real `verdi` directory, but it must not delete a non-empty real directory, must not remove the target of a symlink, and must not turn a managed Verdi symlink into a self-referential symlink. It should not remove top-level user agent state, should not overwrite token-bearing GitHub env files, and should not delete non-empty managed agent state under `~/.config/wavepeek-dev`.
 
-If a managed path under `~/.config/wavepeek-dev` conflicts with an existing top-level legacy path, the safe fallback is to leave the managed path in place and print a warning. If a legacy path exists with the wrong type, the safe fallback is to warn and use the correctly typed managed placeholder. The user can manually move or delete the managed path if they want the symlink. This is less magical than deleting user data; less glamorous, substantially less likely to eat someone's config.
+If a same-kind managed path under `~/.config/wavepeek-dev` conflicts with an existing top-level legacy path, the safe fallback is to leave the managed path in place and print a warning. If a managed mount source has the wrong type or is an invalid symlink, the safe fallback is to fail fast without deleting it and ask the user to fix it manually. If a legacy path exists with the wrong type, the safe fallback is to warn and use the correctly typed managed placeholder. The user can manually move or delete the managed path if they want the symlink. This is less magical than deleting user data; less glamorous, substantially less likely to eat someone's config.
 
 ### Artifacts and Notes
 
@@ -161,9 +162,39 @@ Initial stale-reference search before implementation found active references in 
     tools/repo/README.md
     tools/repo/setup_github_env.sh
 
-`docs/tracker/wip/proposal.md` also contains old GitHub-auth design text. Because it is a tracked WIP artifact, update or annotate it only if needed to avoid misleading future agents on this branch.
+`docs/tracker/wip/proposal.md` also contains old GitHub-auth design text. It is now annotated as historical so future agents do not treat old `~/.config/wavepeek` or OpenCode examples as current guidance.
+
+Targeted validation after implementation produced:
+
+    bash -n .devcontainer/initialize.sh && bash -n .devcontainer/setup-github-auth.sh && bash -n tools/repo/setup_github_env.sh && python3 -m json.tool .devcontainer/devcontainer.json >/dev/null && python3 -m unittest discover -s tools/repo -p 'test_*.py'
+    ...................
+    Ran 19 tests in 0.160s
+    OK
+
+    initializer validation ok
+
+    just check
+    ...
+    Commit validation: successful!
+    ...
+    test waveform::fsdb_native::tests::fsdb_reader_hierarchy_smoke ... ok
+
+    just test-aux
+    ...
+    Ran 19 tests in 0.163s
+    OK
 
 Revision note, 2026-06-06: Incorporated pre-implementation review findings. The plan now requires kind-aware legacy handling, safer Verdi source management, GitHub-file-specific setup helper validation, clearer `--env-file` wording, and exact old-path stale-reference searches.
+
+Revision note, 2026-06-06: Recorded implementation progress and validation evidence before post-implementation review.
+
+Revision note, 2026-06-06: Incorporated post-implementation review findings about wrong-type managed mount sources, symlinked config roots, unsafe `github.empty.env` symlinks, and stale present-tense historical wording.
+
+Revision note, 2026-06-06: Incorporated follow-up review findings by making even empty wrong-type managed mount sources fail without deletion and by changing remaining historical observations from present tense to pre-change wording.
+
+Revision note, 2026-06-06: Incorporated final focused review finding by making invalid managed symlinks fail without replacement and adding a regression test.
+
+Revision note, 2026-06-06: Incorporated control-pass finding by guarding the Verdi same-directory case before replacing an existing managed Verdi symlink, preventing accidental self-referential symlinks.
 
 ### Interfaces and Dependencies
 

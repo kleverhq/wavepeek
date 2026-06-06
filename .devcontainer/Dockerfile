@@ -194,22 +194,6 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     @openai/codex \
     @earendil-works/pi-coding-agent
 
-# Install pinned OpenCode release directly instead of relying on the moving
-# installer script from the upstream dev branch.
-RUN . /tmp/wavepeek-env-contract.sh && \
-    arch="$(dpkg --print-architecture)" && \
-    case "$arch" in \
-        amd64) opencode_archive="opencode-linux-x64-baseline.tar.gz" ;; \
-        arm64) opencode_archive="opencode-linux-arm64.tar.gz" ;; \
-        *) printf '%s\n' "unsupported opencode architecture: $arch" >&2; exit 1 ;; \
-    esac && \
-    tmp_dir="$(mktemp -d)" && \
-    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/opencode.tar.gz" \
-        "https://github.com/anomalyco/opencode/releases/download/v${WAVEPEEK_OPENCODE_VERSION}/${opencode_archive}" && \
-    tar -xzf "$tmp_dir/opencode.tar.gz" -C "$tmp_dir" && \
-    install -m 0755 "$tmp_dir/opencode" /home/ubuntu/.local/bin/opencode && \
-    rm -rf "$tmp_dir"
-
 # Install latest Claude Code
 RUN curl -fsSL https://claude.ai/install.sh | bash
 

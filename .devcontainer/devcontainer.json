@@ -13,7 +13,7 @@
     "runArgs": [
         "--network=host",
         "--env-file",
-        "${localEnv:HOME}/.config/wavepeek/github.env"
+        "${localEnv:HOME}/.config/wavepeek-dev/github.env"
     ],
     "initializeCommand": [
         "bash",
@@ -22,14 +22,11 @@
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
     "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
     "mounts": [
-        "source=${localEnv:HOME}/.config/opencode,target=/home/ubuntu/.config/opencode,type=bind",
-        "source=${localEnv:HOME}/.local/share/opencode,target=/home/ubuntu/.local/share/opencode,type=bind",
-        "source=${localEnv:HOME}/.cache/opencode,target=/home/ubuntu/.cache/opencode,type=bind",
-        "source=${localEnv:HOME}/.claude,target=/home/ubuntu/.claude,type=bind",
-        "source=${localEnv:HOME}/.claude.json,target=/home/ubuntu/.claude.json,type=bind",
-        "source=${localEnv:HOME}/.codex,target=/home/ubuntu/.codex,type=bind",
-        "source=${localEnv:HOME}/.pi,target=/home/ubuntu/.pi,type=bind",
-        "source=${localEnv:HOME}/.cache/wavepeek/verdi,target=/opt/verdi,type=bind"
+        "source=${localEnv:HOME}/.config/wavepeek-dev/claude,target=/home/ubuntu/.claude,type=bind",
+        "source=${localEnv:HOME}/.config/wavepeek-dev/claude.json,target=/home/ubuntu/.claude.json,type=bind",
+        "source=${localEnv:HOME}/.config/wavepeek-dev/codex,target=/home/ubuntu/.codex,type=bind",
+        "source=${localEnv:HOME}/.config/wavepeek-dev/pi,target=/home/ubuntu/.pi,type=bind",
+        "source=${localEnv:HOME}/.config/wavepeek-dev/verdi,target=/opt/verdi,type=bind"
     ],
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true,
@@ -56,7 +53,6 @@
                 "yzhang.markdown-all-in-one",
                 "redhat.vscode-yaml",
                 "gruntfuggly.todo-tree",
-                "sst-dev.opencode",
                 "github.vscode-github-actions",
                 "github.vscode-pull-request-github",
                 "d-koppenhagen.vscode-code-review",

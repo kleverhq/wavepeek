@@ -5,8 +5,6 @@ set -euo pipefail
 # devcontainer contract. Keep `.devcontainer/` as the primary source of truth,
 # especially `.devcontainer/env_contract.sh`, and update these tools whenever
 # the devcontainer image contents or environment guarantees change.
-# Interactive dev-only agent tooling such as OpenCode stays intentionally out of
-# this Codex projection unless non-dev just recipes begin to require it.
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"

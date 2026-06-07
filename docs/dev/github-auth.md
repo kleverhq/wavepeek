@@ -85,7 +85,7 @@ gh pr list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 gh issue list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 ```
 
-Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local, path-specific credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path. It also resets broader inherited GitHub credential helpers for that upstream path so a plain `git push origin <branch>` works even when an editor or global helper has stale GitHub credentials cached. Yes, Git credential helper ordering is exactly the sort of drawer where old adapters go to breed.
+Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local, path-specific credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path. It also resets broader inherited GitHub credential helpers for that upstream path so a plain `git push origin <branch>` works even when an editor or global helper has stale GitHub credentials cached.
 
 ## External PR Review
 

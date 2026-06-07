@@ -10,7 +10,7 @@ Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Set it only inside a wa
 
 Run `just dev-setup` after opening or rebuilding the devcontainer. It verifies tool availability and installs the pre-commit and commit-msg hooks.
 
-The devcontainer prepares host-side state under one project-owned directory, `~/.config/wavepeek-dev`. That directory contains the optional GitHub auth env file at `~/.config/wavepeek-dev/github.env`, the Verdi mount source at `~/.config/wavepeek-dev/verdi`, and bind-mount sources for Claude Code, Codex, and Pi agent state. On a fresh host, initialization should not create top-level `~/.claude`, `~/.claude.json`, `~/.codex`, `~/.pi`, or `~/.cache/wavepeek` paths. If those top-level agent paths already exist, `.devcontainer/initialize.sh` places symlinks to them inside `~/.config/wavepeek-dev` so existing user state can still be mounted.
+The devcontainer prepares host-side state under one project-owned directory, `~/.config/wavepeek-dev`. That directory contains the optional GitHub auth env file at `~/.config/wavepeek-dev/github.env`, the Verdi mount source at `~/.config/wavepeek-dev/verdi`, and bind-mount sources for Claude Code, Codex, and Pi agent state. Agent mount sources are managed inside that directory by default; when matching user agent state already exists outside it, `.devcontainer/initialize.sh` links the managed source to that existing state so the container can reuse it.
 
 ## Optional GitHub Authentication
 

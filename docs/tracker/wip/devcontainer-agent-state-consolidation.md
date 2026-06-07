@@ -6,7 +6,7 @@ Note that this document must be maintained in accordance with the `exec-plan` sk
 
 ## Purpose / Big Picture
 
-Before this work, the local `wavepeek` devcontainer prepared and mounted coding-agent state from several host home-directory locations, including `~/.claude`, `~/.codex`, `~/.pi`, `~/.cache/wavepeek`, and OpenCode-specific directories. After this change, a fresh host should only need one project-owned host directory, `~/.config/wavepeek-dev`, for wavepeek-managed devcontainer state. Existing user-level Claude, Codex, and Pi state can still be reused by placing symlinks inside that one directory, but the initialization script must stop creating new top-level dotfiles in the user's home directory.
+The local `wavepeek` devcontainer uses one obvious host root for wavepeek-managed state: `~/.config/wavepeek-dev`. A contributor can inspect that directory to see the GitHub env-file, Verdi mount source, and coding-agent mount sources used by the container. Existing user-level Claude, Codex, and Pi state can still be reused through symlinks inside that directory.
 
 The user-visible result is visible before a container starts: `.devcontainer/initialize.sh` creates `~/.config/wavepeek-dev/github.env`, `~/.config/wavepeek-dev/verdi`, `~/.config/wavepeek-dev/claude`, `~/.config/wavepeek-dev/claude.json`, `~/.config/wavepeek-dev/codex`, and `~/.config/wavepeek-dev/pi`. `.devcontainer/devcontainer.json` passes the GitHub env file from `~/.config/wavepeek-dev` through Docker `--env-file`, and bind-mounts only agent and Verdi state from that same directory. OpenCode is no longer installed, mounted, or recommended.
 
@@ -201,6 +201,8 @@ Revision note, 2026-06-06: Incorporated control-pass finding by guarding the Ver
 Revision note, 2026-06-06: Recorded the main implementation commit hash for handoff.
 
 Revision note, 2026-06-06: Dropped the remaining active breadcrumb mention of OpenCode; only historical WIP context still names it.
+
+Revision note, 2026-06-06: Simplified active-facing state-root wording so it describes the current `~/.config/wavepeek-dev` contract directly instead of framing it as avoidance of older home-directory paths.
 
 ### Interfaces and Dependencies
 

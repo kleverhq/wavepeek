@@ -26,7 +26,7 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 - [x] (2026-06-07T12:23Z) Updated runtime schema constants, tests, and helper automation to use the Cargo package major version.
 - [x] (2026-06-07T12:24Z) Updated public docs, maintainer docs, and breadcrumbs that referenced the old full-semver schema path.
 - [x] (2026-06-07T12:25Z) Ran focused tests, acceptance checks, `just check-schema`, and `just check`; all passed.
-- [ ] Commit the implementation.
+- [x] (2026-06-07T12:27Z) Committed the implementation as `8d925c5 feat(schema): use major-versioned artifacts`.
 - [ ] Run read-only review on the implementation and apply any necessary fixes.
 - [ ] Run final validation and record outcomes.
 
@@ -72,7 +72,7 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 ## Outcomes & Retrospective
 
-Implementation is complete before review. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed. Implementation review is still pending.
+Implementation is complete and committed before review. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed. Implementation review is still pending.
 
 ## Context and Orientation
 
@@ -250,3 +250,4 @@ The exact implementation should use `concat!` and `env!("CARGO_PKG_VERSION_MAJOR
 - 2026-06-07T12:09Z: Created the initial self-contained ExecPlan from repository inspection and the user's decision to use `main` plus `schema/wavepeek_v0.json`.
 - 2026-06-07T12:20Z: Incorporated read-only plan review findings: corrected the schema integration test command, required helper validation of the schema artifact regex, moved release/update policy detail out of public-doc wording, and documented new-major bootstrap risk in maintainer docs.
 - 2026-06-07T12:25Z: Updated implementation progress and validation evidence after code, schema, docs, and helper changes passed focused checks and `just check`.
+- 2026-06-07T12:27Z: Recorded implementation commit `8d925c5 feat(schema): use major-versioned artifacts` before starting implementation review.

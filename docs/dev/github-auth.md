@@ -85,7 +85,7 @@ gh pr list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 gh issue list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 ```
 
-Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path.
+Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local, path-specific credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path. It also resets broader inherited GitHub credential helpers for that upstream path so a plain `git push origin <branch>` works even when an editor or global helper has stale GitHub credentials cached. Yes, Git credential helper ordering is exactly the sort of drawer where old adapters go to breed.
 
 ## External PR Review
 
@@ -199,3 +199,13 @@ git remote -v
 ```
 
 The setup script only adds or updates `upstream` when `origin` is not `kleverhq/wavepeek`; it never rewrites `origin`.
+
+If `git push origin <branch>` still tries a stale editor or global GitHub credential, rerun the in-container setup step and inspect the repo-local helper entries:
+
+```bash
+bash .devcontainer/setup-github-auth.sh
+git config --local --get-all credential.https://github.com/kleverhq/wavepeek.helper
+git config --local --get-all credential.https://github.com/kleverhq/wavepeek.git.helper
+```
+
+Each upstream path should have an empty first helper entry followed by `!wavepeek_github_credential_helper...`. The empty entry is intentional; it tells Git to ignore broader helpers for that exact upstream path.

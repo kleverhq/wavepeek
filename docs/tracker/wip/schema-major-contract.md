@@ -28,7 +28,8 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 - [x] (2026-06-07T12:25Z) Ran focused tests, acceptance checks, `just check-schema`, and `just check`; all passed.
 - [x] (2026-06-07T12:27Z) Committed the implementation as `8d925c5 feat(schema): use major-versioned artifacts`.
 - [x] (2026-06-07T12:35Z) Ran implementation review in code/automation and docs/contract lanes; fixed the code/automation findings by enforcing the exact schema URL pattern and canonical path.
-- [ ] Run final validation, control review, and record outcomes.
+- [x] (2026-06-07T12:47Z) Ran follow-up review and a fresh control review; fixed the control review finding by adding an Unreleased changelog entry.
+- [x] (2026-06-07T12:49Z) Reran final validation, ran `just ci`, and recorded final outcomes.
 
 ## Surprises & Discoveries
 
@@ -46,6 +47,9 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - Observation: Implementation review found the checker should enforce more than representative acceptance/rejection.
   Evidence: The code/automation reviewer noted that `tools/schema/check_schema_contract.py` accepted a broadened artifact regex and did not enforce the canonical current-major path or absence of `schema/wavepeek.json`.
+
+- Observation: Fresh control review found the changelog needed a user-visible contract note.
+  Evidence: The control reviewer reported `CHANGELOG.md:17` was missing an Unreleased `Changed` entry for the major-versioned schema URL/artifact migration.
 
 ## Decision Log
 
@@ -79,7 +83,7 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 ## Outcomes & Retrospective
 
-Implementation is complete and committed. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed before and after implementation-review fixes. Final control review is still pending.
+Implementation is complete and committed. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, `just check`, and `just ci` passed. Follow-up review found no substantive findings. Fresh control review found one low changelog omission, which was fixed and rechecked with no substantive findings.
 
 ## Context and Orientation
 
@@ -160,6 +164,8 @@ Run the pre-handoff gate:
 Observed result on 2026-06-07 before implementation review: `just check` passed, including rustfmt check, justfile format check, clippy, schema contract validation, actionlint, cargo check, commit-message validation, and FSDB build smoke checks.
 
 Observed result on 2026-06-07 after implementation-review fixes: `just check` passed with the same gate set.
+
+Observed result on 2026-06-07 after the changelog control-review fix: focused schema tests and acceptance commands passed, `just check` passed, and `just ci` passed, including full cargo tests, auxiliary tests, coverage threshold checks, and FSDB feature tests.
 
 Commit implementation once focused validation passes or any environment limitations are recorded:
 
@@ -261,3 +267,5 @@ The exact implementation should use `concat!` and `env!("CARGO_PKG_VERSION_MAJOR
 - 2026-06-07T12:25Z: Updated implementation progress and validation evidence after code, schema, docs, and helper changes passed focused checks and `just check`.
 - 2026-06-07T12:27Z: Recorded implementation commit `8d925c5 feat(schema): use major-versioned artifacts` before starting implementation review.
 - 2026-06-07T12:35Z: Recorded implementation review findings and fixes: exact artifact regex enforcement, canonical current-major path enforcement, obsolete unversioned artifact rejection, and rerun validation.
+- 2026-06-07T12:47Z: Recorded follow-up review result, fresh control review finding, and changelog fix.
+- 2026-06-07T12:49Z: Recorded final validation, including `just ci`, and final follow-up review outcome.

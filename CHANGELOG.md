@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
 - Replaced the devcontainer host GitHub CLI config mount with optional zero-secret repo-scoped GitHub authentication via a host env-file.
 - Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
+- Moved the machine-output schema contract to major-versioned artifacts such as `schema/wavepeek_v0.json`; JSON envelopes now point at the current major schema on `main` instead of a full-semver schema path.
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
 
 ## [0.5.0] - 2026-05-15

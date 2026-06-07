@@ -27,8 +27,8 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 - [x] (2026-06-07T12:24Z) Updated public docs, maintainer docs, and breadcrumbs that referenced the old full-semver schema path.
 - [x] (2026-06-07T12:25Z) Ran focused tests, acceptance checks, `just check-schema`, and `just check`; all passed.
 - [x] (2026-06-07T12:27Z) Committed the implementation as `8d925c5 feat(schema): use major-versioned artifacts`.
-- [ ] Run read-only review on the implementation and apply any necessary fixes.
-- [ ] Run final validation and record outcomes.
+- [x] (2026-06-07T12:35Z) Ran implementation review in code/automation and docs/contract lanes; fixed the code/automation findings by enforcing the exact schema URL pattern and canonical path.
+- [ ] Run final validation, control review, and record outcomes.
 
 ## Surprises & Discoveries
 
@@ -43,6 +43,9 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - Observation: `CARGO_PKG_VERSION_MAJOR` works as a compile-time environment variable for this crate.
   Evidence: `cargo test --test schema_cli` and `cargo test --lib schema_contract` both passed after `src/schema_contract.rs` and integration tests used `env!("CARGO_PKG_VERSION_MAJOR")`.
+
+- Observation: Implementation review found the checker should enforce more than representative acceptance/rejection.
+  Evidence: The code/automation reviewer noted that `tools/schema/check_schema_contract.py` accepted a broadened artifact regex and did not enforce the canonical current-major path or absence of `schema/wavepeek.json`.
 
 ## Decision Log
 
@@ -70,9 +73,13 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
   Rationale: Runtime envelope checks alone do not prove that the JSON Schema artifact will accept the new URL or reject the obsolete full-semver URL. The contract helper should catch both failures.
   Date/Author: 2026-06-07 / Grin
 
+- Decision: Require the artifact regex to equal the exact current-major URL pattern and require the checked artifact path to be `schema/wavepeek_v{major}.json`.
+  Rationale: Implementation review showed that acceptance/rejection spot checks still allow broadened patterns and duplicate unversioned artifacts. Exact helper checks better protect the public contract.
+  Date/Author: 2026-06-07 / Grin
+
 ## Outcomes & Retrospective
 
-Implementation is complete and committed before review. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed. Implementation review is still pending.
+Implementation is complete and committed. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed before and after implementation-review fixes. Final control review is still pending.
 
 ## Context and Orientation
 
@@ -150,7 +157,9 @@ Run the pre-handoff gate:
 
     just check
 
-Observed result on 2026-06-07: `just check` passed, including rustfmt check, justfile format check, clippy, schema contract validation, actionlint, cargo check, commit-message validation, and FSDB build smoke checks.
+Observed result on 2026-06-07 before implementation review: `just check` passed, including rustfmt check, justfile format check, clippy, schema contract validation, actionlint, cargo check, commit-message validation, and FSDB build smoke checks.
+
+Observed result on 2026-06-07 after implementation-review fixes: `just check` passed with the same gate set.
 
 Commit implementation once focused validation passes or any environment limitations are recorded:
 
@@ -251,3 +260,4 @@ The exact implementation should use `concat!` and `env!("CARGO_PKG_VERSION_MAJOR
 - 2026-06-07T12:20Z: Incorporated read-only plan review findings: corrected the schema integration test command, required helper validation of the schema artifact regex, moved release/update policy detail out of public-doc wording, and documented new-major bootstrap risk in maintainer docs.
 - 2026-06-07T12:25Z: Updated implementation progress and validation evidence after code, schema, docs, and helper changes passed focused checks and `just check`.
 - 2026-06-07T12:27Z: Recorded implementation commit `8d925c5 feat(schema): use major-versioned artifacts` before starting implementation review.
+- 2026-06-07T12:35Z: Recorded implementation review findings and fixes: exact artifact regex enforcement, canonical current-major path enforcement, obsolete unversioned artifact rejection, and rerun validation.

@@ -155,6 +155,12 @@ fn schema_command_schema_url_pattern_matches_current_major_contract() {
     let pattern = value["properties"]["$schema"]["pattern"]
         .as_str()
         .expect("envelope schema URL pattern should be a string");
+    let expected_pattern = format!(
+        r"^https://raw\.githubusercontent\.com/kleverhq/wavepeek/main/schema/wavepeek_v{}\.json$",
+        env!("CARGO_PKG_VERSION_MAJOR")
+    );
+    assert_eq!(pattern, expected_pattern);
+
     let regex = regex::Regex::new(pattern).expect("schema URL pattern should compile");
 
     assert!(

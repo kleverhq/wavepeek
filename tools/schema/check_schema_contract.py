@@ -37,6 +37,23 @@ def expected_schema_url(major: str) -> str:
     return f"{REPOSITORY}/main/schema/wavepeek_v{major}.json"
 
 
+def expected_schema_url_pattern(major: str) -> str:
+    return rf"^{re.escape(REPOSITORY)}/main/schema/wavepeek_v{re.escape(major)}\.json$"
+
+
+def validate_schema_path(schema_path: pathlib.Path, major: str) -> None:
+    expected_path = current_schema_path(major)
+    if schema_path != expected_path and schema_path.resolve() != expected_path.resolve():
+        fail(
+            "error: schema: canonical schema path mismatch: "
+            f"expected {expected_path}, got {schema_path}"
+        )
+
+    obsolete_path = pathlib.Path("schema/wavepeek.json")
+    if obsolete_path.exists():
+        fail(f"error: schema: obsolete unversioned schema artifact exists at {obsolete_path}")
+
+
 def load_schema(schema_path: pathlib.Path) -> tuple[bytes, dict[str, object]]:
     if not schema_path.exists():
         fail(
@@ -76,6 +93,13 @@ def schema_url_pattern(schema: dict[str, object]) -> str:
 
 def validate_artifact_schema_url_pattern(schema: dict[str, object], version: str, major: str) -> None:
     pattern = schema_url_pattern(schema)
+    expected_pattern = expected_schema_url_pattern(major)
+    if pattern != expected_pattern:
+        fail(
+            "error: schema: canonical schema properties.$schema.pattern mismatch: "
+            f"expected {expected_pattern}, got {pattern}"
+        )
+
     try:
         artifact_url_pattern = re.compile(pattern)
     except re.error as error:
@@ -113,9 +137,7 @@ def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> N
 
 def validate_runtime_envelope_url(version: str, major: str) -> None:
     expected_url = expected_schema_url(major)
-    runtime_url_pattern = re.compile(
-        rf"^{re.escape(REPOSITORY)}/main/schema/wavepeek_v[0-9]+\.json$"
-    )
+    runtime_url_pattern = re.compile(expected_schema_url_pattern(major))
 
     info_json_stdout = subprocess.run(
         [
@@ -160,6 +182,7 @@ def main() -> None:
     major = package_major(version)
     schema_path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else current_schema_path(major)
 
+    validate_schema_path(schema_path, major)
     schema_bytes, schema = load_schema(schema_path)
     validate_artifact_schema_url_pattern(schema, version, major)
     validate_runtime_schema(schema_path, schema_bytes)

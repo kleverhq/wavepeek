@@ -15,8 +15,8 @@ This directory owns local and CI container definitions, fixture provisioning, an
 
 - `Dockerfile` uses shared build stages with separate `ci` and `dev` targets; keep CI lean while preserving local GUI/tooling support.
 - The workspace mounts the repository parent so sibling worktrees behave normally in parallel branch workflows.
-- `initialize.sh` prepares host mount sources for OpenCode, Claude Code, Codex, Pi, Verdi, and the optional wavepeek GitHub env-file before container startup.
-- Do not mount host `~/.config/gh` into the devcontainer; optional GitHub auth uses `~/.config/wavepeek/github.env` and is documented in `../docs/dev/github-auth.md`.
+- `initialize.sh` prepares host mount sources under `~/.config/wavepeek-dev` for Claude Code, Codex, Pi, Verdi, and the optional wavepeek GitHub env-file before container startup.
+- Do not mount host `~/.config/gh` into the devcontainer; optional GitHub auth uses `~/.config/wavepeek-dev/github.env` and is documented in `../docs/dev/github-auth.md`.
 - For external PR review, follow `../docs/dev/github-auth.md`; switching `github.env` to empty does not protect a readable host token file from PR-controlled `initializeCommand`.
 - `verdi-tool-wrapper.sh` exposes selected Verdi FSDB utilities on `PATH` and invokes their launchers with bash for compatibility.
 - Host networking is intentional for VPN-heavy environments.

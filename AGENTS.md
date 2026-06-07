@@ -10,6 +10,12 @@
 - Do not bypass hooks unless the user explicitly requests it.
 - Read the nearest applicable `AGENTS.md` before editing files; local breadcrumbs may contain extra rules and gotchas.
 
+## Writing Style
+
+- Keep Markdown, comments, breadcrumbs, execution plans, and PR text concise, minimal, precise, and neutral.
+- Describe current behavior and durable rationale directly. Do not frame current docs around retrospective bugs or removed behavior unless the history is necessary for migration or troubleshooting.
+- Avoid jokes, sarcasm, editorial asides, and colorful phrasing in repository artifacts.
+
 ## Development
 
 Maintainer workflow lives under `docs/dev/`:

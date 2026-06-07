@@ -1,5 +1,7 @@
 # Implement Optional GitHub Authentication for the `wavepeek` Dev Container
 
+Historical note, 2026-06-06: this WIP proposal describes the earlier GitHub-auth change and the devcontainer shape that existed before coding-agent host state was consolidated. Do not use the path examples or OpenCode mount examples below as current implementation guidance. Current devcontainer agent, Verdi, and GitHub env-file state is managed under `~/.config/wavepeek-dev`; see `devcontainer-agent-state-consolidation.md` in this directory and the maintained docs under `docs/dev/`.
+
 ## Task summary
 
 Implement an optional, repo-scoped GitHub authentication setup for the `kleverhq/wavepeek` development container.

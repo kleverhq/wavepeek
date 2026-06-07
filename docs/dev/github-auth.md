@@ -1,13 +1,13 @@
 # Optional GitHub Authentication
 
-The local devcontainer supports optional GitHub authentication for maintainer work. The default host setup uses an empty env file, and normal build/test flows do not require a token. If the host already has `~/.config/wavepeek/github.env` pointing at a maintainer token, newly created containers will receive that token.
+The local devcontainer supports optional GitHub authentication for maintainer work. The default host setup uses an empty env file, and normal build/test flows do not require a token. If the host already has `~/.config/wavepeek-dev/github.env` pointing at a maintainer token, newly created containers will receive that token.
 
 ## Authentication Model
 
 The devcontainer reads one host-side env file when the container is created:
 
 ```text
-~/.config/wavepeek/github.env
+~/.config/wavepeek-dev/github.env
 ```
 
 `.devcontainer/initialize.sh` creates an empty default outside the repository. `.devcontainer/devcontainer.json` passes that file to Docker with `--env-file`. `.devcontainer/setup-github-auth.sh` runs inside the container and configures repo-local GitHub access only when `GH_TOKEN` or `GITHUB_TOKEN` is present.
@@ -34,9 +34,9 @@ gh run list -R "$WAVEPEEK_UPSTREAM_REPO"
 Expected host-side layout:
 
 ```text
-~/.config/wavepeek/github.empty.env
-~/.config/wavepeek/github.maintainer.env
-~/.config/wavepeek/github.env -> github.empty.env or github.maintainer.env
+~/.config/wavepeek-dev/github.empty.env
+~/.config/wavepeek-dev/github.maintainer.env
+~/.config/wavepeek-dev/github.env -> github.empty.env or github.maintainer.env
 ```
 
 `github.empty.env` is created automatically and should stay empty. `github.env` is the active file Docker reads at container creation time. Maintainers can point it at `github.maintainer.env` for trusted work.
@@ -47,7 +47,7 @@ Docker does not reread `--env-file` for an existing container. After changing `g
 
 Create a GitHub token limited to `kleverhq/wavepeek` with only the permissions needed for the task.
 
-For a clean host-side `~/.config/wavepeek` directory, run this from the repository root on the host:
+To create or activate maintainer credentials, run this from the repository root on the host:
 
 ```bash
 bash tools/repo/setup_github_env.sh
@@ -56,9 +56,9 @@ bash tools/repo/setup_github_env.sh
 The helper prompts for the token without echoing it, then writes:
 
 ```text
-~/.config/wavepeek/github.empty.env
-~/.config/wavepeek/github.maintainer.env
-~/.config/wavepeek/github.env -> github.maintainer.env
+~/.config/wavepeek-dev/github.empty.env
+~/.config/wavepeek-dev/github.maintainer.env
+~/.config/wavepeek-dev/github.env -> github.maintainer.env
 ```
 
 The helper rejects positional arguments so the token is not exposed through shell history or process argv by the documented command. For non-interactive use, pipe exactly one token line into the script:
@@ -67,7 +67,7 @@ The helper rejects positional arguments so the token is not exposed through shel
 printf '%s\n' "$TOKEN" | bash tools/repo/setup_github_env.sh
 ```
 
-If `~/.config/wavepeek` already exists and is not empty, the helper exits without changing it. Edit the files manually in that case.
+The helper tolerates unrelated wavepeek-managed entries in `~/.config/wavepeek-dev`, such as agent state placeholders and `verdi`. It also tolerates the default empty GitHub files created by `.devcontainer/initialize.sh`. It refuses to overwrite an existing `github.maintainer.env`, a non-empty or non-file `github.empty.env`, or an active `github.env` that is not the default `github.empty.env` symlink. Edit the files manually in those cases, because overwriting token state by surprise is the sort of convenience that later appears in incident reports.
 
 Manual `github.maintainer.env` content:
 
@@ -85,7 +85,7 @@ gh pr list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 gh issue list -R "$WAVEPEEK_UPSTREAM_REPO" --limit 5
 ```
 
-Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path.
+Git HTTPS operations against `https://github.com/kleverhq/wavepeek.git` use a repo-local, path-specific credential helper. The helper stores shell logic in `.git/config`, not the token value, and only returns credentials for the configured upstream repository path. It also resets broader inherited GitHub credential helpers for that upstream path so a plain `git push origin <branch>` works even when an editor or global helper has stale GitHub credentials cached.
 
 ## External PR Review
 
@@ -101,7 +101,7 @@ Before opening a devcontainer from an untrusted PR checkout, make the maintainer
 Also switch the active env file to the empty default:
 
 ```bash
-ln -sf github.empty.env ~/.config/wavepeek/github.env
+ln -sf github.empty.env ~/.config/wavepeek-dev/github.env
 ```
 
 Then recreate or rebuild the devcontainer. Do not attach to an existing container that may still have the old token environment.
@@ -199,3 +199,13 @@ git remote -v
 ```
 
 The setup script only adds or updates `upstream` when `origin` is not `kleverhq/wavepeek`; it never rewrites `origin`.
+
+If `git push origin <branch>` still tries a stale editor or global GitHub credential, rerun the in-container setup step and inspect the repo-local helper entries:
+
+```bash
+bash .devcontainer/setup-github-auth.sh
+git config --local --get-all credential.https://github.com/kleverhq/wavepeek.helper
+git config --local --get-all credential.https://github.com/kleverhq/wavepeek.git.helper
+```
+
+Each upstream path should have an empty first helper entry followed by `!wavepeek_github_credential_helper...`. The empty entry is intentional; it tells Git to ignore broader helpers for that exact upstream path.

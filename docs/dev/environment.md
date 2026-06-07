@@ -10,11 +10,11 @@ Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Set it only inside a wa
 
 Run `just dev-setup` after opening or rebuilding the devcontainer. It verifies tool availability and installs the pre-commit and commit-msg hooks.
 
-The devcontainer may prepare host-side state under `~/.cache/wavepeek` and `~/.config/wavepeek`, including the Verdi mount source at `~/.cache/wavepeek/verdi` and the optional GitHub auth env file at `~/.config/wavepeek/github.env`. Treat `~/.cache/wavepeek` as wavepeek-managed cache state: do not place manual installs or durable files there.
+The devcontainer prepares host-side state under one project-owned directory, `~/.config/wavepeek-dev`. That directory contains the optional GitHub auth env file at `~/.config/wavepeek-dev/github.env`, the Verdi mount source at `~/.config/wavepeek-dev/verdi`, and bind-mount sources for Claude Code, Codex, and Pi agent state. Agent mount sources are managed inside that directory by default; when matching user agent state already exists outside it, `.devcontainer/initialize.sh` links the managed source to that existing state so the container can reuse it.
 
 ## Optional GitHub Authentication
 
-The devcontainer starts without GitHub credentials by default. `.devcontainer/initialize.sh` creates an empty host-side `~/.config/wavepeek/github.env` outside the repository, `.devcontainer/devcontainer.json` passes it through Docker `--env-file`, and `.devcontainer/setup-github-auth.sh` configures repo-local GitHub auth only when `GH_TOKEN` or `GITHUB_TOKEN` is present.
+The devcontainer starts without GitHub credentials by default. `.devcontainer/initialize.sh` creates an empty host-side `~/.config/wavepeek-dev/github.env` outside the repository, `.devcontainer/devcontainer.json` passes it through Docker `--env-file`, and `.devcontainer/setup-github-auth.sh` configures repo-local GitHub auth only when `GH_TOKEN` or `GITHUB_TOKEN` is present.
 
 The devcontainer intentionally does not mount host `~/.config/gh`. Maintainer setup, external-PR safety rules, and verification commands live in `github-auth.md`.
 
@@ -32,7 +32,7 @@ The shared environment contract lives in `.devcontainer/env_contract.sh`. Update
 
 ## Verdi / FSDB Development
 
-FSDB work is optional and local-only unless a task explicitly says otherwise. The devcontainer sets `VERDI_HOME=/opt/verdi`, usually backed by the host-managed cache mount prepared from the host `VERDI_HOME`. Use `just check-fsdb-env` to distinguish available, skipped, and broken SDK states.
+FSDB work is optional and local-only unless a task explicitly says otherwise. The devcontainer sets `VERDI_HOME=/opt/verdi`, usually backed by the host-managed dev config mount source at `~/.config/wavepeek-dev/verdi`, prepared from the host `VERDI_HOME`. Use `just check-fsdb-env` to distinguish available, skipped, and broken SDK states.
 
 The full FSDB build, fixture, benchmark, and repository-safety contract lives in `fsdb.md`.
 

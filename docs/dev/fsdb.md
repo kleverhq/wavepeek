@@ -48,7 +48,7 @@ By default, `build.rs` embeds the selected Reader library directory as an ELF rp
 
 ## Devcontainer behavior
 
-The devcontainer sets `VERDI_HOME=/opt/verdi`. Before container startup, `.devcontainer/initialize.sh` prepares `~/.cache/wavepeek/verdi` from the host `VERDI_HOME`; the container bind-mounts that path at `/opt/verdi`. An empty `/opt/verdi` means Verdi is unavailable, not broken.
+The devcontainer sets `VERDI_HOME=/opt/verdi`. Before container startup, `.devcontainer/initialize.sh` prepares `~/.config/wavepeek-dev/verdi` from the host `VERDI_HOME`; the container bind-mounts that path at `/opt/verdi`. An empty `/opt/verdi` means Verdi is unavailable, not broken.
 
 Use the helper probe to distinguish available, skipped, and broken states:
 

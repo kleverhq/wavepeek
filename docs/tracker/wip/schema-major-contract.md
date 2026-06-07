@@ -20,8 +20,8 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - [x] (2026-06-07T12:09Z) Loaded repository guidance, the `exec-plan`, `ask-review`, and `git-commit` skills, and inspected current schema URL/artifact references.
 - [x] (2026-06-07T12:09Z) Created this ExecPlan with the default branch decision set to `main` and the current schema artifact set to `schema/wavepeek_v0.json`.
-- [ ] Commit the initial ExecPlan.
-- [ ] Run read-only review on the ExecPlan before implementation.
+- [x] (2026-06-07T12:10Z) Committed the initial ExecPlan as `88070e3 docs(schema): plan major schema artifacts`.
+- [x] (2026-06-07T12:20Z) Ran read-only plan review in architecture/code and docs/contract lanes; recorded and incorporated findings.
 - [ ] Rename `schema/wavepeek.json` to `schema/wavepeek_v0.json` and update the schema's `$schema` URL pattern.
 - [ ] Update runtime schema constants, tests, and helper automation to use the Cargo package major version.
 - [ ] Update public docs, maintainer docs, and breadcrumbs that reference the old full-semver schema path.
@@ -34,6 +34,12 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - Observation: The current `just update-schema` recipe copies the runtime output of `wavepeek schema` back into the checked-in artifact, and `wavepeek schema` currently reads that same checked-in artifact through `include_str!`.
   Evidence: `src/schema_contract.rs` defines `CANONICAL_SCHEMA_JSON` with `include_str!(.../schema/wavepeek.json)`, and `src/engine/schema.rs` returns that string as the schema command output.
+
+- Observation: Plan review found that `cargo test schema_cli` is the wrong focused command for the integration test file.
+  Evidence: The architecture/code reviewer noted that `cargo test schema_cli` filters test names and does not run `tests/schema_cli.rs`; the correct command is `cargo test --test schema_cli`.
+
+- Observation: Plan review found a validation gap around the schema artifact's own envelope `$schema` regex.
+  Evidence: The architecture/code reviewer noted that `check_schema_contract.py` could pass with a stale JSON Schema `properties.$schema.pattern` unless the helper explicitly checks that pattern against the new URL and old URL.
 
 ## Decision Log
 
@@ -51,6 +57,14 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - Decision: Derive the schema artifact path and envelope URL from `CARGO_PKG_VERSION_MAJOR` at compile time.
   Rationale: This makes a `1.x.y` build automatically point at `schema/wavepeek_v1.json` and fail early if that major schema artifact is missing.
+  Date/Author: 2026-06-07 / Grin
+
+- Decision: Keep public docs focused on observed behavior and put maintainer release/bootstrap policy in maintainer docs.
+  Rationale: Plan review pointed out that public reference docs should not drift into release-planning process language. Users need to know which URL appears and what it means; maintainers need to know how to create or update major artifacts.
+  Date/Author: 2026-06-07 / Grin
+
+- Decision: Make `check_schema_contract.py` validate the schema artifact's envelope `$schema` regex directly.
+  Rationale: Runtime envelope checks alone do not prove that the JSON Schema artifact will accept the new URL or reject the obsolete full-semver URL. The contract helper should catch both failures.
   Date/Author: 2026-06-07 / Grin
 
 ## Outcomes & Retrospective
@@ -89,11 +103,11 @@ Then update `src/schema_contract.rs`. Define the schema URL as `https://raw.gith
 
 Then update tests. In `tests/common/mod.rs`, make `expected_schema_url()` use the same `main/schema/wavepeek_v{major}.json` URL. In `tests/schema_cli.rs`, make `canonical_schema_path()` resolve `schema/wavepeek_v{major}.json`, and add or adjust assertions so the schema's envelope `$schema` pattern matches the runtime URL and does not match the old full-semver path. Existing tests in `src/output.rs`, `tests/*_cli.rs`, and FSDB tests should continue passing because they compare against the shared expected URL.
 
-Then update automation. In `justfile`, change `schema_path` to compute `schema/wavepeek_v{major}.json` from `Cargo.toml`. In `tools/schema/check_schema_contract.py`, compute the package major from `Cargo.toml`, default the artifact path to `schema/wavepeek_v{major}.json`, compare `wavepeek schema` against that path, expect the runtime envelope URL on `main`, and validate the new URL pattern. Update `tools/schema/README.md`, `docs/dev/automation.md`, `docs/dev/quality.md`, and `docs/dev/release.md` to describe current-major schema artifacts instead of `schema/wavepeek.json` and full-semver publication endpoints.
+Then update automation. In `justfile`, change `schema_path` to compute `schema/wavepeek_v{major}.json` from `Cargo.toml`. In `tools/schema/check_schema_contract.py`, compute the package major from `Cargo.toml`, default the artifact path to `schema/wavepeek_v{major}.json`, compare `wavepeek schema` against that path, expect the runtime envelope URL on `main`, validate the runtime URL pattern, and compile the artifact's `properties.$schema.pattern` to confirm it accepts the expected URL and rejects the old full-semver URL. Update `tools/schema/README.md`, `docs/dev/automation.md`, `docs/dev/quality.md`, and `docs/dev/release.md` to describe current-major schema artifacts instead of `schema/wavepeek.json` and full-semver publication endpoints. In `docs/dev/release.md`, describe the manual bootstrap requirement for a new major: create `schema/wavepeek_vN.json` before or with the Cargo version bump because `wavepeek schema` embeds an existing checked-in artifact.
 
-Then update public docs and breadcrumbs. In `docs/public/reference/machine-output.md`, change the envelope example and field description to use `main/schema/wavepeek_v<N>.json` and explain that minor and patch releases within a major keep the same schema artifact unless a backward-compatible schema update is required. Update command examples under `docs/public/commands/*.md` from the old `v0.5.0/schema/wavepeek.json` URL to `main/schema/wavepeek_v0.json`. Update `docs/public/commands/schema.md` to say `wavepeek schema` prints the current major schema. Update `docs/public/intro.md`, `docs/dev/architecture.md`, `schema/AGENTS.md`, and `docs/public/reference/AGENTS.md` to remove the stale path.
+Then update public docs and breadcrumbs. In `docs/public/reference/machine-output.md`, change the envelope example and field description to use `main/schema/wavepeek_v<N>.json` and keep the wording focused on observable user behavior: the schema URL names the running tool's major schema artifact, not the full semver release. Put release/update policy details only in maintainer docs. Update command examples under `docs/public/commands/*.md` from the old `v0.5.0/schema/wavepeek.json` URL to `main/schema/wavepeek_v0.json`. Update `docs/public/commands/schema.md` to say `wavepeek schema` prints the current major schema. Update `docs/public/intro.md`, `docs/dev/architecture.md`, `schema/AGENTS.md`, and `docs/public/reference/AGENTS.md` to remove the stale path.
 
-Finally, run focused validation, commit the implementation, run read-only implementation review, fix any findings, and run final validation. At minimum the focused validation should include `cargo test schema_cli`, `cargo test --lib schema_contract`, and `just check-schema` if the container guard allows it. Before final handoff, run `just check` as the repository pre-handoff gate if the environment permits it; otherwise record the exact guard failure.
+Finally, run focused validation, commit the implementation, run read-only implementation review, fix any findings, and run final validation. At minimum the focused validation should include `cargo test --test schema_cli`, `cargo test --lib schema_contract`, and `just check-schema` if the container guard allows it. Before final handoff, run `just check` as the repository pre-handoff gate if the environment permits it; otherwise record the exact guard failure.
 
 ## Concrete Steps
 
@@ -114,7 +128,7 @@ Then edit the files named in the Plan of Work section. Use precise edits for sou
 
 Run focused validation while iterating:
 
-    cargo test schema_cli
+    cargo test --test schema_cli
     cargo test --lib schema_contract
     just check-schema
 
@@ -155,7 +169,7 @@ The old artifact path must be absent from the tracked tree:
 
 Focused tests must pass:
 
-    cargo test schema_cli
+    cargo test --test schema_cli
     cargo test --lib schema_contract
 
 The schema contract helper must pass inside the managed container:
@@ -208,3 +222,4 @@ The exact implementation should use `concat!` and `env!("CARGO_PKG_VERSION_MAJOR
 ## Revision Notes
 
 - 2026-06-07T12:09Z: Created the initial self-contained ExecPlan from repository inspection and the user's decision to use `main` plus `schema/wavepeek_v0.json`.
+- 2026-06-07T12:20Z: Incorporated read-only plan review findings: corrected the schema integration test command, required helper validation of the schema artifact regex, moved release/update policy detail out of public-doc wording, and documented new-major bootstrap risk in maintainer docs.

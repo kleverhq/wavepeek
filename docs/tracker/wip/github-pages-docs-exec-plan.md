@@ -1,0 +1,547 @@
+# Add versioned GitHub Pages documentation for wavepeek
+
+This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds. This document must be maintained in accordance with the `exec-plan` skill.
+
+## Purpose / Big Picture
+
+After this change, maintainers can build and check a human-friendly web version of the same public documentation that ships inside the `wavepeek` CLI. A release publication will add an immutable documentation snapshot such as `/0.5.0/`, move `/latest/` to the newest stable release, redirect the site root to `/latest/`, and expose raw root artifacts at `/skill.md` and `/wavepeek_vX.json`.
+
+The behavior is observable without publishing anything: from the repository root inside the wavepeek devcontainer, `just docs-site-check` prepares a generated MkDocs staging tree under `tmp/docs-site/`, builds the site in strict mode, and prepares raw root artifacts. Publication uses MkDocs Material for the site and `mike` to manage the cumulative `gh-pages` branch archive.
+
+## Non-Goals
+
+This plan does not backfill web snapshots before `0.5.0`. It does not add a `/dev/` snapshot for `main`. It does not replace docs.rs or Rust API documentation. It does not make `docs/public/` depend on MkDocs at runtime, and it does not make the GitHub Pages site a second authored source of truth. It also does not publish from local machines by default; local deploy commands must have an explicit push flag or workflow context before they update the remote `gh-pages` branch.
+
+## Progress
+
+- [x] (2026-06-07 20:14Z) The Russian proposal from `tmp/proposal.md` was translated to English, stored at `docs/tracker/wip/github-pages-docs-proposal.md`, and committed as `3722338 docs(tracker): add pages docs proposal` before this ExecPlan work began.
+- [x] (2026-06-07 20:14Z) Initial repository orientation completed for `docs/public/`, `src/docs/mod.rs`, `tests/docs_cli.rs`, root `justfile`, `.devcontainer/Dockerfile`, `.github/workflows/`, and existing maintainer docs.
+- [x] (2026-06-07 20:14Z) Initial ExecPlan drafted at `docs/tracker/wip/github-pages-docs-exec-plan.md`.
+- [x] (2026-06-07 20:31Z) Initial review lanes completed for plan compliance, CI/deploy architecture, and docs/runtime compatibility; substantive findings were folded into this revision.
+- [x] (2026-06-07 20:49Z) First control review pass completed; findings about deploy-token exposure, stale `gh-pages` state, and optional `see_also` were folded into this revision.
+- [x] (2026-06-07 21:05Z) Second control review pass completed; findings about token/process isolation and pushable mutable checkouts were folded into this revision.
+- [x] (2026-06-07 21:20Z) Third control review pass completed; finding about poisoned staging workspaces before the token-bearing push step was folded into this revision.
+- [x] (2026-06-07 21:35Z) Fourth control review pass completed; findings about same-runner poisoning and push-side bundle verification were folded into this revision.
+- [x] (2026-06-07 21:49Z) Fifth control review pass completed; finding about push-side semantic verification of version metadata was folded into this revision.
+- [x] (2026-06-07 22:03Z) Sixth control review pass completed with no substantive findings.
+- [ ] Implementation has not started.
+
+## Surprises & Discoveries
+
+- Observation: The existing `v0.5.0` tag exists, but it predates the GitHub Pages infrastructure requested in this plan. A normal tag-triggered workflow cannot bootstrap that historical tag because the workflow and scripts are absent from the tag itself.
+  Evidence: `git tag --list 'v*'` includes `v0.5.0`; the user confirmed the first publication must use the existing tag even though the site infrastructure was not present then.
+
+- Observation: `docs/public/` currently authors front matter with `summary`, while the desired authored field is `description`. The runtime JSON contract still exposes `summary` in `TopicSummary`, so the Rust loader must accept authored `description` while preserving the existing runtime field name.
+  Evidence: `docs/public/intro.md` begins with `summary: Start here...`; `src/docs/mod.rs` has `FrontMatter { summary: String }` and `TopicSummary { summary: String }`; `tests/docs_cli.rs` asserts that JSON topic entries contain `summary`.
+
+- Observation: The current devcontainer Docker build context is effectively `.devcontainer/`, because `.devcontainer/Dockerfile` copies `env_contract.sh` without a directory prefix. Installing a root `requirements-docs.txt` into the image from a single source of truth requires either changing the build context or duplicating the file. This plan changes the build context deliberately to avoid duplicate dependency lists.
+  Evidence: `.devcontainer/Dockerfile` contains `COPY env_contract.sh /wavepeek-env-contract.sh`; `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json` do not set `build.context` today.
+
+- Observation: The historical `v0.5.0` tag uses the older schema artifact name `schema/wavepeek.json`, not the current versioned name `schema/wavepeek_v0.json`.
+  Evidence: `git ls-tree -r --name-only v0.5.0 -- schema` lists `schema/wavepeek.json` and no `schema/wavepeek_v*.json` files.
+
+## Decision Log
+
+- Decision: Use MkDocs Material as the static site generator and `mike` as the versioned publishing tool.
+  Rationale: The public docs are already topic-oriented Markdown, and `mike` directly supports cumulative version folders and aliases such as `latest` on a dedicated Pages branch.
+  Date/Author: 2026-06-07 / Grin, confirmed by user.
+
+- Decision: Add `requirements-docs.txt` at the repository root and install it into the devcontainer/CI image through a Python virtual environment.
+  Rationale: The root requirements file is a simple canonical dependency list for non-container users, while installing it into the image keeps `just docs-site-check` fast and available in normal container workflows. A virtual environment avoids Ubuntu's externally managed system Python restrictions.
+  Date/Author: 2026-06-07 / Grin, confirmed by user.
+
+- Decision: Change the devcontainer build context to the repository root and add an allowlist-style `.dockerignore` so the Dockerfile can copy root `requirements-docs.txt` without sending `target/`, `.git/`, fixtures, and other large build-context inputs into the build context.
+  Rationale: The alternative is duplicating docs requirements under `.devcontainer/`, which violates the single-source dependency goal. The allowlist keeps the larger context change controlled.
+  Date/Author: 2026-06-07 / Grin.
+
+- Decision: Publish the first `0.5.0` web snapshot from the existing `v0.5.0` tag using workflow code and scripts from the branch that contains this implementation.
+  Rationale: The old tag must define the release docs content, but it cannot define the new publishing machinery because that machinery did not exist. A manual workflow dispatch must keep the working checkout on the implementation branch that contains `.github/workflows/docs.yml`, `just docs-site-deploy`, and `tools/docs/`, while the publication wrapper checks out `v0.5.0` separately as the documentation source.
+  Date/Author: 2026-06-07 / Grin, confirmed by user.
+
+- Decision: Keep the public JSON/runtime type named `summary`, but migrate authored Markdown front matter from `summary` to `description` and deserialize it with `#[serde(rename = "description", alias = "summary")]`.
+  Rationale: `description` fits MkDocs and web metadata better. The JSON and Rust runtime contract can remain stable for existing CLI consumers.
+  Date/Author: 2026-06-07 / Grin, based on proposal and confirmed direction.
+
+- Decision: Generate a temporary MkDocs config under `tmp/docs-site/` that inherits from a small root `mkdocs.yml` and contains generated `docs_dir`, `site_dir`, and `nav` values.
+  Rationale: Navigation should come from the CLI export manifest, not a second hand-maintained list. Keeping the generated config in `tmp/` avoids committing site-only generated state.
+  Date/Author: 2026-06-07 / Grin.
+
+- Decision: Publish all files matching `schema/wavepeek_v*.json` from the release source checkout to the site root, and publish `docs/skills/wavepeek.md` from that same checkout as `skill.md`. For the legacy `v0.5.0` source only, if no `wavepeek_v*.json` files exist and `schema/wavepeek.json` exists for package major version `0`, copy it to the site root as `wavepeek_v0.json`.
+  Rationale: The root artifacts must represent the latest stable release context, and the user explicitly requested all major schema versions rather than a hard-coded single schema. The existing `v0.5.0` tag predates the versioned schema filename, so the first bootstrap needs a narrow compatibility mapping to satisfy the required root URL without moving the historical tag.
+  Date/Author: 2026-06-07 / Grin, confirmed by user and review findings.
+
+- Decision: Use `mike set-default latest` for the root redirect behavior.
+  Rationale: The user accepted an alias for `/latest/` and requested that `/` redirect to latest. `mike` owns version aliases and default-version redirect generation, so it should own this instead of a separate handwritten root page.
+  Date/Author: 2026-06-07 / Grin, confirmed by user.
+
+- Decision: Add `docs-site-check` to both `just check` and `just ci` after dependencies are present in the container image.
+  Rationale: The user explicitly approved adding the docs-site check to CI. Adding it to the local pre-handoff gate keeps local and CI results aligned, and the check is lightweight compared with the existing Rust, coverage, and benchmark gates.
+  Date/Author: 2026-06-07 / Grin.
+
+- Decision: Treat missing `see_also` fields in exported manifest topic entries as empty lists during site preparation.
+  Rationale: `TopicSummary` skips empty `see_also` vectors during serialization, so valid exports may omit the field. Requiring it would make the site generator reject valid CLI exports.
+  Date/Author: 2026-06-07 / Grin, from control review.
+
+- Decision: Restrict workflow deployment `source_ref` values to SemVer release tags and keep push credentials away from release-source build/check subprocesses.
+  Rationale: The docs workflow compiles code from the selected release source. Limiting refs to release tags, disabling checkout credential persistence, and withholding push tokens from `cargo`, `mkdocs`, and `mike` subprocesses reduces the risk of an accidental or malicious ref using publication credentials.
+  Date/Author: 2026-06-07 / Grin, from control review.
+
+- Decision: Fetch and base local `gh-pages` state on `origin/gh-pages` before existing-version checks and deployment.
+  Rationale: Cumulative version publishing depends on accurate remote state. A stale local branch could miss an existing snapshot and overwrite or push from the wrong branch state.
+  Date/Author: 2026-06-07 / Grin, from control review.
+
+- Decision: Split publication into a no-token staging step and a push-only step.
+  Rationale: The staging step compiles and runs code from the selected release tag through `cargo run`. Push credentials must not be present in that process tree. A separate push-only step can receive credentials after all release-source build/check work is complete.
+  Date/Author: 2026-06-07 / Grin, from second control review.
+
+- Decision: Require a non-empty SemVer tag source ref for any operation whose result may be pushed.
+  Rationale: Versioned publication is intended to create immutable release snapshots. Allowing `SOURCE_REF=""` with a push path would let a mutable current checkout publish a release snapshot.
+  Date/Author: 2026-06-07 / Grin, from second control review.
+
+- Decision: Run the credentialed push job from a fresh trusted checkout using only uploaded staging artifacts from the no-token staging job.
+  Rationale: Release-source build code runs during staging and has workspace write access. The token-bearing push job must not trust scripts, just recipes, `.git` state, runner state, or metadata from that same mutable workspace except as uploaded data to verify and import.
+  Date/Author: 2026-06-07 / Grin, from third and fourth control reviews.
+
+- Decision: Verify staged `gh-pages` bundles against remote base state, version metadata semantics, and an allowed path set before pushing.
+  Rationale: The push job receives generated data from a prior job. It must prove the bundle is a fast-forward update from the remote base observed during staging, does not rewrite an existing requested version unless an explicit repair mode is present, preserves unrelated version entries and snapshots, only adds the requested version while moving `latest` and the default to it, and changes only allowed paths.
+  Date/Author: 2026-06-07 / Grin, from fourth and fifth control reviews.
+
+## Outcomes & Retrospective
+
+No implementation outcome exists yet. The ExecPlan has completed focused review and a final control pass with no substantive findings. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
+
+## Context and Orientation
+
+`wavepeek` is a Rust CLI. Its public user documentation source lives in `docs/public/`. Those Markdown files are embedded into the binary by `src/docs/mod.rs`, exposed through `wavepeek docs`, and exported by `wavepeek docs export`. This means the website must be generated from the exported embedded docs rather than from a separate authored website tree.
+
+The embedded docs loader is in `src/docs/mod.rs`. It loads Markdown files from `docs/public/`, parses YAML front matter, validates that each file path matches its stable topic ID, validates `see_also` references, and exposes `TopicSummary` values with `id`, `title`, `summary`, `section`, and `see_also`. The export path writes topic Markdown files and a `manifest.json` into an output directory. The manifest is the correct contract for site generation because it describes the exact docs embedded in that build.
+
+The CLI docs behavior is tested in `tests/docs_cli.rs`, and additional runtime edge tests for `src/docs/mod.rs` live in `src/tests/docs_runtime_edges.rs`. Public docs style conventions currently live in `docs/dev/style.md`, which still describes `summary` front matter. That file must be updated when authored docs move to `description`.
+
+The packaged agent skill source is `docs/skills/wavepeek.md`. The canonical machine-output schema artifacts live under `schema/`, currently `schema/wavepeek_v0.json` on the working branch. The historical `v0.5.0` tag instead has `schema/wavepeek.json`; publication must normalize that legacy major-0 artifact to the root filename `wavepeek_v0.json`. These schema and skill files are not part of `wavepeek docs export`, but the web publication must expose them as raw static files at the site root.
+
+Build and quality automation is owned by the root `justfile`. Recipes intentionally require `WAVEPEEK_IN_CONTAINER=1`, so new docs-site recipes should follow the same container-first pattern. Auxiliary Python tests are run by `just test-aux`, which currently discovers tests under `bench/e2e`, `bench/expr`, `tools/release`, `tools/coverage`, `tools/fsdb`, and `tools/repo`.
+
+Local and CI containers are defined in `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.devcontainer/devcontainer.ci.json`. The current Dockerfile has a `base` stage shared by the `ci` and `dev` stages. Installing MkDocs dependencies in `base` makes them available to both CI and local development. Because the Dockerfile currently copies files from the `.devcontainer/` directory, changing it to copy root `requirements-docs.txt` requires setting the devcontainer build context to the repository root and updating Dockerfile `COPY` paths.
+
+GitHub Actions workflows currently live in `.github/workflows/ci.yml` and `.github/workflows/release.yml`. They run in the devcontainer baseline through `devcontainers/ci`. The new docs publication workflow should be separate, should have write permission to the repository contents because it pushes `gh-pages`, and should trigger on future release tags plus manual dispatch for the initial historical `v0.5.0` bootstrap.
+
+Terminology used in this plan:
+
+A MkDocs staging tree is a generated directory containing Markdown files arranged for website rendering. It is disposable and belongs under `tmp/docs-site/`.
+
+A snapshot is an immutable published version folder such as `/0.5.0/` on GitHub Pages.
+
+An alias is a stable path such as `/latest/` that points to one snapshot. `mike` manages aliases on the Pages branch.
+
+Raw artifacts are static files served directly as Markdown or JSON, not rendered as HTML pages. In this project they are `/skill.md` and `/wavepeek_vX.json`.
+
+The `gh-pages` branch is the dedicated publication branch that GitHub Pages serves. It contains generated HTML and raw artifacts, not source docs.
+
+## Open Questions
+
+There are no blocking product questions remaining from the user. One repository setting remains outside source control: after the workflow exists, a maintainer must ensure GitHub Pages is configured to serve the `gh-pages` branch from the repository root if it is not already configured that way.
+
+## Plan of Work
+
+The work should be implemented in small, independently verifiable slices. Do not skip the validation commands at the end of each slice. Generated files under `tmp/docs-site/` are disposable, but only remove paths owned by this plan, never arbitrary `tmp/` contents.
+
+### Milestone 1: Make authored docs metadata web-compatible without breaking CLI JSON
+
+At the end of this milestone, `docs/public/` uses `description:` in front matter, while the CLI runtime and JSON output still expose the existing `summary` field. This proves that the metadata migration does not break existing CLI consumers.
+
+Edit `src/docs/mod.rs`. In the private `FrontMatter` struct, keep the Rust field named `summary` but add serde attributes so it deserializes authored `description` and still accepts older `summary` files from historical releases and tests:
+
+    #[serde(rename = "description", alias = "summary")]
+    summary: String,
+
+Do not rename `TopicSummary.summary`, `SearchMatch`, or JSON output fields. Those are runtime contract names.
+
+Replace the top-level front matter key `summary:` with `description:` in every public topic under `docs/public/**/*.md`. Do not keep both keys. Preserve the text value. Keep `id`, `title`, `section`, and `see_also` unchanged.
+
+Update docs and tests that describe or assert the authored front matter shape. At minimum, update `docs/dev/style.md` so it says public docs use `id`, `title`, `description`, `section`, and optional `see_also`. Update `src/docs/mod.rs` inline tests and `src/tests/docs_runtime_edges.rs` fixtures or assertions that deserialize `FrontMatter` from literal YAML. Update `tests/fixtures/docs_embed/**/*.md` to use `description:` except where a test intentionally proves the legacy `summary` alias still works. Add one focused unit test in `src/docs/mod.rs` or `src/tests/docs_runtime_edges.rs` that deserializes a legacy `summary:` fixture and confirms it still maps to `FrontMatter.summary`. Add `tests/docs_cli.rs` assertions for both `docs topics --json` and `docs search --json` topic objects that `summary` is present and `description` is absent.
+
+Run these commands from the repository root inside the devcontainer:
+
+    cargo test -q docs
+    cargo test -q --test docs_cli
+
+Acceptance for this milestone is that `wavepeek docs topics --json` and `wavepeek docs search --json` still include `summary` and do not include `description` in topic objects, `wavepeek docs export` preserves the new `description` front matter from current source, and the legacy `summary` alias is covered by a test.
+
+### Milestone 2: Add docs-site dependencies to the repository and container image
+
+At the end of this milestone, `mkdocs`, `mike`, and their Python dependencies are available in both the CI and devcontainer targets without per-command installation. Non-container users can also see the dependency list at the repository root.
+
+Add root `requirements-docs.txt` with the docs-site Python dependencies. Start simple and pin by compatible release series rather than an exact lock file:
+
+    mkdocs-material~=9.6
+    mike~=2.1
+    PyYAML~=6.0
+
+If implementation discovers that `mkdocs-material` or `mike` already pulls a compatible `PyYAML`, keeping the explicit `PyYAML` line is still acceptable because project helper scripts will import it directly.
+
+Add a root `.dockerignore` because the devcontainer build context will move to the repository root. Use an allowlist pattern so the Docker build sees only files needed by `.devcontainer/Dockerfile`:
+
+    *
+    !.devcontainer/
+    !.devcontainer/**
+    !requirements-docs.txt
+
+Edit `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json` so their `build` objects include `"context": ".."`. Then update `.devcontainer/Dockerfile` `COPY` statements that refer to files in `.devcontainer/` to include the `.devcontainer/` prefix. For example, the `env_contract` stage should copy `.devcontainer/env_contract.sh`, and the Verdi wrapper copy should use `.devcontainer/verdi-tool-wrapper.sh`.
+
+In `.devcontainer/Dockerfile`, install `python3-venv` in the `base` apt package list. Copy `requirements-docs.txt` into the image, create a virtual environment such as `/opt/wavepeek-docs-venv`, install the requirements with its `pip`, and add `/opt/wavepeek-docs-venv/bin` to `PATH` before the `ci` and `dev` stages set their final `PATH`. Keep this in `base` so both targets inherit it.
+
+Edit the `dev-setup` recipe in `justfile` to print or verify:
+
+    mkdocs --version
+    mike --version
+
+Update `docs/dev/environment.md` to mention that the container image includes docs-site tooling from root `requirements-docs.txt`. Keep the wording short and operational.
+
+Run these commands after rebuilding or within an updated devcontainer image:
+
+    mkdocs --version
+    mike --version
+    just dev-setup
+
+Acceptance for this milestone is that both commands are on `PATH` in the devcontainer, and `just dev-setup` verifies them without installing anything at recipe runtime.
+
+### Milestone 3: Generate a MkDocs staging tree and generated config from `wavepeek docs export`
+
+At the end of this milestone, a local command can export embedded docs, prepare a website source tree, generate navigation from the manifest, and run `mkdocs build --strict` without touching `docs/public/`.
+
+Add a root `mkdocs.yml` as the committed base configuration. Keep it small and mostly static. It should include project metadata such as `site_name: wavepeek`, `repo_url: https://github.com/kleverhq/wavepeek`, `repo_name: kleverhq/wavepeek`, `theme.name: material`, the built-in `search` plugin, and Material versioning configuration such as `extra.version.provider: mike`. Do not put a hand-maintained full `nav` in this file.
+
+Create `tools/docs/prepare_mkdocs.py`. Its command-line interface should accept an exported docs directory and options similar to:
+
+    python3 -B tools/docs/prepare_mkdocs.py tmp/docs-site/export --output tmp/docs-site/mkdocs-src --config-output tmp/docs-site/mkdocs.yml --version 0.5.0 --force
+
+The script must read `manifest.json`, validate that `kind` is `wavepeek-docs-export`, validate that `export_format_version` is the supported export format, validate that `cli_name` is `wavepeek`, validate `cli_version` against `--version` when a version is supplied, validate that `topics` is a list, and validate every topic entry before using it. Required topic fields are `id`, `title`, `summary`, and `section`; historical or generated manifests use the runtime `summary` name even when staged Markdown front matter uses `description`. The `see_also` field is optional in serialized manifests because empty vectors are omitted by `TopicSummary`; when it is missing, treat it as an empty list, and when it is present, require a list of safe topic IDs. Topic IDs must be safe slash-separated relative paths: no empty segments, no absolute paths, no `.` or `..` segments, and no path separators beyond `/`. Source and destination paths must be resolved and checked to stay inside the export and output roots. After validation, prepare the output directory atomically. If the output directory exists, replacement requires `--force`. The script may remove and recreate only the output paths it owns, such as `tmp/docs-site/mkdocs-src` and `tmp/docs-site/mkdocs.yml`.
+
+For each topic in manifest order, copy its Markdown file from the export directory to the MkDocs source tree. The topic with ID `intro` must become `index.md`. Other topics keep their ID path plus `.md`, for example `commands/change` becomes `commands/change.md`. Exclude `manifest.json` from the MkDocs source tree.
+
+Normalize front matter only in the generated staging file, not in `docs/public/`. If a topic has `summary` but no `description`, write `description` for the site front matter. If a topic already has `description`, keep it. Do not emit both keys. Preserve `id`, `title`, `section`, and `see_also` in staging front matter unless MkDocs strict mode proves a field is harmful. This keeps historical `v0.5.0` exports buildable even though they authored `summary`.
+
+Generate navigation from the manifest. Use this section order and display labels:
+
+    intro -> Introduction
+    commands -> Commands
+    workflows -> Workflows
+    troubleshooting -> Troubleshooting
+    reference -> Reference
+
+Within each section, use the manifest order. The manifest is already produced by `DocsCatalog::logical_topic_summaries`, which sorts by CLI section rank and ID, so this avoids a second hand-maintained ordering system. For `intro`, create a single top-level `Introduction: index.md` nav entry. For all other sections, create grouped entries using each topic title and generated page path.
+
+Write a generated config at `tmp/docs-site/mkdocs.yml` that inherits from the root `mkdocs.yml` and supplies generated paths and nav. Because the generated config is under `tmp/docs-site/`, the inherited path should point back to the repository root, for example `INHERIT: ../../mkdocs.yml` if the file is `tmp/docs-site/mkdocs.yml`. Set `docs_dir` and `site_dir` relative to the generated config, for example `docs_dir: mkdocs-src` and `site_dir: mkdocs-site`.
+
+Add `tools/docs/test_prepare_mkdocs.py`. Unit tests should create a small fake export tree in a temporary directory, including `manifest.json`, `intro.md`, and at least one nested command topic. Tests must assert that `intro.md` becomes `index.md`, `manifest.json` is excluded, generated front matter uses `description` and not `summary`, nav contains the expected section grouping, missing `see_also` is treated as an empty list, and `--force` is required to replace an existing output directory. Add negative tests for unsupported export format versions, mismatched `cli_name`, mismatched `cli_version`, missing required topic fields other than `see_also`, unsafe topic IDs such as `../escape`, invalid `see_also` values, and source/destination path containment.
+
+Run these commands from the repository root:
+
+    cargo run --quiet -- docs export tmp/docs-site/export --force
+    python3 -B tools/docs/prepare_mkdocs.py tmp/docs-site/export --output tmp/docs-site/mkdocs-src --config-output tmp/docs-site/mkdocs.yml --version 0.5.0 --force
+    mkdocs build --strict --config-file tmp/docs-site/mkdocs.yml
+    python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+
+Acceptance for this milestone is that `tmp/docs-site/mkdocs-src/index.md` exists, `tmp/docs-site/mkdocs-src/manifest.json` does not exist, `mkdocs build --strict` succeeds, and the generated site exists under `tmp/docs-site/mkdocs-site/`.
+
+### Milestone 4: Add a publication wrapper for release sources, mike deployment, and root raw artifacts
+
+At the end of this milestone, one helper can build from the current checkout or from a release ref such as `v0.5.0`, deploy a version snapshot with `mike`, set `latest`, set the root default redirect, and update raw root artifacts without rebuilding old snapshots.
+
+Create `tools/docs/publish_docs.py`. It should be deterministic, non-interactive, and safe to run in CI. It should provide at least these subcommands:
+
+    check: export docs, prepare MkDocs staging, run mkdocs build strict, and prepare root artifacts under tmp/docs-site/root-artifacts without touching gh-pages.
+    stage-deploy: perform the check work, run mike deployment for a version against the local gh-pages branch, set latest/default aliases, commit root artifacts to the local gh-pages branch, write a small stage metadata file under tmp/docs-site/, and create a git bundle or equivalent data artifact containing only the staged gh-pages branch state.
+    push-staged: from a fresh trusted checkout in a separate push job, verify the stage metadata and bundle, verify the update against the current remote gh-pages state and allowed path set, import the staged gh-pages branch state, and push it to origin. This subcommand must not run cargo, mkdocs, mike, or any command that uses SOURCE_REF.
+
+The wrapper should accept `--version X.Y.Z`, `--source-root PATH`, and `--source-ref REF` for `check` and `stage-deploy`. For any `stage-deploy` run, require `--source-ref` to be a non-empty SemVer release tag in the form `vX.Y.Z` and require it to match `--version`. `check` may accept `--source-root .` for local current-checkout validation, but any check intended to validate a publishable release should also use `--source-ref`. When `--source-ref` is provided, create a private worktree under `tmp/docs-site/source` at that tag and use it as the source root. This is required for the initial `v0.5.0` bootstrap, where current workflow scripts run from the implementation branch but docs content must come from the old tag. Remove only that owned worktree during cleanup.
+
+The wrapper must run the export from the release source, not from the implementation checkout, with a command equivalent to:
+
+    cargo run --quiet --manifest-path SOURCE_ROOT/Cargo.toml -- docs export tmp/docs-site/export --force
+
+This matters because the binary embeds docs at compile time from `SOURCE_ROOT/docs/public`. The wrapper should validate that the release source `Cargo.toml` package version equals `--version`, unless a deliberately named repair flag is added later. Source refs used by deployment must be release tags; do not allow arbitrary branches or commit SHAs in the publishing workflow.
+
+Root artifact preparation must read from the same release source root. Copy `SOURCE_ROOT/docs/skills/wavepeek.md` to `tmp/docs-site/root-artifacts/skill.md`. Copy every file matching `SOURCE_ROOT/schema/wavepeek_v*.json` to `tmp/docs-site/root-artifacts/` using the same basename. Sort matches for deterministic logging. If no versioned schema files match and the package major version is `0`, accept the legacy file `SOURCE_ROOT/schema/wavepeek.json` and copy it as `tmp/docs-site/root-artifacts/wavepeek_v0.json`; this fallback exists for the required `v0.5.0` bootstrap. Fail clearly if the skill file is missing or if neither versioned schema files nor the allowed legacy major-0 schema file exist.
+
+`stage-deploy` should run the local strict build before invoking `mike`. It must run without push credentials in its environment. Use the generated config, not the root base config. Before checking existing versions or invoking `mike`, fetch the publication branch state with `git fetch origin gh-pages` when it exists, create or reset the local `gh-pages` branch from `origin/gh-pages`, and handle the absent-branch case as a first publication. Existing-version checks using `mike list` or `versions.json` must run after this fetch/reset so stale local state cannot miss an already-published snapshot. Use commands equivalent to:
+
+    mike deploy --config-file tmp/docs-site/mkdocs.yml --branch gh-pages --remote origin --update-aliases VERSION latest
+    mike set-default --config-file tmp/docs-site/mkdocs.yml --branch gh-pages --remote origin latest
+
+Do not pass `--push` to `mike`. The preferred flow is: let `mike` update the local `gh-pages` branch, open a worktree for that branch under `tmp/docs-site/gh-pages`, copy `skill.md` and all `wavepeek_v*.json` files to the branch root, commit them if changed, write stage metadata such as `tmp/docs-site/staged-deploy.json`, and create `tmp/docs-site/gh-pages.bundle` or an equivalent data-only artifact for the staged `gh-pages` branch. The metadata must contain the version, source ref, branch name, remote base commit from `origin/gh-pages` or an explicit null first-publish marker, expected final commit, artifact names, and allowed changed path prefixes. If this preferred flow conflicts with `mike` behavior during implementation, document the discovered behavior in this ExecPlan and use the smallest safe alternative that still keeps the push job separate from build/check work and carries only data into the push job.
+
+The wrapper must not delete old version directories on `gh-pages`. It should rely on `mike deploy VERSION latest --update-aliases` to add or replace only the requested `VERSION` and alias metadata. Replacing the same version should require an explicit `--repair-existing-version` or similarly named flag. Without that flag, fail if the version already exists in `mike list` or `versions.json`, because silent snapshot rewrites would violate the archive stability requirement.
+
+Add `tools/docs/test_publish_docs.py`. Tests should avoid real network pushes and should not require `mike` to modify a real branch. Cover version extraction from tags, rejection of non-SemVer or empty source refs in `stage-deploy`, acceptance of `--source-root .` only in non-pushing `check`, Cargo version validation from a temporary `Cargo.toml`, source root raw artifact collection for current `wavepeek_v*.json` files, the legacy `schema/wavepeek.json` to `wavepeek_v0.json` fallback for major version `0`, failure when the skill file is missing, failure when no schema files exist, command construction for `mike deploy`/`set-default`, the required `gh-pages` fetch/reset preflight, stage metadata validation, bundle creation/import command construction, remote-base verification, fast-forward/no-force push behavior, rejection of bundles that change disallowed paths or unrelated version directories, rejection when requested `VERSION` already exists in the remote base without an explicit repair flag, verification that unrelated `versions.json` entries and aliases are preserved, verification that only `VERSION` is added and `latest`/default move to it, and the fact that `push-staged` does not call cargo, mkdocs, mike, or use SOURCE_REF.
+
+Run:
+
+    python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-root .
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0
+
+Acceptance for this milestone is that both check commands build a strict site, prepare `tmp/docs-site/root-artifacts/skill.md`, prepare at least `tmp/docs-site/root-artifacts/wavepeek_v0.json`, and do not touch the remote repository.
+
+### Milestone 5: Add just recipes and keep quality gates aligned
+
+At the end of this milestone, maintainers have stable root recipes for site build, serve, check, and deploy, and the standard gates run the docs-site check.
+
+Edit the root `justfile`. Add variables for owned generated paths under `tmp/docs-site/`, such as export directory, MkDocs source directory, generated config, site output directory, and root artifact output directory. Add a version expression that reads `Cargo.toml` through Python and returns the package version, similar to the existing schema path expression.
+
+Add recipes with names and behavior matching the proposal:
+
+    docs-site-build VERSION=<current Cargo.toml version>
+
+This exports docs from the current checkout, prepares the MkDocs staging tree with `--force`, and runs `mkdocs build --strict --config-file tmp/docs-site/mkdocs.yml`.
+
+    docs-site-serve VERSION=<current Cargo.toml version>
+
+This prepares staging the same way as build and runs `mkdocs serve --config-file tmp/docs-site/mkdocs.yml`. It is acceptable for this recipe to be interactive and therefore not used by CI.
+
+    docs-site-check VERSION=<current Cargo.toml version>
+
+This runs the same strict build as `docs-site-build`, then prepares root artifacts from the current checkout and verifies that `skill.md` plus at least one `wavepeek_v*.json` exist under `tmp/docs-site/root-artifacts/`.
+
+    docs-site-deploy VERSION SOURCE_REF=""
+
+This is a local non-pushing convenience wrapper. It should require an explicit version argument. If `SOURCE_REF` is empty, run `tools/docs/publish_docs.py check --version VERSION --source-root .` against the current checkout. If `SOURCE_REF` is set, run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF` without push credentials and leave the local `gh-pages` branch staged but unpushed.
+
+    docs-site-stage-deploy VERSION SOURCE_REF
+
+This is the CI staging entrypoint. It must require a non-empty SemVer release tag `SOURCE_REF` and run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF` without push credentials.
+
+    docs-site-push-staged VERSION
+
+This is the push-only entrypoint. It must run `tools/docs/publish_docs.py push-staged --version VERSION` and must not run cargo, mkdocs, mike, or any source-ref checkout. In the workflow it must run in a separate push job from a fresh trusted checkout and consume only uploaded staged metadata and bundle artifacts as data. It may receive push credentials because all release-source build/check subprocesses have already completed in a different job.
+
+Add `just docs-site-check` to both the `check` and `ci` aggregate recipes. Add `python3 -B -m unittest discover -s tools/docs -p "test_*.py"` to `test-aux`.
+
+Run:
+
+    just format-justfile-check
+    just docs-site-check
+    just test-aux
+
+Acceptance for this milestone is that `just docs-site-check` leaves a complete generated site under `tmp/docs-site/mkdocs-site/`, leaves raw root artifacts under `tmp/docs-site/root-artifacts/`, and `just test-aux` runs the new `tools/docs` tests.
+
+### Milestone 6: Add GitHub Actions publication workflow
+
+At the end of this milestone, future release tags can publish versioned docs automatically, and maintainers can manually bootstrap `0.5.0` from the existing `v0.5.0` tag.
+
+Create `.github/workflows/docs.yml`. Use a separate workflow from pre-merge CI. It should trigger on:
+
+    push tags matching v*.*.*
+    workflow_dispatch with inputs source_ref and version
+
+For `workflow_dispatch`, default `source_ref` to `v0.5.0` and allow `version` to be optional. Require `source_ref` to match the release-tag pattern `v[0-9]+.[0-9]+.[0-9]+`. If `version` is empty, derive `version` by stripping the leading `v`; if `version` is present, require it to match the tag. For tag pushes, use `github.ref_name` as the source ref and strip `v` for the version. The workflow should fail before entering the devcontainer if this validation fails.
+
+Set workflow permissions at the workflow or job level so the staging job has only what it needs for checkout, artifact upload, and optional GHCR cache access, while the push job is the only job with `contents: write` for pushing `gh-pages`. Add `packages: write` only to jobs that write the GHCR devcontainer cache; if the docs workflow deliberately uses cache read-only mode, document that choice and omit `packages: write`. Add a concurrency group such as `docs-pages` so two docs publications cannot push over each other.
+
+Use the same devcontainer baseline pattern as existing workflows: checkout with full history and tags, set up Docker Buildx, log in to GHCR for cache when allowed, create `.devcontainer/.devcontainer.json` as a symlink to `devcontainer.ci.json`, print Dockerfile provenance, and run the docs staging command through `devcontainers/ci`. Configure `actions/checkout` with `persist-credentials: false` so an input-selected release source cannot read stored push credentials while `cargo run` builds the release binary. For manual dispatch, do not check out `source_ref` over the working tree before `devcontainers/ci`; the working tree must remain on the workflow/default implementation ref so the new workflow, just recipes, and tools exist. The publication wrapper is the only component that should check out `source_ref`, under `tmp/docs-site/source`. Pass only `DOCS_VERSION` and `DOCS_SOURCE_REF` into the container through the devcontainers action `env:` forwarding or interpolate their resolved values directly into `runCmd`. Do not pass `GITHUB_TOKEN`, `GH_TOKEN`, `DOCS_PUSH_TOKEN`, or equivalent push credentials to the devcontainer staging step.
+
+The in-container staging run command should configure a CI git identity and then call:
+
+    just docs-site-stage-deploy "$DOCS_VERSION" "$DOCS_SOURCE_REF"
+
+After that devcontainer step succeeds, upload the staged deploy metadata and `gh-pages` bundle as a workflow artifact. Add a separate push-only job, not merely a later step in the same job. The push job must start from a fresh clean checkout of the trusted workflow ref, not from the staging workspace, and must download only the staged data artifact from the staging job. That push job may receive `GITHUB_TOKEN`, should verify `staged-deploy.json`, verify the bundle ref and expected final commit, fetch current `origin/gh-pages`, verify that the remote base commit still matches the metadata or that the metadata explicitly marks first publish, verify the staged commit is a fast-forward update, reject the push if requested `VERSION` already exists in the remote base unless an explicit verified repair mode is added later, compare remote-base and staged `versions.json` so unrelated version entries and aliases are preserved, verify the only semantic version metadata changes are adding `VERSION` and moving `latest` plus the default to it, verify that changed paths are limited to the requested version directory, `latest` alias/default files, mike metadata such as `versions.json`, `.nojekyll`, and root `skill.md` plus `wavepeek_v*.json`, and then push without force. It may run either a second devcontainer invocation that calls:
+
+    just docs-site-push-staged "$DOCS_VERSION"
+
+or an equivalent direct runner command:
+
+    python3 -B tools/docs/publish_docs.py push-staged --version "$DOCS_VERSION" --metadata PATH/staged-deploy.json --bundle PATH/gh-pages.bundle
+
+This push-only job must not run cargo, mkdocs, mike, any script from the staging workspace, or any command that checks out or executes `SOURCE_REF`.
+
+The workflow must publish root raw artifacts from the same source ref as the docs snapshot. For the initial manual dispatch, that means the checkout used by Actions remains on the implementation branch, while source content comes from `v0.5.0` through `tools/docs/publish_docs.py --source-ref`. For future tag pushes, the workflow file, scripts, and source docs all come from that tag.
+
+Run:
+
+    just check-actions
+
+Acceptance for this milestone is that `actionlint` passes and the workflow clearly shows how to publish `0.5.0` from manual dispatch without requiring the old tag to contain `.github/workflows/docs.yml`.
+
+### Milestone 7: Update maintainer docs and final validation
+
+At the end of this milestone, contributors know how to build, serve, check, and publish the docs site, and all standard gates pass.
+
+Update maintainer docs under `docs/dev/`. The likely files are `docs/dev/environment.md`, `docs/dev/quality.md`, and `docs/dev/automation.md`. Keep these updates concise. They should state that docs-site Python dependencies live in `requirements-docs.txt`, are installed into the devcontainer image, `just docs-site-check` is part of the standard gates, and publication is handled by `.github/workflows/docs.yml` plus the split `just docs-site-stage-deploy` and `just docs-site-push-staged` flow.
+
+If implementation changes source module boundaries beyond the front matter alias in `src/docs/mod.rs`, update `docs/dev/architecture.md`. If only helper scripts and docs metadata change, architecture updates are probably unnecessary.
+
+Run the final validation from the repository root inside the devcontainer:
+
+    just docs-site-check
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0
+    just check
+    just ci
+
+If `just ci` is too expensive during early iteration, run the focused commands first and record the skipped full gate in `Progress`; before handoff, run `just ci` unless the user explicitly waives it.
+
+Acceptance for the full plan is:
+
+`docs/public/` authors `description` front matter, while `wavepeek docs topics --json` still exposes `summary`.
+
+`just docs-site-check` builds a strict MkDocs Material site from `wavepeek docs export` and prepares raw root artifacts.
+
+The generated staging source has `index.md` for the intro topic and does not commit generated files.
+
+`tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0` proves the historical-tag bootstrap path can export and build from the existing tag.
+
+`.github/workflows/docs.yml` can publish future tag snapshots with `mike`, move `latest`, set the root default redirect, and update root `skill.md` plus every `wavepeek_v*.json` from the release source using a no-token staging step followed by a push-only step.
+
+`just ci` passes.
+
+## Concrete Steps
+
+The implementation agent should proceed in this order from the repository root:
+
+1. Update front matter compatibility and docs metadata.
+
+    cargo test -q docs
+    cargo test -q --test docs_cli
+
+2. Add root docs dependencies and container installation, then rebuild or enter an updated container.
+
+    mkdocs --version
+    mike --version
+    just dev-setup
+
+3. Add `mkdocs.yml`, `tools/docs/prepare_mkdocs.py`, and tests.
+
+    cargo run --quiet -- docs export tmp/docs-site/export --force
+    python3 -B tools/docs/prepare_mkdocs.py tmp/docs-site/export --output tmp/docs-site/mkdocs-src --config-output tmp/docs-site/mkdocs.yml --version 0.5.0 --force
+    mkdocs build --strict --config-file tmp/docs-site/mkdocs.yml
+    python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+
+4. Add `tools/docs/publish_docs.py` and tests.
+
+    python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-root .
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0
+
+5. Add just recipes and wire gates.
+
+    just format-justfile-check
+    just docs-site-check
+    just test-aux
+
+6. Add the docs workflow and maintainer docs updates.
+
+    just check-actions
+
+7. Run final gates.
+
+    just docs-site-check
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0
+    just check
+    just ci
+
+## Validation and Acceptance
+
+A human can verify local behavior by running `just docs-site-check` inside the devcontainer. The command must exit successfully. After it runs, these files should exist:
+
+    tmp/docs-site/mkdocs-src/index.md
+    tmp/docs-site/mkdocs-site/index.html
+    tmp/docs-site/root-artifacts/skill.md
+    tmp/docs-site/root-artifacts/wavepeek_v0.json
+
+The generated MkDocs source must not contain `manifest.json`. The generated intro page should be `index.md`, not `intro.md`. Current generated topic front matter should contain `description`, not `summary`.
+
+A human can verify the historical release path without pushing by running:
+
+    python3 -B tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0
+
+That command must export docs by compiling the release source from `v0.5.0`, build a strict site using the current scripts, and prepare root artifacts from the `v0.5.0` source checkout.
+
+A human can verify the CLI contract by running:
+
+    cargo run --quiet -- docs topics --json
+
+The JSON topic entries for both `docs topics --json` and `docs search --json` must contain `summary` and must not contain `description`, because `summary` is the runtime contract field.
+
+The final repository gates are:
+
+    just check
+    just ci
+
+Both must pass before handoff unless the user explicitly accepts a narrower validation result.
+
+## Idempotence and Recovery
+
+All local generated outputs must live under `tmp/docs-site/`, which this plan owns. Scripts may remove and recreate their own subpaths under `tmp/docs-site/`, but they must not clean the entire `tmp/` directory.
+
+`wavepeek docs export ... --force` is safe only for empty or managed export roots. The docs-site recipes should always use owned paths under `tmp/docs-site/` so `--force` cannot replace user files.
+
+The MkDocs staging script should use a temporary sibling directory and atomic rename when replacing an output directory. If a run fails halfway, rerun the same command with `--force`; the script should clean only its own temporary path.
+
+The publish wrapper should separate staging from pushing. `check` must not touch `gh-pages`. `stage-deploy` may update only local `gh-pages` state, stage metadata, and a staged branch bundle, and it must run without push credentials. `push-staged` is the only subcommand that may push. In CI it must run in a separate push job from a fresh trusted checkout and consume only uploaded metadata plus the bundle from staging; it must not rebuild, restage, check out `SOURCE_REF`, run cargo, mkdocs, or mike, or execute scripts from the staging workspace.
+
+When a `stage-deploy` run starts, fetch `origin/gh-pages` and base local work on the fetched remote branch. If the remote branch does not exist, treat the run as the first publication and let `mike` initialize it. Record the fetched base commit or first-publish marker in metadata. When staging fails after `mike` updates a local branch but before push, inspect the local `gh-pages` branch and rerun the staging command; the rerun must fetch/reset from remote before checking existing versions. If the version already exists remotely and the rerun is intentionally repairing the same version, require the explicit repair flag described in Milestone 4. Otherwise do not overwrite existing snapshots. The push-only job must verify stage metadata, remote base, fast-forward ancestry, requested-version absence unless repair mode is explicit, `versions.json` semantic changes, changed paths, and the bundle in a fresh trusted checkout before pushing without force, and it must not rebuild or restage.
+
+For the first `0.5.0` bootstrap, use manual workflow dispatch with `source_ref=v0.5.0` and `version=0.5.0`. If it fails before pushing, fix the workflow/scripts on the implementation branch and rerun dispatch; do not move the historical tag.
+
+## Artifacts and Notes
+
+The proposal that motivated this plan is tracked at:
+
+    docs/tracker/wip/github-pages-docs-proposal.md
+
+It was committed before this ExecPlan as:
+
+    3722338 docs(tracker): add pages docs proposal
+
+Expected generated local layout after `just docs-site-check`:
+
+    tmp/docs-site/export/          exported embedded CLI docs plus manifest.json
+    tmp/docs-site/mkdocs-src/      generated MkDocs Markdown source
+    tmp/docs-site/mkdocs.yml       generated MkDocs config with nav
+    tmp/docs-site/mkdocs-site/     strict MkDocs HTML build output
+    tmp/docs-site/root-artifacts/  generated skill.md and wavepeek_v*.json root files
+
+Expected public Pages layout after publishing `0.5.0`:
+
+    /latest/          alias managed by mike
+    /0.5.0/           version snapshot managed by mike
+    /                 default redirect managed by mike
+    /skill.md         raw latest stable packaged skill
+    /wavepeek_v0.json raw latest stable schema for major version 0
+
+## Interfaces and Dependencies
+
+The Rust interface change is limited to `src/docs/mod.rs`. The private `FrontMatter` type must deserialize `description` and legacy `summary` into its existing `summary` field. Public `TopicSummary` remains unchanged.
+
+The Python dependency interface is root `requirements-docs.txt`. It must include MkDocs Material, mike, and PyYAML. The devcontainer image must expose `mkdocs` and `mike` on `PATH` in both `ci` and `dev` targets.
+
+`tools/docs/prepare_mkdocs.py` must expose a CLI that accepts an export directory, output directory, generated config path, version string, and `--force`. It must also be structured so its pure functions can be unit-tested without invoking MkDocs.
+
+`tools/docs/publish_docs.py` must expose `check`, `stage-deploy`, and `push-staged` subcommands. `check` accepts `--version`, `--source-root`, and optionally `--source-ref`. `stage-deploy` requires `--version` and a non-empty SemVer `--source-ref`, and writes metadata plus a staged `gh-pages` bundle. `push-staged` accepts `--version`, `--metadata`, and `--bundle`, validates both inputs, imports the staged `gh-pages` state into the fresh checkout, fetches current `origin/gh-pages`, verifies remote base and fast-forward ancestry, rejects existing requested versions unless repair mode is explicit, verifies allowed `versions.json` semantic changes, checks changed paths against the allowed set, and pushes without force. Subprocess invocation must stay in small functions so tests can mock command execution.
+
+The just interface must include these recipes:
+
+    just docs-site-build
+    just docs-site-serve
+    just docs-site-check
+    just docs-site-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0
+    just docs-site-stage-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0
+    just docs-site-push-staged VERSION=0.5.0
+
+The GitHub Actions interface is `.github/workflows/docs.yml`, with automatic tag publication for future tags and manual dispatch for `v0.5.0` bootstrap.
+
+## Revision Notes
+
+2026-06-07 20:31Z: Incorporated initial review findings. The plan now handles the legacy `v0.5.0` schema filename by normalizing `schema/wavepeek.json` to `wavepeek_v0.json`, requires stronger manifest/path validation in the MkDocs preparation script, makes manual-dispatch checkout behavior explicit, requires explicit CI env forwarding or interpolation, covers GHCR cache permissions, adds CLI JSON absence checks for `description`, and removes non-neutral phrasing from repository artifacts.
+
+2026-06-07 20:49Z: Incorporated first control-pass findings. The plan now treats missing manifest `see_also` as an empty list, requires release-tag-only `source_ref` values for deploy workflow paths, prevents checkout credential persistence, requires push tokens to be withheld from build/check subprocesses that execute release-source code, and requires fetching/resetting local `gh-pages` from `origin/gh-pages` before existing-version checks and deployment.
+
+2026-06-07 21:05Z: Incorporated second control-pass findings. The plan now splits publication into a no-token `stage-deploy` step and a separate `push-staged` step, and requires any pushable publication path to use a non-empty SemVer release tag rather than a mutable current checkout.
+
+2026-06-07 21:20Z: Incorporated third control-pass findings. The plan now requires the credentialed push step to run from a fresh trusted checkout and consume only staged metadata plus a `gh-pages` bundle produced by the no-token staging step.
+
+2026-06-07 21:35Z: Incorporated fourth control-pass findings. The plan now requires staging and pushing to run as separate workflow jobs, limits `contents: write` to the push job, and requires push-side verification of remote base, fast-forward ancestry, bundle commit, and path-limited changes before pushing.
+
+2026-06-07 21:49Z: Incorporated fifth control-pass findings. The plan now requires push-side semantic verification of `versions.json`, independent rejection of existing requested versions unless repair mode is explicit, and preservation of unrelated version entries and aliases.
+
+2026-06-07 22:03Z: Recorded sixth control pass. The reviewer reported no substantive findings, so the plan is ready for handoff or implementation.

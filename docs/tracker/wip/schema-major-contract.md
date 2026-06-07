@@ -22,10 +22,10 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 - [x] (2026-06-07T12:09Z) Created this ExecPlan with the default branch decision set to `main` and the current schema artifact set to `schema/wavepeek_v0.json`.
 - [x] (2026-06-07T12:10Z) Committed the initial ExecPlan as `88070e3 docs(schema): plan major schema artifacts`.
 - [x] (2026-06-07T12:20Z) Ran read-only plan review in architecture/code and docs/contract lanes; recorded and incorporated findings.
-- [ ] Rename `schema/wavepeek.json` to `schema/wavepeek_v0.json` and update the schema's `$schema` URL pattern.
-- [ ] Update runtime schema constants, tests, and helper automation to use the Cargo package major version.
-- [ ] Update public docs, maintainer docs, and breadcrumbs that reference the old full-semver schema path.
-- [ ] Run focused tests and repository gates.
+- [x] (2026-06-07T12:22Z) Renamed `schema/wavepeek.json` to `schema/wavepeek_v0.json` and updated the schema's `$schema` URL pattern.
+- [x] (2026-06-07T12:23Z) Updated runtime schema constants, tests, and helper automation to use the Cargo package major version.
+- [x] (2026-06-07T12:24Z) Updated public docs, maintainer docs, and breadcrumbs that referenced the old full-semver schema path.
+- [x] (2026-06-07T12:25Z) Ran focused tests, acceptance checks, `just check-schema`, and `just check`; all passed.
 - [ ] Commit the implementation.
 - [ ] Run read-only review on the implementation and apply any necessary fixes.
 - [ ] Run final validation and record outcomes.
@@ -40,6 +40,9 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 - Observation: Plan review found a validation gap around the schema artifact's own envelope `$schema` regex.
   Evidence: The architecture/code reviewer noted that `check_schema_contract.py` could pass with a stale JSON Schema `properties.$schema.pattern` unless the helper explicitly checks that pattern against the new URL and old URL.
+
+- Observation: `CARGO_PKG_VERSION_MAJOR` works as a compile-time environment variable for this crate.
+  Evidence: `cargo test --test schema_cli` and `cargo test --lib schema_contract` both passed after `src/schema_contract.rs` and integration tests used `env!("CARGO_PKG_VERSION_MAJOR")`.
 
 ## Decision Log
 
@@ -69,7 +72,7 @@ This plan does not relax the current JSON contract. Existing envelope fields, co
 
 ## Outcomes & Retrospective
 
-No implementation outcome has been recorded yet. This section will be updated after validation and review.
+Implementation is complete before review. The current binary emits `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json` in JSON envelopes, `wavepeek schema` matches `schema/wavepeek_v0.json`, and `schema/wavepeek.json` is absent from the working tree. Focused schema tests, the schema checker, acceptance commands, and `just check` passed. Implementation review is still pending.
 
 ## Context and Orientation
 
@@ -132,9 +135,22 @@ Run focused validation while iterating:
     cargo test --lib schema_contract
     just check-schema
 
+Observed results on 2026-06-07:
+
+    cargo test --test schema_cli
+    Test Results: 9 passed
+
+    cargo test --lib schema_contract
+    Test Results: 3 passed
+
+    just check-schema
+    passed with no stderr
+
 Run the pre-handoff gate:
 
     just check
+
+Observed result on 2026-06-07: `just check` passed, including rustfmt check, justfile format check, clippy, schema contract validation, actionlint, cargo check, commit-message validation, and FSDB build smoke checks.
 
 Commit implementation once focused validation passes or any environment limitations are recorded:
 
@@ -190,12 +206,12 @@ If `just check-schema` or `just check` fails only because `WAVEPEEK_IN_CONTAINER
 
 ## Artifacts and Notes
 
-Initial inspection found these old-path references that must be updated:
+Initial inspection found these old-path references that were updated:
 
     src/schema_contract.rs
     tests/common/mod.rs
     tests/schema_cli.rs
-    schema/wavepeek.json
+    schema/wavepeek.json -> schema/wavepeek_v0.json
     justfile
     tools/schema/check_schema_contract.py
     tools/schema/README.md
@@ -207,6 +223,16 @@ Initial inspection found these old-path references that must be updated:
     docs/dev/release.md
     schema/AGENTS.md
     docs/public/reference/AGENTS.md
+
+Acceptance output observed on 2026-06-07:
+
+    cargo run --quiet -- info --waves tests/fixtures/hand/m2_core.vcd --json
+    {"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
+
+    cargo run --quiet -- schema > tmp/schema-major-contract.out
+    cmp tmp/schema-major-contract.out schema/wavepeek_v0.json
+    test ! -e schema/wavepeek.json
+    all commands passed
 
 ## Interfaces and Dependencies
 
@@ -223,3 +249,4 @@ The exact implementation should use `concat!` and `env!("CARGO_PKG_VERSION_MAJOR
 
 - 2026-06-07T12:09Z: Created the initial self-contained ExecPlan from repository inspection and the user's decision to use `main` plus `schema/wavepeek_v0.json`.
 - 2026-06-07T12:20Z: Incorporated read-only plan review findings: corrected the schema integration test command, required helper validation of the schema artifact regex, moved release/update policy detail out of public-doc wording, and documented new-major bootstrap risk in maintainer docs.
+- 2026-06-07T12:25Z: Updated implementation progress and validation evidence after code, schema, docs, and helper changes passed focused checks and `just check`.

@@ -15,7 +15,7 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 - `just format` and `just format-check` run rustfmt and the justfile formatter.
 - `just lint` runs clippy with warnings denied, plus feature-enabled FSDB clippy when Verdi is available; `just lint-fix` applies safe clippy suggestions when useful.
 - `just check-build` runs `cargo check`.
-- `just check-schema` validates `schema/wavepeek.json` against the runtime schema contract.
+- `just check-schema` validates the current major schema artifact such as `schema/wavepeek_v0.json` against the runtime schema contract.
 - `just check-actions` runs `actionlint` for `.github/workflows/`.
 - `just coverage-src` reports source coverage without enforcing thresholds.
 - `just coverage-src-check` enforces the current `90%` minimum on lines, regions, and functions for `src/**`.

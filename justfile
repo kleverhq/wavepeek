@@ -1,7 +1,7 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export RTL_ARTIFACTS_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$RTL_ARTIFACTS_DIR"`
-schema_path := "schema/wavepeek.json"
+schema_path := `python3 -B -c 'import pathlib, tomllib; version = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; print("schema/wavepeek_v" + version.split(".")[0] + ".json")'`
 bench_e2e_runs_dir := "bench/e2e/runs"
 bench_e2e_baseline_dir := "bench/e2e/runs/baseline_fst"
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"

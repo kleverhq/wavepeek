@@ -18,8 +18,8 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
    - update bottom links for `Unreleased` and the new version tag;
    - treat released sections as immutable historical records.
 3. Reconcile `docs/tracker/roadmap.md` with actual shipped scope. Roadmap is planned scope; changelog is factual shipped scope. If planned work shipped in `X.Y.Z`, remove it from future roadmap notes so remaining work stays visible.
-4. Update `Cargo.toml` version to `X.Y.Z`.
-5. Regenerate the canonical schema artifact:
+4. Update `Cargo.toml` version to `X.Y.Z`. If this is the first release for major version `X`, create `schema/wavepeek_vX.json` before running build-backed schema commands; `wavepeek schema` embeds the checked-in artifact for the package major version.
+5. Refresh the current major schema artifact:
 
        just update-schema
 
@@ -29,7 +29,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 7. Commit release prep:
 
-       git add CHANGELOG.md docs/tracker/roadmap.md Cargo.toml Cargo.lock schema/wavepeek.json
+       git add CHANGELOG.md docs/tracker/roadmap.md Cargo.toml Cargo.lock schema/wavepeek_vX.json
        git commit -m "chore(release): prepare vX.Y.Z"
 
 8. Push the commit and tag:
@@ -40,7 +40,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 9. Wait for `.github/workflows/release.yml` to finish.
 10. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, and GitHub Release creation.
-11. Validate the schema publication endpoint for the tag: `https://raw.githubusercontent.com/kleverhq/wavepeek/vX.Y.Z/schema/wavepeek.json` should resolve to the committed schema artifact.
+11. Validate the schema publication endpoint on `main`: `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_vX.json` should resolve to the committed schema artifact.
 12. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, and release notes match the changelog section.
 
 The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command.

@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 
 mod common;
-use common::wavepeek_cmd;
+use common::{expected_schema_url, wavepeek_cmd};
 
 const EXPECTED_SCOPE_KINDS: &[&str] = &[
     "module",
@@ -82,7 +82,10 @@ const EXCLUDED_SIGNAL_KINDS: &[&str] = &[
 fn canonical_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join("wavepeek.json")
+        .join(format!(
+            "wavepeek_v{}.json",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        ))
 }
 
 fn run_schema_command() -> Vec<u8> {
@@ -144,6 +147,34 @@ fn schema_command_output_is_deterministic_across_runs() {
     assert!(second.status.success());
     assert_eq!(first.stdout, second.stdout);
     assert_eq!(first.stderr, second.stderr);
+}
+
+#[test]
+fn schema_command_schema_url_pattern_matches_current_major_contract() {
+    let value = schema_json();
+    let pattern = value["properties"]["$schema"]["pattern"]
+        .as_str()
+        .expect("envelope schema URL pattern should be a string");
+    let expected_pattern = format!(
+        r"^https://raw\.githubusercontent\.com/kleverhq/wavepeek/main/schema/wavepeek_v{}\.json$",
+        env!("CARGO_PKG_VERSION_MAJOR")
+    );
+    assert_eq!(pattern, expected_pattern);
+
+    let regex = regex::Regex::new(pattern).expect("schema URL pattern should compile");
+
+    assert!(
+        regex.is_match(expected_schema_url()),
+        "schema URL pattern should accept current major URL"
+    );
+    assert!(
+        !regex.is_match(concat!(
+            "https://raw.githubusercontent.com/kleverhq/wavepeek/v",
+            env!("CARGO_PKG_VERSION"),
+            "/schema/wavepeek.json"
+        )),
+        "schema URL pattern should reject obsolete full-semver URL"
+    );
 }
 
 #[test]

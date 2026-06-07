@@ -28,7 +28,7 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/kleverhq/wavepeek/v<version>/schema/wavepeek.json",
+  "$schema": "https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v<major>.json",
   "command": "<command>",
   "data": {},
   "warnings": []
@@ -37,12 +37,12 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 The semantics of the envelope fields are:
 
-- `$schema` is serialized literally as `$schema` and points at the canonical schema artifact for the running wavepeek version.
+- `$schema` is serialized literally as `$schema` and points at the canonical schema artifact for the running wavepeek major version.
 - `command` identifies the executed subcommand and disambiguates the shape of `data`.
 - `data` carries the command payload. Depending on the command contract, it may be an object or an array.
 - `warnings` is an array of free-form warning strings in deterministic order.
 
-The exact JSON shapes for every command are defined by `schema/wavepeek.json` and by `wavepeek schema`.
+The exact JSON shapes for every command are defined by the current major artifact such as `schema/wavepeek_v0.json` and by `wavepeek schema`.
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
@@ -56,7 +56,7 @@ Its behavior is special and fixed:
 - it accepts no command-specific flags or positional arguments,
 - it writes exactly one JSON Schema document to stdout,
 - it does not wrap that document in the normal command envelope, and
-- its output bytes match the canonical artifact at `schema/wavepeek.json`.
+- its output bytes match the canonical artifact for the running major version, such as `schema/wavepeek_v0.json`.
 
 ## 4. Warning Behavior
 

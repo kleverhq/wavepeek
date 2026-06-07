@@ -8,4 +8,4 @@
 
 ## Local Guidance
 
-Regenerate schema artifacts with `just update-schema` and validate with `just check-schema`. Do not hand-edit `wavepeek.json` unless you are deliberately repairing generated output and can prove the runtime schema matches afterward.
+Regenerate the current major schema artifact with `just update-schema` and validate with `just check-schema`. Schema artifacts are named `wavepeek_vN.json` by tool major version. Do not hand-edit a schema artifact unless you are deliberately repairing generated output and can prove the runtime schema matches afterward.

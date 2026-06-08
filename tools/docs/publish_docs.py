@@ -24,6 +24,8 @@ GH_PAGES_BRANCH = "gh-pages"
 STAGED_BRANCH = "staged-gh-pages"
 METADATA_NAME = "staged-deploy.json"
 BUNDLE_NAME = "gh-pages.bundle"
+PAGES_ARTIFACT_NAME = "pages-artifact"
+PAGES_WORKTREE_NAME = "pages-worktree"
 PUSH_TOKEN_ENV = {
     "GH_TOKEN",
     "GITHUB_TOKEN",
@@ -47,6 +49,8 @@ class Paths:
     gh_pages_worktree: pathlib.Path
     metadata: pathlib.Path
     bundle: pathlib.Path
+    pages_artifact: pathlib.Path
+    pages_worktree: pathlib.Path
 
 
 @dataclass(frozen=True)
@@ -66,10 +70,12 @@ class CommandRunner:
         if self.dry_run:
             print("+ " + " ".join(rendered))
             return subprocess.CompletedProcess(rendered, 0, "", "")
+        command_env = os.environ.copy() if env is None else env.copy()
+        command_env.pop("GIT_INDEX_FILE", None)
         return subprocess.run(
             rendered,
             cwd=cwd,
-            env=env,
+            env=command_env,
             check=check,
             text=True,
             stdout=subprocess.PIPE if capture else None,
@@ -124,6 +130,8 @@ def paths(work_dir: pathlib.Path) -> Paths:
         gh_pages_worktree=work_dir / "gh-pages",
         metadata=work_dir / METADATA_NAME,
         bundle=work_dir / BUNDLE_NAME,
+        pages_artifact=work_dir / PAGES_ARTIFACT_NAME,
+        pages_worktree=work_dir / PAGES_WORKTREE_NAME,
     )
 
 
@@ -637,10 +645,13 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
     return clone
 
 
+def required_pages_artifact_paths(version: str) -> list[str]:
+    return ["index.html", "versions.json", f"wavepeek_v{major_version(version)}.json"]
+
+
 def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
-    expected = [f"wavepeek_v{major_version(version)}.json"]
     missing: list[str] = []
-    for artifact in expected:
+    for artifact in [f"wavepeek_v{major_version(version)}.json"]:
         result = runner.run(
             ["git", "cat-file", "-t", f"{staged_branch}:{artifact}"],
             check=False,
@@ -650,6 +661,31 @@ def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunne
             missing.append(artifact)
     if missing:
         fail("staged gh-pages bundle is missing root artifact(s): " + ", ".join(missing))
+
+
+def export_pages_artifact(staged_branch: str, version: str, run_paths: Paths, runner: CommandRunner) -> None:
+    clean_owned_path(run_paths.pages_artifact)
+    remove_git_worktree(run_paths.pages_worktree, runner)
+    run_paths.pages_artifact.parent.mkdir(parents=True, exist_ok=True)
+    run_paths.pages_worktree.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        runner.run(["git", "worktree", "add", "--detach", run_paths.pages_worktree, staged_branch])
+        shutil.copytree(
+            run_paths.pages_worktree,
+            run_paths.pages_artifact,
+            symlinks=True,
+            ignore=shutil.ignore_patterns(".git"),
+        )
+    finally:
+        remove_git_worktree(run_paths.pages_worktree, runner)
+
+    missing = [
+        path
+        for path in required_pages_artifact_paths(version)
+        if not (run_paths.pages_artifact / path).is_file()
+    ]
+    if missing:
+        fail("exported Pages artifact is missing required file(s): " + ", ".join(missing))
 
 
 def verify_versions_semantics(
@@ -708,6 +744,7 @@ def push_staged(
         repair_existing_version=repair_existing_version,
         runner=runner,
     )
+    export_pages_artifact(STAGED_BRANCH, version, run_paths, runner)
     runner.run(["git", "push", "origin", f"{STAGED_BRANCH}:{GH_PAGES_BRANCH}"])
 
 

@@ -32,9 +32,12 @@ def chdir(path: pathlib.Path):
 
 
 def git(repo: pathlib.Path, *args: str) -> str:
+    env = os.environ.copy()
+    env.pop("GIT_INDEX_FILE", None)
     result = subprocess.run(
         ["git", *args],
         cwd=repo,
+        env=env,
         check=True,
         text=True,
         stdout=subprocess.PIPE,
@@ -205,6 +208,45 @@ class PublishDocsTests(unittest.TestCase):
 
         self.assertIn("0.4.0/index.html", changed)
         self.assertIn("0.5.0/index.html", changed)
+
+    def test_export_pages_artifact_archives_staged_tree(self) -> None:
+        repo = self.root / "repo-pages-artifact"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "index.html").write_text("redirect", encoding="utf-8")
+        (repo / "versions.json").write_text("[]", encoding="utf-8")
+        (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
+        (repo / ".gitattributes").write_text("0.5.0/index.html export-ignore\n", encoding="utf-8")
+        (repo / "0.5.0").mkdir()
+        (repo / "0.5.0" / "index.html").write_text("docs", encoding="utf-8")
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "pages")
+
+        with chdir(repo):
+            publish_docs.export_pages_artifact("HEAD", "0.5.0", self.paths, publish_docs.CommandRunner())
+
+        self.assertEqual((self.paths.pages_artifact / "index.html").read_text(), "redirect")
+        self.assertEqual((self.paths.pages_artifact / "0.5.0" / "index.html").read_text(), "docs")
+        self.assertTrue((self.paths.pages_artifact / "wavepeek_v0.json").is_file())
+        self.assertFalse((self.paths.pages_artifact / ".git").exists())
+        self.assertFalse(self.paths.pages_worktree.exists())
+
+    def test_export_pages_artifact_requires_pages_root_files(self) -> None:
+        repo = self.root / "repo-pages-artifact-missing"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "versions.json").write_text("[]", encoding="utf-8")
+        (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "pages")
+
+        with chdir(repo):
+            with self.assertRaisesRegex(publish_docs.PublishError, "index.html"):
+                publish_docs.export_pages_artifact("HEAD", "0.5.0", self.paths, publish_docs.CommandRunner())
 
     def test_verify_root_artifacts_requires_major_schema(self) -> None:
         repo = self.root / "repo-root-artifacts"

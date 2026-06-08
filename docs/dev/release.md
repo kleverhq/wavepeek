@@ -8,7 +8,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 - The local branch is up to date with `main`.
 - You have permission to push tags and create GitHub Releases.
 - `CRATES_IO_TOKEN` exists in repository secrets.
-- GitHub Pages is configured to publish from the `gh-pages` branch root.
+- GitHub Pages is configured for GitHub Actions deployments.
 
 ## Checklist
 
@@ -41,11 +41,13 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 9. Wait for `.github/workflows/release.yml` to finish. It dispatches docs publication only after the GitHub Release is created.
 10. Wait for `.github/workflows/docs.yml` to finish for the same version.
-11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, and non-forced `gh-pages` push.
+11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, and `actions/deploy-pages` deployment.
 12. Validate the schema publication endpoint on Pages: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json` should resolve to the committed schema artifact.
 13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema artifacts such as `wavepeek_vX.json` resolve from Pages.
 
 The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch.
+
+The docs workflow keeps `gh-pages` as the versioned `mike` state branch, but the public Pages deployment is performed through GitHub Pages Actions (`actions/upload-pages-artifact` and `actions/deploy-pages`). It does not rely on a branch-push-triggered Pages build.
 
 Normal releases do not need a local docs dispatch command because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` after the GitHub Release is created. For manual repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
 

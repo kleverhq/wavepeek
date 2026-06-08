@@ -20,7 +20,7 @@ When changing those helpers, keep `.devcontainer/devcontainer.json`, `environmen
 
 ## Workflows and Hooks
 
-GitHub Actions workflows live under `.github/workflows/`. The release workflow validates tag/version agreement, runs `just ci` in the CI devcontainer, packages the crate, extracts release notes from `CHANGELOG.md`, publishes to crates.io, creates the GitHub Release, and then dispatches docs publication. The docs workflow is manual-only, uses trusted tooling from `main`, stages the `gh-pages` update without persisted contents-write checkout credentials, and pushes only after verifying the staged bundle in a separate job.
+GitHub Actions workflows live under `.github/workflows/`. The release workflow validates tag/version agreement, runs `just ci` in the CI devcontainer, packages the crate, extracts release notes from `CHANGELOG.md`, publishes to crates.io, creates the GitHub Release, and then dispatches docs publication. The docs workflow is manual-only, uses trusted tooling from `main`, stages the `gh-pages` update without persisted contents-write checkout credentials, pushes only after verifying the staged bundle in a separate job, and deploys the verified tree through GitHub Pages Actions rather than relying on a branch-push Pages build.
 
 Pre-commit configuration lives in `.pre-commit-config.yaml`. Hooks should stay deterministic, non-interactive, and wired through `just` where possible.
 

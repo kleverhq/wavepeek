@@ -8,6 +8,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 - The local branch is up to date with `main`.
 - You have permission to push tags and create GitHub Releases.
 - `CRATES_IO_TOKEN` exists in repository secrets.
+- GitHub Pages is configured to publish from the `gh-pages` branch root.
 
 ## Checklist
 
@@ -38,12 +39,13 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
        git tag vX.Y.Z
        git push origin vX.Y.Z
 
-9. Wait for `.github/workflows/release.yml` to finish.
-10. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, and GitHub Release creation.
-11. Validate the schema publication endpoint on `main`: `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_vX.json` should resolve to the committed schema artifact.
-12. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, and release notes match the changelog section.
+9. Wait for `.github/workflows/release.yml` to finish. It dispatches docs publication only after the GitHub Release is created.
+10. Wait for `.github/workflows/docs.yml` to finish for the same version.
+11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, and non-forced `gh-pages` push.
+12. Validate the schema publication endpoint on `main`: `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_vX.json` should resolve to the committed schema artifact.
+13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root artifacts such as `skill.md` and `wavepeek_vX.json` resolve from Pages.
 
-The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command.
+The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch; for a manual repair or first-time bootstrap, run `.github/workflows/docs.yml` with `version`, `source_ref`, and `repair_existing_version` only when intentionally replacing an existing Pages snapshot.
 
 ## Rollback
 

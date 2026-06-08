@@ -4,9 +4,9 @@
 
 ## Standard Gates
 
-Use `just check` before handing off local work. It runs formatting checks, clippy, schema contract validation, GitHub Actions linting, `cargo check`, commit-message validation, and the FSDB build gate when Verdi is available.
+Use `just check` before handing off local work. It runs formatting checks, clippy, schema contract validation, GitHub Actions linting, docs-site generation checks, `cargo check`, commit-message validation, and the FSDB build gate when Verdi is available.
 
-Use `just ci` when tests should be included. It runs the same static checks plus auxiliary Python unit tests, the source coverage gate, `cargo check`, and the FSDB regression path when Verdi is available. The Rust test execution used by CI is the `cargo llvm-cov` run behind `just coverage-src-check`; use `just test` when you want an explicit non-coverage Rust test pass while iterating. `just test` also runs the FSDB regression path when Verdi is available.
+Use `just ci` when tests should be included. It runs the same static checks plus auxiliary Python unit tests, the source coverage gate, `cargo check`, docs-site generation checks, and the FSDB regression path when Verdi is available. The Rust test execution used by CI is the `cargo llvm-cov` run behind `just coverage-src-check`; use `just test` when you want an explicit non-coverage Rust test pass while iterating. `just test` also runs the FSDB regression path when Verdi is available.
 
 Use `just pre-commit` to run all installed pre-commit hooks across the repository. Hooks are installed by `just dev-setup` and must not be bypassed unless a maintainer explicitly asks. The hook path inherits conditional FSDB lint, test, and benchmark smoke behavior from the `just` recipes when Verdi is available, but the FSDB pre-commit benchmark smoke prepares only its small filtered RTL fixture set instead of the full FSDB benchmark catalog.
 
@@ -17,6 +17,8 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 - `just check-build` runs `cargo check`.
 - `just check-schema` validates the current major schema artifact such as `schema/wavepeek_v0.json` against the runtime schema contract.
 - `just check-actions` runs `actionlint` for `.github/workflows/`.
+- `just docs-site-build` exports embedded public docs into `tmp/docs-site/`, generates a MkDocs config, and builds the site in strict mode.
+- `just docs-site-check` runs the full local docs publication check, including root Pages artifacts, without touching `gh-pages`.
 - `just coverage-src` reports source coverage without enforcing thresholds.
 - `just coverage-src-check` enforces the current `90%` minimum on lines, regions, and functions for `src/**`.
 - `just check-commit` runs Commitizen against Git's current commit-message file.

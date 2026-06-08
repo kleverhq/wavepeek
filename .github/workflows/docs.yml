@@ -115,6 +115,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
 
       - name: Download staged docs bundle
         uses: actions/download-artifact@v5
@@ -142,6 +143,10 @@ jobs:
 
       - name: Verify and push staged docs in devcontainer baseline
         uses: devcontainers/ci@v0.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+          WAVEPEEK_UPSTREAM_REPO: ${{ github.repository }}
         with:
           configFile: .devcontainer/.devcontainer.json
           cacheFrom: |
@@ -150,7 +155,10 @@ jobs:
           env: |
             VERSION
             REPAIR_EXISTING_VERSION
-          runCmd: python3 -B tools/docs/workflow_docs.py push-staged
+            GH_TOKEN
+            GITHUB_TOKEN
+            WAVEPEEK_UPSTREAM_REPO
+          runCmd: bash .devcontainer/setup-github-auth.sh && python3 -B tools/docs/workflow_docs.py push-staged
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

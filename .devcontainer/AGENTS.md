@@ -24,7 +24,6 @@ This directory owns local and CI container definitions, fixture provisioning, an
 - `env_contract.sh` is coupled to Codex setup/resume helpers. Use `../docs/dev/environment.md` and `../docs/dev/automation.md` for the current helper entrypoints, and update the helpers with these files when fixture or environment contracts change.
 - The dev profile forces X11 for waveform GUI tooling; CI enables UID remapping so non-root build/test commands can write the workspace.
 - GitHub Actions creates a transient `.devcontainer.json` symlink to `devcontainer.ci.json`; keep that workflow compatibility in mind when renaming configs.
-- Inline shell or Python in devcontainer configs and devcontainer-backed workflow `runCmd` blocks is acceptable only for short glue up to 5 logical lines. Longer logic belongs in a separate testable helper under `../tools/`.
 
 ## Safety
 

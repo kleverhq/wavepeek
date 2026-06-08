@@ -1,7 +1,7 @@
 ---
 id: nested/topic
 title: Nested topic
-summary: Nested fixture summary
+description: Nested fixture description
 section: reference
 see_also: []
 ---

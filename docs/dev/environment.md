@@ -6,6 +6,8 @@
 
 Local interactive work uses `.devcontainer/devcontainer.json`, which targets the `dev` stage in `.devcontainer/Dockerfile`. CI and release automation use `.devcontainer/devcontainer.ci.json`, which targets the leaner `ci` stage from the same Dockerfile.
 
+The shared image includes docs-site tooling from root `requirements-docs.txt`. `mkdocs` and `mike` are available on `PATH` in both the `dev` and `ci` stages.
+
 Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Set it only inside a wavepeek-managed devcontainer or CI image; outside the container, install or enter the proper environment instead of bypassing the guard.
 
 Run `just dev-setup` after opening or rebuilding the devcontainer. It verifies tool availability and installs the pre-commit and commit-msg hooks.

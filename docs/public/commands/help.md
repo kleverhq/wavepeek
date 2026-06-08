@@ -1,7 +1,7 @@
 ---
 id: commands/help
 title: Help command
-summary: Move from compact lookup help to detailed command help without leaving the binary.
+description: Move from compact lookup help to detailed command help without leaving the binary.
 section: commands
 see_also:
   - intro

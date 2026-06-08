@@ -1,7 +1,7 @@
 ---
 id: intro
 title: Introduction
-summary: Start here to understand wavepeek, its documentation, and the next help layer to use.
+description: Start here to understand wavepeek, its documentation, and the next help layer to use.
 section: intro
 see_also:
   - commands/overview
@@ -55,6 +55,6 @@ Use progressive disclosure when you need help:
 - `wavepeek --help` gives detailed top-level reference help.
 - `wavepeek help <command-path...>` gives detailed help for a top-level or nested command, such as `wavepeek help docs show`.
 - `wavepeek docs --help` explains the local documentation command family.
-- `wavepeek docs topics` lists packaged topic IDs and summaries.
+- `wavepeek docs topics` lists packaged topic IDs and descriptions.
 - `wavepeek docs search <query>` searches topics when you do not know the exact ID.
 - `wavepeek skill` prints the packaged agent skill Markdown from the installed build.

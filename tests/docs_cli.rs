@@ -132,7 +132,8 @@ fn docs_topics_json_uses_standard_envelope() {
     assert_eq!(topics[0]["id"], "intro");
     assert_eq!(topics[0]["title"], "Introduction");
     assert_eq!(topics[0]["section"], "intro");
-    assert!(topics[0]["summary"].is_string());
+    assert!(topics[0]["description"].is_string());
+    assert!(topics[0].get("summary").is_none());
     assert!(topics[0]["see_also"].is_array());
 }
 
@@ -157,13 +158,13 @@ fn docs_search_ranks_matches_deterministically() {
         .expect("troubleshooting/empty-results should match");
     assert_eq!(matches[heading_idx]["match_kind"], "heading");
 
-    let title_or_summary_idx = matches
+    let title_or_description_idx = matches
         .iter()
         .position(|entry| entry["topic"]["id"] == "reference/expression-language")
         .expect("reference/expression-language should match");
     assert_eq!(
-        matches[title_or_summary_idx]["match_kind"],
-        "title_or_summary"
+        matches[title_or_description_idx]["match_kind"],
+        "title_or_description"
     );
 
     let body_idx = matches
@@ -178,8 +179,8 @@ fn docs_search_ranks_matches_deterministically() {
     assert_eq!(matches[id_prefix_idx]["match_kind"], "id_prefix");
 
     assert!(heading_idx > 0);
-    assert!(title_or_summary_idx > heading_idx);
-    assert!(body_idx > title_or_summary_idx);
+    assert!(title_or_description_idx > heading_idx);
+    assert!(body_idx > title_or_description_idx);
     assert!(id_prefix_idx > body_idx);
 }
 
@@ -256,13 +257,27 @@ fn docs_show_unknown_topic_suggests_close_matches() {
 }
 
 #[test]
-fn docs_show_summary_prints_only_stored_summary_text() {
-    let output = successful_stdout_text(&["docs", "show", "commands/change", "--summary"]);
+fn docs_show_description_prints_only_stored_description_text() {
+    let output = successful_stdout_text(&["docs", "show", "commands/change", "--description"]);
 
     assert_eq!(
         output.trim(),
         "Inspect value transitions across a bounded time range."
     );
+}
+
+#[test]
+fn docs_show_summary_flag_is_not_supported() {
+    let output = wavepeek_cmd()
+        .args(["docs", "show", "commands/change", "--summary"])
+        .output()
+        .expect("docs show should execute");
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.contains("unexpected argument '--summary'"));
 }
 
 #[test]

@@ -1,7 +1,7 @@
 ---
 id: commands/docs
 title: Docs command
-summary: Browse packaged topics, search local documentation, and export Markdown.
+description: Browse packaged topics, search local documentation, and export Markdown.
 section: commands
 see_also:
   - intro
@@ -20,15 +20,15 @@ For exact syntax and flags, run:
 
 ## Topic discovery
 
-Run `wavepeek docs topics` to list packaged topic IDs and summaries. Topic IDs are stable slash-separated names such as `commands/change` or `reference/command-model`.
+Run `wavepeek docs topics` to list packaged topic IDs and descriptions. Topic IDs are stable slash-separated names such as `commands/change` or `reference/command-model`.
 
-Run `wavepeek docs show <topic>` to print one topic body as Markdown. Front matter is removed from display output. Add `--summary` when you only need the stored summary text.
+Run `wavepeek docs show <topic>` to print one topic body as Markdown. Front matter is removed from display output. Add `--description` when you only need the stored description text.
 
 Run `wavepeek docs search <query>` when you do not know the exact topic ID.
 
 ## Search behavior
 
-Docs search is deterministic and case-insensitive. Queries are plain text, not regular expressions. They are split on whitespace. Search covers topic ID, title, summary, Markdown headings, and Markdown body text.
+Docs search is deterministic and case-insensitive. Queries are plain text, not regular expressions. They are split on whitespace. Search covers topic ID, title, description, Markdown headings, and Markdown body text.
 
 Matches that cover more distinct query tokens rank ahead of weaker matches. Remaining ties use structural match strength and then topic ID order, so repeated searches with the same installed binary produce stable results.
 

@@ -1,7 +1,7 @@
 ---
 id: commands/overview
 title: Command overview
-summary: Choose the right command family before opening exact command help.
+description: Choose the right command family before opening exact command help.
 section: commands
 see_also:
   - commands/help

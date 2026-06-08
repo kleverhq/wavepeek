@@ -1,7 +1,7 @@
 ---
 id: reference/expression-language
 title: Expression Language Contract
-summary: Syntax and semantics for event and value expressions used by change and property.
+description: Syntax and semantics for event and value expressions used by change and property.
 section: reference
 see_also:
   - commands/change

@@ -1,7 +1,7 @@
 ---
 id: commands/value
 title: Value command
-summary: Sample signal values at one timestamp.
+description: Sample signal values at one timestamp.
 section: commands
 see_also:
   - commands/overview
@@ -85,7 +85,7 @@ Use this for spot checks between edges or between visible value changes.
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,data --json
-{"$schema":"https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v0.json","command":"value","data":{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]},"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"value","data":{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]},"warnings":[]}
 ```
 
 Use this when another tool needs deterministic parsing instead of human formatting.

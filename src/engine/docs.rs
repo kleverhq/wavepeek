@@ -39,7 +39,7 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
 
     let rendered = topics
         .iter()
-        .map(|topic| format!("{} — {}", topic.id, topic.summary))
+        .map(|topic| format!("{} — {}", topic.id, topic.description))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -48,8 +48,8 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
 
 fn show(args: DocsShowArgs) -> Result<CommandResult, WavepeekError> {
     let topic = docs::lookup_topic(&args.topic)?.ok_or_else(|| unknown_topic_error(&args.topic))?;
-    let rendered = if args.summary {
-        topic.summary.summary.clone()
+    let rendered = if args.description {
+        topic.summary.description.clone()
     } else {
         topic.body.clone()
     };
@@ -89,7 +89,7 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
                 "{}  {} — {} [{}]",
                 entry.topic.id,
                 entry.topic.title,
-                entry.topic.summary,
+                entry.topic.description,
                 match_label(entry.match_kind)
             )
         })
@@ -141,7 +141,7 @@ fn match_label(kind: crate::docs::MatchKind) -> &'static str {
         crate::docs::MatchKind::IdExact => "matched id",
         crate::docs::MatchKind::IdPrefix => "matched id prefix",
         crate::docs::MatchKind::TitleExact => "matched title",
-        crate::docs::MatchKind::TitleOrSummary => "matched title or summary",
+        crate::docs::MatchKind::TitleOrDescription => "matched title or description",
         crate::docs::MatchKind::Heading => "matched heading",
         crate::docs::MatchKind::Body => "matched body",
     }
@@ -192,23 +192,23 @@ mod tests {
     }
 
     #[test]
-    fn show_uses_summary_flag_and_unknown_topic_suggestions() {
-        let summary = run(DocsArgs {
+    fn show_uses_description_flag_and_unknown_topic_suggestions() {
+        let description = run(DocsArgs {
             command: Some(DocsCommand::Show(DocsShowArgs {
                 topic: "intro".to_string(),
-                summary: true,
+                description: true,
             })),
         })
-        .expect("summary show should succeed");
+        .expect("description show should succeed");
         assert!(matches!(
-            summary.data,
+            description.data,
             CommandData::Text(ref text) if !text.contains("# ") && text.contains("wavepeek")
         ));
 
         let body = run(DocsArgs {
             command: Some(DocsCommand::Show(DocsShowArgs {
                 topic: "intro".to_string(),
-                summary: false,
+                description: false,
             })),
         })
         .expect("body show should succeed");
@@ -220,7 +220,7 @@ mod tests {
         let error = run(DocsArgs {
             command: Some(DocsCommand::Show(DocsShowArgs {
                 topic: "commands/cha".to_string(),
-                summary: false,
+                description: false,
             })),
         })
         .expect_err("unknown topic should fail");
@@ -290,8 +290,8 @@ mod tests {
         assert_eq!(match_label(MatchKind::IdPrefix), "matched id prefix");
         assert_eq!(match_label(MatchKind::TitleExact), "matched title");
         assert_eq!(
-            match_label(MatchKind::TitleOrSummary),
-            "matched title or summary"
+            match_label(MatchKind::TitleOrDescription),
+            "matched title or description"
         );
         assert_eq!(match_label(MatchKind::Heading), "matched heading");
         assert_eq!(match_label(MatchKind::Body), "matched body");

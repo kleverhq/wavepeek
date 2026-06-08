@@ -1,7 +1,7 @@
 ---
 id: troubleshooting/empty-results
 title: Empty results
-summary: Diagnose valid queries that return no rows, no matches, or only a warning.
+description: Diagnose valid queries that return no rows, no matches, or only a warning.
 section: troubleshooting
 see_also:
   - commands/docs

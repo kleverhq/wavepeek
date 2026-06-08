@@ -13,7 +13,7 @@ pub fn wavepeek_cmd() -> Command {
 #[allow(dead_code)]
 pub fn expected_schema_url() -> &'static str {
     concat!(
-        "https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v",
+        "https://kleverhq.github.io/wavepeek/wavepeek_v",
         env!("CARGO_PKG_VERSION_MAJOR"),
         ".json"
     )

@@ -20,7 +20,7 @@ pub enum DocsCommand {
         long_about = r#"List embedded documentation topics.
 
 Behavior:
-- Prints each stable topic ID and summary.
+- Prints each stable topic ID and description.
 - `--json` emits the standard machine-readable envelope for docs topic metadata."#
     )]
     Topics(DocsTopicsArgs),
@@ -35,7 +35,7 @@ Behavior:
 
 Behavior:
 - Query is plain text, not a regular expression; it is normalized case-insensitively and split into whitespace tokens.
-- Scope searches topic IDs, titles, summaries, Markdown headings, and Markdown bodies.
+- Scope searches topic IDs, titles, descriptions, Markdown headings, and Markdown bodies.
 - `--json` emits the standard machine-readable envelope for ranked search results (contract: see `wavepeek schema`)."#
     )]
     Search(DocsSearchArgs),
@@ -63,9 +63,9 @@ pub struct DocsShowArgs {
     /// Slash-separated topic ID (see 'wavepeek docs topics')
     #[arg(value_name = "TOPIC")]
     pub topic: String,
-    /// Print only the summary text
+    /// Print only the description text
     #[arg(long)]
-    pub summary: bool,
+    pub description: bool,
 }
 
 #[derive(Debug, Args)]

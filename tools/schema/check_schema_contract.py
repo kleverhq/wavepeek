@@ -10,7 +10,8 @@ import sys
 import tomllib
 
 
-REPOSITORY = "https://raw.githubusercontent.com/kleverhq/wavepeek"
+SCHEMA_PAGES_BASE = "https://kleverhq.github.io/wavepeek"
+RAW_REPOSITORY = "https://raw.githubusercontent.com/kleverhq/wavepeek"
 
 
 def fail(message: str, *, hint_update_schema: bool = False) -> None:
@@ -34,11 +35,11 @@ def current_schema_path(major: str) -> pathlib.Path:
 
 
 def expected_schema_url(major: str) -> str:
-    return f"{REPOSITORY}/main/schema/wavepeek_v{major}.json"
+    return f"{SCHEMA_PAGES_BASE}/wavepeek_v{major}.json"
 
 
 def expected_schema_url_pattern(major: str) -> str:
-    return rf"^{re.escape(REPOSITORY)}/main/schema/wavepeek_v{re.escape(major)}\.json$"
+    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek_v{re.escape(major)}\.json$"
 
 
 def validate_schema_path(schema_path: pathlib.Path, major: str) -> None:
@@ -112,7 +113,7 @@ def validate_artifact_schema_url_pattern(schema: dict[str, object], version: str
             f"expected URL {expected_url}"
         )
 
-    old_url = f"{REPOSITORY}/v{version}/schema/wavepeek.json"
+    old_url = f"{RAW_REPOSITORY}/v{version}/schema/wavepeek.json"
     if artifact_url_pattern.fullmatch(old_url) is not None:
         fail(
             "error: schema: canonical schema properties.$schema.pattern still accepts "
@@ -133,6 +134,37 @@ def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> N
             f"{schema_path} and 'wavepeek schema' output",
             hint_update_schema=True,
         )
+
+
+def validate_docs_metadata_schema(schema: dict[str, object]) -> None:
+    try:
+        topic_summary = schema["$defs"]["topicSummary"]  # type: ignore[index]
+        topic_required = topic_summary["required"]  # type: ignore[index]
+        topic_properties = topic_summary["properties"]  # type: ignore[index]
+        match_kind = schema["$defs"]["docsSearchMatch"]["properties"]["match_kind"]  # type: ignore[index]
+        match_kind_enum = match_kind["enum"]  # type: ignore[index]
+    except (KeyError, TypeError):
+        fail("error: schema: canonical schema is missing docs metadata definitions")
+
+    if not isinstance(topic_required, list):
+        fail("error: schema: topicSummary.required must be an array")
+    if not isinstance(topic_properties, dict):
+        fail("error: schema: topicSummary.properties must be an object")
+    if not isinstance(match_kind_enum, list):
+        fail("error: schema: docsSearchMatch.match_kind.enum must be an array")
+
+    if "description" not in topic_required:
+        fail("error: schema: topicSummary must require description")
+    if "summary" in topic_required:
+        fail("error: schema: topicSummary must not require legacy summary")
+    if "description" not in topic_properties:
+        fail("error: schema: topicSummary must define description")
+    if "summary" in topic_properties:
+        fail("error: schema: topicSummary must not define current summary property")
+    if "title_or_description" not in match_kind_enum:
+        fail("error: schema: docs search match kind enum must include title_or_description")
+    if "title_or_summary" in match_kind_enum:
+        fail("error: schema: docs search match kind enum must not include title_or_summary")
 
 
 def validate_runtime_envelope_url(version: str, major: str) -> None:
@@ -169,7 +201,7 @@ def validate_runtime_envelope_url(version: str, major: str) -> None:
             f"{actual_schema_url}"
         )
 
-    obsolete_url = f"{REPOSITORY}/v{version}/schema/wavepeek.json"
+    obsolete_url = f"{RAW_REPOSITORY}/v{version}/schema/wavepeek.json"
     if actual_schema_url == obsolete_url:
         fail("error: schema: envelope $schema URL still uses obsolete full-semver path")
 
@@ -185,6 +217,7 @@ def main() -> None:
     validate_schema_path(schema_path, major)
     schema_bytes, schema = load_schema(schema_path)
     validate_artifact_schema_url_pattern(schema, version, major)
+    validate_docs_metadata_schema(schema)
     validate_runtime_schema(schema_path, schema_bytes)
     validate_runtime_envelope_url(version, major)
 

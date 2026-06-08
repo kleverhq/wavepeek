@@ -1,6 +1,7 @@
 {
     "name": "wavepeek-workspace",
     "build": {
+        "context": "..",
         "dockerfile": "Dockerfile",
         "target": "dev"
     },

@@ -11,7 +11,7 @@ fn topic(id: &str) -> TopicSummary {
     TopicSummary {
         id: id.to_string(),
         title: id.to_string(),
-        summary: format!("summary for {id}"),
+        description: format!("description for {id}"),
         section: "commands".to_string(),
         see_also: Vec::new(),
     }
@@ -24,14 +24,14 @@ fn exercises_docs_topics_human_json_and_warning_rendering() {
         topics: topics.clone(),
     });
     let rendered = render_human(&data, HumanRenderOptions::default());
-    assert!(rendered.contains("commands/change — summary for commands/change"));
-    assert!(rendered.contains("commands/value — summary for commands/value"));
+    assert!(rendered.contains("commands/change — description for commands/change"));
+    assert!(rendered.contains("commands/value — description for commands/value"));
 
     let search = CommandData::DocsSearch(DocsSearchData {
         query: "change".to_string(),
         matches: vec![DocsSearchMatchData {
             topic: topics[0].clone(),
-            match_kind: MatchKind::TitleOrSummary,
+            match_kind: MatchKind::TitleOrDescription,
             matched_tokens: 1,
         }],
     });

@@ -1,7 +1,7 @@
 ---
 id: commands/schema
 title: Schema command
-summary: Fetch the exact JSON contract this build guarantees for `--json` output.
+description: Fetch the exact JSON contract this build guarantees for `--json` output.
 section: commands
 see_also:
   - commands/overview

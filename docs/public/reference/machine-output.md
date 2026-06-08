@@ -1,7 +1,7 @@
 ---
 id: reference/machine-output
 title: Machine Output Contract
-summary: Stable stdout, stderr, JSON envelope, warning, schema, error, and exit-code behavior.
+description: Stable stdout, stderr, JSON envelope, warning, schema, error, and exit-code behavior.
 section: reference
 see_also:
   - reference/command-model
@@ -28,7 +28,7 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 ```json
 {
-  "$schema": "https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_v<major>.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/wavepeek_v<major>.json",
   "command": "<command>",
   "data": {},
   "warnings": []

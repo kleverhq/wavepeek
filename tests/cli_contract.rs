@@ -757,16 +757,17 @@ fn docs_show_help_is_layered() {
 
     assert!(short_help.contains("Usage: wavepeek docs show [OPTIONS] <TOPIC>"));
     assert!(short_help.contains("Slash-separated topic ID (see 'wavepeek docs topics')"));
-    assert!(short_help.contains("Print only the summary text"));
+    assert!(short_help.contains("Print only the description text"));
     assert!(
         !short_help.contains("excluding YAML front matter"),
         "docs show -h should stay compact"
     );
-    assert!(long_help.contains("--summary"));
+    assert!(long_help.contains("--description"));
+    assert!(!long_help.contains("--summary"));
     assert!(!long_help.contains("Behavior:"));
     assert!(!long_help.contains("raw Markdown"));
     assert!(!long_help.contains("excluding YAML front matter"));
-    assert!(!long_help.contains("`--summary` prints only the summary text."));
+    assert!(!long_help.contains("`--description` prints only the description text."));
     assert!(!long_help.contains("Unknown topic IDs fail"));
     assert!(!long_help.contains("Examples:"));
     assert!(

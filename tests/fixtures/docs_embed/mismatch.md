@@ -1,7 +1,7 @@
 ---
 id: commands/change
 title: Wrong path
-summary: Path mismatch fixture
+description: Path mismatch fixture
 section: commands
 see_also: []
 ---

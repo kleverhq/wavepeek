@@ -23,7 +23,7 @@ pub const EXPORT_FORMAT_VERSION: u32 = 1;
 pub struct TopicSummary {
     pub id: String,
     pub title: String,
-    pub summary: String,
+    pub description: String,
     pub section: String,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub see_also: Vec<String>,
@@ -44,7 +44,7 @@ pub enum MatchKind {
     IdExact,
     IdPrefix,
     TitleExact,
-    TitleOrSummary,
+    TitleOrDescription,
     Heading,
     Body,
 }
@@ -55,7 +55,7 @@ impl MatchKind {
             Self::IdExact => 0,
             Self::IdPrefix => 1,
             Self::TitleExact => 2,
-            Self::TitleOrSummary => 3,
+            Self::TitleOrDescription => 3,
             Self::Heading => 4,
             Self::Body => 5,
         }
@@ -123,7 +123,8 @@ pub struct ExportManifest {
 struct FrontMatter {
     id: String,
     title: String,
-    summary: String,
+    #[serde(alias = "summary")]
+    description: String,
     section: String,
     #[serde(default)]
     see_also: Vec<String>,
@@ -190,7 +191,7 @@ pub fn suggest_topics(input: &str, limit: usize) -> Vec<TopicSummary> {
         .filter_map(|record| {
             let id = record.summary.id.to_ascii_lowercase();
             let title = record.summary.title.to_ascii_lowercase();
-            let summary = record.summary.summary.to_ascii_lowercase();
+            let description = record.summary.description.to_ascii_lowercase();
 
             let score = if id.starts_with(&normalized) {
                 0
@@ -198,7 +199,7 @@ pub fn suggest_topics(input: &str, limit: usize) -> Vec<TopicSummary> {
                 1
             } else if title.contains(&normalized) {
                 2
-            } else if summary.contains(&normalized) {
+            } else if description.contains(&normalized) {
                 3
             } else {
                 return None;
@@ -392,7 +393,7 @@ fn parse_topic_file(file: &File<'_>) -> Result<TopicRecord, String> {
         summary: TopicSummary {
             id: metadata.id,
             title: metadata.title,
-            summary: metadata.summary,
+            description: metadata.description,
             section: metadata.section,
             see_also: metadata.see_also,
         },
@@ -474,7 +475,7 @@ fn search_match(
 ) -> Option<SearchMatch> {
     let normalized_id = record.summary.id.to_ascii_lowercase();
     let normalized_title = record.summary.title.to_ascii_lowercase();
-    let normalized_summary = record.summary.summary.to_ascii_lowercase();
+    let normalized_description = record.summary.description.to_ascii_lowercase();
     let normalized_headings = record
         .headings
         .iter()
@@ -509,8 +510,8 @@ fn search_match(
     for token in tokens {
         let token_kind = if id_matches_token(&normalized_id, token) {
             Some(MatchKind::IdPrefix)
-        } else if normalized_title.contains(token) || normalized_summary.contains(token) {
-            Some(MatchKind::TitleOrSummary)
+        } else if normalized_title.contains(token) || normalized_description.contains(token) {
+            Some(MatchKind::TitleOrDescription)
         } else if normalized_headings
             .iter()
             .any(|heading| heading.contains(token))
@@ -709,7 +710,7 @@ mod docs_inline_derive_tests {
         let topic = TopicSummary {
             id: "commands/demo".to_string(),
             title: "Demo".to_string(),
-            summary: "Demo summary".to_string(),
+            description: "Demo description".to_string(),
             section: "commands".to_string(),
             see_also: Vec::new(),
         };
@@ -717,10 +718,16 @@ mod docs_inline_derive_tests {
         assert!(format!("{topic:?}").contains("Demo"));
         assert!(serde_json::to_string(&topic).unwrap().contains("Demo"));
         let front: FrontMatter = serde_yaml::from_str(
-            "id: commands/demo\ntitle: Demo\nsummary: Demo summary\nsection: commands\n",
+            "id: commands/demo\ntitle: Demo\ndescription: Demo description\nsection: commands\n",
         )
         .unwrap();
         assert!(format!("{front:?}").contains("commands/demo"));
+
+        let legacy_front: FrontMatter = serde_yaml::from_str(
+            "id: commands/legacy\ntitle: Legacy\nsummary: Legacy summary\nsection: commands\n",
+        )
+        .unwrap();
+        assert_eq!(legacy_front.description, "Legacy summary");
     }
 }
 
@@ -805,13 +812,13 @@ mod tests {
             .expect("troubleshooting/empty-results should match");
         assert_eq!(matches[heading_idx].match_kind, MatchKind::Heading);
 
-        let title_or_summary_idx = matches
+        let title_or_description_idx = matches
             .iter()
             .position(|entry| entry.topic.id == "reference/expression-language")
             .expect("reference/expression-language should match");
         assert_eq!(
-            matches[title_or_summary_idx].match_kind,
-            MatchKind::TitleOrSummary
+            matches[title_or_description_idx].match_kind,
+            MatchKind::TitleOrDescription
         );
 
         let body_idx = matches
@@ -826,8 +833,8 @@ mod tests {
         assert_eq!(matches[id_prefix_idx].match_kind, MatchKind::IdPrefix);
 
         assert!(heading_idx > 0);
-        assert!(title_or_summary_idx > heading_idx);
-        assert!(body_idx > title_or_summary_idx);
+        assert!(title_or_description_idx > heading_idx);
+        assert!(body_idx > title_or_description_idx);
         assert!(id_prefix_idx > body_idx);
     }
 
@@ -1233,7 +1240,7 @@ mod tests {
         assert!(
             suggest_topics("exact JSON contract", 10)
                 .iter()
-                .any(|topic| topic.summary.contains("exact JSON contract"))
+                .any(|topic| topic.description.contains("exact JSON contract"))
         );
         assert!(suggest_topics("no such docs phrase", 10).is_empty());
 
@@ -1243,13 +1250,13 @@ mod tests {
         let summary_record = fake_topic(
             "misc/topic",
             "Totally unrelated",
-            "Contains command keyword in summary",
+            "Contains command keyword in description",
             "misc",
             &[],
         );
         let summary_match = search_match(&summary_record, "command", &["command".to_string()])
-            .expect("summary token should match");
-        assert_eq!(summary_match.match_kind, MatchKind::TitleOrSummary);
+            .expect("description token should match");
+        assert_eq!(summary_match.match_kind, MatchKind::TitleOrDescription);
 
         let exact_title = search_match(
             &fake_topic("misc/exact", "Command", "s", "misc", &[]),
@@ -1271,7 +1278,7 @@ mod tests {
             &fake_topic(
                 "misc/title-body",
                 "Command",
-                "summary",
+                "description",
                 "misc",
                 &["Command details"],
             ),
@@ -1279,7 +1286,7 @@ mod tests {
             &["command".to_string(), "details".to_string()],
         )
         .expect("multiple tokens should match");
-        assert_eq!(title_beats_body.match_kind, MatchKind::TitleOrSummary);
+        assert_eq!(title_beats_body.match_kind, MatchKind::TitleOrDescription);
         assert_eq!(title_beats_body.matched_tokens, 2);
     }
 
@@ -1300,7 +1307,7 @@ mod tests {
 
     #[test]
     fn export_helpers_report_filesystem_collisions() {
-        let nested = fake_topic("nested/topic", "Nested", "summary", "misc", &["Nested"]);
+        let nested = fake_topic("nested/topic", "Nested", "description", "misc", &["Nested"]);
         let catalog = DocsCatalog {
             topics: BTreeMap::from([(nested.summary.id.clone(), nested.clone())]),
         };
@@ -1376,7 +1383,7 @@ mod tests {
     fn fake_topic(
         id: &str,
         title: &str,
-        summary: &str,
+        description: &str,
         section: &str,
         headings: &[&str],
     ) -> TopicRecord {
@@ -1384,12 +1391,12 @@ mod tests {
             summary: TopicSummary {
                 id: id.to_string(),
                 title: title.to_string(),
-                summary: summary.to_string(),
+                description: description.to_string(),
                 section: section.to_string(),
                 see_also: vec![],
             },
-            raw_markdown: format!("---\nid: {id}\n---\n# {title}\n{summary}\n"),
-            body: format!("# {title}\n{summary}\nbodytoken details\n"),
+            raw_markdown: format!("---\nid: {id}\n---\n# {title}\n{description}\n"),
+            body: format!("# {title}\n{description}\nbodytoken details\n"),
             headings: headings
                 .iter()
                 .map(|heading| (*heading).to_string())

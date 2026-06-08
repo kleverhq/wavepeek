@@ -1,7 +1,7 @@
 ---
 id: reference/command-model
 title: Command Model Contract
-summary: Stable semantics for waveform inputs, time values, names, output modes, bounded output, and ordering.
+description: Stable semantics for waveform inputs, time values, names, output modes, bounded output, and ordering.
 section: reference
 see_also:
   - reference/machine-output

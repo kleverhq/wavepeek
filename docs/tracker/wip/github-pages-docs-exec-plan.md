@@ -41,7 +41,8 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - [x] (2026-06-08 07:32Z) Milestone 6 implemented and locally validated. Added `.github/workflows/docs.yml` with manual `workflow_dispatch`, split `stage` and `push` jobs, staging checkout without persisted contents-write credentials, staged bundle upload/download, and explicit `repair_existing_version`. Updated `.github/workflows/release.yml` so tag releases dispatch the docs workflow only after `softprops/action-gh-release` creates the GitHub Release. Validation passed for `actionlint .github/workflows/*.yml`, `just check-actions`, and `git diff --check`.
 - [x] (2026-06-08 07:32Z) Maintainer docs for automation, quality, release, and testing were updated and committed.
 - [x] (2026-06-08 07:48Z) Implementation review lanes completed for code, workflow/release safety, and docs consistency. Findings were applied: `mike` aliases now use copy mode and allow `.nojekyll`; push-side verification recomputes allowed paths, disables rename hiding, and requires root artifacts; source refs must resolve as actual tags; docs workflow requires default-branch dispatch and a published stable GitHub Release; release checkout no longer persists credentials; release reruns skip crates.io publish when the crate version is already published; just deploy recipes expose `repair` mode; and stale ExecPlan orientation text was updated.
-- [ ] Re-run impacted checks, run a focused control review, execute final `just check` and `just ci`, then record the final outcome.
+- [x] (2026-06-08 08:07Z) Focused control review completed and findings were applied. Push-side path matching now treats `wavepeek_v*.json` as explicit root schema filenames only, required root artifacts must be blobs, duplicate `versions.json` version entries are rejected, and alias arrays must contain only strings.
+- [ ] Re-run impacted checks, execute final `just check` and `just ci`, then record the final outcome.
 
 ## Surprises & Discoveries
 
@@ -59,6 +60,9 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 
 - Observation: The implementation review found that mike's default alias mode can create a root `latest` symlink and `.nojekyll`, and that push-side verification must not trust staged metadata to define its own allowed path policy.
   Evidence: code and workflow review lanes on 2026-06-08 reported high-severity findings for the default mike alias path shape, metadata-controlled allowlist, rename-hidden path changes, and missing root-artifact verification. The fix sets `mike deploy --alias-type copy`, allows `.nojekyll`, recomputes the allowed path set during push verification, uses `git diff --no-renames`, and checks `skill.md` plus `wavepeek_v{major}.json` in the staged tree.
+
+- Observation: The final control review found verifier edge cases around tree objects and malformed `versions.json` data.
+  Evidence: the 2026-06-08 control pass reported that `wavepeek_v*.json` path matching could admit nested paths, required root artifacts could be trees instead of blobs, duplicate `versions.json` version entries could overwrite each other before semantic checks, and non-string aliases were silently dropped. The fix uses explicit root schema path matching, verifies required root artifacts are Git blobs, rejects duplicate version names, and rejects non-string aliases.
 
 ## Decision Log
 
@@ -623,3 +627,5 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with `workflow_dis
 2026-06-08 07:32Z: Recorded Milestone 6 implementation. The docs workflow is manual and split into staging and push jobs, while the release workflow dispatches it only after GitHub Release creation.
 
 2026-06-08 07:48Z: Recorded implementation review fixes. The plan now matches the hardened publication verifier, trusted default-branch docs workflow dispatch, stable-release preflight, release rerun behavior, and actual just repair parameters.
+
+2026-06-08 08:07Z: Recorded final control-review fixes. The verifier now treats required root artifacts as root blob paths and rejects duplicate or malformed `versions.json` alias data.

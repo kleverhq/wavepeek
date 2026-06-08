@@ -379,7 +379,10 @@ def version_entries_by_name(versions: Any) -> dict[str, dict[str, Any]]:
     for entry in versions:
         if not isinstance(entry, dict) or not isinstance(entry.get("version"), str):
             fail("versions.json entries must be objects with a string version")
-        entries[entry["version"]] = entry
+        version = entry["version"]
+        if version in entries:
+            fail(f"versions.json contains duplicate version {version!r}")
+        entries[version] = entry
     return entries
 
 
@@ -602,7 +605,20 @@ def changed_paths(remote_base: str | None, staged_branch: str, runner: CommandRu
 
 
 def path_allowed(path: str, patterns: list[str]) -> bool:
-    return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+    for pattern in patterns:
+        if pattern == "wavepeek_v*.json":
+            if re.fullmatch(r"wavepeek_v[0-9]+[.]json", path):
+                return True
+        elif pattern.endswith("/**"):
+            prefix = pattern[:-3] + "/"
+            if path.startswith(prefix):
+                return True
+        elif "*" in pattern:
+            if fnmatch.fnmatch(path, pattern):
+                return True
+        elif path == pattern:
+            return True
+    return False
 
 
 def verify_allowed_paths(paths_changed: list[str], patterns: list[str]) -> None:
@@ -617,7 +633,9 @@ def aliases(entry: dict[str, Any] | None) -> set[str]:
     raw = entry.get("aliases", [])
     if not isinstance(raw, list):
         fail("versions.json aliases must be arrays")
-    return {item for item in raw if isinstance(item, str)}
+    if any(not isinstance(item, str) for item in raw):
+        fail("versions.json aliases must contain only strings")
+    return set(raw)
 
 
 def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
@@ -631,11 +649,11 @@ def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunne
     missing: list[str] = []
     for artifact in expected:
         result = runner.run(
-            ["git", "cat-file", "-e", f"{staged_branch}:{artifact}"],
+            ["git", "cat-file", "-t", f"{staged_branch}:{artifact}"],
             check=False,
             capture=True,
         )
-        if result.returncode != 0:
+        if result.returncode != 0 or (result.stdout or "").strip() != "blob":
             missing.append(artifact)
     if missing:
         fail("staged gh-pages bundle is missing root artifact(s): " + ", ".join(missing))

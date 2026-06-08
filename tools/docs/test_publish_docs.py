@@ -182,6 +182,11 @@ class PublishDocsTests(unittest.TestCase):
             publish_docs.verify_allowed_paths(
                 ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0")
             )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["wavepeek_v0.json/extra.json"],
+                publish_docs.allowed_path_patterns("0.5.0"),
+            )
 
     def test_changed_paths_reports_old_path_for_renames(self) -> None:
         repo = self.root / "repo-rename"
@@ -222,6 +227,31 @@ class PublishDocsTests(unittest.TestCase):
             git(repo, "commit", "-q", "-m", "remove skill")
             with self.assertRaisesRegex(publish_docs.PublishError, "skill.md"):
                 publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
+
+        repo_tree = self.root / "repo-root-artifacts-tree"
+        repo_tree.mkdir()
+        git(repo_tree, "init", "-q")
+        git(repo_tree, "config", "user.email", "docs@example.invalid")
+        git(repo_tree, "config", "user.name", "Docs Bot")
+        (repo_tree / "skill.md").write_text("skill", encoding="utf-8")
+        (repo_tree / "wavepeek_v0.json").mkdir()
+        (repo_tree / "wavepeek_v0.json" / "extra.json").write_text("{}", encoding="utf-8")
+        git(repo_tree, "add", "skill.md", "wavepeek_v0.json/extra.json")
+        git(repo_tree, "commit", "-q", "-m", "tree artifact")
+        with chdir(repo_tree):
+            with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek_v0.json"):
+                publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
+
+    def test_versions_json_rejects_duplicate_versions_and_bad_aliases(self) -> None:
+        with self.assertRaisesRegex(publish_docs.PublishError, "duplicate version"):
+            publish_docs.version_entries_by_name(
+                [
+                    {"version": "0.5.0", "aliases": []},
+                    {"version": "0.5.0", "aliases": ["latest"]},
+                ]
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "only strings"):
+            publish_docs.aliases({"version": "0.5.0", "aliases": ["latest", 1]})
 
     def test_versions_semantics_allow_new_version_and_latest_move(self) -> None:
         repo = self.root / "repo"

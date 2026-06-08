@@ -146,6 +146,18 @@ def require_ref_matches_version(source_ref: str, version: str) -> None:
         fail(f"source ref {source_ref!r} does not match version {version!r}")
 
 
+def resolve_release_tag(source_ref: str, runner: CommandRunner) -> str:
+    full_ref = f"refs/tags/{source_ref}"
+    result = runner.run(
+        ["git", "rev-parse", "--verify", f"{full_ref}^{{commit}}"],
+        check=False,
+        capture=True,
+    )
+    if result.returncode != 0:
+        fail(f"source ref {source_ref!r} must resolve to an existing Git tag")
+    return full_ref
+
+
 def package_version(source_root: pathlib.Path) -> str:
     cargo_toml = source_root / "Cargo.toml"
     if not cargo_toml.is_file():
@@ -179,9 +191,10 @@ def remove_git_worktree(path: pathlib.Path, runner: CommandRunner) -> None:
 
 
 def add_source_worktree(source_ref: str, run_paths: Paths, runner: CommandRunner) -> pathlib.Path:
+    full_ref = resolve_release_tag(source_ref, runner)
     remove_git_worktree(run_paths.source_worktree, runner)
     run_paths.source_worktree.parent.mkdir(parents=True, exist_ok=True)
-    runner.run(["git", "worktree", "add", "--detach", run_paths.source_worktree, source_ref])
+    runner.run(["git", "worktree", "add", "--detach", run_paths.source_worktree, full_ref])
     return run_paths.source_worktree
 
 
@@ -389,6 +402,8 @@ def run_mike_deploy(version: str, run_paths: Paths, runner: CommandRunner) -> No
             "origin",
             "--update-aliases",
             "--ignore-remote-status",
+            "--alias-type",
+            "copy",
             version,
             "latest",
         ],
@@ -435,6 +450,7 @@ def allowed_path_patterns(version: str) -> list[str]:
     return [
         f"{version}/**",
         "latest/**",
+        ".nojekyll",
         "versions.json",
         "index.html",
         "404.html",
@@ -532,6 +548,8 @@ def read_stage_metadata(run_paths: Paths, version: str, repair_existing_version:
         fail("staged deploy metadata final_commit is missing")
     if not isinstance(metadata.get("allowed_path_patterns"), list):
         fail("staged deploy metadata allowed_path_patterns is missing")
+    if [str(pattern) for pattern in metadata["allowed_path_patterns"]] != allowed_path_patterns(version):
+        fail("staged deploy metadata allowed_path_patterns mismatch")
     if not run_paths.bundle.is_file():
         fail(f"missing staged gh-pages bundle at {run_paths.bundle}")
     return metadata
@@ -577,7 +595,9 @@ def changed_paths(remote_base: str | None, staged_branch: str, runner: CommandRu
     if remote_base is None:
         output = git_capture(["ls-tree", "-r", "--name-only", staged_branch], runner)
     else:
-        output = git_capture(["diff", "--name-only", remote_base, staged_branch], runner)
+        output = git_capture(
+            ["diff", "--name-only", "--no-renames", remote_base, staged_branch], runner
+        )
     return [line for line in output.splitlines() if line]
 
 
@@ -604,6 +624,21 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
     clone = dict(entry)
     clone["aliases"] = sorted(alias for alias in aliases(entry) if alias != "latest")
     return clone
+
+
+def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
+    expected = ["skill.md", f"wavepeek_v{major_version(version)}.json"]
+    missing: list[str] = []
+    for artifact in expected:
+        result = runner.run(
+            ["git", "cat-file", "-e", f"{staged_branch}:{artifact}"],
+            check=False,
+            capture=True,
+        )
+        if result.returncode != 0:
+            missing.append(artifact)
+    if missing:
+        fail("staged gh-pages bundle is missing root artifact(s): " + ", ".join(missing))
 
 
 def verify_versions_semantics(
@@ -653,7 +688,8 @@ def push_staged(
     import_bundle(run_paths, metadata, runner)
     verify_fast_forward(remote_base, STAGED_BRANCH, runner)
     changed = changed_paths(remote_base, STAGED_BRANCH, runner)
-    verify_allowed_paths(changed, [str(pattern) for pattern in metadata["allowed_path_patterns"]])
+    verify_allowed_paths(changed, allowed_path_patterns(version))
+    verify_root_artifacts(STAGED_BRANCH, version, runner)
     verify_versions_semantics(
         remote_base=remote_base,
         staged_branch=STAGED_BRANCH,

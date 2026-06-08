@@ -267,22 +267,32 @@ docs-site-check: require-container
         --work-dir "{{ docs_site_dir }}"
 
 # Stage a local gh-pages update for a release tag without pushing
-docs-site-stage-deploy version=docs_version source_ref=("v" + docs_version): require-container
-    {{ python }} tools/docs/publish_docs.py stage-deploy \
-        --version "{{ version }}" \
-        --source-ref "{{ source_ref }}" \
-        --work-dir "{{ docs_site_dir }}"
+docs-site-stage-deploy version=docs_version source_ref=("v" + docs_version) repair="0": require-container
+    @repair_arg=""; \
+        if [ "{{ repair }}" = "1" ] || [ "{{ repair }}" = "true" ]; then \
+            repair_arg="--repair-existing-version"; \
+        fi; \
+        {{ python }} tools/docs/publish_docs.py stage-deploy \
+            --version "{{ version }}" \
+            --source-ref "{{ source_ref }}" \
+            --work-dir "{{ docs_site_dir }}" \
+            $repair_arg
 
 # Verify and push the staged gh-pages bundle
-docs-site-push-staged version=docs_version: require-container
-    {{ python }} tools/docs/publish_docs.py push-staged \
-        --version "{{ version }}" \
-        --work-dir "{{ docs_site_dir }}"
+docs-site-push-staged version=docs_version repair="0": require-container
+    @repair_arg=""; \
+        if [ "{{ repair }}" = "1" ] || [ "{{ repair }}" = "true" ]; then \
+            repair_arg="--repair-existing-version"; \
+        fi; \
+        {{ python }} tools/docs/publish_docs.py push-staged \
+            --version "{{ version }}" \
+            --work-dir "{{ docs_site_dir }}" \
+            $repair_arg
 
 # Stage and push a release docs update
-docs-site-deploy version=docs_version source_ref=("v" + docs_version): require-container
-    just docs-site-stage-deploy "{{ version }}" "{{ source_ref }}"
-    just docs-site-push-staged "{{ version }}"
+docs-site-deploy version=docs_version source_ref=("v" + docs_version) repair="0": require-container
+    just docs-site-stage-deploy "{{ version }}" "{{ source_ref }}" "{{ repair }}"
+    just docs-site-push-staged "{{ version }}" "{{ repair }}"
 
 # Build release binary
 build-release: require-container

@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
@@ -70,7 +72,34 @@ jobs:
           version="${TAG_VERSION#v}"
           python3 -B tools/release/extract_release_notes.py --version "$version" > "${RUNNER_TEMP}/release-notes.md"
 
+      - name: Check whether crate version is already published
+        env:
+          TAG_VERSION: ${{ github.ref_name }}
+        run: |
+          version="${TAG_VERSION#v}"
+          python3 - "$version" <<'PY'
+          import os
+          import sys
+          import urllib.error
+          import urllib.request
+
+          version = sys.argv[1]
+          url = f"https://crates.io/api/v1/crates/wavepeek/{version}"
+          request = urllib.request.Request(url, headers={"User-Agent": "wavepeek-release-ci"})
+          try:
+              with urllib.request.urlopen(request, timeout=30):
+                  published = "true"
+          except urllib.error.HTTPError as error:
+              if error.code == 404:
+                  published = "false"
+              else:
+                  raise
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"CRATE_ALREADY_PUBLISHED={published}\n")
+          PY
+
       - name: Require crates.io token
+        if: env.CRATE_ALREADY_PUBLISHED != 'true'
         env:
           CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
         run: |
@@ -80,6 +109,7 @@ jobs:
           fi
 
       - name: Publish crate to crates.io
+        if: env.CRATE_ALREADY_PUBLISHED != 'true'
         uses: devcontainers/ci@v0.3
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}

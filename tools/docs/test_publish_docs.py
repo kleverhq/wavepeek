@@ -43,6 +43,24 @@ def git(repo: pathlib.Path, *args: str) -> str:
     return result.stdout.strip()
 
 
+class RecordingRunner:
+    def __init__(self) -> None:
+        self.commands: list[list[str]] = []
+
+    def run(
+        self,
+        args,
+        *,
+        cwd=None,
+        env=None,
+        check=True,
+        capture=False,
+    ):
+        command = [str(arg) for arg in args]
+        self.commands.append(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+
 class PublishDocsTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -99,7 +117,7 @@ class PublishDocsTests(unittest.TestCase):
                     "bundle": "gh-pages.bundle",
                     "final_commit": "abc",
                     "repair_existing_version": False,
-                    "allowed_path_patterns": ["0.5.0/**"],
+                    "allowed_path_patterns": publish_docs.allowed_path_patterns("0.5.0"),
                 }
             ),
             encoding="utf-8",
@@ -111,9 +129,52 @@ class PublishDocsTests(unittest.TestCase):
         with self.assertRaisesRegex(publish_docs.PublishError, "repair flag"):
             publish_docs.read_stage_metadata(self.paths, "0.5.0", True)
 
+        data = json.loads(self.paths.metadata.read_text(encoding="utf-8"))
+        data["allowed_path_patterns"] = ["**"]
+        self.paths.metadata.write_text(json.dumps(data), encoding="utf-8")
+        with self.assertRaisesRegex(publish_docs.PublishError, "allowed_path_patterns"):
+            publish_docs.read_stage_metadata(self.paths, "0.5.0", False)
+
+    def test_release_source_ref_must_resolve_to_tag(self) -> None:
+        repo = self.root / "repo-tag"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "file.txt").write_text("content", encoding="utf-8")
+        git(repo, "add", "file.txt")
+        git(repo, "commit", "-q", "-m", "base")
+        git(repo, "tag", "v0.5.0")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            self.assertEqual(
+                publish_docs.resolve_release_tag("v0.5.0", runner),
+                "refs/tags/v0.5.0",
+            )
+            git(repo, "tag", "-d", "v0.5.0")
+            git(repo, "branch", "v0.5.0")
+            with self.assertRaisesRegex(publish_docs.PublishError, "Git tag"):
+                publish_docs.resolve_release_tag("v0.5.0", runner)
+
+    def test_mike_deploy_uses_copy_aliases_for_verifiable_latest_path(self) -> None:
+        runner = RecordingRunner()
+
+        publish_docs.run_mike_deploy("0.5.0", self.paths, runner)
+
+        deploy = runner.commands[0]
+        self.assertIn("--alias-type", deploy)
+        self.assertEqual(deploy[deploy.index("--alias-type") + 1], "copy")
+
     def test_allowed_path_patterns_limit_gh_pages_diff(self) -> None:
         publish_docs.verify_allowed_paths(
-            ["0.5.0/index.html", "latest/index.html", "versions.json", "skill.md"],
+            [
+                "0.5.0/index.html",
+                "latest/index.html",
+                ".nojekyll",
+                "versions.json",
+                "skill.md",
+            ],
             publish_docs.allowed_path_patterns("0.5.0"),
         )
 
@@ -121,6 +182,46 @@ class PublishDocsTests(unittest.TestCase):
             publish_docs.verify_allowed_paths(
                 ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0")
             )
+
+    def test_changed_paths_reports_old_path_for_renames(self) -> None:
+        repo = self.root / "repo-rename"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "0.4.0").mkdir()
+        (repo / "0.4.0" / "index.html").write_text("old", encoding="utf-8")
+        git(repo, "add", "0.4.0/index.html")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        shutil.move(repo / "0.4.0", repo / "0.5.0")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "-m", "rename")
+
+        with chdir(repo):
+            changed = publish_docs.changed_paths(base, "HEAD", publish_docs.CommandRunner())
+
+        self.assertIn("0.4.0/index.html", changed)
+        self.assertIn("0.5.0/index.html", changed)
+
+    def test_verify_root_artifacts_requires_skill_and_major_schema(self) -> None:
+        repo = self.root / "repo-root-artifacts"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "skill.md").write_text("skill", encoding="utf-8")
+        (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
+        git(repo, "add", "skill.md", "wavepeek_v0.json")
+        git(repo, "commit", "-q", "-m", "artifacts")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
+            git(repo, "rm", "-q", "skill.md")
+            git(repo, "commit", "-q", "-m", "remove skill")
+            with self.assertRaisesRegex(publish_docs.PublishError, "skill.md"):
+                publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
 
     def test_versions_semantics_allow_new_version_and_latest_move(self) -> None:
         repo = self.root / "repo"

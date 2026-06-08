@@ -1,0 +1,477 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "wavepeek JSON output envelope",
+  "description": "Canonical schema for wavepeek --json command outputs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "command",
+    "data",
+    "warnings"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "pattern": "^https://raw\\.githubusercontent\\.com/kleverhq/wavepeek/v[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?/schema/wavepeek\\.json$"
+    },
+    "command": {
+      "type": "string",
+      "enum": [
+        "info",
+        "scope",
+        "signal",
+        "value",
+        "change",
+        "property",
+        "docs topics",
+        "docs search"
+      ]
+    },
+    "data": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/infoData"
+        },
+        {
+          "$ref": "#/$defs/scopeData"
+        },
+        {
+          "$ref": "#/$defs/signalData"
+        },
+        {
+          "$ref": "#/$defs/valueData"
+        },
+        {
+          "$ref": "#/$defs/changeData"
+        },
+        {
+          "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/docsTopicsData"
+        },
+        {
+          "$ref": "#/$defs/docsSearchData"
+        }
+      ]
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "info"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/infoData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "scope"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/scopeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "signal"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/signalData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "value"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/valueData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "change"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/changeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "property"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/propertyData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs topics"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsTopicsData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs search"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsSearchData"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "infoData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time_unit",
+        "time_start",
+        "time_end"
+      ],
+      "properties": {
+        "time_unit": {
+          "type": "string"
+        },
+        "time_start": {
+          "type": "string"
+        },
+        "time_end": {
+          "type": "string"
+        }
+      }
+    },
+    "scopeData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "depth",
+          "kind"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "depth": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "kind": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "signalData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "path",
+          "kind"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "valueData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time",
+        "signals"
+      ],
+      "properties": {
+        "time": {
+          "type": "string"
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "path",
+              "value"
+            ],
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "changeData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "time",
+          "signals"
+        ],
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "signals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "value"
+              ],
+              "properties": {
+                "path": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "propertyData": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "time",
+          "kind"
+        ],
+        "properties": {
+          "time": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "match",
+              "assert",
+              "deassert"
+            ]
+          }
+        }
+      }
+    },
+    "topicSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "section"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "see_also": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "docsTopicsData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topics"
+      ],
+      "properties": {
+        "topics": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/topicSummary"
+          }
+        }
+      }
+    },
+    "docsSearchMatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "topic",
+        "match_kind",
+        "matched_tokens"
+      ],
+      "properties": {
+        "topic": {
+          "$ref": "#/$defs/topicSummary"
+        },
+        "match_kind": {
+          "type": "string",
+          "enum": [
+            "id_exact",
+            "id_prefix",
+            "title_exact",
+            "title_or_summary",
+            "heading",
+            "body"
+          ]
+        },
+        "matched_tokens": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "docsSearchData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "query",
+        "matches"
+      ],
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/docsSearchMatch"
+          }
+        }
+      }
+    }
+  }
+}

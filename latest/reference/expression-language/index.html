@@ -1,0 +1,3114 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Syntax and semantics for event and value expressions used by change and property.">
+      
+      
+      
+        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/0.5.0/reference/expression-language/">
+      
+      
+        <link rel="prev" href="../command-model/">
+      
+      
+        <link rel="next" href="../machine-output/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Expression Language Contract - wavepeek</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#expression-language-contract" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="wavepeek" class="md-header__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            wavepeek
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Expression Language Contract
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="wavepeek" class="md-nav__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    wavepeek
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Introduction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Commands
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Change command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/docs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Docs command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/help/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Help command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/info/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Info command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/property/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Property command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/schema/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Schema command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/scope/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scope command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/signal/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Signal command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/skill/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skill command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../commands/value/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Value command
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Workflows
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Workflows
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../workflows/find-first-change/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Find first change
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Troubleshooting
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/empty-results/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Empty results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/scoped-vs-canonical-names/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Scoped vs canonical names
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/time-tokens-and-alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time tokens and alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../troubleshooting/unsupported-signal-encodings/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Unsupported signal encodings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../command-model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command Model Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression Language Contract
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Expression Language Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-event-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Event Expressions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Event Expressions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-surface-forms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Surface Forms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-names-and-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Names and Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-basic-event-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Basic Event Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-unions-and-iff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 Unions and iff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-precedence-and-grouping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5 Precedence and Grouping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16-grammar-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6 Grammar Sketch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-boolean-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Boolean Expressions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Boolean Expressions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-operand-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Operand Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-operand-forms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Operand Forms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.2 Operand Forms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221-literals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2.1 Literals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222-primary-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2.2 Primary Expressions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-type-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Type Casts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.3 Type Casts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#231-cast-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.1 Cast Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#232-supported-cast-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.2 Supported Cast Targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#233-general-cast-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.3 General Cast Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#234-signedness-only-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.4 Signedness-Only Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#235-integral-resize-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.5 Integral Resize Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#236-state-domain-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.6 State-Domain Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#237-inline-vector-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.7 Inline Vector Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#238-operand-type-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.8 Operand-Type Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#239-enum-label-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.9 Enum Label References
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2310-enum-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.10 Enum Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2311-real-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.11 Real Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2312-string-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.12 String Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2313-event-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.13 Event Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-implicit-conversions-and-common-type-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Implicit Conversions and Common-Type Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.4 Implicit Conversions and Common-Type Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#241-boolean-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.1 Boolean Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#242-integral-common-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.2 Integral Common Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#243-enum-participation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.3 Enum Participation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#244-real-common-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.4 Real Common Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#245-string-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.5 String Restrictions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#246-result-type-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.6 Result-Type Guidance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#251-supported-operator-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.1 Supported Operator Families
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#252-operator-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.2 Operator Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#253-selection-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.3 Selection Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#254-logical-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.4 Logical Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#255-bitwise-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.5 Bitwise Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#256-reduction-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.6 Reduction Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#257-exponentiation-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.7 Exponentiation Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#258-arithmetic-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.8 Arithmetic Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#259-shift-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.9 Shift Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2510-comparison-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.10 Comparison Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2511-equality-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.11 Equality Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2512-conditional-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.12 Conditional Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2513-inside-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.13 Inside Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2514-concatenation-and-replication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.14 Concatenation and Replication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-precedence-and-associativity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Precedence and Associativity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-parser-level-grammar-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Parser-Level Grammar Sketch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../machine-output/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Machine Output Contract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-event-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Event Expressions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Event Expressions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-surface-forms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.1 Surface Forms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-names-and-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.2 Names and Resolution
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-basic-event-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.3 Basic Event Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-unions-and-iff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.4 Unions and iff
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-precedence-and-grouping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.5 Precedence and Grouping
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#16-grammar-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1.6 Grammar Sketch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-boolean-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Boolean Expressions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Boolean Expressions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#21-operand-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.1 Operand Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#22-operand-forms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2 Operand Forms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.2 Operand Forms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#221-literals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2.1 Literals
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#222-primary-expressions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.2.2 Primary Expressions
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#23-type-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3 Type Casts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.3 Type Casts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#231-cast-syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.1 Cast Syntax
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#232-supported-cast-targets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.2 Supported Cast Targets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#233-general-cast-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.3 General Cast Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#234-signedness-only-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.4 Signedness-Only Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#235-integral-resize-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.5 Integral Resize Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#236-state-domain-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.6 State-Domain Rules
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#237-inline-vector-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.7 Inline Vector Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#238-operand-type-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.8 Operand-Type Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#239-enum-label-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.9 Enum Label References
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2310-enum-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.10 Enum Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2311-real-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.11 Real Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2312-string-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.12 String Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2313-event-casts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.3.13 Event Casts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#24-implicit-conversions-and-common-type-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4 Implicit Conversions and Common-Type Rules
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.4 Implicit Conversions and Common-Type Rules">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#241-boolean-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.1 Boolean Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#242-integral-common-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.2 Integral Common Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#243-enum-participation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.3 Enum Participation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#244-real-common-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.4 Real Common Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#245-string-restrictions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.5 String Restrictions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#246-result-type-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.4.6 Result-Type Guidance
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#25-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#251-supported-operator-families" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.1 Supported Operator Families
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#252-operator-matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.2 Operator Matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#253-selection-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.3 Selection Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#254-logical-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.4 Logical Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#255-bitwise-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.5 Bitwise Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#256-reduction-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.6 Reduction Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#257-exponentiation-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.7 Exponentiation Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#258-arithmetic-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.8 Arithmetic Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#259-shift-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.9 Shift Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2510-comparison-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.10 Comparison Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2511-equality-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.11 Equality Operators
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2512-conditional-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.12 Conditional Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2513-inside-operator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.13 Inside Operator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2514-concatenation-and-replication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5.14 Concatenation and Replication
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#26-precedence-and-associativity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.6 Precedence and Associativity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#27-parser-level-grammar-sketch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.7 Parser-Level Grammar Sketch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="expression-language-contract">Expression Language Contract<a class="headerlink" href="#expression-language-contract" title="Permanent link">&para;</a></h1>
+<p>This document defines the shipped <code>wavepeek</code> expression language used by
+<code>property --on</code> / <code>property --eval</code> and by <code>change --on</code>.</p>
+<p>It is the public reference for the expression syntax and semantics available in
+this build.</p>
+<p>The contract is based on IEEE 1800-2023 SystemVerilog and aims to preserve
+SystemVerilog-compatible syntax and semantics wherever practical for dump-based
+waveform values. This document is a whitelist specification: only the syntax
+and semantics explicitly described here are supported; anything not described
+here is out of scope.</p>
+<h2 id="1-event-expressions">1. Event Expressions<a class="headerlink" href="#1-event-expressions" title="Permanent link">&para;</a></h2>
+<p>This section defines the event-language surface. It follows the
+semantics of SystemVerilog clocking events - the forms ordinarily written inside
+<code>@(...)</code> - but omits the outer <code>@</code> and parentheses.</p>
+<h3 id="11-surface-forms">1.1 Surface Forms<a class="headerlink" href="#11-surface-forms" title="Permanent link">&para;</a></h3>
+<p>Event expressions support these forms:</p>
+<ul>
+<li>wildcard event: <code>*</code></li>
+<li>named event: <code>name</code></li>
+<li>edge events: <code>posedge name</code>, <code>negedge name</code>, <code>edge name</code></li>
+<li>unions: <code>event or event</code>, <code>event, event</code></li>
+<li>gated events: <code>event iff logical_expr</code></li>
+</ul>
+<p><code>*</code> denotes any change in the command-defined tracked set. <code>change</code> binds that
+set to the resolved <code>--signals</code>; <code>property</code> binds it to the signals referenced
+by <code>--eval</code>. If <code>property --eval</code> references no signals or raw-event handles,
+the command rejects omitted <code>--on</code> and requires an explicit trigger.</p>
+<h3 id="12-names-and-resolution">1.2 Names and Resolution<a class="headerlink" href="#12-names-and-resolution" title="Permanent link">&para;</a></h3>
+<p>A name may appear as a simple signal, a hierarchical path, or another canonical
+dump-derived signal token accepted by the command surface. Names must resolve to
+signals; unresolved names are errors.</p>
+<h3 id="13-basic-event-semantics">1.3 Basic Event Semantics<a class="headerlink" href="#13-basic-event-semantics" title="Permanent link">&para;</a></h3>
+<p>Named event <code>name</code> means any value change of that signal. Wildcard event <code>*</code>
+means any value change in the tracked set defined by the command. Edge events
+use the previous sampled value strictly before the candidate timestamp and the
+current sampled value at that timestamp.</p>
+<p>Only the least-significant bit participates in edge classification. Nine-state
+waveform values <code>h</code>, <code>u</code>, <code>w</code>, <code>l</code>, and <code>-</code> are normalized to <code>x</code> before edge
+classification.</p>
+<p>Edge classification follows SystemVerilog clocking-event semantics:</p>
+<ul>
+<li><code>posedge</code> matches <code>0 -&gt; 1/x/z</code> and <code>x/z -&gt; 1</code></li>
+<li><code>negedge</code> matches <code>1 -&gt; 0/x/z</code> and <code>x/z -&gt; 0</code></li>
+<li><code>edge</code> matches either <code>posedge</code> or <code>negedge</code></li>
+</ul>
+<p>If no previous sampled value exists strictly before the timestamp, no edge is
+detected at that timestamp.</p>
+<h3 id="14-unions-and-iff">1.4 Unions and <code>iff</code><a class="headerlink" href="#14-unions-and-iff" title="Permanent link">&para;</a></h3>
+<p>Union is logical OR over event terms. <code>or</code> and <code>,</code> are exact synonyms. If
+multiple terms match at the same timestamp, they select the same candidate
+timestamp rather than distinct duplicate events.</p>
+<p><code>iff</code> attaches only to the immediately preceding event term, not to the entire
+union. For example, <code>negedge clk iff rstn or ready</code> means
+<code>(negedge clk iff rstn) or ready</code>.</p>
+<p><code>logical_expr</code> uses the Boolean Expression language defined in section <code>2</code>.
+Parentheses are part of that <code>logical_expr</code> syntax; Event Expressions do not
+define an independent parenthesized grouping form.</p>
+<h3 id="15-precedence-and-grouping">1.5 Precedence and Grouping<a class="headerlink" href="#15-precedence-and-grouping" title="Permanent link">&para;</a></h3>
+<p>Event expressions have one composition operator: union. <code>iff</code> binds tighter than
+union and applies to a single preceding event term. <code>or</code> and <code>,</code> have equal
+precedence and associate left-to-right.</p>
+<p>This gives the practical precedence order:</p>
+<ol>
+<li>basic event forms: <code>*</code>, <code>name</code>, <code>posedge name</code>, <code>negedge name</code>, <code>edge name</code></li>
+<li>gated event term: <code>event iff logical_expr</code></li>
+<li>union: <code>event or event</code>, <code>event, event</code></li>
+</ol>
+<h3 id="16-grammar-sketch">1.6 Grammar Sketch<a class="headerlink" href="#16-grammar-sketch" title="Permanent link">&para;</a></h3>
+<pre><code class="language-text">event_expr ::= event_term { (&quot;or&quot; | &quot;,&quot;) event_term }
+
+event_term ::= basic_event
+             | basic_event &quot;iff&quot; logical_expr
+
+basic_event ::= &quot;*&quot;
+              | operand_reference
+              | &quot;posedge&quot; operand_reference
+              | &quot;negedge&quot; operand_reference
+              | &quot;edge&quot; operand_reference
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><code>operand_reference</code> follows the same name-resolution rules as elsewhere in
+  this document, with command-specific scope handling.</li>
+<li><code>iff</code> binds only to the immediately preceding <code>basic_event</code>.</li>
+<li><code>or</code> and <code>,</code> are exact synonyms.</li>
+</ul>
+<h2 id="2-boolean-expressions">2. Boolean Expressions<a class="headerlink" href="#2-boolean-expressions" title="Permanent link">&para;</a></h2>
+<p>This section defines the value-expression language over sampled dump values:
+operand types, operand forms, casts, implicit conversions, operators, and
+grammar.</p>
+<p>Boolean expressions follow IEEE 1800-2023 SystemVerilog as closely as
+practical, with a small dump-oriented surface specialization:
+- inline vector cast targets such as <code>bit[N]</code>, <code>logic[N]</code>, and <code>signed logic[N]</code> (for example, <code>logic[8]'(data)</code> or <code>signed bit[16]'(count)</code>);
+- dump-derived operand-type casts such as <code>type(operand_reference)'(expr)</code> (for example, <code>type(fsm_state)'(next_value)</code>);
+- dump-derived enum label
+references such as <code>type(enum_operand_reference)::LABEL</code> (for example,
+<code>type(fsm_state)::BUSY</code>).</p>
+<h3 id="21-operand-types">2.1 Operand Types<a class="headerlink" href="#21-operand-types" title="Permanent link">&para;</a></h3>
+<p>Boolean expressions operate on typed operands. Operands may carry 2-state or
+4-state values internally; final property decisions are reduced to 2-state.
+The supported groups match the values and type metadata recoverable from
+VCD/FST waveform dumps.</p>
+<ul>
+<li><code>bit-vector</code></li>
+<li><code>bit</code> - width <code>1</code>, sign <code>unsigned</code>, states <code>2-state</code></li>
+<li><code>logic</code> - width <code>1</code>, sign <code>unsigned</code>, states <code>4-state</code></li>
+<li><code>bit[N]</code> - width <code>N &gt; 0</code>, sign <code>unsigned</code>, states <code>2-state</code></li>
+<li><code>logic[N]</code> - width <code>N &gt; 0</code>, sign <code>unsigned</code>, states <code>4-state</code></li>
+<li><code>signed bit[N]</code> - width <code>N &gt; 0</code>, sign <code>signed</code>, states <code>2-state</code></li>
+<li><code>signed logic[N]</code> - width <code>N &gt; 0</code>, sign <code>signed</code>, states <code>4-state</code></li>
+<li><code>unsigned bit[N]</code> - width <code>N &gt; 0</code>, sign <code>unsigned</code>, states <code>2-state</code></li>
+<li>
+<p><code>unsigned logic[N]</code> - width <code>N &gt; 0</code>, sign <code>unsigned</code>, states <code>4-state</code></p>
+</li>
+<li>
+<p><code>integer-like</code></p>
+</li>
+<li><code>byte</code> - width <code>8</code>, sign <code>signed</code>, states <code>2-state</code></li>
+<li><code>shortint</code> - width <code>16</code>, sign <code>signed</code>, states <code>2-state</code></li>
+<li><code>int</code> - width <code>32</code>, sign <code>signed</code>, states <code>2-state</code></li>
+<li><code>longint</code> - width <code>64</code>, sign <code>signed</code>, states <code>2-state</code></li>
+<li><code>integer</code> - width <code>32</code>, sign <code>signed</code>, states <code>4-state</code></li>
+<li>
+<p><code>time</code> - width <code>64</code>, sign <code>unsigned</code>, states <code>4-state</code></p>
+</li>
+<li>
+<p><code>enum</code></p>
+</li>
+<li><code>enum</code> - width <code>N &gt; 0</code>, sign <code>unsigned</code>, states <code>2-state</code> or <code>4-state</code></li>
+<li>
+<p>enum values always carry an underlying bit-vector value and may carry an
+    enum label</p>
+</li>
+<li>
+<p><code>real</code></p>
+</li>
+<li>
+<p><code>real</code> - width <code>64-bit floating-point</code>, sign <code>n/a</code>, states <code>n/a</code></p>
+</li>
+<li>
+<p><code>string</code></p>
+</li>
+<li><code>string</code> - width <code>n/a</code>, sign <code>n/a</code>, states <code>n/a</code></li>
+<li>
+<p>modeled as a sequence of 8-bit bytes</p>
+</li>
+<li>
+<p><code>event</code></p>
+</li>
+<li><code>event</code> - not a plain value operand; available only through <code>.triggered()</code></li>
+<li><code>event.triggered()</code> - integral <code>bit</code> (width <code>1</code>, sign <code>unsigned</code>, states <code>2-state</code>)</li>
+<li>raw <code>event</code> is not a value expression and does not
+    participate directly in casts, implicit conversions, operators, selection,
+    concatenation, or replication</li>
+</ul>
+<h3 id="22-operand-forms">2.2 Operand Forms<a class="headerlink" href="#22-operand-forms" title="Permanent link">&para;</a></h3>
+<p>This section lists the leaf forms that can appear as direct operands.</p>
+<h4 id="221-literals">2.2.1 Literals<a class="headerlink" href="#221-literals" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>integral literal</code></li>
+<li>unsized decimal integer, for example <code>12</code></li>
+<li>unsized based integer, for example <code>'d12</code>, <code>'sd12</code>, <code>'hff</code></li>
+<li>sized based integer, for example <code>16'd12</code>, <code>8'shff</code></li>
+<li>decimal literals are <code>signed</code></li>
+<li>based literals are <code>unsigned</code> unless the base specifier includes <code>s</code></li>
+<li>sized based literals take width from the size prefix</li>
+<li>based integral literals may contain <code>x</code> and <code>z</code></li>
+<li>integral literals are self-determined</li>
+<li>
+<p>unary <code>-</code> is an operator, not part of the literal itself</p>
+</li>
+<li>
+<p><code>real literal</code></p>
+</li>
+<li>
+<p>produces <code>real</code>; self-determined</p>
+</li>
+<li>
+<p><code>string literal</code></p>
+</li>
+<li>produces <code>string</code>; self-determined</li>
+</ul>
+<h4 id="222-primary-expressions">2.2.2 Primary Expressions<a class="headerlink" href="#222-primary-expressions" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>operand reference</code></li>
+<li>
+<p>a resolved signal reference uses the operand type defined by dump metadata</p>
+</li>
+<li>
+<p><code>literal</code></p>
+</li>
+<li>
+<p>any supported literal form</p>
+</li>
+<li>
+<p><code>parenthesized expression</code></p>
+</li>
+<li>
+<p><code>(expr)</code> preserves the inner expression value and type</p>
+</li>
+<li>
+<p><code>static cast</code></p>
+</li>
+<li>
+<p><code>type'(expr)</code></p>
+</li>
+<li>
+<p><code>enum label reference</code></p>
+</li>
+<li><code>type(enum_operand_reference)::LABEL</code></li>
+<li>resolves <code>LABEL</code> within the enum type recovered from the referenced operand</li>
+<li>produces an enum value of that enum type</li>
+<li>
+<p>invalid if the referenced operand is not enum-typed or if the label is
+    absent</p>
+</li>
+<li>
+<p><code>selection</code></p>
+</li>
+<li><code>expr[idx]</code></li>
+<li><code>expr[msb:lsb]</code></li>
+<li><code>expr[base +: width]</code></li>
+<li>
+<p><code>expr[base -: width]</code></p>
+</li>
+<li>
+<p><code>concatenation</code></p>
+</li>
+<li>
+<p><code>{a, b, c}</code></p>
+</li>
+<li>
+<p><code>replication</code></p>
+</li>
+<li>
+<p><code>{N{expr}}</code></p>
+</li>
+<li>
+<p><code>method-like primary</code></p>
+</li>
+<li><code>.triggered()</code> is the only supported method-like primary form</li>
+<li>valid only when applied to a raw event operand reference</li>
+<li>chaining <code>.triggered()</code> is invalid</li>
+<li>bare <code>.triggered</code> remains part of ordinary operand references and is not reserved syntax</li>
+</ul>
+<h3 id="23-type-casts">2.3 Type Casts<a class="headerlink" href="#23-type-casts" title="Permanent link">&para;</a></h3>
+<p>This section defines explicit casts only. Implicit conversions and operator
+coercion are specified separately.</p>
+<h4 id="231-cast-syntax">2.3.1 Cast Syntax<a class="headerlink" href="#231-cast-syntax" title="Permanent link">&para;</a></h4>
+<p>Casts use the SystemVerilog-style form <code>type'(expr)</code>.</p>
+<h4 id="232-supported-cast-targets">2.3.2 Supported Cast Targets<a class="headerlink" href="#232-supported-cast-targets" title="Permanent link">&para;</a></h4>
+<p>Supported cast targets are explicitly written <code>bit-vector</code>,
+<code>integer-like</code>, <code>real</code>, and <code>string</code> types; signedness-only targets
+<code>signed</code> and <code>unsigned</code>; and recovered operand-type targets through
+<code>type(operand_reference)</code>. Enum labels are referenced through
+<code>type(enum_operand_reference)::LABEL</code>.</p>
+<h4 id="233-general-cast-rules">2.3.3 General Cast Rules<a class="headerlink" href="#233-general-cast-rules" title="Permanent link">&para;</a></h4>
+<p><code>type'(expr)</code> produces a value of the target type. Casts may change width,
+signedness, state domain, and operand kind. Integral casts use deterministic
+bit-level conversion.</p>
+<h4 id="234-signedness-only-casts">2.3.4 Signedness-Only Casts<a class="headerlink" href="#234-signedness-only-casts" title="Permanent link">&para;</a></h4>
+<p><code>signed'(expr)</code> and <code>unsigned'(expr)</code> are width-preserving reinterpret casts.
+They do not resize the operand or change the 2-state/4-state domain. They are
+valid only for integral operands (<code>bit-vector</code>, <code>integer-like</code>, <code>enum</code>) and
+invalid for <code>real</code>, <code>string</code>, and <code>event</code>.</p>
+<h4 id="235-integral-resize-rules">2.3.5 Integral Resize Rules<a class="headerlink" href="#235-integral-resize-rules" title="Permanent link">&para;</a></h4>
+<p>When an integral cast changes width, a wider signed source is sign-extended and
+a wider unsigned source is zero-extended. A narrower target keeps the
+least-significant <code>N</code> bits and truncates higher bits. After resize, the result
+signedness is defined by the target type.</p>
+<h4 id="236-state-domain-rules">2.3.6 State-Domain Rules<a class="headerlink" href="#236-state-domain-rules" title="Permanent link">&para;</a></h4>
+<p>When casting between integral types, casting to a 4-state target preserves <code>x</code>
+and <code>z</code>, while casting to a 2-state target converts <code>x -&gt; 0</code> and <code>z -&gt; 0</code>.</p>
+<h4 id="237-inline-vector-types">2.3.7 Inline Vector Types<a class="headerlink" href="#237-inline-vector-types" title="Permanent link">&para;</a></h4>
+<ul>
+<li><code>bit[N]</code> is an unsigned 2-state bit-vector of width <code>N</code>.</li>
+<li><code>logic[N]</code> is an unsigned 4-state bit-vector of width <code>N</code>.</li>
+<li><code>signed bit[N]</code> is a signed 2-state bit-vector of width <code>N</code>.</li>
+<li><code>signed logic[N]</code> is a signed 4-state bit-vector of width <code>N</code>.</li>
+<li><code>unsigned bit[N]</code> and <code>unsigned logic[N]</code> are allowed for symmetry and
+  explicitness.</li>
+<li><code>bit</code> is equivalent to <code>bit[1]</code>.</li>
+<li><code>logic</code> is equivalent to <code>logic[1]</code>.</li>
+</ul>
+<h4 id="238-operand-type-casts">2.3.8 Operand-Type Casts<a class="headerlink" href="#238-operand-type-casts" title="Permanent link">&para;</a></h4>
+<p><code>type(operand_reference)'(expr)</code> casts <code>expr</code> to the recovered operand type of
+<code>operand_reference</code>. It is the primary way to cast into enum types recovered
+from dump metadata. Example: <code>type(fsm_state)'(value)</code>.</p>
+<h4 id="239-enum-label-references">2.3.9 Enum Label References<a class="headerlink" href="#239-enum-label-references" title="Permanent link">&para;</a></h4>
+<p><code>type(enum_operand_reference)::LABEL</code> references a label in the enum type
+recovered from the referenced operand. It is a primary expression, not a cast
+target, and produces a value of that enum type. It is invalid if the referenced
+operand does not resolve to an enum type or if the label is not present in that
+enum type.</p>
+<h4 id="2310-enum-casts">2.3.10 Enum Casts<a class="headerlink" href="#2310-enum-casts" title="Permanent link">&para;</a></h4>
+<p>Enum values are cast through their underlying bit-vector representation.
+Casting to an enum type applies the target enum width and label set. If the
+resulting bit pattern matches a declared enum label, the result carries that
+label. Otherwise, it remains enum-typed but has no label.</p>
+<h4 id="2311-real-casts">2.3.11 Real Casts<a class="headerlink" href="#2311-real-casts" title="Permanent link">&para;</a></h4>
+<p><code>real'(expr)</code> is a numeric cast, not a bit reinterpret cast. Casting from an
+integral source to <code>real</code> first evaluates the source in its own self-determined
+width, signedness, and state domain, then converts the resulting numeric value
+to <code>real</code>. Such casts are invalid if the source contains <code>x</code> or <code>z</code>. Casting
+from <code>real</code> to an integral target truncates toward zero, then applies the
+target integral type's normal resize, signedness, and state-domain rules.
+<code>signed'(expr)</code> and <code>unsigned'(expr)</code> are invalid for <code>real</code>.</p>
+<h4 id="2312-string-casts">2.3.12 String Casts<a class="headerlink" href="#2312-string-casts" title="Permanent link">&para;</a></h4>
+<p>Explicit string casts are intentionally narrow in this contract:
+<code>string'(expr)</code> is supported only as an identity cast from <code>string</code> to
+<code>string</code>; all other explicit casts to or from <code>string</code> are invalid.</p>
+<h4 id="2313-event-casts">2.3.13 Event Casts<a class="headerlink" href="#2313-event-casts" title="Permanent link">&para;</a></h4>
+<p>By the operand rules above, raw <code>event</code> is not castable as a plain value. After
+<code>.triggered()</code>, the result is a <code>bit</code> and follows the ordinary integral cast
+rules of this section.</p>
+<h3 id="24-implicit-conversions-and-common-type-rules">2.4 Implicit Conversions and Common-Type Rules<a class="headerlink" href="#24-implicit-conversions-and-common-type-rules" title="Permanent link">&para;</a></h3>
+<p>This section defines conversions applied by operator semantics when no explicit
+cast is written. Except where an operator defines self-determined operands,
+operands are converted to an operator common type before evaluation.</p>
+<h4 id="241-boolean-context">2.4.1 Boolean Context<a class="headerlink" href="#241-boolean-context" title="Permanent link">&para;</a></h4>
+<p>Boolean context applies to logical operators such as <code>!</code>, <code>&amp;&amp;</code>, <code>||</code>, and to
+the condition operand of <code>?:</code>. For the integral family (<code>bit-vector</code>,
+<code>integer-like</code>, <code>enum</code>), definitely zero is false, definitely non-zero is true,
+and anything else is <code>x</code>. For <code>real</code>, <code>0.0</code> is false and any non-zero value is
+true. In this contract, true <code>string</code> values do not implicitly convert in
+boolean context. Boolean-context conversion produces a temporary 1-bit truth
+value and does not otherwise change the operand type.</p>
+<h4 id="242-integral-common-type">2.4.2 Integral Common Type<a class="headerlink" href="#242-integral-common-type" title="Permanent link">&para;</a></h4>
+<p>The integral family consists of <code>bit-vector</code>, <code>integer-like</code>, and <code>enum</code>.
+Within that family, width follows the operator's width rule or, if none is
+defined, <code>max(operand widths)</code>; sign is <code>unsigned</code> if any participating operand
+is <code>unsigned</code>, otherwise <code>signed</code>; and states are <code>4-state</code> if any
+participating operand is <code>4-state</code>, otherwise <code>2-state</code>. When extending to the
+common width, use sign extension for <code>signed</code> and zero extension for
+<code>unsigned</code>. Conversion to a <code>2-state</code> common type maps <code>x -&gt; 0</code> and <code>z -&gt; 0</code>;
+conversion to a <code>4-state</code> common type preserves <code>x</code> and <code>z</code>.</p>
+<h4 id="243-enum-participation">2.4.3 Enum Participation<a class="headerlink" href="#243-enum-participation" title="Permanent link">&para;</a></h4>
+<p><code>enum</code> participates in implicit conversions through its underlying bit-vector
+representation. For generic mixed-type common-type resolution, enum labels do
+not affect width, sign, or state-domain selection. If both arms of <code>?:</code> have
+the same enum type, the result preserves that enum type. In all other
+mixed-type implicit conversions involving <code>enum</code>, the value is treated as an
+integral operand and labels are not preserved by that conversion step.</p>
+<h4 id="244-real-common-type">2.4.4 Real Common Type<a class="headerlink" href="#244-real-common-type" title="Permanent link">&para;</a></h4>
+<p><code>real</code> forms a separate numeric family. If an operator allows mixed <code>integral</code>
+and <code>real</code> operands, the common type is <code>real</code>. Before conversion to <code>real</code>, an
+integral operand is evaluated in its own self-determined width, signedness, and
+state domain. Implicit conversion from <code>integral</code> to <code>real</code> is invalid if the
+integral value contains <code>x</code> or <code>z</code>. <code>real</code> does not implicitly convert to
+<code>string</code>, and <code>string</code> does not implicitly convert to <code>real</code>.</p>
+<h4 id="245-string-restrictions">2.4.5 String Restrictions<a class="headerlink" href="#245-string-restrictions" title="Permanent link">&para;</a></h4>
+<p>True <code>string</code> values do not participate in generic numeric common-type
+resolution. Equality on <code>string</code> is defined separately as an operator-specific
+rule. Mixed <code>string</code> with <code>integral</code> or <code>real</code> is invalid unless a later
+operator-specific rule says otherwise. <code>?:</code> with both arms of type <code>string</code>
+produces <code>string</code>; with one <code>string</code> arm and one non-<code>string</code> arm, it is
+invalid unless a later operator-specific rule says otherwise.</p>
+<h4 id="246-result-type-guidance">2.4.6 Result-Type Guidance<a class="headerlink" href="#246-result-type-guidance" title="Permanent link">&para;</a></h4>
+<p>Logical operators consume boolean-context conversion and produce a 1-bit
+4-state integral result. Operators over the integral family follow the
+operator-specific width rule under the integral common-type model above.
+Operators mixing <code>integral</code> and <code>real</code> produce <code>real</code> when the operator admits
+mixed numeric operands. <code>?:</code> uses a self-determined condition and applies
+common-type resolution only to its two result arms.</p>
+<h3 id="25-operators">2.5 Operators<a class="headerlink" href="#25-operators" title="Permanent link">&para;</a></h3>
+<h4 id="251-supported-operator-families">2.5.1 Supported Operator Families<a class="headerlink" href="#251-supported-operator-families" title="Permanent link">&para;</a></h4>
+<ul>
+<li>selection: <code>expr[idx]</code>, <code>expr[msb:lsb]</code>, <code>expr[base +: width]</code>,
+  <code>expr[base -: width]</code></li>
+<li>logical: <code>!</code>, <code>&amp;&amp;</code>, <code>||</code></li>
+<li>bitwise: <code>~</code>, <code>&amp;</code>, <code>|</code>, <code>^</code>, <code>^~</code>, <code>~^</code></li>
+<li>reduction: unary <code>&amp;</code>, <code>~&amp;</code>, <code>|</code>, <code>~|</code>, <code>^</code>, <code>^~</code>, <code>~^</code></li>
+<li>exponentiation: <code>**</code></li>
+<li>arithmetic: unary <code>+</code>, unary <code>-</code>, binary <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code></li>
+<li>shifts: <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&lt;&lt;&lt;</code>, <code>&gt;&gt;&gt;</code></li>
+<li>comparisons: <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></li>
+<li>equalities: <code>==</code>, <code>!=</code>, <code>===</code>, <code>!==</code>, <code>==?</code>, <code>!=?</code></li>
+<li>conditional: <code>?:</code></li>
+<li>membership: <code>inside</code></li>
+<li>concatenation: <code>{a, b, c}</code></li>
+<li>replication: <code>{N{expr}}</code></li>
+</ul>
+<h4 id="252-operator-matrix">2.5.2 Operator Matrix<a class="headerlink" href="#252-operator-matrix" title="Permanent link">&para;</a></h4>
+<table>
+<thead>
+<tr>
+<th>Family</th>
+<th>Operators</th>
+<th>Allowed operands</th>
+<th>Conversion rule</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>selection</td>
+<td><code>[]</code>, <code>[msb:lsb]</code>, <code>[base +: width]</code>, <code>[base -: width]</code></td>
+<td>packed <code>integral</code></td>
+<td>select indices are self-determined</td>
+<td>unsigned bit-vector</td>
+</tr>
+<tr>
+<td>logical</td>
+<td><code>!</code>, <code>&amp;&amp;</code>, <code>\|\|</code></td>
+<td><code>integral</code>, <code>real</code></td>
+<td>boolean-context conversion</td>
+<td>1-bit unsigned 4-state</td>
+</tr>
+<tr>
+<td>bitwise</td>
+<td><code>~</code>, <code>&amp;</code>, <code>\|</code>, <code>^</code>, <code>^~</code>, <code>~^</code></td>
+<td><code>integral</code></td>
+<td>integral common type</td>
+<td>integral</td>
+</tr>
+<tr>
+<td>reduction</td>
+<td>unary <code>&amp;</code>, <code>~&amp;</code>, <code>\|</code>, <code>~\|</code>, <code>^</code>, <code>^~</code>, <code>~^</code></td>
+<td><code>integral</code></td>
+<td>operand self-determined</td>
+<td>1-bit unsigned 4-state</td>
+</tr>
+<tr>
+<td>exponentiation</td>
+<td><code>**</code></td>
+<td><code>integral</code>, <code>real</code></td>
+<td>exponent is self-determined; result uses exponentiation rules</td>
+<td>integral or <code>real</code></td>
+</tr>
+<tr>
+<td>arithmetic</td>
+<td>unary <code>+</code>, unary <code>-</code>, binary <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>%</code></td>
+<td><code>integral</code>, <code>real</code></td>
+<td>integral common type or promote to <code>real</code></td>
+<td>integral or <code>real</code></td>
+</tr>
+<tr>
+<td>shifts</td>
+<td><code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&lt;&lt;&lt;</code>, <code>&gt;&gt;&gt;</code></td>
+<td><code>integral</code></td>
+<td>lhs integral result width; rhs self-determined</td>
+<td>integral</td>
+</tr>
+<tr>
+<td>comparisons</td>
+<td><code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code></td>
+<td><code>integral</code>, <code>real</code></td>
+<td>integral compare or promote to <code>real</code></td>
+<td>1-bit unsigned 4-state</td>
+</tr>
+<tr>
+<td>equalities</td>
+<td><code>==</code>, <code>!=</code>, <code>===</code>, <code>!==</code>, <code>==?</code>, <code>!=?</code></td>
+<td><code>==</code>, <code>!=</code>: <code>integral</code>, <code>real</code>, <code>string</code>/<code>string</code>; <code>===</code>, <code>!==</code>, <code>==?</code>, <code>!=?</code>: <code>integral</code></td>
+<td>operator-specific</td>
+<td>1-bit unsigned 4-state</td>
+</tr>
+<tr>
+<td>conditional</td>
+<td><code>?:</code></td>
+<td>condition: <code>integral</code>, <code>real</code>; arms: common-type-compatible</td>
+<td>condition self-determined; arms use common-type rules</td>
+<td>common type of arms</td>
+</tr>
+<tr>
+<td>inside</td>
+<td><code>inside</code></td>
+<td>lhs <code>integral</code>; rhs integral expressions and inclusive integral ranges <code>[lo:hi]</code></td>
+<td>item match uses wildcard-equality semantics</td>
+<td>1-bit unsigned 4-state</td>
+</tr>
+<tr>
+<td>concatenation</td>
+<td><code>{...}</code></td>
+<td><code>integral</code></td>
+<td>operands self-determined</td>
+<td>unsigned bit-vector</td>
+</tr>
+<tr>
+<td>replication</td>
+<td><code>{N{expr}}</code></td>
+<td><code>integral</code></td>
+<td><code>N</code> is a constant integer expression</td>
+<td>unsigned bit-vector</td>
+</tr>
+</tbody>
+</table>
+<p>In this matrix, <code>integral</code> means the integral family defined earlier:
+<code>bit-vector</code>, <code>integer-like</code>, and <code>enum</code>.</p>
+<p>In this matrix, packed <code>integral</code> means an integral value treated as a packed
+bit-vector, including derived packed values such as the result of selection,
+concatenation, or replication. Selection of scalar integral values is still
+invalid.</p>
+<h4 id="253-selection-operators">2.5.3 Selection Operators<a class="headerlink" href="#253-selection-operators" title="Permanent link">&para;</a></h4>
+<p>Selection supports bit-select <code>expr[idx]</code>, non-indexed part-select
+<code>expr[msb:lsb]</code>, and indexed part-select <code>expr[base +: width]</code> /
+<code>expr[base -: width]</code>. In non-indexed part-select, <code>msb</code> and <code>lsb</code> are
+constant integer expressions. In indexed part-select, <code>width</code> is a positive
+constant integer expression and <code>base</code> is an integral expression evaluated at
+the current sample. Selection applies only to packed <code>integral</code> values;
+selection of scalar integral values, <code>real</code>, or <code>string</code> is invalid.</p>
+<p>Bit-select produces an unsigned <code>bit-vector</code> of width <code>1</code>. Part-select produces
+an unsigned <code>bit-vector</code> whose width is the selected width. Selection never
+preserves <code>integer-like</code> or <code>enum</code> identity; it always produces a plain
+bit-vector result. For valid reads, the result preserves the source 2-state or
+4-state domain. For bit-select, an invalid index yields <code>x</code> for a 4-state
+source and <code>0</code> for a 2-state source. For part-select, a fully out-of-range read
+yields all-<code>x</code>; an <code>x</code> or <code>z</code> select base or index yields all-<code>x</code>; and a
+partially out-of-range read yields source bits for the in-range region and <code>x</code>
+for the out-of-range region. Invalid part-select reads therefore produce a
+4-state result even when the source is 2-state.</p>
+<h4 id="254-logical-operators">2.5.4 Logical Operators<a class="headerlink" href="#254-logical-operators" title="Permanent link">&para;</a></h4>
+<p>Logical operators apply boolean-context conversion to each operand. They
+support <code>integral</code> and <code>real</code> operands, but not true <code>string</code> values. Results
+are 1-bit unsigned 4-state values. <code>&amp;&amp;</code> and <code>||</code> short-circuit, and <code>!</code> maps
+ambiguous truth to <code>x</code>.</p>
+<h4 id="255-bitwise-operators">2.5.5 Bitwise Operators<a class="headerlink" href="#255-bitwise-operators" title="Permanent link">&para;</a></h4>
+<p>Bitwise operators accept only <code>integral</code> operands. Binary bitwise operators use
+the integral common type, and unary <code>~</code> preserves operand width. <code>enum</code>
+operands participate through their underlying bit-vector values. Full 4-state
+bitwise truth-table semantics are intended, including preserving controlling
+values such as <code>0 &amp; x -&gt; 0</code> and <code>1 | x -&gt; 1</code>.</p>
+<h4 id="256-reduction-operators">2.5.6 Reduction Operators<a class="headerlink" href="#256-reduction-operators" title="Permanent link">&para;</a></h4>
+<p>Reduction operators accept only <code>integral</code> operands. The operand is
+self-determined. The result is a 1-bit unsigned 4-state value. <code>x</code> and <code>z</code>
+participate through the reduction truth tables and may produce <code>x</code>.</p>
+<h4 id="257-exponentiation-operator">2.5.7 Exponentiation Operator<a class="headerlink" href="#257-exponentiation-operator" title="Permanent link">&para;</a></h4>
+<p>Exponentiation accepts <code>integral</code> and <code>real</code> operands. If either operand is
+<code>real</code>, the result is <code>real</code>. Otherwise, exponentiation follows the ordinary
+integral sizing and signedness rules of this section, and the exponent operand
+is self-determined. Special cases follow SystemVerilog-style rules: exponent
+<code>0</code> yields <code>1</code>, and integral <code>0 ** negative</code> yields all-<code>x</code>.</p>
+<h4 id="258-arithmetic-operators">2.5.8 Arithmetic Operators<a class="headerlink" href="#258-arithmetic-operators" title="Permanent link">&para;</a></h4>
+<p>Arithmetic operators support <code>integral</code> and <code>real</code> operands. Pure integral
+arithmetic uses the integral common type; mixed <code>integral</code> and <code>real</code>
+arithmetic promotes to <code>real</code>. For integral arithmetic, any <code>x</code> or <code>z</code> bit in
+an operand makes the result all-<code>x</code>. Division truncates toward zero.
+Divide-by-zero and modulo-by-zero produce all-<code>x</code> for integral arithmetic.</p>
+<h4 id="259-shift-operators">2.5.9 Shift Operators<a class="headerlink" href="#259-shift-operators" title="Permanent link">&para;</a></h4>
+<p>Shift operators accept only <code>integral</code> operands. Result width is the
+left-operand width. The right operand is self-determined and treated as
+unsigned. <code>&lt;&lt;</code>, <code>&gt;&gt;</code>, and <code>&lt;&lt;&lt;</code> fill vacated bits with <code>0</code>; <code>&gt;&gt;&gt;</code> fills them
+with <code>0</code> for unsigned results and with the left operand MSB for signed results.
+If the right operand contains <code>x</code> or <code>z</code>, the result is all-<code>x</code>.</p>
+<h4 id="2510-comparison-operators">2.5.10 Comparison Operators<a class="headerlink" href="#2510-comparison-operators" title="Permanent link">&para;</a></h4>
+<p>Comparison operators support <code>integral</code> and <code>real</code> operands. Mixed <code>integral</code>
+and <code>real</code> comparison promotes the integral operand to <code>real</code>. The result is a
+1-bit unsigned 4-state value. For integral comparison, any <code>x</code> or <code>z</code> bit in
+either operand yields <code>x</code>.</p>
+<h4 id="2511-equality-operators">2.5.11 Equality Operators<a class="headerlink" href="#2511-equality-operators" title="Permanent link">&para;</a></h4>
+<p><code>==</code> and <code>!=</code> support <code>integral</code>, <code>real</code>, and <code>string</code> operands. <code>===</code> and
+<code>!==</code> support <code>integral</code> operands, and <code>==?</code> and <code>!=?</code> also support <code>integral</code>
+operands. Mixed <code>integral</code> and <code>real</code> equality promotes the integral operand to
+<code>real</code>. For integral operands, <code>==</code> and <code>!=</code> may produce <code>x</code>, while <code>===</code> and
+<code>!==</code> always produce a known 1-bit result. <code>==?</code> and <code>!=?</code> treat <code>x</code> and <code>z</code>
+in the right operand as wildcards; <code>x</code> and <code>z</code> in the left operand are not
+wildcards.</p>
+<p>For <code>string</code>, only <code>==</code> and <code>!=</code> are supported, and only when both operands are
+<code>string</code>. String equality compares the full string values for exact match and
+does not use numeric coercion, width extension, padding, truncation, or
+wildcard semantics. String literals participate in string equality as <code>string</code>
+values. String equality always returns a known <code>0</code> or <code>1</code>.</p>
+<h4 id="2512-conditional-operator">2.5.12 Conditional Operator<a class="headerlink" href="#2512-conditional-operator" title="Permanent link">&para;</a></h4>
+<p>The condition operand of <code>?:</code> is self-determined and evaluated in boolean
+context. The two result arms use the common-type rules defined earlier. If both
+arms are the same enum type, the result preserves that enum type. If the
+condition is <code>x</code> or <code>z</code> and both arms are integral, the result is a bitwise
+merge at the arms' common integral type. If the condition is <code>x</code> or <code>z</code> and
+both arms are the same enum type, the result is that enum type with a merged
+underlying value; the label is present only if the merged bit pattern matches a
+declared label.</p>
+<h4 id="2513-inside-operator">2.5.13 Inside Operator<a class="headerlink" href="#2513-inside-operator" title="Permanent link">&para;</a></h4>
+<p><code>inside</code> is supported in a narrowed form. The left operand must be <code>integral</code>.
+Right-hand set items may be integral expressions or inclusive integral ranges
+written as <code>[lo:hi]</code>. Item matching uses wildcard-equality semantics equivalent
+to <code>==?</code>. If no set item matches, but at least one candidate match is <code>x</code>, the
+result is <code>x</code>. Advanced <code>inside</code> forms are not supported in the initial target
+semantics: open-range <code>$</code> bounds, <code>+/-</code>, <code>+%-</code>, unpacked-array matching, and
+scan-order dependent behavior.</p>
+<h4 id="2514-concatenation-and-replication">2.5.14 Concatenation and Replication<a class="headerlink" href="#2514-concatenation-and-replication" title="Permanent link">&para;</a></h4>
+<p>Concatenation and replication accept only <code>integral</code> operands and produce plain
+unsigned bit-vector results. They never preserve <code>integer-like</code> or <code>enum</code>
+identity. Concatenation result width is the sum of operand widths;
+replication result width is <code>N * operand_width</code>. The result is <code>4-state</code> if any
+operand is <code>4-state</code>; otherwise it is <code>2-state</code>. <code>x</code> and <code>z</code> bits are
+preserved. Unsized constants are not allowed in integral concatenation.
+Replication multiplier <code>N</code> must be a positive constant integer expression.
+Concatenation and replication results may themselves be selected.</p>
+<h3 id="26-precedence-and-associativity">2.6 Precedence and Associativity<a class="headerlink" href="#26-precedence-and-associativity" title="Permanent link">&para;</a></h3>
+<p>SystemVerilog-style precedence is followed for the supported operator
+families.</p>
+<p>From highest precedence to lowest precedence:</p>
+<ol>
+<li>primary and postfix forms</li>
+<li><code>(expr)</code></li>
+<li><code>type'(expr)</code></li>
+<li><code>type(enum_operand_reference)::LABEL</code></li>
+<li>concatenation: <code>{...}</code></li>
+<li>replication: <code>{N{...}}</code></li>
+<li><code>.triggered()</code></li>
+<li>bit-select and part-select: <code>[]</code>, <code>[msb:lsb]</code>, <code>[base +: width]</code>,
+     <code>[base -: width]</code></li>
+<li>unary prefix operators</li>
+<li>unary <code>+</code>, unary <code>-</code></li>
+<li><code>!</code></li>
+<li><code>~</code></li>
+<li>unary reduction <code>&amp;</code>, <code>~&amp;</code>, <code>|</code>, <code>~|</code>, <code>^</code>, <code>^~</code>, <code>~^</code></li>
+<li>exponentiation</li>
+<li><code>**</code></li>
+<li>multiplicative</li>
+<li><code>*</code>, <code>/</code>, <code>%</code></li>
+<li>additive</li>
+<li>binary <code>+</code>, <code>-</code></li>
+<li>shifts</li>
+<li><code>&lt;&lt;</code>, <code>&gt;&gt;</code>, <code>&lt;&lt;&lt;</code>, <code>&gt;&gt;&gt;</code></li>
+<li>relational and membership</li>
+<li><code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>inside</code></li>
+<li>equality</li>
+<li><code>==</code>, <code>!=</code>, <code>===</code>, <code>!==</code>, <code>==?</code>, <code>!=?</code></li>
+<li>bitwise AND</li>
+<li><code>&amp;</code></li>
+<li>bitwise XOR/XNOR</li>
+<li><code>^</code>, <code>^~</code>, <code>~^</code></li>
+<li>bitwise OR</li>
+<li><code>|</code></li>
+<li>logical AND</li>
+<li><code>&amp;&amp;</code></li>
+<li>logical OR</li>
+<li><code>||</code></li>
+<li>conditional</li>
+<li><code>?:</code></li>
+</ol>
+<p>Associativity rules:</p>
+<ul>
+<li>Postfix forms chain left-to-right.</li>
+<li>Prefix unary operators bind to the following operand.</li>
+<li>Binary infix operators associate left-to-right.</li>
+<li><code>?:</code> associates right-to-left.</li>
+</ul>
+<p>Guidance:</p>
+<ul>
+<li>Parentheses should be used whenever mixing <code>?:</code>, <code>inside</code>, or concatenation
+  and replication with other operators unless the intended grouping is obvious.</li>
+<li><code>type'(expr)</code> is treated as a primary expression and binds tighter than any
+  infix operator.</li>
+<li><code>type(enum_operand_reference)::LABEL</code> is treated as a primary expression and
+  binds tighter than any infix operator.</li>
+<li><code>.triggered()</code> is treated as a dedicated postfix/member-call form with the
+  same
+  tight binding as other primary postfix operations.</li>
+</ul>
+<h3 id="27-parser-level-grammar-sketch">2.7 Parser-Level Grammar Sketch<a class="headerlink" href="#27-parser-level-grammar-sketch" title="Permanent link">&para;</a></h3>
+<p>This is a parser-oriented sketch of the supported surface syntax, not a full
+lexical grammar. Semantic validation still enforces rules such as
+constant-expression requirements, type restrictions, and packed-only selection.</p>
+<pre><code class="language-text">expr ::= conditional_expr
+
+conditional_expr ::= logical_or_expr
+                   | logical_or_expr &quot;?&quot; expr &quot;:&quot; conditional_expr
+
+logical_or_expr ::= logical_and_expr { &quot;||&quot; logical_and_expr }
+logical_and_expr ::= bitwise_or_expr { &quot;&amp;&amp;&quot; bitwise_or_expr }
+bitwise_or_expr ::= bitwise_xor_expr { &quot;|&quot; bitwise_xor_expr }
+bitwise_xor_expr ::= bitwise_and_expr { (&quot;^&quot; | &quot;^~&quot; | &quot;~^&quot;) bitwise_and_expr }
+bitwise_and_expr ::= equality_expr { &quot;&amp;&quot; equality_expr }
+
+equality_expr ::= relational_expr
+                { (&quot;==&quot; | &quot;!=&quot; | &quot;===&quot; | &quot;!==&quot; | &quot;==?&quot; | &quot;!=?&quot;)
+                  relational_expr }
+
+relational_expr ::= shift_expr
+                  { (&quot;&lt;&quot; | &quot;&lt;=&quot; | &quot;&gt;&quot; | &quot;&gt;=&quot;) shift_expr
+                  | &quot;inside&quot; inside_set }
+
+shift_expr ::= additive_expr { (&quot;&lt;&lt;&quot; | &quot;&gt;&gt;&quot; | &quot;&lt;&lt;&lt;&quot; | &quot;&gt;&gt;&gt;&quot;) additive_expr }
+additive_expr ::= multiplicative_expr { (&quot;+&quot; | &quot;-&quot;) multiplicative_expr }
+multiplicative_expr ::= power_expr { (&quot;*&quot; | &quot;/&quot; | &quot;%&quot;) power_expr }
+power_expr ::= unary_expr { &quot;**&quot; unary_expr }
+
+unary_expr ::= postfix_expr
+             | (&quot;+&quot; | &quot;-&quot; | &quot;!&quot; | &quot;~&quot;
+             | &quot;&amp;&quot; | &quot;~&amp;&quot; | &quot;|&quot; | &quot;~|&quot; | &quot;^&quot; | &quot;^~&quot; | &quot;~^&quot;) unary_expr
+
+postfix_expr ::= primary_expr { postfix_suffix }
+
+postfix_suffix ::= &quot;[&quot; expr &quot;]&quot;
+                 | &quot;[&quot; constant_expr &quot;:&quot; constant_expr &quot;]&quot;
+                 | &quot;[&quot; expr &quot;+:&quot; constant_expr &quot;]&quot;
+                 | &quot;[&quot; expr &quot;-:&quot; constant_expr &quot;]&quot;
+                 | &quot;.triggered&quot; &quot;(&quot; &quot;)&quot;
+
+primary_expr ::= operand_reference
+               | literal
+               | &quot;(&quot; expr &quot;)&quot;
+               | cast_expr
+               | enum_label_expr
+               | concatenation
+               | replication
+
+cast_expr ::= type_reference &quot;'&quot; &quot;(&quot; expr &quot;)&quot;
+enum_label_expr ::= &quot;type&quot; &quot;(&quot; operand_reference &quot;)&quot; &quot;::&quot; enum_label_identifier
+
+concatenation ::= &quot;{&quot; expr { &quot;,&quot; expr } &quot;}&quot;
+replication ::= &quot;{&quot; constant_expr &quot;{&quot; expr &quot;}&quot; &quot;}&quot;
+
+inside_set ::= &quot;{&quot; inside_item { &quot;,&quot; inside_item } &quot;}&quot;
+inside_item ::= expr | &quot;[&quot; expr &quot;:&quot; expr &quot;]&quot;
+
+literal ::= integral_literal | real_literal | string_literal
+
+type_reference ::= bit_vector_type
+                 | integer_like_type
+                 | &quot;real&quot;
+                 | &quot;string&quot;
+                 | &quot;signed&quot;
+                 | &quot;unsigned&quot;
+                 | &quot;type&quot; &quot;(&quot; operand_reference &quot;)&quot;
+
+bit_vector_type ::= [ (&quot;signed&quot; | &quot;unsigned&quot;) ]
+                    (&quot;bit&quot; | &quot;logic&quot;) [ &quot;[&quot; positive_integer &quot;]&quot; ]
+
+integer_like_type ::= &quot;byte&quot;
+                    | &quot;shortint&quot;
+                    | &quot;int&quot;
+                    | &quot;longint&quot;
+                    | &quot;integer&quot;
+                    | &quot;time&quot;
+</code></pre>
+<p>Notes:</p>
+<ul>
+<li><code>operand_reference</code> may be hierarchical, for example <code>top.cpu.data</code>.</li>
+<li>An operand reference may end in <code>.triggered</code>; that suffix is ordinary name
+  text unless it is immediately followed by <code>()</code>.</li>
+<li><code>.triggered()</code> is semantically valid only on a raw event operand reference;
+  broader parses are rejected during semantic validation.</li>
+<li>In <code>type(enum_operand_reference)::LABEL</code>, <code>enum_operand_reference</code> must
+  resolve to an enum-typed operand reference and <code>LABEL</code> must be one of its
+  declared labels.</li>
+<li><code>constant_expr</code> means an expression later validated as a constant integer
+  expression in the supported subset.</li>
+<li><code>inside</code> ranges use inclusive bounds.</li>
+<li><code>bit</code> and <code>logic</code> without an explicit <code>[N]</code> suffix mean width <code>1</code>.</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

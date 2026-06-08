@@ -1,7 +1,7 @@
 ---
 id: commands/property
 title: Property command
-summary: Evaluate expressions on event-selected timestamps.
+description: Evaluate expressions on event-selected timestamps.
 section: commands
 see_also:
   - commands/overview

@@ -491,7 +491,7 @@
       "required": [
         "id",
         "title",
-        "summary",
+        "description",
         "section"
       ],
       "properties": {
@@ -503,9 +503,9 @@
           "type": "string",
           "description": "Human-readable topic title."
         },
-        "summary": {
+        "description": {
           "type": "string",
-          "description": "Short summary shown in docs listings and search results."
+          "description": "Short description shown in docs listings and search results."
         },
         "section": {
           "type": "string",
@@ -554,7 +554,7 @@
             "id_exact",
             "id_prefix",
             "title_exact",
-            "title_or_summary",
+            "title_or_description",
             "heading",
             "body"
           ]

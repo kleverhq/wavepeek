@@ -1,7 +1,7 @@
 ---
 id: bad-heading
 title: Expected title
-summary: Bad heading fixture
+description: Bad heading fixture
 section: reference
 see_also: []
 ---

@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use super::*;
 
-fn summary(id: &str, title: &str, summary: &str) -> TopicSummary {
+fn summary(id: &str, title: &str, description: &str) -> TopicSummary {
     TopicSummary {
         id: id.to_string(),
         title: title.to_string(),
-        summary: summary.to_string(),
+        description: description.to_string(),
         section: "commands".to_string(),
         see_also: vec!["reference/schema".to_string()],
     }
@@ -14,7 +14,7 @@ fn summary(id: &str, title: &str, summary: &str) -> TopicSummary {
 
 fn record(id: &str, title: &str, body: &str) -> TopicRecord {
     TopicRecord {
-        summary: summary(id, title, "compact summary"),
+        summary: summary(id, title, "compact description"),
         raw_markdown: format!("---\nid: {id}\n---\n{body}"),
         body: body.to_string(),
         headings: extract_headings(body),
@@ -101,7 +101,7 @@ fn derives_search_edges_and_catalog_sorting() {
     let front = FrontMatter {
         id: "x".to_string(),
         title: "X".to_string(),
-        summary: "S".to_string(),
+        description: "S".to_string(),
         section: "intro".to_string(),
         see_also: Vec::new(),
     };

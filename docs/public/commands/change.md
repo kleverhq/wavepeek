@@ -1,7 +1,7 @@
 ---
 id: commands/change
 title: Change command
-summary: Inspect value transitions across a bounded time range.
+description: Inspect value transitions across a bounded time range.
 section: commands
 see_also:
   - commands/info

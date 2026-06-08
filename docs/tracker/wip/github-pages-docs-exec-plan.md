@@ -33,7 +33,8 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - [x] (2026-06-08 06:28Z) Focused release/docs trigger review completed; findings about explicit repair mode, trusted checkout refs, and release recovery dispatch were folded into this revision.
 - [x] (2026-06-08 06:41Z) Focused control review completed; finding about normalizing boolean repair input before just recipes was folded into this revision.
 - [x] (2026-06-08 06:44Z) Final focused control review completed with no substantive findings.
-- [ ] Implementation has not started.
+- [x] (2026-06-08 07:14Z) Milestone 1 implemented and locally validated. Authored public docs and docs fixtures now use `description`, runtime docs JSON/export metadata emits `description`, `docs show --description` replaces `--summary`, `title_or_description` replaces `title_or_summary`, `schema/wavepeek_v0.json` and `tools/schema/check_schema_contract.py` enforce the new current contract, and legacy Markdown `summary` input remains covered by a unit test.
+- [ ] Milestone 2 is next: add docs-site Python dependencies to the repository and devcontainer image.
 
 ## Surprises & Discoveries
 
@@ -129,7 +130,7 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 
 ## Outcomes & Retrospective
 
-No implementation outcome exists yet. The ExecPlan has completed focused review and control passes with no substantive findings after the metadata rename and release/docs trigger revisions. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
+Milestone 1 is implemented. The current docs metadata contract now uses `description` in authored Markdown, current CLI JSON, export manifests, schema, docs, and tests, with `summary` retained as a legacy front matter input alias. Validation passed for `cargo test -q docs`, `cargo test -q --test docs_cli`, and `just check-schema`. The overall plan remains in progress; after implementation, this section must summarize which full-gate commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
 
 ## Context and Orientation
 
@@ -598,3 +599,5 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with `workflow_dis
 2026-06-08 06:41Z: Incorporated focused control-review finding. The plan now requires workflow boolean repair input to be normalized before invoking just recipes, and the recipes treat `1` or `true` as repair mode.
 
 2026-06-08 06:44Z: Recorded final focused control pass after the release/docs dispatch fixes. The reviewer reported no substantive findings.
+
+2026-06-08 07:14Z: Recorded Milestone 1 implementation. The working tree now emits current docs metadata as `description`, rejects current `--summary`, updates schema and public docs, and adds a schema contract assertion for the renamed topic field and search match kind.

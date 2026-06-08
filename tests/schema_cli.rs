@@ -303,7 +303,7 @@ fn schema_command_exposes_field_descriptions_for_machine_clients() {
             "$defs",
             "topicSummary",
             "properties",
-            "summary",
+            "description",
             "description",
         ],
         &[

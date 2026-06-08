@@ -1,7 +1,7 @@
 ---
 id: troubleshooting/scoped-vs-canonical-names
 title: Scoped vs canonical names
-summary: Resolve name lookup failures by matching your signal spelling to whether `--scope` is set.
+description: Resolve name lookup failures by matching your signal spelling to whether `--scope` is set.
 section: troubleshooting
 see_also:
   - commands/scope

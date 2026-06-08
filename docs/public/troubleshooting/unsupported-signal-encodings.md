@@ -1,7 +1,7 @@
 ---
 id: troubleshooting/unsupported-signal-encodings
 title: Unsupported signal encodings
-summary: Understand why `value` and `change` reject some signals and when to switch to expression-based queries instead.
+description: Understand why `value` and `change` reject some signals and when to switch to expression-based queries instead.
 section: troubleshooting
 see_also:
   - commands/signal

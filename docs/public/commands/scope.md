@@ -1,7 +1,7 @@
 ---
 id: commands/scope
 title: Scope command
-summary: Explore hierarchy scopes.
+description: Explore hierarchy scopes.
 section: commands
 see_also:
   - commands/overview

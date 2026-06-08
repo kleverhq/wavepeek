@@ -130,13 +130,13 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
         CommandData::DocsTopics(data) => data
             .topics
             .iter()
-            .map(|topic| format!("{} — {}", topic.id, topic.summary))
+            .map(|topic| format!("{} — {}", topic.id, topic.description))
             .collect::<Vec<_>>()
             .join("\n"),
         CommandData::DocsSearch(data) => data
             .matches
             .iter()
-            .map(|entry| format!("{}  {}", entry.topic.id, entry.topic.summary))
+            .map(|entry| format!("{}  {}", entry.topic.id, entry.topic.description))
             .collect::<Vec<_>>()
             .join("\n"),
     }
@@ -291,7 +291,7 @@ mod tests {
                 topics: vec![crate::docs::TopicSummary {
                     id: "intro".to_string(),
                     title: "Introduction".to_string(),
-                    summary: "Start here.".to_string(),
+                    description: "Start here.".to_string(),
                     section: "intro".to_string(),
                     see_also: vec!["commands/help".to_string()],
                 }],
@@ -478,7 +478,7 @@ mod tests {
                     topic: crate::docs::TopicSummary {
                         id: "commands/change".to_string(),
                         title: "Change command".to_string(),
-                        summary: "Find changes.".to_string(),
+                        description: "Find changes.".to_string(),
                         section: "commands".to_string(),
                         see_also: vec![],
                     },

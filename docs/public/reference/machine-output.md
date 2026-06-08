@@ -1,7 +1,7 @@
 ---
 id: reference/machine-output
 title: Machine Output Contract
-summary: Stable stdout, stderr, JSON envelope, warning, schema, error, and exit-code behavior.
+description: Stable stdout, stderr, JSON envelope, warning, schema, error, and exit-code behavior.
 section: reference
 see_also:
   - reference/command-model

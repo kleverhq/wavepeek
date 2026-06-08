@@ -1,7 +1,7 @@
 ---
 id: commands/value
 title: Value command
-summary: Sample signal values at one timestamp.
+description: Sample signal values at one timestamp.
 section: commands
 see_also:
   - commands/overview

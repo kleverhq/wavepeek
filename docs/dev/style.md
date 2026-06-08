@@ -34,7 +34,7 @@ Help must remain layered and standalone: `wavepeek` with no args aliases compact
 
 ## Public Docs Maintenance
 
-The packaged `wavepeek docs` corpus lives under `docs/public/`. Topic files use YAML front matter with `id`, `title`, `summary`, and `section`; `see_also` is optional but must reference existing topic IDs. Each topic body starts with an H1 that exactly matches `title`.
+The packaged `wavepeek docs` corpus lives under `docs/public/`. Topic files use YAML front matter with `id`, `title`, `description`, and `section`; `summary` is accepted only as a legacy input alias. `see_also` is optional but must reference existing topic IDs. Each topic body starts with an H1 that exactly matches `title`.
 
 Topic IDs are stable slash-separated user-facing names, and file paths under `docs/public/` match the ID plus `.md`. Keep `docs/public/commands/help.md` and `docs/public/commands/docs.md` as the user-facing homes for layered help and docs command behavior.
 

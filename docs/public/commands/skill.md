@@ -1,7 +1,7 @@
 ---
 id: commands/skill
 title: Skill command
-summary: Print the packaged agent skill Markdown from the installed build.
+description: Print the packaged agent skill Markdown from the installed build.
 section: commands
 see_also:
   - intro

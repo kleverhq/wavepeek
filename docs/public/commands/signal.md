@@ -1,7 +1,7 @@
 ---
 id: commands/signal
 title: Signal command
-summary: Explore signals within a scope.
+description: Explore signals within a scope.
 section: commands
 see_also:
   - commands/overview

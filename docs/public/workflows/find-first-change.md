@@ -1,7 +1,7 @@
 ---
 id: workflows/find-first-change
 title: Find first change
-summary: Start wide, then narrow the earliest transition that matters.
+description: Start wide, then narrow the earliest transition that matters.
 section: workflows
 see_also:
   - commands/change

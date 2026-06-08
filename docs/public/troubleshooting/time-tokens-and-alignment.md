@@ -1,7 +1,7 @@
 ---
 id: troubleshooting/time-tokens-and-alignment
 title: Time tokens and alignment
-summary: Fix time-argument errors caused by missing units, out-of-range timestamps, or dump-resolution mismatch.
+description: Fix time-argument errors caused by missing units, out-of-range timestamps, or dump-resolution mismatch.
 section: troubleshooting
 see_also:
   - commands/info

@@ -1,7 +1,7 @@
 ---
 id: commands/info
 title: Info command
-summary: Show waveform metadata.
+description: Show waveform metadata.
 section: commands
 see_also:
   - commands/overview

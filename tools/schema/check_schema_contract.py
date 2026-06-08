@@ -135,6 +135,37 @@ def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> N
         )
 
 
+def validate_docs_metadata_schema(schema: dict[str, object]) -> None:
+    try:
+        topic_summary = schema["$defs"]["topicSummary"]  # type: ignore[index]
+        topic_required = topic_summary["required"]  # type: ignore[index]
+        topic_properties = topic_summary["properties"]  # type: ignore[index]
+        match_kind = schema["$defs"]["docsSearchMatch"]["properties"]["match_kind"]  # type: ignore[index]
+        match_kind_enum = match_kind["enum"]  # type: ignore[index]
+    except (KeyError, TypeError):
+        fail("error: schema: canonical schema is missing docs metadata definitions")
+
+    if not isinstance(topic_required, list):
+        fail("error: schema: topicSummary.required must be an array")
+    if not isinstance(topic_properties, dict):
+        fail("error: schema: topicSummary.properties must be an object")
+    if not isinstance(match_kind_enum, list):
+        fail("error: schema: docsSearchMatch.match_kind.enum must be an array")
+
+    if "description" not in topic_required:
+        fail("error: schema: topicSummary must require description")
+    if "summary" in topic_required:
+        fail("error: schema: topicSummary must not require legacy summary")
+    if "description" not in topic_properties:
+        fail("error: schema: topicSummary must define description")
+    if "summary" in topic_properties:
+        fail("error: schema: topicSummary must not define current summary property")
+    if "title_or_description" not in match_kind_enum:
+        fail("error: schema: docs search match kind enum must include title_or_description")
+    if "title_or_summary" in match_kind_enum:
+        fail("error: schema: docs search match kind enum must not include title_or_summary")
+
+
 def validate_runtime_envelope_url(version: str, major: str) -> None:
     expected_url = expected_schema_url(major)
     runtime_url_pattern = re.compile(expected_schema_url_pattern(major))
@@ -185,6 +216,7 @@ def main() -> None:
     validate_schema_path(schema_path, major)
     schema_bytes, schema = load_schema(schema_path)
     validate_artifact_schema_url_pattern(schema, version, major)
+    validate_docs_metadata_schema(schema)
     validate_runtime_schema(schema_path, schema_bytes)
     validate_runtime_envelope_url(version, major)
 

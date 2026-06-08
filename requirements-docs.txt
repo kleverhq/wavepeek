@@ -1,0 +1,3 @@
+mkdocs-material~=9.6
+mike~=2.1
+PyYAML~=6.0

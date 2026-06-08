@@ -1,6 +1,7 @@
 {
     "name": "wavepeek-ci",
     "build": {
+        "context": "..",
         "dockerfile": "Dockerfile",
         "target": "ci"
     },

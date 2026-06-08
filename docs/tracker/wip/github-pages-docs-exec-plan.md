@@ -34,7 +34,8 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - [x] (2026-06-08 06:41Z) Focused control review completed; finding about normalizing boolean repair input before just recipes was folded into this revision.
 - [x] (2026-06-08 06:44Z) Final focused control review completed with no substantive findings.
 - [x] (2026-06-08 07:14Z) Milestone 1 implemented and locally validated. Authored public docs and docs fixtures now use `description`, runtime docs JSON/export metadata emits `description`, `docs show --description` replaces `--summary`, `title_or_description` replaces `title_or_summary`, `schema/wavepeek_v0.json` and `tools/schema/check_schema_contract.py` enforce the new current contract, and legacy Markdown `summary` input remains covered by a unit test.
-- [ ] Milestone 2 is next: add docs-site Python dependencies to the repository and devcontainer image.
+- [x] (2026-06-08 07:18Z) Milestone 2 implemented and locally validated with a temporary `tmp/docs-tooling-venv` standing in for the rebuilt image. Added root `requirements-docs.txt`, an allowlist `.dockerignore`, root-context devcontainer builds, base-image MkDocs/mike installation, `just dev-setup` verification, and maintainer environment docs. Validation passed for JSON parsing of devcontainer configs, `just format-justfile-check`, `git diff --check`, `mkdocs --version`, `mike --version`, and `PATH="$PWD/tmp/docs-tooling-venv/bin:$PATH" just dev-setup`.
+- [ ] Milestone 3 is next: generate the MkDocs staging tree and generated config from `wavepeek docs export`.
 
 ## Surprises & Discoveries
 
@@ -130,7 +131,7 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 
 ## Outcomes & Retrospective
 
-Milestone 1 is implemented. The current docs metadata contract now uses `description` in authored Markdown, current CLI JSON, export manifests, schema, docs, and tests, with `summary` retained as a legacy front matter input alias. Validation passed for `cargo test -q docs`, `cargo test -q --test docs_cli`, and `just check-schema`. The overall plan remains in progress; after implementation, this section must summarize which full-gate commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
+Milestones 1 and 2 are implemented. The current docs metadata contract now uses `description` in authored Markdown, current CLI JSON, export manifests, schema, docs, and tests, with `summary` retained as a legacy front matter input alias. The devcontainer source now installs MkDocs and mike from root `requirements-docs.txt` into the shared image and verifies both in `just dev-setup`. Validation passed for `cargo test -q docs`, `cargo test -q --test docs_cli`, `just check-schema`, JSON parsing of devcontainer configs, `just format-justfile-check`, `git diff --check`, `mkdocs --version`, `mike --version`, and `PATH="$PWD/tmp/docs-tooling-venv/bin:$PATH" just dev-setup`. The overall plan remains in progress; after implementation, this section must summarize which full-gate commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
 
 ## Context and Orientation
 
@@ -601,3 +602,5 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with `workflow_dis
 2026-06-08 06:44Z: Recorded final focused control pass after the release/docs dispatch fixes. The reviewer reported no substantive findings.
 
 2026-06-08 07:14Z: Recorded Milestone 1 implementation. The working tree now emits current docs metadata as `description`, rejects current `--summary`, updates schema and public docs, and adds a schema contract assertion for the renamed topic field and search match kind.
+
+2026-06-08 07:18Z: Recorded Milestone 2 implementation. The devcontainer build context now uses the repository root with an allowlist `.dockerignore`, the shared image installs MkDocs/mike from root `requirements-docs.txt`, and `just dev-setup` verifies the docs-site tooling.

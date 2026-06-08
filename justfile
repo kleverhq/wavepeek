@@ -94,6 +94,8 @@ dev-setup: require-container
     devcontainer --version
     gtkwave --version
     surfer --version
+    mkdocs --version
+    mike --version
     just --version
     pre-commit install --hook-type commit-msg --hook-type pre-commit
 

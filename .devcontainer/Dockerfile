@@ -1,6 +1,6 @@
 # ---- Shared Environment Contract -----------------------------------------------
 FROM scratch AS env_contract
-COPY env_contract.sh /wavepeek-env-contract.sh
+COPY .devcontainer/env_contract.sh /wavepeek-env-contract.sh
 
 # ---- Surfer Builder ------------------------------------------------------------
 FROM ubuntu:24.04 AS surfer_builder
@@ -67,11 +67,17 @@ RUN apt-get update && \
     ca-certificates curl git make libatomic1 \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
-    python3 \
+    python3 python3-venv \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-docs.txt /tmp/wavepeek-requirements-docs.txt
+RUN python3 -m venv /opt/wavepeek-docs-venv && \
+    /opt/wavepeek-docs-venv/bin/pip install --no-cache-dir -r /tmp/wavepeek-requirements-docs.txt && \
+    rm -f /tmp/wavepeek-requirements-docs.txt
+ENV PATH="/opt/wavepeek-docs-venv/bin:${PATH}"
 
 # Install GitHub Actions workflow linter for hooks and CI checks.
 RUN . /tmp/wavepeek-env-contract.sh && \
@@ -169,7 +175,7 @@ RUN apt-get update && \
 
 # Expose selected Verdi FSDB utilities useful for debugging and exploration.
 # The wrapper preserves tool-name dispatch and invokes launchers with bash.
-COPY verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
+COPY .devcontainer/verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
 RUN chmod 0755 /usr/local/bin/wavepeek-verdi-tool && \
     for tool in \
         vcd2fsdb fsdb2vcd fsdbdebug fsdbreport fsdbextract fsdbmerge \

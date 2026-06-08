@@ -42,8 +42,8 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 9. Wait for `.github/workflows/release.yml` to finish. It dispatches docs publication only after the GitHub Release is created.
 10. Wait for `.github/workflows/docs.yml` to finish for the same version.
 11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, and non-forced `gh-pages` push.
-12. Validate the schema publication endpoint on `main`: `https://raw.githubusercontent.com/kleverhq/wavepeek/main/schema/wavepeek_vX.json` should resolve to the committed schema artifact.
-13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root artifacts such as `skill.md` and `wavepeek_vX.json` resolve from Pages.
+12. Validate the schema publication endpoint on Pages: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json` should resolve to the committed schema artifact.
+13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema artifacts such as `wavepeek_vX.json` resolve from Pages.
 
 The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch; for a manual repair or first-time bootstrap, run `.github/workflows/docs.yml` with `version`, `source_ref`, and `repair_existing_version` only when intentionally replacing an existing Pages snapshot.
 

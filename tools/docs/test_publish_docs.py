@@ -81,23 +81,17 @@ class PublishDocsTests(unittest.TestCase):
 
     def test_collect_root_artifacts_copies_versioned_schema(self) -> None:
         source = self.root / "source"
-        (source / "docs" / "skills").mkdir(parents=True)
-        (source / "schema").mkdir()
-        (source / "docs" / "skills" / "wavepeek.md").write_text("skill", encoding="utf-8")
+        (source / "schema").mkdir(parents=True)
         (source / "schema" / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
 
         copied = publish_docs.collect_root_artifacts(source, self.paths, "0.5.0")
 
-        self.assertEqual(
-            sorted(path.name for path in copied), ["skill.md", "wavepeek_v0.json"]
-        )
-        self.assertEqual((self.paths.root_artifacts / "skill.md").read_text(), "skill")
+        self.assertEqual(sorted(path.name for path in copied), ["wavepeek_v0.json"])
+        self.assertFalse((self.paths.root_artifacts / "skill.md").exists())
 
     def test_collect_root_artifacts_maps_legacy_major_zero_schema(self) -> None:
         source = self.root / "legacy-source"
-        (source / "docs" / "skills").mkdir(parents=True)
-        (source / "schema").mkdir()
-        (source / "docs" / "skills" / "wavepeek.md").write_text("skill", encoding="utf-8")
+        (source / "schema").mkdir(parents=True)
         (source / "schema" / "wavepeek.json").write_text("legacy", encoding="utf-8")
 
         publish_docs.collect_root_artifacts(source, self.paths, "0.5.0")
@@ -173,7 +167,6 @@ class PublishDocsTests(unittest.TestCase):
                 "latest/index.html",
                 ".nojekyll",
                 "versions.json",
-                "skill.md",
             ],
             publish_docs.allowed_path_patterns("0.5.0"),
         )
@@ -186,6 +179,10 @@ class PublishDocsTests(unittest.TestCase):
             publish_docs.verify_allowed_paths(
                 ["wavepeek_v0.json/extra.json"],
                 publish_docs.allowed_path_patterns("0.5.0"),
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["skill.md"], publish_docs.allowed_path_patterns("0.5.0")
             )
 
     def test_changed_paths_reports_old_path_for_renames(self) -> None:
@@ -209,23 +206,22 @@ class PublishDocsTests(unittest.TestCase):
         self.assertIn("0.4.0/index.html", changed)
         self.assertIn("0.5.0/index.html", changed)
 
-    def test_verify_root_artifacts_requires_skill_and_major_schema(self) -> None:
+    def test_verify_root_artifacts_requires_major_schema(self) -> None:
         repo = self.root / "repo-root-artifacts"
         repo.mkdir()
         git(repo, "init", "-q")
         git(repo, "config", "user.email", "docs@example.invalid")
         git(repo, "config", "user.name", "Docs Bot")
-        (repo / "skill.md").write_text("skill", encoding="utf-8")
         (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
-        git(repo, "add", "skill.md", "wavepeek_v0.json")
+        git(repo, "add", "wavepeek_v0.json")
         git(repo, "commit", "-q", "-m", "artifacts")
         runner = publish_docs.CommandRunner()
 
         with chdir(repo):
             publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
-            git(repo, "rm", "-q", "skill.md")
-            git(repo, "commit", "-q", "-m", "remove skill")
-            with self.assertRaisesRegex(publish_docs.PublishError, "skill.md"):
+            git(repo, "rm", "-q", "wavepeek_v0.json")
+            git(repo, "commit", "-q", "-m", "remove schema")
+            with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek_v0.json"):
                 publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
 
         repo_tree = self.root / "repo-root-artifacts-tree"
@@ -233,10 +229,9 @@ class PublishDocsTests(unittest.TestCase):
         git(repo_tree, "init", "-q")
         git(repo_tree, "config", "user.email", "docs@example.invalid")
         git(repo_tree, "config", "user.name", "Docs Bot")
-        (repo_tree / "skill.md").write_text("skill", encoding="utf-8")
         (repo_tree / "wavepeek_v0.json").mkdir()
         (repo_tree / "wavepeek_v0.json" / "extra.json").write_text("{}", encoding="utf-8")
-        git(repo_tree, "add", "skill.md", "wavepeek_v0.json/extra.json")
+        git(repo_tree, "add", "wavepeek_v0.json/extra.json")
         git(repo_tree, "commit", "-q", "-m", "tree artifact")
         with chdir(repo_tree):
             with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek_v0.json"):

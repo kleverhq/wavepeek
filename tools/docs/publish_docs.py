@@ -248,15 +248,9 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
     clean_owned_path(run_paths.root_artifacts)
     run_paths.root_artifacts.mkdir(parents=True, exist_ok=True)
 
-    skill_source = source_root / "docs" / "skills" / "wavepeek.md"
-    if not skill_source.is_file():
-        fail(f"missing packaged skill at {skill_source}")
-    skill_target = run_paths.root_artifacts / "skill.md"
-    shutil.copyfile(skill_source, skill_target)
-
     schema_dir = source_root / "schema"
     schemas = sorted(schema_dir.glob("wavepeek_v*.json")) if schema_dir.is_dir() else []
-    copied: list[pathlib.Path] = [skill_target]
+    copied: list[pathlib.Path] = []
     if schemas:
         for schema in schemas:
             target = run_paths.root_artifacts / schema.name
@@ -435,7 +429,7 @@ def stage_root_artifacts(version: str, run_paths: Paths, runner: CommandRunner) 
     for artifact in sorted(run_paths.root_artifacts.iterdir()):
         if artifact.is_file():
             shutil.copyfile(artifact, run_paths.gh_pages_worktree / artifact.name)
-    runner.run(["git", "add", "skill.md", "wavepeek_v*.json"], cwd=run_paths.gh_pages_worktree)
+    runner.run(["git", "add", "wavepeek_v*.json"], cwd=run_paths.gh_pages_worktree)
     diff = runner.run(
         ["git", "diff", "--cached", "--quiet"],
         cwd=run_paths.gh_pages_worktree,
@@ -459,7 +453,6 @@ def allowed_path_patterns(version: str) -> list[str]:
         "404.html",
         "sitemap.xml",
         "sitemap.xml.gz",
-        "skill.md",
         "wavepeek_v*.json",
     ]
 
@@ -645,7 +638,7 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
-    expected = ["skill.md", f"wavepeek_v{major_version(version)}.json"]
+    expected = [f"wavepeek_v{major_version(version)}.json"]
     missing: list[str] = []
     for artifact in expected:
         result = runner.run(

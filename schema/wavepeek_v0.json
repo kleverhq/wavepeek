@@ -13,7 +13,7 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "pattern": "^https://raw\\.githubusercontent\\.com/kleverhq/wavepeek/main/schema/wavepeek_v0\\.json$"
+      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v0\\.json$"
     },
     "command": {
       "type": "string",

@@ -156,7 +156,7 @@ fn schema_command_schema_url_pattern_matches_current_major_contract() {
         .as_str()
         .expect("envelope schema URL pattern should be a string");
     let expected_pattern = format!(
-        r"^https://raw\.githubusercontent\.com/kleverhq/wavepeek/main/schema/wavepeek_v{}\.json$",
+        r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v{}\.json$",
         env!("CARGO_PKG_VERSION_MAJOR")
     );
     assert_eq!(pattern, expected_pattern);

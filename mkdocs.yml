@@ -1,0 +1,17 @@
+site_name: wavepeek
+site_url: https://kleverhq.github.io/wavepeek/
+repo_url: https://github.com/kleverhq/wavepeek
+repo_name: kleverhq/wavepeek
+theme:
+  name: material
+  features:
+    - navigation.instant
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+extra:
+  version:
+    provider: mike

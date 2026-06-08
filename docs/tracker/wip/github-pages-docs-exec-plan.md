@@ -29,6 +29,10 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - [x] (2026-06-08 05:55Z) Focused control review completed; findings about docs-search match reason naming and explicit schema contract checks were folded into this revision.
 - [x] (2026-06-08 06:01Z) Second focused control review completed; findings about `docs show --summary` and the checked-in schema artifact flow were folded into this revision.
 - [x] (2026-06-08 06:14Z) Third focused control review completed with no substantive findings.
+- [x] (2026-06-08 06:21Z) User changed the docs publication trigger: docs must deploy only after a GitHub Release is published, not independently on tag push.
+- [x] (2026-06-08 06:28Z) Focused release/docs trigger review completed; findings about explicit repair mode, trusted checkout refs, and release recovery dispatch were folded into this revision.
+- [x] (2026-06-08 06:41Z) Focused control review completed; finding about normalizing boolean repair input before just recipes was folded into this revision.
+- [x] (2026-06-08 06:44Z) Final focused control review completed with no substantive findings.
 - [ ] Implementation has not started.
 
 ## Surprises & Discoveries
@@ -60,7 +64,7 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
   Date/Author: 2026-06-07 / Grin.
 
 - Decision: Publish the first `0.5.0` web snapshot from the existing `v0.5.0` tag using workflow code and scripts from the branch that contains this implementation.
-  Rationale: The old tag must define the release docs content, but it cannot define the new publishing machinery because that machinery did not exist. A manual workflow dispatch must keep the working checkout on the implementation branch that contains `.github/workflows/docs.yml`, `just docs-site-deploy`, and `tools/docs/`, while the publication wrapper checks out `v0.5.0` separately as the documentation source.
+  Rationale: The old tag must define the release docs content, but it cannot define the new publishing machinery because that machinery did not exist. A manual workflow dispatch must keep the working checkout on a trusted branch, normally the default branch after this implementation is merged, that contains `.github/workflows/docs.yml`, just recipes, and `tools/docs/`, while the publication wrapper checks out `v0.5.0` separately as the documentation source.
   Date/Author: 2026-06-07 / Grin, confirmed by user.
 
 - Decision: Rename current docs metadata from `summary` to `description` end-to-end in authored Markdown, Rust runtime structs, docs-search match reason names such as `title_or_summary`, the `docs show --summary` CLI option, `wavepeek docs ... --json` output, export manifests, canonical JSON schema artifacts, docs, and tests. Keep `summary` only as a legacy input alias when reading old Markdown front matter or historical export manifests.
@@ -111,9 +115,21 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
   Rationale: The push job receives generated data from a prior job. It must prove the bundle is a fast-forward update from the remote base observed during staging, does not rewrite an existing requested version unless an explicit repair mode is present, preserves unrelated version entries and snapshots, only adds the requested version while moving `latest` and the default to it, and changes only allowed paths.
   Date/Author: 2026-06-07 / Grin, from fourth and fifth control reviews.
 
+- Decision: Start automatic docs publication only after the release workflow has successfully created the GitHub Release, not directly from tag push.
+  Rationale: Tag push currently starts the binary release workflow. Starting docs from the same tag event creates independent deployments that can race: docs can publish before the binary release succeeds, or docs can fail while the binary release succeeds. A created GitHub Release is the durable signal that the crate release and user-facing release have completed. Because GitHub Releases created with the default `GITHUB_TOKEN` do not fire downstream `release` workflows, the release workflow should explicitly dispatch the trusted docs workflow after creating the GitHub Release.
+  Date/Author: 2026-06-08 / Grin, confirmed by user and release/docs trigger review.
+
+- Decision: Use manual docs workflow dispatch for docs repair and historical bootstrap without moving tags or creating new releases.
+  Rationale: If docs scripts fail after the binary release has succeeded, maintainers should fix scripts on the trusted branch and rerun the docs publication for the same `vX.Y.Z` source tag. Tags are immutable release identity and should not be moved to repair documentation automation. If a version snapshot already exists and must be rewritten, the dispatch must set an explicit repair flag that is carried into staging metadata and push-side verification.
+  Date/Author: 2026-06-08 / Grin, confirmed by user and release/docs trigger review.
+
+- Decision: Keep the release workflow recoverable enough that GitHub Release creation can be retried after a partial crate publish.
+  Rationale: Docs publication depends on the GitHub Release existing and on the release workflow dispatching docs after creating it. If `cargo publish` succeeds but GitHub Release creation fails, maintainers need a safe rerun path that verifies the crate version is already on crates.io and then creates the missing GitHub Release, rather than moving the tag or minting a new release tag. If the original tag-push workflow definition or helper scripts were broken, recovery must be available through a manual dispatch that uses trusted current tooling rather than the old tagged workflow.
+  Date/Author: 2026-06-08 / Grin, from release/docs trigger review.
+
 ## Outcomes & Retrospective
 
-No implementation outcome exists yet. The ExecPlan has completed focused review and control passes with no substantive findings after the metadata rename revision. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
+No implementation outcome exists yet. The ExecPlan has completed focused review and control passes with no substantive findings after the metadata rename and release/docs trigger revisions. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
 
 ## Context and Orientation
 
@@ -129,7 +145,7 @@ Build and quality automation is owned by the root `justfile`. Recipes intentiona
 
 Local and CI containers are defined in `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, and `.devcontainer/devcontainer.ci.json`. The current Dockerfile has a `base` stage shared by the `ci` and `dev` stages. Installing MkDocs dependencies in `base` makes them available to both CI and local development. Because the Dockerfile currently copies files from the `.devcontainer/` directory, changing it to copy root `requirements-docs.txt` requires setting the devcontainer build context to the repository root and updating Dockerfile `COPY` paths.
 
-GitHub Actions workflows currently live in `.github/workflows/ci.yml` and `.github/workflows/release.yml`. They run in the devcontainer baseline through `devcontainers/ci`. The new docs publication workflow should be separate, should have write permission to the repository contents because it pushes `gh-pages`, and should trigger on future release tags plus manual dispatch for the initial historical `v0.5.0` bootstrap.
+GitHub Actions workflows currently live in `.github/workflows/ci.yml` and `.github/workflows/release.yml`. They run in the devcontainer baseline through `devcontainers/ci`. The existing release workflow is triggered by `push` tags matching `v*.*.*`; it publishes the crate and creates the GitHub Release. The new docs publication workflow should be separate, should grant write permission only to the push job that updates `gh-pages`, should be dispatched automatically by the release workflow only after the GitHub Release exists, and should also support manual dispatch for the initial historical `v0.5.0` bootstrap and docs repair.
 
 Terminology used in this plan:
 
@@ -261,13 +277,13 @@ Create `tools/docs/publish_docs.py`. It should be deterministic, non-interactive
     stage-deploy: perform the check work, run mike deployment for a version against the local gh-pages branch, set latest/default aliases, commit root artifacts to the local gh-pages branch, write a small stage metadata file under tmp/docs-site/, and create a git bundle or equivalent data artifact containing only the staged gh-pages branch state.
     push-staged: from a fresh trusted checkout in a separate push job, verify the stage metadata and bundle, verify the update against the current remote gh-pages state and allowed path set, import the staged gh-pages branch state, and push it to origin. This subcommand must not run cargo, mkdocs, mike, or any command that uses SOURCE_REF.
 
-The wrapper should accept `--version X.Y.Z`, `--source-root PATH`, and `--source-ref REF` for `check` and `stage-deploy`. For any `stage-deploy` run, require `--source-ref` to be a non-empty SemVer release tag in the form `vX.Y.Z` and require it to match `--version`. `check` may accept `--source-root .` for local current-checkout validation, but any check intended to validate a publishable release should also use `--source-ref`. When `--source-ref` is provided, create a private worktree under `tmp/docs-site/source` at that tag and use it as the source root. This is required for the initial `v0.5.0` bootstrap, where current workflow scripts run from the implementation branch but docs content must come from the old tag. Remove only that owned worktree during cleanup.
+The wrapper should accept `--version X.Y.Z`, `--source-root PATH`, `--source-ref REF`, and an explicit `--repair-existing-version` flag for `check` and `stage-deploy` where applicable. For any `stage-deploy` run, require `--source-ref` to be a non-empty SemVer release tag in the form `vX.Y.Z` and require it to match `--version`. `check` may accept `--source-root .` for local current-checkout validation, but any check intended to validate a publishable release should also use `--source-ref`. When `--source-ref` is provided, create a private worktree under `tmp/docs-site/source` at that tag and use it as the source root. This is required for the initial `v0.5.0` bootstrap, where current workflow scripts run from the trusted branch but docs content must come from the old tag. Remove only that owned worktree during cleanup.
 
 The wrapper must run the export from the release source, not from the implementation checkout, with a command equivalent to:
 
     cargo run --quiet --manifest-path SOURCE_ROOT/Cargo.toml -- docs export tmp/docs-site/export --force
 
-This matters because the binary embeds docs at compile time from `SOURCE_ROOT/docs/public`. The wrapper should validate that the release source `Cargo.toml` package version equals `--version`, unless a deliberately named repair flag is added later. Source refs used by deployment must be release tags; do not allow arbitrary branches or commit SHAs in the publishing workflow.
+This matters because the binary embeds docs at compile time from `SOURCE_ROOT/docs/public`. The wrapper should validate that the release source `Cargo.toml` package version equals `--version`, including repair runs. Source refs used by deployment must be release tags; do not allow arbitrary branches or commit SHAs in the publishing workflow.
 
 Root artifact preparation must read from the same release source root. Copy `SOURCE_ROOT/docs/skills/wavepeek.md` to `tmp/docs-site/root-artifacts/skill.md`. Copy every file matching `SOURCE_ROOT/schema/wavepeek_v*.json` to `tmp/docs-site/root-artifacts/` using the same basename. Sort matches for deterministic logging. If no versioned schema files match and the package major version is `0`, accept the legacy file `SOURCE_ROOT/schema/wavepeek.json` and copy it as `tmp/docs-site/root-artifacts/wavepeek_v0.json`; this fallback exists for the required `v0.5.0` bootstrap. Fail clearly if the skill file is missing or if neither versioned schema files nor the allowed legacy major-0 schema file exist.
 
@@ -278,9 +294,9 @@ Root artifact preparation must read from the same release source root. Copy `SOU
 
 Do not pass `--push` to `mike`. The preferred flow is: let `mike` update the local `gh-pages` branch, open a worktree for that branch under `tmp/docs-site/gh-pages`, copy `skill.md` and all `wavepeek_v*.json` files to the branch root, commit them if changed, write stage metadata such as `tmp/docs-site/staged-deploy.json`, and create `tmp/docs-site/gh-pages.bundle` or an equivalent data-only artifact for the staged `gh-pages` branch. The metadata must contain the version, source ref, branch name, remote base commit from `origin/gh-pages` or an explicit null first-publish marker, expected final commit, artifact names, and allowed changed path prefixes. If this preferred flow conflicts with `mike` behavior during implementation, document the discovered behavior in this ExecPlan and use the smallest safe alternative that still keeps the push job separate from build/check work and carries only data into the push job.
 
-The wrapper must not delete old version directories on `gh-pages`. It should rely on `mike deploy VERSION latest --update-aliases` to add or replace only the requested `VERSION` and alias metadata. Replacing the same version should require an explicit `--repair-existing-version` or similarly named flag. Without that flag, fail if the version already exists in `mike list` or `versions.json`, because silent snapshot rewrites would violate the archive stability requirement.
+The wrapper must not delete old version directories on `gh-pages`. It should rely on `mike deploy VERSION latest --update-aliases` to add or replace only the requested `VERSION` and alias metadata. Replacing the same version requires the explicit `--repair-existing-version` flag. Without that flag, fail if the version already exists in `mike list` or `versions.json`, because silent snapshot rewrites would violate the archive stability requirement. When repair mode is enabled, stage metadata must record that fact, and push-side verification must still preserve unrelated versions and aliases while allowing only the requested version snapshot to be replaced.
 
-Add `tools/docs/test_publish_docs.py`. Tests should avoid real network pushes and should not require `mike` to modify a real branch. Cover version extraction from tags, rejection of non-SemVer or empty source refs in `stage-deploy`, acceptance of `--source-root .` only in non-pushing `check`, Cargo version validation from a temporary `Cargo.toml`, source root raw artifact collection for current `wavepeek_v*.json` files, the legacy `schema/wavepeek.json` to `wavepeek_v0.json` fallback for major version `0`, failure when the skill file is missing, failure when no schema files exist, command construction for `mike deploy`/`set-default`, the required `gh-pages` fetch/reset preflight, stage metadata validation, bundle creation/import command construction, remote-base verification, fast-forward/no-force push behavior, rejection of bundles that change disallowed paths or unrelated version directories, rejection when requested `VERSION` already exists in the remote base without an explicit repair flag, verification that unrelated `versions.json` entries and aliases are preserved, verification that only `VERSION` is added and `latest`/default move to it, and the fact that `push-staged` does not call cargo, mkdocs, mike, or use SOURCE_REF.
+Add `tools/docs/test_publish_docs.py`. Tests should avoid real network pushes and should not require `mike` to modify a real branch. Cover version extraction from tags, rejection of non-SemVer or empty source refs in `stage-deploy`, acceptance of `--source-root .` only in non-pushing `check`, Cargo version validation from a temporary `Cargo.toml`, source root raw artifact collection for current `wavepeek_v*.json` files, the legacy `schema/wavepeek.json` to `wavepeek_v0.json` fallback for major version `0`, failure when the skill file is missing, failure when no schema files exist, command construction for `mike deploy`/`set-default`, the required `gh-pages` fetch/reset preflight, stage metadata validation including the repair flag, bundle creation/import command construction, remote-base verification, fast-forward/no-force push behavior, rejection of bundles that change disallowed paths or unrelated version directories, rejection when requested `VERSION` already exists in the remote base without an explicit repair flag, acceptance of replacing only the requested version when the explicit repair flag is present, verification that unrelated `versions.json` entries and aliases are preserved, verification that only `VERSION` is added or repaired and `latest`/default move to it, and the fact that `push-staged` does not call cargo, mkdocs, mike, or use SOURCE_REF.
 
 Run:
 
@@ -310,17 +326,17 @@ This prepares staging the same way as build and runs `mkdocs serve --config-file
 
 This runs the same strict build as `docs-site-build`, then prepares root artifacts from the current checkout and verifies that `skill.md` plus at least one `wavepeek_v*.json` exist under `tmp/docs-site/root-artifacts/`.
 
-    docs-site-deploy VERSION SOURCE_REF=""
+    docs-site-deploy VERSION SOURCE_REF="" REPAIR="0"
 
-This is a local non-pushing convenience wrapper. It should require an explicit version argument. If `SOURCE_REF` is empty, run `tools/docs/publish_docs.py check --version VERSION --source-root .` against the current checkout. If `SOURCE_REF` is set, run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF` without push credentials and leave the local `gh-pages` branch staged but unpushed.
+This is a local non-pushing convenience wrapper. It should require an explicit version argument. If `SOURCE_REF` is empty, run `tools/docs/publish_docs.py check --version VERSION --source-root .` against the current checkout. If `SOURCE_REF` is set, run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF`, adding `--repair-existing-version` only when `REPAIR` is truthy (`1` or `true`), without push credentials and leave the local `gh-pages` branch staged but unpushed.
 
-    docs-site-stage-deploy VERSION SOURCE_REF
+    docs-site-stage-deploy VERSION SOURCE_REF REPAIR="0"
 
-This is the CI staging entrypoint. It must require a non-empty SemVer release tag `SOURCE_REF` and run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF` without push credentials.
+This is the CI staging entrypoint. It must require a non-empty SemVer release tag `SOURCE_REF` and run `tools/docs/publish_docs.py stage-deploy --version VERSION --source-ref SOURCE_REF`, adding `--repair-existing-version` only when `REPAIR` is truthy (`1` or `true`), without push credentials.
 
-    docs-site-push-staged VERSION
+    docs-site-push-staged VERSION REPAIR="0"
 
-This is the push-only entrypoint. It must run `tools/docs/publish_docs.py push-staged --version VERSION` and must not run cargo, mkdocs, mike, or any source-ref checkout. In the workflow it must run in a separate push job from a fresh trusted checkout and consume only uploaded staged metadata and bundle artifacts as data. It may receive push credentials because all release-source build/check subprocesses have already completed in a different job.
+This is the push-only entrypoint. It must run `tools/docs/publish_docs.py push-staged --version VERSION`, adding `--repair-existing-version` only when `REPAIR` is truthy (`1` or `true`), and must not run cargo, mkdocs, mike, or any source-ref checkout. In the workflow it must run in a separate push job from a fresh trusted checkout and consume only uploaded staged metadata and bundle artifacts as data. It may receive push credentials because all release-source build/check subprocesses have already completed in a different job.
 
 Add `just docs-site-check` to both the `check` and `ci` aggregate recipes. Add `python3 -B -m unittest discover -s tools/docs -p "test_*.py"` to `test-aux`.
 
@@ -332,48 +348,58 @@ Run:
 
 Acceptance for this milestone is that `just docs-site-check` leaves a complete generated site under `tmp/docs-site/mkdocs-site/`, leaves raw root artifacts under `tmp/docs-site/root-artifacts/`, and `just test-aux` runs the new `tools/docs` tests.
 
-### Milestone 6: Add GitHub Actions publication workflow
+### Milestone 6: Gate docs publication on published GitHub Releases
 
-At the end of this milestone, future release tags can publish versioned docs automatically, and maintainers can manually bootstrap `0.5.0` from the existing `v0.5.0` tag.
+At the end of this milestone, future docs snapshots publish only after the binary release has succeeded and a GitHub Release has been created. Maintainers can manually bootstrap `0.5.0` from the existing `v0.5.0` tag and can repair docs publication for an already-published release without moving tags or creating new release tags.
 
-Create `.github/workflows/docs.yml`. Use a separate workflow from pre-merge CI. It should trigger on:
+Keep `.github/workflows/release.yml` as the only workflow that triggers directly on `push` tags matching `v*.*.*`. Its normal tag-push order should remain: validate tag/version, run release quality gates, package, publish to crates.io, then create the GitHub Release. Do not create or publish the GitHub Release before the crate publish step succeeds. After the GitHub Release step succeeds, explicitly dispatch `.github/workflows/docs.yml` on the trusted default branch with `source_ref=vX.Y.Z`, `version=X.Y.Z`, and `repair_existing_version=false`. Use the repository `GITHUB_TOKEN` for this dispatch only if the workflow has the required `actions: write` permission; `workflow_dispatch` is the supported downstream event for `GITHUB_TOKEN`, unlike passive `release` events created by that token.
 
-    push tags matching v*.*.*
-    workflow_dispatch with inputs source_ref and version
+Add a manual `workflow_dispatch` recovery mode to the release workflow, or a dedicated release recovery workflow if that is clearer. The recovery mode must use trusted current workflow/helper code, validate an immutable `source_ref=vX.Y.Z`, verify that the tag's `Cargo.toml` version matches `X.Y.Z`, verify that the crate version is already present on crates.io, extract release notes from the tag source, and create the missing GitHub Release. After creating the missing GitHub Release, it must dispatch the docs workflow with `repair_existing_version=false`. This covers both transient GitHub Release creation failures and failures caused by old broken tagged workflow/helper code. It must fail if the crate version is not on crates.io, because docs publication should not bypass the binary release.
 
-For `workflow_dispatch`, default `source_ref` to `v0.5.0` and allow `version` to be optional. Require `source_ref` to match the release-tag pattern `v[0-9]+.[0-9]+.[0-9]+`. If `version` is empty, derive `version` by stripping the leading `v`; if `version` is present, require it to match the tag. For tag pushes, use `github.ref_name` as the source ref and strip `v` for the version. The workflow should fail before entering the devcontainer if this validation fails.
+Create `.github/workflows/docs.yml`. Use a separate workflow from pre-merge CI and from release packaging. It should trigger on:
+
+    workflow_dispatch with inputs source_ref, version, and repair_existing_version
+
+Do not rely on `release: published` as the automatic trigger while GitHub Releases are created by `GITHUB_TOKEN`, because those token-created release events do not start downstream workflows. If the project later switches Release creation to a GitHub App token or PAT that intentionally triggers workflows, a `release: published` trigger can be added, but it must share the same validation path and avoid duplicate publication with the release-workflow dispatch.
+
+The docs workflow must not trigger directly on tag push. A tag push starts the binary release workflow; the created GitHub Release plus explicit dispatch from the release workflow is the signal that docs may publish. If the binary release fails before the GitHub Release is created, docs do not run. If docs fail after the GitHub Release is created, maintainers fix the docs workflow/scripts on the trusted branch and run the docs workflow manually for the same `source_ref=vX.Y.Z` and `version=X.Y.Z`. If the version snapshot already exists and must be replaced, the manual dispatch must set `repair_existing_version=true`; otherwise the push-side verifier must reject rewriting that version.
+
+For `workflow_dispatch`, default `source_ref` to `v0.5.0`, allow `version` to be optional, and add a boolean `repair_existing_version` input defaulting to `false`. Normalize that boolean to a simple `DOCS_REPAIR_EXISTING_VERSION` value accepted by just recipes, such as `1` for true and `0` for false, before invoking any just recipe. Require `source_ref` to match the release-tag pattern `v[0-9]+.[0-9]+.[0-9]+`. If `version` is empty, derive it by stripping the leading `v`; if `version` is present, require it to match the tag. Before entering the devcontainer, verify that a GitHub Release for `source_ref` exists, is published, is not a draft, and is not a prerelease. This preflight applies to automatic dispatch from the release workflow and to manual dispatch. If `v0.5.0` lacks a GitHub Release, run the release recovery path first or add a separately named emergency override with explicit maintainer approval; do not silently bypass the release gate.
+
+For docs workflow dispatch runs, the Actions checkout used for workflow code, just recipes, and `tools/docs/` must be a trusted branch checkout, normally the repository default branch. Configure `actions/checkout` with an explicit `ref`, such as `${{ github.event.repository.default_branch }}`, and with full history and tags. It must not check out the release tag over the working tree before `devcontainers/ci`. Manual bootstrap and repair require the workflow file and scripts to exist on the trusted branch being checked out; after merge this should be the repository default branch. The publication wrapper is the only component that should check out `source_ref`, under `tmp/docs-site/source`, so docs content and root artifacts come from the release tag while publication scripts come from trusted current code. This is what makes repair possible after script bugs: fix scripts on the trusted branch, rerun manual dispatch for the same immutable tag.
 
 Set workflow permissions at the workflow or job level so the staging job has only what it needs for checkout, artifact upload, and optional GHCR cache access, while the push job is the only job with `contents: write` for pushing `gh-pages`. Add `packages: write` only to jobs that write the GHCR devcontainer cache; if the docs workflow deliberately uses cache read-only mode, document that choice and omit `packages: write`. Add a concurrency group such as `docs-pages` so two docs publications cannot push over each other.
 
-Use the same devcontainer baseline pattern as existing workflows: checkout with full history and tags, set up Docker Buildx, log in to GHCR for cache when allowed, create `.devcontainer/.devcontainer.json` as a symlink to `devcontainer.ci.json`, print Dockerfile provenance, and run the docs staging command through `devcontainers/ci`. Configure `actions/checkout` with `persist-credentials: false` so an input-selected release source cannot read stored push credentials while `cargo run` builds the release binary. For manual dispatch, do not check out `source_ref` over the working tree before `devcontainers/ci`; the working tree must remain on the workflow/default implementation ref so the new workflow, just recipes, and tools exist. The publication wrapper is the only component that should check out `source_ref`, under `tmp/docs-site/source`. Pass only `DOCS_VERSION` and `DOCS_SOURCE_REF` into the container through the devcontainers action `env:` forwarding or interpolate their resolved values directly into `runCmd`. Do not pass `GITHUB_TOKEN`, `GH_TOKEN`, `DOCS_PUSH_TOKEN`, or equivalent push credentials to the devcontainer staging step.
+Use the same devcontainer baseline pattern as existing workflows: checkout trusted code with full history and tags, set up Docker Buildx, log in to GHCR for cache when allowed, create `.devcontainer/.devcontainer.json` as a symlink to `devcontainer.ci.json`, print Dockerfile provenance, and run the docs staging command through `devcontainers/ci`. Configure `actions/checkout` with `persist-credentials: false` so an input-selected release source cannot read stored push credentials while `cargo run` builds the release binary. Pass only `DOCS_VERSION`, `DOCS_SOURCE_REF`, and `DOCS_REPAIR_EXISTING_VERSION` into the container through the devcontainers action `env:` forwarding or interpolate their resolved values directly into `runCmd`. Do not pass `GITHUB_TOKEN`, `GH_TOKEN`, `DOCS_PUSH_TOKEN`, or equivalent push credentials to the devcontainer staging step.
 
 The in-container staging run command should configure a CI git identity and then call:
 
-    just docs-site-stage-deploy "$DOCS_VERSION" "$DOCS_SOURCE_REF"
+    just docs-site-stage-deploy "$DOCS_VERSION" "$DOCS_SOURCE_REF" "$DOCS_REPAIR_EXISTING_VERSION"
 
-After that devcontainer step succeeds, upload the staged deploy metadata and `gh-pages` bundle as a workflow artifact. Add a separate push-only job, not merely a later step in the same job. The push job must start from a fresh clean checkout of the trusted workflow ref, not from the staging workspace, and must download only the staged data artifact from the staging job. That push job may receive `GITHUB_TOKEN`, should verify `staged-deploy.json`, verify the bundle ref and expected final commit, fetch current `origin/gh-pages`, verify that the remote base commit still matches the metadata or that the metadata explicitly marks first publish, verify the staged commit is a fast-forward update, reject the push if requested `VERSION` already exists in the remote base unless an explicit verified repair mode is added later, compare remote-base and staged `versions.json` so unrelated version entries and aliases are preserved, verify the only semantic version metadata changes are adding `VERSION` and moving `latest` plus the default to it, verify that changed paths are limited to the requested version directory, `latest` alias/default files, mike metadata such as `versions.json`, `.nojekyll`, and root `skill.md` plus `wavepeek_v*.json`, and then push without force. It may run either a second devcontainer invocation that calls:
+After that devcontainer step succeeds, upload the staged deploy metadata and `gh-pages` bundle as a workflow artifact. Add a separate push-only job, not merely a later step in the same job. The push job must start from a fresh clean checkout of the trusted workflow ref, not from the staging workspace, and must download only the staged data artifact from the staging job. That push job may receive `GITHUB_TOKEN`, should verify `staged-deploy.json`, verify the bundle ref and expected final commit, fetch current `origin/gh-pages`, verify that the remote base commit still matches the metadata or that the metadata explicitly marks first publish, verify the staged commit is a fast-forward update, reject the push if requested `VERSION` already exists in the remote base unless the explicit repair input is true and the staged metadata also records repair mode, compare remote-base and staged `versions.json` so unrelated version entries and aliases are preserved, verify the only semantic version metadata changes are adding or repairing `VERSION` and moving `latest` plus the default to it, verify that changed paths are limited to the requested version directory, `latest` alias/default files, mike metadata such as `versions.json`, `.nojekyll`, and root `skill.md` plus `wavepeek_v*.json`, and then push without force. It may run either a second devcontainer invocation that calls:
 
-    just docs-site-push-staged "$DOCS_VERSION"
+    just docs-site-push-staged "$DOCS_VERSION" "$DOCS_REPAIR_EXISTING_VERSION"
 
 or an equivalent direct runner command:
 
-    python3 -B tools/docs/publish_docs.py push-staged --version "$DOCS_VERSION" --metadata PATH/staged-deploy.json --bundle PATH/gh-pages.bundle
+    python3 -B tools/docs/publish_docs.py push-staged --version "$DOCS_VERSION" --metadata PATH/staged-deploy.json --bundle PATH/gh-pages.bundle [--repair-existing-version]
 
 This push-only job must not run cargo, mkdocs, mike, any script from the staging workspace, or any command that checks out or executes `SOURCE_REF`.
 
-The workflow must publish root raw artifacts from the same source ref as the docs snapshot. For the initial manual dispatch, that means the checkout used by Actions remains on the implementation branch, while source content comes from `v0.5.0` through `tools/docs/publish_docs.py --source-ref`. For future tag pushes, the workflow file, scripts, and source docs all come from that tag.
+The workflow must publish root raw artifacts from the same source ref as the docs snapshot. For the initial manual dispatch, that means the checkout used by Actions remains on the trusted branch containing this implementation, normally the default branch after merge, while source content comes from `v0.5.0` through `tools/docs/publish_docs.py --source-ref`. For future automatic publication, the release workflow dispatch supplies the release tag as `source_ref`, but workflow code and scripts still come from the trusted checkout described above.
 
 Run:
 
     just check-actions
+    python3 -B -m unittest discover -s tools/release -p "test_*.py"
 
-Acceptance for this milestone is that `actionlint` passes and the workflow clearly shows how to publish `0.5.0` from manual dispatch without requiring the old tag to contain `.github/workflows/docs.yml`.
+Acceptance for this milestone is that `actionlint` passes, any release recovery helper tests pass, the docs workflow has no tag-push trigger, the release workflow dispatches the docs workflow only after creating the GitHub Release, the docs workflow preflights that the GitHub Release exists and is stable, trusted checkouts use explicit refs rather than accidentally checking out the release tag, the release recovery path can create a missing GitHub Release from trusted current tooling after verifying crates.io already has the version and then dispatch docs, and the workflow clearly shows how to publish `0.5.0` or repair a failed docs publication from manual dispatch without requiring the old tag to contain `.github/workflows/docs.yml`.
 
 ### Milestone 7: Update maintainer docs and final validation
 
 At the end of this milestone, contributors know how to build, serve, check, and publish the docs site, and all standard gates pass.
 
-Update maintainer docs under `docs/dev/`. The likely files are `docs/dev/environment.md`, `docs/dev/quality.md`, and `docs/dev/automation.md`. Keep these updates concise. They should state that docs-site Python dependencies live in `requirements-docs.txt`, are installed into the devcontainer image, `just docs-site-check` is part of the standard gates, and publication is handled by `.github/workflows/docs.yml` plus the split `just docs-site-stage-deploy` and `just docs-site-push-staged` flow.
+Update maintainer docs under `docs/dev/`. The likely files are `docs/dev/environment.md`, `docs/dev/quality.md`, `docs/dev/automation.md`, and `docs/dev/release.md` if it documents release ordering. Keep these updates concise. They should state that docs-site Python dependencies live in `requirements-docs.txt`, are installed into the devcontainer image, `just docs-site-check` is part of the standard gates, and publication is handled by `.github/workflows/docs.yml` plus the split `just docs-site-stage-deploy` and `just docs-site-push-staged` flow. They should also state that automatic docs publication starts from a published GitHub Release, not from tag push, and that manual docs dispatch is the repair path for a release tag whose docs failed.
 
 If implementation changes source module boundaries beyond the front matter alias in `src/docs/mod.rs`, update `docs/dev/architecture.md`. If only helper scripts and docs metadata change, architecture updates are probably unnecessary.
 
@@ -396,7 +422,7 @@ The generated staging source has `index.md` for the intro topic and does not com
 
 `tools/docs/publish_docs.py check --version 0.5.0 --source-ref v0.5.0` proves the historical-tag bootstrap path can export and build from the existing tag.
 
-`.github/workflows/docs.yml` can publish future tag snapshots with `mike`, move `latest`, set the root default redirect, and update root `skill.md` plus every `wavepeek_v*.json` from the release source using a no-token staging step followed by a push-only step.
+`.github/workflows/docs.yml` can publish snapshots for published GitHub Releases with `mike`, move `latest`, set the root default redirect, and update root `skill.md` plus every `wavepeek_v*.json` from the release source using a no-token staging step followed by a push-only step. It must not trigger directly on tag push.
 
 `just ci` passes.
 
@@ -435,9 +461,10 @@ The implementation agent should proceed in this order from the repository root:
     just docs-site-check
     just test-aux
 
-6. Add the docs workflow and maintainer docs updates.
+6. Add the docs workflow, release workflow recovery behavior, and maintainer docs updates.
 
     just check-actions
+    python3 -B -m unittest discover -s tools/release -p "test_*.py"
 
 7. Run final gates.
 
@@ -489,7 +516,7 @@ The publish wrapper should separate staging from pushing. `check` must not touch
 
 When a `stage-deploy` run starts, fetch `origin/gh-pages` and base local work on the fetched remote branch. If the remote branch does not exist, treat the run as the first publication and let `mike` initialize it. Record the fetched base commit or first-publish marker in metadata. When staging fails after `mike` updates a local branch but before push, inspect the local `gh-pages` branch and rerun the staging command; the rerun must fetch/reset from remote before checking existing versions. If the version already exists remotely and the rerun is intentionally repairing the same version, require the explicit repair flag described in Milestone 4. Otherwise do not overwrite existing snapshots. The push-only job must verify stage metadata, remote base, fast-forward ancestry, requested-version absence unless repair mode is explicit, `versions.json` semantic changes, changed paths, and the bundle in a fresh trusted checkout before pushing without force, and it must not rebuild or restage.
 
-For the first `0.5.0` bootstrap, use manual workflow dispatch with `source_ref=v0.5.0` and `version=0.5.0`. If it fails before pushing, fix the workflow/scripts on the implementation branch and rerun dispatch; do not move the historical tag.
+For the first `0.5.0` bootstrap, use manual workflow dispatch with `source_ref=v0.5.0` and `version=0.5.0`. If it fails before pushing, fix the workflow/scripts on the trusted branch and rerun dispatch; do not move the historical tag. For future releases, docs publication is repairable the same way after the GitHub Release exists: fix trusted docs scripts and manually dispatch the docs workflow for the same release tag. If the binary release workflow publishes the crate but fails before creating the GitHub Release, rerun the release workflow through its recovery path so it creates the missing GitHub Release; do not start docs manually until the GitHub Release exists unless a maintainer explicitly decides to bypass the release gate for an emergency repair.
 
 ## Artifacts and Notes
 
@@ -525,18 +552,18 @@ The Python dependency interface is root `requirements-docs.txt`. It must include
 
 `tools/docs/prepare_mkdocs.py` must expose a CLI that accepts an export directory, output directory, generated config path, version string, and `--force`. It must also be structured so its pure functions can be unit-tested without invoking MkDocs.
 
-`tools/docs/publish_docs.py` must expose `check`, `stage-deploy`, and `push-staged` subcommands. `check` accepts `--version`, `--source-root`, and optionally `--source-ref`. `stage-deploy` requires `--version` and a non-empty SemVer `--source-ref`, and writes metadata plus a staged `gh-pages` bundle. `push-staged` accepts `--version`, `--metadata`, and `--bundle`, validates both inputs, imports the staged `gh-pages` state into the fresh checkout, fetches current `origin/gh-pages`, verifies remote base and fast-forward ancestry, rejects existing requested versions unless repair mode is explicit, verifies allowed `versions.json` semantic changes, checks changed paths against the allowed set, and pushes without force. Subprocess invocation must stay in small functions so tests can mock command execution.
+`tools/docs/publish_docs.py` must expose `check`, `stage-deploy`, and `push-staged` subcommands. `check` accepts `--version`, `--source-root`, and optionally `--source-ref`. `stage-deploy` requires `--version` and a non-empty SemVer `--source-ref`, accepts `--repair-existing-version` only when explicitly requested, and writes metadata plus a staged `gh-pages` bundle. `push-staged` accepts `--version`, `--metadata`, `--bundle`, and optional `--repair-existing-version`, validates both inputs, imports the staged `gh-pages` state into the fresh checkout, fetches current `origin/gh-pages`, verifies remote base and fast-forward ancestry, rejects existing requested versions unless repair mode is explicit, verifies allowed `versions.json` semantic changes, checks changed paths against the allowed set, and pushes without force. Subprocess invocation must stay in small functions so tests can mock command execution.
 
 The just interface must include these recipes:
 
     just docs-site-build
     just docs-site-serve
     just docs-site-check
-    just docs-site-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0
-    just docs-site-stage-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0
-    just docs-site-push-staged VERSION=0.5.0
+    just docs-site-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0 REPAIR=0
+    just docs-site-stage-deploy VERSION=0.5.0 SOURCE_REF=v0.5.0 REPAIR=0
+    just docs-site-push-staged VERSION=0.5.0 REPAIR=0
 
-The GitHub Actions interface is `.github/workflows/docs.yml`, with automatic tag publication for future tags and manual dispatch for `v0.5.0` bootstrap.
+The GitHub Actions interface is `.github/workflows/docs.yml`, with `workflow_dispatch` used both by the release workflow after GitHub Release creation and by maintainers for `v0.5.0` bootstrap or docs repair for an existing release tag. Manual dispatch includes an explicit `repair_existing_version` input. The release workflow remains `.github/workflows/release.yml`, triggered by tag push and responsible for publishing the crate before creating the GitHub Release signal and dispatching docs; it also needs a trusted-code manual recovery path for creating a missing GitHub Release after verifying the crate version already exists on crates.io.
 
 ## Revision Notes
 
@@ -563,3 +590,11 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with automatic tag
 2026-06-08 06:01Z: Incorporated second focused control-review findings. The plan now renames the current `docs show --summary` option to `--description`, updates docs/tests for that CLI surface, and states that the checked-in schema artifact must be edited directly or generated by a newly introduced generator before `just check-schema` can verify it.
 
 2026-06-08 06:14Z: Recorded third focused control pass after the metadata/schema fixes. The reviewer reported no substantive findings.
+
+2026-06-08 06:21Z: Updated the release/docs trigger model after user clarification. The plan now requires automatic docs publication to start only after a GitHub Release is created rather than directly from tag push, keeps tag push exclusively for the binary release workflow, and adds a recoverable path for docs script failures and partial crate-publish/GitHub-Release failures.
+
+2026-06-08 06:28Z: Incorporated focused release/docs trigger review. The plan now requires explicit `repair_existing_version` flow for rewriting an already-published docs snapshot, explicit trusted-branch checkout refs for docs automation, and a manual release recovery path using trusted current tooling when the original tag-push release workflow cannot create the missing GitHub Release.
+
+2026-06-08 06:41Z: Incorporated focused control-review finding. The plan now requires workflow boolean repair input to be normalized before invoking just recipes, and the recipes treat `1` or `true` as repair mode.
+
+2026-06-08 06:44Z: Recorded final focused control pass after the release/docs dispatch fixes. The reviewer reported no substantive findings.

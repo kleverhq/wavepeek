@@ -24,6 +24,11 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - [x] (2026-06-07 21:35Z) Fourth control review pass completed; findings about same-runner poisoning and push-side bundle verification were folded into this revision.
 - [x] (2026-06-07 21:49Z) Fifth control review pass completed; finding about push-side semantic verification of version metadata was folded into this revision.
 - [x] (2026-06-07 22:03Z) Sixth control review pass completed with no substantive findings.
+- [x] (2026-06-08 05:38Z) User changed the metadata decision: current and future runtime/export JSON should use `description`, with `summary` retained only as a legacy input alias for old Markdown and historical exports.
+- [x] (2026-06-08 05:46Z) Focused metadata-rename review completed; finding about updating the JSON schema artifact was folded into this revision.
+- [x] (2026-06-08 05:55Z) Focused control review completed; findings about docs-search match reason naming and explicit schema contract checks were folded into this revision.
+- [x] (2026-06-08 06:01Z) Second focused control review completed; findings about `docs show --summary` and the checked-in schema artifact flow were folded into this revision.
+- [x] (2026-06-08 06:14Z) Third focused control review completed with no substantive findings.
 - [ ] Implementation has not started.
 
 ## Surprises & Discoveries
@@ -31,8 +36,8 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 - Observation: The existing `v0.5.0` tag exists, but it predates the GitHub Pages infrastructure requested in this plan. A normal tag-triggered workflow cannot bootstrap that historical tag because the workflow and scripts are absent from the tag itself.
   Evidence: `git tag --list 'v*'` includes `v0.5.0`; the user confirmed the first publication must use the existing tag even though the site infrastructure was not present then.
 
-- Observation: `docs/public/` currently authors front matter with `summary`, while the desired authored field is `description`. The runtime JSON contract still exposes `summary` in `TopicSummary`, so the Rust loader must accept authored `description` while preserving the existing runtime field name.
-  Evidence: `docs/public/intro.md` begins with `summary: Start here...`; `src/docs/mod.rs` has `FrontMatter { summary: String }` and `TopicSummary { summary: String }`; `tests/docs_cli.rs` asserts that JSON topic entries contain `summary`.
+- Observation: `docs/public/` currently authors front matter with `summary`, while the desired authored and runtime field is `description`. The current main branch already contains breaking changes and is expected to release as a future major version, so this plan should rename the current docs metadata field end-to-end instead of preserving `summary` in new JSON output.
+  Evidence: `docs/public/intro.md` begins with `summary: Start here...`; `src/docs/mod.rs` has `FrontMatter { summary: String }` and `TopicSummary { summary: String }`; `tests/docs_cli.rs` asserts that JSON topic entries contain `summary`; the user explicitly requested the full rename on 2026-06-08.
 
 - Observation: The current devcontainer Docker build context is effectively `.devcontainer/`, because `.devcontainer/Dockerfile` copies `env_contract.sh` without a directory prefix. Installing a root `requirements-docs.txt` into the image from a single source of truth requires either changing the build context or duplicating the file. This plan changes the build context deliberately to avoid duplicate dependency lists.
   Evidence: `.devcontainer/Dockerfile` contains `COPY env_contract.sh /wavepeek-env-contract.sh`; `.devcontainer/devcontainer.json` and `.devcontainer/devcontainer.ci.json` do not set `build.context` today.
@@ -58,9 +63,9 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
   Rationale: The old tag must define the release docs content, but it cannot define the new publishing machinery because that machinery did not exist. A manual workflow dispatch must keep the working checkout on the implementation branch that contains `.github/workflows/docs.yml`, `just docs-site-deploy`, and `tools/docs/`, while the publication wrapper checks out `v0.5.0` separately as the documentation source.
   Date/Author: 2026-06-07 / Grin, confirmed by user.
 
-- Decision: Keep the public JSON/runtime type named `summary`, but migrate authored Markdown front matter from `summary` to `description` and deserialize it with `#[serde(rename = "description", alias = "summary")]`.
-  Rationale: `description` fits MkDocs and web metadata better. The JSON and Rust runtime contract can remain stable for existing CLI consumers.
-  Date/Author: 2026-06-07 / Grin, based on proposal and confirmed direction.
+- Decision: Rename current docs metadata from `summary` to `description` end-to-end in authored Markdown, Rust runtime structs, docs-search match reason names such as `title_or_summary`, the `docs show --summary` CLI option, `wavepeek docs ... --json` output, export manifests, canonical JSON schema artifacts, docs, and tests. Keep `summary` only as a legacy input alias when reading old Markdown front matter or historical export manifests.
+  Rationale: `description` fits MkDocs and web metadata better, and using one current field name avoids unnecessary drift. The current main branch already contains breaking changes and is expected to release as a future major version, so preserving `summary` in new public JSON is not required.
+  Date/Author: 2026-06-08 / Grin, confirmed by user and focused review.
 
 - Decision: Generate a temporary MkDocs config under `tmp/docs-site/` that inherits from a small root `mkdocs.yml` and contains generated `docs_dir`, `site_dir`, and `nav` values.
   Rationale: Navigation should come from the CLI export manifest, not a second hand-maintained list. Keeping the generated config in `tmp/` avoids committing site-only generated state.
@@ -108,17 +113,17 @@ This plan does not backfill web snapshots before `0.5.0`. It does not add a `/de
 
 ## Outcomes & Retrospective
 
-No implementation outcome exists yet. The ExecPlan has completed focused review and a final control pass with no substantive findings. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
+No implementation outcome exists yet. The ExecPlan has completed focused review and control passes with no substantive findings after the metadata rename revision. The current expected end state is a committed ExecPlan that a future agent or maintainer can execute without relying on this conversation. After implementation, this section must summarize which commands passed, whether the first `0.5.0` bootstrap path was dry-run locally, and any remaining GitHub repository settings needed for Pages.
 
 ## Context and Orientation
 
 `wavepeek` is a Rust CLI. Its public user documentation source lives in `docs/public/`. Those Markdown files are embedded into the binary by `src/docs/mod.rs`, exposed through `wavepeek docs`, and exported by `wavepeek docs export`. This means the website must be generated from the exported embedded docs rather than from a separate authored website tree.
 
-The embedded docs loader is in `src/docs/mod.rs`. It loads Markdown files from `docs/public/`, parses YAML front matter, validates that each file path matches its stable topic ID, validates `see_also` references, and exposes `TopicSummary` values with `id`, `title`, `summary`, `section`, and `see_also`. The export path writes topic Markdown files and a `manifest.json` into an output directory. The manifest is the correct contract for site generation because it describes the exact docs embedded in that build.
+The embedded docs loader is in `src/docs/mod.rs`. It loads Markdown files from `docs/public/`, parses YAML front matter, validates that each file path matches its stable topic ID, validates `see_also` references, and currently exposes `TopicSummary` values with `id`, `title`, `summary`, `section`, and `see_also`. This plan renames that current runtime/export field to `description`, while accepting legacy `summary` only at input boundaries. The export path writes topic Markdown files and a `manifest.json` into an output directory. The manifest is the correct contract for site generation because it describes the exact docs embedded in that build.
 
-The CLI docs behavior is tested in `tests/docs_cli.rs`, and additional runtime edge tests for `src/docs/mod.rs` live in `src/tests/docs_runtime_edges.rs`. Public docs style conventions currently live in `docs/dev/style.md`, which still describes `summary` front matter. That file must be updated when authored docs move to `description`.
+The CLI docs behavior is tested in `tests/docs_cli.rs`, and additional runtime edge tests for `src/docs/mod.rs` live in `src/tests/docs_runtime_edges.rs`. The current docs CLI includes a `docs show --summary` option in `src/cli/docs.rs`; this plan renames that current user-facing option to `--description` and updates help, docs, and tests. Public docs style conventions currently live in `docs/dev/style.md`, which still describes `summary` front matter. That file must be updated when authored docs and runtime metadata move to `description`.
 
-The packaged agent skill source is `docs/skills/wavepeek.md`. The canonical machine-output schema artifacts live under `schema/`, currently `schema/wavepeek_v0.json` on the working branch. The historical `v0.5.0` tag instead has `schema/wavepeek.json`; publication must normalize that legacy major-0 artifact to the root filename `wavepeek_v0.json`. These schema and skill files are not part of `wavepeek docs export`, but the web publication must expose them as raw static files at the site root.
+The packaged agent skill source is `docs/skills/wavepeek.md`. The canonical machine-output schema artifacts live under `schema/`, currently `schema/wavepeek_v0.json` on the working branch. The docs JSON output is covered by that schema, so the `summary` to `description` rename must update the schema artifact as well as code and tests. The current `wavepeek schema` command emits the checked-in schema artifact through `include_str!`, so implementation must update `schema/wavepeek_v0.json` directly or add a real generator before running `just check-schema`; `just update-schema` alone cannot derive the rename from Rust structs. The historical `v0.5.0` tag instead has `schema/wavepeek.json`; publication must normalize that legacy major-0 artifact to the root filename `wavepeek_v0.json`. These schema and skill files are not part of `wavepeek docs export`, but the web publication must expose them as raw static files at the site root.
 
 Build and quality automation is owned by the root `justfile`. Recipes intentionally require `WAVEPEEK_IN_CONTAINER=1`, so new docs-site recipes should follow the same container-first pattern. Auxiliary Python tests are run by `just test-aux`, which currently discovers tests under `bench/e2e`, `bench/expr`, `tools/release`, `tools/coverage`, `tools/fsdb`, and `tools/repo`.
 
@@ -146,27 +151,28 @@ There are no blocking product questions remaining from the user. One repository 
 
 The work should be implemented in small, independently verifiable slices. Do not skip the validation commands at the end of each slice. Generated files under `tmp/docs-site/` are disposable, but only remove paths owned by this plan, never arbitrary `tmp/` contents.
 
-### Milestone 1: Make authored docs metadata web-compatible without breaking CLI JSON
+### Milestone 1: Rename docs metadata from summary to description
 
-At the end of this milestone, `docs/public/` uses `description:` in front matter, while the CLI runtime and JSON output still expose the existing `summary` field. This proves that the metadata migration does not break existing CLI consumers.
+At the end of this milestone, `docs/public/` uses `description:` in front matter, and the CLI runtime, JSON output, and export manifest also use `description`. The old `summary` name is accepted only as a legacy input alias for historical Markdown fixtures or old exported manifests.
 
-Edit `src/docs/mod.rs`. In the private `FrontMatter` struct, keep the Rust field named `summary` but add serde attributes so it deserializes authored `description` and still accepts older `summary` files from historical releases and tests:
+Edit `src/docs/mod.rs`. In the private front matter struct, rename the Rust field from `summary` to `description` and add serde attributes so it deserializes authored `description` and still accepts older `summary` files from historical releases and tests:
 
-    #[serde(rename = "description", alias = "summary")]
-    summary: String,
+    #[serde(alias = "summary")]
+    description: String,
 
-Do not rename `TopicSummary.summary`, `SearchMatch`, or JSON output fields. Those are runtime contract names.
+Rename `TopicSummary.summary` and any related docs-search result fields to `description`. Also rename docs-search match reason values that embed the old term, especially `title_or_summary`, to `title_or_description`. Rename the current `wavepeek docs show --summary` option to `--description`, and update CLI help, public docs, and tests accordingly. New JSON output from `wavepeek docs topics --json`, `wavepeek docs search --json`, and `wavepeek docs export` manifests must use `description`, not `summary`, in both field names and match reason values.
 
 Replace the top-level front matter key `summary:` with `description:` in every public topic under `docs/public/**/*.md`. Do not keep both keys. Preserve the text value. Keep `id`, `title`, `section`, and `see_also` unchanged.
 
-Update docs and tests that describe or assert the authored front matter shape. At minimum, update `docs/dev/style.md` so it says public docs use `id`, `title`, `description`, `section`, and optional `see_also`. Update `src/docs/mod.rs` inline tests and `src/tests/docs_runtime_edges.rs` fixtures or assertions that deserialize `FrontMatter` from literal YAML. Update `tests/fixtures/docs_embed/**/*.md` to use `description:` except where a test intentionally proves the legacy `summary` alias still works. Add one focused unit test in `src/docs/mod.rs` or `src/tests/docs_runtime_edges.rs` that deserializes a legacy `summary:` fixture and confirms it still maps to `FrontMatter.summary`. Add `tests/docs_cli.rs` assertions for both `docs topics --json` and `docs search --json` topic objects that `summary` is present and `description` is absent.
+Update docs and tests that describe or assert the authored front matter shape. At minimum, update `docs/dev/style.md` so it says public docs use `id`, `title`, `description`, `section`, and optional `see_also`. Update `docs/public/commands/docs.md`, `docs/public/reference/machine-output.md`, and any other public docs that mention docs-command JSON fields, docs-search match reason names, or `docs show --summary`. Update `src/cli/docs.rs`, `src/docs/mod.rs` inline tests, and `src/tests/docs_runtime_edges.rs` fixtures or assertions that deserialize front matter from literal YAML. Update `tests/fixtures/docs_embed/**/*.md` to use `description:` except where a test intentionally proves the legacy `summary` alias still works. Add one focused unit test in `src/docs/mod.rs` or `src/tests/docs_runtime_edges.rs` that deserializes a legacy `summary:` fixture and confirms it maps to the new `description` field. Add `tests/docs_cli.rs` assertions for both `docs topics --json` and `docs search --json` topic objects that `description` is present and `summary` is absent, that docs-search match reasons use `title_or_description` rather than `title_or_summary`, and that `docs show --description` works while `docs show --summary` is absent from current help. Update `schema/wavepeek_v0.json` directly, or add and use a real schema generator if one is introduced, so the checked-in artifact requires `description`, defines no current `summary` property for docs topic metadata, and exposes `title_or_description` rather than `title_or_summary`. Verify the result with `just check-schema`. Update `tools/schema/check_schema_contract.py` or an equivalent schema contract test so `just check-schema` fails if the topic summary schema still requires or defines `summary`, or if the docs-search match reason enum still contains `title_or_summary` instead of `title_or_description`.
 
 Run these commands from the repository root inside the devcontainer:
 
     cargo test -q docs
     cargo test -q --test docs_cli
+    just check-schema
 
-Acceptance for this milestone is that `wavepeek docs topics --json` and `wavepeek docs search --json` still include `summary` and do not include `description` in topic objects, `wavepeek docs export` preserves the new `description` front matter from current source, and the legacy `summary` alias is covered by a test.
+Acceptance for this milestone is that `wavepeek docs topics --json` and `wavepeek docs search --json` include `description` and do not include `summary` in topic objects, docs-search match reasons use `title_or_description` and not `title_or_summary`, `docs show --description` works and `docs show --summary` is absent from current help, `wavepeek docs export` writes manifest topic entries with `description`, current exported Markdown preserves the new `description` front matter from current source, the canonical schema artifact and schema contract checker match the new `description` field and match reason names, and the legacy `summary` alias is covered by a test.
 
 ### Milestone 2: Add docs-site dependencies to the repository and container image
 
@@ -216,7 +222,7 @@ Create `tools/docs/prepare_mkdocs.py`. Its command-line interface should accept 
 
     python3 -B tools/docs/prepare_mkdocs.py tmp/docs-site/export --output tmp/docs-site/mkdocs-src --config-output tmp/docs-site/mkdocs.yml --version 0.5.0 --force
 
-The script must read `manifest.json`, validate that `kind` is `wavepeek-docs-export`, validate that `export_format_version` is the supported export format, validate that `cli_name` is `wavepeek`, validate `cli_version` against `--version` when a version is supplied, validate that `topics` is a list, and validate every topic entry before using it. Required topic fields are `id`, `title`, `summary`, and `section`; historical or generated manifests use the runtime `summary` name even when staged Markdown front matter uses `description`. The `see_also` field is optional in serialized manifests because empty vectors are omitted by `TopicSummary`; when it is missing, treat it as an empty list, and when it is present, require a list of safe topic IDs. Topic IDs must be safe slash-separated relative paths: no empty segments, no absolute paths, no `.` or `..` segments, and no path separators beyond `/`. Source and destination paths must be resolved and checked to stay inside the export and output roots. After validation, prepare the output directory atomically. If the output directory exists, replacement requires `--force`. The script may remove and recreate only the output paths it owns, such as `tmp/docs-site/mkdocs-src` and `tmp/docs-site/mkdocs.yml`.
+The script must read `manifest.json`, validate that `kind` is `wavepeek-docs-export`, validate that `export_format_version` is the supported export format, validate that `cli_name` is `wavepeek`, validate `cli_version` against `--version` when a version is supplied, validate that `topics` is a list, and validate every topic entry before using it. Required topic fields are `id`, `title`, a description field, and `section`; current manifests must use `description`, while historical manifests such as `v0.5.0` may use legacy `summary`, which the script should map to `description` internally. The `see_also` field is optional in serialized manifests because empty vectors are omitted by `TopicSummary`; when it is missing, treat it as an empty list, and when it is present, require a list of safe topic IDs. Topic IDs must be safe slash-separated relative paths: no empty segments, no absolute paths, no `.` or `..` segments, and no path separators beyond `/`. Source and destination paths must be resolved and checked to stay inside the export and output roots. After validation, prepare the output directory atomically. If the output directory exists, replacement requires `--force`. The script may remove and recreate only the output paths it owns, such as `tmp/docs-site/mkdocs-src` and `tmp/docs-site/mkdocs.yml`.
 
 For each topic in manifest order, copy its Markdown file from the export directory to the MkDocs source tree. The topic with ID `intro` must become `index.md`. Other topics keep their ID path plus `.md`, for example `commands/change` becomes `commands/change.md`. Exclude `manifest.json` from the MkDocs source tree.
 
@@ -230,7 +236,7 @@ Generate navigation from the manifest. Use this section order and display labels
     troubleshooting -> Troubleshooting
     reference -> Reference
 
-Within each section, use the manifest order. The manifest is already produced by `DocsCatalog::logical_topic_summaries`, which sorts by CLI section rank and ID, so this avoids a second hand-maintained ordering system. For `intro`, create a single top-level `Introduction: index.md` nav entry. For all other sections, create grouped entries using each topic title and generated page path.
+Within each section, use the manifest order. The manifest is currently produced by `DocsCatalog::logical_topic_summaries` or its renamed equivalent after the metadata refactor, and that path sorts by CLI section rank and ID, so this avoids a second hand-maintained ordering system. For `intro`, create a single top-level `Introduction: index.md` nav entry. For all other sections, create grouped entries using each topic title and generated page path.
 
 Write a generated config at `tmp/docs-site/mkdocs.yml` that inherits from the root `mkdocs.yml` and supplies generated paths and nav. Because the generated config is under `tmp/docs-site/`, the inherited path should point back to the repository root, for example `INHERIT: ../../mkdocs.yml` if the file is `tmp/docs-site/mkdocs.yml`. Set `docs_dir` and `site_dir` relative to the generated config, for example `docs_dir: mkdocs-src` and `site_dir: mkdocs-site`.
 
@@ -382,7 +388,7 @@ If `just ci` is too expensive during early iteration, run the focused commands f
 
 Acceptance for the full plan is:
 
-`docs/public/` authors `description` front matter, while `wavepeek docs topics --json` still exposes `summary`.
+`docs/public/` authors `description` front matter, while `wavepeek docs topics --json`, `wavepeek docs search --json`, export manifests, and the canonical schema artifact expose `description`, not `summary`.
 
 `just docs-site-check` builds a strict MkDocs Material site from `wavepeek docs export` and prepares raw root artifacts.
 
@@ -398,10 +404,11 @@ The generated staging source has `index.md` for the intro topic and does not com
 
 The implementation agent should proceed in this order from the repository root:
 
-1. Update front matter compatibility and docs metadata.
+1. Update front matter compatibility, docs metadata, CLI option names, and the JSON schema artifact.
 
     cargo test -q docs
     cargo test -q --test docs_cli
+    just check-schema
 
 2. Add root docs dependencies and container installation, then rebuild or enter an updated container.
 
@@ -459,8 +466,9 @@ That command must export docs by compiling the release source from `v0.5.0`, bui
 A human can verify the CLI contract by running:
 
     cargo run --quiet -- docs topics --json
+    cargo run --quiet -- docs search --json docs
 
-The JSON topic entries for both `docs topics --json` and `docs search --json` must contain `summary` and must not contain `description`, because `summary` is the runtime contract field.
+The JSON topic entries for both `docs topics --json` and `docs search --json` must contain `description` and must not contain `summary`, because `description` is the current runtime contract field after this refactor. Docs-search match reasons must use `title_or_description`, not `title_or_summary`. `wavepeek docs show --description intro` must work, and `wavepeek docs show --help` must not list `--summary`.
 
 The final repository gates are:
 
@@ -511,7 +519,7 @@ Expected public Pages layout after publishing `0.5.0`:
 
 ## Interfaces and Dependencies
 
-The Rust interface change is limited to `src/docs/mod.rs`. The private `FrontMatter` type must deserialize `description` and legacy `summary` into its existing `summary` field. Public `TopicSummary` remains unchanged.
+The Rust interface change is centered in `src/docs/mod.rs` and `src/cli/docs.rs`. The private front matter type must deserialize current `description` and legacy `summary` into a `description` field. Public `TopicSummary`, docs-search JSON structs, docs-search match reason names, the `docs show --description` CLI option, export manifest topic entries, and the docs-topic portion of the canonical schema artifact must expose `description` instead of `summary` in current output. The schema contract checker must enforce this so stale checked-in schema cannot pass review.
 
 The Python dependency interface is root `requirements-docs.txt`. It must include MkDocs Material, mike, and PyYAML. The devcontainer image must expose `mkdocs` and `mike` on `PATH` in both `ci` and `dev` targets.
 
@@ -532,7 +540,7 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with automatic tag
 
 ## Revision Notes
 
-2026-06-07 20:31Z: Incorporated initial review findings. The plan now handles the legacy `v0.5.0` schema filename by normalizing `schema/wavepeek.json` to `wavepeek_v0.json`, requires stronger manifest/path validation in the MkDocs preparation script, makes manual-dispatch checkout behavior explicit, requires explicit CI env forwarding or interpolation, covers GHCR cache permissions, adds CLI JSON absence checks for `description`, and removes non-neutral phrasing from repository artifacts.
+2026-06-07 20:31Z: Incorporated initial review findings. The plan now handles the legacy `v0.5.0` schema filename by normalizing `schema/wavepeek.json` to `wavepeek_v0.json`, requires stronger manifest/path validation in the MkDocs preparation script, makes manual-dispatch checkout behavior explicit, requires explicit CI env forwarding or interpolation, covers GHCR cache permissions, added then-current CLI JSON field checks, and removes non-neutral phrasing from repository artifacts.
 
 2026-06-07 20:49Z: Incorporated first control-pass findings. The plan now treats missing manifest `see_also` as an empty list, requires release-tag-only `source_ref` values for deploy workflow paths, prevents checkout credential persistence, requires push tokens to be withheld from build/check subprocesses that execute release-source code, and requires fetching/resetting local `gh-pages` from `origin/gh-pages` before existing-version checks and deployment.
 
@@ -544,4 +552,14 @@ The GitHub Actions interface is `.github/workflows/docs.yml`, with automatic tag
 
 2026-06-07 21:49Z: Incorporated fifth control-pass findings. The plan now requires push-side semantic verification of `versions.json`, independent rejection of existing requested versions unless repair mode is explicit, and preservation of unrelated version entries and aliases.
 
-2026-06-07 22:03Z: Recorded sixth control pass. The reviewer reported no substantive findings, so the plan is ready for handoff or implementation.
+2026-06-07 22:03Z: Recorded sixth control pass. The reviewer reported no substantive findings, so the plan was ready for handoff or implementation at that point.
+
+2026-06-08 05:38Z: Updated the metadata direction after user clarification. The plan now requires a full current-field rename from `summary` to `description` across authored docs, Rust runtime structs, CLI JSON, export manifests, docs, and tests, while keeping `summary` only as a legacy input alias for old Markdown and historical manifests.
+
+2026-06-08 05:46Z: Incorporated focused metadata-rename review. The plan now requires updating and checking the canonical schema artifact so docs-topic JSON schema uses `description` and does not continue to require `summary`.
+
+2026-06-08 05:55Z: Incorporated focused control-review findings. The plan now explicitly renames docs-search match reason values such as `title_or_summary` to `title_or_description`, and requires an explicit schema contract check so stale schema definitions cannot continue to require `summary` or expose old match reason names.
+
+2026-06-08 06:01Z: Incorporated second focused control-review findings. The plan now renames the current `docs show --summary` option to `--description`, updates docs/tests for that CLI surface, and states that the checked-in schema artifact must be edited directly or generated by a newly introduced generator before `just check-schema` can verify it.
+
+2026-06-08 06:14Z: Recorded third focused control pass after the metadata/schema fixes. The reviewer reported no substantive findings.

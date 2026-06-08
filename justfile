@@ -15,6 +15,8 @@ wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
 codex_setup_script := "tools/codex/codex_setup.sh"
 codex_resume_script := "tools/codex/codex_resume.sh"
 python := "python3 -B"
+docs_site_dir := "tmp/docs-site"
+docs_version := `python3 -B -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"])'`
 coverage_src_threshold := env_var_or_default("COVERAGE_SRC_THRESHOLD", "90")
 
 [private]
@@ -237,10 +239,50 @@ test-aux: require-container
     @just check-bench-e2e-fsdb-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/docs -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
     {{ python }} -m unittest discover -s tools/fsdb -p "test_*.py"
     {{ python }} -m unittest discover -s tools/repo -p "test_*.py"
+
+# Build the generated MkDocs site from current embedded docs
+docs-site-build: require-container
+    cargo run --quiet -- docs export "{{ docs_site_dir }}/export" --force
+    {{ python }} tools/docs/prepare_mkdocs.py "{{ docs_site_dir }}/export" \
+        --output "{{ docs_site_dir }}/mkdocs-src" \
+        --config-output "{{ docs_site_dir }}/mkdocs.yml" \
+        --version "{{ docs_version }}" \
+        --force
+    mkdocs build --strict --config-file "{{ docs_site_dir }}/mkdocs.yml"
+
+# Serve the generated docs site locally
+docs-site-serve: docs-site-build
+    mkdocs serve --config-file "{{ docs_site_dir }}/mkdocs.yml"
+
+# Check docs site generation and root Pages artifacts without touching gh-pages
+docs-site-check: require-container
+    {{ python }} tools/docs/publish_docs.py check \
+        --version "{{ docs_version }}" \
+        --source-root . \
+        --work-dir "{{ docs_site_dir }}"
+
+# Stage a local gh-pages update for a release tag without pushing
+docs-site-stage-deploy version=docs_version source_ref=("v" + docs_version): require-container
+    {{ python }} tools/docs/publish_docs.py stage-deploy \
+        --version "{{ version }}" \
+        --source-ref "{{ source_ref }}" \
+        --work-dir "{{ docs_site_dir }}"
+
+# Verify and push the staged gh-pages bundle
+docs-site-push-staged version=docs_version: require-container
+    {{ python }} tools/docs/publish_docs.py push-staged \
+        --version "{{ version }}" \
+        --work-dir "{{ docs_site_dir }}"
+
+# Stage and push a release docs update
+docs-site-deploy version=docs_version source_ref=("v" + docs_version): require-container
+    just docs-site-stage-deploy "{{ version }}" "{{ source_ref }}"
+    just docs-site-push-staged "{{ version }}"
 
 # Build release binary
 build-release: require-container
@@ -303,11 +345,11 @@ check-commit: require-container
     cz check --commit-msg-file "$(git rev-parse --git-path COMMIT_EDITMSG)"
 
 # Check everything
-check: format-check lint check-schema check-actions check-bench-e2e-fsdb-catalog check-build check-commit
+check: format-check lint check-schema check-actions check-bench-e2e-fsdb-catalog check-build docs-site-check check-commit
     @just run-if-verdi check-fsdb-build
 
 # CI quality gate (no commit-msg hook)
-ci: format-check lint check-schema check-actions test-aux coverage-src-check check-build
+ci: format-check lint check-schema check-actions test-aux coverage-src-check check-build docs-site-check
     @just run-if-verdi test-fsdb
 
 # Fix everything

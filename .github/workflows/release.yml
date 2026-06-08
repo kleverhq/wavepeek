@@ -6,6 +6,7 @@ on:
       - v*.*.*
 
 permissions:
+  actions: write
   contents: write
   packages: write
 
@@ -95,3 +96,17 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           body_path: ${{ runner.temp }}/release-notes.md
+
+      - name: Dispatch docs publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REF: ${{ github.ref_name }}
+        run: |
+          version="${SOURCE_REF#v}"
+          gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/docs.yml/dispatches" \
+            -f ref=main \
+            -f inputs[version]="$version" \
+            -f inputs[source_ref]="$SOURCE_REF" \
+            -F inputs[repair_existing_version]=false

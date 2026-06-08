@@ -1,0 +1,171 @@
+name: Publish Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v.
+        required: true
+        type: string
+      source_ref:
+        description: Release tag to publish, such as v0.5.0.
+        required: true
+        type: string
+      repair_existing_version:
+        description: Allow replacing an existing immutable version snapshot.
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: docs-pages
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    name: Stage docs update
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
+      DEVCONTAINER_CONFIG: .devcontainer/devcontainer.ci.json
+      DEVCONTAINER_CONFIG_ALIAS: .devcontainer/.devcontainer.json
+      VERSION: ${{ inputs.version }}
+      SOURCE_REF: ${{ inputs.source_ref }}
+      REPAIR_EXISTING_VERSION: ${{ inputs.repair_existing_version }}
+    steps:
+      - name: Checkout trusted docs tooling
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate dispatch inputs
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+            echo "error: version must be X.Y.Z"
+            exit 1
+          fi
+          if [ "$SOURCE_REF" != "v${VERSION}" ]; then
+            echo "error: source_ref must be v${VERSION}"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR for devcontainer cache
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print runtime provenance
+        run: |
+          ln -sf devcontainer.ci.json .devcontainer/.devcontainer.json
+          echo "devcontainer_config=${DEVCONTAINER_CONFIG}"
+          echo "devcontainer_config_alias=${DEVCONTAINER_CONFIG_ALIAS}"
+          echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
+          sha256sum .devcontainer/Dockerfile
+
+      - name: Stage docs in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/.devcontainer.json
+          cacheFrom: |
+            type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
+          push: never
+          env: |
+            VERSION
+            SOURCE_REF
+            REPAIR_EXISTING_VERSION
+          runCmd: |
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
+            repair_arg=""
+            if [ "$REPAIR_EXISTING_VERSION" = "true" ]; then
+              repair_arg="--repair-existing-version"
+            fi
+            python3 -B tools/docs/publish_docs.py stage-deploy \
+              --version "$VERSION" \
+              --source-ref "$SOURCE_REF" \
+              --work-dir tmp/docs-site \
+              $repair_arg
+
+      - name: Upload staged docs bundle
+        uses: actions/upload-artifact@v5
+        with:
+          name: staged-gh-pages
+          path: |
+            tmp/docs-site/gh-pages.bundle
+            tmp/docs-site/staged-deploy.json
+          if-no-files-found: error
+          retention-days: 1
+
+  push:
+    name: Verify and push docs update
+    runs-on: ubuntu-24.04
+    needs: stage
+    permissions:
+      contents: write
+      packages: read
+    env:
+      DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
+      DEVCONTAINER_CONFIG: .devcontainer/devcontainer.ci.json
+      DEVCONTAINER_CONFIG_ALIAS: .devcontainer/.devcontainer.json
+      VERSION: ${{ inputs.version }}
+      REPAIR_EXISTING_VERSION: ${{ inputs.repair_existing_version }}
+    steps:
+      - name: Checkout trusted docs tooling
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download staged docs bundle
+        uses: actions/download-artifact@v5
+        with:
+          name: staged-gh-pages
+          path: tmp/docs-site
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR for devcontainer cache
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print runtime provenance
+        run: |
+          ln -sf devcontainer.ci.json .devcontainer/.devcontainer.json
+          echo "devcontainer_config=${DEVCONTAINER_CONFIG}"
+          echo "devcontainer_config_alias=${DEVCONTAINER_CONFIG_ALIAS}"
+          echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
+          sha256sum .devcontainer/Dockerfile
+
+      - name: Verify and push staged docs in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        with:
+          configFile: .devcontainer/.devcontainer.json
+          cacheFrom: |
+            type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
+          push: never
+          env: |
+            VERSION
+            REPAIR_EXISTING_VERSION
+          runCmd: |
+            git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git config --global user.name "github-actions[bot]"
+            repair_arg=""
+            if [ "$REPAIR_EXISTING_VERSION" = "true" ]; then
+              repair_arg="--repair-existing-version"
+            fi
+            python3 -B tools/docs/publish_docs.py push-staged \
+              --version "$VERSION" \
+              --work-dir tmp/docs-site \
+              $repair_arg

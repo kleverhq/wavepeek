@@ -45,7 +45,13 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 12. Validate the schema publication endpoint on Pages: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json` should resolve to the committed schema artifact.
 13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema artifacts such as `wavepeek_vX.json` resolve from Pages.
 
-The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch; for a manual repair or first-time bootstrap, run `.github/workflows/docs.yml` with `version`, `source_ref`, and `repair_existing_version` only when intentionally replacing an existing Pages snapshot.
+The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch.
+
+Normal releases do not need a local docs dispatch command because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` after the GitHub Release is created. For manual repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
+
+    just docs-site-dispatch version=0.5.0 source_ref=v0.5.0 repair=false
+
+Use `repair=true` only when intentionally replacing an existing Pages snapshot. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
 
 ## Rollback
 

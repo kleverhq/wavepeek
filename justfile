@@ -294,6 +294,14 @@ docs-site-deploy version=docs_version source_ref=("v" + docs_version) repair="0"
     just docs-site-stage-deploy "{{ version }}" "{{ source_ref }}" "{{ repair }}"
     just docs-site-push-staged "{{ version }}" "{{ repair }}"
 
+# Manually dispatch the remote docs publication workflow
+docs-site-dispatch version=docs_version source_ref=("v" + docs_version) repair="false" ref="main": require-container
+    gh workflow run docs.yml \
+        --ref "{{ ref }}" \
+        -f version="{{ version }}" \
+        -f source_ref="{{ source_ref }}" \
+        -F repair_existing_version="{{ repair }}"
+
 # Build release binary
 build-release: require-container
     cargo build --release

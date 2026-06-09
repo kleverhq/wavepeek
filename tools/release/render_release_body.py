@@ -169,11 +169,14 @@ def render_download_table(artifacts: Sequence[DownloadArtifact], repository: str
     lines = ["| Platform | Archive | Checksum |", "| --- | --- | --- |"]
     for artifact in artifacts:
         archive_url = release_asset_url(repository, version, artifact.archive)
-        checksum = artifact.checksum or "See `sha256.sum`"
-        checksum_url = release_asset_url(repository, version, checksum) if checksum != "See `sha256.sum`" else checksum
+        if artifact.checksum:
+            checksum_name = artifact.checksum
+        else:
+            checksum_name = "sha256.sum"
+        checksum_url = release_asset_url(repository, version, checksum_name)
         lines.append(
             f"| {artifact.platform} | [`{artifact.archive}`]({archive_url}) | "
-            f"[`{checksum}`]({checksum_url}) |"
+            f"[`{checksum_name}`]({checksum_url}) |"
         )
     return lines
 

@@ -52,7 +52,7 @@ The docs workflow keeps `gh-pages` as the versioned `mike` state branch, but the
 
 Normal releases do not need local downstream dispatch commands because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` on the default branch after the GitHub Release is created. For manual docs repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
 
-    just docs-site-dispatch version=0.5.0 source_ref=v0.5.0 repair=false
+    just docs-site-dispatch version=X.Y.Z source_ref=vX.Y.Z repair=false
 
 Use `repair=true` only when intentionally replacing an existing Pages snapshot. If the repaired version does not currently own the `latest` alias, the docs workflow preserves the existing root installer aliases and does not move `latest` backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
 

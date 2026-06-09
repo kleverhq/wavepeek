@@ -128,6 +128,26 @@ class RenderReleaseBodyCliTest(unittest.TestCase):
         self.assertIn("wavepeek-aarch64-apple-darwin.tar.gz", result.stdout)
         self.assertIn("wavepeek-x86_64-pc-windows-msvc.zip", result.stdout)
 
+    def test_renders_sha256_sum_link_when_archives_have_no_own_checksum(self) -> None:
+        manifest = self.manifest()
+        assert isinstance(manifest["artifacts"], dict)
+        for raw in manifest["artifacts"].values():
+            if isinstance(raw, dict):
+                raw.pop("checksum", None)
+        manifest["artifacts"] = {
+            name: raw
+            for name, raw in manifest["artifacts"].items()
+            if not name.endswith(".sha256")
+        }
+        result = self.run_script(manifest=manifest)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(
+            "[`sha256.sum`](https://github.com/kleverhq/wavepeek/releases/download/v1.2.3/sha256.sum)",
+            result.stdout,
+        )
+        self.assertNotIn("See `sha256.sum`", result.stdout)
+
     def test_fails_when_manifest_misses_required_target(self) -> None:
         manifest = self.manifest()
         assert isinstance(manifest["artifacts"], dict)

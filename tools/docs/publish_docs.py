@@ -525,10 +525,9 @@ def stage_publication_artifacts(
         )
 
 
-def allowed_path_patterns(version: str) -> list[str]:
-    return [
+def allowed_path_patterns(version: str, *, promote_latest: bool) -> list[str]:
+    patterns = [
         f"{version}/**",
-        "latest/**",
         ".nojekyll",
         "versions.json",
         "index.html",
@@ -536,9 +535,10 @@ def allowed_path_patterns(version: str) -> list[str]:
         "sitemap.xml",
         "sitemap.xml.gz",
         "wavepeek_v*.json",
-        "install.sh",
-        "install.ps1",
     ]
+    if promote_latest:
+        patterns.extend(["latest/**", "install.sh", "install.ps1"])
+    return patterns
 
 
 def write_stage_metadata(
@@ -561,7 +561,7 @@ def write_stage_metadata(
         "final_commit": final_commit,
         "bundle": BUNDLE_NAME,
         "repair_existing_version": repair_existing_version,
-        "allowed_path_patterns": allowed_path_patterns(version),
+        "allowed_path_patterns": allowed_path_patterns(version, promote_latest=promote_latest),
         "promote_latest": promote_latest,
     }
     run_paths.metadata.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -641,7 +641,10 @@ def read_stage_metadata(run_paths: Paths, version: str, repair_existing_version:
         fail("staged deploy metadata allowed_path_patterns is missing")
     if not isinstance(metadata.get("promote_latest"), bool):
         fail("staged deploy metadata promote_latest is missing")
-    if [str(pattern) for pattern in metadata["allowed_path_patterns"]] != allowed_path_patterns(version):
+    expected_patterns = allowed_path_patterns(
+        version, promote_latest=metadata["promote_latest"]
+    )
+    if [str(pattern) for pattern in metadata["allowed_path_patterns"]] != expected_patterns:
         fail("staged deploy metadata allowed_path_patterns mismatch")
     if not run_paths.bundle.is_file():
         fail(f"missing staged gh-pages bundle at {run_paths.bundle}")
@@ -830,6 +833,27 @@ def git_blob_id(ref: str, path: str, runner: CommandRunner) -> str | None:
     return (result.stdout or "").strip() or None
 
 
+def verify_latest_tree_semantics(
+    *,
+    remote_base: str | None,
+    staged_branch: str,
+    version: str,
+    repair_existing_version: bool,
+    runner: CommandRunner,
+) -> None:
+    if remote_base is None or not repair_existing_version:
+        return
+    if latest_owner(remote_base, runner) == version:
+        return
+    result = runner.run(
+        ["git", "diff", "--quiet", remote_base, staged_branch, "--", "latest"],
+        check=False,
+        capture=True,
+    )
+    if result.returncode != 0:
+        fail("staged gh-pages bundle changes latest docs during non-latest repair")
+
+
 def verify_installer_entrypoints(
     *,
     remote_base: str | None,
@@ -875,9 +899,16 @@ def push_staged(
     import_bundle(run_paths, metadata, runner)
     verify_fast_forward(remote_base, STAGED_BRANCH, runner)
     changed = changed_paths(remote_base, STAGED_BRANCH, runner)
-    verify_allowed_paths(changed, allowed_path_patterns(version))
+    verify_allowed_paths(changed, [str(pattern) for pattern in metadata["allowed_path_patterns"]])
     verify_root_artifacts(STAGED_BRANCH, version, runner)
     verify_versions_semantics(
+        remote_base=remote_base,
+        staged_branch=STAGED_BRANCH,
+        version=version,
+        repair_existing_version=repair_existing_version,
+        runner=runner,
+    )
+    verify_latest_tree_semantics(
         remote_base=remote_base,
         staged_branch=STAGED_BRANCH,
         version=version,

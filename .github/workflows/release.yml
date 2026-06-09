@@ -23,7 +23,7 @@ jobs:
       val: ${{ steps.plan.outputs.manifest }}
       tag: ${{ github.ref_name }}
       tag-flag: ${{ format('--tag={0}', github.ref_name) }}
-      version: ${{ steps.validate-tag.outputs.version }}
+      version: ${{ steps.validate-tag.outputs.tag_version }}
       publishing: 'true'
     permissions:
       contents: read
@@ -37,9 +37,7 @@ jobs:
 
       - id: validate-tag
         name: Validate tag matches Cargo.toml version
-        run: |
-          version="$(python3 -B tools/release/validate_tag_version.py)"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+        run: python3 -B tools/release/validate_tag_version.py >> "$GITHUB_OUTPUT"
 
       - name: Install dist
         shell: bash
@@ -275,6 +273,7 @@ jobs:
       - id: host
         shell: bash
         run: |
+          # cargo-dist writes final hosting metadata here; the GitHub Release is created by gh below.
           dist host ${{ needs.plan.outputs.tag-flag }} --steps=upload --steps=release --output-format=json > dist-manifest.json
           echo "artifacts uploaded and released successfully"
           cat dist-manifest.json

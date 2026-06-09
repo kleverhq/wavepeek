@@ -35,7 +35,8 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - [x] (2026-06-09T15:55:00Z) Extended docs publication to download release installer assets and copy them byte-for-byte into versioned Pages entrypoints, promoting root `/install.sh` and `/install.ps1` only when the staged version owns `latest`; tests cover alias preservation during non-latest repair.
 - [x] (2026-06-09T15:55:00Z) Updated README, release/automation maintainer docs, release/docs helper READMEs, and `just docs-site-stage-deploy` for prebuilt-first install commands and the new GitHub Release/downstream workflow boundaries.
 - [x] (2026-06-09T15:55:00Z) Ran focused helper and workflow checks: `python3 -B -m unittest discover -s tools/release -p 'test_*.py'`, `python3 -B -m unittest discover -s tools/docs -p 'test_*.py'`, `just test-aux`, `just check-actions`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and `tools/release/render_release_body.py` against the resulting manifest.
-- [ ] Perform at least one focused review pass, apply substantive fixes, rerun affected checks, and update this plan with review outcomes.
+- [x] (2026-06-09T16:35:00Z) Ran three read-only focused review lanes for code, workflow/security, and docs/UX. Fixed the real findings: release workflow now consumes `tag_version` from `$GITHUB_OUTPUT`, docs push verification disallows and verifies `latest/**` and root installer changes during non-latest repair, checksum table rendering links unified `sha256.sum` correctly, and stale docs examples were corrected. Re-ran affected helper tests, `just check-actions`, `dist host --steps=create --tag v0.5.0 --output-format=json`, release-body rendering, and `just test-aux`.
+- [ ] Run a fresh independent control review pass on the consolidated diff after review fixes, then run the final pre-handoff gate.
 
 ## Surprises & Discoveries
 
@@ -69,8 +70,14 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - Observation: `cargo-dist` refuses to plan or host releases when generated CI output differs from its expected file.
   Evidence: `dist plan --tag v0.5.0 --output-format=json` failed with an out-of-date `.github/workflows/release.yml` diff after local policy hooks were applied. Adding `allow-dirty = ["ci"]` to `dist-workspace.toml` allowed `dist plan` and `dist host --steps=create` to succeed while preserving the local release workflow policy hooks.
 
-- Observation: Docs repair required separate verification for `versions.json` latest semantics and root installer aliases.
-  Evidence: New tests in `tools/docs/test_publish_docs.py` cover preserving the existing `latest` holder and rejecting root `/install.sh` changes while repairing a non-latest version.
+- Observation: Docs repair required separate verification for `versions.json` latest semantics, the `latest/**` tree, and root installer aliases.
+  Evidence: New tests in `tools/docs/test_publish_docs.py` cover preserving the existing `latest` holder, rejecting `latest/**` changes, and rejecting root `/install.sh` changes while repairing a non-latest version.
+
+- Observation: `tools/release/validate_tag_version.py` is a GitHub-output helper, not a raw-value helper.
+  Evidence: The review pass found that the workflow had captured the whole line `tag_version=0.5.0` as `version`; `.github/workflows/release.yml` now redirects the helper output to `$GITHUB_OUTPUT` and exposes `steps.validate-tag.outputs.tag_version` as the raw version.
+
+- Observation: The `cargo-dist` host command name is easy to misread.
+  Evidence: Review suspected that `dist host --steps=upload --steps=release` creates the GitHub Release before `gh release create`, but `cargo-dist 0.32.0` source shows `src/host.rs` computes/saves final hosting metadata while the generated GitHub CI backend emits the separate `gh release create` command.
 
 ## Decision Log
 
@@ -134,6 +141,10 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
   Rationale: The repository intentionally carries policy hooks around the generated `cargo-dist` jobs. Without this setting, `dist plan` and `dist host` fail before producing a manifest because `.github/workflows/release.yml` is not byte-for-byte generated output.
   Date/Author: 2026-06-09 / Grin
 
+- Decision: Keep the generated `cargo-dist` split where `dist host --steps=upload --steps=release` prepares final manifest/hosting metadata and `gh release create` creates the GitHub Release.
+  Rationale: This is the pattern emitted by `cargo-dist 0.32.0`; removing the `dist host` release step would risk stale manifest/announcement metadata, while replacing `gh release create` would diverge from the generated upload flow. A workflow comment now records the boundary.
+  Date/Author: 2026-06-09 / Grin
+
 ## Outcomes & Retrospective
 
 Initial planning outcome: the release contract is documented in `docs/tracker/wip/binary-releases-proposal.md`, and this plan breaks the implementation into independently verifiable milestones. No implementation work has started yet.
@@ -145,6 +156,8 @@ Control review outcome, 2026-06-09: the follow-up control pass found no implemen
 Final review outcome, 2026-06-09: a fresh control reviewer inspected the proposal and ExecPlan after the hardening changes and reported no substantive findings.
 
 Implementation outcome, 2026-06-09: binary-release workflow implementation is in the working tree. Focused helper tests, workflow linting, `just test-aux`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and release-body rendering from the resulting manifest pass. The remaining work is a full `just check`, focused review, fixes from that review, final commit(s), push, and PR creation.
+
+Focused review outcome, 2026-06-09: three review lanes found one true release-blocking workflow bug, two docs-repair/release-body correctness issues, and stale docs wording. Those fixes are applied and covered by additional tests. One suspected duplicate GitHub Release creation issue was rejected after checking `cargo-dist 0.32.0` source; the workflow comment now clarifies that `dist host` prepares metadata and `gh release create` creates the release.
 
 As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
 

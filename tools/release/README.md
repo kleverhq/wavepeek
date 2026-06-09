@@ -1,6 +1,6 @@
 # Release Tools
 
-This group owns release helpers used by `.github/workflows/release.yml`.
+This group owns release helpers used by the release publication workflows under `.github/workflows/`.
 
 Normal workflow entrypoints:
 

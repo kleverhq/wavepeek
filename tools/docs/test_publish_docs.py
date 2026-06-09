@@ -114,7 +114,7 @@ class PublishDocsTests(unittest.TestCase):
                     "bundle": "gh-pages.bundle",
                     "final_commit": "abc",
                     "repair_existing_version": False,
-                    "allowed_path_patterns": publish_docs.allowed_path_patterns("0.5.0"),
+                    "allowed_path_patterns": publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
                     "promote_latest": True,
                 }
             ),
@@ -201,21 +201,26 @@ class PublishDocsTests(unittest.TestCase):
                 "install.sh",
                 "install.ps1",
             ],
-            publish_docs.allowed_path_patterns("0.5.0"),
+            publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
         )
 
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
-                ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0")
+                ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0", promote_latest=True)
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
                 ["wavepeek_v0.json/extra.json"],
-                publish_docs.allowed_path_patterns("0.5.0"),
+                publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
-                ["skill.md"], publish_docs.allowed_path_patterns("0.5.0")
+                ["skill.md"], publish_docs.allowed_path_patterns("0.5.0", promote_latest=True)
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["latest/index.html", "install.sh"],
+                publish_docs.allowed_path_patterns("0.4.0", promote_latest=False),
             )
 
     def test_changed_paths_reports_old_path_for_renames(self) -> None:
@@ -420,6 +425,52 @@ class PublishDocsTests(unittest.TestCase):
         with chdir(repo):
             with self.assertRaisesRegex(publish_docs.PublishError, "preserve the existing latest"):
                 publish_docs.verify_versions_semantics(
+                    remote_base=base,
+                    staged_branch="HEAD",
+                    version="0.4.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+
+    def test_latest_tree_preserved_during_non_latest_repair(self) -> None:
+        repo = self.root / "repo-latest-tree-repair"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "latest").mkdir()
+        (repo / "latest" / "index.html").write_text("current latest\n", encoding="utf-8")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        (repo / "0.4.0").mkdir()
+        (repo / "0.4.0" / "index.html").write_text("repaired old\n", encoding="utf-8")
+        git(repo, "add", "0.4.0/index.html")
+        git(repo, "commit", "-q", "-m", "repair old")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            publish_docs.verify_latest_tree_semantics(
+                remote_base=base,
+                staged_branch="HEAD",
+                version="0.4.0",
+                repair_existing_version=True,
+                runner=runner,
+            )
+            (repo / "latest" / "index.html").write_text("rolled back\n", encoding="utf-8")
+            git(repo, "add", "latest/index.html")
+            git(repo, "commit", "-q", "-m", "rollback latest")
+            with self.assertRaisesRegex(publish_docs.PublishError, "changes latest docs"):
+                publish_docs.verify_latest_tree_semantics(
                     remote_base=base,
                     staged_branch="HEAD",
                     version="0.4.0",

@@ -26,6 +26,7 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - [x] (2026-06-09T10:53:57Z) Started this ExecPlan from the committed proposal and the current repository state.
 - [x] (2026-06-09T11:05:00Z) Ran focused architecture and docs review lanes for the initial ExecPlan draft, then incorporated required clarifications for milestones, crates.io source checkout, docs repair/latest semantics, workflow permissions, README first-binary-release sequencing, and concrete guidance-reading commands.
 - [x] (2026-06-09T11:20:00Z) Ran a fresh control-pass review and incorporated remaining release-safety clarifications for tag-ref checkout, stable SemVer validation, and default-branch downstream dispatch.
+- [x] (2026-06-09T11:35:00Z) Ran a final clean control-pass review; it reported no substantive findings.
 - [ ] Install and pin `cargo-dist`, generate the baseline release workflow, and record the generated job names and command shape in this plan before editing workflow YAML.
 - [ ] Add `dist-workspace.toml` with the minimal `wavepeek` binary distribution configuration and keep it aligned with generated workflow output.
 - [ ] Replace the current release workflow with the `cargo-dist` baseline plus minimal project-specific validation, release body rendering, and downstream dispatch.
@@ -117,6 +118,8 @@ Initial planning outcome: the release contract is documented in `docs/tracker/wi
 Review outcome, 2026-06-09: the first architecture and docs review pass found missing milestone structure and several release safety clarifications. The plan now explicitly covers source-checkout working directory for crates.io publication, non-latest docs repair semantics, release workflow permissions, and first-binary-release README sequencing.
 
 Control review outcome, 2026-06-09: the follow-up control pass found no implementation code issues because implementation has not started, but it found plan gaps around ambiguous source checkout, stable tag validation, and downstream workflow refs. Those are now explicit requirements.
+
+Final review outcome, 2026-06-09: a fresh control reviewer inspected the proposal and ExecPlan after the hardening changes and reported no substantive findings.
 
 As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
 
@@ -415,3 +418,5 @@ Revision note, 2026-06-09: Initial ExecPlan written from the committed binary re
 Revision note, 2026-06-09: Incorporated first review pass findings. Added narrative milestones, explicit crates.io release-source working-directory requirements, safe docs repair/latest semantics, release workflow permissions review, README first-binary-release sequencing, and valid guidance-reading instructions.
 
 Revision note, 2026-06-09: Incorporated control-pass findings. Added requirements for stable `vX.Y.Z` tag validation, unambiguous `refs/tags/${source_ref}` release-source checkout, and default-branch downstream workflow dispatch.
+
+Revision note, 2026-06-09: Recorded final clean control-pass review result. No plan changes were required beyond documenting that review outcome.

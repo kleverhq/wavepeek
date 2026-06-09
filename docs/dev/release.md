@@ -54,7 +54,7 @@ Normal releases do not need local downstream dispatch commands because `.github/
 
     just docs-site-dispatch version=X.Y.Z source_ref=vX.Y.Z repair=false
 
-Use `repair=true` only when intentionally replacing an existing Pages snapshot. If the repaired version does not currently own the `latest` alias, the docs workflow preserves the existing root installer aliases and does not move `latest` backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
+Use `repair=true` only when intentionally replacing an existing Pages snapshot. If the requested version is older than the current `latest` version, or if a repaired version does not currently own the `latest` alias, the docs workflow stages that version without moving `latest`, root installer aliases, or root schema aliases backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
 
 For manual crates.io repair, dispatch `.github/workflows/publish-crate.yml` on the default branch with `version=X.Y.Z` and `source_ref=vX.Y.Z`. The workflow checks out trusted tooling from the default branch, checks out release source through `refs/tags/vX.Y.Z`, and exits successfully without requiring `CRATES_IO_TOKEN` if that crate version is already published.
 

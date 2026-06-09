@@ -36,7 +36,7 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - [x] (2026-06-09T15:55:00Z) Updated README, release/automation maintainer docs, release/docs helper READMEs, and `just docs-site-stage-deploy` for prebuilt-first install commands and the new GitHub Release/downstream workflow boundaries.
 - [x] (2026-06-09T15:55:00Z) Ran focused helper and workflow checks: `python3 -B -m unittest discover -s tools/release -p 'test_*.py'`, `python3 -B -m unittest discover -s tools/docs -p 'test_*.py'`, `just test-aux`, `just check-actions`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and `tools/release/render_release_body.py` against the resulting manifest.
 - [x] (2026-06-09T16:35:00Z) Ran three read-only focused review lanes for code, workflow/security, and docs/UX. Fixed the real findings: release workflow now consumes `tag_version` from `$GITHUB_OUTPUT`, docs push verification disallows and verifies `latest/**` and root installer changes during non-latest repair, checksum table rendering links unified `sha256.sum` correctly, and stale docs examples were corrected. Re-ran affected helper tests, `just check-actions`, `dist host --steps=create --tag v0.5.0 --output-format=json`, release-body rendering, and `just test-aux`.
-- [ ] Run a fresh independent control review pass on the consolidated diff after review fixes, then run the final pre-handoff gate.
+- [x] (2026-06-09T17:20:00Z) Ran a fresh independent control review pass; fixed Python runner compatibility for the `tomllib` helper, SemVer-aware docs `latest` promotion, non-latest root schema/root docs preservation, and global/final manifest attestation coverage. A narrow follow-up found the damaged/no-`latest` alias edge case; fixed promotion to compare against the highest existing SemVer version and added tests. Final narrow re-check reported no substantive findings, and `just check` passed after the fixes.
 
 ## Surprises & Discoveries
 
@@ -78,6 +78,12 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 
 - Observation: The `cargo-dist` host command name is easy to misread.
   Evidence: Review suspected that `dist host --steps=upload --steps=release` creates the GitHub Release before `gh release create`, but `cargo-dist 0.32.0` source shows `src/host.rs` computes/saves final hosting metadata while the generated GitHub CI backend emits the separate `gh release create` command.
+
+- Observation: GitHub's `ubuntu-22.04` runner does not provide Python `tomllib` by default.
+  Evidence: Control review flagged that the release `plan` job ran `tools/release/validate_tag_version.py`, which imports `tomllib`. The job now uses `ubuntu-24.04`, and `tools/release/test_release_workflow.py` asserts that contract.
+
+- Observation: Missing or damaged `latest` aliases need SemVer fallback logic.
+  Evidence: Targeted re-check found that a `versions.json` with existing versions but no `latest` alias would promote an older missing version. `should_promote_latest()` now compares against the highest existing stable SemVer version when no alias exists, and tests cover that damaged-alias case.
 
 ## Decision Log
 
@@ -145,6 +151,14 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
   Rationale: This is the pattern emitted by `cargo-dist 0.32.0`; removing the `dist host` release step would risk stale manifest/announcement metadata, while replacing `gh release create` would diverge from the generated upload flow. A workflow comment now records the boundary.
   Date/Author: 2026-06-09 / Grin
 
+- Decision: Promote Pages `latest`, root installer aliases, and root schema aliases only when the staged version is the first publish, currently owns `latest`, or is not older than the current/highest existing stable SemVer version.
+  Rationale: Manual publication or repair of an older missing version must not roll public latest entrypoints backward. If `versions.json` has no `latest` alias, the highest existing stable SemVer version is the safest available latest baseline.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Attest platform-agnostic global assets and the final host `dist-manifest.json` in addition to platform-specific archives.
+  Rationale: The release configuration advertises attestations for installers, checksums, JSON manifests, and archives. Global assets are produced outside the local platform build matrix, and the final `dist-manifest.json` is produced in the host job.
+  Date/Author: 2026-06-09 / Grin
+
 ## Outcomes & Retrospective
 
 Initial planning outcome: the release contract is documented in `docs/tracker/wip/binary-releases-proposal.md`, and this plan breaks the implementation into independently verifiable milestones. No implementation work has started yet.
@@ -158,6 +172,8 @@ Final review outcome, 2026-06-09: a fresh control reviewer inspected the proposa
 Implementation outcome, 2026-06-09: binary-release workflow implementation is in the working tree. Focused helper tests, workflow linting, `just test-aux`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and release-body rendering from the resulting manifest pass. The remaining work is a full `just check`, focused review, fixes from that review, final commit(s), push, and PR creation.
 
 Focused review outcome, 2026-06-09: three review lanes found one true release-blocking workflow bug, two docs-repair/release-body correctness issues, and stale docs wording. Those fixes are applied and covered by additional tests. One suspected duplicate GitHub Release creation issue was rejected after checking `cargo-dist 0.32.0` source; the workflow comment now clarifies that `dist host` prepares metadata and `gh release create` creates the release.
+
+Control review outcome, 2026-06-09: a fresh control pass found Python runner compatibility, older-version promotion, root schema rollback, and global/final manifest attestation gaps. Those fixes are applied. A targeted follow-up found the no-`latest` damaged-alias edge case; that fix is applied and a final narrow re-check reported no substantive findings. Final `just check` passed.
 
 As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
 

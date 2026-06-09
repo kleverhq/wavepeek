@@ -219,7 +219,7 @@ class PublishDocsTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
-                ["latest/index.html", "install.sh"],
+                ["latest/index.html", "install.sh", "wavepeek_v0.json"],
                 publish_docs.allowed_path_patterns("0.4.0", promote_latest=False),
             )
 
@@ -325,6 +325,105 @@ class PublishDocsTests(unittest.TestCase):
         with self.assertRaisesRegex(publish_docs.PublishError, "only strings"):
             publish_docs.aliases({"version": "0.5.0", "aliases": ["latest", 1]})
 
+    def write_versions(self, repo: pathlib.Path, versions: list[dict[str, object]]) -> None:
+        (repo / "versions.json").write_text(json.dumps(versions), encoding="utf-8")
+
+    def test_should_promote_latest_only_for_newer_or_current_latest(self) -> None:
+        repo = self.root / "repo-promote"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        self.write_versions(
+            repo,
+            [
+                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+            ],
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.6.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.5.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+
+    def test_should_promote_latest_uses_highest_version_when_alias_is_missing(self) -> None:
+        repo = self.root / "repo-promote-no-latest"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        self.write_versions(
+            repo,
+            [
+                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                {"version": "0.5.0", "title": "0.5.0", "aliases": []},
+            ],
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.6.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.5.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+
     def test_versions_semantics_allow_new_version_and_latest_move(self) -> None:
         repo = self.root / "repo"
         repo.mkdir()
@@ -360,6 +459,7 @@ class PublishDocsTests(unittest.TestCase):
                 staged_branch="HEAD",
                 version="0.5.0",
                 repair_existing_version=False,
+                promote_latest=True,
                 runner=runner,
             )
 
@@ -389,6 +489,7 @@ class PublishDocsTests(unittest.TestCase):
                 staged_branch=base,
                 version="0.4.0",
                 repair_existing_version=True,
+                promote_latest=False,
                 runner=runner,
             )
 
@@ -429,6 +530,7 @@ class PublishDocsTests(unittest.TestCase):
                     staged_branch="HEAD",
                     version="0.4.0",
                     repair_existing_version=True,
+                    promote_latest=False,
                     runner=runner,
                 )
 
@@ -462,8 +564,7 @@ class PublishDocsTests(unittest.TestCase):
             publish_docs.verify_latest_tree_semantics(
                 remote_base=base,
                 staged_branch="HEAD",
-                version="0.4.0",
-                repair_existing_version=True,
+                promote_latest=False,
                 runner=runner,
             )
             (repo / "latest" / "index.html").write_text("rolled back\n", encoding="utf-8")
@@ -473,8 +574,7 @@ class PublishDocsTests(unittest.TestCase):
                 publish_docs.verify_latest_tree_semantics(
                     remote_base=base,
                     staged_branch="HEAD",
-                    version="0.4.0",
-                    repair_existing_version=True,
+                    promote_latest=False,
                     runner=runner,
                 )
 
@@ -510,7 +610,7 @@ class PublishDocsTests(unittest.TestCase):
                 remote_base=base,
                 staged_branch="HEAD",
                 version="0.4.0",
-                repair_existing_version=True,
+                promote_latest=False,
                 runner=runner,
             )
             (repo / "install.sh").write_text("rolled back\n", encoding="utf-8")
@@ -521,7 +621,7 @@ class PublishDocsTests(unittest.TestCase):
                     remote_base=base,
                     staged_branch="HEAD",
                     version="0.4.0",
-                    repair_existing_version=True,
+                    promote_latest=False,
                     runner=runner,
                 )
 
@@ -557,6 +657,7 @@ class PublishDocsTests(unittest.TestCase):
                     staged_branch="HEAD",
                     version="0.5.0",
                     repair_existing_version=False,
+                    promote_latest=True,
                     runner=runner,
                 )
 

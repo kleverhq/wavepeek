@@ -18,7 +18,7 @@ on:
 jobs:
   # Run 'dist host --steps=create' to determine the build matrix and release plan.
   plan:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       val: ${{ steps.plan.outputs.manifest }}
       tag: ${{ github.ref_name }}
@@ -194,7 +194,9 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       BUILD_MANIFEST_NAME: target/distrib/global-dist-manifest.json
     permissions:
+      attestations: write
       contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -221,10 +223,18 @@ jobs:
         run: |
           dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
           echo "dist ran successfully"
-          {
-            echo "paths<<EOF"; jq --raw-output ".upload_files[]" dist-manifest.json; echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          { echo "paths<<EOF"; jq --raw-output ".upload_files[]" dist-manifest.json; echo "EOF"; } >> "$GITHUB_OUTPUT"
           cp dist-manifest.json "$BUILD_MANIFEST_NAME"
+
+      - name: Attest global artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            target/distrib/sha256.sum
+            target/distrib/*.sha256
+            target/distrib/source.tar.gz
+            target/distrib/wavepeek-installer.sh
+            target/distrib/wavepeek-installer.ps1
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
@@ -248,7 +258,9 @@ jobs:
     outputs:
       val: ${{ steps.host.outputs.manifest }}
     permissions:
+      attestations: write
       contents: write
+      id-token: write
     steps:
       - uses: actions/checkout@v6
         with:
@@ -287,6 +299,11 @@ jobs:
 
       - name: Render release body
         run: python3 -B tools/release/render_release_body.py --version "${{ needs.plan.outputs.version }}" --repository "${{ github.repository }}" --dist-manifest dist-manifest.json --crate-published unknown > "$RUNNER_TEMP/notes.txt"
+
+      - name: Attest dist manifest
+        uses: actions/attest@v4
+        with:
+          subject-path: dist-manifest.json
 
       - name: Download GitHub Artifacts
         uses: actions/download-artifact@v8

@@ -7,8 +7,9 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 - `main` is green in pre-merge CI.
 - The local branch is up to date with `main`.
 - You have permission to push tags and create GitHub Releases.
-- `CRATES_IO_TOKEN` exists in repository secrets.
+- `CRATES_IO_TOKEN` exists in repository secrets for downstream crates.io publication.
 - GitHub Pages is configured for GitHub Actions deployments.
+- The release tag is stable SemVer only: `vX.Y.Z`. Prerelease and build-metadata tags are rejected.
 
 ## Checklist
 
@@ -39,21 +40,23 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
        git tag vX.Y.Z
        git push origin vX.Y.Z
 
-9. Wait for `.github/workflows/release.yml` to finish. It dispatches docs publication only after the GitHub Release is created.
-10. Wait for `.github/workflows/docs.yml` to finish for the same version.
-11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, release-note extraction from `CHANGELOG.md`, `cargo publish --locked`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, and `actions/deploy-pages` deployment.
-12. Validate the schema publication endpoint on Pages: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json` should resolve to the committed schema artifact.
-13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema artifacts such as `wavepeek_vX.json` resolve from Pages.
+9. Wait for `.github/workflows/release.yml` to finish. It creates the GitHub Release with `cargo-dist` archives, shell and PowerShell installers, checksum artifacts, `dist-manifest.json`, and GitHub Artifact Attestations before dispatching downstream workflows.
+10. Wait for `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` to finish for the same version.
+11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, `cargo-dist` matrix builds, release-body rendering from `CHANGELOG.md`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, `actions/deploy-pages` deployment, and idempotent `cargo publish --locked` from the release tag checkout.
+12. Validate Pages endpoints: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json`, `https://kleverhq.github.io/wavepeek/install.sh`, and `https://kleverhq.github.io/wavepeek/install.ps1` should resolve to the staged root artifacts.
+13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, binary archives and checksum files are attached, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema and installer aliases resolve from Pages.
 
-The release workflow extracts notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch.
+The release workflow renders notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch and copies installer assets from the created GitHub Release.
 
 The docs workflow keeps `gh-pages` as the versioned `mike` state branch, but the public Pages deployment is performed through GitHub Pages Actions (`actions/upload-pages-artifact` and `actions/deploy-pages`). It does not rely on a branch-push-triggered Pages build.
 
-Normal releases do not need a local docs dispatch command because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` after the GitHub Release is created. For manual repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
+Normal releases do not need local downstream dispatch commands because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` on the default branch after the GitHub Release is created. For manual docs repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
 
     just docs-site-dispatch version=0.5.0 source_ref=v0.5.0 repair=false
 
-Use `repair=true` only when intentionally replacing an existing Pages snapshot. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
+Use `repair=true` only when intentionally replacing an existing Pages snapshot. If the repaired version does not currently own the `latest` alias, the docs workflow preserves the existing root installer aliases and does not move `latest` backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
+
+For manual crates.io repair, dispatch `.github/workflows/publish-crate.yml` on the default branch with `version=X.Y.Z` and `source_ref=vX.Y.Z`. The workflow checks out trusted tooling from the default branch, checks out release source through `refs/tags/vX.Y.Z`, and exits successfully without requiring `CRATES_IO_TOKEN` if that crate version is already published.
 
 ## Rollback
 
@@ -62,4 +65,4 @@ If the tag was wrong, delete and recreate it after fixes:
     git tag -d vX.Y.Z
     git push origin :refs/tags/vX.Y.Z
 
-If a bad crate version was published, publish a new patch version. Do not try to republish the same version; crates.io is not a time machine, despite everyone occasionally needing one.
+If a bad crate version was published, publish a new patch version. crates.io versions are immutable and cannot be republished.

@@ -92,7 +92,9 @@ def load_release(path: pathlib.Path | None, repository: str, source_ref: str) ->
     return release
 
 
-def validate_release_is_stable(release: Mapping[str, Any]) -> None:
+def validate_release_is_stable(release: Mapping[str, Any], source_ref: str) -> None:
+    if release.get("tag_name") != source_ref:
+        raise WorkflowError("docs publication release tag does not match source_ref")
     if release.get("draft") or release.get("prerelease"):
         raise WorkflowError("docs publication requires a published stable GitHub Release")
 
@@ -109,7 +111,7 @@ def validate_dispatch(args: argparse.Namespace, env: Mapping[str, str]) -> None:
     publish_docs.validate_version(version)
     publish_docs.require_ref_matches_version(source_ref, version)
     release = load_release(args.release_json, repository, source_ref)
-    validate_release_is_stable(release)
+    validate_release_is_stable(release, source_ref)
 
 
 def workflow_publish_args(command: str, env: Mapping[str, str]) -> list[str]:

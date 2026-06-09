@@ -5,8 +5,16 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import re
 import sys
 import tomllib
+
+STABLE_VERSION_RE = re.compile(
+    r"^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$"
+)
+STABLE_TAG_RE = re.compile(
+    r"^v(?P<version>(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*))$"
+)
 
 
 def fail(message: str) -> None:
@@ -34,10 +42,17 @@ def load_crate_version(manifest_path: pathlib.Path) -> str:
 
 
 def validate_tag_version(tag: str, crate_version: str) -> str:
-    if not tag.startswith("v"):
-        fail(f"error: release-tag: expected tag that starts with 'v', got {tag!r}")
+    match = STABLE_TAG_RE.fullmatch(tag)
+    if match is None:
+        fail(f"error: release-tag: expected stable SemVer tag vX.Y.Z, got {tag!r}")
 
-    tag_version = tag[1:]
+    if STABLE_VERSION_RE.fullmatch(crate_version) is None:
+        fail(
+            "error: release-tag: Cargo.toml package.version must be stable SemVer "
+            f"X.Y.Z, got {crate_version!r}"
+        )
+
+    tag_version = match.group("version")
     if tag_version != crate_version:
         fail(
             "error: release-tag: tag version "

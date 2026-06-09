@@ -29,12 +29,12 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - [x] (2026-06-09T11:35:00Z) Ran a final clean control-pass review; it reported no substantive findings.
 - [x] (2026-06-09T15:05:00Z) Installed `cargo-dist 0.32.0`, added `dist-workspace.toml`, ran `dist init --yes`, generated the baseline release workflow, ran `dist plan --tag v0.5.0 --output-format=json > tmp/dist-plan.json`, and verified generated workflow YAML with `actionlint .github/workflows/*.yml`.
 - [x] (2026-06-09T15:05:00Z) Recorded generated `cargo-dist` job names: `plan`, `build-local-artifacts`, `build-global-artifacts`, `host`, and `announce`; generated release artifact names include the five required archives, `wavepeek-installer.sh`, `wavepeek-installer.ps1`, `sha256.sum`, per-artifact `*.sha256` files, `source.tar.gz`, `source.tar.gz.sha256`, and `dist-manifest.json` from the host upload path.
-- [ ] Replace the current release workflow with the `cargo-dist` baseline plus minimal project-specific validation, release body rendering, and downstream dispatch.
-- [ ] Add a tested release body renderer under `tools/release/render_release_body.py`.
-- [ ] Move crates.io publication out of `.github/workflows/release.yml` into `.github/workflows/publish-crate.yml` with tested helper logic.
-- [ ] Extend docs publication to copy release installer assets byte-for-byte into root and versioned GitHub Pages entrypoints.
-- [ ] Update README and maintainer docs for prebuilt-first installation and the new release workflow boundaries.
-- [ ] Run focused tests for release/docs helpers and workflow linting, then run the repository pre-handoff gate `just check` in the devcontainer/CI image.
+- [x] (2026-06-09T15:55:00Z) Replaced the generated release workflow with the `cargo-dist` baseline plus stable tag validation, a devcontainer `just ci`/`cargo package --locked` gate, rendered release notes, and default-branch downstream dispatch for docs and crates.io publication.
+- [x] (2026-06-09T15:55:00Z) Added `tools/release/render_release_body.py` and tests covering changelog extraction, installer snippets, artifact table rendering, checksum and attestation instructions, FSDB source-only guidance, docs links, crates.io status text, and manifest validation.
+- [x] (2026-06-09T15:55:00Z) Moved crates.io publication out of `.github/workflows/release.yml` into `.github/workflows/publish-crate.yml` with `tools/release/publish_crate.py` tests for default-branch dispatch, GitHub Release validation, exact tag checkout, idempotent already-published no-op behavior, missing-token failure, and `cargo publish --locked` cwd.
+- [x] (2026-06-09T15:55:00Z) Extended docs publication to download release installer assets and copy them byte-for-byte into versioned Pages entrypoints, promoting root `/install.sh` and `/install.ps1` only when the staged version owns `latest`; tests cover alias preservation during non-latest repair.
+- [x] (2026-06-09T15:55:00Z) Updated README, release/automation maintainer docs, release/docs helper READMEs, and `just docs-site-stage-deploy` for prebuilt-first install commands and the new GitHub Release/downstream workflow boundaries.
+- [x] (2026-06-09T15:55:00Z) Ran focused helper and workflow checks: `python3 -B -m unittest discover -s tools/release -p 'test_*.py'`, `python3 -B -m unittest discover -s tools/docs -p 'test_*.py'`, `just test-aux`, `just check-actions`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and `tools/release/render_release_body.py` against the resulting manifest.
 - [ ] Perform at least one focused review pass, apply substantive fixes, rerun affected checks, and update this plan with review outcomes.
 
 ## Surprises & Discoveries
@@ -65,6 +65,12 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 
 - Observation: `dist init --yes` added a `[profile.dist]` section to `Cargo.toml` and normalized the target order in `dist-workspace.toml`.
   Evidence: The generated diff shows `[profile.dist] inherits = "release"` with `lto = "thin"`, and the generated target list is sorted alphabetically by target triple.
+
+- Observation: `cargo-dist` refuses to plan or host releases when generated CI output differs from its expected file.
+  Evidence: `dist plan --tag v0.5.0 --output-format=json` failed with an out-of-date `.github/workflows/release.yml` diff after local policy hooks were applied. Adding `allow-dirty = ["ci"]` to `dist-workspace.toml` allowed `dist plan` and `dist host --steps=create` to succeed while preserving the local release workflow policy hooks.
+
+- Observation: Docs repair required separate verification for `versions.json` latest semantics and root installer aliases.
+  Evidence: New tests in `tools/docs/test_publish_docs.py` cover preserving the existing `latest` holder and rejecting root `/install.sh` changes while repairing a non-latest version.
 
 ## Decision Log
 
@@ -124,6 +130,10 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
   Rationale: The tooling source and release source are intentionally separate. Dispatching on a feature branch or checking out an ambiguous branch/tag name could run stale workflow logic or publish the wrong immutable crates.io source.
   Date/Author: 2026-06-09 / Grin
 
+- Decision: Set `allow-dirty = ["ci"]` in `dist-workspace.toml`.
+  Rationale: The repository intentionally carries policy hooks around the generated `cargo-dist` jobs. Without this setting, `dist plan` and `dist host` fail before producing a manifest because `.github/workflows/release.yml` is not byte-for-byte generated output.
+  Date/Author: 2026-06-09 / Grin
+
 ## Outcomes & Retrospective
 
 Initial planning outcome: the release contract is documented in `docs/tracker/wip/binary-releases-proposal.md`, and this plan breaks the implementation into independently verifiable milestones. No implementation work has started yet.
@@ -133,6 +143,8 @@ Review outcome, 2026-06-09: the first architecture and docs review pass found mi
 Control review outcome, 2026-06-09: the follow-up control pass found no implementation code issues because implementation has not started, but it found plan gaps around ambiguous source checkout, stable tag validation, and downstream workflow refs. Those are now explicit requirements.
 
 Final review outcome, 2026-06-09: a fresh control reviewer inspected the proposal and ExecPlan after the hardening changes and reported no substantive findings.
+
+Implementation outcome, 2026-06-09: binary-release workflow implementation is in the working tree. Focused helper tests, workflow linting, `just test-aux`, `dist host --steps=create --tag v0.5.0 --output-format=json`, and release-body rendering from the resulting manifest pass. The remaining work is a full `just check`, focused review, fixes from that review, final commit(s), push, and PR creation.
 
 As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
 

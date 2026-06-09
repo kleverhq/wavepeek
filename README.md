@@ -16,7 +16,17 @@
 
 ## Quick Start
 
-Install:
+Install a prebuilt VCD/FST binary:
+
+```bash
+# macOS and Linux
+curl --proto '=https' --tlsv1.2 -LsSf https://kleverhq.github.io/wavepeek/install.sh | sh
+
+# Windows PowerShell
+powershell -ExecutionPolicy Bypass -c "irm https://kleverhq.github.io/wavepeek/install.ps1 | iex"
+```
+
+Cargo remains available as a fallback:
 
 ```bash
 cargo install wavepeek
@@ -26,8 +36,8 @@ cargo install --path .
 cargo install wavepeek --features fsdb
 ```
 
-Default builds support VCD/FST.
-FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
+Prebuilt binaries support VCD/FST.
+FSDB support is source-only, Linux x86_64 only, and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK.
 
 Run a complete inspection flow:
 

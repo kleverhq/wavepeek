@@ -22,7 +22,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             workflow_docs.validate_dispatch(
@@ -42,7 +42,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "main"):
@@ -63,7 +63,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             with self.assertRaisesRegex(workflow_docs.publish_docs.PublishError, "does not match"):
@@ -74,6 +74,28 @@ class WorkflowDocsTests(unittest.TestCase):
                     {
                         "VERSION": "0.5.0",
                         "SOURCE_REF": "v0.5.1",
+                        "DISPATCH_REF": "main",
+                        "DEFAULT_BRANCH": "main",
+                        "GITHUB_REPOSITORY": "kleverhq/wavepeek",
+                    },
+                )
+
+    def test_validate_dispatch_rejects_release_tag_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            release_json = pathlib.Path(temp) / "release.json"
+            release_json.write_text(
+                json.dumps({"tag_name": "v0.4.0", "draft": False, "prerelease": False}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(workflow_docs.WorkflowError, "tag"):
+                workflow_docs.validate_dispatch(
+                    workflow_docs.parse_args(
+                        ["validate-dispatch", "--release-json", str(release_json)]
+                    ),
+                    {
+                        "VERSION": "0.5.0",
+                        "SOURCE_REF": "v0.5.0",
                         "DISPATCH_REF": "main",
                         "DEFAULT_BRANCH": "main",
                         "GITHUB_REPOSITORY": "kleverhq/wavepeek",
@@ -92,7 +114,7 @@ class WorkflowDocsTests(unittest.TestCase):
             }
 
             release_json.write_text(
-                json.dumps({"draft": True, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": True, "prerelease": False}), encoding="utf-8"
             )
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "stable"):
                 workflow_docs.validate_dispatch(
@@ -103,7 +125,7 @@ class WorkflowDocsTests(unittest.TestCase):
                 )
 
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": True}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": True}), encoding="utf-8"
             )
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "stable"):
                 workflow_docs.validate_dispatch(

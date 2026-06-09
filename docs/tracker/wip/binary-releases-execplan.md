@@ -1,0 +1,351 @@
+# Implement binary releases and GitHub-centered publication for wavepeek
+
+This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
+
+This document must be maintained in accordance with the `exec-plan` skill. It is self-contained: a contributor should be able to start from this file and the current repository and implement the feature without relying on chat history.
+
+## Purpose / Big Picture
+
+After this change, a user can install `wavepeek` without installing the Rust toolchain. A stable tag such as `v0.6.0` will produce a GitHub Release that contains prebuilt VCD/FST-only binaries for Linux x86_64, Linux arm64, macOS Intel, macOS Apple Silicon, and Windows x86_64; shell and PowerShell installers; `cargo-dist` checksums and manifest; GitHub artifact attestations; and release notes with install, download, checksum, attestation, Cargo fallback, FSDB source-only, docs, and crates.io information.
+
+GitHub Release is the primary release boundary. Documentation on GitHub Pages and crates.io publication are downstream state derived from the published GitHub Release and can be repaired or retried without issuing a new SemVer tag.
+
+The feature is working when pushing a stable tag `vX.Y.Z` creates a GitHub Release with those artifacts, then dispatches docs and crate workflows; when README shows the short Pages install commands; and when the release page itself is sufficient to install and verify that exact version.
+
+## Non-Goals
+
+This plan does not add FSDB-enabled prebuilt binaries. FSDB remains source-only through `cargo install --locked wavepeek --features fsdb` on a Linux x86_64 host with a valid Synopsys Verdi / FSDB Reader SDK environment.
+
+This plan does not add Homebrew, Scoop, WinGet, Docker images, musl Linux binaries as a readiness requirement, self-update commands, macOS notarization, Windows Authenticode signing, cosign, minisign, or package-manager signing. The first release implementation uses `cargo-dist` checksums and GitHub Artifact Attestations only.
+
+This plan keeps tag push as the release trigger. It does not enable `cargo-dist` `dispatch-releases = true`, though that remains a future maintainer workflow option.
+
+## Progress
+
+- [x] (2026-06-09T10:53:57Z) Created and committed `docs/tracker/wip/binary-releases-proposal.md`, an English WIP proposal that records the release contract and design decisions.
+- [x] (2026-06-09T10:53:57Z) Started this ExecPlan from the committed proposal and the current repository state.
+- [ ] Install and pin `cargo-dist`, generate the baseline release workflow, and record the generated job names and command shape in this plan before editing workflow YAML.
+- [ ] Add `dist-workspace.toml` with the minimal `wavepeek` binary distribution configuration and keep it aligned with generated workflow output.
+- [ ] Replace the current release workflow with the `cargo-dist` baseline plus minimal project-specific validation, release body rendering, and downstream dispatch.
+- [ ] Add a tested release body renderer under `tools/release/render_release_body.py`.
+- [ ] Move crates.io publication out of `.github/workflows/release.yml` into `.github/workflows/publish-crate.yml` with tested helper logic.
+- [ ] Extend docs publication to copy release installer assets byte-for-byte into root and versioned GitHub Pages entrypoints.
+- [ ] Update README and maintainer docs for prebuilt-first installation and the new release workflow boundaries.
+- [ ] Run focused tests for release/docs helpers and workflow linting, then run the repository pre-handoff gate `just check` in the devcontainer/CI image.
+- [ ] Perform at least one focused review pass, apply substantive fixes, rerun affected checks, and update this plan with review outcomes.
+
+## Surprises & Discoveries
+
+- Observation: The current `.github/workflows/release.yml` publishes to crates.io before creating the GitHub Release.
+  Evidence: The workflow currently checks crates.io, requires `CRATES_IO_TOKEN`, runs `cargo publish --locked`, and only then uses `softprops/action-gh-release@v3`.
+
+- Observation: The current docs workflow already treats GitHub Release as a prerequisite for docs publication.
+  Evidence: `tools/docs/workflow_docs.py validate-dispatch` loads `repos/{repository}/releases/tags/{source_ref}` through `gh api` and rejects draft or prerelease releases.
+
+- Observation: The docs publication helper already protects unrelated Pages paths.
+  Evidence: `tools/docs/publish_docs.py allowed_path_patterns()` currently allows only the requested version tree, `latest/**`, root docs files, `versions.json`, and root schema artifacts; adding root `/install.sh` and `/install.ps1` requires extending this allowlist.
+
+- Observation: `uv` uses `cargo-dist` and configures XDG-style install paths rather than the default Cargo home path.
+  Evidence: `uv` has `installers = ["shell", "powershell"]`, `install-updater = false`, and `install-path = ["$XDG_BIN_HOME/", "$XDG_DATA_HOME/../bin", "~/.local/bin"]` in `dist-workspace.toml`.
+
+## Decision Log
+
+- Decision: Use `cargo-dist` as the binary distribution backend.
+  Rationale: It owns the common release mechanics needed here: archive packaging, shell and PowerShell installers, checksums, dist manifest, GitHub Release upload, and GitHub Artifact Attestations. This avoids maintaining a custom release packager.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Generate the baseline release workflow with `cargo-dist`, then make minimal project-specific edits.
+  Rationale: Staying close to generated output makes future `cargo-dist` updates practical. Project policy is layered on top through small hooks or jobs rather than a hand-rolled workflow that slowly becomes a worse private fork of `cargo-dist`.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Keep tag-push release triggering.
+  Rationale: The repository already uses tag push for stable release intent, and switching to manual `workflow_dispatch` can be done later if release operations need a manual approval switch.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Use the XDG-style install path cascade and disable the `cargo-dist` updater.
+  Rationale: Prebuilt installs should not imply a Rust toolchain or Cargo home. Updates are initially handled by rerunning the installer; self-update is explicitly out of scope.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Accept native `cargo-dist` asset names, `dist-manifest.json`, and checksum layout.
+  Rationale: The immutable version boundary is the GitHub Release URL for `vX.Y.Z`; manually renaming artifacts or inventing a custom checksum manifest creates drift against installers, manifest, and attestations.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: GitHub Pages installer entrypoints are byte-for-byte copies of the canonical release installer assets.
+  Rationale: Wrappers add quoting, argument propagation, and PowerShell behavior risks. Copies preserve generated installer behavior while providing short README URLs.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Add `tools/release/render_release_body.py` rather than expanding `extract_release_notes.py`.
+  Rationale: `extract_release_notes.py` has a narrow, tested purpose. The full GitHub Release body is a separate artifact that combines changelog content with generated install, download, verification, FSDB, docs, and crates.io sections.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: GitHub Pages and crates.io publication are downstream state derived from a published GitHub Release.
+  Rationale: Documentation can be repaired and crate publication can be retried without changing the public release identity. A version is public when the GitHub Release exists with assets, not when every downstream publication has completed.
+  Date/Author: 2026-06-09 / Grin
+
+## Outcomes & Retrospective
+
+Initial planning outcome: the release contract is documented in `docs/tracker/wip/binary-releases-proposal.md`, and this plan breaks the implementation into independently verifiable milestones. No implementation work has started yet.
+
+As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
+
+## Context and Orientation
+
+`wavepeek` is a Rust CLI. The root `Cargo.toml` defines package `wavepeek`, version `0.5.0`, one binary named `wavepeek` at `src/main.rs`, default features with VCD/FST support, and optional feature `fsdb`. Optional FSDB support depends on Synopsys Verdi/FSDB Reader SDK and must not be included in public prebuilt binaries.
+
+Repository automation is container-first and exposed through the root `justfile`. The standard quality gate is `just ci`; the local pre-handoff gate is `just check`. Workflow linting is `just check-actions`. Focused Python helper tests are run through `python3 -B -m unittest discover -s tools/release -p "test_*.py"` and `python3 -B -m unittest discover -s tools/docs -p "test_*.py"`; `just test-aux` also runs those helper tests as part of the auxiliary suite.
+
+Current release automation lives in `.github/workflows/release.yml`. It is tag-triggered on `v*.*.*`, validates tag/version using `tools/release/validate_tag_version.py`, runs `just ci` and `cargo package --locked` through `devcontainers/ci`, extracts a changelog excerpt through `tools/release/extract_release_notes.py`, publishes the crate to crates.io inline, creates a GitHub Release with `softprops/action-gh-release`, and dispatches docs publication. This workflow must be replaced or regenerated around `cargo-dist` so binary artifacts are published before downstream docs/crates.io state.
+
+Current docs automation lives in `.github/workflows/docs.yml`, `tools/docs/workflow_docs.py`, and `tools/docs/publish_docs.py`. `docs.yml` is manual-only, checks out trusted tooling from the default branch, validates that a stable GitHub Release exists for `source_ref`, stages a versioned `mike` docs update, pushes a verified `gh-pages` state branch, and deploys through `actions/upload-pages-artifact` and `actions/deploy-pages`. The helper already supports repair through `repair_existing_version=true` and verifies that unrelated versions and paths are not changed. This area must be extended to copy release installer assets into GitHub Pages paths `/install.sh`, `/install.ps1`, `/${version}/install.sh`, and `/${version}/install.ps1`.
+
+Current release helper code under `tools/release/` contains `validate_tag_version.py`, `extract_release_notes.py`, their unit tests, and `README.md`. New release helper logic belongs in this group, must have local tests next to it, and must be mentioned in `tools/release/README.md` when it becomes a normal workflow entrypoint.
+
+README currently lists Cargo install as the first install path. It must be changed to show prebuilt-first installation through short GitHub Pages URLs, with Cargo install as fallback and FSDB as source-only.
+
+`docs/dev/release.md` and `docs/dev/automation.md` describe the current maintainer workflow and must be updated because crates.io publication will move out of `release.yml`, binary assets become part of the GitHub Release, and docs/crates.io become downstream workflows.
+
+A GitHub Release is the release page and asset container at `https://github.com/kleverhq/wavepeek/releases/tag/vX.Y.Z`. A GitHub Pages site is the documentation site under `https://kleverhq.github.io/wavepeek/`. crates.io is the Rust package registry. `cargo-dist` is the release packaging tool that generates GitHub Actions workflows and release artifacts for Rust applications.
+
+## Open Questions
+
+The implementation must answer these by inspection or dry-run and then update this plan:
+
+1. Which exact `cargo-dist` version is pinned? The proposal uses `cargo-dist` as the backend and current crates.io state shows `0.32.0` as a candidate, but the implementer must confirm the selected version before generating workflow files.
+2. What job names does the selected `cargo-dist` version generate for plan/build/host/announce? Record them after generation so downstream jobs can use precise `needs:` edges.
+3. Does generated `cargo-dist` output provide a clean hook for replacing the GitHub Release body before publication? If not, use a minimal `gh release edit --notes-file` step immediately after release creation and before downstream dispatch, and record that choice in the Decision Log.
+4. Does generated `cargo-dist` produce per-artifact `*.sha256` files, an aggregate checksum manifest, or both for this configuration? The release body renderer must reflect the actual output.
+5. Does default `cargo-dist` build strategy succeed for `aarch64-unknown-linux-gnu` in GitHub Actions? If it fails, fix only the failing target path and record the evidence.
+
+## Plan of Work
+
+Start by creating the `cargo-dist` baseline. Install the selected `cargo-dist` version locally in the devcontainer or CI-equivalent environment. Add root `dist-workspace.toml` with a `[workspace]` section containing `members = ["cargo:."]` and a `[dist]` section that pins `cargo-dist-version`, sets `ci = "github"`, `installers = ["shell", "powershell"]`, `unix-archive = ".tar.gz"`, `windows-archive = ".zip"`, the five required targets, `create-release = true`, `dispatch-releases = false`, `github-attestations = true`, attestation filters for JSON, shell, PowerShell, zip, tar.gz, and checksum artifacts, `install-updater = false`, and the XDG-style `install-path`. Do not add musl targets, package-manager installers, custom runners, or self-update.
+
+Generate the baseline release workflow with `dist init --yes` after the config is present. Inspect every generated file. If `cargo-dist` wants to migrate configuration, accept only changes that preserve this plan's contract. Keep the generated `.github/workflows/release.yml` close to generated output; put longer project-specific logic into helper scripts or small reusable jobs instead of inline shell. Run `dist plan --tag v0.5.0 --output-format=json` or the selected version's equivalent non-publishing plan command and record the important output shape in this plan. The command should not publish anything.
+
+Next, restore `wavepeek` release policy on top of generated `cargo-dist` output. The release workflow must still validate `GITHUB_REF_NAME` against `Cargo.toml`, run `just ci` in the CI devcontainer, and run `cargo package --locked` before creating the public GitHub Release. Keep the existing devcontainer cache pattern unless `cargo-dist` generated output conflicts with it. If generated workflow has custom job hooks, use them; otherwise add minimal jobs with explicit `needs:` relationships after the generated plan job and before the generated publish/announce job. Avoid long inline scripts in `.github/workflows/release.yml`; `.github/workflows/AGENTS.md` limits inline shell or Python to short glue.
+
+Add `tools/release/render_release_body.py`. It should import or reuse the changelog extraction logic from `tools/release/extract_release_notes.py` rather than duplicating parser behavior. Its CLI should accept `--version X.Y.Z`, `--repository kleverhq/wavepeek`, `--changelog CHANGELOG.md`, optional `--dist-manifest path`, and optional `--crate-published true|false|unknown`. It writes Markdown to stdout. The output must contain a `## Release Notes` heading with the changelog body, an `## Install wavepeek X.Y.Z` section with version-specific GitHub Release installer snippets, a `## Download wavepeek X.Y.Z` section with a platform table, a checksum verification section matching actual `cargo-dist` checksum artifacts, an attestation verification section using `gh attestation verify <artifact> --repo kleverhq/wavepeek`, an FSDB note that prebuilt binaries are VCD/FST-only, a Cargo fallback snippet, and docs/crates.io links or neutral status text.
+
+If `dist-manifest.json` is available before the release body is finalized, parse it to discover asset and checksum names. Keep the parser conservative: accept only the asset fields needed for the table, fail loudly on malformed JSON, and fall back to no guessing when the manifest is present but incomplete. If workflow ordering means the body must be generated before final manifest upload, use a static expected table derived from `dist-workspace.toml`; tests must prove this static table matches the configured targets. Update the Decision Log with the selected ordering.
+
+Move crates.io publication into a new `.github/workflows/publish-crate.yml`. Add a small tested helper under `tools/release/`, for example `tools/release/publish_crate.py` or `tools/release/workflow_crate.py`, to keep workflow YAML short. The helper should validate `version` and `source_ref`, load and verify the stable GitHub Release for `source_ref`, read `Cargo.toml` from the release source checkout, check whether `wavepeek` version `X.Y.Z` exists on crates.io through the crates.io API, and either return a verified no-op or run `cargo publish --locked` with `CARGO_REGISTRY_TOKEN`. The workflow should check out trusted tooling from the default branch, check out release source at `source_ref` into a separate path with `persist-credentials: false`, require `CRATES_IO_TOKEN` only when the version is not already published, and avoid `contents: write` permissions.
+
+Modify the generated release workflow so it dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` only after the GitHub Release body and assets are in their final expected state. Dispatch inputs are `version` without leading `v` and `source_ref` with the leading `v`. A failed downstream dispatch must not invalidate the GitHub Release; maintainers can rerun downstream workflows manually with the same inputs.
+
+Extend docs publication. In `.github/workflows/docs.yml`, after dispatch validation and before staging docs in the devcontainer, download release installer assets from GitHub Release `source_ref` into `tmp/docs-site/release-assets` using a short `gh release download` command or an equivalent helper. Pass the needed token into only the step that needs it. In `tools/docs/publish_docs.py`, add a `release_assets` path to `Paths`, copy `wavepeek-installer.sh` to both `install.sh` at the Pages root and `${version}/install.sh`, and copy `wavepeek-installer.ps1` to both `install.ps1` at the Pages root and `${version}/install.ps1`. These copies must happen in the `gh-pages` worktree before metadata is written and bundled. Add root `install.sh` and `install.ps1` to the allowed path patterns; the versioned paths are already covered by `${version}/**`. Add tests that prove byte-for-byte copies are staged, missing installer assets fail with a clear error, allowed path verification accepts the new root files, and repair behavior does not touch unrelated versions.
+
+Update README so the first install path is prebuilt-first through Pages. Show latest macOS/Linux and Windows commands through `https://kleverhq.github.io/wavepeek/install.sh` and `https://kleverhq.github.io/wavepeek/install.ps1`. Show pinned commands through `https://kleverhq.github.io/wavepeek/0.5.0/install.sh` and `https://kleverhq.github.io/wavepeek/0.5.0/install.ps1`, or a newer real published version if one exists by implementation time. Move Cargo install below as fallback and keep FSDB as an explicit source-only feature requiring Verdi.
+
+Update maintainer documentation. In `docs/dev/automation.md`, describe that release workflow now uses `cargo-dist`, builds binary artifacts, creates the GitHub Release, and dispatches docs and crate workflows; crates.io no longer publishes inside `release.yml`. In `docs/dev/release.md`, update the release checklist and verification steps: after pushing the tag, wait for binary release assets, release body, attestations, docs dispatch, and crate dispatch; verify Pages installer aliases and crates.io state. Update `tools/release/README.md` with normal helper entrypoints, including `render_release_body.py` and any crates.io helper.
+
+Keep implementation commits small enough to review. A good sequence is: cargo-dist config and generated workflow baseline; release body helper and tests; crates.io workflow/helper and tests; docs installer entrypoint helper and tests; README/dev docs updates; final workflow wiring and validation fixes. Update this ExecPlan's `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` at each stopping point.
+
+### Concrete Steps
+
+Work from repository root `/workspaces/wavepeek`.
+
+1. Confirm a clean base and read local guidance:
+
+       git status --short
+       read docs/tracker/wip/AGENTS.md
+       read .github/workflows/AGENTS.md
+       read tools/AGENTS.md
+
+   Expected: only intentional worktree changes appear. Do not delete files under `tmp/` because that directory may contain user or agent scratch state.
+
+2. Install and inspect `cargo-dist`:
+
+       cargo install cargo-dist --locked --version 0.32.0
+       dist --version
+
+   If version `0.32.0` is no longer the selected version, update the pinned version in this plan before continuing. Record the selected version in `Decision Log`.
+
+3. Add `dist-workspace.toml` with the minimal configuration. Use this shape and adjust only if `cargo-dist` rejects a field:
+
+       [workspace]
+       members = ["cargo:."]
+
+       [dist]
+       cargo-dist-version = "0.32.0"
+       ci = "github"
+       installers = ["shell", "powershell"]
+       unix-archive = ".tar.gz"
+       windows-archive = ".zip"
+       targets = [
+           "x86_64-unknown-linux-gnu",
+           "aarch64-unknown-linux-gnu",
+           "x86_64-apple-darwin",
+           "aarch64-apple-darwin",
+           "x86_64-pc-windows-msvc",
+       ]
+       create-release = true
+       dispatch-releases = false
+       github-attestations = true
+       github-attestations-filters = ["*.json", "*.sh", "*.ps1", "*.zip", "*.tar.gz", "*.sha256"]
+       install-updater = false
+       install-path = ["$XDG_BIN_HOME/", "$XDG_DATA_HOME/../bin", "~/.local/bin"]
+
+4. Generate or refresh the `cargo-dist` workflow:
+
+       dist init --yes
+       git diff -- .github/workflows/release.yml dist-workspace.toml Cargo.toml
+       dist plan --tag v0.5.0 --output-format=json > tmp/dist-plan.json
+
+   If `dist plan` needs a different non-publishing command in the selected version, use the command printed by `dist --help`, record the difference in `Surprises & Discoveries`, and keep `tmp/dist-plan.json` ignored scratch. Do not commit files under `tmp/`.
+
+5. Add and test `tools/release/render_release_body.py` and `tools/release/test_render_release_body.py`:
+
+       python3 -B -m unittest discover -s tools/release -p "test_*.py"
+
+   Expected: all release helper tests pass, including existing `extract_release_notes` and `validate_tag_version` tests.
+
+6. Add crates.io helper and `.github/workflows/publish-crate.yml`. Test helper behavior with mocked HTTP or local fixture JSON; do not hit crates.io in unit tests. Run:
+
+       python3 -B -m unittest discover -s tools/release -p "test_*.py"
+       actionlint .github/workflows/*.yml
+
+   Expected: already-published versions are success/no-op in tests, unpublished versions require a token before publish, and malformed dispatch inputs fail.
+
+7. Extend docs installer publication in `tools/docs/publish_docs.py`, `tools/docs/workflow_docs.py` if needed, `.github/workflows/docs.yml`, and docs helper tests. Run:
+
+       python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+       actionlint .github/workflows/*.yml
+
+   Expected: tests prove installer asset copies are byte-for-byte, missing assets fail clearly, and allowed paths accept root installer aliases.
+
+8. Update README and maintainer docs:
+
+       README.md
+       docs/dev/automation.md
+       docs/dev/release.md
+       tools/release/README.md
+
+   Keep wording concise and describe current behavior, not the history of why it changed.
+
+9. Run focused validation, then the pre-handoff gate in the devcontainer/CI image:
+
+       python3 -B -m unittest discover -s tools/release -p "test_*.py"
+       python3 -B -m unittest discover -s tools/docs -p "test_*.py"
+       just check-actions
+       just check
+
+   If the environment is not inside the devcontainer and `just check` fails with the container guard, run these commands in the repository devcontainer/CI image. Do not bypass hooks unless explicitly instructed.
+
+10. Before handoff, update this ExecPlan with actual test output summaries, generated job names, final decisions, and any remaining gaps. Run `git status --short` and ensure only intentional tracked changes remain.
+
+### Validation and Acceptance
+
+Focused helper acceptance:
+
+- `python3 -B -m unittest discover -s tools/release -p "test_*.py"` passes. The new release body tests verify changelog extraction, version-specific installer snippets, platform table rows for all five targets, checksum instructions matching generated/native artifact names, attestation instructions, FSDB source-only text, and docs/crates.io link/status rendering.
+- `python3 -B -m unittest discover -s tools/docs -p "test_*.py"` passes. New docs tests prove installer assets are copied byte-for-byte to root and versioned Pages paths, missing release installer assets are fatal, and root installer aliases are allowed while unrelated paths remain rejected.
+- `actionlint .github/workflows/*.yml` or `just check-actions` passes for the regenerated and edited workflows.
+
+Release dry-run acceptance:
+
+- `dist plan --tag vX.Y.Z --output-format=json` or the selected version's equivalent non-publishing command succeeds and shows archive/installers/manifest artifacts for the five required targets.
+- The generated or edited release workflow contains tag-push trigger for `v*.*.*`, does not publish crates.io inline, and dispatches docs and crate workflows after GitHub Release publication.
+
+End-to-end release acceptance on the first real stable tag after implementation:
+
+- GitHub Release `vX.Y.Z` exists and is published.
+- Release assets include `wavepeek-x86_64-unknown-linux-gnu.tar.gz`, `wavepeek-aarch64-unknown-linux-gnu.tar.gz`, `wavepeek-x86_64-apple-darwin.tar.gz`, `wavepeek-aarch64-apple-darwin.tar.gz`, `wavepeek-x86_64-pc-windows-msvc.zip`, `wavepeek-installer.sh`, `wavepeek-installer.ps1`, `dist-manifest.json`, and native `cargo-dist` checksum artifacts.
+- The release body contains the changelog section plus install, download, checksum, attestation, FSDB, Cargo fallback, docs, and crates.io sections.
+- `gh attestation verify <downloaded-artifact> --repo kleverhq/wavepeek` succeeds for an attested artifact.
+- The docs workflow publishes `https://kleverhq.github.io/wavepeek/install.sh`, `https://kleverhq.github.io/wavepeek/install.ps1`, `https://kleverhq.github.io/wavepeek/X.Y.Z/install.sh`, and `https://kleverhq.github.io/wavepeek/X.Y.Z/install.ps1`.
+- The versioned Pages installer script is byte-for-byte equal to the corresponding GitHub Release installer asset for `vX.Y.Z`.
+- `publish-crate.yml` publishes the crate or confirms it is already published as a success/no-op.
+
+Repository gate acceptance:
+
+- Before handoff, run `just check` in the devcontainer/CI image and expect success. If a full `just ci` run is available and not prohibitively expensive, run `just ci` as the standard quality gate and record its result.
+
+### Idempotence and Recovery
+
+All local generation should be repeatable. `dist init --yes` is designed to be rerun; after rerunning, inspect the diff and keep only changes that preserve this plan's contract. Do not edit generated workflow sections casually. If a `cargo-dist` update rewrites large parts of `.github/workflows/release.yml`, regenerate in a clean worktree and compare before applying project-specific patches.
+
+Docs publication repair is explicit. Rerunning `docs.yml` for an existing version must fail unless `repair_existing_version=true`. With repair enabled, it may replace the requested version and latest aliases but must not modify unrelated versions or paths.
+
+Crates.io publication is immutable. Rerunning `publish-crate.yml` after successful publication must detect the existing version and exit success/no-op. If a publish attempt fails ambiguously, rerun the workflow; it should either publish or detect that publication already happened.
+
+If a tag was pushed incorrectly before GitHub Release creation, delete and recreate the tag after fixing the release prep commit. If a GitHub Release was created with bad artifacts, delete or supersede according to maintainer policy and prefer a new patch version once public users may have consumed the release.
+
+Scratch artifacts such as `tmp/dist-plan.json`, local release downloads, and test output belong under repository-root `tmp/`. Never delete arbitrary existing files there because they may belong to the user or another agent.
+
+### Artifacts and Notes
+
+The design source for this plan is committed at:
+
+    docs/tracker/wip/binary-releases-proposal.md
+
+Current release workflow behavior to replace:
+
+    .github/workflows/release.yml
+      validates tag/version
+      runs just ci
+      runs cargo package --locked
+      extracts changelog notes
+      publishes crates.io inline
+      creates GitHub Release
+      dispatches docs
+
+Current docs workflow behavior to extend:
+
+    .github/workflows/docs.yml
+      workflow_dispatch inputs: version, source_ref, repair_existing_version
+      validates stable GitHub Release existence
+      stages mike docs
+      pushes verified gh-pages state
+      deploys through Pages actions
+
+Expected public installer URLs after implementation:
+
+    https://kleverhq.github.io/wavepeek/install.sh
+    https://kleverhq.github.io/wavepeek/install.ps1
+    https://kleverhq.github.io/wavepeek/X.Y.Z/install.sh
+    https://kleverhq.github.io/wavepeek/X.Y.Z/install.ps1
+    https://github.com/kleverhq/wavepeek/releases/download/vX.Y.Z/wavepeek-installer.sh
+    https://github.com/kleverhq/wavepeek/releases/download/vX.Y.Z/wavepeek-installer.ps1
+
+### Interfaces and Dependencies
+
+Add root `dist-workspace.toml` as the `cargo-dist` configuration file. The selected `cargo-dist` version must be pinned in this file through `cargo-dist-version`.
+
+Keep `tools/release/extract_release_notes.py` public function:
+
+    def extract_release_notes(changelog_text: str, version: str) -> str
+
+Add `tools/release/render_release_body.py` with a deterministic CLI:
+
+    python3 -B tools/release/render_release_body.py \
+        --version X.Y.Z \
+        --repository kleverhq/wavepeek \
+        --changelog CHANGELOG.md \
+        [--dist-manifest path] \
+        [--crate-published true|false|unknown]
+
+The helper writes Markdown to stdout and exits non-zero with an `error: release-body:` prefix on invalid input.
+
+Add a crates.io workflow helper under `tools/release/`. Its exact filename may be `publish_crate.py` or `workflow_crate.py`, but it must expose tested behavior for:
+
+    validate version/source_ref
+    verify stable GitHub Release exists
+    verify release source Cargo.toml package.version
+    check crates.io version existence
+    publish with cargo publish --locked only when needed
+
+Extend `tools/docs/publish_docs.py` paths with a release assets directory under the existing work dir, for example:
+
+    release_assets = work_dir / "release-assets"
+
+Add or update functions with behavior equivalent to:
+
+    copy_installer_entrypoints(version: str, run_paths: Paths, runner: CommandRunner) -> None
+
+This function copies `wavepeek-installer.sh` and `wavepeek-installer.ps1` from `run_paths.release_assets` into the `gh-pages` worktree as root latest aliases and versioned pinned aliases, then stages them with git. It must fail if either source asset is missing or is not a regular file.
+
+Update `.github/workflows/docs.yml` so the stage job downloads release installer assets before invoking `tools/docs/workflow_docs.py stage-deploy`. Keep inline YAML glue short; move longer logic into `tools/docs` or `tools/release` helpers.
+
+Update `.github/workflows/release.yml` so the generated `cargo-dist` workflow creates binary artifacts and the GitHub Release, then finalizes release notes and dispatches downstream workflows. If job names differ from this plan after generation, update this file's Open Questions, Concrete Steps, and Validation sections with the actual names before continuing.
+
+Revision note, 2026-06-09: Initial ExecPlan written from the committed binary release proposal. The plan deliberately includes a discovery milestone for generated `cargo-dist` job names because those names are version-specific and must be verified from actual generated output before workflow wiring is finalized.

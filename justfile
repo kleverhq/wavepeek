@@ -16,6 +16,8 @@ codex_setup_script := "tools/codex/codex_setup.sh"
 codex_resume_script := "tools/codex/codex_resume.sh"
 python := "python3 -B"
 docs_site_dir := "tmp/docs-site"
+docs_pages_url := "https://kleverhq.github.io/wavepeek"
+docs_repository := env_var_or_default("DOCS_REPOSITORY", "")
 docs_version := `python3 -B -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"])'`
 coverage_src_threshold := env_var_or_default("COVERAGE_SRC_THRESHOLD", "90")
 
@@ -301,6 +303,17 @@ docs-site-dispatch version=docs_version source_ref=("v" + docs_version) repair="
         -f version="{{ version }}" \
         -f source_ref="{{ source_ref }}" \
         -F repair_existing_version="{{ repair }}"
+
+# Check deployed GitHub Pages docs for a release version
+docs-site-check-deploy version=docs_version base_url=docs_pages_url repository=docs_repository: require-container
+    @repo_arg=(); \
+        if [ -n "{{ repository }}" ]; then \
+            repo_arg=(--repository "{{ repository }}"); \
+        fi; \
+        {{ python }} tools/docs/check_deploy.py \
+            --version "{{ version }}" \
+            --base-url "{{ base_url }}" \
+            "${repo_arg[@]}"
 
 # Build release binary
 build-release: require-container

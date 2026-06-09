@@ -26,6 +26,11 @@ METADATA_NAME = "staged-deploy.json"
 BUNDLE_NAME = "gh-pages.bundle"
 PAGES_ARTIFACT_NAME = "pages-artifact"
 PAGES_WORKTREE_NAME = "pages-worktree"
+RELEASE_ASSETS_NAME = "release-assets"
+INSTALLER_ENTRYPOINTS = {
+    "wavepeek-installer.sh": "install.sh",
+    "wavepeek-installer.ps1": "install.ps1",
+}
 PUSH_TOKEN_ENV = {
     "GH_TOKEN",
     "GITHUB_TOKEN",
@@ -51,6 +56,7 @@ class Paths:
     bundle: pathlib.Path
     pages_artifact: pathlib.Path
     pages_worktree: pathlib.Path
+    release_assets: pathlib.Path
 
 
 @dataclass(frozen=True)
@@ -132,6 +138,7 @@ def paths(work_dir: pathlib.Path) -> Paths:
         bundle=work_dir / BUNDLE_NAME,
         pages_artifact=work_dir / PAGES_ARTIFACT_NAME,
         pages_worktree=work_dir / PAGES_WORKTREE_NAME,
+        release_assets=work_dir / RELEASE_ASSETS_NAME,
     )
 
 
@@ -393,51 +400,141 @@ def requested_version_exists(ref: str, version: str, runner: CommandRunner) -> b
     return version in versions
 
 
-def run_mike_deploy(version: str, run_paths: Paths, runner: CommandRunner) -> None:
+def semver_key(version: str) -> tuple[int, int, int]:
+    validate_version(version)
+    major, minor, patch = version.split(".")
+    return int(major), int(minor), int(patch)
+
+
+def latest_holders(entries: dict[str, dict[str, Any]]) -> list[str]:
+    return [name for name, entry in entries.items() if "latest" in aliases(entry)]
+
+
+def latest_owner(ref: str | None, runner: CommandRunner) -> str | None:
+    if ref is None:
+        return None
+    holders = latest_holders(version_entries_by_name(git_show_json(ref, "versions.json", runner)))
+    if len(holders) > 1:
+        fail(f"{ref}:versions.json assigns latest to multiple versions")
+    return holders[0] if holders else None
+
+
+def highest_existing_version(entries: dict[str, dict[str, Any]]) -> str | None:
+    if not entries:
+        return None
+    return max(entries, key=semver_key)
+
+
+def should_promote_latest(
+    remote_base: str | None,
+    *,
+    version: str,
+    repair_existing_version: bool,
+    runner: CommandRunner,
+) -> bool:
+    if remote_base is None:
+        return True
+    entries = version_entries_by_name(git_show_json(remote_base, "versions.json", runner))
+    holders = latest_holders(entries)
+    if len(holders) > 1:
+        fail(f"{remote_base}:versions.json assigns latest to multiple versions")
+    current_latest = holders[0] if holders else None
+    if repair_existing_version:
+        return current_latest == version
+    comparison_version = current_latest or highest_existing_version(entries)
+    if comparison_version is None:
+        return True
+    return semver_key(version) >= semver_key(comparison_version)
+
+
+def run_mike_deploy(
+    version: str, run_paths: Paths, runner: CommandRunner, *, promote_latest: bool
+) -> None:
     config = run_paths.mkdocs_config
-    runner.run(
-        [
-            "mike",
-            "deploy",
-            "--config-file",
-            config,
-            "--branch",
-            GH_PAGES_BRANCH,
-            "--remote",
-            "origin",
-            "--update-aliases",
-            "--ignore-remote-status",
-            "--alias-type",
-            "copy",
-            version,
-            "latest",
-        ],
-        env=child_env_without_push_tokens(),
-    )
-    runner.run(
-        [
-            "mike",
-            "set-default",
-            "--config-file",
-            config,
-            "--branch",
-            GH_PAGES_BRANCH,
-            "--remote",
-            "origin",
-            "--ignore-remote-status",
-            "latest",
-        ],
-        env=child_env_without_push_tokens(),
-    )
+    deploy_args: list[str | pathlib.Path] = [
+        "mike",
+        "deploy",
+        "--config-file",
+        config,
+        "--branch",
+        GH_PAGES_BRANCH,
+        "--remote",
+        "origin",
+        "--update-aliases",
+        "--ignore-remote-status",
+        "--alias-type",
+        "copy",
+        version,
+    ]
+    if promote_latest:
+        deploy_args.append("latest")
+    runner.run(deploy_args, env=child_env_without_push_tokens())
+    if promote_latest:
+        runner.run(
+            [
+                "mike",
+                "set-default",
+                "--config-file",
+                config,
+                "--branch",
+                GH_PAGES_BRANCH,
+                "--remote",
+                "origin",
+                "--ignore-remote-status",
+                "latest",
+            ],
+            env=child_env_without_push_tokens(),
+        )
 
 
-def stage_root_artifacts(version: str, run_paths: Paths, runner: CommandRunner) -> None:
+def installer_source_paths(run_paths: Paths) -> dict[str, pathlib.Path]:
+    missing: list[str] = []
+    sources: dict[str, pathlib.Path] = {}
+    for release_name, entrypoint in INSTALLER_ENTRYPOINTS.items():
+        source = run_paths.release_assets / release_name
+        if not source.is_file():
+            missing.append(str(source))
+        sources[entrypoint] = source
+    if missing:
+        fail("missing release installer asset(s): " + ", ".join(missing))
+    return sources
+
+
+def copy_installer_entrypoints(
+    version: str, run_paths: Paths, *, promote_latest: bool
+) -> list[str]:
+    sources = installer_source_paths(run_paths)
+    version_dir = run_paths.gh_pages_worktree / version
+    version_dir.mkdir(parents=True, exist_ok=True)
+    copied: list[str] = []
+    for entrypoint, source in sorted(sources.items()):
+        version_target = version_dir / entrypoint
+        shutil.copyfile(source, version_target)
+        copied.append(f"{version}/{entrypoint}")
+        if promote_latest:
+            root_target = run_paths.gh_pages_worktree / entrypoint
+            shutil.copyfile(source, root_target)
+            copied.append(entrypoint)
+    return copied
+
+
+def stage_publication_artifacts(
+    version: str,
+    run_paths: Paths,
+    runner: CommandRunner,
+    *,
+    promote_latest: bool,
+) -> None:
     remove_git_worktree(run_paths.gh_pages_worktree, runner)
     runner.run(["git", "worktree", "add", run_paths.gh_pages_worktree, GH_PAGES_BRANCH])
-    for artifact in sorted(run_paths.root_artifacts.iterdir()):
-        if artifact.is_file():
-            shutil.copyfile(artifact, run_paths.gh_pages_worktree / artifact.name)
-    runner.run(["git", "add", "wavepeek_v*.json"], cwd=run_paths.gh_pages_worktree)
+    staged_paths: list[str] = []
+    if promote_latest:
+        for artifact in sorted(run_paths.root_artifacts.iterdir()):
+            if artifact.is_file():
+                shutil.copyfile(artifact, run_paths.gh_pages_worktree / artifact.name)
+        staged_paths.append("wavepeek_v*.json")
+    installer_paths = copy_installer_entrypoints(version, run_paths, promote_latest=promote_latest)
+    runner.run(["git", "add", *staged_paths, *installer_paths], cwd=run_paths.gh_pages_worktree)
     diff = runner.run(
         ["git", "diff", "--cached", "--quiet"],
         cwd=run_paths.gh_pages_worktree,
@@ -446,23 +543,31 @@ def stage_root_artifacts(version: str, run_paths: Paths, runner: CommandRunner) 
     )
     if diff.returncode != 0:
         runner.run(
-            ["git", "commit", "-m", f"docs: publish root artifacts for {version}"],
+            ["git", "commit", "-m", f"docs: publish artifacts for {version}"],
             cwd=run_paths.gh_pages_worktree,
         )
 
 
-def allowed_path_patterns(version: str) -> list[str]:
-    return [
+def allowed_path_patterns(version: str, *, promote_latest: bool) -> list[str]:
+    patterns = [
         f"{version}/**",
-        "latest/**",
         ".nojekyll",
         "versions.json",
-        "index.html",
-        "404.html",
-        "sitemap.xml",
-        "sitemap.xml.gz",
-        "wavepeek_v*.json",
     ]
+    if promote_latest:
+        patterns.extend(
+            [
+                "index.html",
+                "404.html",
+                "sitemap.xml",
+                "sitemap.xml.gz",
+                "wavepeek_v*.json",
+                "latest/**",
+                "install.sh",
+                "install.ps1",
+            ]
+        )
+    return patterns
 
 
 def write_stage_metadata(
@@ -473,6 +578,7 @@ def write_stage_metadata(
     remote_base: str | None,
     run_paths: Paths,
     runner: CommandRunner,
+    promote_latest: bool,
 ) -> dict[str, Any]:
     final_commit = git_capture(["rev-parse", GH_PAGES_BRANCH], runner)
     metadata = {
@@ -484,7 +590,8 @@ def write_stage_metadata(
         "final_commit": final_commit,
         "bundle": BUNDLE_NAME,
         "repair_existing_version": repair_existing_version,
-        "allowed_path_patterns": allowed_path_patterns(version),
+        "allowed_path_patterns": allowed_path_patterns(version, promote_latest=promote_latest),
+        "promote_latest": promote_latest,
     }
     run_paths.metadata.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return metadata
@@ -519,8 +626,16 @@ def stage_deploy(
             fail(
                 f"version {version} already exists on gh-pages; rerun with --repair-existing-version"
             )
-    run_mike_deploy(version, run_paths, runner)
-    stage_root_artifacts(version, run_paths, runner)
+    promote_latest = should_promote_latest(
+        remote_base,
+        version=version,
+        repair_existing_version=repair_existing_version,
+        runner=runner,
+    )
+    run_mike_deploy(version, run_paths, runner, promote_latest=promote_latest)
+    stage_publication_artifacts(
+        version, run_paths, runner, promote_latest=promote_latest
+    )
     metadata = write_stage_metadata(
         version=version,
         source_ref=source_ref,
@@ -528,6 +643,7 @@ def stage_deploy(
         remote_base=remote_base,
         run_paths=run_paths,
         runner=runner,
+        promote_latest=promote_latest,
     )
     create_bundle(run_paths, runner)
     return metadata
@@ -552,7 +668,12 @@ def read_stage_metadata(run_paths: Paths, version: str, repair_existing_version:
         fail("staged deploy metadata final_commit is missing")
     if not isinstance(metadata.get("allowed_path_patterns"), list):
         fail("staged deploy metadata allowed_path_patterns is missing")
-    if [str(pattern) for pattern in metadata["allowed_path_patterns"]] != allowed_path_patterns(version):
+    if not isinstance(metadata.get("promote_latest"), bool):
+        fail("staged deploy metadata promote_latest is missing")
+    expected_patterns = allowed_path_patterns(
+        version, promote_latest=metadata["promote_latest"]
+    )
+    if [str(pattern) for pattern in metadata["allowed_path_patterns"]] != expected_patterns:
         fail("staged deploy metadata allowed_path_patterns mismatch")
     if not run_paths.bundle.is_file():
         fail(f"missing staged gh-pages bundle at {run_paths.bundle}")
@@ -694,6 +815,7 @@ def verify_versions_semantics(
     staged_branch: str,
     version: str,
     repair_existing_version: bool,
+    promote_latest: bool,
     runner: CommandRunner,
 ) -> None:
     base_entries = version_entries_by_name(
@@ -715,9 +837,71 @@ def verify_versions_semantics(
         if comparable_entry(base_entries[name]) != comparable_entry(staged_entries[name]):
             fail(f"staged versions.json changes unrelated version {name}")
 
-    latest_holders = [name for name, entry in staged_entries.items() if "latest" in aliases(entry)]
-    if latest_holders != [version]:
+    staged_latest_holders = latest_holders(staged_entries)
+    base_latest_holders = latest_holders(base_entries)
+    if len(staged_latest_holders) > 1:
+        fail("staged versions.json assigns latest to multiple versions")
+    if len(base_latest_holders) > 1:
+        fail("remote versions.json assigns latest to multiple versions")
+
+    expected_latest_holders = [version] if promote_latest else base_latest_holders
+    if staged_latest_holders != expected_latest_holders:
+        if not promote_latest:
+            fail("staged versions.json must preserve the existing latest alias when not promoting latest")
         fail("staged versions.json must assign the latest alias only to the requested version")
+
+
+def git_blob_id(ref: str, path: str, runner: CommandRunner) -> str | None:
+    result = runner.run(["git", "rev-parse", f"{ref}:{path}"], check=False, capture=True)
+    if result.returncode != 0:
+        return None
+    return (result.stdout or "").strip() or None
+
+
+def verify_latest_tree_semantics(
+    *,
+    remote_base: str | None,
+    staged_branch: str,
+    promote_latest: bool,
+    runner: CommandRunner,
+) -> None:
+    if remote_base is None or promote_latest:
+        return
+    result = runner.run(
+        ["git", "diff", "--quiet", remote_base, staged_branch, "--", "latest"],
+        check=False,
+        capture=True,
+    )
+    if result.returncode != 0:
+        fail("staged gh-pages bundle changes latest docs during non-latest repair")
+
+
+def verify_installer_entrypoints(
+    *,
+    remote_base: str | None,
+    staged_branch: str,
+    version: str,
+    promote_latest: bool,
+    runner: CommandRunner,
+) -> None:
+    versioned_paths = [f"{version}/{entrypoint}" for entrypoint in INSTALLER_ENTRYPOINTS.values()]
+    missing = [path for path in versioned_paths if git_blob_id(staged_branch, path, runner) is None]
+    if missing:
+        fail("staged gh-pages bundle is missing installer entrypoint(s): " + ", ".join(missing))
+
+    for entrypoint in INSTALLER_ENTRYPOINTS.values():
+        staged_root_blob = git_blob_id(staged_branch, entrypoint, runner)
+        if promote_latest:
+            version_blob = git_blob_id(staged_branch, f"{version}/{entrypoint}", runner)
+            if staged_root_blob is None:
+                fail(f"staged gh-pages bundle is missing root installer entrypoint {entrypoint}")
+            if staged_root_blob != version_blob:
+                fail(f"root installer entrypoint {entrypoint} does not match {version}/{entrypoint}")
+            continue
+
+        base_root_blob = git_blob_id(remote_base, entrypoint, runner) if remote_base else None
+        if staged_root_blob != base_root_blob:
+            fail(f"staged gh-pages bundle changes root installer entrypoint {entrypoint} when not promoting latest")
 
 
 def push_staged(
@@ -735,13 +919,29 @@ def push_staged(
     import_bundle(run_paths, metadata, runner)
     verify_fast_forward(remote_base, STAGED_BRANCH, runner)
     changed = changed_paths(remote_base, STAGED_BRANCH, runner)
-    verify_allowed_paths(changed, allowed_path_patterns(version))
-    verify_root_artifacts(STAGED_BRANCH, version, runner)
+    verify_allowed_paths(changed, [str(pattern) for pattern in metadata["allowed_path_patterns"]])
+    promote_latest = bool(metadata["promote_latest"])
+    if promote_latest:
+        verify_root_artifacts(STAGED_BRANCH, version, runner)
     verify_versions_semantics(
         remote_base=remote_base,
         staged_branch=STAGED_BRANCH,
         version=version,
         repair_existing_version=repair_existing_version,
+        promote_latest=promote_latest,
+        runner=runner,
+    )
+    verify_latest_tree_semantics(
+        remote_base=remote_base,
+        staged_branch=STAGED_BRANCH,
+        promote_latest=promote_latest,
+        runner=runner,
+    )
+    verify_installer_entrypoints(
+        remote_base=remote_base,
+        staged_branch=STAGED_BRANCH,
+        version=version,
+        promote_latest=promote_latest,
         runner=runner,
     )
     export_pages_artifact(STAGED_BRANCH, version, run_paths, runner)

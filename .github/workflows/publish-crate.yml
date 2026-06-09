@@ -1,0 +1,91 @@
+name: Publish Crate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without the leading v.
+        required: true
+        type: string
+      source_ref:
+        description: Release tag to publish, such as v0.5.0.
+        required: true
+        type: string
+
+concurrency:
+  group: publish-crate-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish crate from release tag
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
+      DEVCONTAINER_CONFIG: .devcontainer/devcontainer.ci.json
+      DEVCONTAINER_CONFIG_ALIAS: .devcontainer/.devcontainer.json
+      VERSION: ${{ inputs.version }}
+      SOURCE_REF: ${{ inputs.source_ref }}
+    steps:
+      - name: Checkout trusted release tooling
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Validate dispatch inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_REF: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 -B tools/release/publish_crate.py validate-dispatch
+
+      - name: Checkout release source tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          ref: refs/tags/${{ inputs.source_ref }}
+          path: release-source
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to GHCR for devcontainer cache
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Print runtime provenance
+        run: |
+          ln -sf devcontainer.ci.json .devcontainer/.devcontainer.json
+          echo "devcontainer_config=${DEVCONTAINER_CONFIG}"
+          echo "devcontainer_config_alias=${DEVCONTAINER_CONFIG_ALIAS}"
+          echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
+          sha256sum .devcontainer/Dockerfile
+
+      - name: Publish crate in devcontainer baseline
+        uses: devcontainers/ci@v0.3
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        with:
+          configFile: .devcontainer/.devcontainer.json
+          cacheFrom: |
+            type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
+          push: never
+          env: |
+            VERSION
+            SOURCE_REF
+            GH_TOKEN
+            GITHUB_REPOSITORY
+            CARGO_REGISTRY_TOKEN
+          runCmd: python3 -B tools/release/publish_crate.py publish --source-root release-source

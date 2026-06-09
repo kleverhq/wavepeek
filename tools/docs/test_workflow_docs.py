@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import pathlib
 import sys
 import tempfile
@@ -22,7 +23,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             workflow_docs.validate_dispatch(
@@ -42,7 +43,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "main"):
@@ -63,7 +64,7 @@ class WorkflowDocsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             release_json = pathlib.Path(temp) / "release.json"
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": False}), encoding="utf-8"
             )
 
             with self.assertRaisesRegex(workflow_docs.publish_docs.PublishError, "does not match"):
@@ -74,6 +75,28 @@ class WorkflowDocsTests(unittest.TestCase):
                     {
                         "VERSION": "0.5.0",
                         "SOURCE_REF": "v0.5.1",
+                        "DISPATCH_REF": "main",
+                        "DEFAULT_BRANCH": "main",
+                        "GITHUB_REPOSITORY": "kleverhq/wavepeek",
+                    },
+                )
+
+    def test_validate_dispatch_rejects_release_tag_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            release_json = pathlib.Path(temp) / "release.json"
+            release_json.write_text(
+                json.dumps({"tag_name": "v0.4.0", "draft": False, "prerelease": False}),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(workflow_docs.WorkflowError, "tag"):
+                workflow_docs.validate_dispatch(
+                    workflow_docs.parse_args(
+                        ["validate-dispatch", "--release-json", str(release_json)]
+                    ),
+                    {
+                        "VERSION": "0.5.0",
+                        "SOURCE_REF": "v0.5.0",
                         "DISPATCH_REF": "main",
                         "DEFAULT_BRANCH": "main",
                         "GITHUB_REPOSITORY": "kleverhq/wavepeek",
@@ -92,7 +115,7 @@ class WorkflowDocsTests(unittest.TestCase):
             }
 
             release_json.write_text(
-                json.dumps({"draft": True, "prerelease": False}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": True, "prerelease": False}), encoding="utf-8"
             )
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "stable"):
                 workflow_docs.validate_dispatch(
@@ -103,7 +126,7 @@ class WorkflowDocsTests(unittest.TestCase):
                 )
 
             release_json.write_text(
-                json.dumps({"draft": False, "prerelease": True}), encoding="utf-8"
+                json.dumps({"tag_name": "v0.5.0", "draft": False, "prerelease": True}), encoding="utf-8"
             )
             with self.assertRaisesRegex(workflow_docs.WorkflowError, "stable"):
                 workflow_docs.validate_dispatch(
@@ -143,6 +166,68 @@ class WorkflowDocsTests(unittest.TestCase):
     def test_workflow_publish_args_reject_unknown_command(self) -> None:
         with self.assertRaisesRegex(workflow_docs.WorkflowError, "unsupported"):
             workflow_docs.workflow_publish_args("check", {"VERSION": "0.5.0"})
+
+    def test_check_deploy_args_follow_promote_latest_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = pathlib.Path(temp)
+            metadata_dir = temp_path / "tmp" / "docs-site"
+            metadata_dir.mkdir(parents=True)
+            metadata_path = metadata_dir / workflow_docs.publish_docs.METADATA_NAME
+            metadata_path.write_text(
+                json.dumps({"promote_latest": False}), encoding="utf-8"
+            )
+            original_cwd = pathlib.Path.cwd()
+            try:
+                os.chdir(temp_path)
+                args = workflow_docs.parse_args(
+                    [
+                        "check-deploy",
+                        "--base-url",
+                        "https://kleverhq.github.io/wavepeek",
+                        "--repository",
+                        "kleverhq/wavepeek",
+                    ]
+                )
+                self.assertEqual(
+                    workflow_docs.check_deploy_args(args, {"VERSION": "0.4.0"}),
+                    [
+                        "--version",
+                        "0.4.0",
+                        "--base-url",
+                        "https://kleverhq.github.io/wavepeek",
+                        "--no-expect-latest",
+                        "--repository",
+                        "kleverhq/wavepeek",
+                    ],
+                )
+                metadata_path.write_text(
+                    json.dumps({"promote_latest": True}), encoding="utf-8"
+                )
+                self.assertIn(
+                    "--expect-latest",
+                    workflow_docs.check_deploy_args(args, {"VERSION": "0.5.0"}),
+                )
+            finally:
+                os.chdir(original_cwd)
+
+    def test_check_deploy_args_require_promote_latest_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            temp_path = pathlib.Path(temp)
+            metadata_dir = temp_path / "tmp" / "docs-site"
+            metadata_dir.mkdir(parents=True)
+            (metadata_dir / workflow_docs.publish_docs.METADATA_NAME).write_text(
+                json.dumps({}), encoding="utf-8"
+            )
+            original_cwd = pathlib.Path.cwd()
+            try:
+                os.chdir(temp_path)
+                args = workflow_docs.parse_args(
+                    ["check-deploy", "--base-url", "https://kleverhq.github.io/wavepeek"]
+                )
+                with self.assertRaisesRegex(workflow_docs.WorkflowError, "promote_latest"):
+                    workflow_docs.check_deploy_args(args, {"VERSION": "0.5.0"})
+            finally:
+                os.chdir(original_cwd)
 
 
 if __name__ == "__main__":

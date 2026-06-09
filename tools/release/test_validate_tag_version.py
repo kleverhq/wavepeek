@@ -66,7 +66,67 @@ class ValidateTagVersionCliTest(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn("expected tag that starts with 'v'", result.stderr)
+        self.assertIn("expected stable SemVer tag vX.Y.Z", result.stderr)
+
+    def test_fails_when_tag_is_prerelease(self) -> None:
+        result = self.run_script(
+            textwrap.dedent(
+                """\
+                [package]
+                name = "wavepeek"
+                version = "1.2.3"
+                """
+            ),
+            "v1.2.3-rc.1",
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("expected stable SemVer tag vX.Y.Z", result.stderr)
+
+    def test_fails_when_tag_has_build_metadata(self) -> None:
+        result = self.run_script(
+            textwrap.dedent(
+                """\
+                [package]
+                name = "wavepeek"
+                version = "1.2.3"
+                """
+            ),
+            "v1.2.3+build.1",
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("expected stable SemVer tag vX.Y.Z", result.stderr)
+
+    def test_fails_when_tag_has_leading_zero_component(self) -> None:
+        result = self.run_script(
+            textwrap.dedent(
+                """\
+                [package]
+                name = "wavepeek"
+                version = "01.2.3"
+                """
+            ),
+            "v01.2.3",
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("expected stable SemVer tag vX.Y.Z", result.stderr)
+
+    def test_fails_when_manifest_version_is_not_stable(self) -> None:
+        result = self.run_script(
+            textwrap.dedent(
+                """\
+                [package]
+                name = "wavepeek"
+                version = "1.2.3-rc.1"
+                """
+            ),
+            "v1.2.3",
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Cargo.toml package.version must be stable SemVer", result.stderr)
 
     def test_fails_when_tag_version_differs_from_manifest(self) -> None:
         result = self.run_script(

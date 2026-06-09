@@ -270,6 +270,8 @@ docs-site-check: require-container
 
 # Stage a local gh-pages update for a release tag without pushing
 docs-site-stage-deploy version=docs_version source_ref=("v" + docs_version) repair="0": require-container
+    @mkdir -p "{{ docs_site_dir }}/release-assets"
+    gh release download "{{ source_ref }}" --pattern wavepeek-installer.sh --pattern wavepeek-installer.ps1 --dir "{{ docs_site_dir }}/release-assets" --clobber
     @repair_arg=""; \
         if [ "{{ repair }}" = "1" ] || [ "{{ repair }}" = "true" ]; then \
             repair_arg="--repair-existing-version"; \

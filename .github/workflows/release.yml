@@ -1,26 +1,80 @@
-name: Release CI
+# This file is based on cargo-dist generated GitHub Actions YAML.
+# Regenerate with `dist generate`, then reapply the local policy hooks below:
+# stable vX.Y.Z tag validation, devcontainer release gates, rendered release notes,
+# and downstream docs/crates.io workflow dispatch on the default branch.
+
+name: Release
+
+permissions:
+  contents: write
+  actions: write
+  packages: write
 
 on:
   push:
     tags:
-      - v*.*.*
-
-permissions:
-  actions: write
-  contents: write
-  packages: write
+      - 'v*.*.*'
 
 jobs:
-  release:
-    name: Package and release
+  # Run 'dist host --steps=create' to determine the build matrix and release plan.
+  plan:
     runs-on: ubuntu-24.04
+    outputs:
+      val: ${{ steps.plan.outputs.manifest }}
+      tag: ${{ github.ref_name }}
+      tag-flag: ${{ format('--tag={0}', github.ref_name) }}
+      version: ${{ steps.validate-tag.outputs.tag_version }}
+      publishing: 'true'
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - id: validate-tag
+        name: Validate tag matches Cargo.toml version
+        run: python3 -B tools/release/validate_tag_version.py >> "$GITHUB_OUTPUT"
+
+      - name: Install dist
+        shell: bash
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.32.0/cargo-dist-installer.sh | sh
+
+      - name: Cache dist
+        uses: actions/upload-artifact@v7
+        with:
+          name: cargo-dist-cache
+          path: ~/.cargo/bin/dist
+
+      - id: plan
+        run: |
+          dist host --steps=create --tag="${{ github.ref_name }}" --output-format=json > plan-dist-manifest.json
+          echo "dist ran successfully"
+          cat plan-dist-manifest.json
+          echo "manifest=$(jq -c "." plan-dist-manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload dist-manifest.json
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-plan-dist-manifest
+          path: plan-dist-manifest.json
+
+  release-quality:
+    name: Release quality gate
+    runs-on: ubuntu-24.04
+    needs: plan
+    permissions:
+      contents: read
+      packages: write
     env:
       DEVCONTAINER_CACHE_REF: ghcr.io/${{ github.repository_owner }}/wavepeek-devcontainer:buildcache
       DEVCONTAINER_CONFIG: .devcontainer/devcontainer.ci.json
       DEVCONTAINER_CONFIG_ALIAS: .devcontainer/.devcontainer.json
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
@@ -42,9 +96,6 @@ jobs:
           echo "devcontainer_dockerfile=.devcontainer/Dockerfile"
           sha256sum .devcontainer/Dockerfile
 
-      - name: Validate tag matches Cargo.toml version
-        run: python3 -B tools/release/validate_tag_version.py
-
       - name: Run release quality gate in devcontainer baseline
         uses: devcontainers/ci@v0.3
         with:
@@ -54,89 +105,239 @@ jobs:
           cacheTo: |
             type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }},mode=max
           push: never
-          runCmd: just ci
+          runCmd: |
+            just ci
+            cargo package --locked
 
-      - name: Build crate package in devcontainer baseline
-        uses: devcontainers/ci@v0.3
+  # Build and package all platform-specific artifacts.
+  build-local-artifacts:
+    name: build-local-artifacts (${{ join(matrix.targets, ', ') }})
+    needs:
+      - plan
+      - release-quality
+    if: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix.include != null && needs.plan.outputs.publishing == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.plan.outputs.val).ci.github.artifacts_matrix }}
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container && matrix.container.image || null }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BUILD_MANIFEST_NAME: target/distrib/${{ join(matrix.targets, '-') }}-dist-manifest.json
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - name: enable windows longpaths
+        run: git config --global core.longpaths true
+
+      - uses: actions/checkout@v6
         with:
-          configFile: .devcontainer/.devcontainer.json
-          cacheFrom: |
-            type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
-          push: never
-          runCmd: cargo package --locked
+          persist-credentials: false
+          submodules: recursive
 
-      - name: Extract release notes from changelog
-        env:
-          TAG_VERSION: ${{ github.ref_name }}
+      - name: Install Rust non-interactively if not already installed
+        if: ${{ matrix.container }}
         run: |
-          version="${TAG_VERSION#v}"
-          python3 -B tools/release/extract_release_notes.py --version "$version" > "${RUNNER_TEMP}/release-notes.md"
-
-      - name: Check whether crate version is already published
-        env:
-          TAG_VERSION: ${{ github.ref_name }}
-        run: |
-          version="${TAG_VERSION#v}"
-          python3 - "$version" <<'PY'
-          import os
-          import sys
-          import urllib.error
-          import urllib.request
-
-          version = sys.argv[1]
-          url = f"https://crates.io/api/v1/crates/wavepeek/{version}"
-          request = urllib.request.Request(url, headers={"User-Agent": "wavepeek-release-ci"})
-          try:
-              with urllib.request.urlopen(request, timeout=30):
-                  published = "true"
-          except urllib.error.HTTPError as error:
-              if error.code == 404:
-                  published = "false"
-              else:
-                  raise
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"CRATE_ALREADY_PUBLISHED={published}\n")
-          PY
-
-      - name: Require crates.io token
-        if: env.CRATE_ALREADY_PUBLISHED != 'true'
-        env:
-          CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: |
-          if [ -z "$CRATES_IO_TOKEN" ]; then
-            echo "error: secrets.CRATES_IO_TOKEN is required for releases"
-            exit 1
+          if ! command -v cargo > /dev/null 2>&1; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
           fi
 
-      - name: Publish crate to crates.io
-        if: env.CRATE_ALREADY_PUBLISHED != 'true'
-        uses: devcontainers/ci@v0.3
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+      - name: Install dist
+        run: ${{ matrix.install_dist.run }}
+
+      - name: Fetch local artifacts
+        uses: actions/download-artifact@v8
         with:
-          configFile: .devcontainer/.devcontainer.json
-          cacheFrom: |
-            type=registry,ref=${{ env.DEVCONTAINER_CACHE_REF }}
-          push: never
-          env: |
-            CARGO_REGISTRY_TOKEN
-          runCmd: cargo publish --locked
+          pattern: artifacts-*
+          path: target/distrib/
+          merge-multiple: true
+
+      - name: Install dependencies
+        run: |
+          ${{ matrix.packages_install }}
+
+      - name: Build artifacts
+        run: |
+          dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
+          echo "dist ran successfully"
+
+      - name: Attest
+        uses: actions/attest@v4
+        with:
+          subject-path: target/distrib/*${{ join(matrix.targets, ', ') }}*
+
+      - id: cargo-dist
+        name: Post-build
+        shell: bash
+        run: |
+          { echo "paths<<EOF"; dist print-upload-files-from-manifest --manifest dist-manifest.json; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          cp dist-manifest.json "$BUILD_MANIFEST_NAME"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-build-local-${{ join(matrix.targets, '_') }}
+          path: |
+            ${{ steps.cargo-dist.outputs.paths }}
+            ${{ env.BUILD_MANIFEST_NAME }}
+
+  # Build and package platform-agnostic artifacts such as checksums and installers.
+  build-global-artifacts:
+    needs:
+      - plan
+      - build-local-artifacts
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BUILD_MANIFEST_NAME: target/distrib/global-dist-manifest.json
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install cached dist
+        uses: actions/download-artifact@v8
+        with:
+          name: cargo-dist-cache
+          path: ~/.cargo/bin/
+
+      - run: chmod +x ~/.cargo/bin/dist
+
+      - name: Fetch local artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          path: target/distrib/
+          merge-multiple: true
+
+      - id: cargo-dist
+        shell: bash
+        run: |
+          dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
+          echo "dist ran successfully"
+          { echo "paths<<EOF"; jq --raw-output ".upload_files[]" dist-manifest.json; echo "EOF"; } >> "$GITHUB_OUTPUT"
+          cp dist-manifest.json "$BUILD_MANIFEST_NAME"
+
+      - name: Attest global artifacts
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            target/distrib/sha256.sum
+            target/distrib/*.sha256
+            target/distrib/source.tar.gz
+            target/distrib/wavepeek-installer.sh
+            target/distrib/wavepeek-installer.ps1
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-build-global
+          path: |
+            ${{ steps.cargo-dist.outputs.paths }}
+            ${{ env.BUILD_MANIFEST_NAME }}
+
+  # Upload artifacts and create the GitHub Release.
+  host:
+    needs:
+      - plan
+      - release-quality
+      - build-local-artifacts
+      - build-global-artifacts
+    if: ${{ always() && needs.plan.result == 'success' && needs.release-quality.result == 'success' && needs.plan.outputs.publishing == 'true' && (needs.build-global-artifacts.result == 'skipped' || needs.build-global-artifacts.result == 'success') && (needs.build-local-artifacts.result == 'skipped' || needs.build-local-artifacts.result == 'success') }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ubuntu-22.04
+    outputs:
+      val: ${{ steps.host.outputs.manifest }}
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Install cached dist
+        uses: actions/download-artifact@v8
+        with:
+          name: cargo-dist-cache
+          path: ~/.cargo/bin/
+
+      - run: chmod +x ~/.cargo/bin/dist
+
+      - name: Fetch artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          path: target/distrib/
+          merge-multiple: true
+
+      - id: host
+        shell: bash
+        run: |
+          # cargo-dist writes final hosting metadata here; the GitHub Release is created by gh below.
+          dist host ${{ needs.plan.outputs.tag-flag }} --steps=upload --steps=release --output-format=json > dist-manifest.json
+          echo "artifacts uploaded and released successfully"
+          cat dist-manifest.json
+          echo "manifest=$(jq -c "." dist-manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload dist-manifest.json
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifacts-dist-manifest
+          path: dist-manifest.json
+
+      - name: Render release body
+        run: python3 -B tools/release/render_release_body.py --version "${{ needs.plan.outputs.version }}" --repository "${{ github.repository }}" --dist-manifest dist-manifest.json --crate-published unknown > "$RUNNER_TEMP/notes.txt"
+
+      - name: Attest dist manifest
+        uses: actions/attest@v4
+        with:
+          subject-path: dist-manifest.json
+
+      - name: Download GitHub Artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: artifacts-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Cleanup
+        run: rm -f artifacts/*-dist-manifest.json
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          body_path: ${{ runner.temp }}/release-notes.md
-
-      - name: Dispatch docs publication
         env:
-          GH_TOKEN: ${{ github.token }}
-          SOURCE_REF: ${{ github.ref_name }}
-        run: |
-          version="${SOURCE_REF#v}"
-          gh api \
-            --method POST \
-            "repos/${GITHUB_REPOSITORY}/actions/workflows/docs.yml/dispatches" \
-            -f ref=main \
-            -f inputs[version]="$version" \
-            -f inputs[source_ref]="$SOURCE_REF" \
-            -F inputs[repair_existing_version]=false
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" --title "wavepeek ${{ needs.plan.outputs.version }}" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+
+  dispatch-downstream:
+    name: Dispatch downstream publication
+    needs:
+      - plan
+      - host
+    if: ${{ always() && needs.host.result == 'success' }}
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      SOURCE_REF: ${{ needs.plan.outputs.tag }}
+    steps:
+      - name: Dispatch docs publication
+        run: gh workflow run docs.yml --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF" -f repair_existing_version=false
+
+      - name: Dispatch crates.io publication
+        run: gh workflow run publish-crate.yml --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF"

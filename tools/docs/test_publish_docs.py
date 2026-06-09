@@ -114,7 +114,8 @@ class PublishDocsTests(unittest.TestCase):
                     "bundle": "gh-pages.bundle",
                     "final_commit": "abc",
                     "repair_existing_version": False,
-                    "allowed_path_patterns": publish_docs.allowed_path_patterns("0.5.0"),
+                    "allowed_path_patterns": publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
+                    "promote_latest": True,
                 }
             ),
             encoding="utf-8",
@@ -157,11 +158,38 @@ class PublishDocsTests(unittest.TestCase):
     def test_mike_deploy_uses_copy_aliases_for_verifiable_latest_path(self) -> None:
         runner = RecordingRunner()
 
-        publish_docs.run_mike_deploy("0.5.0", self.paths, runner)
+        publish_docs.run_mike_deploy("0.5.0", self.paths, runner, promote_latest=True)
 
         deploy = runner.commands[0]
         self.assertIn("--alias-type", deploy)
         self.assertEqual(deploy[deploy.index("--alias-type") + 1], "copy")
+
+    def test_mike_deploy_can_refresh_version_without_latest_alias(self) -> None:
+        runner = RecordingRunner()
+
+        publish_docs.run_mike_deploy("0.4.0", self.paths, runner, promote_latest=False)
+
+        deploy = runner.commands[0]
+        self.assertNotIn("latest", deploy)
+        self.assertEqual(len(runner.commands), 1)
+
+    def test_copy_installer_entrypoints_writes_versioned_and_root_aliases(self) -> None:
+        self.paths.release_assets.mkdir(parents=True)
+        (self.paths.release_assets / "wavepeek-installer.sh").write_text("shell\n", encoding="utf-8")
+        (self.paths.release_assets / "wavepeek-installer.ps1").write_text("powershell\n", encoding="utf-8")
+        self.paths.gh_pages_worktree.mkdir(parents=True)
+
+        copied = publish_docs.copy_installer_entrypoints("0.5.0", self.paths, promote_latest=True)
+
+        self.assertEqual(sorted(copied), ["0.5.0/install.ps1", "0.5.0/install.sh", "install.ps1", "install.sh"])
+        self.assertEqual((self.paths.gh_pages_worktree / "0.5.0" / "install.sh").read_text(), "shell\n")
+        self.assertEqual((self.paths.gh_pages_worktree / "install.ps1").read_text(), "powershell\n")
+
+    def test_copy_installer_entrypoints_requires_release_assets(self) -> None:
+        self.paths.gh_pages_worktree.mkdir(parents=True)
+
+        with self.assertRaisesRegex(publish_docs.PublishError, "missing release installer"):
+            publish_docs.copy_installer_entrypoints("0.5.0", self.paths, promote_latest=True)
 
     def test_allowed_path_patterns_limit_gh_pages_diff(self) -> None:
         publish_docs.verify_allowed_paths(
@@ -170,22 +198,29 @@ class PublishDocsTests(unittest.TestCase):
                 "latest/index.html",
                 ".nojekyll",
                 "versions.json",
+                "install.sh",
+                "install.ps1",
             ],
-            publish_docs.allowed_path_patterns("0.5.0"),
+            publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
         )
 
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
-                ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0")
+                ["0.4.0/index.html"], publish_docs.allowed_path_patterns("0.5.0", promote_latest=True)
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
                 ["wavepeek_v0.json/extra.json"],
-                publish_docs.allowed_path_patterns("0.5.0"),
+                publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
-                ["skill.md"], publish_docs.allowed_path_patterns("0.5.0")
+                ["skill.md"], publish_docs.allowed_path_patterns("0.5.0", promote_latest=True)
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["latest/index.html", "install.sh", "wavepeek_v0.json"],
+                publish_docs.allowed_path_patterns("0.4.0", promote_latest=False),
             )
 
     def test_changed_paths_reports_old_path_for_renames(self) -> None:
@@ -290,6 +325,105 @@ class PublishDocsTests(unittest.TestCase):
         with self.assertRaisesRegex(publish_docs.PublishError, "only strings"):
             publish_docs.aliases({"version": "0.5.0", "aliases": ["latest", 1]})
 
+    def write_versions(self, repo: pathlib.Path, versions: list[dict[str, object]]) -> None:
+        (repo / "versions.json").write_text(json.dumps(versions), encoding="utf-8")
+
+    def test_should_promote_latest_only_for_newer_or_current_latest(self) -> None:
+        repo = self.root / "repo-promote"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        self.write_versions(
+            repo,
+            [
+                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+            ],
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.6.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.5.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+
+    def test_should_promote_latest_uses_highest_version_when_alias_is_missing(self) -> None:
+        repo = self.root / "repo-promote-no-latest"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        self.write_versions(
+            repo,
+            [
+                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                {"version": "0.5.0", "title": "0.5.0", "aliases": []},
+            ],
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.4.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertTrue(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.6.0",
+                    repair_existing_version=False,
+                    runner=runner,
+                )
+            )
+            self.assertFalse(
+                publish_docs.should_promote_latest(
+                    base,
+                    version="0.5.0",
+                    repair_existing_version=True,
+                    runner=runner,
+                )
+            )
+
     def test_versions_semantics_allow_new_version_and_latest_move(self) -> None:
         repo = self.root / "repo"
         repo.mkdir()
@@ -325,8 +459,171 @@ class PublishDocsTests(unittest.TestCase):
                 staged_branch="HEAD",
                 version="0.5.0",
                 repair_existing_version=False,
+                promote_latest=True,
                 runner=runner,
             )
+
+    def test_versions_semantics_preserve_latest_during_non_latest_repair(self) -> None:
+        repo = self.root / "repo-repair"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            publish_docs.verify_versions_semantics(
+                remote_base=base,
+                staged_branch=base,
+                version="0.4.0",
+                repair_existing_version=True,
+                promote_latest=False,
+                runner=runner,
+            )
+
+    def test_versions_semantics_reject_latest_rollback_during_non_latest_repair(self) -> None:
+        repo = self.root / "repo-repair-reject"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        git(repo, "add", "versions.json")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": ["latest"]},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": []},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        git(repo, "commit", "-q", "-am", "rollback latest")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            with self.assertRaisesRegex(publish_docs.PublishError, "preserve the existing latest"):
+                publish_docs.verify_versions_semantics(
+                    remote_base=base,
+                    staged_branch="HEAD",
+                    version="0.4.0",
+                    repair_existing_version=True,
+                    promote_latest=False,
+                    runner=runner,
+                )
+
+    def test_latest_tree_preserved_during_non_latest_repair(self) -> None:
+        repo = self.root / "repo-latest-tree-repair"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "latest").mkdir()
+        (repo / "latest" / "index.html").write_text("current latest\n", encoding="utf-8")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        (repo / "0.4.0").mkdir()
+        (repo / "0.4.0" / "index.html").write_text("repaired old\n", encoding="utf-8")
+        git(repo, "add", "0.4.0/index.html")
+        git(repo, "commit", "-q", "-m", "repair old")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            publish_docs.verify_latest_tree_semantics(
+                remote_base=base,
+                staged_branch="HEAD",
+                promote_latest=False,
+                runner=runner,
+            )
+            (repo / "latest" / "index.html").write_text("rolled back\n", encoding="utf-8")
+            git(repo, "add", "latest/index.html")
+            git(repo, "commit", "-q", "-m", "rollback latest")
+            with self.assertRaisesRegex(publish_docs.PublishError, "changes latest docs"):
+                publish_docs.verify_latest_tree_semantics(
+                    remote_base=base,
+                    staged_branch="HEAD",
+                    promote_latest=False,
+                    runner=runner,
+                )
+
+    def test_installer_entrypoints_preserve_root_alias_during_non_latest_repair(self) -> None:
+        repo = self.root / "repo-installer-repair"
+        repo.mkdir()
+        git(repo, "init", "-q")
+        git(repo, "config", "user.email", "docs@example.invalid")
+        git(repo, "config", "user.name", "Docs Bot")
+        (repo / "versions.json").write_text(
+            json.dumps(
+                [
+                    {"version": "0.4.0", "title": "0.4.0", "aliases": []},
+                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
+                ]
+            ),
+            encoding="utf-8",
+        )
+        (repo / "install.sh").write_text("latest shell\n", encoding="utf-8")
+        (repo / "install.ps1").write_text("latest ps1\n", encoding="utf-8")
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "base")
+        base = git(repo, "rev-parse", "HEAD")
+        (repo / "0.4.0").mkdir()
+        (repo / "0.4.0" / "install.sh").write_text("old shell\n", encoding="utf-8")
+        (repo / "0.4.0" / "install.ps1").write_text("old ps1\n", encoding="utf-8")
+        git(repo, "add", ".")
+        git(repo, "commit", "-q", "-m", "repair old installers")
+        runner = publish_docs.CommandRunner()
+
+        with chdir(repo):
+            publish_docs.verify_installer_entrypoints(
+                remote_base=base,
+                staged_branch="HEAD",
+                version="0.4.0",
+                promote_latest=False,
+                runner=runner,
+            )
+            (repo / "install.sh").write_text("rolled back\n", encoding="utf-8")
+            git(repo, "add", "install.sh")
+            git(repo, "commit", "-q", "-m", "rollback root")
+            with self.assertRaisesRegex(publish_docs.PublishError, "changes root installer"):
+                publish_docs.verify_installer_entrypoints(
+                    remote_base=base,
+                    staged_branch="HEAD",
+                    version="0.4.0",
+                    promote_latest=False,
+                    runner=runner,
+                )
 
     def test_versions_semantics_reject_unrelated_version_changes(self) -> None:
         repo = self.root / "repo-reject"
@@ -360,6 +657,7 @@ class PublishDocsTests(unittest.TestCase):
                     staged_branch="HEAD",
                     version="0.5.0",
                     repair_existing_version=False,
+                    promote_latest=True,
                     runner=runner,
                 )
 

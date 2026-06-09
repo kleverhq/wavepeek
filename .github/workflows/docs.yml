@@ -50,6 +50,13 @@ jobs:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: python3 -B tools/docs/workflow_docs.py validate-dispatch
 
+      - name: Download release installer assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p tmp/docs-site/release-assets
+          gh release download "$SOURCE_REF" --repo "$GITHUB_REPOSITORY" --pattern wavepeek-installer.sh --pattern wavepeek-installer.ps1 --dir tmp/docs-site/release-assets --clobber
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -177,8 +184,4 @@ jobs:
       - name: Check deployed docs
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 -B tools/docs/check_deploy.py \
-            --version "$VERSION" \
-            --base-url "${{ steps.deployment.outputs.page_url }}" \
-            --repository "${{ github.repository }}"
+        run: python3 -B tools/docs/workflow_docs.py check-deploy --base-url "${{ steps.deployment.outputs.page_url }}" --repository "${{ github.repository }}"

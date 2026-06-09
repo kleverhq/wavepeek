@@ -25,6 +25,7 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 - [x] (2026-06-09T10:53:57Z) Created and committed `docs/tracker/wip/binary-releases-proposal.md`, an English WIP proposal that records the release contract and design decisions.
 - [x] (2026-06-09T10:53:57Z) Started this ExecPlan from the committed proposal and the current repository state.
 - [x] (2026-06-09T11:05:00Z) Ran focused architecture and docs review lanes for the initial ExecPlan draft, then incorporated required clarifications for milestones, crates.io source checkout, docs repair/latest semantics, workflow permissions, README first-binary-release sequencing, and concrete guidance-reading commands.
+- [x] (2026-06-09T11:20:00Z) Ran a fresh control-pass review and incorporated remaining release-safety clarifications for tag-ref checkout, stable SemVer validation, and default-branch downstream dispatch.
 - [ ] Install and pin `cargo-dist`, generate the baseline release workflow, and record the generated job names and command shape in this plan before editing workflow YAML.
 - [ ] Add `dist-workspace.toml` with the minimal `wavepeek` binary distribution configuration and keep it aligned with generated workflow output.
 - [ ] Replace the current release workflow with the `cargo-dist` baseline plus minimal project-specific validation, release body rendering, and downstream dispatch.
@@ -51,6 +52,9 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
 
 - Observation: Review identified that docs repair semantics must not move the public latest installer aliases backward when repairing an older version.
   Evidence: Both review lanes flagged the conflict between root `/install.sh` as latest stable and a repair workflow that always refreshes root/latest aliases for the requested version.
+
+- Observation: Control review identified three release-safety gaps: checkout of ambiguous `source_ref`, stable SemVer validation, and downstream dispatch ref selection.
+  Evidence: The plan previously said to check out `source_ref` without requiring `refs/tags/${source_ref}`, relied on current tag/Cargo equality validation that accepts any `v...` shape, and omitted dispatching downstream workflows on the default branch.
 
 ## Decision Log
 
@@ -98,11 +102,21 @@ This plan keeps tag push as the release trigger. It does not enable `cargo-dist`
   Rationale: `cargo-dist` attestations, GitHub Release writes, downstream workflow dispatch, and devcontainer cache access require different permissions. Generated defaults may not cover `actions: write`, `contents: write`, `id-token: write`, `attestations: write`, and `packages: write` in the jobs that need them.
   Date/Author: 2026-06-09 / Grin
 
+- Decision: Release automation must reject anything except stable SemVer tags `vX.Y.Z` and matching Cargo package version `X.Y.Z`.
+  Rationale: The proposal scope is stable releases only. A tag such as `v1.2.3-rc.1` or `vfoo` must not create a public binary GitHub Release even if it matches a package version string.
+  Date/Author: 2026-06-09 / Grin
+
+- Decision: Downstream workflows must run from trusted default-branch workflow definitions and check out release source through an unambiguous tag ref.
+  Rationale: The tooling source and release source are intentionally separate. Dispatching on a feature branch or checking out an ambiguous branch/tag name could run stale workflow logic or publish the wrong immutable crates.io source.
+  Date/Author: 2026-06-09 / Grin
+
 ## Outcomes & Retrospective
 
 Initial planning outcome: the release contract is documented in `docs/tracker/wip/binary-releases-proposal.md`, and this plan breaks the implementation into independently verifiable milestones. No implementation work has started yet.
 
 Review outcome, 2026-06-09: the first architecture and docs review pass found missing milestone structure and several release safety clarifications. The plan now explicitly covers source-checkout working directory for crates.io publication, non-latest docs repair semantics, release workflow permissions, and first-binary-release README sequencing.
+
+Control review outcome, 2026-06-09: the follow-up control pass found no implementation code issues because implementation has not started, but it found plan gaps around ambiguous source checkout, stable tag validation, and downstream workflow refs. Those are now explicit requirements.
 
 As milestones complete, add dated entries here summarizing what changed, which commands proved it, and which risks remain.
 
@@ -150,9 +164,9 @@ Acceptance is that `python3 -B -m unittest discover -s tools/release -p "test_*.
 
 ### Milestone 3: Split and verify downstream publication
 
-At the end of this milestone, crates.io publication and docs publication are independent downstream workflows derived from a published GitHub Release. `.github/workflows/publish-crate.yml` validates its inputs and publishes from the checked-out release source path only. `.github/workflows/docs.yml` downloads release installer assets and `tools/docs/publish_docs.py` copies them into the correct Pages root and versioned paths while preserving latest aliases during non-latest repairs.
+At the end of this milestone, crates.io publication and docs publication are independent downstream workflows derived from a published GitHub Release. `.github/workflows/publish-crate.yml` validates its inputs and publishes from the checked-out release source path only, where that source is resolved from `refs/tags/${source_ref}` or the corresponding tag commit SHA rather than an ambiguous branch/tag name. `.github/workflows/docs.yml` downloads release installer assets and `tools/docs/publish_docs.py` copies them into the correct Pages root and versioned paths while preserving latest aliases during non-latest repairs.
 
-Acceptance is that release and docs helper tests pass, workflow linting passes, `publish-crate.yml` can prove already-published versions are success/no-op in tests, and docs tests prove byte-for-byte installer copies plus safe repair/latest behavior.
+Acceptance is that release and docs helper tests pass, workflow linting passes, `publish-crate.yml` can prove already-published versions are success/no-op in tests, publish tests prove `cwd` and tag-ref checkout selection, and docs tests prove byte-for-byte installer copies plus safe repair/latest behavior.
 
 ### Milestone 4: Update public and maintainer documentation
 
@@ -172,15 +186,15 @@ Start by creating the `cargo-dist` baseline. Install the selected `cargo-dist` v
 
 Generate the baseline release workflow with `dist init --yes` after the config is present. Inspect every generated file. If `cargo-dist` wants to migrate configuration, accept only changes that preserve this plan's contract. Keep the generated `.github/workflows/release.yml` close to generated output; put longer project-specific logic into helper scripts or small reusable jobs instead of inline shell. Run `dist plan --tag v0.5.0 --output-format=json` or the selected version's equivalent non-publishing plan command and record the important output shape in this plan. The command should not publish anything.
 
-Next, restore `wavepeek` release policy on top of generated `cargo-dist` output. The release workflow must still validate `GITHUB_REF_NAME` against `Cargo.toml`, run `just ci` in the CI devcontainer, and run `cargo package --locked` before creating the public GitHub Release. Keep the existing devcontainer cache pattern unless `cargo-dist` generated output conflicts with it. If generated workflow has custom job hooks, use them; otherwise add minimal jobs with explicit `needs:` relationships after the generated plan job and before the generated publish/announce job. Avoid long inline scripts in `.github/workflows/release.yml`; `.github/workflows/AGENTS.md` limits inline shell or Python to short glue. After generation, explicitly verify permissions for each job: release creation needs `contents: write`, downstream dispatch needs `actions: write`, attestations need `id-token: write` and `attestations: write`, and the existing devcontainer cache flow may still need `packages: write`.
+Next, restore `wavepeek` release policy on top of generated `cargo-dist` output. The release workflow must still validate that `GITHUB_REF_NAME` is a stable SemVer tag `vX.Y.Z` and matches `Cargo.toml` package version `X.Y.Z`, run `just ci` in the CI devcontainer, and run `cargo package --locked` before creating the public GitHub Release. Keep the existing devcontainer cache pattern unless `cargo-dist` generated output conflicts with it. If generated workflow has custom job hooks, use them; otherwise add minimal jobs with explicit `needs:` relationships after the generated plan job and before the generated publish/announce job. Avoid long inline scripts in `.github/workflows/release.yml`; `.github/workflows/AGENTS.md` limits inline shell or Python to short glue. After generation, explicitly verify permissions for each job: release creation needs `contents: write`, downstream dispatch needs `actions: write`, attestations need `id-token: write` and `attestations: write`, and the existing devcontainer cache flow may still need `packages: write`.
 
 Add `tools/release/render_release_body.py`. It should import or reuse the changelog extraction logic from `tools/release/extract_release_notes.py` rather than duplicating parser behavior. Its CLI should accept `--version X.Y.Z`, `--repository kleverhq/wavepeek`, `--changelog CHANGELOG.md`, optional `--dist-manifest path`, and optional `--crate-published true|false|unknown`. It writes Markdown to stdout. The output must contain a `## Release Notes` heading with the changelog body, an `## Install wavepeek X.Y.Z` section with version-specific GitHub Release installer snippets, a `## Download wavepeek X.Y.Z` section with a platform table, a checksum verification section matching actual `cargo-dist` checksum artifacts, an attestation verification section using `gh attestation verify <artifact> --repo kleverhq/wavepeek`, an FSDB note that prebuilt binaries are VCD/FST-only, a Cargo fallback snippet, and docs/crates.io links or neutral status text.
 
 If `dist-manifest.json` is available before the release body is finalized, parse it to discover asset and checksum names. Keep the parser conservative: accept only the asset fields needed for the table, fail loudly on malformed JSON, and fall back to no guessing when the manifest is present but incomplete. If workflow ordering means the body must be generated before final manifest upload, use a static expected table derived from `dist-workspace.toml`; tests must prove this static table matches the configured targets. Update the Decision Log with the selected ordering.
 
-Move crates.io publication into a new `.github/workflows/publish-crate.yml`. Add a small tested helper under `tools/release/`, for example `tools/release/publish_crate.py` or `tools/release/workflow_crate.py`, to keep workflow YAML short. The helper should validate `version` and `source_ref`, load and verify the stable GitHub Release for `source_ref`, read `Cargo.toml` from an explicit release source path, check whether `wavepeek` version `X.Y.Z` exists on crates.io through the crates.io API, and either return a verified no-op or run `cargo publish --locked` with `CARGO_REGISTRY_TOKEN`. The workflow should check out trusted tooling from the default branch, check out release source at `source_ref` into a separate path such as `release-source` with `persist-credentials: false`, pass that path to the helper as `--source-root`, require `CRATES_IO_TOKEN` only when the version is not already published, avoid `contents: write` permissions, and ensure every Cargo command runs with `cwd` set to the release source path. Add a helper test that fails if the publish command would run from the tooling checkout.
+Move crates.io publication into a new `.github/workflows/publish-crate.yml`. Add a small tested helper under `tools/release/`, for example `tools/release/publish_crate.py` or `tools/release/workflow_crate.py`, to keep workflow YAML short. The helper should validate `version` and `source_ref`, load and verify the stable GitHub Release for `source_ref`, verify that `source_ref` resolves to a Git tag `refs/tags/${source_ref}`, read `Cargo.toml` from an explicit release source path, check whether `wavepeek` version `X.Y.Z` exists on crates.io through the crates.io API, and either return a verified no-op or run `cargo publish --locked` with `CARGO_REGISTRY_TOKEN`. The workflow should check out trusted tooling from the default branch, check out release source through an unambiguous tag ref such as `refs/tags/${{ inputs.source_ref }}` or a resolved tag commit SHA into a separate path such as `release-source` with `persist-credentials: false`, pass that path to the helper as `--source-root`, require `CRATES_IO_TOKEN` only when the version is not already published, avoid `contents: write` permissions, and ensure every Cargo command runs with `cwd` set to the release source path. Add helper tests that fail if the publish command would run from the tooling checkout or if a branch named like the tag could be selected instead of `refs/tags/${source_ref}`.
 
-Modify the generated release workflow so it dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` only after the GitHub Release body and assets are in their final expected state. Dispatch inputs are `version` without leading `v` and `source_ref` with the leading `v`. A failed downstream dispatch must not invalidate the GitHub Release; maintainers can rerun downstream workflows manually with the same inputs.
+Modify the generated release workflow so it dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` only after the GitHub Release body and assets are in their final expected state. Dispatch inputs are `version` without leading `v` and `source_ref` with the leading `v`. The dispatch `ref` must be the repository default branch so downstream workflows use trusted current workflow definitions and helper tooling; mirror the existing docs dispatch validation for `publish-crate.yml` so a workflow run started from a non-default branch is rejected. A failed downstream dispatch must not invalidate the GitHub Release; maintainers can rerun downstream workflows manually with the same inputs.
 
 Extend docs publication. In `.github/workflows/docs.yml`, after dispatch validation and before staging docs in the devcontainer, download release installer assets from GitHub Release `source_ref` into `tmp/docs-site/release-assets` using a short `gh release download` command or an equivalent helper. Pass the needed token into only the step that needs it. In `tools/docs/publish_docs.py`, add a `release_assets` path to `Paths`, copy `wavepeek-installer.sh` to `${version}/install.sh`, and copy `wavepeek-installer.ps1` to `${version}/install.ps1`. Root `install.sh`, root `install.ps1`, and the `latest` alias must be refreshed only when publishing a new version or when repairing the version that already owns the current `latest` alias. Repairing a non-latest version must preserve the existing root installer aliases and `latest` target. These copies must happen in the `gh-pages` worktree before metadata is written and bundled. Add root `install.sh` and `install.ps1` to the allowed path patterns; the versioned paths are already covered by `${version}/**`. Add tests that prove byte-for-byte copies are staged, missing installer assets fail with a clear error, allowed path verification accepts the new root files, non-latest repair preserves root/latest aliases, and latest repair refreshes root/latest aliases.
 
@@ -240,18 +254,18 @@ Work from repository root `/workspaces/wavepeek`.
 
    If `dist plan` needs a different non-publishing command in the selected version, use the command printed by `dist --help`, record the difference in `Surprises & Discoveries`, and keep `tmp/dist-plan.json` ignored scratch. Do not commit files under `tmp/`.
 
-5. Add and test `tools/release/render_release_body.py` and `tools/release/test_render_release_body.py`:
+5. Update `tools/release/validate_tag_version.py` and its tests so the helper rejects non-stable tags and versions. It must accept only `vX.Y.Z` where each component is a non-negative decimal integer with no prerelease or build suffix, and it must still require exact equality with `Cargo.toml` package version `X.Y.Z`. Then add and test `tools/release/render_release_body.py` and `tools/release/test_render_release_body.py`:
 
        python3 -B -m unittest discover -s tools/release -p "test_*.py"
 
    Expected: all release helper tests pass, including existing `extract_release_notes` and `validate_tag_version` tests.
 
-6. Add crates.io helper and `.github/workflows/publish-crate.yml`. Test helper behavior with mocked HTTP or local fixture JSON; do not hit crates.io in unit tests. Include a test that records the `cargo publish --locked` command and asserts its working directory is the release source checkout path passed as `--source-root`, not the trusted tooling checkout. Run:
+6. Add crates.io helper and `.github/workflows/publish-crate.yml`. Test helper behavior with mocked HTTP or local fixture JSON; do not hit crates.io in unit tests. Include tests that record the `cargo publish --locked` command and assert its working directory is the release source checkout path passed as `--source-root`, not the trusted tooling checkout, and that source checkout uses `refs/tags/${source_ref}` or the resolved tag commit SHA instead of an ambiguous `source_ref` name. Run:
 
        python3 -B -m unittest discover -s tools/release -p "test_*.py"
        actionlint .github/workflows/*.yml
 
-   Expected: already-published versions are success/no-op in tests, unpublished versions require a token before publish, malformed dispatch inputs fail, and publishing cannot run from the wrong checkout.
+   Expected: already-published versions are success/no-op in tests, unpublished versions require a token before publish, malformed dispatch inputs fail, publishing cannot run from the wrong checkout, and an ambiguous branch/tag name cannot select release source.
 
 7. Extend docs installer publication in `tools/docs/publish_docs.py`, `tools/docs/workflow_docs.py` if needed, `.github/workflows/docs.yml`, and docs helper tests. Run:
 
@@ -284,14 +298,14 @@ Work from repository root `/workspaces/wavepeek`.
 
 Focused helper acceptance:
 
-- `python3 -B -m unittest discover -s tools/release -p "test_*.py"` passes. The new release body tests verify changelog extraction, version-specific installer snippets, platform table rows for all five targets, checksum instructions matching generated/native artifact names, attestation instructions, FSDB source-only text, and docs/crates.io link/status rendering.
+- `python3 -B -m unittest discover -s tools/release -p "test_*.py"` passes. The updated tag validation tests reject non-stable tags and mismatched versions. The new release body tests verify changelog extraction, version-specific installer snippets, platform table rows for all five targets, checksum instructions matching generated/native artifact names, attestation instructions, FSDB source-only text, and docs/crates.io link/status rendering.
 - `python3 -B -m unittest discover -s tools/docs -p "test_*.py"` passes. New docs tests prove installer assets are copied byte-for-byte to root and versioned Pages paths, missing release installer assets are fatal, and root installer aliases are allowed while unrelated paths remain rejected.
 - `actionlint .github/workflows/*.yml` or `just check-actions` passes for the regenerated and edited workflows.
 
 Release dry-run acceptance:
 
 - `dist plan --tag vX.Y.Z --output-format=json` or the selected version's equivalent non-publishing command succeeds and shows archive/installers/manifest artifacts for the five required targets.
-- The generated or edited release workflow contains tag-push trigger for `v*.*.*`, does not publish crates.io inline, dispatches docs and crate workflows after GitHub Release publication, and has verified permissions for GitHub Release writes, workflow dispatch, artifact attestations, and any devcontainer cache package access.
+- The generated or edited release workflow contains tag-push trigger for `v*.*.*`, validates stable SemVer tags before release creation, does not publish crates.io inline, dispatches docs and crate workflows on the repository default branch after GitHub Release publication, and has verified permissions for GitHub Release writes, workflow dispatch, artifact attestations, and any devcontainer cache package access.
 
 End-to-end release acceptance on the first real stable tag after implementation:
 
@@ -301,7 +315,7 @@ End-to-end release acceptance on the first real stable tag after implementation:
 - `gh attestation verify <downloaded-artifact> --repo kleverhq/wavepeek` succeeds for an attested artifact.
 - The docs workflow publishes `https://kleverhq.github.io/wavepeek/install.sh`, `https://kleverhq.github.io/wavepeek/install.ps1`, `https://kleverhq.github.io/wavepeek/X.Y.Z/install.sh`, and `https://kleverhq.github.io/wavepeek/X.Y.Z/install.ps1` for a new latest release, and preserves root latest aliases when repairing an older non-latest version.
 - The versioned Pages installer script is byte-for-byte equal to the corresponding GitHub Release installer asset for `vX.Y.Z`.
-- `publish-crate.yml` publishes the crate or confirms it is already published as a success/no-op.
+- `publish-crate.yml` publishes the crate from the release source checked out via `refs/tags/vX.Y.Z` or the resolved tag commit SHA, or confirms it is already published as a success/no-op.
 
 Repository gate acceptance:
 
@@ -375,7 +389,8 @@ The helper writes Markdown to stdout and exits non-zero with an `error: release-
 
 Add a crates.io workflow helper under `tools/release/`. Its exact filename may be `publish_crate.py` or `workflow_crate.py`, but it must accept an explicit `--source-root` path and expose tested behavior for:
 
-    validate version/source_ref
+    validate version/source_ref as stable SemVer X.Y.Z and vX.Y.Z
+    verify source_ref resolves to refs/tags/${source_ref}
     verify stable GitHub Release exists
     verify release source Cargo.toml package.version from --source-root
     check crates.io version existence
@@ -398,3 +413,5 @@ Update `.github/workflows/release.yml` so the generated `cargo-dist` workflow cr
 Revision note, 2026-06-09: Initial ExecPlan written from the committed binary release proposal. The plan deliberately includes a discovery milestone for generated `cargo-dist` job names because those names are version-specific and must be verified from actual generated output before workflow wiring is finalized.
 
 Revision note, 2026-06-09: Incorporated first review pass findings. Added narrative milestones, explicit crates.io release-source working-directory requirements, safe docs repair/latest semantics, release workflow permissions review, README first-binary-release sequencing, and valid guidance-reading instructions.
+
+Revision note, 2026-06-09: Incorporated control-pass findings. Added requirements for stable `vX.Y.Z` tag validation, unambiguous `refs/tags/${source_ref}` release-source checkout, and default-branch downstream workflow dispatch.

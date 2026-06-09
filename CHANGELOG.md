@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - Unreleased
 
 ### Added
 - Added a one-shot host setup helper for optional devcontainer GitHub auth env files.
@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.
 - Replaced the devcontainer host GitHub CLI config mount with optional zero-secret repo-scoped GitHub authentication via a host env-file.
 - Hardened `wavepeek schema` for machine clients: `scope.data[].kind` and `signal.data[].kind` now advertise explicit stable enums, payload `data` fields carry concise descriptions, and schema drift checks now verify that the canonical schema stays aligned with the waveform adapter's stable kind aliases.
-- Moved the machine-output schema contract to major-versioned artifacts such as `schema/wavepeek_v0.json`; JSON envelopes now point at the current major schema on `main` instead of a full-semver schema path.
+- Moved the machine-output schema contract to major-versioned artifacts such as `schema/wavepeek_v1.json`; JSON envelopes now point at the current major schema on `main` instead of a full-semver schema path.
 - Normalized stable `scope.data[].kind` and `signal.data[].kind` JSON output so excluded backend-specific VHDL/GHW spellings such as `vhdl_array`, `std_logic`, and `std_logic_vector` collapse to the curated stable enum surface (`unknown`, `logic`, or `bit_vector`) instead of leaking backend-specific literals into the machine contract.
 
 ## [0.5.0] - 2026-05-15
@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v0.5.0...HEAD
+[1.0.0]: https://github.com/kleverhq/wavepeek/compare/v0.5.0...HEAD
 [0.5.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.4.0
 [0.3.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.3.0

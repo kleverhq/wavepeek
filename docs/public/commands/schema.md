@@ -89,4 +89,4 @@ $ jq -r '.title' wavepeek-schema.json
 wavepeek JSON output envelope
 ```
 
-This keeps the schema matched to the binary's major-version contract. A current `0.x` build prints the same bytes as `schema/wavepeek_v0.json`.
+This keeps the schema matched to the binary's major-version contract. A current `1.x` build prints the same bytes as `schema/wavepeek_v1.json`.

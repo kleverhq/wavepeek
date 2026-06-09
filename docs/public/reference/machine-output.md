@@ -42,7 +42,7 @@ The semantics of the envelope fields are:
 - `data` carries the command payload. Depending on the command contract, it may be an object or an array.
 - `warnings` is an array of free-form warning strings in deterministic order.
 
-The exact JSON shapes for every command are defined by the current major artifact such as `schema/wavepeek_v0.json` and by `wavepeek schema`.
+The exact JSON shapes for every command are defined by the current major artifact such as `schema/wavepeek_v1.json` and by `wavepeek schema`.
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
@@ -56,7 +56,7 @@ Its behavior is special and fixed:
 - it accepts no command-specific flags or positional arguments,
 - it writes exactly one JSON Schema document to stdout,
 - it does not wrap that document in the normal command envelope, and
-- its output bytes match the canonical artifact for the running major version, such as `schema/wavepeek_v0.json`.
+- its output bytes match the canonical artifact for the running major version, such as `schema/wavepeek_v1.json`.
 
 ## 4. Warning Behavior
 

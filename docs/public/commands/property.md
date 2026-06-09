@@ -119,7 +119,7 @@ In this window the property is already true at `10ns`, so there is no visible `a
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"property","data":[{"time":"10ns","kind":"match"}],"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"property","data":[{"time":"10ns","kind":"match"}],"warnings":[]}
 ```
 
 Human output is for quick inspection. `--json` is the stable machine contract.

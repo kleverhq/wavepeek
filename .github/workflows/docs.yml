@@ -180,3 +180,8 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Check deployed docs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -B tools/docs/workflow_docs.py check-deploy --base-url "${{ steps.deployment.outputs.page_url }}" --repository "${{ github.repository }}"

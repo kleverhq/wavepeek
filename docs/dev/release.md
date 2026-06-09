@@ -42,8 +42,8 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 9. Wait for `.github/workflows/release.yml` to finish. It creates the GitHub Release with `cargo-dist` archives, shell and PowerShell installers, checksum artifacts, `dist-manifest.json`, and GitHub Artifact Attestations before dispatching downstream workflows.
 10. Wait for `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` to finish for the same version.
-11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, `cargo-dist` matrix builds, release-body rendering from `CHANGELOG.md`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, `actions/deploy-pages` deployment, and idempotent `cargo publish --locked` from the release tag checkout.
-12. Validate Pages endpoints: `https://kleverhq.github.io/wavepeek/wavepeek_vX.json`, `https://kleverhq.github.io/wavepeek/install.sh`, and `https://kleverhq.github.io/wavepeek/install.ps1` should resolve to the staged root artifacts.
+11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, `cargo-dist` matrix builds, release-body rendering from `CHANGELOG.md`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, `actions/deploy-pages` deployment, deployed docs verification, and idempotent `cargo publish --locked` from the release tag checkout.
+12. If deployed docs endpoint verification needs to be repeated locally, run `just docs-site-check-deploy X.Y.Z`. Set `DOCS_REPOSITORY=kleverhq/wavepeek` to also check GitHub Pages API state with an authenticated `gh` CLI.
 13. Verify final state: the crate is published for `X.Y.Z`, the GitHub Release exists for `vX.Y.Z`, release notes match the changelog section, binary archives and checksum files are attached, `https://kleverhq.github.io/wavepeek/X.Y.Z/` resolves, `https://kleverhq.github.io/wavepeek/latest/` points at the same release, and root schema and installer aliases resolve from Pages.
 
 The release workflow renders notes through the helper group owned by `tools/release/`. The stable release interface remains the workflow and the changelog section, not a hand-run release-note command. Docs publication uses `tools/docs/publish_docs.py` from the trusted branch and copies installer assets from the created GitHub Release.
@@ -52,9 +52,9 @@ The docs workflow keeps `gh-pages` as the versioned `mike` state branch, but the
 
 Normal releases do not need local downstream dispatch commands because `.github/workflows/release.yml` dispatches `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` on the default branch after the GitHub Release is created. For manual docs repair, first-time bootstrap, or troubleshooting, dispatch the remote docs workflow explicitly from an up-to-date trusted branch:
 
-    just docs-site-dispatch version=X.Y.Z source_ref=vX.Y.Z repair=false
+    just docs-site-dispatch X.Y.Z vX.Y.Z false
 
-Use `repair=true` only when intentionally replacing an existing Pages snapshot. If the requested version is older than the current `latest` version, or if a repaired version does not currently own the `latest` alias, the docs workflow stages that version without moving `latest`, root installer aliases, or root schema aliases backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
+Pass `true` as the repair argument only when intentionally replacing an existing Pages snapshot. If the requested version is older than the current `latest` version, or if a repaired version does not currently own the `latest` alias, the docs workflow stages that version without moving `latest`, root installer aliases, or root schema aliases backward. This command requires `gh` authentication and starts a remote GitHub Actions run; it is not a local dry-run check.
 
 For manual crates.io repair, dispatch `.github/workflows/publish-crate.yml` on the default branch with `version=X.Y.Z` and `source_ref=vX.Y.Z`. The workflow checks out trusted tooling from the default branch, checks out release source through `refs/tags/vX.Y.Z`, and exits successfully without requiring `CRATES_IO_TOKEN` if that crate version is already published.
 

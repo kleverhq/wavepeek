@@ -11,6 +11,7 @@ import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import check_deploy
 import publish_docs
 
 DEFAULT_WORK_DIR = "tmp/docs-site"
@@ -40,6 +41,12 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
 
     subcommands.add_parser("stage-deploy", help="run docs stage-deploy from workflow env")
     subcommands.add_parser("push-staged", help="run docs push-staged from workflow env")
+
+    check_deploy_parser = subcommands.add_parser(
+        "check-deploy", help="check deployed docs using staged metadata"
+    )
+    check_deploy_parser.add_argument("--base-url", required=True)
+    check_deploy_parser.add_argument("--repository")
     return parser.parse_args(list(argv))
 
 
@@ -138,6 +145,36 @@ def run_publish(command: str, env: Mapping[str, str]) -> int:
     return publish_docs.main(workflow_publish_args(command, env))
 
 
+def load_stage_metadata(work_dir: pathlib.Path = pathlib.Path(DEFAULT_WORK_DIR)) -> dict[str, Any]:
+    metadata_path = work_dir / publish_docs.METADATA_NAME
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except OSError as error:
+        raise WorkflowError(f"failed to read staged deploy metadata: {error}") from error
+    except json.JSONDecodeError as error:
+        raise WorkflowError(f"staged deploy metadata is not valid JSON: {error}") from error
+    if not isinstance(metadata, dict):
+        raise WorkflowError("staged deploy metadata must be a JSON object")
+    if not isinstance(metadata.get("promote_latest"), bool):
+        raise WorkflowError("staged deploy metadata promote_latest is missing")
+    return metadata
+
+
+def check_deploy_args(args: argparse.Namespace, env: Mapping[str, str]) -> list[str]:
+    version = env_value(env, "VERSION")
+    metadata = load_stage_metadata()
+    deploy_args = [
+        "--version",
+        version,
+        "--base-url",
+        args.base_url,
+        "--expect-latest" if metadata["promote_latest"] else "--no-expect-latest",
+    ]
+    if args.repository:
+        deploy_args.extend(["--repository", args.repository])
+    return deploy_args
+
+
 def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     env = os.environ if env is None else env
@@ -148,6 +185,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
             return 0
         if args.command in {"stage-deploy", "push-staged"}:
             return run_publish(args.command, env)
+        if args.command == "check-deploy":
+            return check_deploy.main(check_deploy_args(args, env))
         raise WorkflowError(f"unknown command {args.command!r}")
     except (WorkflowError, publish_docs.PublishError) as error:
         print(f"error: docs-workflow: {error}", file=sys.stderr)

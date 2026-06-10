@@ -55,7 +55,7 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
 fn show(args: DocsShowArgs) -> Result<CommandResult, WavepeekError> {
     let topic = docs::lookup_topic(&args.topic)?.ok_or_else(|| unknown_topic_error(&args.topic))?;
     let rendered = if args.description {
-        topic.summary.description.clone()
+        topic.topic.description.clone()
     } else {
         topic.body.clone()
     };

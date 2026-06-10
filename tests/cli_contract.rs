@@ -763,7 +763,6 @@ fn docs_show_help_is_layered() {
         "docs show -h should stay compact"
     );
     assert!(long_help.contains("--description"));
-    assert!(!long_help.contains("--summary"));
     assert!(!long_help.contains("Behavior:"));
     assert!(!long_help.contains("raw Markdown"));
     assert!(!long_help.contains("excluding YAML front matter"));

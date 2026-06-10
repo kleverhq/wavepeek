@@ -55,17 +55,6 @@ Affecting flows:
 
 ## Tech Debt
 
-### Remove legacy docs summary compatibility after Pages bootstrap
-
-Affecting flows:
-- `llm-agent` — Could: current agents see only `description` in current docs output, but the compatibility path adds one extra historical term to route around.
-- `user-manual` — Could: end users are not exposed to the alias in current output, but maintainer docs still mention it while bootstrap support is needed.
-- `scripting` — Could: current machine contracts use `description`; removing the alias should be invisible unless a script feeds old exported docs back into tooling.
-
-- Current docs metadata uses `description`; `summary` is accepted only as a legacy input alias so current tooling can publish the historical `v0.5.0` docs from the old tag.
-- After the `v0.5.0` Pages snapshot is published, remove the `summary` front matter/export manifest aliases, tests that exercise them, and maintainer-doc mentions such as the note in `docs/dev/style.md`.
-- Close when `rg "summary|title_or_summary|--summary" src docs tests tools schema` finds only unrelated uses or none, and the docs-site check still passes for current sources.
-
 ### FSDB real/string value sampling
 
 Affecting flows:

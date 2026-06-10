@@ -14,7 +14,7 @@ fn summary(id: &str, title: &str, description: &str) -> TopicSummary {
 
 fn record(id: &str, title: &str, body: &str) -> TopicRecord {
     TopicRecord {
-        summary: summary(id, title, "compact description"),
+        topic: summary(id, title, "compact description"),
         raw_markdown: format!("---\nid: {id}\n---\n{body}"),
         body: body.to_string(),
         headings: extract_headings(body),
@@ -133,7 +133,7 @@ fn filesystem_error_handlers_are_exercised() {
     topics.insert(
         "blocked/topic".to_string(),
         TopicRecord {
-            summary: summary("blocked/topic", "Blocked", "blocked"),
+            topic: summary("blocked/topic", "Blocked", "blocked"),
             raw_markdown: "# Blocked\n".to_string(),
             body: "# Blocked\n".to_string(),
             headings: vec!["Blocked".to_string()],

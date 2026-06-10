@@ -79,7 +79,6 @@ class PrepareMkdocsTests(unittest.TestCase):
         section: str,
         *,
         description: str | None = None,
-        summary: str | None = None,
         see_also: list[str] | None = None,
     ) -> None:
         front: dict[str, object] = {
@@ -89,8 +88,6 @@ class PrepareMkdocsTests(unittest.TestCase):
         }
         if description is not None:
             front["description"] = description
-        if summary is not None:
-            front["summary"] = summary
         if see_also is not None:
             front["see_also"] = see_also
         relpath = pathlib.Path(*topic_id.split("/")).with_suffix(".md")
@@ -129,13 +126,7 @@ class PrepareMkdocsTests(unittest.TestCase):
             config["nav"],
         )
 
-    def test_legacy_summary_is_normalized_to_description(self) -> None:
-        self.write_topic(
-            "commands/change",
-            "Change command",
-            "commands",
-            summary="Legacy summary.",
-        )
+    def test_rejects_legacy_summary_metadata(self) -> None:
         self.write_manifest(
             [
                 {
@@ -144,21 +135,40 @@ class PrepareMkdocsTests(unittest.TestCase):
                     "summary": "Legacy intro.",
                     "section": "intro",
                     "see_also": ["commands/change"],
+                }
+            ]
+        )
+
+        with self.assertRaisesRegex(prepare_mkdocs.PrepareError, "unsupported legacy field"):
+            self.prepare()
+
+        self.write_manifest(
+            [
+                {
+                    "id": "intro",
+                    "title": "Introduction",
+                    "description": "Start here.",
+                    "section": "intro",
+                    "see_also": ["commands/change"],
                 },
                 {
                     "id": "commands/change",
                     "title": "Change command",
-                    "summary": "Legacy summary.",
+                    "description": "Find changes.",
                     "section": "commands",
                 },
             ]
         )
+        change = self.export / "commands" / "change.md"
+        change.write_text(
+            change.read_text(encoding="utf-8").replace(
+                "description: Find changes.", "summary: Legacy summary."
+            ),
+            encoding="utf-8",
+        )
 
-        self.prepare()
-
-        staged = (self.output / "commands" / "change.md").read_text(encoding="utf-8")
-        self.assertIn("description: Legacy summary.", staged)
-        self.assertNotIn("summary:", staged)
+        with self.assertRaisesRegex(prepare_mkdocs.PrepareError, "unsupported legacy field"):
+            self.prepare()
 
     def test_force_is_required_to_replace_outputs(self) -> None:
         self.prepare()

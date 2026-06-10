@@ -133,7 +133,22 @@ fn docs_topics_json_uses_standard_envelope() {
     assert_eq!(topics[0]["title"], "Introduction");
     assert_eq!(topics[0]["section"], "intro");
     assert!(topics[0]["description"].is_string());
-    assert!(topics[0].get("summary").is_none());
+    let topic_keys = topics[0]
+        .as_object()
+        .expect("topic should be object")
+        .keys()
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        topic_keys,
+        std::collections::BTreeSet::from([
+            "description".to_string(),
+            "id".to_string(),
+            "section".to_string(),
+            "see_also".to_string(),
+            "title".to_string(),
+        ])
+    );
     assert!(topics[0]["see_also"].is_array());
 }
 
@@ -291,20 +306,6 @@ fn docs_show_description_prints_only_stored_description_text() {
         output.trim(),
         "Inspect value transitions across a bounded time range."
     );
-}
-
-#[test]
-fn docs_show_summary_flag_is_not_supported() {
-    let output = wavepeek_cmd()
-        .args(["docs", "show", "commands/change", "--summary"])
-        .output()
-        .expect("docs show should execute");
-
-    assert!(!output.status.success());
-    assert!(output.stdout.is_empty());
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("fatal: args:"));
-    assert!(stderr.contains("unexpected argument '--summary'"));
 }
 
 #[test]

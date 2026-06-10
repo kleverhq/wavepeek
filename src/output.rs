@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::diagnostic::{Diagnostic, DiagnosticKind};
 use crate::engine::{CommandData, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::schema_contract::SCHEMA_URL;
@@ -13,19 +14,23 @@ where
     pub schema: &'static str,
     pub command: String,
     pub data: T,
-    pub warnings: Vec<String>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl<T> OutputEnvelope<T>
 where
     T: Serialize,
 {
-    pub fn with_warnings(command: impl Into<String>, data: T, warnings: Vec<String>) -> Self {
+    pub fn with_diagnostics(
+        command: impl Into<String>,
+        data: T,
+        diagnostics: Vec<Diagnostic>,
+    ) -> Self {
         Self {
             schema: SCHEMA_URL,
             command: command.into(),
             data,
-            warnings,
+            diagnostics,
         }
     }
 }
@@ -36,7 +41,7 @@ pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
         if !output.is_empty() {
             write_stdout(output.as_str());
         }
-        emit_human_warnings(&result.warnings);
+        emit_human_diagnostics(&result.diagnostics);
         return Ok(());
     }
 
@@ -47,7 +52,7 @@ pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
 
 fn render_json(result: CommandResult) -> Result<String, WavepeekError> {
     let envelope =
-        OutputEnvelope::with_warnings(result.command.as_str(), result.data, result.warnings);
+        OutputEnvelope::with_diagnostics(result.command.as_str(), result.data, result.diagnostics);
     serde_json::to_string(&envelope)
         .map_err(|error| WavepeekError::Internal(format!("failed to serialize output: {error}")))
 }
@@ -203,9 +208,25 @@ fn signal_display_name(entry: &crate::engine::signal::SignalEntry, abs: bool) ->
     }
 }
 
-fn emit_human_warnings(warnings: &[String]) {
-    for warning in warnings {
-        eprintln!("warning: {warning}");
+fn emit_human_diagnostics(diagnostics: &[Diagnostic]) {
+    for diagnostic in diagnostics {
+        match diagnostic.kind() {
+            DiagnosticKind::Info => eprintln!("info: {}", diagnostic.message()),
+            DiagnosticKind::Warning => eprintln!(
+                "warning[{}]: {}",
+                diagnostic
+                    .code()
+                    .expect("warning diagnostics must have stable codes"),
+                diagnostic.message()
+            ),
+            DiagnosticKind::Error => eprintln!(
+                "error[{}]: {}",
+                diagnostic
+                    .code()
+                    .expect("error diagnostics must have stable codes"),
+                diagnostic.message()
+            ),
+        }
     }
 }
 
@@ -225,6 +246,7 @@ mod output_rendering_edges;
 mod tests {
     use serde_json::Value;
 
+    use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
     use crate::schema_contract::SCHEMA_URL;
 
@@ -244,7 +266,7 @@ mod tests {
                 time_start: "0ns".to_string(),
                 time_end: "10ns".to_string(),
             }),
-            warnings: vec![],
+            diagnostics: vec![],
         };
 
         let json = render_json(result).expect("json serialization should succeed");
@@ -254,11 +276,12 @@ mod tests {
         assert!(value.get("schema_version").is_none());
         assert_eq!(value["command"], "info");
         assert!(value["data"].is_object());
-        assert!(value["warnings"].is_array());
+        assert!(value["diagnostics"].is_array());
+        assert!(value.get("warnings").is_none());
     }
 
     #[test]
-    fn json_envelope_preserves_warnings_for_scope() {
+    fn json_envelope_preserves_diagnostics_for_scope() {
         let result = CommandResult {
             command: CommandName::Scope,
             json: true,
@@ -268,14 +291,19 @@ mod tests {
                 depth: 1,
                 kind: "module".to_string(),
             }]),
-            warnings: vec!["truncated to 1 entries".to_string()],
+            diagnostics: vec![Diagnostic::warning(
+                WarningDiagnosticCode::OutputTruncated,
+                "truncated to 1 entries",
+            )],
         };
 
         let json = render_json(result).expect("json serialization should succeed");
         let value: Value = serde_json::from_str(&json).expect("json should parse");
 
         assert_eq!(value["command"], "scope");
-        assert_eq!(value["warnings"][0], "truncated to 1 entries");
+        assert_eq!(value["diagnostics"][0]["kind"], "warning");
+        assert_eq!(value["diagnostics"][0]["code"], "WPK-W0002");
+        assert_eq!(value["diagnostics"][0]["message"], "truncated to 1 entries");
         assert_eq!(value["data"][0]["path"], "top.cpu");
         assert_eq!(value["data"][0]["depth"], 1);
         assert_eq!(value["data"][0]["kind"], "module");
@@ -296,7 +324,7 @@ mod tests {
                     see_also: vec!["commands/help".to_string()],
                 }],
             }),
-            warnings: vec![],
+            diagnostics: vec![],
         };
 
         let json = render_json(result).expect("json serialization should succeed");
@@ -517,25 +545,28 @@ mod tests {
     }
 
     #[test]
-    fn output_envelope_constructor_sets_schema_and_warnings() {
-        let envelope = OutputEnvelope::with_warnings(
+    fn output_envelope_constructor_sets_schema_and_diagnostics() {
+        let envelope = OutputEnvelope::with_diagnostics(
             "docs show",
             serde_json::json!({"ok": true}),
-            vec!["careful".to_string()],
+            vec![Diagnostic::warning(
+                WarningDiagnosticCode::EmptyResult,
+                "careful",
+            )],
         );
         assert_eq!(envelope.schema, SCHEMA_URL);
         assert_eq!(envelope.command, "docs show");
-        assert_eq!(envelope.warnings, vec!["careful"]);
+        assert_eq!(envelope.diagnostics[0].code(), Some("WPK-W0003"));
     }
 
     #[test]
-    fn write_entrypoint_exercises_json_empty_human_and_warning_paths() {
+    fn write_entrypoint_exercises_json_empty_human_and_diagnostic_paths() {
         write(CommandResult {
             command: CommandName::Schema,
             json: true,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Schema("{}".to_string()),
-            warnings: Vec::new(),
+            diagnostics: Vec::new(),
         })
         .expect("json output should write");
 
@@ -547,16 +578,19 @@ mod tests {
                 query: "none".to_string(),
                 matches: vec![],
             }),
-            warnings: vec!["nothing matched".to_string()],
+            diagnostics: vec![Diagnostic::warning(
+                WarningDiagnosticCode::EmptyResult,
+                "nothing matched",
+            )],
         })
-        .expect("empty human output with warnings should write");
+        .expect("empty human output with diagnostics should write");
 
         write(CommandResult {
             command: CommandName::Info,
             json: false,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Text("already-newline\n".to_string()),
-            warnings: Vec::new(),
+            diagnostics: Vec::new(),
         })
         .expect("newline-terminated human output should not add a second newline");
     }

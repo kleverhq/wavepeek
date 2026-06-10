@@ -31,7 +31,7 @@
           ]
         }
       ],
-      "expected_warnings": []
+      "expected_diagnostics": []
     },
     {
       "name": "property_match_json_m2_core",
@@ -57,7 +57,7 @@
           "kind": "match"
         }
       ],
-      "expected_warnings": []
+      "expected_diagnostics": []
     },
     {
       "name": "property_switch_json_m2_core",
@@ -81,7 +81,7 @@
           "kind": "assert"
         }
       ],
-      "expected_warnings": []
+      "expected_diagnostics": []
     }
   ]
 }

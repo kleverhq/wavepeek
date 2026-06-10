@@ -45,6 +45,12 @@ class PerfHelpersTest(unittest.TestCase):
         )
 
     @staticmethod
+    def _diag(
+        message: str = "careful", code: str = "WPK-W0001"
+    ) -> dict[str, str]:
+        return {"kind": "warning", "code": code, "message": message}
+
+    @staticmethod
     def _sample_test(name: str = "sample") -> dict[str, object]:
         return {
             "name": name,
@@ -57,7 +63,7 @@ class PerfHelpersTest(unittest.TestCase):
 
     @staticmethod
     def _write_wavepeek_artifact(path: pathlib.Path, data: object | None = None) -> None:
-        payload = {"data": [{"id": 1}] if data is None else data, "warnings": []}
+        payload = {"data": [{"id": 1}] if data is None else data, "diagnostics": []}
         path.write_text(json.dumps(payload), encoding="utf-8")
 
     def test_test_has_complete_artifacts(self) -> None:
@@ -448,7 +454,7 @@ class PerfHelpersTest(unittest.TestCase):
                     mock.patch.object(
                         perf,
                         "run_functional_capture",
-                        return_value={"data": [], "warnings": []},
+                        return_value={"data": [], "diagnostics": []},
                     ),
                     mock.patch.object(perf, "write_wavepeek_artifact"),
                     mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
@@ -544,7 +550,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(
                     perf,
                     "run_functional_capture",
-                    return_value={"data": [], "warnings": []},
+                    return_value={"data": [], "diagnostics": []},
                 ),
                 mock.patch.object(perf, "write_wavepeek_artifact"),
                 mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
@@ -582,7 +588,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(
                     perf,
                     "run_functional_capture",
-                    return_value={"data": [], "warnings": []},
+                    return_value={"data": [], "diagnostics": []},
                 ),
                 mock.patch.object(perf, "write_wavepeek_artifact"),
                 mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
@@ -605,11 +611,11 @@ class PerfHelpersTest(unittest.TestCase):
             self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 2.0)
             self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
             (revised / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
             (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
 
@@ -638,11 +644,11 @@ class PerfHelpersTest(unittest.TestCase):
             self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 2.0)
             self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
             (revised / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
             (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
 
@@ -674,11 +680,11 @@ class PerfHelpersTest(unittest.TestCase):
                 golden / "sample.hyperfine.json", mean=1.0, median=1.0
             )
             (revised / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
             (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
 
@@ -911,7 +917,7 @@ class PerfHelpersTest(unittest.TestCase):
         with mock.patch.object(perf.subprocess, "run") as run_mock:
             run_mock.return_value = mock.Mock(
                 returncode=0,
-                stdout=json.dumps({"data": [], "warnings": []}),
+                stdout=json.dumps({"data": [], "diagnostics": []}),
                 stderr="",
             )
             perf.run_functional_capture(test, "wavepeek", "run", 123)
@@ -920,21 +926,21 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(run_mock.call_args.kwargs["timeout"], 123)
 
     def test_functional_diff_fields(self) -> None:
-        baseline = {"data": [1], "warnings": ["w1"]}
+        baseline = {"data": [1], "diagnostics": ["w1"]}
         self.assertEqual(perf.functional_diff_fields(baseline, baseline), [])
         self.assertEqual(
             perf.functional_diff_fields(
-                {"data": [2], "warnings": ["w1"]},
+                {"data": [2], "diagnostics": ["w1"]},
                 baseline,
             ),
             ["data"],
         )
         self.assertEqual(
             perf.functional_diff_fields(
-                {"data": [1], "warnings": ["w2"]},
+                {"data": [1], "diagnostics": ["w2"]},
                 baseline,
             ),
-            [],
+            ["diagnostics"],
         )
         self.assertEqual(perf.functional_diff_fields({}, baseline), [])
         self.assertEqual(perf.functional_diff_fields(baseline, {}), [])
@@ -1002,14 +1008,14 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertIsNone(payload)
         self.assertIsNotNone(error)
         assert error is not None
-        self.assertIn("missing key `warnings`", error)
+        self.assertIn("missing key `diagnostics`", error)
 
     def test_load_wavepeek_artifact_for_compare_accepts_object_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)
             artifact = temp_path / "sample.wavepeek.json"
             artifact.write_text(
-                json.dumps({"data": {"time_unit": "ps"}, "warnings": []}),
+                json.dumps({"data": {"time_unit": "ps"}, "diagnostics": []}),
                 encoding="utf-8",
             )
             payload, error = perf.load_wavepeek_artifact_for_compare(
@@ -1019,14 +1025,14 @@ class PerfHelpersTest(unittest.TestCase):
             )
 
         self.assertIsNone(error)
-        self.assertEqual(payload, {"data": {"time_unit": "ps"}, "warnings": []})
+        self.assertEqual(payload, {"data": {"time_unit": "ps"}, "diagnostics": []})
 
     def test_load_wavepeek_artifact_for_compare_rejects_scalar_data(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)
             artifact = temp_path / "sample.wavepeek.json"
             artifact.write_text(
-                json.dumps({"data": "oops", "warnings": []}),
+                json.dumps({"data": "oops", "diagnostics": []}),
                 encoding="utf-8",
             )
             payload, error = perf.load_wavepeek_artifact_for_compare(
@@ -1040,12 +1046,12 @@ class PerfHelpersTest(unittest.TestCase):
         assert error is not None
         self.assertIn("field `data` must be object or list", error)
 
-    def test_load_wavepeek_artifact_for_compare_invalid_warnings_type(self) -> None:
+    def test_load_wavepeek_artifact_for_compare_invalid_diagnostics_type(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = pathlib.Path(temp_dir)
             artifact = temp_path / "sample.wavepeek.json"
             artifact.write_text(
-                json.dumps({"data": [], "warnings": "not-a-list"}),
+                json.dumps({"data": [], "diagnostics": "not-a-list"}),
                 encoding="utf-8",
             )
             payload, error = perf.load_wavepeek_artifact_for_compare(
@@ -1057,7 +1063,7 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertIsNone(payload)
         self.assertIsNotNone(error)
         assert error is not None
-        self.assertIn("field `warnings` must be list", error)
+        self.assertIn("field `diagnostics` must be list", error)
 
     def test_load_wavepeek_artifact_for_compare_valid_payload(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1067,7 +1073,7 @@ class PerfHelpersTest(unittest.TestCase):
                 json.dumps(
                     {
                         "data": [{"id": 1}],
-                        "warnings": ["w"],
+                        "diagnostics": [self._diag()],
                         "schema": "ignored",
                     }
                 ),
@@ -1080,13 +1086,70 @@ class PerfHelpersTest(unittest.TestCase):
             )
 
         self.assertIsNone(error)
-        self.assertEqual(payload, {"data": [{"id": 1}], "warnings": ["w"]})
+        self.assertEqual(payload, {"data": [{"id": 1}], "diagnostics": [self._diag()]})
+
+    def test_load_wavepeek_artifact_for_compare_rejects_legacy_warnings_key(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": [], "diagnostics": [], "warnings": []}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("must not contain legacy key `warnings`", error)
+
+    def test_load_wavepeek_artifact_for_compare_rejects_wrong_kind_code_prefix(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": [], "diagnostics": [self._diag(code="WPK-E0001")]}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("must use WPK-W for warning", error)
+
+    def test_load_wavepeek_artifact_for_compare_rejects_untyped_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = pathlib.Path(temp_dir)
+            artifact = temp_path / "sample.wavepeek.json"
+            artifact.write_text(
+                json.dumps({"data": [], "diagnostics": ["legacy warning"]}),
+                encoding="utf-8",
+            )
+            payload, error = perf.load_wavepeek_artifact_for_compare(
+                temp_path,
+                "sample",
+                "revised",
+            )
+
+        self.assertIsNone(payload)
+        self.assertIsNotNone(error)
+        assert error is not None
+        self.assertIn("field `diagnostics[0]` must be object", error)
 
     def test_report_functional_status_missing_counterpart(self) -> None:
         self.assertEqual(
             perf.report_functional_status(
                 "t",
-                {"t": {"data": [1], "warnings": []}},
+                {"t": {"data": [1], "diagnostics": []}},
                 {},
             ),
             perf.FUNCTIONAL_MISSING_MARKER,
@@ -1096,18 +1159,28 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(
             perf.report_functional_status(
                 "t",
-                {"t": {"data": [1], "warnings": ["a"]}},
-                {"t": {"data": [2], "warnings": ["b"]}},
+                {"t": {"data": [1], "diagnostics": ["a"]}},
+                {"t": {"data": [2], "diagnostics": ["b"]}},
             ),
             f"{perf.FUNCTIONAL_MISMATCH_MARKER}D",
+        )
+
+    def test_report_functional_status_diagnostic_mismatch(self) -> None:
+        self.assertEqual(
+            perf.report_functional_status(
+                "t",
+                {"t": {"data": [1], "diagnostics": ["a"]}},
+                {"t": {"data": [1], "diagnostics": ["b"]}},
+            ),
+            f"{perf.FUNCTIONAL_MISMATCH_MARKER}X",
         )
 
     def test_report_functional_status_empty_data_match(self) -> None:
         self.assertEqual(
             perf.report_functional_status(
                 "t",
-                {"t": {"data": [], "warnings": ["a"]}},
-                {"t": {"data": [], "warnings": ["b"]}},
+                {"t": {"data": [], "diagnostics": ["a"]}},
+                {"t": {"data": [], "diagnostics": ["a"]}},
             ),
             f"{perf.FUNCTIONAL_MATCH_MARKER}E",
         )
@@ -1116,8 +1189,8 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(
             perf.report_functional_status(
                 "t",
-                {"t": {"data": {}, "warnings": ["a"]}},
-                {"t": {"data": {}, "warnings": ["b"]}},
+                {"t": {"data": {}, "diagnostics": ["a"]}},
+                {"t": {"data": {}, "diagnostics": ["a"]}},
             ),
             f"{perf.FUNCTIONAL_MATCH_MARKER}E",
         )
@@ -1126,8 +1199,8 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(
             perf.report_functional_status(
                 "t",
-                {"t": {"data": [{"id": 1}], "warnings": ["a"]}},
-                {"t": {"data": [{"id": 1}], "warnings": ["b"]}},
+                {"t": {"data": [{"id": 1}], "diagnostics": ["a"]}},
+                {"t": {"data": [{"id": 1}], "diagnostics": ["a"]}},
             ),
             perf.FUNCTIONAL_MATCH_MARKER,
         )
@@ -1137,7 +1210,7 @@ class PerfHelpersTest(unittest.TestCase):
             perf.report_functional_status(
                 "t",
                 {"t": {}},
-                {"t": {"data": [{"id": 1}], "warnings": []}},
+                {"t": {"data": [{"id": 1}], "diagnostics": []}},
             ),
             perf.FUNCTIONAL_TIMEOUT_MARKER,
         )
@@ -1165,11 +1238,11 @@ class PerfHelpersTest(unittest.TestCase):
             self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 2.0)
             self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
             (revised / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
             (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
 
@@ -1199,7 +1272,7 @@ class PerfHelpersTest(unittest.TestCase):
 
             (revised / "sample.wavepeek.json").write_text("{}\n", encoding="utf-8")
             (golden / "sample.wavepeek.json").write_text(
-                json.dumps({"data": [{"id": 1}], "warnings": []}),
+                json.dumps({"data": [{"id": 1}], "diagnostics": []}),
                 encoding="utf-8",
             )
 

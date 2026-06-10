@@ -29,7 +29,7 @@ fn change_requires_signals_flag() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("--signals <SIGNALS>"))
         .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
@@ -61,7 +61,7 @@ fn change_default_when_matches_expected_json_payload() {
     let value = parse_json(&output.stdout);
     assert_eq!(value["$schema"], expected_schema_url());
     assert_eq!(value["command"], "change");
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -156,7 +156,7 @@ fn change_named_non_edge_trigger_emits_expected_single_row() {
     assert!(output.stderr.is_empty());
 
     let value = parse_json(&output.stdout);
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -200,8 +200,8 @@ fn change_zero_delta_path_returns_empty_data_with_warning() {
     let value = parse_json(&output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -254,12 +254,12 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["data"], json!([]));
     assert_eq!(
-        json["warnings"],
-        json!(["no signal changes found in selected time range"])
+        json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: no signal changes found in selected time range"
+        "warning[WPK-W0003]: no signal changes found in selected time range"
     );
 }
 
@@ -308,19 +308,16 @@ fn change_unlimited_warning_precedes_empty_result_warning_in_json_and_human_mode
     let value = parse_json(&json_output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!([
-            "limit disabled: --max=unlimited",
-            "no signal changes found in selected time range"
-        ])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}, {"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr)
             .lines()
             .collect::<Vec<_>>(),
         vec![
-            "warning: limit disabled: --max=unlimited",
-            "warning: no signal changes found in selected time range"
+            "warning[WPK-W0001]: limit disabled: --max=unlimited",
+            "warning[WPK-W0003]: no signal changes found in selected time range"
         ]
     );
 }
@@ -350,7 +347,7 @@ fn change_omitted_from_uses_dump_start_baseline_checkpoint() {
 
     assert!(output.status.success());
     let value = parse_json(&output.stdout);
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -393,8 +390,8 @@ fn change_from_timestamp_is_baseline_only_for_emission() {
     let value = parse_json(&output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -427,8 +424,8 @@ fn change_equal_from_and_to_never_emits_baseline_row() {
     let value = parse_json(&output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -579,7 +576,7 @@ fn change_negedge_wiring_is_end_to_end() {
 
     assert!(output.status.success());
     let value = parse_json(&output.stdout);
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"]
             .as_array()
@@ -618,7 +615,7 @@ fn change_edge_wiring_is_end_to_end() {
 
     assert!(output.status.success());
     let value = parse_json(&output.stdout);
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"]
             .as_array()
@@ -671,7 +668,7 @@ fn change_iff_executes_end_to_end() {
     assert!(human_output.stderr.is_empty());
 
     let json = parse_json(&json_output.stdout);
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(
         json["data"],
         json!([
@@ -711,7 +708,7 @@ fn change_invalid_on_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-OPEN"))
         .stderr(predicate::str::contains("source: posedge ("));
 }
@@ -737,7 +734,7 @@ fn change_unmatched_close_parenthesis_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-UNMATCHED-CLOSE"))
         .stderr(predicate::str::contains("source: posedge clk)"));
 }
@@ -763,7 +760,7 @@ fn change_broken_union_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-BROKEN-UNION"))
         .stderr(predicate::str::contains("source: posedge clk or , clk"));
 }
@@ -789,7 +786,7 @@ fn change_empty_iff_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY-IFF"))
         .stderr(predicate::str::contains("source: posedge clk iff"));
 }
@@ -818,7 +815,7 @@ fn change_rich_type_iff_payload_executes() {
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     let json = parse_json(&output.stdout);
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(
         json["data"],
         json!([
@@ -860,7 +857,7 @@ fn change_triggered_iff_payload_executes() {
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     let json = parse_json(&output.stdout);
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(
         json["data"],
         json!([
@@ -917,12 +914,12 @@ fn change_empty_result_warning_matches_between_json_and_human_modes() {
     let value = parse_json(&json_output.stdout);
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: no signal changes found in selected time range"
+        "warning[WPK-W0003]: no signal changes found in selected time range"
     );
 }
 
@@ -973,7 +970,7 @@ fn change_truncation_warning_matches_between_json_and_human_modes() {
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: truncated output to 1 entries (use --max to increase limit)"
+        "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
     );
 
     let value = parse_json(&json_output.stdout);
@@ -985,8 +982,8 @@ fn change_truncation_warning_matches_between_json_and_human_modes() {
         1
     );
     assert_eq!(
-        value["warnings"],
-        json!(["truncated output to 1 entries (use --max to increase limit)"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
 }
 
@@ -1149,8 +1146,8 @@ fn change_default_max_is_50_with_truncation_warning() {
         50
     );
     assert_eq!(
-        value["warnings"],
-        json!(["truncated output to 50 entries (use --max to increase limit)"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 50 entries (use --max to increase limit)"}])
     );
 }
 
@@ -1197,13 +1194,13 @@ fn change_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() {
             > 50
     );
     assert_eq!(
-        value["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
 
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: limit disabled: --max=unlimited"
+        "warning[WPK-W0001]: limit disabled: --max=unlimited"
     );
     assert!(
         String::from_utf8_lossy(&human_output.stdout)
@@ -1234,7 +1231,7 @@ fn change_rejects_zero_max_with_args_error() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "error: args: --max must be greater than 0.",
+            "fatal: args: --max must be greater than 0.",
         ));
 }
 
@@ -1258,7 +1255,7 @@ fn change_tune_overrides_require_debug_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("--tune-*"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
@@ -1283,7 +1280,7 @@ fn change_explicit_tune_auto_still_requires_debug_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
 
@@ -1307,7 +1304,7 @@ fn change_tune_candidate_override_requires_debug_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
 
@@ -1331,7 +1328,7 @@ fn change_explicit_tune_candidates_auto_still_requires_debug_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
 
@@ -1354,7 +1351,7 @@ fn change_tune_edge_fast_force_requires_debug_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("DEBUG=1"));
 }
 
@@ -1378,7 +1375,7 @@ fn change_rejects_legacy_pre_fusion_engine_label() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("invalid value 'pre-fusion'"))
         .stderr(predicate::str::contains("baseline"));
 }
@@ -1431,7 +1428,7 @@ fn change_rejects_legacy_internal_and_perf_change_flags() {
             .failure()
             .code(1)
             .stdout(predicate::str::is_empty())
-            .stderr(predicate::str::starts_with("error: args:"));
+            .stderr(predicate::str::starts_with("fatal: args:"));
     }
 }
 
@@ -1455,7 +1452,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "error: args: --max must be greater than 0.",
+            "fatal: args: --max must be greater than 0.",
         ));
 
     wavepeek_cmd()
@@ -1474,7 +1471,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "--from must be less than or equal to --to",
         ));
@@ -1493,7 +1490,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("requires units"));
 
     wavepeek_cmd()
@@ -1512,7 +1509,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("fatal: signal:"));
 
     wavepeek_cmd()
         .args([
@@ -1528,7 +1525,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'nope'"));
 
     wavepeek_cmd()
@@ -1545,7 +1542,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: scope:"));
+        .stderr(predicate::str::starts_with("fatal: scope:"));
 
     wavepeek_cmd()
         .args([
@@ -1561,7 +1558,7 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "cannot be represented exactly in dump precision",
         ));
@@ -1586,7 +1583,7 @@ fn change_decimal_time_token_is_rejected_as_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("invalid time token '1.5ns'"))
         .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
@@ -1610,7 +1607,7 @@ fn change_empty_on_expression_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-EVENT-EMPTY"));
 }
 
@@ -1633,7 +1630,7 @@ fn change_out_of_range_from_time_is_args_error_with_bounds() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "time '11ns' for --from is outside dump bounds [0ns, 10ns]",
         ))
@@ -1659,7 +1656,7 @@ fn change_misaligned_time_includes_help_hint() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "cannot be represented exactly in dump precision",
         ))
@@ -1689,7 +1686,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'top.nope'"));
 
     wavepeek_cmd()
@@ -1712,7 +1709,7 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'nope'"));
 }
 
@@ -1735,7 +1732,7 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("fatal: signal:"));
 
     wavepeek_cmd()
         .args([
@@ -1753,7 +1750,7 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'top.clk'"));
 }
 

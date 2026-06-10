@@ -98,22 +98,22 @@ Without `--abs`, recursive output is easier to read. With `--abs`, it is easier 
 
 ```text
 $ wavepeek signal --waves path/to/dump.vcd --scope top --recursive --json --max 10
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"signal","data":[{"name":"cfg","path":"top.cfg","kind":"parameter","width":8},{"name":"clk","path":"top.clk","kind":"wire","width":1},{"name":"data","path":"top.data","kind":"reg","width":8},{"name":"valid","path":"top.cpu.valid","kind":"wire","width":1},{"name":"ready","path":"top.mem.ready","kind":"wire","width":1}],"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"signal","data":[{"name":"cfg","path":"top.cfg","kind":"parameter","width":8},{"name":"clk","path":"top.clk","kind":"wire","width":1},{"name":"data","path":"top.data","kind":"reg","width":8},{"name":"valid","path":"top.cpu.valid","kind":"wire","width":1},{"name":"ready","path":"top.mem.ready","kind":"wire","width":1}],"diagnostics":[]}
 ```
 
 Use this in scripts and agents when human formatting is not reliable enough.
 
-## Watch for truncation and disabled-limit warnings
+## Watch for truncation and disabled-limit diagnostics
 
-`signal` is bounded by default. If `--max` cuts the result, the command still succeeds and warns:
+`signal` is bounded by default. If `--max` cuts the result, the command still succeeds and emits a diagnostic:
 
 ```text
 $ wavepeek signal --waves path/to/dump.vcd --scope top --max 1
 cfg kind=parameter width=8
-warning: truncated output to 1 entries (use --max to increase limit)
+warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)
 ```
 
-If you disable a limit explicitly, that is also reported:
+If you disable a limit explicitly, that is also reported as a diagnostic:
 
 ```text
 $ wavepeek signal --waves path/to/dump.vcd --scope top --recursive --max unlimited --max-depth unlimited
@@ -122,11 +122,11 @@ clk kind=wire width=1
 data kind=reg width=8
 cpu.valid kind=wire width=1
 mem.ready kind=wire width=1
-warning: limit disabled: --max=unlimited
-warning: limit disabled: --max-depth=unlimited
+warning[WPK-W0001]: limit disabled: --max=unlimited
+warning[WPK-W0001]: limit disabled: --max-depth=unlimited
 ```
 
-In human mode warnings go to stderr. In JSON mode they appear in the `warnings` array.
+In human mode diagnostics go to stderr. In JSON mode they appear in the `diagnostics` array.
 
 ## Non-obvious behavior
 
@@ -141,4 +141,4 @@ $ wavepeek signal --waves path/to/dump.vcd --scope top --recursive --filter '^cp
 - Recursive human output is scope-relative by default, but JSON `path` fields stay canonical.
 - Signal kinds are not limited to wires. You may see `reg`, `parameter`, and other stable signal kind aliases; backend-specific VHDL spellings are normalized to the stable contract surface.
 - `--max-depth` requires `--recursive`.
-- An empty match is a valid result, not an error.
+- An empty match is a valid result, not an error; it emits `WPK-W0003`.

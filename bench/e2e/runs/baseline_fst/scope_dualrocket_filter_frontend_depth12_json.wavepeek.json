@@ -591,5 +591,5 @@
       "path": "TOP.TestDriver.testHarness.chiptop0.system.tile_prci_domain_1.element_reset_domain_rockettile.frontend.unnamedblk1"
     }
   ],
-  "warnings": []
+  "diagnostics": []
 }

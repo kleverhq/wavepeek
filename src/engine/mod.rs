@@ -14,6 +14,7 @@ mod value_format;
 use serde::Serialize;
 
 use crate::cli;
+use crate::diagnostic::Diagnostic;
 use crate::error::WavepeekError;
 
 #[derive(Debug)]
@@ -116,7 +117,7 @@ pub struct CommandResult {
     #[serde(skip)]
     pub human_options: HumanRenderOptions,
     pub data: CommandData,
-    pub warnings: Vec<String>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {

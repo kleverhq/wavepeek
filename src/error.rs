@@ -4,19 +4,19 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum WavepeekError {
-    #[error("error: args: {0}")]
+    #[error("fatal: args: {0}")]
     Args(String),
-    #[error("error: file: {0}")]
+    #[error("fatal: file: {0}")]
     File(String),
-    #[error("error: scope: {0}")]
+    #[error("fatal: scope: {0}")]
     Scope(String),
-    #[error("error: signal: {0}")]
+    #[error("fatal: signal: {0}")]
     Signal(String),
-    #[error("error: expr: {0}")]
+    #[error("fatal: expr: {0}")]
     Expr(String),
-    #[error("error: internal: {0}")]
+    #[error("fatal: internal: {0}")]
     Internal(String),
-    #[error("error: unimplemented: {0}")]
+    #[error("fatal: unimplemented: {0}")]
     Unimplemented(&'static str),
 }
 
@@ -43,7 +43,7 @@ mod tests {
         let error = WavepeekError::File("cannot open dump.vcd".to_string());
 
         assert_eq!(error.exit_code(), 2);
-        assert_eq!(error.to_string(), "error: file: cannot open dump.vcd");
+        assert_eq!(error.to_string(), "fatal: file: cannot open dump.vcd");
     }
 
     #[test]
@@ -53,10 +53,10 @@ mod tests {
 
         assert_eq!(scope.exit_code(), 1);
         assert_eq!(signal.exit_code(), 1);
-        assert_eq!(scope.to_string(), "error: scope: scope 'top.cpu' not found");
+        assert_eq!(scope.to_string(), "fatal: scope: scope 'top.cpu' not found");
         assert_eq!(
             signal.to_string(),
-            "error: signal: signal 'top.cpu.clk' not found"
+            "fatal: signal: signal 'top.cpu.clk' not found"
         );
     }
 
@@ -67,7 +67,7 @@ mod tests {
         assert_eq!(error.exit_code(), 1);
         assert_eq!(
             error.to_string(),
-            "error: expr: parse:EXPR-PARSE-LOGICAL-UNMATCHED-OPEN"
+            "fatal: expr: parse:EXPR-PARSE-LOGICAL-UNMATCHED-OPEN"
         );
     }
 }

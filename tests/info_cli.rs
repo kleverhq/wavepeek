@@ -40,7 +40,7 @@ fn info_json_contract_for_vcd_fixture() {
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "info");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(value["data"]["time_unit"], "1ns");
     assert!(value["data"].get("time_precision").is_none());
     assert_eq!(value["data"]["time_start"], "0ns");
@@ -64,7 +64,7 @@ fn info_json_contract_for_fst_fixture() {
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "info");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(value["data"]["time_unit"], "1ns");
     assert!(value["data"].get("time_precision").is_none());
     assert_eq!(value["data"]["time_start"], "0ns");
@@ -127,7 +127,7 @@ fn info_missing_file_is_file_error_with_exit_code_two() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file: cannot open"));
+        .stderr(predicate::str::starts_with("fatal: file: cannot open"));
 }
 
 #[test]
@@ -146,5 +146,5 @@ fn info_invalid_file_is_parse_error_with_exit_code_two() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file: cannot parse"));
+        .stderr(predicate::str::starts_with("fatal: file: cannot parse"));
 }

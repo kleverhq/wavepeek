@@ -163,7 +163,7 @@ The current implementation status is:
 ### Principles
 
 - **Fail fast.** The first error stops execution.
-- **Machine-parseable diagnostics.** Errors follow a stable `error: <category>: <message>` shape.
+- **Machine-parseable failures and diagnostics.** Process-level failures follow a stable `fatal: <category>: <message>` shape. Successful command diagnostics use typed JSON objects and coded human lines such as `warning[WPK-W0002]: <message>`.
 - **No panics in production paths.** Recoverable failures use `Result<T, WavepeekError>`.
 
 ### Exit Behavior
@@ -174,7 +174,7 @@ The current implementation status is:
 - Exit code `1` means user-facing errors such as bad arguments, missing signals, or invalid expressions.
 - Exit code `2` means file-level failures such as open or parse errors.
 
-Warnings do not change the exit code.
+Non-fatal diagnostics do not change the exit code.
 
 ## `change` Command Execution Architecture
 

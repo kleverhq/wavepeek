@@ -1,5 +1,5 @@
 use assert_cmd::prelude::*;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::fs;
 use std::path::{Path, PathBuf};
 use tempfile::tempdir;
@@ -113,7 +113,7 @@ fn docs_topics_json_uses_standard_envelope() {
 
     assert_eq!(value["$schema"], expected_schema_url());
     assert_eq!(value["command"], "docs topics");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
 
     let topics = value["data"]["topics"]
         .as_array()
@@ -228,6 +228,33 @@ fn docs_search_preserves_exact_title_match_kind() {
 }
 
 #[test]
+fn docs_search_empty_result_emits_empty_result_diagnostic() {
+    let json_output = wavepeek_cmd()
+        .args(["docs", "search", "zzzzzzzzzzzz", "--json"])
+        .output()
+        .expect("json docs search should execute");
+    let human_output = wavepeek_cmd()
+        .args(["docs", "search", "zzzzzzzzzzzz"])
+        .output()
+        .expect("human docs search should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(human_output.stdout.is_empty());
+    let value: Value =
+        serde_json::from_slice(&json_output.stdout).expect("stdout should be valid json");
+    assert_eq!(value["data"]["matches"], json!([]));
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no docs topics matched query"}])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0003]: no docs topics matched query"
+    );
+}
+
+#[test]
 fn docs_search_empty_query_is_argument_error() {
     let output = wavepeek_cmd()
         .args(["docs", "search", "   "])
@@ -237,7 +264,7 @@ fn docs_search_empty_query_is_argument_error() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("query must contain at least one non-whitespace token"));
 }
 
@@ -251,7 +278,7 @@ fn docs_show_unknown_topic_suggests_close_matches() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("unknown docs topic 'commands/cha'"));
     assert!(stderr.contains("commands/change"));
 }
@@ -276,7 +303,7 @@ fn docs_show_summary_flag_is_not_supported() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("unexpected argument '--summary'"));
 }
 
@@ -340,7 +367,7 @@ fn unsupported_docs_json_modes_are_argument_errors() {
         );
         let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
-            stderr.starts_with("error: args:"),
+            stderr.starts_with("fatal: args:"),
             "args {:?} stderr was {stderr}",
             args
         );
@@ -368,7 +395,7 @@ fn docs_export_force_requires_managed_root() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("managed export root"));
 }
 
@@ -392,7 +419,7 @@ fn docs_export_force_rejects_unrecognized_manifest_version() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("unrecognized export manifest version"));
 }
 

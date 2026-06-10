@@ -3,7 +3,7 @@
 ## Source of Truth
 
 - Cross-cutting command semantics: `command-model.md`
-- Machine output, warnings, and exit behavior: `machine-output.md`
+- Machine output, diagnostics, and exit behavior: `machine-output.md`
 - Expression language syntax and semantics: `expression-language.md`
 - Exact JSON schema: the current major artifact such as `../../../schema/wavepeek_v1.json` and `wavepeek schema`
 - Topic metadata and docs style rules: `../../dev/style.md`

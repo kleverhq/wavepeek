@@ -260,7 +260,7 @@ mod tests {
         let error = ensure_non_zero_dump_tick(0).expect_err("zero tick must fail");
         assert_eq!(
             error.to_string(),
-            "error: internal: waveform metadata time_unit must be non-zero"
+            "fatal: internal: waveform metadata time_unit must be non-zero"
         );
 
         ensure_non_zero_dump_tick(1).expect("non-zero tick must pass");
@@ -373,7 +373,7 @@ mod tests {
         .expect_err("overflow should fail");
         assert_eq!(
             error.to_string(),
-            "error: internal: normalized time overflow while formatting timestamp"
+            "fatal: internal: normalized time overflow while formatting timestamp"
         );
     }
 

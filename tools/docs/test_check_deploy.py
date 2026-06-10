@@ -123,20 +123,20 @@ class CheckDeployTests(unittest.TestCase):
             "title": "wavepeek JSON output envelope",
             "properties": {
                 "$schema": {
-                    "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v0\.json$"
+                    "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v1\.json$"
                 },
                 "command": {},
                 "data": {},
-                "warnings": {},
+                "diagnostics": {},
             },
         }
 
-        check_deploy.validate_schema_json(schema, "0.5.0")
+        check_deploy.validate_schema_json(schema, "1.0.0")
 
         broken = json.loads(json.dumps(schema))
-        del broken["properties"]["warnings"]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "warnings"):
-            check_deploy.validate_schema_json(broken, "0.5.0")
+        del broken["properties"]["diagnostics"]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "diagnostics"):
+            check_deploy.validate_schema_json(broken, "1.0.0")
 
     def test_validate_schema_json_allows_legacy_major_zero_self_reference(self) -> None:
         schema = {
@@ -154,7 +154,7 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_schema_json(schema, "0.5.0")
 
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "wavepeek_v1"):
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "diagnostics"):
             check_deploy.validate_schema_json(schema, "1.0.0")
 
     def test_validate_schema_json_rejects_wrong_major_self_reference(self) -> None:
@@ -165,7 +165,7 @@ class CheckDeployTests(unittest.TestCase):
                 "$schema": {"pattern": "wavepeek_v0.json"},
                 "command": {},
                 "data": {},
-                "warnings": {},
+                "diagnostics": {},
             },
         }
 

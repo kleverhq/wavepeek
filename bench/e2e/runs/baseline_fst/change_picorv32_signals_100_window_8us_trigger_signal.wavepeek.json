@@ -19251,7 +19251,11 @@
       "time": "2451050000ps"
     }
   ],
-  "warnings": [
-    "truncated output to 50 entries (use --max to increase limit)"
+  "diagnostics": [
+    {
+      "code": "WPK-W0002",
+      "kind": "warning",
+      "message": "truncated output to 50 entries (use --max to increase limit)"
+    }
   ]
 }

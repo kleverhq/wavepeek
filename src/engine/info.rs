@@ -24,6 +24,6 @@ pub fn run(args: InfoArgs) -> Result<CommandResult, WavepeekError> {
             time_start: metadata.time_start,
             time_end: metadata.time_end,
         }),
-        warnings: Vec::new(),
+        diagnostics: Vec::new(),
     })
 }

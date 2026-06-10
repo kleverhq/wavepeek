@@ -482,7 +482,7 @@ mod tests {
                 notes: vec![],
             },
         );
-        assert!(wrapped.to_string().starts_with("error: expr:"));
+        assert!(wrapped.to_string().starts_with("fatal: expr:"));
     }
 
     #[test]
@@ -500,7 +500,7 @@ mod tests {
             .expect_err("unknown handle should fail");
         assert_eq!(
             error.to_string(),
-            "error: internal: unknown signal handle 999"
+            "fatal: internal: unknown signal handle 999"
         );
     }
 
@@ -776,7 +776,7 @@ mod tests {
             )
             .expect_err("parse failures should map to expr errors")
             .to_string()
-            .starts_with("error: expr:")
+            .starts_with("fatal: expr:")
         );
         assert!(
             bind_waveform_logical_expr(&wf_host, Some("top"), "ev")

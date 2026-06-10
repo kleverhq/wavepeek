@@ -1,7 +1,7 @@
 ---
 id: troubleshooting/empty-results
 title: Empty results
-description: Diagnose valid queries that return no rows, no matches, or only a warning.
+description: Diagnose valid queries that return no rows, no matches, or only a diagnostic.
 section: troubleshooting
 see_also:
   - commands/docs
@@ -19,15 +19,15 @@ In `wavepeek`, many queries are allowed to succeed even when nothing matched. Th
 
 ## Know the difference between empty success and real failure
 
-A real failure prints `error: ...` on stderr and exits non-zero.
+A real failure prints `fatal: ...` on stderr and exits non-zero.
 
-An empty-but-valid query stays successful and usually looks like one of these forms:
+An empty-but-valid query stays successful and usually prints no data rows. List and search-style commands also emit a `WPK-W0003` diagnostic:
 
 - `docs search`: no matches printed,
 - `scope`: no matching scopes printed,
 - `signal`: no matching signals printed,
 - `property`: no captured events printed,
-- `change`: no rows plus `warning: no signal changes found in selected time range`.
+- `change`: no rows printed.
 
 ## `docs search` can legitimately find nothing
 
@@ -67,15 +67,15 @@ Common causes:
 - the signal list is correct, but the values were already stable,
 - the query uses the wrong naming mode for `--scope` versus canonical paths.
 
-If `change` finds no qualifying rows, it warns instead of failing:
+If `change` finds no qualifying rows, it emits a diagnostic instead of failing:
 
 ```text
-warning: no signal changes found in selected time range
+warning[WPK-W0003]: no signal changes found in selected time range
 ```
 
 ## `property` can succeed with no output
 
-`property` returns rows only when the selected timestamps satisfy the chosen capture mode.
+`property` returns rows only when the selected timestamps satisfy the chosen capture mode. If no row matches, it emits `WPK-W0003` and still exits successfully.
 
 That means empty output is normal when:
 

@@ -10,7 +10,7 @@ use tempfile::NamedTempFile;
 mod common;
 use common::wavepeek_cmd;
 
-const FSDB_DISABLED_STDERR: &str = "error: file: FSDB support is currently Linux x86_64 only; FSDB input requires a wavepeek binary built with --features fsdb and a licensed VERDI_HOME\n";
+const FSDB_DISABLED_STDERR: &str = "fatal: file: FSDB support is currently Linux x86_64 only; FSDB input requires a wavepeek binary built with --features fsdb and a licensed VERDI_HOME\n";
 
 fn write_temp_file(bytes: &[u8], suffix: &str) -> NamedTempFile {
     let mut file = tempfile::Builder::new()
@@ -108,7 +108,7 @@ fn info_missing_fsdb_suffix_keeps_cannot_open_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file: cannot open"))
+        .stderr(predicate::str::starts_with("fatal: file: cannot open"))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 
@@ -127,7 +127,7 @@ fn info_directory_fsdb_suffix_keeps_regular_file_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file: cannot "))
+        .stderr(predicate::str::starts_with("fatal: file: cannot "))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 
@@ -143,7 +143,7 @@ fn info_unrelated_invalid_suffix_keeps_parse_error() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file: cannot parse"))
+        .stderr(predicate::str::starts_with("fatal: file: cannot parse"))
         .stderr(predicate::str::contains("FSDB input requires").not());
 }
 

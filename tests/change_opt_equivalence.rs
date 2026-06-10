@@ -15,7 +15,7 @@ fn run_change_json_with_modes(waves: &str, extra_args: &[&str]) -> Value {
     let fused = run_change_json_with_mode(waves, "fused", "random", extra_args);
 
     assert_eq!(baseline["data"], fused["data"]);
-    assert_eq!(baseline["warnings"], fused["warnings"]);
+    assert_eq!(baseline["diagnostics"], fused["diagnostics"]);
     fused
 }
 
@@ -25,9 +25,9 @@ fn run_change_json_with_edge_modes(waves: &str, extra_args: &[&str]) -> Value {
     let edge_fast = run_change_json_with_mode(waves, "edge-fast", "random", extra_args);
 
     assert_eq!(baseline["data"], fused["data"]);
-    assert_eq!(baseline["warnings"], fused["warnings"]);
+    assert_eq!(baseline["diagnostics"], fused["diagnostics"]);
     assert_eq!(baseline["data"], edge_fast["data"]);
-    assert_eq!(baseline["warnings"], edge_fast["warnings"]);
+    assert_eq!(baseline["diagnostics"], edge_fast["diagnostics"]);
 
     edge_fast
 }
@@ -37,7 +37,7 @@ fn assert_auto_matches_forced_mode(waves: &str, forced_engine: &str, extra_args:
     let forced = run_change_json_with_mode(waves, forced_engine, "random", extra_args);
 
     assert_eq!(auto["data"], forced["data"]);
-    assert_eq!(auto["warnings"], forced["warnings"]);
+    assert_eq!(auto["diagnostics"], forced["diagnostics"]);
     auto
 }
 
@@ -94,7 +94,7 @@ fn change_uses_strict_previous_timestamp_not_previous_candidate() {
         ],
     );
 
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -132,8 +132,8 @@ fn change_from_inside_window_respects_intermediate_non_candidate_updates() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -161,8 +161,8 @@ fn change_empty_window_from_equals_to_remains_empty() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -190,8 +190,8 @@ fn change_all_candidates_at_or_before_baseline_do_not_emit() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -229,8 +229,8 @@ fn change_max_one_truncation_matches_between_modes() {
         ])
     );
     assert_eq!(
-        value["warnings"],
-        json!(["truncated output to 1 entries (use --max to increase limit)"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
 }
 
@@ -286,7 +286,7 @@ fn change_typed_iff_matches_between_modes() {
         ],
     );
 
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -323,7 +323,7 @@ fn change_anychange_trigger_detects_none_to_some_transition() {
         ],
     );
 
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -360,7 +360,7 @@ fn change_forced_edge_fast_falls_back_for_non_edge_triggers() {
     let edge_fast = run_change_json_with_mode(fixture.as_str(), "edge-fast", "random", &args);
 
     assert_eq!(baseline["data"], edge_fast["data"]);
-    assert_eq!(baseline["warnings"], edge_fast["warnings"]);
+    assert_eq!(baseline["diagnostics"], edge_fast["diagnostics"]);
 }
 
 #[test]
@@ -415,7 +415,7 @@ fn change_trigger_matrix_matches_between_baseline_and_fused() {
     ] {
         let value = run_change_json_with_modes(fixture.as_str(), args.as_slice());
         assert!(value["data"].is_array());
-        assert!(value["warnings"].is_array());
+        assert!(value["diagnostics"].is_array());
     }
 }
 
@@ -441,7 +441,7 @@ fn change_dense_posedge_sparse_delta_matches_all_modes() {
         ],
     );
 
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -485,8 +485,8 @@ fn change_edge_without_requested_delta_remains_empty_in_all_modes() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        value["warnings"],
-        json!(["no signal changes found in selected time range"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -512,7 +512,7 @@ fn change_union_edge_trigger_dedups_same_timestamp_in_all_modes() {
         ],
     );
 
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -568,8 +568,8 @@ fn change_dense_edge_max_one_truncation_matches_all_modes() {
         ])
     );
     assert_eq!(
-        value["warnings"],
-        json!(["truncated output to 1 entries (use --max to increase limit)"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
 }
 
@@ -595,7 +595,7 @@ fn change_auto_dense_any_tracked_profile_matches_fused_output() {
 
     let value = assert_auto_matches_forced_mode(fixture.as_str(), "fused", &args);
     assert!(value["data"].is_array());
-    assert!(value["warnings"].is_array());
+    assert!(value["diagnostics"].is_array());
 }
 
 #[test]
@@ -620,7 +620,7 @@ fn change_auto_dense_edge_profile_matches_edge_fast_output() {
 
     let value = assert_auto_matches_forced_mode(fixture.as_str(), "edge-fast", &args);
     assert!(value["data"].is_array());
-    assert!(value["warnings"].is_array());
+    assert!(value["diagnostics"].is_array());
 }
 
 #[test]
@@ -645,7 +645,7 @@ fn change_auto_sparse_any_tracked_profile_matches_baseline_output() {
 
     let value = assert_auto_matches_forced_mode(fixture.as_str(), "baseline", &args);
     assert!(value["data"].is_array());
-    assert!(value["warnings"].is_array());
+    assert!(value["diagnostics"].is_array());
 }
 
 #[test]
@@ -670,7 +670,7 @@ fn change_auto_sparse_edge_profile_matches_baseline_output() {
 
     let value = assert_auto_matches_forced_mode(fixture.as_str(), "baseline", &args);
     assert!(value["data"].is_array());
-    assert!(value["warnings"].is_array());
+    assert!(value["diagnostics"].is_array());
 }
 
 fn write_generated_dispatch_fixture(

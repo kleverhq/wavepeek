@@ -78,7 +78,7 @@ fn signal_json_shape_for_vcd_keeps_full_paths() {
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "signal");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([
@@ -185,16 +185,16 @@ fn signal_emits_truncation_warning_when_max_is_hit() {
         1
     );
     assert_eq!(
-        value["warnings"]
+        value["diagnostics"]
             .as_array()
-            .expect("warnings should be array")
+            .expect("diagnostics should be array")
             .len(),
         1
     );
     assert!(
-        value["warnings"][0]
+        value["diagnostics"][0]["message"]
             .as_str()
-            .expect("warning should be string")
+            .expect("diagnostic message should be string")
             .contains("truncated output to 1 entries")
     );
 }
@@ -235,8 +235,8 @@ fn signal_unlimited_max_emits_warning_in_json_and_human_modes() {
 
     let value: Value = serde_json::from_slice(&json_output.stdout).expect("json should parse");
     assert_eq!(
-        value["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
     assert_eq!(
         value["data"]
@@ -247,7 +247,7 @@ fn signal_unlimited_max_emits_warning_in_json_and_human_modes() {
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: limit disabled: --max=unlimited"
+        "warning[WPK-W0001]: limit disabled: --max=unlimited"
     );
 }
 
@@ -264,7 +264,7 @@ fn signal_scope_not_found_is_scope_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: scope:"));
+        .stderr(predicate::str::starts_with("fatal: scope:"));
 }
 
 #[test]
@@ -288,7 +288,7 @@ fn signal_invalid_regex_is_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args: invalid regex"))
+        .stderr(predicate::str::starts_with("fatal: args: invalid regex"))
         .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 }
 
@@ -313,9 +313,9 @@ fn signal_human_mode_routes_truncation_warning_to_stderr() {
         .success()
         .stdout(predicate::str::contains("cfg kind=parameter width=8"))
         .stdout(predicate::str::contains("schema_version").not())
-        .stdout(predicate::str::contains("warning: truncated output").not())
+        .stdout(predicate::str::contains("warning[WPK-W0002]: truncated output").not())
         .stderr(predicate::str::contains(
-            "warning: truncated output to 1 entries",
+            "warning[WPK-W0002]: truncated output to 1 entries",
         ));
 }
 
@@ -410,8 +410,8 @@ fn signal_recursive_max_depth_zero_matches_non_recursive() {
         recursive_depth_zero_json["data"]
     );
     assert_eq!(
-        non_recursive_json["warnings"],
-        recursive_depth_zero_json["warnings"]
+        non_recursive_json["diagnostics"],
+        recursive_depth_zero_json["diagnostics"]
     );
 }
 
@@ -542,7 +542,7 @@ fn signal_max_depth_requires_recursive_flag() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "the following required arguments were not provided: --recursive",
         ))
@@ -569,7 +569,7 @@ fn signal_rejects_zero_max_with_args_error() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "error: args: --max must be greater than 0.",
+            "fatal: args: --max must be greater than 0.",
         ))
         .stderr(predicate::str::contains("See 'wavepeek signal --help'."));
 }
@@ -611,8 +611,8 @@ fn signal_recursive_unlimited_max_depth_emits_warning() {
 
     assert!(paths.contains(&"top.cpu.core.execute".to_string()));
     assert_eq!(
-        value["warnings"],
-        json!(["limit disabled: --max-depth=unlimited"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max-depth=unlimited"}])
     );
 }
 
@@ -679,15 +679,12 @@ fn signal_unlimited_and_bounded_mix_preserves_warning_order() {
         "depth-1 bound should still hide grandchild scopes"
     );
     assert_eq!(
-        unlimited_max_json["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        unlimited_max_json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
     assert_eq!(
-        unlimited_depth_json["warnings"],
-        json!([
-            "limit disabled: --max-depth=unlimited",
-            "truncated output to 2 entries (use --max to increase limit)"
-        ])
+        unlimited_depth_json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max-depth=unlimited"}, {"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 2 entries (use --max to increase limit)"}])
     );
 }
 
@@ -725,16 +722,16 @@ fn signal_recursive_filter_and_max_preserve_truncation_warning() {
         2
     );
     assert_eq!(
-        value["warnings"]
+        value["diagnostics"]
             .as_array()
-            .expect("warnings should be array")
+            .expect("diagnostics should be array")
             .len(),
         1
     );
     assert!(
-        value["warnings"][0]
+        value["diagnostics"][0]["message"]
             .as_str()
-            .expect("warning should be string")
+            .expect("diagnostic message should be string")
             .contains("truncated output to 2 entries")
     );
 }
@@ -744,8 +741,7 @@ fn signal_recursive_filter_matches_name_not_relative_path() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    let mut command = wavepeek_cmd();
-    let assert = command
+    let json_output = wavepeek_cmd()
         .args([
             "signal",
             "--waves",
@@ -757,13 +753,37 @@ fn signal_recursive_filter_matches_name_not_relative_path() {
             "^cpu\\..*",
             "--json",
         ])
-        .assert()
-        .success();
+        .output()
+        .expect("json signal run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--recursive",
+            "--filter",
+            "^cpu\\..*",
+        ])
+        .output()
+        .expect("human signal run should execute");
 
-    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
-    let value: Value = serde_json::from_str(&stdout).expect("signal output should be valid json");
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(human_output.stdout.is_empty());
+    let value: Value =
+        serde_json::from_slice(&json_output.stdout).expect("signal output should be valid json");
 
     assert_eq!(value["data"], Value::Array(vec![]));
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signals found in selected scope"}])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0003]: no signals found in selected scope"
+    );
 }
 
 #[test]

@@ -68,7 +68,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             time: normalized_time,
             signals,
         }),
-        warnings: Vec::new(),
+        diagnostics: Vec::new(),
     })
 }
 

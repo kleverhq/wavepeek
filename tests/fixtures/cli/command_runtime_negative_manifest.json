@@ -14,7 +14,7 @@
         "posedge ("
       ],
       "exit_code": 1,
-      "stderr_prefix": "error: expr:",
+      "stderr_prefix": "fatal: expr:",
       "stderr_snapshot": "expr_runtime_invalid_on"
     },
     {
@@ -29,7 +29,7 @@
         "("
       ],
       "exit_code": 1,
-      "stderr_prefix": "error: expr:",
+      "stderr_prefix": "fatal: expr:",
       "stderr_snapshot": "expr_runtime_invalid_eval"
     },
     {
@@ -46,7 +46,7 @@
         "data == 8'h00"
       ],
       "exit_code": 1,
-      "stderr_prefix": "error: expr:",
+      "stderr_prefix": "fatal: expr:",
       "stderr_snapshot": "expr_runtime_scoped_dotted_on"
     }
   ]

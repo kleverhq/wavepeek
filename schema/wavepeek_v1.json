@@ -8,7 +8,7 @@
     "$schema",
     "command",
     "data",
-    "warnings"
+    "diagnostics"
   ],
   "properties": {
     "$schema": {
@@ -29,7 +29,7 @@
       ]
     },
     "data": {
-      "oneOf": [
+      "anyOf": [
         {
           "$ref": "#/$defs/infoData"
         },
@@ -56,10 +56,10 @@
         }
       ]
     },
-    "warnings": {
+    "diagnostics": {
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "#/$defs/diagnostic"
       }
     }
   },
@@ -218,6 +218,96 @@
     }
   ],
   "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^WPK-[WE][0-9]{4}$"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "warning"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "pattern": "^WPK-W[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "error"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "pattern": "^WPK-E[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "info"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "normalizedTime": {
       "type": "string",
       "description": "Normalized timestamp rendered in the dump's time unit, for example 10ns."

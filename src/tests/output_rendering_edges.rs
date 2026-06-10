@@ -1,3 +1,4 @@
+use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::docs::{MatchKind, TopicSummary};
 use crate::engine::property::{PropertyCaptureRow, PropertyResultKind};
 use crate::engine::{
@@ -18,7 +19,7 @@ fn topic(id: &str) -> TopicSummary {
 }
 
 #[test]
-fn exercises_docs_topics_human_json_and_warning_rendering() {
+fn exercises_docs_topics_human_json_and_diagnostic_rendering() {
     let topics = vec![topic("commands/change"), topic("commands/value")];
     let data = CommandData::DocsTopics(DocsTopicsData {
         topics: topics.clone(),
@@ -42,7 +43,10 @@ fn exercises_docs_topics_human_json_and_warning_rendering() {
         json: true,
         human_options: HumanRenderOptions::default(),
         data,
-        warnings: vec!["careful".to_string()],
+        diagnostics: vec![Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "careful",
+        )],
     })
     .expect("docs topics json should render");
     assert!(json.contains("docs topics"));
@@ -60,8 +64,14 @@ fn exercises_docs_topics_human_json_and_warning_rendering() {
     ]);
     assert!(render_human(&properties, HumanRenderOptions::default()).contains("@1ns deassert"));
 
-    let envelope =
-        OutputEnvelope::with_warnings("docs search", search, vec!["heads up".to_string()]);
+    let envelope = OutputEnvelope::with_diagnostics(
+        "docs search",
+        search,
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "heads up",
+        )],
+    );
     let debug = format!("{envelope:?}");
     assert!(debug.contains("docs search"));
     assert!(

@@ -1,5 +1,6 @@
 use crate::cli::limits::LimitArg;
 use crate::cli::scope::ScopeArgs;
+use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
 use crate::waveform::Waveform;
@@ -36,12 +37,18 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         ))
     })?;
 
-    let mut warnings = Vec::new();
+    let mut diagnostics = Vec::new();
     if max.is_unlimited() {
-        warnings.push("limit disabled: --max=unlimited".to_string());
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max=unlimited",
+        ));
     }
     if max_depth.is_unlimited() {
-        warnings.push("limit disabled: --max-depth=unlimited".to_string());
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max-depth=unlimited",
+        ));
     }
 
     let waveform = Waveform::open(waves.as_path())?;
@@ -60,9 +67,16 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         && entries.len() > max_entries
     {
         entries.truncate(max_entries);
-        warnings.push(format!(
-            "truncated output to {} entries (use --max to increase limit)",
-            max_entries
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::OutputTruncated,
+            format!("truncated output to {max_entries} entries (use --max to increase limit)"),
+        ));
+    }
+
+    if entries.is_empty() {
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "no scopes found",
         ));
     }
 
@@ -74,6 +88,6 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
             signals_abs: false,
         },
         data: CommandData::Scope(entries),
-        warnings,
+        diagnostics,
     })
 }

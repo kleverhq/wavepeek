@@ -28,7 +28,7 @@ Use the installed binary as the source of truth for exact syntax:
 Useful reference topics:
 
 - `wavepeek docs show reference/command-model` for time, scope/name, bounded-output, and ordering rules.
-- `wavepeek docs show reference/machine-output` for JSON envelope, warnings, errors, schema, and exit behavior.
+- `wavepeek docs show reference/machine-output` for JSON envelope, diagnostics, fatal errors, schema, and exit behavior.
 - `wavepeek docs show reference/expression-language` for `change --on` and `property --on` / `property --eval` expressions.
 
 ## Core workflow

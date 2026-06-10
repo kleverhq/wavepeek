@@ -55,7 +55,7 @@ pub struct PositiveCase {
     #[serde(default)]
     pub expected_data: Option<Value>,
     #[serde(default)]
-    pub expected_warnings: Vec<String>,
+    pub expected_diagnostics: Vec<Value>,
     #[serde(default)]
     pub stdout_snapshot: Option<String>,
 }
@@ -214,9 +214,14 @@ pub fn assert_positive_case(case: &PositiveCase) {
                 case.name
             );
             assert_eq!(
-                value["warnings"],
-                serde_json::json!(case.expected_warnings),
-                "case '{}' warnings",
+                value["diagnostics"],
+                serde_json::json!(case.expected_diagnostics),
+                "case '{}' diagnostics",
+                case.name
+            );
+            assert!(
+                value.get("warnings").is_none(),
+                "case '{}' should not emit legacy warnings",
                 case.name
             );
         }
@@ -232,13 +237,13 @@ pub fn assert_positive_case(case: &PositiveCase) {
                     insta::assert_snapshot!(identifier.as_str(), stdout);
                 });
             }
-            let warning_lines = stderr
+            let diagnostics = stderr
                 .lines()
-                .filter_map(|line| line.strip_prefix("warning: ").map(ToString::to_string))
+                .filter_map(human_diagnostic_line)
                 .collect::<Vec<_>>();
             assert_eq!(
-                warning_lines, case.expected_warnings,
-                "case '{}' warnings",
+                diagnostics, case.expected_diagnostics,
+                "case '{}' diagnostics",
                 case.name
             );
         }
@@ -269,6 +274,16 @@ pub fn assert_negative_case(case: &NegativeCase) {
             insta::assert_snapshot!(identifier.as_str(), stderr);
         });
     }
+}
+
+fn human_diagnostic_line(line: &str) -> Option<Value> {
+    let rest = line.strip_prefix("warning[")?;
+    let (code, message) = rest.split_once("]: ")?;
+    Some(serde_json::json!({
+        "kind": "warning",
+        "code": code,
+        "message": message,
+    }))
 }
 
 fn run_case(command: CommandCaseCommand, args: &[String]) -> std::process::Output {
@@ -338,9 +353,9 @@ fn validate_negative_manifest(manifest: NegativeManifest) -> Result<NegativeMani
         if case.args.is_empty() {
             return Err(format!("negative case '{}' must declare args", case.name));
         }
-        if !case.stderr_prefix.starts_with("error:") {
+        if !case.stderr_prefix.starts_with("fatal:") {
             return Err(format!(
-                "negative case '{}' stderr_prefix must start with 'error:'",
+                "negative case '{}' stderr_prefix must start with 'fatal:'",
                 case.name
             ));
         }

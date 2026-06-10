@@ -1215,7 +1215,7 @@ mod tests {
 
         assert_eq!(
             error,
-            "error: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
+            "fatal: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
         );
     }
 
@@ -1269,7 +1269,7 @@ mod tests {
 
         assert_eq!(
             error,
-            "error: file: FSDB hierarchy contains ambiguous canonical signal path 'top.clk'"
+            "fatal: file: FSDB hierarchy contains ambiguous canonical signal path 'top.clk'"
         );
     }
 
@@ -1288,7 +1288,7 @@ mod tests {
 
         assert_eq!(
             error,
-            "error: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
+            "fatal: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
         );
     }
 
@@ -1592,11 +1592,11 @@ mod tests {
 
         assert_eq!(
             index.signals_in_scope("missing").unwrap_err().to_string(),
-            "error: scope: scope 'missing' not found in dump"
+            "fatal: scope: scope 'missing' not found in dump"
         );
         assert_eq!(
             index.resolve_signal("top.missing").unwrap_err().to_string(),
-            "error: signal: signal 'top.missing' not found in dump"
+            "fatal: signal: signal 'top.missing' not found in dump"
         );
     }
 

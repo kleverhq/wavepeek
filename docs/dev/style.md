@@ -16,11 +16,13 @@ Prefer borrowing at API boundaries. Use owned `String` and `Vec` when ownership 
 
 No panics in production paths. Avoid `unwrap()` and `expect()` except for true programmer bugs that are unreachable in normal operation. Errors go to stderr; stdout is reserved for command output.
 
-Preserve the stable error shape:
+Preserve the stable process-level failure shape:
 
-    error: <category>: <message>
+    fatal: <category>: <message>
 
-Also preserve exit-code behavior. Exit code `0` is success, `1` is user-facing argument or query errors, and `2` is file open/parse failure.
+Successful commands may emit non-fatal diagnostics. Human diagnostics use `warning[WPK-W####]: <message>` or `error[WPK-E####]: <message>`, and JSON diagnostics use typed objects in the success envelope.
+
+Also preserve exit-code behavior. Exit code `0` is success, `1` is user-facing argument or query failures, and `2` is file open/parse failure.
 
 ## Deterministic Output
 

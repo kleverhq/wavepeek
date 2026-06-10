@@ -917,7 +917,7 @@ mod tests {
         let error = normalize_query("   \n\t  ").expect_err("empty query should fail");
         assert_eq!(
             error.to_string(),
-            "error: args: query must contain at least one non-whitespace token"
+            "fatal: args: query must contain at least one non-whitespace token"
         );
     }
 

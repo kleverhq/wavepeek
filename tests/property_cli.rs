@@ -75,7 +75,7 @@ fn property_switch_capture_reports_transitions() {
 
     let json = parse_json(&json_output.stdout);
     assert_eq!(json["command"], "property");
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(
         json["data"],
         json!([
@@ -208,6 +208,60 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
 }
 
 #[test]
+fn property_empty_result_emits_empty_result_diagnostic() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "data == 8'hff",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("json property run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "data == 8'hff",
+            "--capture",
+            "match",
+        ])
+        .output()
+        .expect("human property run should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(human_output.stdout.is_empty());
+    let json = parse_json(&json_output.stdout);
+    assert_eq!(json["data"], json!([]));
+    assert_eq!(
+        json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no property matches found in selected time range"}])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0003]: no property matches found in selected time range"
+    );
+}
+
+#[test]
 fn property_invalid_eval_reports_expr_error() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
@@ -226,7 +280,7 @@ fn property_invalid_eval_reports_expr_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("EXPR-PARSE-LOGICAL-EXPECTED"));
 }
 
@@ -255,7 +309,7 @@ fn property_omitted_on_tracks_eval_signal_changes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(json["data"], json!([{"time": "10ns", "kind": "match"}]));
 }
 
@@ -287,7 +341,7 @@ fn property_omitted_on_tracks_raw_event_handles_from_eval() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["warnings"], json!([]));
+    assert_eq!(json["diagnostics"], json!([]));
     assert_eq!(
         json["data"],
         json!([
@@ -338,7 +392,7 @@ fn property_wildcard_without_referenced_signals_requires_explicit_on() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("pass --on explicitly"));
 }
 
@@ -363,7 +417,7 @@ fn property_scope_rejects_dotted_names_in_scoped_mode() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: expr:"))
+        .stderr(predicate::str::starts_with("fatal: expr:"))
         .stderr(predicate::str::contains("unknown signal 'top.clk'"));
 }
 
@@ -386,7 +440,7 @@ fn property_rejects_legacy_surface_flags() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--clk'"))
         .stderr(predicate::str::contains("See 'wavepeek property --help'."));
 
@@ -404,7 +458,7 @@ fn property_rejects_legacy_surface_flags() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--cond'"))
         .stderr(predicate::str::contains("See 'wavepeek property --help'."));
 
@@ -422,7 +476,7 @@ fn property_rejects_legacy_surface_flags() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--when'"))
         .stderr(predicate::str::contains("See 'wavepeek property --help'."));
 }
@@ -438,7 +492,7 @@ fn property_requires_eval_flag() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "required arguments were not provided",
         ))

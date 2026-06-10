@@ -11,17 +11,14 @@ Stable user-facing contracts live under `../public/reference/`, starting from
 1. **Scope and path canonicalization.** What is the canonical path syntax and
    escaping policy for VCD escaped identifiers and other unusual names across
    formats?
-2. **Warnings as codes versus free text.** Should warnings remain free-form
-   strings, or should wavepeek eventually introduce stable warning codes for
-   promote/suppress flows?
-3. **Value radix options.** Should a future release add `--radix` (for example
+2. **Value radix options.** Should a future release add `--radix` (for example
    `hex`, `bin`, `dec`, `auto`), and if so what default policy should replace
    or complement Verilog-literal output?
-4. **Schema evolution policy.** Should the project keep one canonical schema
+3. **Schema evolution policy.** Should the project keep one canonical schema
    forever, or eventually split machine contracts into per-command schemas?
-5. **Signal metadata schema.** Which JSON fields beyond `kind` and `width`
+4. **Signal metadata schema.** Which JSON fields beyond `kind` and `width`
    should be part of the stable `signal` machine contract across dump formats?
-6. **GHW support scope.** If GHW support is added after MVP, what acceptance
+5. **GHW support scope.** If GHW support is added after MVP, what acceptance
    criteria and priority should gate that work?
 
 ## Proposals
@@ -51,8 +48,8 @@ Affecting flows:
 - Large waveform queries (especially recursive signal collection on big `.fst`) are expensive to consume as one buffered JSON envelope.
 - Add an opt-in streaming mode via `--jsonl` (NDJSON) for high-volume/long-running commands, while keeping current `--json` contract unchanged.
 - Define a dedicated stream schema (for example, `schema/wavepeek-stream-v1.json`) with deterministic record ordering and explicit terminal summary.
-- Suggested stream record kinds: `begin`, `item` (command-specific payload), `warning`, `end` (with counters and truncation flags).
-- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/public/commands/overview.md` and `docs/public/reference/machine-output.md`, and integration tests cover ordering, truncation/warnings, and end-of-stream summary semantics.
+- Suggested stream record kinds: `begin`, `item` (command-specific payload), `diagnostic`, `end` (with counters and truncation flags).
+- Close when `--json` remains backward-compatible, `--jsonl` is documented in CLI help plus `docs/public/commands/overview.md` and `docs/public/reference/machine-output.md`, and integration tests cover ordering, truncation diagnostics, and end-of-stream summary semantics.
 
 ### Typed stdin projection from wavepeek JSON
 
@@ -63,7 +60,7 @@ Affecting flows:
 
 - Consider allowing selected consumer arguments to use `-` as a typed stdin source from another `wavepeek --json` command instead of adding a separate chaining output mode.
 - Example: `scope --json | signal --scope -` projects exactly one `scope.data[].path`; `signal --json | value --signals -` projects one or more `signal.data[].path` values.
-- Keep compatibility explicit per argument/producer pair, preserve upstream warnings, reject ambiguous multi-stdin usage, and fail fast on wrong producer command or invalid cardinality.
+- Keep compatibility explicit per argument/producer pair, preserve upstream diagnostics, reject ambiguous multi-stdin usage, and fail fast on wrong producer command or invalid cardinality.
 
 ## Tech Debt
 

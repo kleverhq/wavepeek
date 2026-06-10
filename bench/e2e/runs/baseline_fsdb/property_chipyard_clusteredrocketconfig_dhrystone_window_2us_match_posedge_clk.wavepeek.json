@@ -1,4 +1,10 @@
 {
   "data": [],
-  "warnings": []
+  "diagnostics": [
+    {
+      "code": "WPK-W0003",
+      "kind": "warning",
+      "message": "no property matches found in selected time range"
+    }
+  ]
 }

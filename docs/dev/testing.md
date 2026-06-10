@@ -4,7 +4,7 @@ Tests should prove the public command and machine-output contracts, not just exe
 
 ## Test Levels
 
-Rust unit tests live next to implementation code under `src/` and cover parsing, evaluation helpers, time handling, value formatting, and edge cases. Integration tests under `tests/` invoke the CLI and assert stdout, stderr, exit codes, warnings, JSON payloads, and deterministic ordering.
+Rust unit tests live next to implementation code under `src/` and cover parsing, evaluation helpers, time handling, value formatting, and edge cases. Integration tests under `tests/` invoke the CLI and assert stdout, stderr, exit codes, diagnostics, JSON payloads, and deterministic ordering.
 
 Auxiliary Python tests cover repository tooling, docs-site helpers, and benchmark harnesses. Run them with `just test-aux`; individual suites may also be run with `python3 -B -m unittest ...` while iterating.
 

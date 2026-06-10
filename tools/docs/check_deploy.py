@@ -19,7 +19,7 @@ REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DEFAULT_BASE_URL = "https://kleverhq.github.io/wavepeek"
 USER_AGENT = "wavepeek-docs-deploy-check"
 SCHEMA_TITLE = "wavepeek JSON output envelope"
-SCHEMA_PROPERTIES = {"$schema", "command", "data", "warnings"}
+BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
 
 
 class DeployCheckError(Exception):
@@ -225,7 +225,9 @@ def validate_schema_json(schema: Any, version: str) -> None:
     properties = schema.get("properties")
     if not isinstance(properties, dict):
         fail("schema artifact properties must be an object")
-    missing = sorted(SCHEMA_PROPERTIES - set(properties))
+    expected_properties = set(BASE_SCHEMA_PROPERTIES)
+    expected_properties.add("warnings" if major_version(version) == 0 else "diagnostics")
+    missing = sorted(expected_properties - set(properties))
     if missing:
         fail("schema artifact is missing properties: " + ", ".join(missing))
     schema_property = properties.get("$schema")

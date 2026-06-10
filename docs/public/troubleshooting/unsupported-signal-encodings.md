@@ -17,7 +17,7 @@ see_also:
 If you point them at signals recorded with other encodings, the command can fail with an error like:
 
 ```text
-error: signal: signal 'top.temp' has unsupported non-bit-vector encoding
+fatal: signal: signal 'top.temp' has unsupported non-bit-vector encoding
 ```
 
 Common examples are real-valued, string-like, or other non-bit-vector dump encodings.

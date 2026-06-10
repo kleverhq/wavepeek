@@ -38,7 +38,7 @@ fn property_vcd_and_fst_payloads_match_for_match_capture() {
     let fst_json = run_property_json(fst_fixture.as_str(), &args);
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
-    assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+    assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
 }
 
 #[test]
@@ -60,5 +60,5 @@ fn property_vcd_and_fst_payloads_match_for_switch_capture() {
     let fst_json = run_property_json(fst_fixture.as_str(), &args);
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
-    assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+    assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
 }

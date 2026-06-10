@@ -1258,7 +1258,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "error: scope: scope 'top.nope' not found in dump"
+            "fatal: scope: scope 'top.nope' not found in dump"
         );
         assert_eq!(error.exit_code(), 1);
     }
@@ -1376,7 +1376,7 @@ mod tests {
         let error = Waveform::open(Path::new("/tmp/this-file-does-not-exist.vcd"))
             .expect_err("missing file should fail");
 
-        assert!(error.to_string().starts_with("error: file: cannot open"));
+        assert!(error.to_string().starts_with("fatal: file: cannot open"));
         assert_eq!(error.exit_code(), 2);
     }
 
@@ -1386,7 +1386,7 @@ mod tests {
 
         let error = Waveform::open(fixture.path()).expect_err("invalid file should fail");
 
-        assert!(error.to_string().starts_with("error: file: cannot parse"));
+        assert!(error.to_string().starts_with("fatal: file: cannot parse"));
         assert_eq!(error.exit_code(), 2);
     }
 
@@ -1439,7 +1439,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "error: signal: signal 'top.temp' has unsupported non-bit-vector encoding"
+            "fatal: signal: signal 'top.temp' has unsupported non-bit-vector encoding"
         );
     }
 
@@ -1602,7 +1602,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "error: signal: signal 'top.nope' not found in dump"
+            "fatal: signal: signal 'top.nope' not found in dump"
         );
         assert_eq!(error.exit_code(), 1);
     }
@@ -1618,7 +1618,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "error: signal: signal 'top.delayed' has no value at or before requested time"
+            "fatal: signal: signal 'top.delayed' has no value at or before requested time"
         );
     }
 
@@ -1728,7 +1728,7 @@ mod tests {
             .expect_err("decode must fail before load");
         assert_eq!(
             error.to_string(),
-            "error: internal: signal 'top.data' could not be loaded from waveform backend"
+            "fatal: internal: signal 'top.data' could not be loaded from waveform backend"
         );
     }
 
@@ -2139,7 +2139,7 @@ mod tests {
             super::timescale_unit_suffix(wellen::TimescaleUnit::Unknown)
                 .expect_err("unknown timescale units should fail")
                 .to_string(),
-            "error: file: waveform timescale unit is unknown"
+            "fatal: file: waveform timescale unit is unknown"
         );
         assert_eq!(
             super::format_timescale(wellen::Timescale {

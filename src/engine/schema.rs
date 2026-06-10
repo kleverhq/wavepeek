@@ -9,6 +9,6 @@ pub fn run(_args: SchemaArgs) -> Result<CommandResult, WavepeekError> {
         json: false,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Schema(CANONICAL_SCHEMA_JSON.to_string()),
-        warnings: Vec::new(),
+        diagnostics: Vec::new(),
     })
 }

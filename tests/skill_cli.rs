@@ -43,7 +43,7 @@ fn skill_json_mode_is_an_argument_error() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("unexpected argument '--json'"));
     assert!(stderr.contains("See 'wavepeek skill --help'."));
 }

@@ -66,7 +66,7 @@ fn value_requires_signals_flag() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("--signals <SIGNALS>"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -98,7 +98,7 @@ fn value_json_shape_with_scope_is_stable_and_ordered() {
 
     assert_eq!(value["$schema"], expected_schema_url());
     assert_eq!(value["command"], "value");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!({
@@ -208,7 +208,7 @@ fn value_invalid_time_token_is_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("invalid time token '100'"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -235,7 +235,7 @@ fn value_decimal_time_token_is_rejected_as_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("invalid time token '1.5ns'"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -262,7 +262,7 @@ fn value_out_of_range_time_is_args_error_with_bounds() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "time '11ns' is outside dump bounds [0ns, 10ns]",
         ))
@@ -291,7 +291,7 @@ fn value_scope_not_found_is_scope_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: scope:"));
+        .stderr(predicate::str::starts_with("fatal: scope:"));
 }
 
 #[test]
@@ -314,7 +314,7 @@ fn value_missing_signal_is_signal_error_and_fails_fast() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("fatal: signal:"));
 }
 
 #[test]
@@ -372,7 +372,7 @@ fn value_mixed_mode_names_fail_without_scope() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("fatal: signal:"));
 }
 
 #[test]
@@ -422,7 +422,7 @@ fn value_full_paths_are_not_accepted_when_scope_is_set() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: signal:"));
+        .stderr(predicate::str::starts_with("fatal: signal:"));
 }
 
 #[test]

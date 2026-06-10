@@ -21,13 +21,16 @@ This plan does not add suppress, promote, or downgrade controls for diagnostics.
 - [x] (2026-06-09T20:12Z) Ran code/implementation and docs/product review lanes, then revised this plan and schema breadcrumb guidance for the findings.
 - [x] (2026-06-09T20:26Z) Ran a fresh control review and expanded the plan to include benchmark harness and baseline artifacts.
 - [x] (2026-06-09T20:28Z) Ran a focused control re-review and clarified benchmark baseline fallback handling for empty-result diagnostics.
-- [ ] Add typed diagnostic model types and replace `CommandResult.warnings` with `CommandResult.diagnostics`.
-- [ ] Update output rendering so JSON envelopes use required `diagnostics` and human diagnostics use `info:`, `warning[CODE]:`, or `error[CODE]:` formatting.
-- [ ] Replace current warning producers with coded warning diagnostics and add empty-result diagnostics for all successful list/search-style empty results.
-- [ ] Change process-level error display from `error:` to `fatal:` and update fatal-related tests and help text.
-- [ ] Update `schema/wavepeek_v1.json`, schema checker coverage, and schema tests for the new diagnostic contract while preserving `schema/wavepeek_v0.json`.
-- [ ] Update public docs, maintainer docs, packaged skill references, command examples, and exactly one changelog line for the v1 breaking output change.
-- [ ] Run targeted tests while developing, then `just test` and `just check` before handoff; run `just ci` when available.
+- [x] (2026-06-10T00:00Z) Add typed diagnostic model types and replace `CommandResult.warnings` with `CommandResult.diagnostics`.
+- [x] (2026-06-10T00:00Z) Update output rendering so JSON envelopes use required `diagnostics` and human diagnostics use `info:`, `warning[CODE]:`, or `error[CODE]:` formatting.
+- [x] (2026-06-10T00:00Z) Replace current warning producers with coded warning diagnostics and add empty-result diagnostics for all successful list/search-style empty results.
+- [x] (2026-06-10T00:00Z) Change process-level error display from `error:` to `fatal:` and update fatal-related unit tests and help text.
+- [x] (2026-06-10T00:00Z) Update `schema/wavepeek_v1.json`, schema checker coverage, and schema tests for the new diagnostic contract while preserving `schema/wavepeek_v0.json`.
+- [x] (2026-06-10T00:00Z) Update public docs, maintainer docs, packaged skill references, command examples, and exactly one changelog line for the v1 breaking output change.
+- [x] (2026-06-10T00:00Z) Update benchmark tooling, harness tests, and tracked FST/FSDB baseline artifacts from `warnings` to `diagnostics`.
+- [x] (2026-06-10T00:00Z) Run focused code/schema, docs, and benchmark review lanes; fix findings about schema empty-array validation, docs/help completeness, and benchmark diagnostic validation.
+- [x] (2026-06-10T00:00Z) Run an independent control review pass; fix findings about per-kind diagnostic code prefixes in schema and benchmark validation.
+- [x] (2026-06-10T00:00Z) Run targeted tests while developing, then `just test` and `just check` before handoff; `just ci` remains optional and was not run because `just test` and `just check` already exercised the available container and FSDB gates for this slice.
 
 ## Surprises & Discoveries
 
@@ -45,6 +48,18 @@ This plan does not add suppress, promote, or downgrade controls for diagnostics.
 
 - Observation: The benchmark E2E harness stores normalized wavepeek functional artifacts with only `data` and `warnings`, not full envelopes, and 284 tracked `.wavepeek.json` baseline artifacts currently contain the old `warnings` key.
   Evidence: `bench/e2e/perf.py` validates and stores `payload["warnings"]`; `git ls-files 'bench/e2e/runs/*.wavepeek.json' 'bench/e2e/runs/**/*.wavepeek.json' | wc -l` returned `284`.
+
+- Observation: The first Rust slice needed explicit `#[allow(dead_code)]` annotations for future-facing diagnostic pieces that v1 reserves but does not emit yet.
+  Evidence: the pre-commit hook ran `cargo clippy --all-targets -- -D warnings` and rejected the unused `Info`/`Error` variants, `ErrorDiagnosticCode`, and `Diagnostic::info`/`Diagnostic::error` before those annotations were added.
+
+- Observation: The root schema `data.oneOf` rejected valid empty successful results once multiple command payloads could be empty arrays.
+  Evidence: code/schema review found that `[]` matches scope, signal, change, and property array definitions simultaneously; `schema/wavepeek_v1.json` now uses `data.anyOf` and command-specific `allOf` branches provide the narrowing.
+
+- Observation: Benchmark functional artifact validation needed to validate typed diagnostic objects, not only the presence of a `diagnostics` list.
+  Evidence: benchmark review found that `diagnostics: ["legacy warning"]` and artifacts retaining a stale `warnings` key would otherwise pass harness validation; `bench/e2e/perf.py` now rejects both.
+
+- Observation: Diagnostic code validation also needs per-kind prefixes, not only the shared `WPK-[WE]####` shape.
+  Evidence: the independent control review found that schema and benchmark validation would accept `kind: "warning"` with `WPK-E####` or `kind: "error"` with `WPK-W####`; both validators now require `WPK-W####` for warnings and `WPK-E####` for non-fatal errors.
 
 ## Decision Log
 
@@ -82,7 +97,7 @@ This plan does not add suppress, promote, or downgrade controls for diagnostics.
 
 ## Outcomes & Retrospective
 
-No implementation has been completed yet. The expected outcome is a v1 output contract where successful machine output always includes `diagnostics`, non-fatal warning/error diagnostics have stable codes, info diagnostics omit codes, process-level failures are fatal stderr-only failures, and `just check` passes with updated tests and docs.
+The typed-diagnostics and fatal-error contract is implemented across Rust runtime, schema, tests, docs, and benchmark artifacts. `src/diagnostic.rs` defines the typed model; `CommandResult` and `OutputEnvelope` carry `diagnostics`; command engines emit coded warning diagnostics including empty-result cases; and `WavepeekError` displays process-level failures as `fatal:`. `schema/wavepeek_v1.json`, `tools/schema/check_schema_contract.py`, and `tests/schema_cli.rs` assert the typed diagnostic contract while `schema/wavepeek_v0.json` remains untouched. Public docs describe current v1 behavior, `CHANGELOG.md` contains the single migration bullet, and benchmark baselines now carry `data` plus `diagnostics`. Focused code/schema, docs, benchmark, and control review lanes were run and their findings were fixed, including per-kind diagnostic code-prefix validation. `just test` and `just check` pass after the latest broad-gate run; targeted schema and benchmark tests also pass after the control-review fixes.
 
 ## Context and Orientation
 
@@ -359,3 +374,8 @@ The JSON contract should remain a single-line JSON object from `render_json` thr
 - 2026-06-09: Revised after code/implementation and docs/product review. Added schema validation for warning/error code requirements, broadened stale-contract searches, split invalid Cargo test syntax, added integration/full-gate expectations, tightened the non-fatal error-code API, and clarified that deliberate current-major schema artifact edits are allowed when the runtime embeds the artifact.
 - 2026-06-09: Revised after fresh control review. Added benchmark E2E harness, harness tests, and tracked baseline `.wavepeek.json` artifacts to the implementation scope and validation commands.
 - 2026-06-09: Revised after focused control re-review. Clarified that any fallback benchmark baseline conversion must also add `WPK-W0003` for empty list/search-style artifacts, not only rename old warning lists.
+- 2026-06-10: Updated during implementation after the first Rust slice. Recorded completed diagnostic plumbing, renderer, command-engine, and fatal-prefix work plus the unit-test evidence so a restart can continue from schema, integration, docs, and benchmark tasks.
+- 2026-06-10: Recorded the clippy dead-code discovery for reserved diagnostic kinds and error-code API after the pre-commit lint hook exposed it.
+- 2026-06-10: Updated after schema and integration-test implementation. Recorded that the current-major schema now exposes typed diagnostics, schema checks cover the shape, and `cargo test -q` passes before the docs/benchmark slice.
+- 2026-06-10: Updated after docs, benchmark, review, and gate completion. Recorded fixed review findings around `data.anyOf`, docs/help wording, and benchmark typed-diagnostic validation, plus passing `just test` and `just check` evidence.
+- 2026-06-10: Updated after independent control review. Recorded the per-kind diagnostic code-prefix finding and targeted schema/benchmark validation fixes.

@@ -94,7 +94,7 @@ fn assert_legacy_subcommand_rejected(legacy_name: &str) {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(format!(
             "unrecognized subcommand '{legacy_name}'"
         )))
@@ -108,7 +108,7 @@ fn assert_human_flag_rejected(args: &[&str], command_name: &str) {
         .args(args)
         .assert()
         .failure()
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--human'"))
         .stderr(predicate::str::contains(format!(
             "See 'wavepeek {command_name} --help'."
@@ -196,7 +196,7 @@ fn top_level_help_documents_general_conventions() {
             "time-window flags (`--from`, `--to`) use inclusive boundaries",
         ))
         .stdout(predicate::str::contains(
-            "Errors follow `error: <category>: <message>`",
+            "Process-level failures follow `fatal: <category>: <message>`",
         ));
 }
 
@@ -371,7 +371,7 @@ fn waveform_help_uses_schema_reference_without_inline_envelope_or_parse_hints() 
             "help for {command_name} should not inline JSON envelope field names"
         );
         assert!(
-            !long_help.contains("`warnings`"),
+            !long_help.contains("`diagnostics`"),
             "help for {command_name} should not inline JSON envelope field names"
         );
         assert!(
@@ -831,7 +831,7 @@ fn docs_skill_subcommand_is_rejected_and_points_to_docs_help() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unrecognized subcommand 'skill'"))
         .stderr(predicate::str::contains("See 'wavepeek docs --help'."));
 }
@@ -843,7 +843,7 @@ fn nested_parse_errors_point_to_full_help_path() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--wat'"))
         .stderr(predicate::str::contains("See 'wavepeek docs show --help'."));
 }
@@ -866,7 +866,7 @@ fn shipped_commands_help_is_self_descriptive() {
                 "deterministic hierarchy traversal",
                 "pre-order depth-first",
                 "lexicographic child ordering",
-                "Truncation and disabled-limit conditions emit warnings",
+                "Truncation and disabled-limit conditions emit coded diagnostics",
                 "wavepeek schema",
             ],
         ),
@@ -896,7 +896,7 @@ fn shipped_commands_help_is_self_descriptive() {
                 "range-based delta snapshots",
                 "Prints requested signal values for each `--on` trigger firing",
                 "Similar to a modified SystemVerilog `$monitor`",
-                "Empty-result and truncation conditions may emit warnings",
+                "Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics",
                 "wavepeek schema",
             ],
         ),
@@ -969,7 +969,7 @@ fn subcommand_help_uses_extended_prd_descriptions() {
         ))
         .stdout(predicate::str::contains("pre-order depth-first"))
         .stdout(predicate::str::contains(
-            "Truncation and disabled-limit conditions emit warnings",
+            "Truncation and disabled-limit conditions emit coded diagnostics",
         ));
 
     let mut property_command = wavepeek_cmd();
@@ -1123,7 +1123,7 @@ fn change_rejects_legacy_when_flag_without_alias() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--when'"))
         .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
@@ -1137,7 +1137,7 @@ fn waveform_commands_require_waves_flag() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
             "required arguments were not provided",
         ))
@@ -1154,7 +1154,7 @@ fn schema_does_not_accept_waves_flag() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--waves'"))
         .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
 }
@@ -1168,7 +1168,7 @@ fn schema_does_not_accept_json_flag() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--json'"))
         .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
 }
@@ -1182,7 +1182,7 @@ fn schema_rejects_positional_arguments() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument 'extra'"))
         .stderr(predicate::str::contains("See 'wavepeek schema --help'."));
 }
@@ -1211,7 +1211,7 @@ fn value_rejects_legacy_time_flag_without_alias() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--time'"))
         .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
@@ -1225,7 +1225,7 @@ fn positional_arguments_are_rejected() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument 'extra'"))
         .stderr(predicate::str::contains("See 'wavepeek info --help'."));
 }
@@ -1239,7 +1239,7 @@ fn unknown_flags_are_normalized_to_args_category() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--wat'"))
         .stderr(predicate::str::contains("See 'wavepeek info --help'."));
 }
@@ -1300,7 +1300,7 @@ fn unknown_top_level_flag_uses_global_help_hint() {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args:"))
+        .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains("unexpected argument '--wat'"))
         .stderr(predicate::str::contains("See 'wavepeek --help'."));
 }

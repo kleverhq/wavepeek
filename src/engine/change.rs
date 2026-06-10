@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
+use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     SharedWaveform, bind_waveform_event_expr, candidate_sources_for_handles,
     event_candidate_handles, event_expr_contains_wildcard, event_expr_is_any_tracked_only,
@@ -25,7 +26,7 @@ use crate::waveform::{
     should_emit_delta_and_update_baseline,
 };
 
-const EMPTY_WARNING: &str = "no signal changes found in selected time range";
+const EMPTY_RESULT_MESSAGE: &str = "no signal changes found in selected time range";
 const EDGE_FAST_MIN_WORK: usize = 1_000_000;
 const AUTO_FUSED_MIN_ESTIMATED_WORK: usize = 100_000;
 const AUTO_EDGE_ONLY_MIN_ESTIMATED_WORK: usize = 500_000;
@@ -196,9 +197,12 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         LimitArg::Unlimited => None,
     };
 
-    let mut warnings = Vec::new();
+    let mut diagnostics = Vec::new();
     if args.max.is_unlimited() {
-        warnings.push("limit disabled: --max=unlimited".to_string());
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max=unlimited",
+        ));
     }
 
     let waveform = open_shared_waveform(args.waves.as_path())?;
@@ -341,15 +345,18 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     let truncated = run_output.truncated;
 
     if snapshots.is_empty() {
-        warnings.push(EMPTY_WARNING.to_string());
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            EMPTY_RESULT_MESSAGE,
+        ));
     }
 
     if let Some(max_entries) = max_entries
         && truncated
     {
-        warnings.push(format!(
-            "truncated output to {} entries (use --max to increase limit)",
-            max_entries
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::OutputTruncated,
+            format!("truncated output to {max_entries} entries (use --max to increase limit)"),
         ));
     }
 
@@ -361,7 +368,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             signals_abs: args.abs,
         },
         data: CommandData::Change(snapshots),
-        warnings,
+        diagnostics,
     })
 }
 
@@ -1940,7 +1947,12 @@ mod tests {
             tune_edge_fast_force: false,
         })
         .expect("change run should succeed");
-        assert_eq!(result.warnings, vec!["limit disabled: --max=unlimited"]);
+        assert_eq!(result.diagnostics.len(), 1);
+        assert_eq!(result.diagnostics[0].code(), Some("WPK-W0001"));
+        assert_eq!(
+            result.diagnostics[0].message(),
+            "limit disabled: --max=unlimited"
+        );
         let CommandData::Change(rows) = result.data else {
             panic!("change command should return change rows");
         };
@@ -1989,7 +2001,7 @@ mod tests {
     }
 
     #[test]
-    fn change_run_and_time_helpers_exercise_warning_and_bound_error_paths() {
+    fn change_run_and_time_helpers_exercise_diagnostic_and_bound_error_paths() {
         let fixture = write_fixture(TEST_VCD, "change-warning-empty.vcd");
         let empty = run(ChangeArgs {
             waves: PathBuf::from(fixture.path()),
@@ -2006,7 +2018,9 @@ mod tests {
             tune_edge_fast_force: false,
         })
         .expect("empty result should still succeed");
-        assert_eq!(empty.warnings, vec![super::EMPTY_WARNING.to_string()]);
+        assert_eq!(empty.diagnostics.len(), 1);
+        assert_eq!(empty.diagnostics[0].code(), Some("WPK-W0003"));
+        assert_eq!(empty.diagnostics[0].message(), super::EMPTY_RESULT_MESSAGE);
 
         const MULTI_CHANGE_VCD: &str = concat!(
             "$date\n  today\n$end\n",
@@ -2034,12 +2048,12 @@ mod tests {
             tune_edge_fast_force: false,
         })
         .expect("truncated result should succeed");
-        assert!(
-            truncated
-                .warnings
-                .iter()
-                .any(|warning| { warning.contains("truncated output to 1 entries") })
-        );
+        assert!(truncated.diagnostics.iter().any(|diagnostic| {
+            diagnostic.code() == Some("WPK-W0002")
+                && diagnostic
+                    .message()
+                    .contains("truncated output to 1 entries")
+        }));
         let CommandData::Change(rows) = truncated.data else {
             panic!("change command should return rows");
         };

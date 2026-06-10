@@ -1,26 +1,5 @@
 # Backlog
 
-## Open Design Questions
-
-These unresolved design questions stay here so they remain visible without
-polluting the stable design contracts.
-
-Stable user-facing contracts live under `../public/reference/`, starting from
-`../public/intro.md` for the public documentation map.
-
-1. **Scope and path canonicalization.** What is the canonical path syntax and
-   escaping policy for VCD escaped identifiers and other unusual names across
-   formats?
-2. **Value radix options.** Should a future release add `--radix` (for example
-   `hex`, `bin`, `dec`, `auto`), and if so what default policy should replace
-   or complement Verilog-literal output?
-3. **Schema evolution policy.** Should the project keep one canonical schema
-   forever, or eventually split machine contracts into per-command schemas?
-4. **Signal metadata schema.** Which JSON fields beyond `kind` and `width`
-   should be part of the stable `signal` machine contract across dump formats?
-5. **GHW support scope.** If GHW support is added after MVP, what acceptance
-   criteria and priority should gate that work?
-
 ## Proposals
 
 ### Temporal property language extensions over waveforms
@@ -61,6 +40,18 @@ Affecting flows:
 - Consider allowing selected consumer arguments to use `-` as a typed stdin source from another `wavepeek --json` command instead of adding a separate chaining output mode.
 - Example: `scope --json | signal --scope -` projects exactly one `scope.data[].path`; `signal --json | value --signals -` projects one or more `signal.data[].path` values.
 - Keep compatibility explicit per argument/producer pair, preserve upstream diagnostics, reject ambiguous multi-stdin usage, and fail fast on wrong producer command or invalid cardinality.
+
+### GHW waveform input support
+
+Affecting flows:
+- `llm-agent` — Could: agents could inspect VHDL-oriented waveform dumps without requiring an external conversion step, but VCD/FST/FSDB already cover the current stable flows.
+- `user-manual` — Could: users with GHDL or VHDL-heavy workflows could point wavepeek directly at `.ghw` files instead of exporting another format.
+- `scripting` — Could: scripts could avoid format-conversion glue when upstream tools emit GHW natively.
+
+- Explore adding `.ghw` input support with the same command surface and JSON contracts used for VCD, FST, and FSDB.
+- Define stable hierarchy, signal-kind, value-sampling, time-unit, and unsupported-encoding behavior before implementation.
+- Keep this proposal unscheduled until a concrete backend choice, fixture source, and parity test strategy are documented.
+- Close when a design note identifies the reader implementation, fixture policy, stable kind/value mappings, and minimum acceptance tests for `info`, `scope`, `signal`, `value`, `change`, and `property`.
 
 ## Tech Debt
 

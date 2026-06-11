@@ -223,6 +223,10 @@ check-fsdb-build: require-verdi
         printf '%s\n' "error: fsdb: built binary must not contain an absolute DT_NEEDED path" >&2; \
         exit 1; \
     fi; \
+    if ! printf '%s\n' "$readelf_output" | grep -Eq '\(NEEDED\).*Shared library: \[libz\.so(\.[^]]*)?\]'; then \
+        printf '%s\n' "error: fsdb: built binary must contain a libz DT_NEEDED entry" >&2; \
+        exit 1; \
+    fi; \
     if ! printf '%s\n' "$readelf_output" | grep -E '\((RPATH|RUNPATH)\)' | grep -F -- "$fsdb_libdir" >/dev/null; then \
         printf '%s\n' "error: fsdb: built binary must contain an ELF RPATH/RUNPATH for $fsdb_libdir" >&2; \
         exit 1; \

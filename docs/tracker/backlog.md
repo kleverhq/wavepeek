@@ -2,6 +2,22 @@
 
 ## Proposals
 
+### Public performance guide for waveform formats
+
+Affecting flows:
+- `llm-agent` — Should: agents need format-aware expectations for command latency, conversion trade-offs, and memory pressure before choosing a dump strategy.
+- `user-manual` — Should: users need practical guidance for choosing between FSDB, VCD, and FST without reverse-engineering benchmark artifacts.
+- `scripting` — Should: scripts and CI jobs need predictable guidance on when repeated CLI invocations are expensive and when conversion or batching is appropriate.
+
+- Add a public performance guide under `docs/public/` that explains format-level behavior and expected resource classes for supported waveform inputs.
+- Cover VCD as large textual input that can require full body parsing for value-oriented workflows, with high CPU and memory pressure on large dumps.
+- Cover FST as the preferred indexed/compact format for repeated inspection, with selective signal loading and generally lower memory use.
+- Cover FSDB as an optional native backend whose value lookup can be fast after setup, but whose short-lived CLI use may pay repeated hierarchy/session setup costs.
+- Explain why repeated independent CLI commands can be much slower than a future batched/persistent workflow because per-process waveform setup is not reused.
+- Describe conversion trade-offs, especially FSDB/VCD to FST for repeated analysis, without promising universal speedups for one-off queries.
+- Include order-of-magnitude memory expectations and caveats rather than benchmark-specific tables; keep detailed benchmark artifacts outside the public guide as source material for drafting.
+- Close when the guide is linked from public docs navigation/help, documents VCD/FST/FSDB behavior and conversion guidance, and includes validation notes for memory and timing claims.
+
 ### Temporal property language extensions over waveforms
 
 Affecting flows:

@@ -33,6 +33,21 @@ Affecting flows:
 - Link these workflows from command docs for `property`, `value`, and `change`, and from the packaged agent skill once the recipes are stable.
 - Close when the public docs include at least one protocol-neutral event workflow and either protocol-specific recipes or a documented reason to keep protocol guidance generic.
 
+### Packaged skill routing and operation recipes
+
+Affecting flows:
+- `llm-agent` — Must: agents rely on the packaged skill as the first routing layer and need stronger guardrails before issuing waveform commands.
+- `user-manual` — Could: the skill is not a primary human surface, but better agent behavior improves generated explanations and handoff notes.
+- `scripting` — Could: scripts are not expected to read the skill, but documented recipes can align agent-generated command sequences with supported scripting patterns.
+
+- Strengthen the packaged wavepeek skill as a router without duplicating full command reference material.
+- Add a directive to inspect exact command help before the first use of each command family in a task, for example `wavepeek help value`, `wavepeek help change`, or `wavepeek help property`; agents should not guess flags, event syntax, or capture defaults.
+- Point agents to the most relevant narrative docs for common decisions, including command selection, expression semantics, machine-output diagnostics, and troubleshooting empty results.
+- Add minimal operation recipes for high-frequency tasks: discover scope/signals, sample values at known times, enumerate event matches, inspect value transitions, diagnose empty output, handle truncation diagnostics, and extract valid/ready handshakes.
+- Make the event-enumeration recipe explicit: use `property --capture match` for protocol events, then sample payloads with `value`; use `change` only when value transitions are the intended result.
+- Include final-answer self-checks for agent workflows, such as verifying diagnostics, bounds, row counts, unique-count arithmetic, and whether a claim is about events, value changes, or completed protocol transactions.
+- Close when the packaged skill gives clear routing guidance, requires command-help lookup before first command use, includes compact recipes for core workflows, and links to public workflow docs once those recipes are stable.
+
 ### Batch, interactive, or MCP session mode for repeated queries
 
 Affecting flows:

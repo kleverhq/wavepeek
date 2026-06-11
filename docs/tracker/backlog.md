@@ -33,6 +33,48 @@ Affecting flows:
 - Define resource and lifecycle behavior explicitly, including memory retention, waveform close/reopen, stale file detection, concurrency limits, and cleanup on client disconnect.
 - Close when a design note selects the initial interface, defines request/response contracts, documents format-specific reuse expectations, and includes benchmark acceptance criteria for repeated VCD/FSDB queries.
 
+### FSDB hierarchy and idcode cache for one-shot CLI use
+
+Affecting flows:
+- `llm-agent` — Should: agents may continue to issue independent CLI calls even if a future session mode exists, and should not repeatedly rebuild FSDB hierarchy state.
+- `user-manual` — Should: users exploring FSDB dumps through shell history need faster repeated `scope`, `signal`, and `value` calls without changing their workflow.
+- `scripting` — Should: scripts built around one-shot commands need a way to amortize FSDB hierarchy setup without adopting a persistent transport.
+
+- Research and design an on-disk cache for FSDB metadata and hierarchy-derived indexes across independent CLI invocations.
+- Cache metadata needed for lookup and output, not waveform values: timescale, time bounds, scopes, signal records, full path to idcode mapping, widths, value encodings, datatypes, and enum metadata.
+- Use the cache to avoid repeated full FSDB scope/var tree traversal on warm `scope`, `signal`, and path-based `value` queries where possible.
+- Define strict invalidation using file identity, file size, mtime with sufficient precision, wavepeek version, cache schema version, and FSDB backend/cache version; consider an optional content fingerprint where needed.
+- Define operational controls such as `--no-cache`, explicit rebuild, cache clean, atomic writes, and user-private permissions because hierarchy and signal names may be sensitive.
+- Close when a design and prototype demonstrate warm-cache speedups for representative FSDB one-shot queries while preserving stale-cache detection and existing output contracts.
+
+### VCD to FST sidecar cache for repeated inspection
+
+Affecting flows:
+- `llm-agent` — Should: agents querying large VCD dumps repeatedly need a path that avoids reparsing large textual waveform bodies on every command.
+- `user-manual` — Could: users can already convert VCD to FST explicitly, but an integrated cache would make the faster path easier to discover and reuse.
+- `scripting` — Should: scripts should be able to opt into or rely on a managed sidecar rather than carrying ad hoc conversion logic.
+
+- Research an automatic or opt-in VCD-to-FST sidecar cache for repeated inspection of large VCD inputs.
+- Prefer reusing FST as the parsed/indexed representation rather than inventing a separate VCD value-change cache.
+- Make first-use conversion cost explicit; this is mainly valuable when the converted sidecar is reused across multiple queries or sessions, not necessarily for one-off commands.
+- Define cache placement, invalidation, disk usage limits, cleanup behavior, concurrency handling, and disable/rebuild controls.
+- Preserve direct VCD support and existing command outputs; sidecar use should be an implementation detail unless the user requests cache diagnostics.
+- Close when a design selects opt-in versus automatic behavior, documents conversion trade-offs, and demonstrates repeated-query speedups on large VCD fixtures.
+
+### Opt-in backend performance diagnostics
+
+Affecting flows:
+- `llm-agent` — Could: agents can use structured timing clues to choose formats, recommend conversion, or report why a query is slow.
+- `user-manual` — Could: users can attach actionable timing breakdowns to performance reports instead of only reporting total command duration.
+- `scripting` — Could: scripts and CI jobs can log backend phase timings when diagnosing regressions, while keeping normal output stable.
+
+- Add an opt-in timing diagnostics mode for waveform backend phases without changing default stdout/stderr behavior.
+- Capture durable phase boundaries such as format detection, open, header/body parse, hierarchy load, signal load, expression evaluation, value sampling, rendering, and backend cleanup where applicable.
+- Decide whether diagnostics are human-readable stderr, machine-readable JSON/JSONL, or both; keep normal `--json` output contracts backward-compatible.
+- Include enough format context to distinguish VCD parse cost, FST selective loading, and FSDB hierarchy/session setup without exposing sensitive signal values.
+- Keep diagnostics low overhead when disabled and avoid relying on ad hoc temporary instrumentation.
+- Close when the interface is documented, representative backend phases are covered, and tests verify that diagnostics are opt-in and do not perturb normal command output.
+
 ### Temporal property language extensions over waveforms
 
 Affecting flows:

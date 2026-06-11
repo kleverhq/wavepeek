@@ -119,6 +119,21 @@ Affecting flows:
 - Explore whether documentation is sufficient or whether the CLI needs an explicit sampling-mode concept, such as before-event versus after-event sampling, previous sampled value helpers, or dedicated guidance for SVA-like property checks over dumps.
 - Close when a design note states the current semantics precisely, identifies affected commands and examples, and decides whether to document the caveat only or add a user-visible sampling-mode feature.
 
+### Reproducible performance CI workflow and gate
+
+Affecting flows:
+- `llm-agent` — Should: agents depend on predictable waveform query latency and need performance regressions to be visible before release.
+- `user-manual` — Should: users benefit when documented format guidance and expected resource classes are backed by reproducible measurements.
+- `scripting` — Must: automated workflows need stable benchmark artifacts and regression checks instead of ad hoc local-machine measurements.
+
+- Add a manual CI workflow that maintainers can trigger on demand to run representative performance benchmarks on controlled CI infrastructure.
+- Upload benchmark artifacts from the manual workflow, including raw command logs, timing summaries, environment metadata, binary/build metadata, and any generated comparison tables needed for review.
+- Define a process for manually curating and committing benchmark snapshots or baselines to the repository, replacing undocumented local-machine measurements with reproducible CI-collected data.
+- Document which runner class is considered authoritative for performance data; prefer stable CI infrastructure over developer workstations because timing and memory results are machine-dependent.
+- Research a full CI performance gate that can detect meaningful regressions without being flaky, including tolerance bands, warmup/retry strategy, fixture selection, noise handling, and clear failure diagnostics.
+- Keep heavy performance jobs out of the default fast path until the benchmark runtime, resource cost, and flake rate are understood.
+- Close when the manual benchmark workflow exists, artifact contents are documented, committed baseline policy is defined, and a design note proposes a non-flaky path toward an enforced perf gate.
+
 ### Temporal property language extensions over waveforms
 
 Affecting flows:

@@ -18,6 +18,21 @@ Affecting flows:
 - Include order-of-magnitude memory expectations and caveats rather than benchmark-specific tables; keep detailed benchmark artifacts outside the public guide as source material for drafting.
 - Close when the guide is linked from public docs navigation/help, documents VCD/FST/FSDB behavior and conversion guidance, and includes validation notes for memory and timing claims.
 
+### Batch, interactive, or MCP session mode for repeated queries
+
+Affecting flows:
+- `llm-agent` — Must: agents often issue many related waveform queries and should not pay full VCD/FSDB open/setup cost for every question.
+- `user-manual` — Should: interactive users exploring a dump benefit from reusing loaded waveform state across repeated scope, signal, value, change, and property queries.
+- `scripting` — Should: scripts that perform multi-step inspection need a supported way to amortize waveform setup without reimplementing orchestration around the CLI.
+
+- Research and design a session-oriented execution mode that can reuse an opened waveform across many requests.
+- Candidate shapes include a batch command, an interactive/REPL mode, a long-lived local service, an MCP server, or a combination of these; do not commit to one transport until requirements and trade-offs are documented.
+- Optimize for formats with expensive per-process setup: large VCD files can pay high parse cost tied to dump size, while FSDB can pay high native reader and hierarchy setup cost tied to hierarchy and backend behavior.
+- Treat FST as outside the initial motivation because its current indexed backend already has low per-command setup cost for repeated inspection compared with VCD and FSDB.
+- Preserve existing one-shot CLI commands and output contracts; session mode should be additive and should define how command results, diagnostics, cancellation, and errors are represented.
+- Define resource and lifecycle behavior explicitly, including memory retention, waveform close/reopen, stale file detection, concurrency limits, and cleanup on client disconnect.
+- Close when a design note selects the initial interface, defines request/response contracts, documents format-specific reuse expectations, and includes benchmark acceptance criteria for repeated VCD/FSDB queries.
+
 ### Temporal property language extensions over waveforms
 
 Affecting flows:

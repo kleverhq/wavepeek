@@ -105,6 +105,20 @@ Affecting flows:
 - Keep diagnostics low overhead when disabled and avoid relying on ad hoc temporary instrumentation.
 - Close when the interface is documented, representative backend phases are covered, and tests verify that diagnostics are opt-in and do not perturb normal command output.
 
+### Clock-edge sampling semantics and RTL/SVA expectations
+
+Affecting flows:
+- `llm-agent` — Should: agents can misinterpret same-timestamp samples as RTL-cycle behavior when extracting handshakes or explaining causality.
+- `user-manual` — Should: users familiar with RTL and SVA need clear expectations for what value is sampled at an event timestamp.
+- `scripting` — Could: scripts may need explicit before-edge or after-edge sampling choices when comparing waveform-derived results with RTL assertions.
+
+- Research and document the semantic gap between dump snapshots and RTL/SVA sampling regions.
+- Current waveform queries sample values available at the selected dump timestamp after simulator updates for that timestamp have settled; this can make a signal driven by a clock edge visible at the same clock edge in `property --on "posedge clk" --eval ...`.
+- In RTL/SVA mental models, values driven by sequential logic on a clock edge are often expected to be observed on the next clock, or sampled in a pre-edge assertion region, so the same query can look off by one clock tick.
+- Clarify that this does not necessarily duplicate one-cycle valid/ready pulses: if a pulse asserts on one sampled edge and deasserts on the next, the dump-snapshot model still sees one asserted sample and one deasserted sample, but the causal interpretation and timestamp labeling differ from RTL expectations.
+- Explore whether documentation is sufficient or whether the CLI needs an explicit sampling-mode concept, such as before-event versus after-event sampling, previous sampled value helpers, or dedicated guidance for SVA-like property checks over dumps.
+- Close when a design note states the current semantics precisely, identifies affected commands and examples, and decides whether to document the caveat only or add a user-visible sampling-mode feature.
+
 ### Temporal property language extensions over waveforms
 
 Affecting flows:

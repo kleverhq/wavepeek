@@ -18,6 +18,21 @@ Affecting flows:
 - Include order-of-magnitude memory expectations and caveats rather than benchmark-specific tables; keep detailed benchmark artifacts outside the public guide as source material for drafting.
 - Close when the guide is linked from public docs navigation/help, documents VCD/FST/FSDB behavior and conversion guidance, and includes validation notes for memory and timing claims.
 
+### Public workflow docs for events and protocol handshakes
+
+Affecting flows:
+- `llm-agent` — Must: agents need durable recipes for distinguishing value changes from protocol events and for extracting repeated handshakes without collapsing identical payloads.
+- `user-manual` — Should: users benefit from cookbook-style waveform inspection workflows for common bus protocols without reverse-engineering command semantics from reference docs.
+- `scripting` — Should: scripts can reuse documented event-enumeration patterns and avoid fragile ad hoc parsing or repeated one-off command loops.
+
+- Expand `docs/public/workflows/` beyond first-change search with guidance for event and handshake extraction.
+- Add a protocol-neutral workflow that explains how to identify a clock, define an event predicate, enumerate matches with `property --capture match`, sample payload signals with `value`, and use `change` only when value transitions are the desired result.
+- Cover diagnostics and invariants in the workflow: check truncation diagnostics, verify row counts, distinguish unique payload values from transaction counts, and state whether completion was verified separately.
+- Consider protocol-specific workflow topics when a protocol family has enough recurring inspection patterns to justify its own page; do not treat any initial set as exhaustive.
+- Keep protocol topics parameterized around signal roles rather than design-specific names; possible examples include AXI AW handshakes, AXI-Stream `tvalid && tready`, APB transfer completion, AHB non-idle transfers with `hready`, Wishbone `cyc && stb && ack`, or other bus/stream protocols with similar event predicates.
+- Link these workflows from command docs for `property`, `value`, and `change`, and from the packaged agent skill once the recipes are stable.
+- Close when the public docs include at least one protocol-neutral event workflow and either protocol-specific recipes or a documented reason to keep protocol guidance generic.
+
 ### Batch, interactive, or MCP session mode for repeated queries
 
 Affecting flows:

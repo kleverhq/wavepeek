@@ -112,6 +112,8 @@ Affecting flows:
 
 - Consider allowing selected consumer arguments to use `-` as a typed stdin source from another `wavepeek --json` command instead of adding a separate chaining output mode.
 - Example: `scope --json | signal --scope -` projects exactly one `scope.data[].path`; `signal --json | value --signals -` projects one or more `signal.data[].path` values.
+- Example: `property --capture match --json | value --at - --signals addr,data` projects one or more `property.data[].time` values into multi-timestamp value sampling.
+- If raw line-oriented stdin is also supported for times, keep it separate from typed JSON projection, for example `property --capture match --json | jq -r '.data[].time' | value --at-file - --signals addr,data`.
 - Keep compatibility explicit per argument/producer pair, preserve upstream diagnostics, reject ambiguous multi-stdin usage, and fail fast on wrong producer command or invalid cardinality.
 
 ### GHW waveform input support

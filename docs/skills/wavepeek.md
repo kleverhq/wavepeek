@@ -1,6 +1,6 @@
 ---
 name: wavepeek
-description: Use this skill when you need to inspect or analyze `.vcd` and `.fst` waveforms with the wavepeek CLI. Load it for dump metadata, hierarchy/signal discovery, point samples, range changes, property checks, and JSON-backed automation.
+description: Use this skill when you need to inspect or analyze `.vcd`, `.fst`, or `.fsdb` waveforms with the wavepeek CLI. Load it for dump metadata, hierarchy/signal discovery, point samples, range changes, property checks, and JSON-backed automation.
 ---
 
 When there is a waveform question or waveform analysis request, use `wavepeek` to do the work.
@@ -10,7 +10,7 @@ Treat this skill as a safe entrypoint and router. It should get you to the right
 ## Safety posture
 
 - Treat waveform files as CLI inputs, not text to inspect directly.
-- `.fst` files are binary; never read them directly with generic read tools.
+- `.fst` and `.fsdb` files are binary; never read them directly with generic read tools.
 - Even `.vcd` files can be large; prefer `wavepeek` commands over raw dump reads.
 - Confirm the waveform path, analysis goal, known scope or signals, and any target time window.
 - Keep queries bounded unless the user explicitly asks for more output.

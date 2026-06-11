@@ -54,6 +54,7 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
         fs::read_to_string(canonical_skill_path()).expect("packaged skill should be readable");
 
     assert!(packaged.contains("wavepeek help <command-path...>"));
+    assert!(packaged.contains(".fsdb"));
     assert!(!packaged.contains("parsed but not executed in `change`"));
     assert!(!packaged.contains("parse-level only; runtime execution is not implemented"));
 }

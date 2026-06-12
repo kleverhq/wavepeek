@@ -19,9 +19,11 @@ This change does not add repeated `--at` flags. The supported multi-time syntax 
 - [x] (2026-06-12T11:20:44Z) Confirmed requirements with the user: one `--at` argument, comma-separated time tokens, single-time output also changes to `change`-style rows, JSON shape should match `change` as closely as practical, and the plan is committed before implementation.
 - [x] (2026-06-12T11:20:44Z) Read repository guidance for source, tests, public docs, schema, and WIP tracker artifacts.
 - [x] (2026-06-12T11:20:44Z) Inspected current `value` and `change` implementation and tests: `src/engine/value.rs` currently returns one `ValueData { time, signals }`, while `src/engine/change.rs` returns `Vec<ChangeSnapshot>` and `src/output.rs` renders change rows as `@time name=value ...`.
-- [ ] Commit this ExecPlan as a branch-local WIP artifact.
-- [ ] Run focused read-only review of this ExecPlan and revise it if reviewers find gaps.
-- [ ] Implement parser, runtime, output, schema, docs, changelog, and test updates.
+- [x] (2026-06-12T11:20:44Z) Committed this ExecPlan as branch-local WIP artifact in commit `1b233b8`.
+- [x] (2026-06-12T11:33:17Z) Ran focused read-only plan review with code-feasibility and docs/schema/test-collateral lanes; reviewers found missing validation commands, benchmark baselines, FSDB tests, schema/output tests, overview docs, top-level help, and README table coverage.
+- [x] (2026-06-12T11:33:17Z) Revised this ExecPlan to include the review findings before implementation.
+- [x] (2026-06-12T11:33:17Z) Committed this reviewed ExecPlan revision before implementation.
+- [ ] Implement parser, runtime, output, schema, docs, changelog, benchmark baseline, and test updates.
 - [ ] Run targeted tests and schema checks, then run the local pre-handoff gate if practical.
 - [ ] Run focused read-only review of the implementation and revise the code or docs if reviewers find substantive issues.
 - [ ] Commit implementation work in one or more conventional commits.
@@ -32,6 +34,10 @@ This change does not add repeated `--at` flags. The supported multi-time syntax 
   Evidence: `src/engine/schema.rs` returns `CANONICAL_SCHEMA_JSON`, and `schema/AGENTS.md` allows deliberate edits to the current-major artifact when the runtime embeds that artifact, followed by `just check-schema`.
 - Observation: `value --at` currently parses a single string in `src/engine/value.rs`; `--signals` is already comma-split by clap in `src/cli/value.rs`.
   Evidence: `ValueArgs` has `pub at: String` and `pub signals: Vec<String>` with `value_delimiter = ','`.
+- Observation: Cargo integration-test files must be selected with `cargo test --test <target>`, not by using the file stem as a test-name filter.
+  Evidence: Plan review identified that `cargo test value_cli`, `cargo test cli_contract`, and `cargo test schema_cli` can run zero tests, so the plan now uses `cargo test --test value_cli`, `cargo test --test cli_contract`, and `cargo test --test schema_cli`.
+- Observation: The checked-in benchmark corpus includes `.wavepeek.json` value artifacts under `bench/e2e/runs/`, and pre-commit includes an E2E smoke check.
+  Evidence: Plan review found old object-shaped `value.data` baselines would need refreshing after the JSON array-shape change.
 
 ## Decision Log
 
@@ -60,7 +66,7 @@ The relevant files are:
 
 `src/cli/value.rs` defines command-line arguments for `wavepeek value`. Today `--at` is a required string containing one time token, and `--signals` is a required comma-separated list parsed by clap into `Vec<String>`.
 
-`src/cli/mod.rs` contains long help text for the top-level command model and per-command behavior. Its `Value` command section must describe one or more comma-separated time points and the new row output.
+`src/cli/mod.rs` contains top-level and per-command help text. Its top-level command summary and its `Value` command section must describe one or more comma-separated time points and the new row output.
 
 `src/engine/time.rs` defines `validate_time_token_to_raw`, which validates one time token against dump bounds and resolution and returns the raw backend timestamp. A raw timestamp is the integer tick used by the waveform backend. The engine should continue using this helper for each token.
 
@@ -74,9 +80,9 @@ The relevant files are:
 
 `schema/wavepeek_v1.json` is the current major JSON Schema contract. The `valueData` definition currently describes one object with `time` and `signals`; it must become an array of snapshot objects, preferably by referencing the same snapshot definition used by `changeData`.
 
-`docs/public/commands/value.md`, `docs/public/commands/change.md`, `docs/public/reference/machine-output.md`, `docs/public/reference/command-model.md`, `docs/skills/wavepeek.md`, `README.md`, and `CHANGELOG.md` are user-facing collateral that mention `value`, `--at`, human output, JSON output, or the standard workflow.
+`docs/public/commands/value.md`, `docs/public/commands/overview.md`, `docs/public/commands/change.md`, `docs/public/reference/machine-output.md`, `docs/public/reference/command-model.md`, `docs/skills/wavepeek.md`, `README.md`, and `CHANGELOG.md` are user-facing collateral that mention `value`, `--at`, human output, JSON output, or the standard workflow.
 
-`tests/value_cli.rs` owns the direct CLI behavior contract for `value`. `tests/change_cli.rs` is useful as the reference for `change` row and JSON expectations. `tests/cli_contract.rs` checks help text. `tests/schema_cli.rs` and `tools/schema/check_schema_contract.py` check schema availability and drift. The command fixture manifest under `tests/fixtures/cli/` should only be changed if a durable runtime fixture needs `value` coverage.
+`tests/value_cli.rs` owns the direct CLI behavior contract for `value`. `tests/change_cli.rs` is useful as the reference for `change` row and JSON expectations. `tests/cli_contract.rs` checks help text. `tests/schema_cli.rs` and `tools/schema/check_schema_contract.py` check schema availability and drift. `src/output.rs` also has renderer tests that can mention value shape. `tests/fsdb_cli.rs` has FSDB-enabled value JSON assertions that must move to the new array shape. The command fixture manifest under `tests/fixtures/cli/` should only be changed if a durable runtime fixture needs `value` coverage. Checked-in benchmark outputs under `bench/e2e/runs/` may include value `.wavepeek.json` artifacts and must be refreshed if pre-commit smoke compares them against current output.
 
 ## Open Questions
 
@@ -88,7 +94,7 @@ First, commit this plan and send it through focused read-only review. If review 
 
 In `src/cli/value.rs`, keep `pub at: String` but update the help text to say that `--at` accepts one or more comma-separated time points with explicit units, for example `10ns` or `5ns,10ns`.
 
-In `src/cli/mod.rs`, update the `Value` command long help. It should say that the command prints values for requested signals at each selected time point, that `--at` accepts a comma-separated list in one argument, that output preserves the `--at` order and the `--signals` order, and that time tokens must include units and align to dump precision.
+In `src/cli/mod.rs`, update both the top-level `value` summary and the `Value` command long help. They should say that the command prints values for requested signals at each selected time point, that `--at` accepts a comma-separated list in one argument, that output preserves the `--at` order and the `--signals` order, and that time tokens must include units and align to dump precision.
 
 In `src/engine/value.rs`, replace the single-time `ValueData { time, signals }` model with an array model. Define a snapshot struct analogous to `ChangeSnapshot`, for example `ValueSnapshot { time: String, signals: Vec<ValueSignalValue> }`, and define `pub type ValueData = Vec<ValueSnapshot>` or an equivalent transparent collection. Keep `ValueSignalValue.display` skipped from JSON so human rendering can use either requested names or canonical paths while JSON only exposes `path` and `value`.
 
@@ -100,9 +106,11 @@ In `src/output.rs`, update the `CommandData::Value` human branch to iterate snap
 
 In `schema/wavepeek_v1.json`, change `valueData` from an object to an array of snapshots. The preferred schema is `"valueData": { "type": "array", "items": { "$ref": "#/$defs/changeSnapshot" } }` if the existing `changeSnapshot` description is general enough, or a new `valueSnapshot` definition with the same required fields and properties if wording must remain value-specific. If a shared snapshot definition is introduced, both `valueData` and `changeData` should reference it so the shape stays visibly unified. Do not modify prior-major schema artifacts.
 
-Update tests. In `tests/value_cli.rs`, change the existing human expectations from the old multi-line block to one row. Change existing JSON expectations from an object to a one-element array. Add explicit coverage for `--at 5ns,10ns` in human and JSON modes, preserving input order. Add coverage that `--at 10ns,5ns,10ns` preserves duplicates and order. Add coverage that an empty comma entry such as `--at 5ns,,10ns` fails with `fatal: args:` and the value help hint. Keep existing error tests for invalid, decimal, out-of-range, and unaligned single tokens, because those should still fail the same way. Update unit tests in `src/engine/value.rs` to assert the returned payload is an array and that parsing multiple time points works.
+Update tests. In `tests/value_cli.rs`, change the existing human expectations from the old multi-line block to one row. Change existing JSON expectations from an object to a one-element array. Add explicit coverage for `--at 5ns,10ns` in human and JSON modes, preserving input order. Add coverage that `--at 10ns,5ns,10ns` preserves duplicates and order. Add coverage that an empty comma entry such as `--at 5ns,,10ns` fails with `fatal: args:` and the value help hint. Keep existing error tests for invalid, decimal, out-of-range, and unaligned single tokens, because those should still fail the same way. Update unit tests in `src/engine/value.rs` to assert the returned payload is an array and that parsing multiple time points works. Update `src/output.rs` tests for the new value human rendering if they assert command rendering. Update `tests/schema_cli.rs` assertions that currently inspect `$defs.valueData.properties.time` so they assert the new array/shared snapshot schema. Update `tests/fsdb_cli.rs` value JSON assertions to use `data[0].time` and `data[0].signals` or the equivalent array-shape checks.
 
-Update docs and user collateral. In `docs/public/commands/value.md`, describe single and comma-separated time sampling, the new human row output, and the JSON array shape. In `docs/public/reference/machine-output.md`, update the `value` row contract so `data` is an array of snapshots like `change`. In `docs/public/reference/command-model.md`, update point sampling language if it says `value` only has one selected time. In `README.md`, change the quick-start comment to mention one or more timestamps. In `docs/skills/wavepeek.md`, change the workflow example to show `--at <TIME[,TIME...]>` or equivalent concise wording. In `CHANGELOG.md`, add an Unreleased `Changed` entry that says `value --at` now accepts comma-separated time points and emits `change`-style snapshot arrays and human rows.
+Update docs and user collateral. In `docs/public/commands/value.md`, describe single and comma-separated time sampling, the new human row output, and the JSON array shape. In `docs/public/commands/overview.md`, replace wording that says `value` samples one normalized timestamp. In `docs/public/reference/machine-output.md`, update the `value` row contract so `data` is an array of snapshots like `change`. In `docs/public/reference/command-model.md`, update point sampling language if it says `value` only has one selected time. In `README.md`, change the quick-start comment to mention one or more timestamps and update the command table row that says `value` is for a specific time. In `docs/skills/wavepeek.md`, change the workflow example to show `--at <TIME[,TIME...]>` or equivalent concise wording. In `CHANGELOG.md`, add an Unreleased `Changed` entry that says `value --at` now accepts comma-separated time points and emits `change`-style snapshot arrays and human rows.
+
+Refresh benchmark collateral if current pre-commit smoke or tracked functional baselines compare stored `value` JSON output. Check `bench/e2e/runs/*/value_*.wavepeek.json` and update affected artifacts after the new `value.data` array shape lands, using the repository benchmark workflow rather than hand-editing opaque performance data where practical.
 
 Finally, run formatting and checks. Use targeted tests first, then schema checks, then the local pre-handoff gate if time permits.
 
@@ -120,22 +128,23 @@ Run plan review through read-only subagents. The reviewer should inspect this pl
 Implement the code and collateral changes described above. Then run:
 
     cargo fmt --all
-    cargo test value_cli
-    cargo test cli_contract
-    cargo test schema_cli
+    cargo test --test value_cli
+    cargo test --test cli_contract
+    cargo test --test schema_cli
+    cargo test --test fsdb_cli
     just check-schema
 
 If those pass, run the repository pre-handoff gate:
 
     just check
 
-Expected targeted test result is that the selected Rust integration suites finish successfully. Expected schema check result is no output ending in a failure and exit code `0`. If `just check` takes too long or fails for environment reasons unrelated to this change, capture the exact command and failure in this plan and report it in the final handoff.
+Expected targeted test result is that the selected Rust integration suites finish successfully. `cargo test --test fsdb_cli` may skip or exercise feature-dependent cases depending on the local environment; if it cannot run due to missing FSDB SDK support, capture the exact result and rely on `just check` or CI for the supported matrix. Expected schema check result is no output ending in a failure and exit code `0`. If `just check` takes too long or fails for environment reasons unrelated to this change, capture the exact command and failure in this plan and report it in the final handoff.
 
 After implementation and targeted checks, run focused read-only implementation review. Use separate lanes if the diff is broad: code/tests for engine and rendering behavior, and docs/schema for public collateral. Apply substantive fixes, rerun affected checks, and run one independent control pass if the first review required changes.
 
 Commit implementation work with conventional messages. A likely final commit is:
 
-    git add src tests docs schema README.md CHANGELOG.md
+    git add src tests docs schema bench README.md CHANGELOG.md
     git commit -m "feat(value): support multi-time sampling"
 
 Split documentation/schema/test commits only if the implementation naturally lands in separate reviewed slices.
@@ -238,3 +247,4 @@ The exact type alias is optional, but `CommandData::Value` must serialize as an 
 ## Plan Revision Notes
 
 - 2026-06-12 / Grin: Initial plan. It records the user-confirmed CLI contract, identifies implementation and collateral files, defines acceptance commands, and preserves the requirement to review and commit the plan before implementation.
+- 2026-06-12 / Grin: Plan review revision. It adds missing integration-test target commands, benchmark baseline handling, FSDB/schema/output test updates, public command overview docs, top-level help summary, and README command-table collateral.

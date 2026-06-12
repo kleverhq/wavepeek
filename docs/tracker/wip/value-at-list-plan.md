@@ -23,10 +23,11 @@ This change does not add repeated `--at` flags. The supported multi-time syntax 
 - [x] (2026-06-12T11:33:17Z) Ran focused read-only plan review with code-feasibility and docs/schema/test-collateral lanes; reviewers found missing validation commands, benchmark baselines, FSDB tests, schema/output tests, overview docs, top-level help, and README table coverage.
 - [x] (2026-06-12T11:33:17Z) Revised this ExecPlan to include the review findings before implementation.
 - [x] (2026-06-12T11:33:17Z) Committed this reviewed ExecPlan revision before implementation.
-- [ ] Implement parser, runtime, output, schema, docs, changelog, benchmark baseline, and test updates.
-- [ ] Run targeted tests and schema checks, then run the local pre-handoff gate if practical.
-- [ ] Run focused read-only review of the implementation and revise the code or docs if reviewers find substantive issues.
-- [ ] Commit implementation work in one or more conventional commits.
+- [x] (2026-06-12T11:46:32Z) Implemented parser, runtime, output, schema, docs, changelog, benchmark baseline, and test updates.
+- [x] (2026-06-12T11:46:32Z) Ran targeted tests and schema checks, including `cargo test --test value_cli`, `cargo test --test cli_contract`, `cargo test --test schema_cli`, `cargo test --test docs_cli`, `cargo test --test command_fixture_contract`, `CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb --test fsdb_cli`, `just check-schema`, benchmark helper tests, benchmark baseline self-compares, and `just check`.
+- [x] (2026-06-12T12:06:54Z) Ran focused read-only implementation review across code/tests, docs/schema, and benchmark collateral lanes; fixed stale CLI-contract help expectation and added generated-help wording for the new human row format.
+- [x] (2026-06-12T12:06:54Z) Ran an independent read-only control pass after fixes; it reported no substantive findings.
+- [x] (2026-06-12T12:06:54Z) Committed implementation work in a conventional feature commit.
 
 ## Surprises & Discoveries
 
@@ -38,6 +39,8 @@ This change does not add repeated `--at` flags. The supported multi-time syntax 
   Evidence: Plan review identified that `cargo test value_cli`, `cargo test cli_contract`, and `cargo test schema_cli` can run zero tests, so the plan now uses `cargo test --test value_cli`, `cargo test --test cli_contract`, and `cargo test --test schema_cli`.
 - Observation: The checked-in benchmark corpus includes `.wavepeek.json` value artifacts under `bench/e2e/runs/`, and pre-commit includes an E2E smoke check.
   Evidence: Plan review found old object-shaped `value.data` baselines would need refreshing after the JSON array-shape change.
+- Observation: A full FSDB-vs-FST functional baseline compare still reports existing non-value differences in scope and signal artifacts.
+  Evidence: `python3 bench/e2e/perf.py compare --functional-only --revised bench/e2e/runs/baseline_fsdb --golden bench/e2e/runs/baseline_fst --verbose` reported mismatches for `scope_scr1_all_depth7_json` and `signal_scr1_top_recursive_depth2_json`; value artifacts were refreshed separately and each baseline directory self-compares successfully.
 
 ## Decision Log
 
@@ -53,10 +56,13 @@ This change does not add repeated `--at` flags. The supported multi-time syntax 
 - Decision: Preserve the user-provided order of `--at` tokens and preserve duplicate time points.
   Rationale: Existing `value` preserves `--signals` order and duplicates; doing the same for time points is deterministic and avoids hidden sorting or deduplication semantics.
   Date/Author: 2026-06-12 / Grin
+- Decision: In `schema/wavepeek_v1.json`, make `valueData` an array whose items reference the same `changeSnapshot` definition used by `changeData`.
+  Rationale: The user asked for the JSON form to be effectively the same as `change` where practical. Reusing the snapshot definition keeps schema drift low while the envelope `command` still disambiguates semantics.
+  Date/Author: 2026-06-12 / Grin
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. This plan records the intended behavior and the repository surfaces that must move together before code changes begin.
+Implementation and review are complete. Single-time `value` now emits one `change`-style row and one JSON snapshot in an array; comma-separated `--at` emits one row and one JSON snapshot per requested time. Public docs, help text, schema, tests, FSDB assertions, and benchmark value baselines were updated together. Review findings were fixed, the control pass was clean, and `just check` passed.
 
 ## Context and Orientation
 
@@ -248,3 +254,5 @@ The exact type alias is optional, but `CommandData::Value` must serialize as an 
 
 - 2026-06-12 / Grin: Initial plan. It records the user-confirmed CLI contract, identifies implementation and collateral files, defines acceptance commands, and preserves the requirement to review and commit the plan before implementation.
 - 2026-06-12 / Grin: Plan review revision. It adds missing integration-test target commands, benchmark baseline handling, FSDB/schema/output test updates, public command overview docs, top-level help summary, and README command-table collateral.
+- 2026-06-12 / Grin: Implementation progress revision. It records completed code, docs, schema, tests, benchmark baseline updates, validation commands, and the schema decision to reuse `changeSnapshot` for `valueData`.
+- 2026-06-12 / Grin: Review completion revision. It records implementation review findings, the clean control pass, final validation, and the implementation commit state.

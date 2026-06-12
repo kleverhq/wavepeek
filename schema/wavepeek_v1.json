@@ -478,28 +478,15 @@
         },
         "value": {
           "$ref": "#/$defs/sampledValue",
-          "description": "Sampled value for this signal at the selected timestamp."
+          "description": "Sampled value for this signal in the selected timestamp snapshot."
         }
       }
     },
     "valueData": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "time",
-        "signals"
-      ],
-      "properties": {
-        "time": {
-          "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp that wavepeek sampled."
-        },
-        "signals": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/sampledSignalValue"
-          }
-        }
+      "type": "array",
+      "description": "Ordered snapshots sampled by the value command.",
+      "items": {
+        "$ref": "#/$defs/changeSnapshot"
       }
     },
     "changeSignalValue": {
@@ -512,11 +499,11 @@
       "properties": {
         "path": {
           "$ref": "#/$defs/canonicalPath",
-          "description": "Canonical path of the signal included in this change snapshot."
+          "description": "Canonical path of the signal included in this timestamp snapshot."
         },
         "value": {
           "$ref": "#/$defs/sampledValue",
-          "description": "Signal value after the change observed at this snapshot time."
+          "description": "Signal value observed at this snapshot time."
         }
       }
     },
@@ -530,7 +517,7 @@
       "properties": {
         "time": {
           "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp at which at least one requested signal changed."
+          "description": "Normalized timestamp for this sampled snapshot."
         },
         "signals": {
           "type": "array",

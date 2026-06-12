@@ -12,7 +12,7 @@ see_also:
 ---
 # Change command
 
-Use `change` when one timestamp is not enough and you need the moments when a small set of signals actually transitions.
+Use `change` when explicit point snapshots are not enough and you need the moments when a small set of signals actually transitions.
 
 `change` scans an inclusive time window, samples the signals from `--signals`, and prints a row only when at least one of those sampled values changed. By default, `--on` is `*`, which means "consider any change in the tracked signal set".
 

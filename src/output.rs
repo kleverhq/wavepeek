@@ -97,19 +97,23 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
-        CommandData::Value(value_data) => {
-            let mut lines = Vec::with_capacity(value_data.signals.len() + 1);
-            lines.push(format!("@{}", value_data.time));
-            for signal in &value_data.signals {
-                let display = if options.signals_abs {
-                    signal.path.as_str()
-                } else {
-                    signal.display.as_str()
-                };
-                lines.push(format!("{display} {}", signal.value));
-            }
-            lines.join("\n")
-        }
+        CommandData::Value(snapshots) => snapshots
+            .iter()
+            .map(|snapshot| {
+                let mut parts = Vec::with_capacity(snapshot.signals.len() + 1);
+                parts.push(format!("@{}", snapshot.time));
+                for signal in &snapshot.signals {
+                    let display = if options.signals_abs {
+                        signal.path.as_str()
+                    } else {
+                        signal.display.as_str()
+                    };
+                    parts.push(format!("{display}={}", signal.value));
+                }
+                parts.join(" ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
         CommandData::Change(snapshots) => snapshots
             .iter()
             .map(|snapshot| {
@@ -399,7 +403,7 @@ mod tests {
     #[test]
     fn value_human_render_is_deterministic_and_compact() {
         let rendered = render_human(
-            &CommandData::Value(crate::engine::value::ValueData {
+            &CommandData::Value(vec![crate::engine::value::ValueSnapshot {
                 time: "10ns".to_string(),
                 signals: vec![
                     crate::engine::value::ValueSignalValue {
@@ -413,11 +417,11 @@ mod tests {
                         value: "8'h0f".to_string(),
                     },
                 ],
-            }),
+            }]),
             HumanRenderOptions::default(),
         );
 
-        assert_eq!(rendered, "@10ns\nclk 1'h1\ndata 8'h0f");
+        assert_eq!(rendered, "@10ns clk=1'h1 data=8'h0f");
     }
 
     #[test]

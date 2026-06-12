@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added FSDB-aware devcontainer and `just` automation, including Verdi environment probing, fixture preparation, optional quality gates, and container wrappers for Verdi FSDB tools.
 
 ### Changed
+- `value --at` now accepts comma-separated time points in one argument and emits `change`-style human rows plus snapshot-array JSON data.
 - Migrated repository automation from root `Makefile` targets to root `justfile` recipes, including CI, devcontainer, pre-commit, release, Codex, and maintainer documentation entrypoints.
 - Reorganized contributor-facing repository maintenance docs into `docs/dev/`, tracking docs into `docs/tracker/`, branch-local tracked WIP artifacts into `docs/tracker/wip/`, and helper automation into grouped `tools/` directories.
 - Split environment bootstrap into explicit `just dev-setup`, direct `bash tools/codex/codex_setup.sh`, and `just codex-resume` flows so Codex cloud setup can provision non-dev tooling without requiring local-only helpers such as Surfer.

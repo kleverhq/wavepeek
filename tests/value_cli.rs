@@ -25,7 +25,7 @@ fn value_human_output_with_scope_is_default() {
         ])
         .assert()
         .success()
-        .stdout(predicate::eq("@10ns\nclk 1'h1\ndata 8'h0f\n"))
+        .stdout(predicate::eq("@10ns clk=1'h1 data=8'h0f\n"))
         .stderr(predicate::str::is_empty());
 }
 
@@ -50,7 +50,7 @@ fn value_human_output_with_abs_shows_canonical_paths() {
         ])
         .assert()
         .success()
-        .stdout(predicate::eq("@10ns\ntop.clk 1'h1\ntop.data 8'h0f\n"))
+        .stdout(predicate::eq("@10ns top.clk=1'h1 top.data=8'h0f\n"))
         .stderr(predicate::str::is_empty());
 }
 
@@ -101,14 +101,124 @@ fn value_json_shape_with_scope_is_stable_and_ordered() {
     assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
-        json!({
-            "time": "10ns",
-            "signals": [
-                {"path": "top.clk", "value": "1'h1"},
-                {"path": "top.data", "value": "8'h0f"}
-            ]
-        })
+        json!([
+            {
+                "time": "10ns",
+                "signals": [
+                    {"path": "top.clk", "value": "1'h1"},
+                    {"path": "top.data", "value": "8'h0f"}
+                ]
+            }
+        ])
     );
+}
+
+#[test]
+fn value_human_output_accepts_comma_separated_times() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    command
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "5ns,10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+        ])
+        .assert()
+        .success()
+        .stdout(predicate::eq(
+            "@5ns clk=1'h1 data=8'h00\n@10ns clk=1'h1 data=8'h0f\n",
+        ))
+        .stderr(predicate::str::is_empty());
+}
+
+#[test]
+fn value_json_preserves_time_order_and_duplicates() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    let assert = command
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "10ns,5ns,10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk,data",
+            "--json",
+        ])
+        .assert()
+        .success();
+
+    let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
+    let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
+
+    assert_eq!(
+        value["data"],
+        json!([
+            {
+                "time": "10ns",
+                "signals": [
+                    {"path": "top.clk", "value": "1'h1"},
+                    {"path": "top.data", "value": "8'h0f"}
+                ]
+            },
+            {
+                "time": "5ns",
+                "signals": [
+                    {"path": "top.clk", "value": "1'h1"},
+                    {"path": "top.data", "value": "8'h00"}
+                ]
+            },
+            {
+                "time": "10ns",
+                "signals": [
+                    {"path": "top.clk", "value": "1'h1"},
+                    {"path": "top.data", "value": "8'h0f"}
+                ]
+            }
+        ])
+    );
+}
+
+#[test]
+fn value_rejects_empty_time_list_entry() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let mut command = wavepeek_cmd();
+    command
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "5ns,,10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::contains(
+            "time list in --at must not contain empty entries",
+        ))
+        .stderr(predicate::str::contains("See 'wavepeek value --help'."));
 }
 
 #[test]
@@ -135,7 +245,7 @@ fn value_without_scope_treats_signals_as_canonical_paths() {
     let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
 
     assert_eq!(
-        value["data"]["signals"],
+        value["data"][0]["signals"],
         json!([
             {"path": "top.clk", "value": "1'h1"},
             {"path": "top.data", "value": "8'h0f"}
@@ -343,7 +453,7 @@ fn value_preserves_duplicate_signal_order() {
     let value: Value = serde_json::from_str(&stdout).expect("value output should be valid json");
 
     assert_eq!(
-        value["data"]["signals"],
+        value["data"][0]["signals"],
         json!([
             {"path": "top.clk", "value": "1'h1"},
             {"path": "top.clk", "value": "1'h1"},
@@ -395,8 +505,8 @@ fn value_mixed_mode_names_resolve_with_scope() {
         ])
         .assert()
         .success()
-        .stdout(predicate::str::contains("clk 1'h1"))
-        .stdout(predicate::str::contains("data 8'h0f"))
+        .stdout(predicate::str::contains("clk=1'h1"))
+        .stdout(predicate::str::contains("data=8'h0f"))
         .stderr(predicate::str::is_empty());
 }
 

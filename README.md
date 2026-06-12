@@ -55,8 +55,8 @@ wavepeek scope --waves "$WAVES" --tree
 # 3) Find relevant signals in a scope (--filter is a regex)
 wavepeek signal --waves "$WAVES" --scope top.cpu --filter '.*(clk|rst|state).*'
 
-# 4) Sample values at one timestamp
-wavepeek value --waves "$WAVES" --at 100ns --scope top.cpu --signals reset_n,state
+# 4) Sample values at one or more explicit timestamps
+wavepeek value --waves "$WAVES" --at 100ns,200ns --scope top.cpu --signals reset_n,state
 
 # 5) Inspect transitions over a time window (--on is a SystemVerilog-like clocking event expression)
 wavepeek change --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --signals state --on 'posedge clk'
@@ -101,7 +101,7 @@ wavepeek skill
 | `info` | Print dump metadata |
 | `scope` | List hierarchy scopes |
 | `signal` | List signals in a scope with metadata |
-| `value` | Signal values at a specific time |
+| `value` | Signal values at explicit time point(s) |
 | `change` | Delta snapshots over a time range with event triggers |
 | `property` | Property checks over event triggers with capture modes |
 | `schema` | Print canonical JSON schema used by `--json` output |

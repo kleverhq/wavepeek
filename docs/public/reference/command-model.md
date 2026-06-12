@@ -37,7 +37,7 @@ Commands that accept `--from` and `--to` interpret them as an inclusive time win
 - `--to` without `--from` means from the start of the dump through that timestamp.
 - Omitting both means the entire dump.
 
-Commands without time-window flags do not participate in this model. `value` uses the same time-token rules but samples one exact timestamp through `--at`.
+Commands without time-window flags do not participate in this model. `value` uses the same time-token rules but samples one or more exact timestamps through the single `--at` argument, which may contain a comma-separated list.
 
 ## 4. Naming, Scopes, and Resolution
 
@@ -80,7 +80,7 @@ The main ordering rules are:
 
 - `scope` traverses hierarchy in pre-order depth-first order with lexicographic child ordering.
 - Recursive `signal` queries walk scopes in that same stable order and sort signals deterministically within each visited scope.
-- `value` preserves the request order from `--signals`.
+- `value` preserves the request order from `--at` and `--signals`, including duplicates.
 - `change` and `property` emit rows in ascending normalized timestamp order.
 - When multiple diagnostics apply, their order is deterministic for a given command contract.
 

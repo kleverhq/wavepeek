@@ -354,10 +354,10 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
     ]);
     assert_eq!(sampled["command"], "value");
     assert_eq!(sampled["diagnostics"], json!([]));
-    assert_eq!(sampled["data"]["time"], sample_time);
-    assert_eq!(sampled["data"]["signals"][0]["path"], sample_path);
+    assert_eq!(sampled["data"][0]["time"], sample_time);
+    assert_eq!(sampled["data"][0]["signals"][0]["path"], sample_path);
     assert!(
-        sampled["data"]["signals"][0]["value"]
+        sampled["data"][0]["signals"][0]["value"]
             .as_str()
             .is_some_and(|value| value.contains("'h")),
         "sampled FSDB value should render as a Verilog-style literal"
@@ -420,9 +420,9 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
     assert_eq!(fsdb_value["command"], "value");
     assert_eq!(fsdb_value["diagnostics"], json!([]));
     assert_eq!(fsdb_value["data"], vcd_value["data"]);
-    assert_eq!(fsdb_value["data"]["time"], "7ns");
+    assert_eq!(fsdb_value["data"][0]["time"], "7ns");
     assert_eq!(
-        fsdb_value["data"]["signals"],
+        fsdb_value["data"][0]["signals"],
         json!([
             {"path": "top.data", "value": "8'h0f"},
             {"path": "top.clk", "value": "1'h1"},
@@ -480,8 +480,8 @@ fn fsdb_value_samples_exact_transitions_and_dump_end() {
             time,
             "--json",
         ]);
-        assert_eq!(value["data"]["time"], time);
-        assert_eq!(value["data"]["signals"], expected);
+        assert_eq!(value["data"][0]["time"], time);
+        assert_eq!(value["data"][0]["signals"], expected);
     }
 }
 
@@ -506,7 +506,7 @@ fn fsdb_value_change_and_property_use_final_same_time_update() {
         let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
         assert_eq!(fsdb_value["data"], vcd_value["data"]);
         assert_eq!(
-            fsdb_value["data"]["signals"],
+            fsdb_value["data"][0]["signals"],
             json!([
                 {"path": "top.glitch", "value": "1'h1"},
                 {"path": "top.bus", "value": "2'h2"}
@@ -586,9 +586,7 @@ fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
         "--at",
         "7ns",
     ]);
-    assert!(relative.contains("@7ns\n"));
-    assert!(relative.contains("data 8'h0f\n"));
-    assert!(relative.contains("clk 1'h1\n"));
+    assert_eq!(relative, "@7ns data=8'h0f clk=1'h1\n");
     assert!(!relative.contains("top.data"));
 
     let absolute = run_stdout_success(&[
@@ -603,8 +601,7 @@ fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
         "7ns",
         "--abs",
     ]);
-    assert!(absolute.contains("top.data 8'h0f\n"));
-    assert!(absolute.contains("top.clk 1'h1\n"));
+    assert_eq!(absolute, "@7ns top.data=8'h0f top.clk=1'h1\n");
 }
 
 #[test]
@@ -624,7 +621,7 @@ fn fsdb_value_uses_previous_sample_and_reports_missing_initial_value() {
         "--json",
     ]);
     assert_eq!(
-        previous["data"]["signals"],
+        previous["data"][0]["signals"],
         json!([{ "path": "top.late", "value": "1'h1" }])
     );
 

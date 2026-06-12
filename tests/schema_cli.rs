@@ -377,6 +377,22 @@ fn schema_command_excludes_backend_specific_kind_aliases() {
 }
 
 #[test]
+fn schema_command_exposes_value_data_as_snapshot_array() {
+    let value = schema_json();
+
+    assert_eq!(value["$defs"]["valueData"]["type"], "array");
+    assert_eq!(
+        value["$defs"]["valueData"]["items"]["$ref"],
+        "#/$defs/changeSnapshot"
+    );
+    assert_eq!(value["$defs"]["changeData"]["type"], "array");
+    assert_eq!(
+        value["$defs"]["changeData"]["items"]["$ref"],
+        "#/$defs/changeSnapshot"
+    );
+}
+
+#[test]
 fn schema_command_exposes_field_descriptions_for_machine_clients() {
     let value = schema_json();
 
@@ -384,7 +400,14 @@ fn schema_command_exposes_field_descriptions_for_machine_clients() {
         &["$defs", "scopeEntry", "properties", "path", "description"][..],
         &["$defs", "scopeEntry", "properties", "kind", "description"],
         &["$defs", "signalEntry", "properties", "kind", "description"],
-        &["$defs", "valueData", "properties", "time", "description"],
+        &["$defs", "valueData", "description"],
+        &[
+            "$defs",
+            "changeSnapshot",
+            "properties",
+            "time",
+            "description",
+        ],
         &[
             "$defs",
             "changeSignalValue",

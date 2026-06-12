@@ -209,9 +209,9 @@ fn top_level_help_describes_shipped_subcommands_without_unimplemented_markers() 
         .assert()
         .success()
         .stdout(
-            predicate::str::contains("Get signal values at a specific time point").and(
+            predicate::str::contains("Get signal values at explicit time point(s)").and(
                 predicate::str::contains(
-                    "Get signal values at a specific time point (not implemented yet)",
+                    "Get signal values at explicit time point(s) (not implemented yet)",
                 )
                 .not(),
             ),
@@ -712,12 +712,14 @@ fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
     for help in [&short_help, &long_help, &alias_help] {
         assert_eq!(
             help.lines().next(),
-            Some("Provides point-in-time sampling for selected signals.")
+            Some("Provides point sampling for selected signals.")
         );
     }
 
     for fragment in [
-        "Prints values for the requested signals at the selected time point.",
+        "Prints values for the requested signals at each selected time point.",
+        "`--at` accepts one explicit time token or a comma-separated list in one argument.",
+        "Output preserves the input order from `--at` and `--signals`, including duplicates.",
         "By default, signal names are top-related canonical paths",
         "set `--scope` once with a canonical scope path",
         "Do not mix top-related canonical names and scope-relative names",
@@ -735,7 +737,7 @@ fn value_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(help.contains("Output options:"));
         assert!(help.contains("Other options:"));
         assert!(help.contains("Path to VCD/FST/FSDB waveform file"));
-        assert!(help.contains("Time point with explicit units (e.g. 1337ns)"));
+        assert!(help.contains("Time point(s) with explicit units (e.g. 1337ns or 10ns,20ns)"));
         assert!(help.contains("Canonical scope path for scope-relative signal names"));
         assert!(help.contains(
             "Comma-separated top-related signal paths, or scope-relative names when --scope is set"
@@ -882,8 +884,9 @@ fn shipped_commands_help_is_self_descriptive() {
         (
             "value",
             &[
-                "point-in-time sampling",
-                "input order from `--signals`",
+                "point sampling",
+                "input order from `--at` and `--signals`",
+                "display=value",
                 "align to dump precision",
                 "Verilog literals",
                 "wavepeek schema",

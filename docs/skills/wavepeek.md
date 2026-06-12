@@ -44,7 +44,7 @@ Useful reference topics:
 
 3. Query data with the command that matches the task:
 
-       wavepeek value --waves <FILE> --at <TIME> --signals <SIGNALS>
+       wavepeek value --waves <FILE> --at <TIME[,TIME...]> --signals <SIGNALS>
        wavepeek change --waves <FILE> --from <START> --to <END> --signals <SIGNALS> --on <EVENT>
        wavepeek property --waves <FILE> --from <START> --to <END> --on <EVENT> --eval <EXPR>
 

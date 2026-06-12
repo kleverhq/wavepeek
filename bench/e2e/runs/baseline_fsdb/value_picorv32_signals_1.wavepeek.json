@@ -1,12 +1,14 @@
 {
-  "data": {
-    "signals": [
-      {
-        "path": "testbench.clk",
-        "value": "1'h1"
-      }
-    ],
-    "time": "2455330000ps"
-  },
+  "data": [
+    {
+      "signals": [
+        {
+          "path": "testbench.clk",
+          "value": "1'h1"
+        }
+      ],
+      "time": "2455330000ps"
+    }
+  ],
   "diagnostics": []
 }

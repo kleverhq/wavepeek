@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-13
+
+### Fixed
+- Fixed GitHub Release publication for immutable-release repositories by creating the release as a draft, uploading assets, then publishing it.
+- Fixed downstream docs and crates.io workflow dispatch by passing the target repository explicitly from the tag-triggered release workflow.
+
+### Changed
+- Updated the release runbook to document immutable-release retry behavior and patch-version recovery.
+
 ## [1.0.0] - 2026-06-13
 
 ### Added
@@ -115,7 +124,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.1
 [1.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.0
 [0.5.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.5.0
 [0.4.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.4.0

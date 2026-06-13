@@ -334,10 +334,16 @@ jobs:
       - name: Cleanup
         run: rm -f artifacts/*-dist-manifest.json
 
-      - name: Create GitHub Release
+      - name: Create draft GitHub Release
         env:
           RELEASE_COMMIT: ${{ github.sha }}
-        run: gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" --title "wavepeek ${{ needs.plan.outputs.version }}" --notes-file "$RUNNER_TEMP/notes.txt" artifacts/*
+        run: gh release create "${{ needs.plan.outputs.tag }}" --target "$RELEASE_COMMIT" --title "wavepeek ${{ needs.plan.outputs.version }}" --notes-file "$RUNNER_TEMP/notes.txt" --draft
+
+      - name: Upload GitHub Release assets
+        run: gh release upload "${{ needs.plan.outputs.tag }}" --clobber artifacts/*
+
+      - name: Publish GitHub Release
+        run: gh release edit "${{ needs.plan.outputs.tag }}" --draft=false
 
   dispatch-downstream:
     name: Dispatch downstream publication

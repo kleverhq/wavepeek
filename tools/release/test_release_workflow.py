@@ -32,6 +32,20 @@ class ReleaseWorkflowContractTest(unittest.TestCase):
         self.assertIn("name: Attest dist manifest", text)
         self.assertIn("subject-path: dist-manifest.json", text)
 
+    def test_github_release_uses_draft_first_asset_upload(self) -> None:
+        text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+        create = 'gh release create "${{ needs.plan.outputs.tag }}"'
+        upload = 'gh release upload "${{ needs.plan.outputs.tag }}" --clobber artifacts/*'
+        publish = 'gh release edit "${{ needs.plan.outputs.tag }}" --draft=false'
+        self.assertIn("name: Create draft GitHub Release", text)
+        self.assertIn(create, text)
+        self.assertIn("--draft", text)
+        self.assertIn(upload, text)
+        self.assertIn(publish, text)
+        self.assertLess(text.index(create), text.index(upload))
+        self.assertLess(text.index(upload), text.index(publish))
+
     def test_downstream_dispatch_is_explicitly_scoped_to_repository(self) -> None:
         text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
 

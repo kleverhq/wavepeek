@@ -40,7 +40,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
        git tag vX.Y.Z
        git push origin vX.Y.Z
 
-9. Wait for `.github/workflows/release.yml` to finish. It creates the GitHub Release with `cargo-dist` archives, shell and PowerShell installers, checksum artifacts, `dist-manifest.json`, and GitHub Artifact Attestations before dispatching downstream workflows.
+9. Wait for `.github/workflows/release.yml` to finish. It creates a draft GitHub Release, uploads `cargo-dist` archives, shell and PowerShell installers, checksum artifacts, and `dist-manifest.json`, publishes the release, creates GitHub Artifact Attestations, then dispatches downstream workflows.
 10. Wait for `.github/workflows/docs.yml` and `.github/workflows/publish-crate.yml` to finish for the same version.
 11. Check workflow logs for tag/version validation, `just ci`, `cargo package --locked`, `cargo-dist` matrix builds, release-body rendering from `CHANGELOG.md`, GitHub Release creation, docs staging, staged bundle upload, staged bundle verification, non-forced `gh-pages` push, Pages artifact upload, `actions/deploy-pages` deployment, deployed docs verification, and idempotent `cargo publish --locked` from the release tag checkout.
 12. If deployed docs endpoint verification needs to be repeated locally, run `just docs-site-check-deploy X.Y.Z`. Set `DOCS_REPOSITORY=kleverhq/wavepeek` to also check GitHub Pages API state with an authenticated `gh` CLI.
@@ -60,9 +60,11 @@ For manual crates.io repair, dispatch `.github/workflows/publish-crate.yml` on t
 
 ## Rollback
 
-If the tag was wrong, delete and recreate it after fixes:
+If the tag was wrong before a GitHub Release was published, delete and recreate it after fixes:
 
     git tag -d vX.Y.Z
     git push origin :refs/tags/vX.Y.Z
+
+If an immutable GitHub Release was published, do not delete it to retry the same tag. A deleted immutable release leaves the tag name unavailable for new releases; publish a new patch version instead.
 
 If a bad crate version was published, publish a new patch version. crates.io versions are immutable and cannot be republished.

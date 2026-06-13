@@ -8,12 +8,12 @@
     "$schema",
     "command",
     "data",
-    "warnings"
+    "diagnostics"
   ],
   "properties": {
     "$schema": {
       "type": "string",
-      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v0\\.json$"
+      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v1\\.json$"
     },
     "command": {
       "type": "string",
@@ -29,7 +29,7 @@
       ]
     },
     "data": {
-      "oneOf": [
+      "anyOf": [
         {
           "$ref": "#/$defs/infoData"
         },
@@ -56,10 +56,10 @@
         }
       ]
     },
-    "warnings": {
+    "diagnostics": {
       "type": "array",
       "items": {
-        "type": "string"
+        "$ref": "#/$defs/diagnostic"
       }
     }
   },
@@ -218,6 +218,96 @@
     }
   ],
   "$defs": {
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "message"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ]
+        },
+        "code": {
+          "type": "string",
+          "pattern": "^WPK-[WE][0-9]{4}$"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "warning"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "pattern": "^WPK-W[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "error"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "pattern": "^WPK-E[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "info"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      ]
+    },
     "normalizedTime": {
       "type": "string",
       "description": "Normalized timestamp rendered in the dump's time unit, for example 10ns."
@@ -388,28 +478,15 @@
         },
         "value": {
           "$ref": "#/$defs/sampledValue",
-          "description": "Sampled value for this signal at the selected timestamp."
+          "description": "Sampled value for this signal in the selected timestamp snapshot."
         }
       }
     },
     "valueData": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "time",
-        "signals"
-      ],
-      "properties": {
-        "time": {
-          "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp that wavepeek sampled."
-        },
-        "signals": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/sampledSignalValue"
-          }
-        }
+      "type": "array",
+      "description": "Ordered snapshots sampled by the value command.",
+      "items": {
+        "$ref": "#/$defs/changeSnapshot"
       }
     },
     "changeSignalValue": {
@@ -422,11 +499,11 @@
       "properties": {
         "path": {
           "$ref": "#/$defs/canonicalPath",
-          "description": "Canonical path of the signal included in this change snapshot."
+          "description": "Canonical path of the signal included in this timestamp snapshot."
         },
         "value": {
           "$ref": "#/$defs/sampledValue",
-          "description": "Signal value after the change observed at this snapshot time."
+          "description": "Signal value observed at this snapshot time."
         }
       }
     },
@@ -440,7 +517,7 @@
       "properties": {
         "time": {
           "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp at which at least one requested signal changed."
+          "description": "Normalized timestamp for this sampled snapshot."
         },
         "signals": {
           "type": "array",

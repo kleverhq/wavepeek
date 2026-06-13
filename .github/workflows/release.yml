@@ -10,6 +10,9 @@ permissions:
   actions: write
   packages: write
 
+env:
+  CARGO_NET_RETRY: '10'
+
 on:
   push:
     tags:
@@ -38,6 +41,14 @@ jobs:
       - id: validate-tag
         name: Validate tag matches Cargo.toml version
         run: python3 -B tools/release/validate_tag_version.py >> "$GITHUB_OUTPUT"
+
+      - name: Warm cargo metadata cache
+        run: |
+          for attempt in 1 2 3 4 5; do
+            cargo metadata --locked --format-version=1 > /dev/null && exit 0
+            sleep "$((attempt * 10))"
+          done
+          cargo metadata --locked --format-version=1 > /dev/null
 
       - name: Install dist
         shell: bash
@@ -281,6 +292,14 @@ jobs:
           pattern: artifacts-*
           path: target/distrib/
           merge-multiple: true
+
+      - name: Warm cargo metadata cache
+        run: |
+          for attempt in 1 2 3 4 5; do
+            cargo metadata --locked --format-version=1 > /dev/null && exit 0
+            sleep "$((attempt * 10))"
+          done
+          cargo metadata --locked --format-version=1 > /dev/null
 
       - id: host
         shell: bash

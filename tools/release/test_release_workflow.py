@@ -32,6 +32,13 @@ class ReleaseWorkflowContractTest(unittest.TestCase):
         self.assertIn("name: Attest dist manifest", text)
         self.assertIn("subject-path: dist-manifest.json", text)
 
+    def test_downstream_dispatch_is_explicitly_scoped_to_repository(self) -> None:
+        text = RELEASE_WORKFLOW.read_text(encoding="utf-8")
+
+        self.assertIn("GH_REPO: ${{ github.repository }}", text)
+        self.assertIn('gh workflow run docs.yml --repo "$GH_REPO"', text)
+        self.assertIn('gh workflow run publish-crate.yml --repo "$GH_REPO"', text)
+
 
 if __name__ == "__main__":
     unittest.main()

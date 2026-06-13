@@ -351,12 +351,13 @@ jobs:
       contents: read
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
       DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       VERSION: ${{ needs.plan.outputs.version }}
       SOURCE_REF: ${{ needs.plan.outputs.tag }}
     steps:
       - name: Dispatch docs publication
-        run: gh workflow run docs.yml --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF" -f repair_existing_version=false
+        run: gh workflow run docs.yml --repo "$GH_REPO" --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF" -f repair_existing_version=false
 
       - name: Dispatch crates.io publication
-        run: gh workflow run publish-crate.yml --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF"
+        run: gh workflow run publish-crate.yml --repo "$GH_REPO" --ref "$DEFAULT_BRANCH" -f version="$VERSION" -f source_ref="$SOURCE_REF"

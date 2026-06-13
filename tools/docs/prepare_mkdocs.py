@@ -92,16 +92,6 @@ def string_field(entry: dict[str, Any], name: str, *, topic_id: str) -> str:
     return value
 
 
-def description_field(entry: dict[str, Any], *, topic_id: str) -> str:
-    current = entry.get("description")
-    legacy = entry.get("summary")
-    if isinstance(current, str) and current.strip():
-        return current
-    if isinstance(legacy, str) and legacy.strip():
-        return legacy
-    fail(f"topic {topic_id!r} must define description")
-
-
 def see_also_field(entry: dict[str, Any], *, topic_id: str) -> list[str]:
     value = entry.get("see_also", [])
     if not isinstance(value, list):
@@ -152,8 +142,10 @@ def load_manifest(export_dir: pathlib.Path, version: str | None) -> tuple[str, l
         if topic_id in seen_ids:
             fail(f"duplicate topic id {topic_id!r}")
         seen_ids.add(topic_id)
+        if "summary" in raw_topic:
+            fail(f"manifest topic {topic_id!r} uses unsupported legacy field 'summary'")
         title = string_field(raw_topic, "title", topic_id=topic_id)
-        description = description_field(raw_topic, topic_id=topic_id)
+        description = string_field(raw_topic, "description", topic_id=topic_id)
         section = string_field(raw_topic, "section", topic_id=topic_id)
         see_also = see_also_field(raw_topic, topic_id=topic_id)
         source_relpath, page_relpath = topic_relpaths(topic_id)
@@ -203,13 +195,11 @@ def split_front_matter(markdown: str, source: pathlib.Path) -> tuple[dict[str, A
 def normalize_markdown(source: pathlib.Path, topic: Topic) -> str:
     markdown = source.read_text(encoding="utf-8")
     front, body = split_front_matter(markdown, source)
+    if "summary" in front:
+        fail(f"topic {source} uses unsupported legacy field 'summary'")
     description = front.get("description")
     if not isinstance(description, str) or not description.strip():
-        legacy = front.get("summary")
-        if isinstance(legacy, str) and legacy.strip():
-            description = legacy
-        else:
-            description = topic.description
+        fail(f"topic {source} front matter must define description")
 
     normalized: dict[str, Any] = {}
     for key in ("id", "title"):
@@ -222,7 +212,7 @@ def normalize_markdown(source: pathlib.Path, topic: Topic) -> str:
         normalized["see_also"] = front["see_also"]
 
     for key in front:
-        if key not in {"id", "title", "description", "summary", "section", "see_also"}:
+        if key not in {"id", "title", "description", "section", "see_also"}:
             normalized[key] = front[key]
 
     front_text = yaml.safe_dump(

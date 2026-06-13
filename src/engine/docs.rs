@@ -1,6 +1,7 @@
 use crate::cli::docs::{
     DocsArgs, DocsCommand, DocsExportArgs, DocsSearchArgs, DocsShowArgs, DocsTopicsArgs,
 };
+use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::docs;
 use crate::engine::{
     CommandData, CommandName, CommandResult, DocsSearchData, DocsSearchMatchData, DocsTopicsData,
@@ -27,13 +28,14 @@ fn orientation_index() -> Result<CommandResult, WavepeekError> {
 
 fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
     let topics = docs::list_topics()?;
+    let diagnostics = empty_topics_diagnostics(&topics);
     if args.json {
         return Ok(CommandResult {
             command: CommandName::DocsTopics,
             json: true,
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsTopics(DocsTopicsData { topics }),
-            warnings: Vec::new(),
+            diagnostics,
         });
     }
 
@@ -43,13 +45,17 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    Ok(text_result(CommandName::DocsTopics, rendered))
+    Ok(text_result_with_diagnostics(
+        CommandName::DocsTopics,
+        rendered,
+        diagnostics,
+    ))
 }
 
 fn show(args: DocsShowArgs) -> Result<CommandResult, WavepeekError> {
     let topic = docs::lookup_topic(&args.topic)?.ok_or_else(|| unknown_topic_error(&args.topic))?;
     let rendered = if args.description {
-        topic.summary.description.clone()
+        topic.topic.description.clone()
     } else {
         topic.body.clone()
     };
@@ -61,6 +67,7 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
     let raw_query = args.query.join(" ");
     let normalized_query = docs::normalize_search_query(&raw_query)?;
     let matches = docs::search_topics(&raw_query)?;
+    let diagnostics = empty_docs_search_diagnostics(matches.len());
 
     if args.json {
         return Ok(CommandResult {
@@ -78,7 +85,7 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
                     })
                     .collect(),
             }),
-            warnings: Vec::new(),
+            diagnostics,
         });
     }
 
@@ -96,7 +103,11 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    Ok(text_result(CommandName::DocsSearch, rendered))
+    Ok(text_result_with_diagnostics(
+        CommandName::DocsSearch,
+        rendered,
+        diagnostics,
+    ))
 }
 
 fn export(args: DocsExportArgs) -> Result<CommandResult, WavepeekError> {
@@ -111,12 +122,42 @@ fn export(args: DocsExportArgs) -> Result<CommandResult, WavepeekError> {
 }
 
 fn text_result(command: CommandName, text: String) -> CommandResult {
+    text_result_with_diagnostics(command, text, Vec::new())
+}
+
+fn text_result_with_diagnostics(
+    command: CommandName,
+    text: String,
+    diagnostics: Vec<Diagnostic>,
+) -> CommandResult {
     CommandResult {
         command,
         json: false,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Text(text),
-        warnings: Vec::new(),
+        diagnostics,
+    }
+}
+
+fn empty_topics_diagnostics(topics: &[crate::docs::TopicSummary]) -> Vec<Diagnostic> {
+    if topics.is_empty() {
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "no docs topics available",
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
+fn empty_docs_search_diagnostics(match_count: usize) -> Vec<Diagnostic> {
+    if match_count == 0 {
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "no docs topics matched query",
+        )]
+    } else {
+        Vec::new()
     }
 }
 
@@ -280,7 +321,7 @@ mod tests {
         let error = unknown_topic_error("zzzzzzzzzzzz");
         assert_eq!(
             error.to_string(),
-            "error: args: unknown docs topic 'zzzzzzzzzzzz'"
+            "fatal: args: unknown docs topic 'zzzzzzzzzzzz'"
         );
     }
 

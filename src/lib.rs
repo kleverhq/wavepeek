@@ -1,4 +1,5 @@
 mod cli;
+mod diagnostic;
 mod docs;
 mod engine;
 mod error;

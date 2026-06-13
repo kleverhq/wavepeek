@@ -14,19 +14,20 @@ For factual release outcomes (what actually shipped), use `CHANGELOG.md`.
 
 ## Near-Term Roadmap
 
-### v1.0 — next major: complete FSDB support
+No large feature milestone is currently scheduled. This is intentional: the
+near-term plan is to keep the shipped command surface stable and spend the next
+cycle on bug fixes, documentation clarifications, and user-experience
+improvements discovered through real usage.
 
-The next major milestone is planned as `v1.0` and is scoped around completing
-FSDB support.
+Planned near-term scope:
+- fix correctness, parity, and regression bugs as they are found;
+- improve CLI wording, help text, diagnostics, and documentation where users or
+  agents hit ambiguity;
+- keep quality gates, fixtures, schema artifacts, and benchmark baselines in
+  sync with the stable command contract.
 
-Planned scope:
-- make FSDB a first-class waveform input alongside the existing VCD/FST flows;
-- close known FSDB parity gaps, including value sampling for currently
-  unsupported recovered types where the FSDB Reader SDK exposes stable data;
-- harden FSDB hierarchy, value, change, property, docs, schema, and CI coverage
-  enough to treat FSDB behavior as part of the stable command contract.
-
-Non-goals for `v1.0`:
-- do not schedule non-FSDB proposals from `backlog.md` into this milestone;
-- do not expand the command surface solely to absorb unrelated backlog ideas.
-
+Non-goals for the near term:
+- do not schedule major command-surface expansions;
+- do not promote exploratory backlog proposals into committed milestone scope
+  without a separate design decision;
+- do not treat roadmap silence as an implicit feature promise.

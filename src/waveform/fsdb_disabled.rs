@@ -78,7 +78,7 @@ mod tests {
         assert_eq!(error.exit_code(), 2);
         assert_eq!(
             error.to_string(),
-            format!("error: file: {FSDB_DISABLED_MESSAGE}")
+            format!("fatal: file: {FSDB_DISABLED_MESSAGE}")
         );
     }
 

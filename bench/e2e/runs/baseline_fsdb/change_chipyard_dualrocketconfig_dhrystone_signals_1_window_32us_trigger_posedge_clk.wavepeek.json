@@ -1,6 +1,10 @@
 {
   "data": [],
-  "warnings": [
-    "no signal changes found in selected time range"
+  "diagnostics": [
+    {
+      "code": "WPK-W0003",
+      "kind": "warning",
+      "message": "no signal changes found in selected time range"
+    }
   ]
 }

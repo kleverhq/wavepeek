@@ -119,7 +119,7 @@ In this window the property is already true at `10ns`, so there is no visible `a
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"property","data":[{"time":"10ns","kind":"match"}],"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"property","data":[{"time":"10ns","kind":"match"}],"diagnostics":[]}
 ```
 
 Human output is for quick inspection. `--json` is the stable machine contract.
@@ -139,7 +139,7 @@ Full trigger and expression syntax is defined in `reference/expression-language`
 ## Non-obvious behavior
 
 - VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `property` supports digital bit-vector/integral expressions, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
-- No output is still success. It usually means no selected timestamp satisfied the requested capture mode.
+- No output is still success. It emits `WPK-W0003` and usually means no selected timestamp satisfied the requested capture mode.
 - The default capture mode is `switch`, not `match`.
 - `property` prints only time and result kind. If you also need sampled values, use `change`.
 - With `--scope`, names inside `--on` and `--eval` must stay scope-relative. For example, `--scope top --on 'posedge top.clk'` is an error.

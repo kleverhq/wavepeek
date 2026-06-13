@@ -1,5 +1,5 @@
 use assert_cmd::prelude::*;
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::fs;
 use std::path::PathBuf;
 
@@ -100,6 +100,21 @@ fn schema_json() -> Value {
     serde_json::from_slice(&run_schema_command()).expect("schema output should be valid json")
 }
 
+fn info_json() -> Value {
+    let output = wavepeek_cmd()
+        .args([
+            "info",
+            "--waves",
+            "tests/fixtures/hand/m2_core.vcd",
+            "--json",
+        ])
+        .output()
+        .expect("info command should execute");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    serde_json::from_slice(&output.stdout).expect("info output should be valid json")
+}
+
 fn schema_enum(schema: &Value, def_name: &str) -> Vec<String> {
     schema["$defs"][def_name]["enum"]
         .as_array()
@@ -178,6 +193,85 @@ fn schema_command_schema_url_pattern_matches_current_major_contract() {
 }
 
 #[test]
+fn schema_command_exposes_typed_diagnostics_contract() {
+    let value = schema_json();
+
+    assert!(
+        value["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("diagnostics"))
+    );
+    assert!(
+        !value["required"]
+            .as_array()
+            .unwrap()
+            .contains(&json!("warnings"))
+    );
+    assert!(value["properties"].get("diagnostics").is_some());
+    assert!(value["properties"].get("warnings").is_none());
+    assert_eq!(
+        value["properties"]["diagnostics"]["items"]["$ref"],
+        "#/$defs/diagnostic"
+    );
+    assert!(
+        value["properties"]["data"].get("anyOf").is_some(),
+        "root data must allow ambiguous empty arrays and rely on command branches"
+    );
+    assert!(value["properties"]["data"].get("oneOf").is_none());
+
+    let diagnostic = &value["$defs"]["diagnostic"];
+    assert_eq!(diagnostic["type"], "object");
+    assert_eq!(diagnostic["additionalProperties"], false);
+    assert_eq!(diagnostic["required"], json!(["kind", "message"]));
+    assert_eq!(
+        diagnostic["properties"]["kind"]["enum"],
+        json!(["info", "warning", "error"])
+    );
+    assert_eq!(
+        diagnostic["properties"]["code"]["pattern"],
+        "^WPK-[WE][0-9]{4}$"
+    );
+    assert_eq!(diagnostic["properties"]["message"]["type"], "string");
+
+    let rules = diagnostic["allOf"]
+        .as_array()
+        .expect("diagnostic rules should be array");
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["kind"]["const"] == "warning"
+            && rule["then"]["required"] == json!(["code"])
+            && rule["then"]["properties"]["code"]["pattern"] == "^WPK-W[0-9]{4}$"
+    }));
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["kind"]["const"] == "error"
+            && rule["then"]["required"] == json!(["code"])
+            && rule["then"]["properties"]["code"]["pattern"] == "^WPK-E[0-9]{4}$"
+    }));
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["kind"]["const"] == "info"
+            && rule["then"]["not"] == json!({"required": ["code"]})
+    }));
+
+    let code_pattern = diagnostic["properties"]["code"]["pattern"]
+        .as_str()
+        .expect("diagnostic code pattern should be a string");
+    let regex = regex::Regex::new(code_pattern).expect("diagnostic code pattern should compile");
+    assert!(regex.is_match("WPK-W0001"));
+    assert!(regex.is_match("WPK-E0001"));
+    assert!(!regex.is_match("WPK-I0001"));
+}
+
+#[test]
+fn runtime_info_envelope_uses_diagnostics_not_warnings() {
+    let value = info_json();
+
+    assert_eq!(value["$schema"], expected_schema_url());
+    assert_eq!(value["command"], "info");
+    assert_eq!(value["diagnostics"], json!([]));
+    assert!(value.get("warnings").is_none());
+}
+
+#[test]
 fn schema_command_includes_property_command_branch() {
     let value = schema_json();
 
@@ -189,7 +283,7 @@ fn schema_command_includes_property_command_branch() {
         "schema command enum should include property"
     );
 
-    let data_variants = value["properties"]["data"]["oneOf"]
+    let data_variants = value["properties"]["data"]["anyOf"]
         .as_array()
         .expect("data variants should be array");
     assert!(
@@ -216,7 +310,7 @@ fn schema_command_includes_docs_command_branches() {
         "schema command enum should include docs search"
     );
 
-    let data_variants = value["properties"]["data"]["oneOf"]
+    let data_variants = value["properties"]["data"]["anyOf"]
         .as_array()
         .expect("data variants should be array");
     assert!(
@@ -283,6 +377,22 @@ fn schema_command_excludes_backend_specific_kind_aliases() {
 }
 
 #[test]
+fn schema_command_exposes_value_data_as_snapshot_array() {
+    let value = schema_json();
+
+    assert_eq!(value["$defs"]["valueData"]["type"], "array");
+    assert_eq!(
+        value["$defs"]["valueData"]["items"]["$ref"],
+        "#/$defs/changeSnapshot"
+    );
+    assert_eq!(value["$defs"]["changeData"]["type"], "array");
+    assert_eq!(
+        value["$defs"]["changeData"]["items"]["$ref"],
+        "#/$defs/changeSnapshot"
+    );
+}
+
+#[test]
 fn schema_command_exposes_field_descriptions_for_machine_clients() {
     let value = schema_json();
 
@@ -290,7 +400,14 @@ fn schema_command_exposes_field_descriptions_for_machine_clients() {
         &["$defs", "scopeEntry", "properties", "path", "description"][..],
         &["$defs", "scopeEntry", "properties", "kind", "description"],
         &["$defs", "signalEntry", "properties", "kind", "description"],
-        &["$defs", "valueData", "properties", "time", "description"],
+        &["$defs", "valueData", "description"],
+        &[
+            "$defs",
+            "changeSnapshot",
+            "properties",
+            "time",
+            "description",
+        ],
         &[
             "$defs",
             "changeSignalValue",

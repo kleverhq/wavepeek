@@ -12,7 +12,7 @@ see_also:
 ---
 # Change command
 
-Use `change` when one timestamp is not enough and you need the moments when a small set of signals actually transitions.
+Use `change` when explicit point snapshots are not enough and you need the moments when a small set of signals actually transitions.
 
 `change` scans an inclusive time window, samples the signals from `--signals`, and prints a row only when at least one of those sampled values changed. By default, `--on` is `*`, which means "consider any change in the tracked signal set".
 
@@ -129,19 +129,19 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
 
 ## Use JSON for scripts and agents
 
-`--json` keeps canonical paths and moves warnings into the payload:
+`--json` keeps canonical paths and includes diagnostics in the payload:
 
 ```text
 $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --scope testbench.uut \
     --signals cpu_state,mem_valid,mem_ready,trap \
     --from 1010000ps --to 1040000ps --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"change","data":[{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"change","data":[{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
 ```
 
-## Watch for bounded-output warnings
+## Watch for bounded-output diagnostics
 
-If `--max` truncates the result, the command still succeeds and warns:
+If `--max` truncates the result, the command still succeeds and emits a diagnostic:
 
 ```text
 $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
@@ -152,10 +152,10 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
 @1020000ps cpu_state=8'h40 mem_valid=1'h1 mem_ready=1'h0 trap=1'h0
 @1030000ps cpu_state=8'h40 mem_valid=1'h1 mem_ready=1'h1 trap=1'h0
 @1040000ps cpu_state=8'h40 mem_valid=1'h0 mem_ready=1'h0 trap=1'h0
-warning: truncated output to 3 entries (use --max to increase limit)
+warning[WPK-W0002]: truncated output to 3 entries (use --max to increase limit)
 ```
 
-If you disable the limit intentionally, that is also reported:
+If you disable the limit intentionally, that is also reported as a diagnostic:
 
 ```text
 $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
@@ -166,7 +166,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
 @1020000ps cpu_state=8'h40 mem_valid=1'h1 mem_ready=1'h0 trap=1'h0
 @1030000ps cpu_state=8'h40 mem_valid=1'h1 mem_ready=1'h1 trap=1'h0
 @1040000ps cpu_state=8'h40 mem_valid=1'h0 mem_ready=1'h0 trap=1'h0
-warning: limit disabled: --max=unlimited
+warning[WPK-W0001]: limit disabled: --max=unlimited
 ```
 
 ## Non-obvious behavior
@@ -175,7 +175,7 @@ warning: limit disabled: --max=unlimited
 - `--from` is inclusive for selection, but it also initializes the baseline state. `change` does not emit a row exactly at `--from`; if you need the boundary value itself, use `value`.
 - `--on` does not guarantee a row by itself. A trigger can fire, but `change` still suppresses the row if none of the requested `--signals` changed.
 - In scoped mode, use scope-relative names in `--signals` and `--on`. Without `--scope`, use canonical full paths.
-- Empty output is valid. If the query is well-formed but nothing matched, the command succeeds and warns:
+- Empty output is valid. If the query is well-formed but nothing matched, the command succeeds and emits a diagnostic:
 
 ```text
 $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
@@ -183,7 +183,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --signals cpu_state,mem_valid,mem_ready,trap \
     --from 0ps --to 20000ps \
     --on "posedge mem_valid" --max 20
-warning: no signal changes found in selected time range
+warning[WPK-W0003]: no signal changes found in selected time range
 ```
 
 When a query keeps coming back empty, widen one dimension at a time: start with the time window, then the trigger, then the signal list.

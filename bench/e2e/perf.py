@@ -32,6 +32,7 @@ FUNCTIONAL_MISMATCH_MARKER = "⚠️"
 FUNCTIONAL_MISSING_MARKER = "?"
 FUNCTIONAL_TIMEOUT_MARKER = "⏱T"
 DEFAULT_WAVEPEEK_TIMEOUT_SECONDS = 300
+DIAGNOSTIC_CODE_RE = re.compile(r"^WPK-[WE][0-9]{4}$")
 
 
 def fail(message: str) -> NoReturn:
@@ -310,18 +311,49 @@ def run_test(
         )
 
 
+def validate_functional_diagnostic(diagnostic: Any, source: str, index: int) -> None:
+    label = f"{source} field `diagnostics[{index}]`"
+    if not isinstance(diagnostic, dict):
+        raise ValueError(f"{label} must be object")
+    extra = sorted(set(diagnostic) - {"kind", "code", "message"})
+    if extra:
+        raise ValueError(f"{label} has unexpected key `{extra[0]}`")
+    kind = diagnostic.get("kind")
+    message = diagnostic.get("message")
+    code = diagnostic.get("code")
+    if kind not in {"info", "warning", "error"}:
+        raise ValueError(f"{label} field `kind` must be info, warning, or error")
+    if not isinstance(message, str):
+        raise ValueError(f"{label} field `message` must be string")
+    if kind == "info":
+        if "code" in diagnostic:
+            raise ValueError(f"{label} field `code` must be omitted for info")
+        return
+    if not isinstance(code, str):
+        raise ValueError(f"{label} field `code` must be string")
+    if not DIAGNOSTIC_CODE_RE.fullmatch(code):
+        raise ValueError(f"{label} field `code` must match WPK-[WE]####")
+    expected_prefix = "WPK-W" if kind == "warning" else "WPK-E"
+    if not code.startswith(expected_prefix):
+        raise ValueError(f"{label} field `code` must use {expected_prefix} for {kind}")
+
+
 def validate_functional_payload(payload: Any, source: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"{source} must be object")
+    if "warnings" in payload:
+        raise ValueError(f"{source} must not contain legacy key `warnings`")
     if "data" not in payload:
         raise ValueError(f"{source} missing key `data`")
-    if "warnings" not in payload:
-        raise ValueError(f"{source} missing key `warnings`")
+    if "diagnostics" not in payload:
+        raise ValueError(f"{source} missing key `diagnostics`")
     if not isinstance(payload["data"], dict) and not isinstance(payload["data"], list):
         raise ValueError(f"{source} field `data` must be object or list")
-    if not isinstance(payload["warnings"], list):
-        raise ValueError(f"{source} field `warnings` must be list")
-    return {"data": payload["data"], "warnings": payload["warnings"]}
+    if not isinstance(payload["diagnostics"], list):
+        raise ValueError(f"{source} field `diagnostics` must be list")
+    for index, diagnostic in enumerate(payload["diagnostics"]):
+        validate_functional_diagnostic(diagnostic, source, index)
+    return {"data": payload["data"], "diagnostics": payload["diagnostics"]}
 
 
 def run_functional_capture(
@@ -529,9 +561,12 @@ def functional_diff_fields(revised_payload: dict[str, Any], golden_payload: dict
         golden_payload
     ):
         return []
+    fields = []
     if revised_payload.get("data") != golden_payload.get("data"):
-        return ["data"]
-    return []
+        fields.append("data")
+    if revised_payload.get("diagnostics") != golden_payload.get("diagnostics"):
+        fields.append("diagnostics")
+    return fields
 
 
 def is_empty_data(value: Any) -> bool:
@@ -555,6 +590,8 @@ def report_functional_status(
         return FUNCTIONAL_TIMEOUT_MARKER
     if revised_payload.get("data") != compare_payload.get("data"):
         return f"{FUNCTIONAL_MISMATCH_MARKER}D"
+    if revised_payload.get("diagnostics") != compare_payload.get("diagnostics"):
+        return f"{FUNCTIONAL_MISMATCH_MARKER}X"
     if is_empty_data(revised_payload.get("data")):
         return f"{FUNCTIONAL_MATCH_MARKER}E"
     return FUNCTIONAL_MATCH_MARKER
@@ -583,7 +620,7 @@ def render_report(
                 "- Delta formula: `((golden - revised) / golden) * 100`",
                 "- Speed factor: `golden/revised` when faster, `revised/golden` when slower",
                 f"- Emoji threshold: abs(delta) >= {EMOJI_THRESHOLD_PCT:.2f}% (`🟢` faster, `🔴` slower)",
-                "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⏱T` timeout artifact, `?` missing counterpart",
+                "- Functional status: `✅` match, `✅E` match with empty data, `⚠️D` data mismatch, `⚠️X` diagnostic mismatch, `⏱T` timeout artifact, `?` missing counterpart",
             ]
         )
     lines.append("")

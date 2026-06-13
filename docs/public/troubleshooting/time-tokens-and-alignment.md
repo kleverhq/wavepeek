@@ -53,7 +53,7 @@ Time queries are checked against the recorded dump range.
 For example, if the dump covers `0ns` through `10ns`, then `11ns` is rejected:
 
 ```text
-error: args: time '11ns' is outside dump bounds [0ns, 10ns]
+fatal: args: time '11ns' is outside dump bounds [0ns, 10ns]
 ```
 
 This applies to `value --at` and to `change` or `property` window boundaries.
@@ -65,7 +65,7 @@ A dump with `1ns` precision cannot represent `15ps` exactly.
 That produces an error like:
 
 ```text
-error: args: time '15ps' is not aligned to dump resolution '1ns'
+fatal: args: time '15ps' is not aligned to dump resolution '1ns'
 ```
 
 The fix is to choose a timestamp that is an exact multiple of the dump resolution.

@@ -23126,5 +23126,5 @@
       "path": "TOP.TestDriver.testHarness.uart_sim_0_uartno0.txq.ram_ext.unnamedblk1"
     }
   ],
-  "warnings": []
+  "diagnostics": []
 }

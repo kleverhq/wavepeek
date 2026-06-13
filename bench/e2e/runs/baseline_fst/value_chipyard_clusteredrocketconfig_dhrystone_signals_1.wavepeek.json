@@ -1,12 +1,14 @@
 {
-  "data": {
-    "signals": [
-      {
-        "path": "TOP.TestDriver.clock",
-        "value": "1'h1"
-      }
-    ],
-    "time": "803912750ps"
-  },
-  "warnings": []
+  "data": [
+    {
+      "signals": [
+        {
+          "path": "TOP.TestDriver.clock",
+          "value": "1'h1"
+        }
+      ],
+      "time": "803912750ps"
+    }
+  ],
+  "diagnostics": []
 }

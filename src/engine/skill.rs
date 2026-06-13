@@ -9,6 +9,6 @@ pub fn run(_args: SkillArgs) -> Result<CommandResult, WavepeekError> {
         json: false,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Text(docs::packaged_skill_markdown().to_string()),
-        warnings: Vec::new(),
+        diagnostics: Vec::new(),
     })
 }

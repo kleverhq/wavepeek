@@ -21,7 +21,7 @@ The primary users are LLM-driven debugging workflows and other automation that n
 
 ## Scope
 
-Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and signal discovery, point-in-time value sampling, bounded time-range inspection, property checks over event-selected timestamps, and stateless CLI execution with deterministic output. FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK; FSDB-enabled builds support the same `info`, `scope`, `signal`, `value`, `change`, and `property` command surface for digital bit-vector/integral signals. FSDB real and string value decoding remain unsupported and fail clearly when a command needs those values.
+Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and signal discovery, explicit-point value sampling, bounded time-range inspection, property checks over event-selected timestamps, and stateless CLI execution with deterministic output. FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK; FSDB-enabled builds support the same `info`, `scope`, `signal`, `value`, `change`, and `property` command surface for digital bit-vector/integral signals. FSDB real and string value decoding remain unsupported and fail clearly when a command needs those values.
 
 `wavepeek` is not a GUI or TUI waveform viewer. It does not provide real-time waveform streaming, live simulator connections, or waveform diffing and comparison.
 

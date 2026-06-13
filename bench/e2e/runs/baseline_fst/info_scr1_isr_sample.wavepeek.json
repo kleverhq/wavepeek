@@ -4,5 +4,5 @@
     "time_start": "1ps",
     "time_unit": "1ps"
   },
-  "warnings": []
+  "diagnostics": []
 }

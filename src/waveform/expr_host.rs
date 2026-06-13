@@ -260,7 +260,7 @@ mod tests {
             .expect_err("unknown handle should fail");
         assert_eq!(
             error.to_string(),
-            "error: internal: unknown signal handle 999"
+            "fatal: internal: unknown signal handle 999"
         );
 
         let error = host

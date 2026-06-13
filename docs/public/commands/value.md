@@ -1,7 +1,7 @@
 ---
 id: commands/value
 title: Value command
-description: Sample signal values at one timestamp.
+description: Sample signal values at one or more explicit timestamps.
 section: commands
 see_also:
   - commands/overview
@@ -13,32 +13,42 @@ see_also:
 ---
 # Value command
 
-A useful mental model: `value` is a rough CLI equivalent of an `initial` block that waits until `<at>` and then `$display`s the selected signals — except it samples an existing dump instead of modifying the simulation.
+A useful mental model: `value` is a rough CLI equivalent of an `initial` block that waits until each requested `--at` time and then `$display`s the selected signals — except it samples an existing dump instead of modifying the simulation.
 
-Use `value` when you want one trustworthy snapshot instead of a time range.
+Use `value` when you want explicit point snapshots instead of a time range.
 
 It is the fastest way to answer questions like:
 
 - what was `state` at reset release,
-- what did `valid`, `ready`, and `data` look like on this cycle,
-- did two related signals agree at a specific timestamp.
+- what did `valid`, `ready`, and `data` look like on selected cycles,
+- did two related signals agree at specific timestamps.
 
 In practice, `value` usually comes after `info` (to get time units and bounds) and `scope` or `signal` (to find the right names).
 
 For exact syntax and flags, run `wavepeek help value`.
 
-## Start with one point-in-time snapshot
+## Start with one point snapshot
 
 If you already know the canonical signal paths, sample them directly:
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 10ns --signals top.clk,top.data
-@10ns
-top.clk 1'h1
-top.data 8'h0f
+@10ns top.clk=1'h1 top.data=8'h0f
 ```
 
 Use this when you already have full paths from `signal`, logs, or earlier queries.
+
+## Sample several explicit points
+
+Pass a comma-separated list as the single `--at` argument:
+
+```text
+$ wavepeek value --waves path/to/dump.vcd --at 5ns,10ns --scope top --signals clk,data
+@5ns clk=1'h1 data=8'h00
+@10ns clk=1'h1 data=8'h0f
+```
+
+Rows follow the `--at` order. Duplicate time points are preserved.
 
 ## Shorten deep names with `--scope`
 
@@ -46,9 +56,7 @@ When several signals live in the same scope, set that scope once and keep `--sig
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,data
-@10ns
-clk 1'h1
-data 8'h0f
+@10ns clk=1'h1 data=8'h0f
 ```
 
 This is usually the most convenient form for manual debugging.
@@ -59,45 +67,44 @@ Add `--abs` when you want scope-relative input but fully qualified output:
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,data --abs
-@10ns
-top.clk 1'h1
-top.data 8'h0f
+@10ns top.clk=1'h1 top.data=8'h0f
 ```
 
 Use this when you plan to paste results into notes, bugs, or follow-up commands.
 
 ## Remember that sampling is state-at-time, not change-at-time
 
-`value` returns the latest known value at or before `--at`. The timestamp does not need to be a transition point:
+`value` returns the latest known value at or before each `--at` timestamp. A timestamp does not need to be a transition point:
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 7ns --scope top --signals clk,data
-@7ns
-clk 1'h1
-data 8'h00
+@7ns clk=1'h1 data=8'h00
 ```
 
 Use this for spot checks between edges or between visible value changes.
 
 ## Use JSON for scripts and agents
 
-`--json` returns a stable machine-readable envelope:
+`--json` returns a stable machine-readable envelope. The `data` field is an ordered array of snapshots, matching the row shape used by `change`:
 
 ```text
-$ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,data --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"value","data":{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]},"warnings":[]}
+$ wavepeek value --waves path/to/dump.vcd --at 5ns,10ns --scope top --signals clk,data --json
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"value","data":[{"time":"5ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h00"}]},{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]}],"diagnostics":[]}
 ```
 
 Use this when another tool needs deterministic parsing instead of human formatting.
 
 ## Non-obvious behavior
 
+- `--at` accepts one time token or a comma-separated list in one argument.
+- `--at` order is preserved exactly, including duplicates.
 - `--signals` order is preserved exactly, including duplicates.
 - Without `--scope`, names in `--signals` are treated as canonical full paths.
 - With `--scope`, names in `--signals` must stay scope-relative. Do not mix relative names and full paths in one request.
 - `--abs` affects only human output. With `--json`, canonical paths are emitted either way.
 - `--at` accepts dump start and dump end; both bounds are inclusive.
 - Time tokens must be integer plus unit. `10ns` is valid; `10` and `1.5ns` are errors.
-- If a signal has no sampled value at or before the requested time, the command fails instead of inventing a default.
-- `value` does not truncate output and does not use `--max`; result size is bounded by the signals you requested.
+- Empty comma entries such as `5ns,,10ns` are errors.
+- If a signal has no sampled value at or before a requested time, the command fails instead of inventing a default.
+- `value` does not truncate output and does not use `--max`; result size is bounded by the number of times and signals you requested.
 - Values are printed as Verilog literals. Non-bit-vector dump encodings are currently rejected by this command.

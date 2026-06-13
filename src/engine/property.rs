@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::cli::property::{CaptureMode, PropertyArgs};
+use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
     eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
@@ -169,12 +170,21 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         }
     }
 
+    let diagnostics = if rows.is_empty() {
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::EmptyResult,
+            "no property matches found in selected time range",
+        )]
+    } else {
+        Vec::new()
+    };
+
     Ok(CommandResult {
         command: CommandName::Property,
         json: args.json,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Property(rows),
-        warnings: Vec::new(),
+        diagnostics,
     })
 }
 

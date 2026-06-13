@@ -34,7 +34,7 @@ Use `scope` to explore hierarchy structure. It is the stable way to discover sco
 
 Use `signal` after `scope` to inspect the signals available in a selected scope. Recursive mode broadens that view into child scopes while preserving deterministic ordering.
 
-Use `value` for exact point-in-time sampling. It is the most direct command when you already know the signal set and want one normalized timestamp.
+Use `value` for exact point sampling. It is the most direct command when you already know the signal set and want one or more explicit normalized timestamps.
 
 Use `change` to inspect value transitions across a bounded time range. Trigger selection comes from `--on`; expression syntax lives in `reference/expression-language`.
 

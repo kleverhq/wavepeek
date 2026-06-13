@@ -39,7 +39,7 @@ Add `--json`:
 
 ```text
 $ wavepeek info --waves path/to/dump.vcd --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"info","data":{"time_unit":"1ns","time_start":"0ns","time_end":"10ns"},"diagnostics":[]}
 ```
 
 Use this in scripts and agents. The exact JSON shape is defined by `wavepeek schema` and explained in `reference/machine-output`.
@@ -49,4 +49,4 @@ Use this in scripts and agents. The exact JSON shape is defined by `wavepeek sch
 - `time_start` and `time_end` are already normalized to the dump's `time_unit`. These are the bounds the rest of `wavepeek` uses.
 - `info` is intentionally minimal. It does not print scope counts, signal counts, or extra time-precision fields.
 - Dumps do not have to start at zero, and they do not all share the same unit.
-- `info` does not emit truncation warnings; the result is always a small fixed metadata record.
+- `info` does not emit truncation diagnostics; the result is always a small fixed metadata record.

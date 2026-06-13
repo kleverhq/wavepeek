@@ -1,6 +1,6 @@
 # Schema Tools
 
-This group owns validation for the current major JSON schema artifact, such as `schema/wavepeek_v0.json`.
+This group owns validation for the current major JSON schema artifact, such as `schema/wavepeek_v1.json`.
 
 Normal entrypoints:
 

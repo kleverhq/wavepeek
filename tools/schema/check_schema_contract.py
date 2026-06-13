@@ -136,6 +136,110 @@ def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> N
         )
 
 
+def validate_diagnostic_schema(schema: dict[str, object]) -> None:
+    required = schema.get("required")
+    properties = schema.get("properties")
+    defs = schema.get("$defs")
+    if not isinstance(required, list):
+        fail("error: schema: canonical schema required must be an array")
+    if not isinstance(properties, dict):
+        fail("error: schema: canonical schema properties must be an object")
+    if not isinstance(defs, dict):
+        fail("error: schema: canonical schema $defs must be an object")
+
+    if "diagnostics" not in required:
+        fail("error: schema: canonical schema must require diagnostics")
+    if "warnings" in required:
+        fail("error: schema: canonical schema must not require legacy warnings")
+    if "diagnostics" not in properties:
+        fail("error: schema: canonical schema must define diagnostics")
+    if "warnings" in properties:
+        fail("error: schema: canonical schema must not define legacy warnings")
+
+    data = properties.get("data")
+    if not isinstance(data, dict):
+        fail("error: schema: data property must be an object")
+    if "oneOf" in data:
+        fail("error: schema: data property must not use oneOf because empty arrays match multiple command payloads")
+    if "anyOf" not in data:
+        fail("error: schema: data property must use anyOf for command payload variants")
+
+    diagnostics = properties["diagnostics"]
+    if not isinstance(diagnostics, dict):
+        fail("error: schema: diagnostics property must be an object")
+    if diagnostics.get("type") != "array":
+        fail("error: schema: diagnostics property must be an array")
+    items = diagnostics.get("items")
+    if not isinstance(items, dict) or items.get("$ref") != "#/$defs/diagnostic":
+        fail("error: schema: diagnostics items must reference $defs.diagnostic")
+
+    diagnostic = defs.get("diagnostic")
+    if not isinstance(diagnostic, dict):
+        fail("error: schema: canonical schema must define $defs.diagnostic")
+    if diagnostic.get("type") != "object":
+        fail("error: schema: diagnostic definition must be an object")
+    if diagnostic.get("additionalProperties") is not False:
+        fail("error: schema: diagnostic definition must reject additional properties")
+    if diagnostic.get("required") != ["kind", "message"]:
+        fail("error: schema: diagnostic definition must require kind and message")
+
+    diagnostic_properties = diagnostic.get("properties")
+    if not isinstance(diagnostic_properties, dict):
+        fail("error: schema: diagnostic properties must be an object")
+    kind = diagnostic_properties.get("kind")
+    code = diagnostic_properties.get("code")
+    message = diagnostic_properties.get("message")
+    if not isinstance(kind, dict) or kind.get("enum") != ["info", "warning", "error"]:
+        fail("error: schema: diagnostic kind enum mismatch")
+    if not isinstance(code, dict) or code.get("pattern") != r"^WPK-[WE][0-9]{4}$":
+        fail("error: schema: diagnostic code pattern mismatch")
+    if not isinstance(message, dict) or message.get("type") != "string":
+        fail("error: schema: diagnostic message must be a string")
+
+    rules = diagnostic.get("allOf")
+    if not isinstance(rules, list):
+        fail("error: schema: diagnostic definition must use allOf conditionals")
+    found_warning = False
+    found_error = False
+    found_info = False
+    for rule in rules:
+        if not isinstance(rule, dict):
+            continue
+        try:
+            kind_const = rule["if"]["properties"]["kind"]["const"]  # type: ignore[index]
+        except (KeyError, TypeError):
+            continue
+        then = rule.get("then")
+        if not isinstance(then, dict):
+            continue
+        code_properties = then.get("properties")
+        if not isinstance(code_properties, dict):
+            code_pattern = None
+        else:
+            code_schema = code_properties.get("code")
+            code_pattern = code_schema.get("pattern") if isinstance(code_schema, dict) else None
+        if (
+            kind_const == "warning"
+            and then.get("required") == ["code"]
+            and code_pattern == r"^WPK-W[0-9]{4}$"
+        ):
+            found_warning = True
+        if (
+            kind_const == "error"
+            and then.get("required") == ["code"]
+            and code_pattern == r"^WPK-E[0-9]{4}$"
+        ):
+            found_error = True
+        if kind_const == "info" and then.get("not") == {"required": ["code"]}:
+            found_info = True
+    if not found_warning:
+        fail("error: schema: warning diagnostics must require a WPK-W code")
+    if not found_error:
+        fail("error: schema: error diagnostics must require a WPK-E code")
+    if not found_info:
+        fail("error: schema: info diagnostics must reject code")
+
+
 def validate_docs_metadata_schema(schema: dict[str, object]) -> None:
     try:
         topic_summary = schema["$defs"]["topicSummary"]  # type: ignore[index]
@@ -208,6 +312,11 @@ def validate_runtime_envelope_url(version: str, major: str) -> None:
     if "schema_version" in envelope:
         fail("error: schema: legacy schema_version key is still present in JSON envelope")
 
+    if envelope.get("diagnostics") != []:
+        fail("error: schema: info JSON envelope must contain empty diagnostics")
+    if "warnings" in envelope:
+        fail("error: schema: legacy warnings key is still present in JSON envelope")
+
 
 def main() -> None:
     version = package_version()
@@ -217,6 +326,7 @@ def main() -> None:
     validate_schema_path(schema_path, major)
     schema_bytes, schema = load_schema(schema_path)
     validate_artifact_schema_url_pattern(schema, version, major)
+    validate_diagnostic_schema(schema)
     validate_docs_metadata_schema(schema)
     validate_runtime_schema(schema_path, schema_bytes)
     validate_runtime_envelope_url(version, major)

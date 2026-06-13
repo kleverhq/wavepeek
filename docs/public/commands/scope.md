@@ -78,30 +78,30 @@ Use `--tree` when you want to understand parent/child relationships at a glance.
 
 ```text
 $ wavepeek scope --waves path/to/dump.fst --max 50 --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v0.json","command":"scope","data":[{"path":"top","depth":0,"kind":"module"},{"path":"top.cpu","depth":1,"kind":"module"},{"path":"top.mem","depth":1,"kind":"module"}],"warnings":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"scope","data":[{"path":"top","depth":0,"kind":"module"},{"path":"top.cpu","depth":1,"kind":"module"},{"path":"top.mem","depth":1,"kind":"module"}],"diagnostics":[]}
 ```
 
 Use this in scripts, agents, or when you want deterministic parsing instead of human formatting.
 
-## Watch for truncation and disabled-limit warnings
+## Watch for truncation and disabled-limit diagnostics
 
-`scope` is bounded by default. If `--max` cuts the result, the command still succeeds but warns:
+`scope` is bounded by default. If `--max` cuts the result, the command still succeeds but emits a diagnostic:
 
 ```text
 $ wavepeek scope --waves path/to/dump.vcd --max 2
 0 top kind=module
 1 top.cpu kind=module
-warning: truncated output to 2 entries (use --max to increase limit)
+warning[WPK-W0002]: truncated output to 2 entries (use --max to increase limit)
 ```
 
-If you disable a bound explicitly, that also produces a warning so automation can tell the query was intentionally unbounded:
+If you disable a bound explicitly, that also produces a diagnostic so automation can tell the query was intentionally unbounded:
 
 ```text
 $ wavepeek scope --waves path/to/dump.vcd --max unlimited
 0 top kind=module
 1 top.cpu kind=module
 1 top.mem kind=module
-warning: limit disabled: --max=unlimited
+warning[WPK-W0001]: limit disabled: --max=unlimited
 ```
 
 ## Non-obvious behavior
@@ -119,5 +119,5 @@ top kind=module
 └── worker kind=task
 ```
 
-- An empty match is still success: the command prints no rows and no warning.
+- An empty match is still success: the command prints no rows and emits `WPK-W0003`.
 - Once you have the right path, the next step is usually `wavepeek signal --scope <that-path> ...`.

@@ -43,7 +43,7 @@ fn skill_json_mode_is_an_argument_error() {
     assert!(!output.status.success());
     assert!(output.stdout.is_empty());
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.starts_with("error: args:"));
+    assert!(stderr.starts_with("fatal: args:"));
     assert!(stderr.contains("unexpected argument '--json'"));
     assert!(stderr.contains("See 'wavepeek skill --help'."));
 }
@@ -54,6 +54,7 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
         fs::read_to_string(canonical_skill_path()).expect("packaged skill should be readable");
 
     assert!(packaged.contains("wavepeek help <command-path...>"));
+    assert!(packaged.contains(".fsdb"));
     assert!(!packaged.contains("parsed but not executed in `change`"));
     assert!(!packaged.contains("parse-level only; runtime execution is not implemented"));
 }

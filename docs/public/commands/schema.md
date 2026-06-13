@@ -64,7 +64,7 @@ This is the quickest way to confirm whether a command family has a stable machin
 The `data` field is a tagged union keyed by `command`. You can inspect the referenced definitions directly:
 
 ```text
-$ wavepeek schema | jq '.properties.data.oneOf | map(.["$ref"])'
+$ wavepeek schema | jq '.properties.data.anyOf | map(.["$ref"])'
 [
   "#/$defs/infoData",
   "#/$defs/scopeData",
@@ -89,4 +89,4 @@ $ jq -r '.title' wavepeek-schema.json
 wavepeek JSON output envelope
 ```
 
-This keeps the schema matched to the binary's major-version contract. A current `0.x` build prints the same bytes as `schema/wavepeek_v0.json`.
+This keeps the schema matched to the binary's major-version contract. A current `1.x` build prints the same bytes as `schema/wavepeek_v1.json`.

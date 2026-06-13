@@ -31,7 +31,7 @@ pub struct TopicSummary {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TopicRecord {
-    pub summary: TopicSummary,
+    pub topic: TopicSummary,
     pub raw_markdown: String,
     pub body: String,
     pub headings: Vec<String>,
@@ -78,7 +78,7 @@ impl DocsCatalog {
     fn topic_summaries(&self) -> Vec<TopicSummary> {
         self.topics
             .values()
-            .map(|record| record.summary.clone())
+            .map(|record| record.topic.clone())
             .collect()
     }
 
@@ -120,10 +120,10 @@ pub struct ExportManifest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct FrontMatter {
     id: String,
     title: String,
-    #[serde(alias = "summary")]
     description: String,
     section: String,
     #[serde(default)]
@@ -189,9 +189,9 @@ pub fn suggest_topics(input: &str, limit: usize) -> Vec<TopicSummary> {
         .topics
         .values()
         .filter_map(|record| {
-            let id = record.summary.id.to_ascii_lowercase();
-            let title = record.summary.title.to_ascii_lowercase();
-            let description = record.summary.description.to_ascii_lowercase();
+            let id = record.topic.id.to_ascii_lowercase();
+            let title = record.topic.title.to_ascii_lowercase();
+            let description = record.topic.description.to_ascii_lowercase();
 
             let score = if id.starts_with(&normalized) {
                 0
@@ -205,7 +205,7 @@ pub fn suggest_topics(input: &str, limit: usize) -> Vec<TopicSummary> {
                 return None;
             };
 
-            Some((score, record.summary.clone()))
+            Some((score, record.topic.clone()))
         })
         .collect::<Vec<_>>();
 
@@ -314,14 +314,14 @@ fn load_catalog() -> Result<DocsCatalog, String> {
     let mut topics = BTreeMap::new();
     for file in files {
         let record = parse_topic_file(file)?;
-        let topic_id = record.summary.id.clone();
+        let topic_id = record.topic.id.clone();
         if topics.insert(topic_id.clone(), record).is_some() {
             return Err(format!("duplicate docs topic id '{topic_id}'"));
         }
     }
 
     for (topic_id, record) in &topics {
-        for target in &record.summary.see_also {
+        for target in &record.topic.see_also {
             if !topics.contains_key(target) {
                 return Err(format!(
                     "docs topic '{topic_id}' references unknown see_also target '{target}'"
@@ -390,7 +390,7 @@ fn parse_topic_file(file: &File<'_>) -> Result<TopicRecord, String> {
     }
 
     Ok(TopicRecord {
-        summary: TopicSummary {
+        topic: TopicSummary {
             id: metadata.id,
             title: metadata.title,
             description: metadata.description,
@@ -473,9 +473,9 @@ fn search_match(
     normalized_query: &str,
     tokens: &[String],
 ) -> Option<SearchMatch> {
-    let normalized_id = record.summary.id.to_ascii_lowercase();
-    let normalized_title = record.summary.title.to_ascii_lowercase();
-    let normalized_description = record.summary.description.to_ascii_lowercase();
+    let normalized_id = record.topic.id.to_ascii_lowercase();
+    let normalized_title = record.topic.title.to_ascii_lowercase();
+    let normalized_description = record.topic.description.to_ascii_lowercase();
     let normalized_headings = record
         .headings
         .iter()
@@ -485,7 +485,7 @@ fn search_match(
 
     if normalized_id == normalized_query {
         return Some(SearchMatch {
-            topic: record.summary.clone(),
+            topic: record.topic.clone(),
             match_kind: MatchKind::IdExact,
             matched_tokens: tokens.len().max(1),
         });
@@ -544,7 +544,7 @@ fn search_match(
     })?;
 
     Some(SearchMatch {
-        topic: record.summary.clone(),
+        topic: record.topic.clone(),
         match_kind,
         matched_tokens,
     })
@@ -723,11 +723,11 @@ mod docs_inline_derive_tests {
         .unwrap();
         assert!(format!("{front:?}").contains("commands/demo"));
 
-        let legacy_front: FrontMatter = serde_yaml::from_str(
-            "id: commands/legacy\ntitle: Legacy\nsummary: Legacy summary\nsection: commands\n",
+        let legacy_error = serde_yaml::from_str::<FrontMatter>(
+            "id: commands/legacy\ntitle: Legacy\ndescription: Current\nsummary: Legacy summary\nsection: commands\n",
         )
-        .unwrap();
-        assert_eq!(legacy_front.description, "Legacy summary");
+        .expect_err("legacy summary metadata should be rejected");
+        assert!(legacy_error.to_string().contains("summary"));
     }
 }
 
@@ -768,7 +768,7 @@ mod tests {
         let change = lookup_topic("commands/change")
             .expect("lookup should succeed")
             .expect("topic should exist");
-        assert_eq!(change.summary.id, "commands/change");
+        assert_eq!(change.topic.id, "commands/change");
 
         let matches = search_topics("commands info").expect("search should succeed");
         assert!(
@@ -887,7 +887,7 @@ mod tests {
             .expect("lookup should succeed")
             .expect("topic should exist");
 
-        for target in &topic.summary.see_also {
+        for target in &topic.topic.see_also {
             assert!(
                 lookup_topic(target)
                     .expect("lookup should succeed")
@@ -917,7 +917,7 @@ mod tests {
         let error = normalize_query("   \n\t  ").expect_err("empty query should fail");
         assert_eq!(
             error.to_string(),
-            "error: args: query must contain at least one non-whitespace token"
+            "fatal: args: query must contain at least one non-whitespace token"
         );
     }
 
@@ -1159,7 +1159,7 @@ mod tests {
             .get_file("commands/change.md")
             .expect("embedded file should exist");
         let parsed = parse_topic_file(change).expect("embedded topic should parse");
-        assert_eq!(parsed.summary.id, "commands/change");
+        assert_eq!(parsed.topic.id, "commands/change");
         assert_eq!(parsed.headings[0], "Change command");
         assert_eq!(parsed.source_relpath, "commands/change.md");
 
@@ -1167,7 +1167,7 @@ mod tests {
             .get_file("nested/topic.md")
             .expect("fixture topic should exist");
         let nested = parse_topic_file(nested).expect("fixture topic should parse");
-        assert_eq!(nested.summary.id, "nested/topic");
+        assert_eq!(nested.topic.id, "nested/topic");
         assert_eq!(nested.headings, vec!["Nested topic", "Child"]);
 
         let mismatch = DOC_FIXTURES
@@ -1209,7 +1209,7 @@ mod tests {
         let temp = tempdir().expect("tempdir should be created");
         let export_dir = temp.path().join("export-tree");
         let catalog = DocsCatalog {
-            topics: BTreeMap::from([(nested.summary.id.clone(), nested.clone())]),
+            topics: BTreeMap::from([(nested.topic.id.clone(), nested.clone())]),
         };
         let manifest = ExportManifest {
             kind: EXPORT_KIND.to_string(),
@@ -1309,7 +1309,7 @@ mod tests {
     fn export_helpers_report_filesystem_collisions() {
         let nested = fake_topic("nested/topic", "Nested", "description", "misc", &["Nested"]);
         let catalog = DocsCatalog {
-            topics: BTreeMap::from([(nested.summary.id.clone(), nested.clone())]),
+            topics: BTreeMap::from([(nested.topic.id.clone(), nested.clone())]),
         };
         let manifest = ExportManifest {
             kind: EXPORT_KIND.to_string(),
@@ -1388,7 +1388,7 @@ mod tests {
         headings: &[&str],
     ) -> TopicRecord {
         TopicRecord {
-            summary: TopicSummary {
+            topic: TopicSummary {
                 id: id.to_string(),
                 title: title.to_string(),
                 description: description.to_string(),

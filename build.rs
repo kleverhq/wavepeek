@@ -108,6 +108,7 @@ fn emit_fsdb_link_settings(sdk: &FsdbSdk) {
     println!("cargo:rustc-link-arg=-Wl,--no-as-needed");
     println!("cargo:rustc-link-arg=-lnffr");
     println!("cargo:rustc-link-arg=-lnsys");
+    println!("cargo:rustc-link-arg=-l:libz.so.1");
     println!("cargo:rustc-link-arg=-Wl,--as-needed");
 
     if embed_fsdb_rpath_enabled() {

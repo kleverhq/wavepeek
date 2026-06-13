@@ -45,7 +45,7 @@ fn scope_json_order_is_deterministic_for_vcd() {
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "scope");
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([
@@ -138,16 +138,16 @@ fn scope_emits_truncation_warning_when_max_is_hit() {
         2
     );
     assert_eq!(
-        value["warnings"]
+        value["diagnostics"]
             .as_array()
-            .expect("warnings should be array")
+            .expect("diagnostics should be array")
             .len(),
         1
     );
     assert!(
-        value["warnings"][0]
+        value["diagnostics"][0]["message"]
             .as_str()
-            .expect("warning should be string")
+            .expect("diagnostic message should be string")
             .contains("truncated output to 2 entries")
     );
 }
@@ -178,8 +178,8 @@ fn scope_unlimited_max_emits_warning_in_json_and_human_modes() {
 
     let value = parse_scope_json(&json_output.stdout);
     assert_eq!(
-        value["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
     assert_eq!(
         value["data"]
@@ -190,7 +190,7 @@ fn scope_unlimited_max_emits_warning_in_json_and_human_modes() {
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr).trim(),
-        "warning: limit disabled: --max=unlimited"
+        "warning[WPK-W0001]: limit disabled: --max=unlimited"
     );
 }
 
@@ -233,10 +233,10 @@ fn scope_unlimited_max_depth_disables_depth_bound_and_emits_warning() {
     let depth_one = parse_scope_json(&depth_one_output.stdout);
 
     assert_eq!(
-        depth_unlimited["warnings"],
-        json!(["limit disabled: --max-depth=unlimited"])
+        depth_unlimited["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max-depth=unlimited"}])
     );
-    assert_eq!(depth_one["warnings"], json!([]));
+    assert_eq!(depth_one["diagnostics"], json!([]));
     assert!(
         depth_unlimited["data"]
             .as_array()
@@ -285,19 +285,16 @@ fn scope_dual_unlimited_warnings_are_deterministic_in_json_and_human_modes() {
 
     let value = parse_scope_json(&json_output.stdout);
     assert_eq!(
-        value["warnings"],
-        json!([
-            "limit disabled: --max=unlimited",
-            "limit disabled: --max-depth=unlimited"
-        ])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}, {"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max-depth=unlimited"}])
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr)
             .lines()
             .collect::<Vec<_>>(),
         vec![
-            "warning: limit disabled: --max=unlimited",
-            "warning: limit disabled: --max-depth=unlimited"
+            "warning[WPK-W0001]: limit disabled: --max=unlimited",
+            "warning[WPK-W0001]: limit disabled: --max-depth=unlimited"
         ]
     );
 }
@@ -338,19 +335,16 @@ fn scope_unlimited_warnings_precede_legacy_truncation_warnings() {
 
     let value = parse_scope_json(&json_output.stdout);
     assert_eq!(
-        value["warnings"],
-        json!([
-            "limit disabled: --max-depth=unlimited",
-            "truncated output to 1 entries (use --max to increase limit)"
-        ])
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max-depth=unlimited"}, {"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
     assert_eq!(
         String::from_utf8_lossy(&human_output.stderr)
             .lines()
             .collect::<Vec<_>>(),
         vec![
-            "warning: limit disabled: --max-depth=unlimited",
-            "warning: truncated output to 1 entries (use --max to increase limit)"
+            "warning[WPK-W0001]: limit disabled: --max-depth=unlimited",
+            "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
         ]
     );
 }
@@ -367,13 +361,55 @@ fn scope_rejects_zero_max_with_args_error() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with(
-            "error: args: --max must be greater than 0.",
+            "fatal: args: --max must be greater than 0.",
         ))
         .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
 }
 
 fn parse_scope_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("scope output should be valid json")
+}
+
+#[test]
+fn scope_empty_filter_emits_empty_result_diagnostic() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "scope",
+            "--waves",
+            fixture.as_str(),
+            "--filter",
+            "DOES_NOT_MATCH",
+            "--json",
+        ])
+        .output()
+        .expect("json scope run should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "scope",
+            "--waves",
+            fixture.as_str(),
+            "--filter",
+            "DOES_NOT_MATCH",
+        ])
+        .output()
+        .expect("human scope run should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert!(human_output.stdout.is_empty());
+    let value = parse_scope_json(&json_output.stdout);
+    assert_eq!(value["data"], json!([]));
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no scopes found"}])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0003]: no scopes found"
+    );
 }
 
 #[test]
@@ -395,7 +431,7 @@ fn scope_invalid_regex_is_args_error() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: args: invalid regex"))
+        .stderr(predicate::str::starts_with("fatal: args: invalid regex"))
         .stderr(predicate::str::contains("See 'wavepeek scope --help'."));
 }
 
@@ -480,7 +516,7 @@ fn scope_json_ignores_tree_flag_without_extra_warning() {
     let stdout = String::from_utf8_lossy(&assert.get_output().stdout).to_string();
     let value: Value = serde_json::from_str(&stdout).expect("scope output should be valid json");
 
-    assert_eq!(value["warnings"], Value::Array(vec![]));
+    assert_eq!(value["diagnostics"], Value::Array(vec![]));
     assert_eq!(
         value["data"],
         json!([

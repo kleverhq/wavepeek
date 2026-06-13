@@ -62,7 +62,7 @@ fn change_vcd_and_fst_payloads_match_for_default_trigger() {
     let fst_json = run_change_json(fst_fixture.as_str(), &args);
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
-    assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+    assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
 }
 
 #[test]
@@ -101,7 +101,7 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
         let vcd_json = run_change_json(vcd_fixture.as_str(), args.as_slice());
         let fst_json = run_change_json(fst_fixture.as_str(), args.as_slice());
         assert_eq!(vcd_json["data"], fst_json["data"]);
-        assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+        assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
     }
 }
 
@@ -124,7 +124,7 @@ fn change_vcd_and_fst_payloads_match_for_typed_iff_trigger() {
     let fst_json = run_change_json(fst_fixture.as_str(), &args);
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
-    assert_eq!(vcd_json["warnings"], fst_json["warnings"]);
+    assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn change_fst_stream_candidate_path_matches_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "baseline", "stream");
 
     assert_eq!(random_access["data"], forced_stream["data"]);
-    assert_eq!(random_access["warnings"], forced_stream["warnings"]);
+    assert_eq!(random_access["diagnostics"], forced_stream["diagnostics"]);
 }
 
 #[test]
@@ -170,5 +170,5 @@ fn change_fst_fused_stream_candidate_path_matches_fused_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "fused", "stream");
 
     assert_eq!(fused_random["data"], fused_stream["data"]);
-    assert_eq!(fused_random["warnings"], fused_stream["warnings"]);
+    assert_eq!(fused_random["diagnostics"], fused_stream["diagnostics"]);
 }

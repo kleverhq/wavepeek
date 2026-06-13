@@ -7,7 +7,7 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 - `just dev-setup` prepares the local devcontainer and installs hooks.
 - `just codex-setup` and `just codex-resume` prepare Codex cloud sessions.
 - `just check`, `just ci`, and `just pre-commit` are the main quality gates.
-- `just update-schema` refreshes the current major artifact such as `schema/wavepeek_v0.json`; `just check-schema` validates it.
+- `just update-schema` refreshes the current major artifact such as `schema/wavepeek_v1.json`; `just check-schema` validates it.
 - `just docs-site-build`, `just docs-site-check`, `just docs-site-stage-deploy`, `just docs-site-push-staged`, and `just docs-site-check-deploy` own GitHub Pages docs preparation, publication, and deployed endpoint verification.
 - `just bench-e2e-run`, `just bench-e2e-update-baseline`, `just bench-expr-run`, and `just bench-expr-update-baseline` own default benchmark flows.
 - `just check-fsdb-env`, `just test-fsdb`, `just lint-fsdb`, and `just bench-e2e-fsdb-smoke-commit` own optional Verdi/FSDB flows; see `fsdb.md` for the full contract.

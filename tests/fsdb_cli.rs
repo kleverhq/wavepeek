@@ -73,7 +73,7 @@ fn fsdb_info_json_matches_vcd_derived_fixture() {
     assert_eq!(value["$schema"], expected_schema_url());
     assert!(value.get("schema_version").is_none());
     assert_eq!(value["command"], "info");
-    assert_eq!(value["warnings"], json!([]));
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(value["data"]["time_unit"], "1ns");
     assert_eq!(value["data"]["time_start"], "0ns");
     assert_eq!(value["data"]["time_end"], "10ns");
@@ -112,13 +112,16 @@ fn fsdb_scope_json_is_sorted_and_depth_bounded() {
             {"path": "top.mem", "depth": 1, "kind": "module"},
         ])
     );
-    assert_eq!(all["warnings"], json!(["limit disabled: --max=unlimited"]));
+    assert_eq!(
+        all["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
+    );
 
     assert_eq!(
         root_only["data"],
         json!([{ "path": "top", "depth": 0, "kind": "module" }])
     );
-    assert_eq!(root_only["warnings"], json!([]));
+    assert_eq!(root_only["diagnostics"], json!([]));
 }
 
 #[test]
@@ -180,8 +183,8 @@ fn fsdb_signal_direct_and_recursive_queries_are_stable() {
         ])
     );
     assert_eq!(
-        direct["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        direct["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
 
     assert_eq!(
@@ -213,7 +216,7 @@ fn fsdb_signal_reports_missing_scope_with_scope_category() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: scope:"))
+        .stderr(predicate::str::starts_with("fatal: scope:"))
         .stderr(predicate::str::contains(
             "scope 'top.missing' not found in dump",
         ));
@@ -228,7 +231,7 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
     assert_eq!(info, info_again);
     assert_eq!(info["$schema"], expected_schema_url());
     assert_eq!(info["command"], "info");
-    assert_eq!(info["warnings"], json!([]));
+    assert_eq!(info["diagnostics"], json!([]));
     for field in ["time_unit", "time_start", "time_end"] {
         assert!(
             info["data"][field]
@@ -257,8 +260,8 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
     ]);
     assert_eq!(scopes["data"], scopes_again["data"]);
     assert_eq!(
-        scopes["warnings"],
-        json!(["limit disabled: --max=unlimited"])
+        scopes["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
     );
     let scope_entries = scopes["data"]
         .as_array()
@@ -281,9 +284,9 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
         1
     );
     assert!(
-        truncated_scopes["warnings"][0]
+        truncated_scopes["diagnostics"][0]["message"]
             .as_str()
-            .expect("warning should be string")
+            .expect("diagnostic message should be string")
             .contains("truncated output to 1 entries")
     );
 
@@ -350,11 +353,11 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
         "--json",
     ]);
     assert_eq!(sampled["command"], "value");
-    assert_eq!(sampled["warnings"], json!([]));
-    assert_eq!(sampled["data"]["time"], sample_time);
-    assert_eq!(sampled["data"]["signals"][0]["path"], sample_path);
+    assert_eq!(sampled["diagnostics"], json!([]));
+    assert_eq!(sampled["data"][0]["time"], sample_time);
+    assert_eq!(sampled["data"][0]["signals"][0]["path"], sample_path);
     assert!(
-        sampled["data"]["signals"][0]["value"]
+        sampled["data"][0]["signals"][0]["value"]
             .as_str()
             .is_some_and(|value| value.contains("'h")),
         "sampled FSDB value should render as a Verilog-style literal"
@@ -415,11 +418,11 @@ fn fsdb_value_json_matches_vcd_sampling_contract() {
 
     assert_eq!(fsdb_value["$schema"], expected_schema_url());
     assert_eq!(fsdb_value["command"], "value");
-    assert_eq!(fsdb_value["warnings"], json!([]));
+    assert_eq!(fsdb_value["diagnostics"], json!([]));
     assert_eq!(fsdb_value["data"], vcd_value["data"]);
-    assert_eq!(fsdb_value["data"]["time"], "7ns");
+    assert_eq!(fsdb_value["data"][0]["time"], "7ns");
     assert_eq!(
-        fsdb_value["data"]["signals"],
+        fsdb_value["data"][0]["signals"],
         json!([
             {"path": "top.data", "value": "8'h0f"},
             {"path": "top.clk", "value": "1'h1"},
@@ -477,8 +480,8 @@ fn fsdb_value_samples_exact_transitions_and_dump_end() {
             time,
             "--json",
         ]);
-        assert_eq!(value["data"]["time"], time);
-        assert_eq!(value["data"]["signals"], expected);
+        assert_eq!(value["data"][0]["time"], time);
+        assert_eq!(value["data"][0]["signals"], expected);
     }
 }
 
@@ -503,7 +506,7 @@ fn fsdb_value_change_and_property_use_final_same_time_update() {
         let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
         assert_eq!(fsdb_value["data"], vcd_value["data"]);
         assert_eq!(
-            fsdb_value["data"]["signals"],
+            fsdb_value["data"][0]["signals"],
             json!([
                 {"path": "top.glitch", "value": "1'h1"},
                 {"path": "top.bus", "value": "2'h2"}
@@ -583,9 +586,7 @@ fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
         "--at",
         "7ns",
     ]);
-    assert!(relative.contains("@7ns\n"));
-    assert!(relative.contains("data 8'h0f\n"));
-    assert!(relative.contains("clk 1'h1\n"));
+    assert_eq!(relative, "@7ns data=8'h0f clk=1'h1\n");
     assert!(!relative.contains("top.data"));
 
     let absolute = run_stdout_success(&[
@@ -600,8 +601,7 @@ fn fsdb_value_preserves_scope_relative_human_output_and_abs() {
         "7ns",
         "--abs",
     ]);
-    assert!(absolute.contains("top.data 8'h0f\n"));
-    assert!(absolute.contains("top.clk 1'h1\n"));
+    assert_eq!(absolute, "@7ns top.data=8'h0f top.clk=1'h1\n");
 }
 
 #[test]
@@ -621,7 +621,7 @@ fn fsdb_value_uses_previous_sample_and_reports_missing_initial_value() {
         "--json",
     ]);
     assert_eq!(
-        previous["data"]["signals"],
+        previous["data"][0]["signals"],
         json!([{ "path": "top.late", "value": "1'h1" }])
     );
 
@@ -698,7 +698,7 @@ fn fsdb_change_json_matches_vcd_contracts() {
     let vcd_edge = run_json_success_with_waves(vcd_fixture.as_str(), &edge_args);
     assert_eq!(fsdb_edge["$schema"], expected_schema_url());
     assert_eq!(fsdb_edge["command"], "change");
-    assert_eq!(fsdb_edge["warnings"], json!([]));
+    assert_eq!(fsdb_edge["diagnostics"], json!([]));
     assert_eq!(fsdb_edge["data"], vcd_edge["data"]);
     assert_eq!(
         fsdb_edge["data"],
@@ -736,7 +736,7 @@ fn fsdb_change_json_matches_vcd_contracts() {
     let vcd_wildcard = run_json_success_with_waves(vcd_fixture.as_str(), &wildcard_args);
     assert_eq!(fsdb_wildcard["$schema"], expected_schema_url());
     assert_eq!(fsdb_wildcard["command"], "change");
-    assert_eq!(fsdb_wildcard["warnings"], vcd_wildcard["warnings"]);
+    assert_eq!(fsdb_wildcard["diagnostics"], vcd_wildcard["diagnostics"]);
     assert_eq!(fsdb_wildcard["data"], vcd_wildcard["data"]);
     assert_eq!(
         fsdb_wildcard["data"],
@@ -765,10 +765,10 @@ fn fsdb_change_json_matches_vcd_contracts() {
     ];
     let fsdb_truncated = run_json_success_with_waves(fsdb_fixture.as_str(), &truncated_args);
     let vcd_truncated = run_json_success_with_waves(vcd_fixture.as_str(), &truncated_args);
-    assert_eq!(fsdb_truncated["warnings"], vcd_truncated["warnings"]);
+    assert_eq!(fsdb_truncated["diagnostics"], vcd_truncated["diagnostics"]);
     assert_eq!(
-        fsdb_truncated["warnings"],
-        json!(["truncated output to 1 entries (use --max to increase limit)"])
+        fsdb_truncated["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
     assert_eq!(
         fsdb_truncated["data"],
@@ -840,7 +840,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     let vcd_switch = run_json_success_with_waves(vcd_core.as_str(), &switch_args);
     assert_eq!(fsdb_switch["$schema"], expected_schema_url());
     assert_eq!(fsdb_switch["command"], "property");
-    assert_eq!(fsdb_switch["warnings"], json!([]));
+    assert_eq!(fsdb_switch["diagnostics"], json!([]));
     assert_eq!(fsdb_switch["data"], vcd_switch["data"]);
     assert_eq!(
         fsdb_switch["data"],
@@ -865,7 +865,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     let vcd_match = run_json_success_with_waves(vcd_core.as_str(), &match_args);
     assert_eq!(fsdb_match["$schema"], expected_schema_url());
     assert_eq!(fsdb_match["command"], "property");
-    assert_eq!(fsdb_match["warnings"], vcd_match["warnings"]);
+    assert_eq!(fsdb_match["diagnostics"], vcd_match["diagnostics"]);
     assert_eq!(fsdb_match["data"], vcd_match["data"]);
     assert_eq!(
         fsdb_match["data"],
@@ -890,7 +890,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     ];
     let fsdb_assert = run_json_success_with_waves(fsdb_core.as_str(), &assert_iff_args);
     let vcd_assert = run_json_success_with_waves(vcd_core.as_str(), &assert_iff_args);
-    assert_eq!(fsdb_assert["warnings"], vcd_assert["warnings"]);
+    assert_eq!(fsdb_assert["diagnostics"], vcd_assert["diagnostics"]);
     assert_eq!(fsdb_assert["data"], vcd_assert["data"]);
     assert_eq!(
         fsdb_assert["data"],
@@ -911,7 +911,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     ];
     let fsdb_deassert = run_json_success_with_waves(fsdb_core.as_str(), &deassert_args);
     let vcd_deassert = run_json_success_with_waves(vcd_core.as_str(), &deassert_args);
-    assert_eq!(fsdb_deassert["warnings"], vcd_deassert["warnings"]);
+    assert_eq!(fsdb_deassert["diagnostics"], vcd_deassert["diagnostics"]);
     assert_eq!(fsdb_deassert["data"], vcd_deassert["data"]);
     assert_eq!(
         fsdb_deassert["data"],
@@ -1227,7 +1227,7 @@ fn assert_clean_fsdb_file_error(args: &[&str]) {
         .assert()
         .failure()
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("error: file:"));
+        .stderr(predicate::str::starts_with("fatal: file:"));
     let stderr = String::from_utf8(assert.get_output().stderr.clone())
         .expect("stderr should be valid UTF-8");
     for forbidden in ["Novas", "SpringSoft", "Verdi"] {

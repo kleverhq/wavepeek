@@ -2,7 +2,8 @@ use serde::Serialize;
 
 use crate::cli::value::ValueArgs;
 use crate::engine::time::{
-    TimeValidationError, format_raw_timestamp, parse_dump_time_context, validate_time_token_to_raw,
+    DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
+    validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult};
@@ -18,10 +19,12 @@ pub struct ValueSignalValue {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct ValueData {
+pub struct ValueSnapshot {
     pub time: String,
     pub signals: Vec<ValueSignalValue>,
 }
+
+pub type ValueData = Vec<ValueSnapshot>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct RequestedSignal {
@@ -36,26 +39,31 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
 
     let dump_time = parse_dump_time_context(&metadata)?;
-    let query_time_raw = validate_time_token_to_raw(args.at.as_str(), dump_time, false)
-        .map_err(|error| map_value_time_validation_error(args.at.as_str(), &metadata, error))?;
+    let query_times_raw = parse_at_tokens(args.at.as_str(), &metadata, dump_time)?;
 
     let canonical_paths = requested_signals
         .iter()
         .map(|signal| signal.path.clone())
         .collect::<Vec<_>>();
-    let sampled = waveform.sample_signals_at_time(&canonical_paths, query_time_raw)?;
+    let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
-    let signals = requested_signals
-        .into_iter()
-        .zip(sampled)
-        .map(|(requested, sampled)| ValueSignalValue {
-            display: requested.display,
-            path: sampled.path,
-            value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
-        })
-        .collect::<Vec<_>>();
+    for query_time_raw in query_times_raw {
+        let sampled = waveform.sample_signals_at_time(&canonical_paths, query_time_raw)?;
+        let signals = requested_signals
+            .iter()
+            .zip(sampled)
+            .map(|(requested, sampled)| ValueSignalValue {
+                display: requested.display.clone(),
+                path: sampled.path,
+                value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
+            })
+            .collect::<Vec<_>>();
 
-    let normalized_time = format_raw_timestamp(query_time_raw, dump_time.dump_tick)?;
+        snapshots.push(ValueSnapshot {
+            time: format_raw_timestamp(query_time_raw, dump_time.dump_tick)?,
+            signals,
+        });
+    }
 
     Ok(CommandResult {
         command: CommandName::Value,
@@ -64,12 +72,37 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        data: CommandData::Value(ValueData {
-            time: normalized_time,
-            signals,
-        }),
-        warnings: Vec::new(),
+        data: CommandData::Value(snapshots),
+        diagnostics: Vec::new(),
     })
+}
+
+fn parse_at_tokens(
+    at: &str,
+    metadata: &WaveformMetadata,
+    dump_time: DumpTimeContext,
+) -> Result<Vec<u64>, WavepeekError> {
+    let mut raw_times = Vec::new();
+    for token in at.split(',') {
+        let token = token.trim();
+        if token.is_empty() {
+            return Err(WavepeekError::Args(
+                "time list in --at must not contain empty entries. See 'wavepeek value --help'."
+                    .to_string(),
+            ));
+        }
+        let raw_time = validate_time_token_to_raw(token, dump_time, false)
+            .map_err(|error| map_value_time_validation_error(token, metadata, error))?;
+        raw_times.push(raw_time);
+    }
+
+    if raw_times.is_empty() {
+        return Err(WavepeekError::Args(
+            "time list in --at must not be empty. See 'wavepeek value --help'.".to_string(),
+        ));
+    }
+
+    Ok(raw_times)
 }
 
 fn resolve_requested_signals(
@@ -139,12 +172,12 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::{
-        RequestedSignal, WaveformMetadata, map_value_time_validation_error,
+        RequestedSignal, WaveformMetadata, map_value_time_validation_error, parse_at_tokens,
         resolve_requested_signals, run,
     };
     use crate::cli::value::ValueArgs;
     use crate::engine::CommandData;
-    use crate::engine::time::TimeValidationError;
+    use crate::engine::time::{TimeValidationError, parse_dump_time_context};
     use crate::waveform::Waveform;
 
     const TEST_VCD: &str = concat!(
@@ -240,6 +273,18 @@ mod tests {
             .contains("supported raw timestamp range")
         );
 
+        let dump_time = parse_dump_time_context(&metadata).expect("dump time should parse");
+        assert_eq!(
+            parse_at_tokens("5ns, 0ns ,5ns", &metadata, dump_time).expect("time list should parse"),
+            vec![5, 0, 5]
+        );
+        assert!(
+            parse_at_tokens("5ns,,0ns", &metadata, dump_time)
+                .expect_err("empty time list entries should fail")
+                .to_string()
+                .contains("time list in --at must not contain empty entries")
+        );
+
         let result = run(ValueArgs {
             waves: PathBuf::from(fixture.path()),
             at: "5ns".to_string(),
@@ -252,9 +297,10 @@ mod tests {
         let CommandData::Value(payload) = result.data else {
             panic!("value command should return value data");
         };
-        assert_eq!(payload.time, "5ns");
-        assert_eq!(payload.signals[0].path, "top.sig");
-        assert_eq!(payload.signals[0].value, "1'h1");
+        assert_eq!(payload.len(), 1);
+        assert_eq!(payload[0].time, "5ns");
+        assert_eq!(payload[0].signals[0].path, "top.sig");
+        assert_eq!(payload[0].signals[0].value, "1'h1");
     }
 
     fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {

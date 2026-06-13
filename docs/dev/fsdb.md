@@ -27,7 +27,7 @@ A default binary that sees FSDB-looking input reports that FSDB support requires
 
 ## Verdi SDK contract
 
-`VERDI_HOME` must point at a local licensed Verdi installation containing the FSDB Reader SDK. The build and helper checks expect at least:
+`VERDI_HOME` must point at a local licensed Verdi installation containing the FSDB Reader SDK. FSDB builds also require a system zlib runtime library (`libz.so.1`); Verdi `libnffr.so` uses gzip symbols but may not declare that dependency itself. The build and helper checks expect at least:
 
 ```text
 $VERDI_HOME/share/FsdbReader/ffrAPI.h

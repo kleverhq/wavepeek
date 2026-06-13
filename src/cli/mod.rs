@@ -33,9 +33,9 @@ General conventions:
 - Default output is human-readable for waveform commands; `--json` enables machine-readable output and its contract is defined by `wavepeek schema`.
 - Time values require explicit units (`zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, `s`) and integer magnitudes.
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
-- Errors follow `error: <category>: <message>`."#,
+- Process-level failures follow `fatal: <category>: <message>`."#,
     after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
-    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at a specific time point\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
+    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at explicit time point(s)\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
 )]
 pub struct Cli {
     /// Print semver version
@@ -77,7 +77,7 @@ Behavior:
 - Traversal order is stable: pre-order depth-first, with lexicographic child ordering.
 - Includes stable scope kind aliases from hierarchy data (not only modules); excluded backend-specific spellings are normalized to the stable contract surface.
 - `--tree` switches from flat list to visual hierarchy rendering.
-- Truncation and disabled-limit conditions emit warnings.
+- Truncation and disabled-limit conditions emit coded diagnostics.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to explore hierarchy shape before narrowing to signal-level queries."#,
@@ -93,28 +93,30 @@ Behavior:
 - Default mode lists only direct signals in the selected scope.
 - Recursive mode walks child scopes depth-first in stable lexicographic order; `--max-depth` limits recursion when set.
 - Includes stable signal kind aliases (not only wires); excluded backend-specific VHDL spellings are normalized to the stable contract surface.
-- Truncation and disabled-limit conditions emit warnings.
+- Truncation and disabled-limit conditions emit coded diagnostics.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command after `scope` to inspect available signals in a target scope."#
     )]
     Signal(signal::SignalArgs),
     #[command(
-        about = "Provides point-in-time sampling for selected signals.",
-        long_about = r#"Provides point-in-time sampling for selected signals.
+        about = "Provides point sampling for selected signals.",
+        long_about = r#"Provides point sampling for selected signals.
 
 Behavior:
-- Prints values for the requested signals at the selected time point.
+- Prints values for the requested signals at each selected time point.
 - By default, signal names are top-related canonical paths (e.g. `top.cpu.state`).
 - For deep hierarchies, set `--scope` once with a canonical scope path and use shorter scope-relative names in `--signals`.
 - Do not mix top-related canonical names and scope-relative names in one request.
-- Output preserves the input order from `--signals`.
+- `--at` accepts one explicit time token or a comma-separated list in one argument.
+- Output preserves the input order from `--at` and `--signals`, including duplicates.
+- Human output emits one `@<time>` row per requested time with `display=value` fields, matching `change`.
 - Time tokens must include explicit units and align to dump precision.
 - Values are emitted as Verilog literals (`<width>'h<digits>` with `x`/`z` support).
-- Fails fast if any requested signal cannot be resolved or if the selected time point is more precise than dump resolution.
+- Fails fast if any requested signal cannot be resolved or if any selected time point is more precise than dump resolution.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
-Use this command for deterministic spot checks at a specific timestamp."#
+Use this command for deterministic spot checks at specific timestamps."#
     )]
     Value(value::ValueArgs),
     #[command(
@@ -126,7 +128,7 @@ Behavior:
 - Similar to a modified SystemVerilog `$monitor`, but with print trigger control instead of printing at every timestamp.
 - Range boundaries are inclusive; baseline state is initialized at range start.
 - Rows are emitted only when sampled signal values changed from prior sampled state.
-- Empty-result and truncation conditions may emit warnings.
+- Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
 Use this command to inspect value transitions over bounded time windows."#

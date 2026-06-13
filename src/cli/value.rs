@@ -7,7 +7,7 @@ pub struct ValueArgs {
     /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// Time point with explicit units (e.g. 1337ns)
+    /// Time point(s) with explicit units (e.g. 1337ns or 10ns,20ns)
     #[arg(long, help_heading = "Selection options")]
     pub at: String,
     /// Canonical scope path for scope-relative signal names

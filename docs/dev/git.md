@@ -16,4 +16,4 @@ Fork contributors should keep `origin` pointed at their fork and use `upstream` 
 
 Commands that intentionally target the upstream repository should pass it explicitly, for example `gh pr list -R "$WAVEPEEK_UPSTREAM_REPO"` or `gh pr list -R kleverhq/wavepeek`. Browser-based PR creation remains supported and must not require GitHub CLI authentication. Token handling and external-PR safety rules live in `github-auth.md`.
 
-Before proposing substantial work, check `docs/tracker/backlog.md`, `docs/tracker/roadmap.md`, and open GitHub issues. If the change needs product or maintainer discussion, open or reference an issue before starting a PR.
+Before proposing substantial work, check GitHub Milestones and open GitHub Issues. If the change needs product or maintainer discussion, open or reference an issue before starting a PR.

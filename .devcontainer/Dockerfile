@@ -157,6 +157,8 @@ ENV PATH="/home/ubuntu/.local/bin:${CARGO_HOME}/bin:${PATH}"
 # ---- Dev Image ---------------------------------------------------------------
 FROM base AS dev
 
+ARG TARGETARCH
+
 USER root
 
 COPY --from=node_toolchain /usr/local/ /usr/local/
@@ -167,11 +169,25 @@ RUN apt-get update && \
     nano tmux openssh-client bash-completion \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
     libxt6t64 libxmu6 libnuma1 \
-    jq ripgrep ugrep pdfgrep poppler-utils fd-find tree gh \
+    jq ripgrep ugrep pdfgrep poppler-utils fd-find tree \
     perl-doc z3 gtkwave \
     python3 pipx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Install pinned GitHub CLI; Ubuntu packages can lag API fields used by issue tooling.
+RUN . /tmp/wavepeek-env-contract.sh && \
+    arch="${TARGETARCH:-amd64}" && \
+    case "$arch" in \
+        amd64|arm64) gh_arch="$arch" ;; \
+        *) printf '%s\n' "unsupported GitHub CLI architecture: $arch" >&2; exit 1 ;; \
+    esac && \
+    tmp_dir="$(mktemp -d)" && \
+    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/gh.tar.gz" \
+        "https://github.com/cli/cli/releases/download/v${WAVEPEEK_GH_VERSION}/gh_${WAVEPEEK_GH_VERSION}_linux_${gh_arch}.tar.gz" && \
+    tar -xzf "$tmp_dir/gh.tar.gz" -C "$tmp_dir" && \
+    install -m 0755 "$tmp_dir/gh_${WAVEPEEK_GH_VERSION}_linux_${gh_arch}/bin/gh" /usr/local/bin/gh && \
+    rm -rf "$tmp_dir"
 
 # Expose selected Verdi FSDB utilities useful for debugging and exploration.
 # The wrapper preserves tool-name dispatch and invokes launchers with bash.

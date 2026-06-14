@@ -1,6 +1,6 @@
 # Contributing
 
-Contributions are welcome, but please do the boring coordination first. Check [docs/tracker/backlog.md](docs/tracker/backlog.md), [docs/tracker/roadmap.md](docs/tracker/roadmap.md), and existing GitHub issues before proposing work.
+Contributions are welcome, but please do the boring coordination first. Check [GitHub Issues](https://github.com/kleverhq/wavepeek/issues) and [GitHub Milestones](https://github.com/kleverhq/wavepeek/milestones) before proposing work; local tracker files are only navigation stubs.
 
 Open or reference an issue before starting changes that need maintainer discussion, product judgment, or non-trivial review. Direct maintainer conversation is preferred when a design question is still open. PRs opened without a relevant issue may be ignored or closed.
 

@@ -4,7 +4,9 @@
 
 - Public user docs: `public/intro.md`, `public/reference/`
 - Maintainer docs: `dev/`
-- Tracking docs: `tracker/backlog.md`, `tracker/roadmap.md`, `tracker/wip/`
+- Backlog: GitHub Issues, with `tracker/backlog.md` as the local pointer
+- Roadmap: GitHub Milestones, with `tracker/roadmap.md` as the local pointer
+- Tracking docs: `tracker/wip/`
 - Packaged skill source: `skills/wavepeek.md`
 - Shipped release history: `../CHANGELOG.md`
 

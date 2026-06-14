@@ -19,7 +19,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
    - keep a fresh `## [Unreleased]` section for future changes;
    - update bottom links for `Unreleased` and the new version tag;
    - treat released sections as immutable historical records.
-3. Reconcile `docs/tracker/roadmap.md` with actual shipped scope. Roadmap is planned scope; changelog is factual shipped scope. If planned work shipped in `X.Y.Z`, remove it from future roadmap notes so remaining work stays visible.
+3. Reconcile GitHub Milestones with actual shipped scope. Milestones are planned scope; changelog is factual shipped scope. For the `X.Y.Z` milestone, close shipped issues, move unfinished issues to a future milestone or back to the backlog, then close the completed milestone.
 4. Update `Cargo.toml` version to `X.Y.Z`. If this is the first release for major version `X`, create `schema/wavepeek_vX.json` before running build-backed schema commands; `wavepeek schema` embeds the checked-in artifact for the package major version.
 5. Refresh the current major schema artifact:
 
@@ -31,7 +31,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 7. Commit release prep:
 
-       git add CHANGELOG.md docs/tracker/roadmap.md Cargo.toml Cargo.lock schema/wavepeek_vX.json
+       git add CHANGELOG.md Cargo.toml Cargo.lock schema/wavepeek_vX.json
        git commit -m "chore(release): prepare vX.Y.Z"
 
 8. Push the commit and tag:

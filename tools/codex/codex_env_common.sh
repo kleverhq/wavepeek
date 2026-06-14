@@ -153,6 +153,55 @@ ensure_actionlint() {
     install_actionlint
 }
 
+install_gh() {
+    local arch
+    local status
+    local tmp_dir
+
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        *)
+            error "unsupported GitHub CLI architecture: $arch"
+            ;;
+    esac
+
+    tmp_dir="$(mktemp -d)"
+    if {
+        curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "$tmp_dir/gh.tar.gz" \
+            "https://github.com/cli/cli/releases/download/v${WAVEPEEK_GH_VERSION}/gh_${WAVEPEEK_GH_VERSION}_linux_${arch}.tar.gz"
+        tar -xzf "$tmp_dir/gh.tar.gz" -C "$tmp_dir"
+        install -m 0755 "$tmp_dir/gh_${WAVEPEEK_GH_VERSION}_linux_${arch}/bin/gh" "$WAVEPEEK_CODEX_BIN_DIR/gh"
+    }; then
+        status=0
+    else
+        status=$?
+    fi
+
+    rm -rf "$tmp_dir"
+    return "$status"
+}
+
+ensure_gh() {
+    local current_version=""
+
+    if command -v gh >/dev/null 2>&1; then
+        current_version="$(gh --version | awk 'NR==1 {print $3}')"
+    fi
+
+    if [ "$current_version" = "$WAVEPEEK_GH_VERSION" ]; then
+        return
+    fi
+
+    log "Installing GitHub CLI ${WAVEPEEK_GH_VERSION}"
+    install_gh
+}
+
 install_hyperfine() {
     local arch
     local asset_name
@@ -259,6 +308,7 @@ ensure_codex_tooling() {
     ensure_just
     ensure_cargo_llvm_cov
     ensure_actionlint
+    ensure_gh
     ensure_hyperfine
     ensure_pipx_package pre-commit "$WAVEPEEK_PRECOMMIT_VERSION" pre-commit --version
     ensure_pipx_package commitizen "$WAVEPEEK_COMMITIZEN_VERSION" cz version

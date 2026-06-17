@@ -30,7 +30,7 @@ This change does not add a new public CLI flag. Debug performance diagnostics ar
 - [x] (2026-06-17T22:45:00Z) Apply review fixes: require summary `phase_count` in schema/checker/tests, rename value's selection phase from `signal.resolve` to `signal.select`, and make edge-fast change diagnostics report dispatch/fallback risk with `selected_engine` and `may_fallback` metrics. `just check` passed after fixes.
 - [x] (2026-06-17T22:55:00Z) Commit review fixes as `fix(debug): tighten performance diagnostic schema`.
 - [x] (2026-06-17T23:05:00Z) Run a final control review over `main...HEAD`; it returned no substantive findings.
-- [ ] Push and open a pull request.
+- [x] (2026-06-17T23:12:00Z) Push branch `feat/perf-diag` and open pull request #31.
 
 ## Surprises & Discoveries
 
@@ -80,7 +80,7 @@ This change does not add a new public CLI flag. Debug performance diagnostics ar
 
 ## Outcomes & Retrospective
 
-Implementation, first review fixes, and final control review are complete. The implementation adds `kind: debug`, `WPK-D####` code handling, optional structured `details`, a `PerfDiagnostics` recorder, waveform backend context helpers, instrumentation for all six waveform commands, public machine-output docs, schema contract updates, and focused tests. Review found one medium docs/schema issue and two low performance-attribution issues; all have been fixed. The final control review returned no substantive findings. Push and PR remain.
+Implementation, review, push, and PR creation are complete. The implementation adds `kind: debug`, `WPK-D####` code handling, optional structured `details`, a `PerfDiagnostics` recorder, waveform backend context helpers, instrumentation for all six waveform commands, public machine-output docs, schema contract updates, and focused tests. Review found one medium docs/schema issue and two low performance-attribution issues; all have been fixed. The final control review returned no substantive findings. Pull request #31 is open.
 
 ## Context and Orientation
 
@@ -251,3 +251,5 @@ Plan revision note, 2026-06-17: Updated progress and discoveries after implement
 Plan revision note, 2026-06-17: Recorded review findings and the follow-up fixes after the first review pass.
 
 Plan revision note, 2026-06-17: Recorded the clean final control review before push and PR creation.
+
+Plan revision note, 2026-06-17: Marked push and PR creation complete after opening pull request #31.

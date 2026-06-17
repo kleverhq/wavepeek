@@ -28,8 +28,9 @@ This change does not add a new public CLI flag. Debug performance diagnostics ar
 - [x] (2026-06-17T22:18:00Z) Commit the implementation as `feat(debug): add waveform performance diagnostics`.
 - [x] (2026-06-17T22:35:00Z) Run focused review lanes for code/tests, docs/schema, and performance/architecture. Code/tests returned no substantive findings. Docs/schema found missing `phase_count` requiredness. Performance/architecture found two low-severity attribution issues.
 - [x] (2026-06-17T22:45:00Z) Apply review fixes: require summary `phase_count` in schema/checker/tests, rename value's selection phase from `signal.resolve` to `signal.select`, and make edge-fast change diagnostics report dispatch/fallback risk with `selected_engine` and `may_fallback` metrics. `just check` passed after fixes.
-- [ ] Commit review fixes.
-- [ ] Run a final control review, push, and open a pull request.
+- [x] (2026-06-17T22:55:00Z) Commit review fixes as `fix(debug): tighten performance diagnostic schema`.
+- [x] (2026-06-17T23:05:00Z) Run a final control review over `main...HEAD`; it returned no substantive findings.
+- [ ] Push and open a pull request.
 
 ## Surprises & Discoveries
 
@@ -79,7 +80,7 @@ This change does not add a new public CLI flag. Debug performance diagnostics ar
 
 ## Outcomes & Retrospective
 
-Implementation and first review fixes are complete in the working tree and `just check` passed. The implementation adds `kind: debug`, `WPK-D####` code handling, optional structured `details`, a `PerfDiagnostics` recorder, waveform backend context helpers, instrumentation for all six waveform commands, public machine-output docs, schema contract updates, and focused tests. Review found one medium docs/schema issue and two low performance-attribution issues; all have been fixed. Final control review, push, and PR remain.
+Implementation, first review fixes, and final control review are complete. The implementation adds `kind: debug`, `WPK-D####` code handling, optional structured `details`, a `PerfDiagnostics` recorder, waveform backend context helpers, instrumentation for all six waveform commands, public machine-output docs, schema contract updates, and focused tests. Review found one medium docs/schema issue and two low performance-attribution issues; all have been fixed. The final control review returned no substantive findings. Push and PR remain.
 
 ## Context and Orientation
 
@@ -248,3 +249,5 @@ Plan revision note, 2026-06-17: Created the initial self-contained execution pla
 Plan revision note, 2026-06-17: Updated progress and discoveries after implementing debug performance diagnostics and passing `just check`.
 
 Plan revision note, 2026-06-17: Recorded review findings and the follow-up fixes after the first review pass.
+
+Plan revision note, 2026-06-17: Recorded the clean final control review before push and PR creation.

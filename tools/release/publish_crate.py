@@ -17,6 +17,15 @@ from typing import Any, Mapping, Sequence
 CRATE_NAME = "wavepeek"
 VERSION_RE = re.compile(r"^(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*)$")
 SOURCE_REF_RE = re.compile(r"^v(?P<version>(0|[1-9][0-9]*)[.](0|[1-9][0-9]*)[.](0|[1-9][0-9]*))$")
+GIT_LOCAL_ENV = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_PREFIX",
+    "GIT_WORK_TREE",
+)
 
 
 class ReleaseError(RuntimeError):
@@ -149,6 +158,13 @@ def read_package_version(source_root: pathlib.Path) -> str:
     return version
 
 
+def child_env_without_git_local(env: Mapping[str, str] | None = None) -> dict[str, str]:
+    command_env = os.environ.copy() if env is None else dict(env)
+    for name in GIT_LOCAL_ENV:
+        command_env.pop(name, None)
+    return command_env
+
+
 def run_capture(command: Sequence[str], *, cwd: pathlib.Path) -> str:
     try:
         result = subprocess.run(
@@ -157,6 +173,7 @@ def run_capture(command: Sequence[str], *, cwd: pathlib.Path) -> str:
             check=True,
             capture_output=True,
             text=True,
+            env=child_env_without_git_local(),
         )
     except subprocess.CalledProcessError as error:
         stderr = (error.stderr or error.stdout or "").strip()
@@ -238,7 +255,12 @@ def publish_crate(
         )
     cargo_env = dict(env)
     cargo_env["CARGO_REGISTRY_TOKEN"] = token
-    subprocess.run([cargo_bin, "publish", "--locked"], cwd=source_root, check=True, env=cargo_env)
+    subprocess.run(
+        [cargo_bin, "publish", "--locked"],
+        cwd=source_root,
+        check=True,
+        env=child_env_without_git_local(cargo_env),
+    )
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:

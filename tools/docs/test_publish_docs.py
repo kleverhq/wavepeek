@@ -33,7 +33,16 @@ def chdir(path: pathlib.Path):
 
 def git(repo: pathlib.Path, *args: str) -> str:
     env = os.environ.copy()
-    env.pop("GIT_INDEX_FILE", None)
+    for name in (
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_PREFIX",
+        "GIT_WORK_TREE",
+    ):
+        env.pop(name, None)
     result = subprocess.run(
         ["git", *args],
         cwd=repo,

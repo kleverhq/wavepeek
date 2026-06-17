@@ -77,7 +77,16 @@ class CommandRunner:
             print("+ " + " ".join(rendered))
             return subprocess.CompletedProcess(rendered, 0, "", "")
         command_env = os.environ.copy() if env is None else env.copy()
-        command_env.pop("GIT_INDEX_FILE", None)
+        for name in (
+            "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+            "GIT_COMMON_DIR",
+            "GIT_DIR",
+            "GIT_INDEX_FILE",
+            "GIT_OBJECT_DIRECTORY",
+            "GIT_PREFIX",
+            "GIT_WORK_TREE",
+        ):
+            command_env.pop(name, None)
         return subprocess.run(
             rendered,
             cwd=cwd,

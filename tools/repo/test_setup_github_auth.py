@@ -9,17 +9,35 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = REPO_ROOT / ".devcontainer" / "setup-github-auth.sh"
 UPSTREAM_REPO = "kleverhq/wavepeek"
 HELPER_PREFIX = "!wavepeek_github_credential_helper"
+GIT_LOCAL_ENV = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_PREFIX",
+    "GIT_WORK_TREE",
+)
+
+
+def env_without_git_local() -> dict[str, str]:
+    env = os.environ.copy()
+    for name in GIT_LOCAL_ENV:
+        env.pop(name, None)
+    return env
 
 
 class SetupGithubAuthTests(unittest.TestCase):
     def init_repo(self, tmp: str) -> Path:
         repo = Path(tmp) / "repo"
         repo.mkdir()
-        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        git_env = env_without_git_local()
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True, env=git_env)
         subprocess.run(
             ["git", "remote", "add", "origin", f"https://github.com/{UPSTREAM_REPO}"],
             cwd=repo,
             check=True,
+            env=git_env,
         )
         return repo
 
@@ -30,7 +48,7 @@ class SetupGithubAuthTests(unittest.TestCase):
         fake_gh.write_text("#!/usr/bin/env sh\nexit 1\n")
         fake_gh.chmod(0o755)
 
-        env = os.environ.copy()
+        env = env_without_git_local()
         env["PATH"] = f"{fake_bin}{os.pathsep}{env['PATH']}"
         env["WAVEPEEK_UPSTREAM_REPO"] = UPSTREAM_REPO
         env["GIT_TERMINAL_PROMPT"] = "0"
@@ -56,6 +74,7 @@ class SetupGithubAuthTests(unittest.TestCase):
         result = subprocess.run(
             ["git", "config", "--local", "--get-all", key],
             cwd=repo,
+            env=env_without_git_local(),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -111,11 +130,12 @@ class SetupGithubAuthTests(unittest.TestCase):
                 ],
                 cwd=repo,
                 check=True,
+                env=env_without_git_local(),
             )
             result = self.run_script(repo)
             self.assertEqual(result.returncode, 0, result.stderr)
 
-            env = os.environ.copy()
+            env = env_without_git_local()
             env["GH_TOKEN"] = "TEST_TOKEN"
             env["GITHUB_TOKEN"] = "TEST_TOKEN"
             env["WAVEPEEK_UPSTREAM_REPO"] = UPSTREAM_REPO
@@ -155,6 +175,7 @@ class SetupGithubAuthTests(unittest.TestCase):
                 ],
                 cwd=repo,
                 check=True,
+                env=env_without_git_local(),
             )
             subprocess.run(
                 [
@@ -166,6 +187,7 @@ class SetupGithubAuthTests(unittest.TestCase):
                 ],
                 cwd=repo,
                 check=True,
+                env=env_without_git_local(),
             )
             subprocess.run(
                 [
@@ -177,6 +199,7 @@ class SetupGithubAuthTests(unittest.TestCase):
                 ],
                 cwd=repo,
                 check=True,
+                env=env_without_git_local(),
             )
 
             result = self.run_script(repo, token=None)

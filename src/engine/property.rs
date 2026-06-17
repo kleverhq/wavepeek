@@ -15,6 +15,7 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
+use crate::perf_diag::PerfDiagnostics;
 use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -42,23 +43,40 @@ pub struct PropertyCaptureRow {
 }
 
 pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
-    let waveform = open_shared_waveform(args.waves.as_path())?;
-    let metadata = waveform.borrow().metadata()?;
-    let dump_time = parse_dump_time_context(&metadata)?;
+    let mut perf = PerfDiagnostics::for_command(CommandName::Property);
+    let waveform = perf.time_phase("backend.open", || {
+        open_shared_waveform(args.waves.as_path())
+    })?;
+    {
+        let waveform_ref = waveform.borrow();
+        perf.record_context(waveform_ref.backend_name(), waveform_ref.format_name());
+    }
+    let metadata = perf.time_phase("metadata.load", || waveform.borrow().metadata())?;
+    let (dump_time, from_raw, to_raw) = perf.time_phase("time.parse", || {
+        let dump_time = parse_dump_time_context(&metadata)?;
+        let from_raw = match args.from.as_deref() {
+            Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
+            None => {
+                u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
+                    WavepeekError::Internal(
+                        "dump start timestamp exceeds supported range".to_string(),
+                    )
+                })?
+            }
+        };
+        let to_raw = match args.to.as_deref() {
+            Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
+            None => {
+                u64::try_from(dump_time.dump_end_zs / dump_time.dump_tick_zs).map_err(|_| {
+                    WavepeekError::Internal(
+                        "dump end timestamp exceeds supported range".to_string(),
+                    )
+                })?
+            }
+        };
+        Ok((dump_time, from_raw, to_raw))
+    })?;
     let dump_tick = dump_time.dump_tick;
-
-    let from_raw = match args.from.as_deref() {
-        Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
-        })?,
-    };
-    let to_raw = match args.to.as_deref() {
-        Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_end_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump end timestamp exceeds supported range".to_string())
-        })?,
-    };
 
     if from_raw > to_raw {
         return Err(WavepeekError::Args(
@@ -67,110 +85,144 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     }
 
     let event_expr_source = args.on.as_deref().unwrap_or("*");
-    let (host, bound_event) =
-        bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
-    let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
-    let eval_signal_handles = referenced_signal_handles(&bound_eval);
-    let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
-    waveform
-        .borrow()
-        .validate_expr_values_supported(eval_sources.as_slice())?;
+    let (host, bound_event, bound_eval) = perf.time_phase("expression.bind", || {
+        let (host, bound_event) =
+            bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
+        let bound_eval =
+            bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
+        Ok((host, bound_event, bound_eval))
+    })?;
+    let (tracked_signal_handles, candidate_sources) = perf.time_phase_with_metrics(
+        "signal.resolve",
+        || {
+            let eval_signal_handles = referenced_signal_handles(&bound_eval);
+            let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
+            waveform
+                .borrow()
+                .validate_expr_values_supported(eval_sources.as_slice())?;
 
-    let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
-        if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
-            return Err(WavepeekError::Args(
-                "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
-                    .to_string(),
-            ));
-        }
-        eval_signal_handles.clone()
-    } else {
-        Vec::new()
-    };
+            let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
+                if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
+                    return Err(WavepeekError::Args(
+                        "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
+                            .to_string(),
+                    ));
+                }
+                eval_signal_handles.clone()
+            } else {
+                Vec::new()
+            };
 
-    let mut candidate_sources = if tracked_signal_handles.is_empty() {
-        Vec::new()
-    } else {
-        eval_sources
-    };
-    candidate_sources.extend(candidate_sources_for_handles(
-        &host,
-        &event_candidate_handles(&bound_event),
-    )?);
-    let mut seen = std::collections::HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.id));
+            let mut candidate_sources = if tracked_signal_handles.is_empty() {
+                Vec::new()
+            } else {
+                eval_sources
+            };
+            candidate_sources.extend(candidate_sources_for_handles(
+                &host,
+                &event_candidate_handles(&bound_event),
+            )?);
+            let mut seen = std::collections::HashSet::new();
+            candidate_sources.retain(|signal| seen.insert(signal.id));
+            Ok((tracked_signal_handles, candidate_sources))
+        },
+        |(tracked_signal_handles, candidate_sources)| {
+            Some(serde_json::json!({
+                "tracked_signals": tracked_signal_handles.len(),
+                "candidate_sources": candidate_sources.len(),
+            }))
+        },
+    )?;
 
-    let candidate_times = waveform
-        .borrow_mut()
-        .collect_expr_candidate_times_with_mode(
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            ChangeCandidateCollectionMode::Auto,
-        )?;
-    let candidate_schedule = {
-        let waveform_ref = waveform.borrow();
-        build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
-    };
+    let candidate_times = perf.time_phase_with_metrics(
+        "candidate.collect",
+        || {
+            waveform
+                .borrow_mut()
+                .collect_expr_candidate_times_with_mode(
+                    candidate_sources.as_slice(),
+                    from_raw,
+                    to_raw,
+                    ChangeCandidateCollectionMode::Auto,
+                )
+        },
+        |candidate_times| Some(serde_json::json!({"times": candidate_times.len()})),
+    )?;
+    let candidate_schedule = perf.time_phase_with_metrics(
+        "candidate.schedule",
+        || {
+            let waveform_ref = waveform.borrow();
+            build_candidate_schedule(&waveform_ref, candidate_times.as_slice())
+        },
+        |candidate_schedule| Some(serde_json::json!({"entries": candidate_schedule.len()})),
+    )?;
 
-    let mut rows = Vec::new();
-    let mut previous_state = match args.capture {
-        CaptureMode::Match => None,
-        CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => Some(
-            eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, from_raw)?,
-        ),
-    };
+    let rows = perf.time_phase_with_metrics(
+        "property.evaluate",
+        || {
+            let mut rows = Vec::new();
+            let mut previous_state = match args.capture {
+                CaptureMode::Match => None,
+                CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => Some(
+                    eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, from_raw)?,
+                ),
+            };
 
-    for (timestamp, previous_timestamp) in candidate_schedule {
-        let frame = EventEvalFrame {
-            timestamp,
-            previous_timestamp,
-            tracked_signals: tracked_signal_handles.as_slice(),
-        };
-        if !event_expr_matches(event_expr_source, &bound_event, &host, &frame)? {
-            continue;
-        }
+            for (timestamp, previous_timestamp) in candidate_schedule {
+                let frame = EventEvalFrame {
+                    timestamp,
+                    previous_timestamp,
+                    tracked_signals: tracked_signal_handles.as_slice(),
+                };
+                if !event_expr_matches(event_expr_source, &bound_event, &host, &frame)? {
+                    continue;
+                }
 
-        let decision = eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, timestamp)?;
-        match args.capture {
-            CaptureMode::Match => {
-                if decision {
-                    rows.push(PropertyCaptureRow {
-                        time: format_raw_timestamp(timestamp, dump_tick)?,
-                        kind: PropertyResultKind::Match,
-                    });
+                let decision =
+                    eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, timestamp)?;
+                match args.capture {
+                    CaptureMode::Match => {
+                        if decision {
+                            rows.push(PropertyCaptureRow {
+                                time: format_raw_timestamp(timestamp, dump_tick)?,
+                                kind: PropertyResultKind::Match,
+                            });
+                        }
+                    }
+                    CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
+                        if timestamp == from_raw {
+                            previous_state = Some(decision);
+                            continue;
+                        }
+
+                        let prior = previous_state.unwrap_or(false);
+                        let transition = match (prior, decision) {
+                            (false, true) => Some(PropertyResultKind::Assert),
+                            (true, false) => Some(PropertyResultKind::Deassert),
+                            _ => None,
+                        };
+                        previous_state = Some(decision);
+
+                        let Some(kind) = transition else {
+                            continue;
+                        };
+                        if !capture_allows_kind(args.capture, kind) {
+                            continue;
+                        }
+
+                        rows.push(PropertyCaptureRow {
+                            time: format_raw_timestamp(timestamp, dump_tick)?,
+                            kind,
+                        });
+                    }
                 }
             }
-            CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
-                if timestamp == from_raw {
-                    previous_state = Some(decision);
-                    continue;
-                }
+            Ok(rows)
+        },
+        |rows| Some(serde_json::json!({"rows": rows.len()})),
+    )?;
 
-                let prior = previous_state.unwrap_or(false);
-                let transition = match (prior, decision) {
-                    (false, true) => Some(PropertyResultKind::Assert),
-                    (true, false) => Some(PropertyResultKind::Deassert),
-                    _ => None,
-                };
-                previous_state = Some(decision);
-
-                let Some(kind) = transition else {
-                    continue;
-                };
-                if !capture_allows_kind(args.capture, kind) {
-                    continue;
-                }
-
-                rows.push(PropertyCaptureRow {
-                    time: format_raw_timestamp(timestamp, dump_tick)?,
-                    kind,
-                });
-            }
-        }
-    }
-
-    let diagnostics = if rows.is_empty() {
+    let mut diagnostics = if rows.is_empty() {
         vec![Diagnostic::warning(
             WarningDiagnosticCode::EmptyResult,
             "no property matches found in selected time range",
@@ -178,6 +230,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     } else {
         Vec::new()
     };
+    diagnostics.extend(perf.finish());
 
     Ok(CommandResult {
         command: CommandName::Property,

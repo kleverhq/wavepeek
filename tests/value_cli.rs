@@ -663,3 +663,104 @@ fn value_vcd_and_fst_payloads_match() {
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
 }
+
+#[test]
+fn value_debug_mode_writes_perf_diagnostics_to_human_stderr() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+        ])
+        .output()
+        .expect("value command should execute");
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "@10ns clk=1'h1\n");
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    assert!(stderr.contains("debug[WPK-D1001]: perf: context command=value"));
+    assert!(stderr.contains("debug[WPK-D1002]: perf: backend.open"));
+    assert!(stderr.contains("debug[WPK-D1002]: perf: value.sample"));
+    assert!(stderr.contains("debug[WPK-D1003]: perf: total"));
+    assert!(!stderr.contains("1'h1"));
+}
+
+#[test]
+fn value_debug_mode_adds_structured_perf_diagnostics_to_json_envelope() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+            "--json",
+        ])
+        .output()
+        .expect("value command should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid json");
+    assert_eq!(value["command"], "value");
+    assert_eq!(value["data"][0]["signals"][0]["value"], "1'h1");
+
+    let diagnostics = value["diagnostics"]
+        .as_array()
+        .expect("diagnostics should be an array");
+    let debug_diagnostics = diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic["kind"] == "debug")
+        .collect::<Vec<_>>();
+    assert!(
+        debug_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == "WPK-D1001"
+                && diagnostic["details"]["event"] == "context"
+                && diagnostic["details"]["command"] == "value")
+    );
+    assert!(
+        debug_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == "WPK-D1002"
+                && diagnostic["details"]["event"] == "phase"
+                && diagnostic["details"]["phase"] == "backend.open"
+                && diagnostic["details"]["duration_ns"].is_u64())
+    );
+    assert!(
+        debug_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == "WPK-D1002"
+                && diagnostic["details"]["phase"] == "value.sample"
+                && diagnostic["details"]["metrics"]["snapshots"] == 1)
+    );
+    assert!(
+        debug_diagnostics
+            .iter()
+            .any(|diagnostic| diagnostic["code"] == "WPK-D1003"
+                && diagnostic["details"]["event"] == "summary"
+                && diagnostic["details"]["total_duration_ns"].is_u64())
+    );
+
+    let serialized_diagnostics =
+        serde_json::to_string(&debug_diagnostics).expect("diagnostics should serialize");
+    assert!(!serialized_diagnostics.contains("1'h1"));
+}

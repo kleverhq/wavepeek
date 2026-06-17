@@ -108,6 +108,22 @@ impl Waveform {
         }
     }
 
+    pub(crate) fn backend_name(&self) -> &'static str {
+        match &self.backend {
+            Backend::Wellen(backend) => backend.backend_name(),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.backend_name(),
+        }
+    }
+
+    pub(crate) fn format_name(&self) -> &'static str {
+        match &self.backend {
+            Backend::Wellen(backend) => backend.format_name(),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.format_name(),
+        }
+    }
+
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.metadata(),

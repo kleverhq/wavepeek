@@ -5,6 +5,7 @@ pub enum DiagnosticKind {
     Info,
     Warning,
     Error,
+    Debug,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -35,12 +36,34 @@ impl ErrorDiagnosticCode {
     }
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DebugDiagnosticCode {
+    GenericMessage,
+    PerformanceContext,
+    PerformancePhase,
+    PerformanceSummary,
+}
+
+impl DebugDiagnosticCode {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::GenericMessage => "WPK-D0001",
+            Self::PerformanceContext => "WPK-D1001",
+            Self::PerformancePhase => "WPK-D1002",
+            Self::PerformanceSummary => "WPK-D1003",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct Diagnostic {
     kind: DiagnosticKind,
     #[serde(skip_serializing_if = "Option::is_none")]
     code: Option<&'static str>,
     message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    details: Option<serde_json::Value>,
 }
 
 impl Diagnostic {
@@ -50,6 +73,7 @@ impl Diagnostic {
             kind: DiagnosticKind::Info,
             code: None,
             message: message.into(),
+            details: None,
         }
     }
 
@@ -58,6 +82,7 @@ impl Diagnostic {
             kind: DiagnosticKind::Warning,
             code: Some(code.as_str()),
             message: message.into(),
+            details: None,
         }
     }
 
@@ -67,6 +92,30 @@ impl Diagnostic {
             kind: DiagnosticKind::Error,
             code: Some(code.as_str()),
             message: message.into(),
+            details: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn debug(code: DebugDiagnosticCode, message: impl Into<String>) -> Self {
+        Self {
+            kind: DiagnosticKind::Debug,
+            code: Some(code.as_str()),
+            message: message.into(),
+            details: None,
+        }
+    }
+
+    pub fn debug_with_details(
+        code: DebugDiagnosticCode,
+        message: impl Into<String>,
+        details: serde_json::Value,
+    ) -> Self {
+        Self {
+            kind: DiagnosticKind::Debug,
+            code: Some(code.as_str()),
+            message: message.into(),
+            details: Some(details),
         }
     }
 
@@ -80,6 +129,7 @@ impl Diagnostic {
             kind: DiagnosticKind::Error,
             code: Some(code),
             message: message.into(),
+            details: None,
         }
     }
 
@@ -93,6 +143,11 @@ impl Diagnostic {
 
     pub fn message(&self) -> &str {
         self.message.as_str()
+    }
+
+    #[allow(dead_code)]
+    pub const fn details(&self) -> Option<&serde_json::Value> {
+        self.details.as_ref()
     }
 }
 
@@ -111,7 +166,7 @@ fn is_valid_error_code(code: &str) -> bool {
 mod tests {
     use serde_json::json;
 
-    use super::{Diagnostic, DiagnosticKind, WarningDiagnosticCode};
+    use super::{DebugDiagnosticCode, Diagnostic, DiagnosticKind, WarningDiagnosticCode};
 
     #[test]
     fn warning_diagnostic_serializes_with_stable_code() {
@@ -144,6 +199,39 @@ mod tests {
             json!({
                 "kind": "info",
                 "message": "catalog loaded"
+            })
+        );
+    }
+
+    #[test]
+    fn debug_diagnostic_serializes_with_stable_code_and_details() {
+        let diagnostic = Diagnostic::debug_with_details(
+            DebugDiagnosticCode::PerformancePhase,
+            "perf: backend.open 1ms",
+            json!({
+                "domain": "performance",
+                "event": "phase",
+                "phase": "backend.open",
+                "duration_ns": 1_000_000,
+                "status": "ok"
+            }),
+        );
+
+        assert_eq!(diagnostic.kind(), DiagnosticKind::Debug);
+        assert_eq!(diagnostic.code(), Some("WPK-D1002"));
+        assert_eq!(
+            serde_json::to_value(&diagnostic).expect("diagnostic should serialize"),
+            json!({
+                "kind": "debug",
+                "code": "WPK-D1002",
+                "message": "perf: backend.open 1ms",
+                "details": {
+                    "domain": "performance",
+                    "event": "phase",
+                    "phase": "backend.open",
+                    "duration_ns": 1_000_000,
+                    "status": "ok"
+                }
             })
         );
     }

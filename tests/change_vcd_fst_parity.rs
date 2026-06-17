@@ -3,6 +3,16 @@ use serde_json::Value;
 mod common;
 use common::{fixture_path, wavepeek_cmd};
 
+fn non_debug_diagnostics(value: &Value) -> Vec<Value> {
+    value["diagnostics"]
+        .as_array()
+        .expect("diagnostics should be an array")
+        .iter()
+        .filter(|diagnostic| diagnostic["kind"] != "debug")
+        .cloned()
+        .collect()
+}
+
 fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
     let mut args = vec!["change", "--waves", waves];
     args.extend_from_slice(extra_args);
@@ -147,7 +157,10 @@ fn change_fst_stream_candidate_path_matches_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "baseline", "stream");
 
     assert_eq!(random_access["data"], forced_stream["data"]);
-    assert_eq!(random_access["diagnostics"], forced_stream["diagnostics"]);
+    assert_eq!(
+        non_debug_diagnostics(&random_access),
+        non_debug_diagnostics(&forced_stream)
+    );
 }
 
 #[test]
@@ -170,5 +183,8 @@ fn change_fst_fused_stream_candidate_path_matches_fused_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "fused", "stream");
 
     assert_eq!(fused_random["data"], fused_stream["data"]);
-    assert_eq!(fused_random["diagnostics"], fused_stream["diagnostics"]);
+    assert_eq!(
+        non_debug_diagnostics(&fused_random),
+        non_debug_diagnostics(&fused_stream)
+    );
 }

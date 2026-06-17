@@ -20,6 +20,7 @@ use crate::error::WavepeekError;
 use crate::expr::{
     BoundEventExpr, EventEvalFrame, ExprTypeKind, ExpressionHost, SampledValue, SignalHandle,
 };
+use crate::perf_diag::PerfDiagnostics;
 use crate::waveform::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
     SignalId, SignalOffsetData, Waveform, expr_host::WaveformExprHost,
@@ -65,6 +66,24 @@ enum ChangeEngineMode {
     Baseline,
     Fused,
     EdgeFast,
+}
+
+impl ChangeEngineMode {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Baseline => "baseline",
+            Self::Fused => "fused",
+            Self::EdgeFast => "edge-fast",
+        }
+    }
+
+    const fn phase_name(self) -> &'static str {
+        match self {
+            Self::Baseline => "change.engine.baseline",
+            Self::Fused => "change.engine.fused",
+            Self::EdgeFast => "change.engine.edge-fast",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -205,33 +224,55 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
-    let waveform = open_shared_waveform(args.waves.as_path())?;
-    let metadata = waveform.borrow().metadata()?;
-
-    let requested_signals = {
+    let mut perf = PerfDiagnostics::for_command(CommandName::Change);
+    let waveform = perf.time_phase("backend.open", || {
+        open_shared_waveform(args.waves.as_path())
+    })?;
+    {
         let waveform_ref = waveform.borrow();
-        resolve_requested_signals(&waveform_ref, args.scope.as_deref(), &args)?
-    };
+        perf.record_context(waveform_ref.backend_name(), waveform_ref.format_name());
+    }
+    let metadata = perf.time_phase("metadata.load", || waveform.borrow().metadata())?;
+
+    let requested_signals = perf.time_phase_with_metrics(
+        "signal.list",
+        || {
+            let waveform_ref = waveform.borrow();
+            resolve_requested_signals(&waveform_ref, args.scope.as_deref(), &args)
+        },
+        |signals| Some(serde_json::json!({"signals": signals.len()})),
+    )?;
 
     let event_expr_source = args.on.as_deref().unwrap_or("*");
-    let (host, bound_event) =
-        bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
+    let (host, bound_event) = perf.time_phase("expression.bind", || {
+        bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)
+    })?;
 
-    let dump_time = parse_dump_time_context(&metadata)?;
+    let (dump_time, from_raw, to_raw) = perf.time_phase("time.parse", || {
+        let dump_time = parse_dump_time_context(&metadata)?;
+        let from_raw = match args.from.as_deref() {
+            Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
+            None => {
+                u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
+                    WavepeekError::Internal(
+                        "dump start timestamp exceeds supported range".to_string(),
+                    )
+                })?
+            }
+        };
+        let to_raw = match args.to.as_deref() {
+            Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
+            None => {
+                u64::try_from(dump_time.dump_end_zs / dump_time.dump_tick_zs).map_err(|_| {
+                    WavepeekError::Internal(
+                        "dump end timestamp exceeds supported range".to_string(),
+                    )
+                })?
+            }
+        };
+        Ok((dump_time, from_raw, to_raw))
+    })?;
     let dump_tick = dump_time.dump_tick;
-
-    let from_raw = match args.from.as_deref() {
-        Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
-        })?,
-    };
-    let to_raw = match args.to.as_deref() {
-        Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_end_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump end timestamp exceeds supported range".to_string())
-        })?,
-    };
 
     if from_raw > to_raw {
         return Err(WavepeekError::Args(
@@ -244,102 +285,158 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         .iter()
         .map(|signal| signal.path.clone())
         .collect::<Vec<_>>();
-    let requested_resolved = waveform.borrow().resolve_signals(&requested_paths_owned)?;
-    let requested_expr_sources = waveform
-        .borrow()
-        .resolve_expr_signals(&requested_paths_owned)?;
-    let tracked_signal_handles = requested_paths_owned
-        .iter()
-        .map(|path| {
-            host.resolve_signal(path.as_str())
-                .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let mut candidate_sources = Vec::new();
-    if event_expr_contains_wildcard(&bound_event) {
-        candidate_sources.extend(requested_expr_sources.iter().cloned());
-    }
-    let event_sources =
-        candidate_sources_for_handles(&host, &event_candidate_handles(&bound_event))?;
-    candidate_sources.extend(event_sources);
-    let mut seen = HashSet::new();
-    candidate_sources.retain(|signal| seen.insert(signal.id));
+    let (requested_resolved, requested_expr_sources, tracked_signal_handles) = perf
+        .time_phase_with_metrics(
+            "signal.resolve",
+            || {
+                let requested_resolved =
+                    waveform.borrow().resolve_signals(&requested_paths_owned)?;
+                let requested_expr_sources = waveform
+                    .borrow()
+                    .resolve_expr_signals(&requested_paths_owned)?;
+                let tracked_signal_handles = requested_paths_owned
+                    .iter()
+                    .map(|path| {
+                        host.resolve_signal(path.as_str())
+                            .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok((
+                    requested_resolved,
+                    requested_expr_sources,
+                    tracked_signal_handles,
+                ))
+            },
+            |(requested_resolved, requested_expr_sources, tracked_signal_handles)| {
+                Some(serde_json::json!({
+                    "requested_signals": requested_resolved.len(),
+                    "expr_sources": requested_expr_sources.len(),
+                    "tracked_signals": tracked_signal_handles.len(),
+                }))
+            },
+        )?;
 
     let candidate_mode = map_candidate_mode(args.tune_candidates);
-    let window_timestamp_count = {
-        let waveform_ref = waveform.borrow();
-        indexed_timestamps(&waveform_ref)
-            .ok()
-            .and_then(|timestamps| time_window_indices(timestamps, from_raw, to_raw))
-            .map(|(start_idx, end_idx_exclusive)| end_idx_exclusive.saturating_sub(start_idx))
-            .unwrap_or(0)
-    };
-    let estimated_work = estimate_auto_dispatch_work(
-        window_timestamp_count,
-        candidate_sources.len(),
-        requested_resolved.len(),
-    );
-    let engine_mode = select_engine_mode(
-        args.tune_engine,
-        event_expr_is_any_tracked_only(&bound_event),
-        event_expr_is_edge_only(&bound_event),
-        requested_resolved.len(),
-        estimated_work,
-    );
+    let (candidate_sources, _window_timestamp_count, _estimated_work, engine_mode) = perf
+        .time_phase_with_metrics(
+            "candidate.prepare",
+            || {
+                let mut candidate_sources = Vec::new();
+                if event_expr_contains_wildcard(&bound_event) {
+                    candidate_sources.extend(requested_expr_sources.iter().cloned());
+                }
+                let event_sources =
+                    candidate_sources_for_handles(&host, &event_candidate_handles(&bound_event))?;
+                candidate_sources.extend(event_sources);
+                let mut seen = HashSet::new();
+                candidate_sources.retain(|signal| seen.insert(signal.id));
 
-    let run_output = match engine_mode {
-        ChangeEngineMode::Baseline => run_baseline(
-            &waveform,
-            &host,
-            event_expr_source,
-            &bound_event,
-            tracked_signal_handles.as_slice(),
-            requested_signals.as_slice(),
-            requested_resolved.as_slice(),
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            None,
-        )?,
-        ChangeEngineMode::Fused => run_fused(
-            &waveform,
-            &host,
-            event_expr_source,
-            &bound_event,
-            tracked_signal_handles.as_slice(),
-            requested_signals.as_slice(),
-            requested_resolved.as_slice(),
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-        )?,
-        ChangeEngineMode::EdgeFast => run_edge_fast(
-            &waveform,
-            &host,
-            event_expr_source,
-            &bound_event,
-            tracked_signal_handles.as_slice(),
-            requested_signals.as_slice(),
-            requested_resolved.as_slice(),
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            args.tune_edge_fast_force,
-        )?,
-    };
+                let window_timestamp_count = {
+                    let waveform_ref = waveform.borrow();
+                    indexed_timestamps(&waveform_ref)
+                        .ok()
+                        .and_then(|timestamps| time_window_indices(timestamps, from_raw, to_raw))
+                        .map(|(start_idx, end_idx_exclusive)| {
+                            end_idx_exclusive.saturating_sub(start_idx)
+                        })
+                        .unwrap_or(0)
+                };
+                let estimated_work = estimate_auto_dispatch_work(
+                    window_timestamp_count,
+                    candidate_sources.len(),
+                    requested_resolved.len(),
+                );
+                let engine_mode = select_engine_mode(
+                    args.tune_engine,
+                    event_expr_is_any_tracked_only(&bound_event),
+                    event_expr_is_edge_only(&bound_event),
+                    requested_resolved.len(),
+                    estimated_work,
+                );
+                Ok((
+                    candidate_sources,
+                    window_timestamp_count,
+                    estimated_work,
+                    engine_mode,
+                ))
+            },
+            |(candidate_sources, window_timestamp_count, estimated_work, engine_mode)| {
+                Some(serde_json::json!({
+                    "candidate_sources": candidate_sources.len(),
+                    "candidate_mode": candidate_mode_name(candidate_mode),
+                    "window_timestamps": window_timestamp_count,
+                    "estimated_fused_work": estimated_work.fused_work,
+                    "estimated_edge_work": estimated_work.edge_work,
+                    "engine": engine_mode.as_str(),
+                }))
+            },
+        )?;
+
+    let run_output = perf.time_phase_with_metrics(
+        engine_mode.phase_name(),
+        || match engine_mode {
+            ChangeEngineMode::Baseline => run_baseline(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+                None,
+            ),
+            ChangeEngineMode::Fused => run_fused(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+            ),
+            ChangeEngineMode::EdgeFast => run_edge_fast(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+                args.tune_edge_fast_force,
+            ),
+        },
+        |run_output| {
+            Some(serde_json::json!({
+                "engine": engine_mode.as_str(),
+                "candidate_mode": candidate_mode_name(candidate_mode),
+                "requested_signals": requested_resolved.len(),
+                "candidate_sources": candidate_sources.len(),
+                "snapshots": run_output.snapshots.len(),
+                "truncated": run_output.truncated,
+            }))
+        },
+    )?;
 
     let snapshots = run_output.snapshots;
     let truncated = run_output.truncated;
@@ -359,6 +456,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             format!("truncated output to {max_entries} entries (use --max to increase limit)"),
         ));
     }
+    diagnostics.extend(perf.finish());
 
     Ok(CommandResult {
         command: CommandName::Change,
@@ -377,6 +475,14 @@ fn map_candidate_mode(mode: TuneChangeCandidateMode) -> ChangeCandidateCollectio
         TuneChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
         TuneChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
         TuneChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
+    }
+}
+
+fn candidate_mode_name(mode: ChangeCandidateCollectionMode) -> &'static str {
+    match mode {
+        ChangeCandidateCollectionMode::Auto => "auto",
+        ChangeCandidateCollectionMode::Random => "random",
+        ChangeCandidateCollectionMode::Stream => "stream",
     }
 }
 

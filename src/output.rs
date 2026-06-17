@@ -230,6 +230,13 @@ fn emit_human_diagnostics(diagnostics: &[Diagnostic]) {
                     .expect("error diagnostics must have stable codes"),
                 diagnostic.message()
             ),
+            DiagnosticKind::Debug => eprintln!(
+                "debug[{}]: {}",
+                diagnostic
+                    .code()
+                    .expect("debug diagnostics must have stable codes"),
+                diagnostic.message()
+            ),
         }
     }
 }

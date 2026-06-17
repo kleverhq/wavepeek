@@ -3,6 +3,7 @@ use crate::cli::signal::SignalArgs;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
+use crate::perf_diag::PerfDiagnostics;
 use crate::waveform::Waveform;
 use regex::Regex;
 use serde::Serialize;
@@ -63,28 +64,42 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
     };
     let scope_prefix = format!("{scope}.");
 
-    let waveform = Waveform::open(waves.as_path())?;
-    let waveform_entries = if recursive {
-        waveform.signals_in_scope_recursive(scope.as_str(), effective_max_depth)?
-    } else {
-        waveform.signals_in_scope(scope.as_str())?
-    };
-    let mut entries = waveform_entries
-        .into_iter()
-        .filter(|entry| filter.is_match(entry.name.as_str()))
-        .map(|entry| SignalEntry {
-            display: signal_display_name(
-                recursive,
-                scope_prefix.as_str(),
-                entry.path.as_str(),
-                entry.name.as_str(),
-            ),
-            name: entry.name,
-            path: entry.path,
-            kind: entry.kind,
-            width: entry.width,
-        })
-        .collect::<Vec<_>>();
+    let mut perf = PerfDiagnostics::for_command(CommandName::Signal);
+    let waveform = perf.time_phase("backend.open", || Waveform::open(waves.as_path()))?;
+    perf.record_context(waveform.backend_name(), waveform.format_name());
+    let waveform_entries = perf.time_phase_with_metrics(
+        "signal.list",
+        || {
+            if recursive {
+                waveform.signals_in_scope_recursive(scope.as_str(), effective_max_depth)
+            } else {
+                waveform.signals_in_scope(scope.as_str())
+            }
+        },
+        |entries| Some(serde_json::json!({"signals": entries.len()})),
+    )?;
+    let mut entries = perf.time_phase_with_metrics(
+        "signal.filter",
+        || {
+            Ok(waveform_entries
+                .into_iter()
+                .filter(|entry| filter.is_match(entry.name.as_str()))
+                .map(|entry| SignalEntry {
+                    display: signal_display_name(
+                        recursive,
+                        scope_prefix.as_str(),
+                        entry.path.as_str(),
+                        entry.name.as_str(),
+                    ),
+                    name: entry.name,
+                    path: entry.path,
+                    kind: entry.kind,
+                    width: entry.width,
+                })
+                .collect::<Vec<_>>())
+        },
+        |entries| Some(serde_json::json!({"signals": entries.len()})),
+    )?;
 
     if let Some(max_entries) = max.numeric()
         && entries.len() > max_entries
@@ -102,6 +117,8 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
             "no signals found in selected scope",
         ));
     }
+
+    diagnostics.extend(perf.finish());
 
     Ok(CommandResult {
         command: CommandName::Signal,

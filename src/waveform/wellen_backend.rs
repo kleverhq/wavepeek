@@ -54,6 +54,19 @@ impl WellenBackend {
         })
     }
 
+    pub fn backend_name(&self) -> &'static str {
+        "wellen"
+    }
+
+    pub fn format_name(&self) -> &'static str {
+        match self.file_format {
+            wellen::FileFormat::Vcd => "vcd",
+            wellen::FileFormat::Fst => "fst",
+            wellen::FileFormat::Ghw => "ghw",
+            wellen::FileFormat::Unknown => "unknown",
+        }
+    }
+
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
         let hierarchy = self.inner.hierarchy();
         let timescale = hierarchy.timescale().ok_or_else(|| {

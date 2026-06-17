@@ -4,6 +4,7 @@ mod docs;
 mod engine;
 mod error;
 mod output;
+mod perf_diag;
 mod schema_contract;
 mod waveform;
 

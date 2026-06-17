@@ -140,6 +140,20 @@ fn schema_command_prints_canonical_artifact_bytes() {
 }
 
 #[test]
+fn schema_command_ignores_debug_performance_diagnostics() {
+    let mut command = wavepeek_cmd();
+    let assert = command
+        .env("DEBUG", "1")
+        .args(["schema"])
+        .assert()
+        .success();
+
+    let expected = fs::read(canonical_schema_path()).expect("schema file should be readable");
+    assert_eq!(assert.get_output().stdout, expected);
+    assert!(assert.get_output().stderr.is_empty());
+}
+
+#[test]
 fn schema_command_output_is_valid_json() {
     let value = schema_json();
 
@@ -226,13 +240,18 @@ fn schema_command_exposes_typed_diagnostics_contract() {
     assert_eq!(diagnostic["required"], json!(["kind", "message"]));
     assert_eq!(
         diagnostic["properties"]["kind"]["enum"],
-        json!(["info", "warning", "error"])
+        json!(["info", "warning", "error", "debug"])
     );
     assert_eq!(
         diagnostic["properties"]["code"]["pattern"],
-        "^WPK-[WE][0-9]{4}$"
+        "^WPK-[WED][0-9]{4}$"
     );
     assert_eq!(diagnostic["properties"]["message"]["type"], "string");
+    assert_eq!(diagnostic["properties"]["details"]["type"], "object");
+    assert_eq!(
+        diagnostic["properties"]["details"]["additionalProperties"],
+        true
+    );
 
     let rules = diagnostic["allOf"]
         .as_array()
@@ -248,8 +267,31 @@ fn schema_command_exposes_typed_diagnostics_contract() {
             && rule["then"]["properties"]["code"]["pattern"] == "^WPK-E[0-9]{4}$"
     }));
     assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["kind"]["const"] == "debug"
+            && rule["then"]["required"] == json!(["code"])
+            && rule["then"]["properties"]["code"]["pattern"] == "^WPK-D[0-9]{4}$"
+    }));
+    assert!(rules.iter().any(|rule| {
         rule["if"]["properties"]["kind"]["const"] == "info"
             && rule["then"]["not"] == json!({"required": ["code"]})
+    }));
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["code"]["const"] == "WPK-D1001"
+            && rule["then"]["required"] == json!(["details"])
+            && rule["then"]["properties"]["details"]["$ref"]
+                == "#/$defs/debugPerformanceContextDetails"
+    }));
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["code"]["const"] == "WPK-D1002"
+            && rule["then"]["required"] == json!(["details"])
+            && rule["then"]["properties"]["details"]["$ref"]
+                == "#/$defs/debugPerformancePhaseDetails"
+    }));
+    assert!(rules.iter().any(|rule| {
+        rule["if"]["properties"]["code"]["const"] == "WPK-D1003"
+            && rule["then"]["required"] == json!(["details"])
+            && rule["then"]["properties"]["details"]["$ref"]
+                == "#/$defs/debugPerformanceSummaryDetails"
     }));
 
     let code_pattern = diagnostic["properties"]["code"]["pattern"]
@@ -258,6 +300,7 @@ fn schema_command_exposes_typed_diagnostics_contract() {
     let regex = regex::Regex::new(code_pattern).expect("diagnostic code pattern should compile");
     assert!(regex.is_match("WPK-W0001"));
     assert!(regex.is_match("WPK-E0001"));
+    assert!(regex.is_match("WPK-D0001"));
     assert!(!regex.is_match("WPK-I0001"));
 }
 

@@ -231,15 +231,20 @@
           "enum": [
             "info",
             "warning",
-            "error"
+            "error",
+            "debug"
           ]
         },
         "code": {
           "type": "string",
-          "pattern": "^WPK-[WE][0-9]{4}$"
+          "pattern": "^WPK-[WED][0-9]{4}$"
         },
         "message": {
           "type": "string"
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": true
         }
       },
       "allOf": [
@@ -291,6 +296,28 @@
           "if": {
             "properties": {
               "kind": {
+                "const": "debug"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "required": [
+              "code"
+            ],
+            "properties": {
+              "code": {
+                "pattern": "^WPK-D[0-9]{4}$"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
                 "const": "info"
               }
             },
@@ -305,8 +332,168 @@
               ]
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "WPK-D1001"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "$ref": "#/$defs/debugPerformanceContextDetails"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "WPK-D1002"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "$ref": "#/$defs/debugPerformancePhaseDetails"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "WPK-D1003"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "$ref": "#/$defs/debugPerformanceSummaryDetails"
+              }
+            }
+          }
         }
       ]
+    },
+    "debugPerformanceContextDetails": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "domain",
+        "event",
+        "command",
+        "backend",
+        "format"
+      ],
+      "properties": {
+        "domain": {
+          "const": "performance"
+        },
+        "event": {
+          "const": "context"
+        },
+        "command": {
+          "type": "string"
+        },
+        "backend": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        }
+      }
+    },
+    "debugPerformancePhaseDetails": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "domain",
+        "event",
+        "phase",
+        "duration_ns",
+        "status"
+      ],
+      "properties": {
+        "domain": {
+          "const": "performance"
+        },
+        "event": {
+          "const": "phase"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "duration_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ok",
+            "error"
+          ]
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "debugPerformanceSummaryDetails": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "domain",
+        "event",
+        "command",
+        "total_duration_ns"
+      ],
+      "properties": {
+        "domain": {
+          "const": "performance"
+        },
+        "event": {
+          "const": "summary"
+        },
+        "command": {
+          "type": "string"
+        },
+        "total_duration_ns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "phase_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
     },
     "normalizedTime": {
       "type": "string",

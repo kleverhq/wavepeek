@@ -43,6 +43,14 @@ impl FsdbBackend {
         fsdb_native::probe(path)
     }
 
+    pub(super) fn backend_name(&self) -> &'static str {
+        "fsdb"
+    }
+
+    pub(super) fn format_name(&self) -> &'static str {
+        "fsdb"
+    }
+
     pub(super) fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
         let metadata = self.raw_metadata()?;
         let unit = parse_scale_unit(metadata.scale_unit.as_str())?;

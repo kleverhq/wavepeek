@@ -293,6 +293,16 @@ fn schema_command_exposes_typed_diagnostics_contract() {
             && rule["then"]["properties"]["details"]["$ref"]
                 == "#/$defs/debugPerformanceSummaryDetails"
     }));
+    assert_eq!(
+        value["$defs"]["debugPerformanceSummaryDetails"]["required"],
+        json!([
+            "domain",
+            "event",
+            "command",
+            "total_duration_ns",
+            "phase_count"
+        ])
+    );
 
     let code_pattern = diagnostic["properties"]["code"]["pattern"]
         .as_str()

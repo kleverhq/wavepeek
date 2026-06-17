@@ -81,7 +81,7 @@ impl ChangeEngineMode {
         match self {
             Self::Baseline => "change.engine.baseline",
             Self::Fused => "change.engine.fused",
-            Self::EdgeFast => "change.engine.edge-fast",
+            Self::EdgeFast => "change.engine.edge-fast.dispatch",
         }
     }
 }
@@ -367,7 +367,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
                     "window_timestamps": window_timestamp_count,
                     "estimated_fused_work": estimated_work.fused_work,
                     "estimated_edge_work": estimated_work.edge_work,
-                    "engine": engine_mode.as_str(),
+                    "selected_engine": engine_mode.as_str(),
                 }))
             },
         )?;
@@ -428,7 +428,8 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         },
         |run_output| {
             Some(serde_json::json!({
-                "engine": engine_mode.as_str(),
+                "selected_engine": engine_mode.as_str(),
+                "may_fallback": matches!(engine_mode, ChangeEngineMode::EdgeFast),
                 "candidate_mode": candidate_mode_name(candidate_mode),
                 "requested_signals": requested_resolved.len(),
                 "candidate_sources": candidate_sources.len(),

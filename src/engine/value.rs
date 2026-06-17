@@ -40,7 +40,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
     let metadata = perf.time_phase("metadata.load", || waveform.metadata())?;
 
     let requested_signals = perf.time_phase_with_metrics(
-        "signal.resolve",
+        "signal.select",
         || resolve_requested_signals(&waveform, args.scope.as_deref(), &args),
         |signals| Some(serde_json::json!({"signals": signals.len()})),
     )?;

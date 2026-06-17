@@ -289,11 +289,24 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
     if not (found_perf_context and found_perf_phase and found_perf_summary):
         fail("error: schema: performance debug codes must discriminate details shapes")
 
-    for def_name in [
-        "debugPerformanceContextDetails",
-        "debugPerformancePhaseDetails",
-        "debugPerformanceSummaryDetails",
-    ]:
+    expected_detail_required = {
+        "debugPerformanceContextDetails": ["domain", "event", "command", "backend", "format"],
+        "debugPerformancePhaseDetails": [
+            "domain",
+            "event",
+            "phase",
+            "duration_ns",
+            "status",
+        ],
+        "debugPerformanceSummaryDetails": [
+            "domain",
+            "event",
+            "command",
+            "total_duration_ns",
+            "phase_count",
+        ],
+    }
+    for def_name, required_fields in expected_detail_required.items():
         details_def = defs.get(def_name)
         if (
             not isinstance(details_def, dict)
@@ -301,6 +314,8 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
             or details_def.get("additionalProperties") is not True
         ):
             fail(f"error: schema: {def_name} must be an extensible object")
+        if details_def.get("required") != required_fields:
+            fail(f"error: schema: {def_name} required fields mismatch")
 
 
 def validate_docs_metadata_schema(schema: dict[str, object]) -> None:

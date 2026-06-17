@@ -473,7 +473,8 @@
         "domain",
         "event",
         "command",
-        "total_duration_ns"
+        "total_duration_ns",
+        "phase_count"
       ],
       "properties": {
         "domain": {

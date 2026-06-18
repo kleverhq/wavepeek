@@ -189,19 +189,12 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
     kind = diagnostic_properties.get("kind")
     code = diagnostic_properties.get("code")
     message = diagnostic_properties.get("message")
-    details = diagnostic_properties.get("details")
-    if not isinstance(kind, dict) or kind.get("enum") != ["info", "warning", "error", "debug"]:
+    if not isinstance(kind, dict) or kind.get("enum") != ["info", "warning", "error"]:
         fail("error: schema: diagnostic kind enum mismatch")
-    if not isinstance(code, dict) or code.get("pattern") != r"^WPK-[WED][0-9]{4}$":
+    if not isinstance(code, dict) or code.get("pattern") != r"^WPK-[WE][0-9]{4}$":
         fail("error: schema: diagnostic code pattern mismatch")
     if not isinstance(message, dict) or message.get("type") != "string":
         fail("error: schema: diagnostic message must be a string")
-    if (
-        not isinstance(details, dict)
-        or details.get("type") != "object"
-        or details.get("additionalProperties") is not True
-    ):
-        fail("error: schema: diagnostic details must be an extensible object")
 
     rules = diagnostic.get("allOf")
     if not isinstance(rules, list):
@@ -209,21 +202,13 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
     found_warning = False
     found_error = False
     found_info = False
-    found_debug = False
-    found_perf_context = False
-    found_perf_phase = False
-    found_perf_summary = False
     for rule in rules:
         if not isinstance(rule, dict):
             continue
         try:
             kind_const = rule["if"]["properties"]["kind"]["const"]  # type: ignore[index]
         except (KeyError, TypeError):
-            kind_const = None
-        try:
-            code_const = rule["if"]["properties"]["code"]["const"]  # type: ignore[index]
-        except (KeyError, TypeError):
-            code_const = None
+            continue
         then = rule.get("then")
         if not isinstance(then, dict):
             continue
@@ -245,77 +230,14 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
             and code_pattern == r"^WPK-E[0-9]{4}$"
         ):
             found_error = True
-        if (
-            kind_const == "debug"
-            and then.get("required") == ["code"]
-            and code_pattern == r"^WPK-D[0-9]{4}$"
-        ):
-            found_debug = True
         if kind_const == "info" and then.get("not") == {"required": ["code"]}:
             found_info = True
-
-        details_properties = then.get("properties")
-        details_ref = None
-        if isinstance(details_properties, dict):
-            details_schema = details_properties.get("details")
-            if isinstance(details_schema, dict):
-                details_ref = details_schema.get("$ref")
-        if (
-            code_const == "WPK-D1001"
-            and then.get("required") == ["details"]
-            and details_ref == "#/$defs/debugPerformanceContextDetails"
-        ):
-            found_perf_context = True
-        if (
-            code_const == "WPK-D1002"
-            and then.get("required") == ["details"]
-            and details_ref == "#/$defs/debugPerformancePhaseDetails"
-        ):
-            found_perf_phase = True
-        if (
-            code_const == "WPK-D1003"
-            and then.get("required") == ["details"]
-            and details_ref == "#/$defs/debugPerformanceSummaryDetails"
-        ):
-            found_perf_summary = True
     if not found_warning:
         fail("error: schema: warning diagnostics must require a WPK-W code")
     if not found_error:
         fail("error: schema: error diagnostics must require a WPK-E code")
-    if not found_debug:
-        fail("error: schema: debug diagnostics must require a WPK-D code")
     if not found_info:
         fail("error: schema: info diagnostics must reject code")
-    if not (found_perf_context and found_perf_phase and found_perf_summary):
-        fail("error: schema: performance debug codes must discriminate details shapes")
-
-    expected_detail_required = {
-        "debugPerformanceContextDetails": ["domain", "event", "command", "backend", "format"],
-        "debugPerformancePhaseDetails": [
-            "domain",
-            "event",
-            "phase",
-            "duration_ns",
-            "status",
-        ],
-        "debugPerformanceSummaryDetails": [
-            "domain",
-            "event",
-            "command",
-            "total_duration_ns",
-            "phase_count",
-        ],
-    }
-    for def_name, required_fields in expected_detail_required.items():
-        details_def = defs.get(def_name)
-        if (
-            not isinstance(details_def, dict)
-            or details_def.get("type") != "object"
-            or details_def.get("additionalProperties") is not True
-        ):
-            fail(f"error: schema: {def_name} must be an extensible object")
-        if details_def.get("required") != required_fields:
-            fail(f"error: schema: {def_name} required fields mismatch")
 
 
 def validate_docs_metadata_schema(schema: dict[str, object]) -> None:

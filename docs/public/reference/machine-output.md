@@ -52,7 +52,7 @@ A diagnostic object has `kind`, `message`, and sometimes `code`:
 }
 ```
 
-`kind` is one of `info`, `warning`, `error`, or `debug`. `warning`, `error`, and `debug` diagnostics always include a stable `code` matching `WPK-W####`, `WPK-E####`, or `WPK-D####`. `info` diagnostics omit `code`. Diagnostics may include object-valued `details`; debug codes define the shape of their own `details` object.
+`kind` is one of `info`, `warning`, or `error`. `warning` and `error` diagnostics always include a stable `code` matching `WPK-W####` or `WPK-E####`. `info` diagnostics omit `code`.
 
 The exact JSON shapes for every command are defined by the current major artifact such as `schema/wavepeek_v1.json` and by `wavepeek schema`.
 
@@ -74,7 +74,7 @@ Its behavior is special and fixed:
 
 Diagnostics do not change the exit code. A command can therefore succeed with diagnostics.
 
-Common diagnostic cases include truncated output, explicitly disabled limits, semantically empty-but-valid queries such as a selected range with no matching signal changes, and opt-in maintainer debug output.
+Common diagnostic cases include truncated output, explicitly disabled limits, and semantically empty-but-valid queries such as a selected range with no matching signal changes.
 
 Diagnostic transport depends on the output mode:
 
@@ -87,19 +87,9 @@ Human-readable diagnostics use these formats:
 info: <message>
 warning[WPK-W0002]: <message>
 error[WPK-E0001]: <message>
-debug[WPK-D1002]: <message>
 ```
 
-`DEBUG=1` enables performance debug diagnostics for successful waveform commands only: `info`, `scope`, `signal`, `value`, `change`, and `property`. Helper commands such as `schema`, `docs`, and `help` do not emit performance debug diagnostics. Fatal failures keep the fatal stderr contract and do not produce a JSON diagnostics envelope.
-
-The current debug codes are:
-
-- `WPK-D0001`: generic debug message. `details` is optional and has no command-specific schema.
-- `WPK-D1001`: performance context. `details` identifies the command, waveform backend, and waveform format.
-- `WPK-D1002`: performance phase timing. `details` contains `phase`, `duration_ns`, `status`, and optional extensible `metrics`.
-- `WPK-D1003`: performance summary. `details` contains the command, total duration, and phase count.
-
-Performance `details` objects are structured by debug code. `WPK-D1002` is reused for all timed phases; the concrete phase name is in `details.phase`, for example `backend.open`, `metadata.load`, `signal.resolve`, or `value.sample`. Details are extensible so future releases may add counters without changing the diagnostic code. Performance diagnostics must not expose signal values.
+When `DEBUG=1` is set, commands may also write debug event lines to stderr. These lines are independent of command diagnostics and fatal errors. Each debug line is a JSON object with `kind: "debug"`, `message`, `timestamp_ns`, and an object-valued `details` field. The `details` content is intentionally free-form.
 
 ## 5. Fatal Error Format and Exit Codes
 

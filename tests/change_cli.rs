@@ -1399,7 +1399,7 @@ fn change_tune_overrides_succeed_with_debug_mode() {
         ])
         .assert()
         .success()
-        .stderr(predicate::str::is_empty());
+        .stderr(predicate::str::contains("\"kind\":\"debug\""));
 }
 
 #[test]

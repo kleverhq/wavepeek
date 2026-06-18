@@ -3,14 +3,17 @@ use serde_json::Value;
 mod common;
 use common::{fixture_path, wavepeek_cmd};
 
-fn non_debug_diagnostics(value: &Value) -> Vec<Value> {
-    value["diagnostics"]
-        .as_array()
-        .expect("diagnostics should be an array")
-        .iter()
-        .filter(|diagnostic| diagnostic["kind"] != "debug")
-        .cloned()
-        .collect()
+fn assert_debug_stderr_is_well_formed(stderr: &[u8]) {
+    let stderr = String::from_utf8(stderr.to_vec()).expect("stderr should be utf8");
+    let lines = stderr.lines().collect::<Vec<_>>();
+    assert!(!lines.is_empty(), "DEBUG=1 should emit debug events");
+    for line in lines {
+        let event: Value = serde_json::from_str(line).expect("debug line should be json");
+        assert_eq!(event["kind"], "debug");
+        assert!(event["message"].is_string());
+        assert!(event["timestamp_ns"].is_u64());
+        assert!(event["details"].is_object());
+    }
 }
 
 fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
@@ -49,7 +52,7 @@ fn run_change_json_with_tune_modes(
         .output()
         .expect("change should execute");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_debug_stderr_is_well_formed(&output.stderr);
     serde_json::from_slice(&output.stdout).expect("stdout should be valid json")
 }
 
@@ -157,10 +160,7 @@ fn change_fst_stream_candidate_path_matches_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "baseline", "stream");
 
     assert_eq!(random_access["data"], forced_stream["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&random_access),
-        non_debug_diagnostics(&forced_stream)
-    );
+    assert_eq!(random_access["diagnostics"], forced_stream["diagnostics"]);
 }
 
 #[test]
@@ -183,8 +183,5 @@ fn change_fst_fused_stream_candidate_path_matches_fused_random_access_path() {
         run_change_json_with_tune_modes(fst_fixture.as_str(), &args, "fused", "stream");
 
     assert_eq!(fused_random["data"], fused_stream["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&fused_random),
-        non_debug_diagnostics(&fused_stream)
-    );
+    assert_eq!(fused_random["diagnostics"], fused_stream["diagnostics"]);
 }

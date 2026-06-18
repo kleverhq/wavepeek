@@ -1,9 +1,9 @@
 use crate::cli::limits::LimitArg;
 use crate::cli::scope::ScopeArgs;
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
-use crate::perf_diag::PerfDiagnostics;
 use crate::waveform::Waveform;
 use regex::Regex;
 use serde::Serialize;
@@ -52,29 +52,29 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
-    let mut perf = PerfDiagnostics::for_command(CommandName::Scope);
-    let waveform = perf.time_phase("backend.open", || Waveform::open(waves.as_path()))?;
-    perf.record_context(waveform.backend_name(), waveform.format_name());
-    let waveform_entries = perf.time_phase_with_metrics(
-        "hierarchy.load",
-        || waveform.scopes_depth_first(max_depth.numeric()),
-        |entries| Some(serde_json::json!({"scopes": entries.len()})),
-    )?;
-    let mut entries = perf.time_phase_with_metrics(
-        "scope.filter",
-        || {
-            Ok(waveform_entries
-                .into_iter()
-                .filter(|entry| filter.is_match(entry.path.as_str()))
-                .map(|entry| ScopeEntry {
-                    path: entry.path,
-                    depth: entry.depth,
-                    kind: entry.kind,
-                })
-                .collect::<Vec<_>>())
-        },
-        |entries| Some(serde_json::json!({"scopes": entries.len()})),
-    )?;
+    let debug = DebugTrace::for_command(CommandName::Scope);
+    debug.event("backend.open.start", || serde_json::json!({}));
+    let waveform = Waveform::open(waves.as_path())?;
+    debug.event("backend.open.done", || {
+        serde_json::json!({
+            "backend": waveform.backend_name(),
+            "format": waveform.format_name(),
+        })
+    });
+    let mut entries = waveform
+        .scopes_depth_first(max_depth.numeric())?
+        .into_iter()
+        .filter(|entry| filter.is_match(entry.path.as_str()))
+        .map(|entry| ScopeEntry {
+            path: entry.path,
+            depth: entry.depth,
+            kind: entry.kind,
+        })
+        .collect::<Vec<_>>();
+    debug.event(
+        "scope.collect.done",
+        || serde_json::json!({"scopes": entries.len()}),
+    );
 
     if let Some(max_entries) = max.numeric()
         && entries.len() > max_entries
@@ -92,8 +92,6 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
             "no scopes found",
         ));
     }
-
-    diagnostics.extend(perf.finish());
 
     Ok(CommandResult {
         command: CommandName::Scope,

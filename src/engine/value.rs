@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::cli::value::ValueArgs;
+use crate::debug_trace::DebugTrace;
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
@@ -8,7 +9,6 @@ use crate::engine::time::{
 use crate::engine::value_format::format_verilog_literal;
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
-use crate::perf_diag::PerfDiagnostics;
 use crate::waveform::{Waveform, WaveformMetadata};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -34,61 +34,60 @@ struct RequestedSignal {
 }
 
 pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
-    let mut perf = PerfDiagnostics::for_command(CommandName::Value);
-    let mut waveform = perf.time_phase("backend.open", || Waveform::open(args.waves.as_path()))?;
-    perf.record_context(waveform.backend_name(), waveform.format_name());
-    let metadata = perf.time_phase("metadata.load", || waveform.metadata())?;
+    let debug = DebugTrace::for_command(CommandName::Value);
+    debug.event("backend.open.start", || serde_json::json!({}));
+    let mut waveform = Waveform::open(args.waves.as_path())?;
+    debug.event("backend.open.done", || {
+        serde_json::json!({
+            "backend": waveform.backend_name(),
+            "format": waveform.format_name(),
+        })
+    });
+    let metadata = waveform.metadata()?;
+    debug.event("metadata.load.done", || serde_json::json!({}));
 
-    let requested_signals = perf.time_phase_with_metrics(
-        "signal.select",
-        || resolve_requested_signals(&waveform, args.scope.as_deref(), &args),
-        |signals| Some(serde_json::json!({"signals": signals.len()})),
-    )?;
+    let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
+    debug.event(
+        "signal.select.done",
+        || serde_json::json!({"signals": requested_signals.len()}),
+    );
 
-    let (dump_time, query_times_raw) = perf.time_phase_with_metrics(
-        "time.parse",
-        || {
-            let dump_time = parse_dump_time_context(&metadata)?;
-            let query_times_raw = parse_at_tokens(args.at.as_str(), &metadata, dump_time)?;
-            Ok((dump_time, query_times_raw))
-        },
-        |(_, query_times_raw)| Some(serde_json::json!({"times": query_times_raw.len()})),
-    )?;
+    let dump_time = parse_dump_time_context(&metadata)?;
+    let query_times_raw = parse_at_tokens(args.at.as_str(), &metadata, dump_time)?;
+    debug.event(
+        "time.parse.done",
+        || serde_json::json!({"times": query_times_raw.len()}),
+    );
 
     let canonical_paths = requested_signals
         .iter()
         .map(|signal| signal.path.clone())
         .collect::<Vec<_>>();
-    let snapshots = perf.time_phase_with_metrics(
-        "value.sample",
-        || {
-            let mut snapshots = Vec::with_capacity(query_times_raw.len());
-            for query_time_raw in query_times_raw {
-                let sampled = waveform.sample_signals_at_time(&canonical_paths, query_time_raw)?;
-                let signals = requested_signals
-                    .iter()
-                    .zip(sampled)
-                    .map(|(requested, sampled)| ValueSignalValue {
-                        display: requested.display.clone(),
-                        path: sampled.path,
-                        value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
-                    })
-                    .collect::<Vec<_>>();
+    let mut snapshots = Vec::with_capacity(query_times_raw.len());
 
-                snapshots.push(ValueSnapshot {
-                    time: format_raw_timestamp(query_time_raw, dump_time.dump_tick)?,
-                    signals,
-                });
-            }
-            Ok(snapshots)
-        },
-        |snapshots| {
-            Some(serde_json::json!({
-                "snapshots": snapshots.len(),
-                "signals": canonical_paths.len(),
-            }))
-        },
-    )?;
+    for query_time_raw in query_times_raw {
+        let sampled = waveform.sample_signals_at_time(&canonical_paths, query_time_raw)?;
+        let signals = requested_signals
+            .iter()
+            .zip(sampled)
+            .map(|(requested, sampled)| ValueSignalValue {
+                display: requested.display.clone(),
+                path: sampled.path,
+                value: format_verilog_literal(sampled.width, sampled.bits.as_str()),
+            })
+            .collect::<Vec<_>>();
+
+        snapshots.push(ValueSnapshot {
+            time: format_raw_timestamp(query_time_raw, dump_time.dump_tick)?,
+            signals,
+        });
+    }
+    debug.event("value.sample.done", || {
+        serde_json::json!({
+            "snapshots": snapshots.len(),
+            "signals": canonical_paths.len(),
+        })
+    });
 
     Ok(CommandResult {
         command: CommandName::Value,
@@ -98,7 +97,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             signals_abs: args.abs,
         },
         data: CommandData::Value(snapshots),
-        diagnostics: perf.finish(),
+        diagnostics: Vec::new(),
     })
 }
 

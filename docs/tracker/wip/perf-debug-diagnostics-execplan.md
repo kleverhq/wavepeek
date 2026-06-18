@@ -27,11 +27,11 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 - [x] (2026-06-17T20:45:25Z) Confirmed `DEBUG=1` previously only allowed hidden `change --tune-*` controls and did not print debug output.
 - [x] (2026-06-17T23:12:00Z) Opened PR #31 with an initial implementation using `PerfDiagnostics`, debug codes, schema changes, and buffered diagnostics in the command envelope.
 - [x] (2026-06-18T11:20:41Z) Recorded maintainer review: keep the unrelated Git helper environment fix because hooks need it in this worktree; simplify docs; remove debug opcodes/codes; replace invasive wrappers with direct debug event prints; do not force-push.
-- [ ] Commit this revised ExecPlan before code changes.
-- [ ] Replace the current `PerfDiagnostics`/schema-envelope implementation with a direct stderr debug trace implementation.
-- [ ] Restore command execution code close to `main` and add only local `debug.event(...)` lines around existing steps.
-- [ ] Simplify public docs and schema/tests to remove debug diagnostic codes/details from the successful JSON envelope contract.
-- [ ] Run focused tests and `just check`.
+- [x] (2026-06-18T11:24:00Z) Commit this revised ExecPlan before code changes.
+- [x] (2026-06-18T11:45:00Z) Replace the current `PerfDiagnostics`/schema-envelope implementation with a direct stderr debug trace implementation.
+- [x] (2026-06-18T11:45:00Z) Restore command execution code close to `main` and add only local `debug.event(...)` lines around existing steps.
+- [x] (2026-06-18T11:45:00Z) Simplify public docs and schema/tests to remove debug diagnostic codes/details from the successful JSON envelope contract.
+- [x] (2026-06-18T11:55:00Z) Run focused tests, `cargo test --quiet`, and `just check`; all passed.
 - [ ] Commit implementation changes on top of the existing PR branch, run review, apply fixes, push, and update PR #31.
 
 ## Surprises & Discoveries
@@ -44,6 +44,12 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 - Observation: The first implementation was too invasive.
   Evidence: it wrapped command logic with `perf.time_phase(...)`, rewrote substantial parts of `change`, `property`, and `value`, added D-code schema contracts, and buffered debug diagnostics into successful command envelopes. Maintainer review requested a simpler event trace made of local prints.
+
+- Observation: The simpler implementation can preserve the existing successful-envelope schema.
+  Evidence: after restoring schema-related files to the pre-feature shape and adding direct stderr debug events, `just check-schema`, `cargo test --test schema_cli --quiet`, and `just check` passed.
+
+- Observation: Tune-mode tests that set `DEBUG=1` now receive stderr debug JSON lines.
+  Evidence: `tests/change_vcd_fst_parity.rs` and `tests/change_cli.rs` needed assertions changed from empty stderr to well-formed debug stderr or a debug substring.
 
 ## Decision Log
 
@@ -77,7 +83,7 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 ## Outcomes & Retrospective
 
-The initial PR #31 implementation is under revision. It passed tests and review, but maintainer review found the architecture too heavy for the task. The desired final result is a simpler branch that preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn.
+The implementation has been simplified in the working tree. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed. Review, any follow-up fixes, push, and PR update remain.
 
 ## Context and Orientation
 
@@ -207,3 +213,5 @@ Plan revision note, 2026-06-17: Recorded the clean final control review before p
 Plan revision note, 2026-06-17: Marked push and PR creation complete after opening pull request #31.
 
 Plan revision note, 2026-06-18: Replanned the feature after maintainer review requested direct stderr debug traces instead of an envelope-based performance diagnostics framework.
+
+Plan revision note, 2026-06-18: Recorded completion of the simplified direct stderr debug trace implementation and successful validation before committing the implementation.

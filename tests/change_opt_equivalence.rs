@@ -10,25 +10,12 @@ fn parse_json(stdout: &[u8]) -> Value {
     serde_json::from_slice(stdout).expect("stdout should be valid json")
 }
 
-fn non_debug_diagnostics(value: &Value) -> Vec<Value> {
-    value["diagnostics"]
-        .as_array()
-        .expect("diagnostics should be an array")
-        .iter()
-        .filter(|diagnostic| diagnostic["kind"] != "debug")
-        .cloned()
-        .collect()
-}
-
 fn run_change_json_with_modes(waves: &str, extra_args: &[&str]) -> Value {
     let baseline = run_change_json_with_mode(waves, "baseline", "random", extra_args);
     let fused = run_change_json_with_mode(waves, "fused", "random", extra_args);
 
     assert_eq!(baseline["data"], fused["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&baseline),
-        non_debug_diagnostics(&fused)
-    );
+    assert_eq!(baseline["diagnostics"], fused["diagnostics"]);
     fused
 }
 
@@ -38,15 +25,9 @@ fn run_change_json_with_edge_modes(waves: &str, extra_args: &[&str]) -> Value {
     let edge_fast = run_change_json_with_mode(waves, "edge-fast", "random", extra_args);
 
     assert_eq!(baseline["data"], fused["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&baseline),
-        non_debug_diagnostics(&fused)
-    );
+    assert_eq!(baseline["diagnostics"], fused["diagnostics"]);
     assert_eq!(baseline["data"], edge_fast["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&baseline),
-        non_debug_diagnostics(&edge_fast)
-    );
+    assert_eq!(baseline["diagnostics"], edge_fast["diagnostics"]);
 
     edge_fast
 }
@@ -56,7 +37,7 @@ fn assert_auto_matches_forced_mode(waves: &str, forced_engine: &str, extra_args:
     let forced = run_change_json_with_mode(waves, forced_engine, "random", extra_args);
 
     assert_eq!(auto["data"], forced["data"]);
-    assert_eq!(non_debug_diagnostics(&auto), non_debug_diagnostics(&forced));
+    assert_eq!(auto["diagnostics"], forced["diagnostics"]);
     auto
 }
 
@@ -113,7 +94,7 @@ fn change_uses_strict_previous_timestamp_not_previous_candidate() {
         ],
     );
 
-    assert_eq!(non_debug_diagnostics(&value), Vec::<Value>::new());
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -151,10 +132,8 @@ fn change_from_inside_window_respects_intermediate_non_candidate_updates() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -182,10 +161,8 @@ fn change_empty_window_from_equals_to_remains_empty() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -213,10 +190,8 @@ fn change_all_candidates_at_or_before_baseline_do_not_emit() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -254,10 +229,8 @@ fn change_max_one_truncation_matches_between_modes() {
         ])
     );
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
 }
 
@@ -313,7 +286,7 @@ fn change_typed_iff_matches_between_modes() {
         ],
     );
 
-    assert_eq!(non_debug_diagnostics(&value), Vec::<Value>::new());
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -350,7 +323,7 @@ fn change_anychange_trigger_detects_none_to_some_transition() {
         ],
     );
 
-    assert_eq!(non_debug_diagnostics(&value), Vec::<Value>::new());
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -387,10 +360,7 @@ fn change_forced_edge_fast_falls_back_for_non_edge_triggers() {
     let edge_fast = run_change_json_with_mode(fixture.as_str(), "edge-fast", "random", &args);
 
     assert_eq!(baseline["data"], edge_fast["data"]);
-    assert_eq!(
-        non_debug_diagnostics(&baseline),
-        non_debug_diagnostics(&edge_fast)
-    );
+    assert_eq!(baseline["diagnostics"], edge_fast["diagnostics"]);
 }
 
 #[test]
@@ -471,7 +441,7 @@ fn change_dense_posedge_sparse_delta_matches_all_modes() {
         ],
     );
 
-    assert_eq!(non_debug_diagnostics(&value), Vec::<Value>::new());
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -515,10 +485,8 @@ fn change_edge_without_requested_delta_remains_empty_in_all_modes() {
 
     assert_eq!(value["data"], json!([]));
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
     );
 }
 
@@ -544,7 +512,7 @@ fn change_union_edge_trigger_dedups_same_timestamp_in_all_modes() {
         ],
     );
 
-    assert_eq!(non_debug_diagnostics(&value), Vec::<Value>::new());
+    assert_eq!(value["diagnostics"], json!([]));
     assert_eq!(
         value["data"],
         json!([
@@ -600,10 +568,8 @@ fn change_dense_edge_max_one_truncation_matches_all_modes() {
         ])
     );
     assert_eq!(
-        non_debug_diagnostics(&value),
-        vec![
-            json!({"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"})
-        ]
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
     );
 }
 

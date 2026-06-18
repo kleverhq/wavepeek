@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::cli::value::ValueArgs;
+use crate::debug_trace::DebugTrace;
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
     validate_time_token_to_raw,
@@ -33,13 +34,30 @@ struct RequestedSignal {
 }
 
 pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
+    let debug = DebugTrace::for_command(CommandName::Value);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let mut waveform = Waveform::open(args.waves.as_path())?;
+    debug.event("backend.open.done", || {
+        serde_json::json!({
+            "backend": waveform.backend_name(),
+            "format": waveform.format_name(),
+        })
+    });
     let metadata = waveform.metadata()?;
+    debug.event("metadata.load.done", || serde_json::json!({}));
 
     let requested_signals = resolve_requested_signals(&waveform, args.scope.as_deref(), &args)?;
+    debug.event(
+        "signal.select.done",
+        || serde_json::json!({"signals": requested_signals.len()}),
+    );
 
     let dump_time = parse_dump_time_context(&metadata)?;
     let query_times_raw = parse_at_tokens(args.at.as_str(), &metadata, dump_time)?;
+    debug.event(
+        "time.parse.done",
+        || serde_json::json!({"times": query_times_raw.len()}),
+    );
 
     let canonical_paths = requested_signals
         .iter()
@@ -64,6 +82,12 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
             signals,
         });
     }
+    debug.event("value.sample.done", || {
+        serde_json::json!({
+            "snapshots": snapshots.len(),
+            "signals": canonical_paths.len(),
+        })
+    });
 
     Ok(CommandResult {
         command: CommandName::Value,

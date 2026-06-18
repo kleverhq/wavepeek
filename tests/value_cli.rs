@@ -663,3 +663,130 @@ fn value_vcd_and_fst_payloads_match() {
 
     assert_eq!(vcd_json["data"], fst_json["data"]);
 }
+
+fn parse_debug_events(stderr: &[u8]) -> Vec<Value> {
+    let stderr = String::from_utf8(stderr.to_vec()).expect("stderr should be utf8");
+    let events = stderr
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).expect("debug line should be json"))
+        .collect::<Vec<_>>();
+    assert!(!events.is_empty(), "expected debug events on stderr");
+    for event in &events {
+        assert_eq!(event["kind"], "debug");
+        assert!(event["message"].is_string());
+        assert!(event["timestamp_ns"].is_u64());
+        assert!(event["details"].is_object());
+        assert_eq!(event["details"]["command"], "value");
+    }
+    events
+}
+
+#[test]
+fn value_debug_trace_writes_json_events_to_human_stderr() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+        ])
+        .output()
+        .expect("value command should execute");
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "@10ns clk=1'h1\n");
+    let events = parse_debug_events(&output.stderr);
+    assert!(
+        events
+            .iter()
+            .any(|event| event["message"] == "backend.open.start")
+    );
+    assert!(events.iter().any(|event| {
+        event["message"] == "backend.open.done"
+            && event["details"]["backend"] == "wellen"
+            && event["details"]["format"] == "vcd"
+    }));
+    assert!(
+        events
+            .iter()
+            .any(|event| event["message"] == "value.sample.done")
+    );
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("1'h1"));
+}
+
+#[test]
+fn value_debug_trace_keeps_json_stdout_envelope_unchanged() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "value",
+            "--waves",
+            fixture.as_str(),
+            "--at",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+            "--json",
+        ])
+        .output()
+        .expect("value command should execute");
+
+    assert!(output.status.success());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be json");
+    assert_eq!(value["command"], "value");
+    assert_eq!(value["diagnostics"], json!([]));
+    assert_eq!(value["data"][0]["signals"][0]["value"], "1'h1");
+
+    let events = parse_debug_events(&output.stderr);
+    assert!(
+        events
+            .iter()
+            .any(|event| event["message"] == "time.parse.done")
+    );
+}
+
+#[test]
+fn value_debug_trace_can_precede_fatal_output() {
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "value",
+            "--waves",
+            "tests/fixtures/hand/does-not-exist.vcd",
+            "--at",
+            "10ns",
+            "--signals",
+            "top.clk",
+        ])
+        .output()
+        .expect("value command should execute");
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8(output.stderr).expect("stderr should be utf8");
+    let lines = stderr.lines().collect::<Vec<_>>();
+    assert!(lines.len() >= 2, "expected debug event and fatal line");
+    let debug: Value = serde_json::from_str(lines[0]).expect("first line should be debug json");
+    assert_eq!(debug["kind"], "debug");
+    assert_eq!(debug["message"], "backend.open.start");
+    assert!(
+        lines
+            .last()
+            .expect("fatal line should exist")
+            .starts_with("fatal: ")
+    );
+}

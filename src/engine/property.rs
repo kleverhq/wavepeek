@@ -1,6 +1,7 @@
 use serde::Serialize;
 
 use crate::cli::property::{CaptureMode, PropertyArgs};
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
@@ -42,8 +43,20 @@ pub struct PropertyCaptureRow {
 }
 
 pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
+    let debug = DebugTrace::for_command(CommandName::Property);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
+    {
+        let waveform_ref = waveform.borrow();
+        debug.event("backend.open.done", || {
+            serde_json::json!({
+                "backend": waveform_ref.backend_name(),
+                "format": waveform_ref.format_name(),
+            })
+        });
+    }
     let metadata = waveform.borrow().metadata()?;
+    debug.event("metadata.load.done", || serde_json::json!({}));
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
 
@@ -65,11 +78,13 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             "--from must be less than or equal to --to".to_string(),
         ));
     }
+    debug.event("time.parse.done", || serde_json::json!({}));
 
     let event_expr_source = args.on.as_deref().unwrap_or("*");
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
+    debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
     let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
     waveform
@@ -99,6 +114,12 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     )?);
     let mut seen = std::collections::HashSet::new();
     candidate_sources.retain(|signal| seen.insert(signal.id));
+    debug.event("signal.resolve.done", || {
+        serde_json::json!({
+            "tracked_signals": tracked_signal_handles.len(),
+            "candidate_sources": candidate_sources.len(),
+        })
+    });
 
     let candidate_times = waveform
         .borrow_mut()
@@ -108,10 +129,18 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             to_raw,
             ChangeCandidateCollectionMode::Auto,
         )?;
+    debug.event(
+        "candidate.collect.done",
+        || serde_json::json!({"times": candidate_times.len()}),
+    );
     let candidate_schedule = {
         let waveform_ref = waveform.borrow();
         build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
     };
+    debug.event(
+        "candidate.schedule.done",
+        || serde_json::json!({"entries": candidate_schedule.len()}),
+    );
 
     let mut rows = Vec::new();
     let mut previous_state = match args.capture {
@@ -169,6 +198,10 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             }
         }
     }
+    debug.event(
+        "property.evaluate.done",
+        || serde_json::json!({"rows": rows.len()}),
+    );
 
     let diagnostics = if rows.is_empty() {
         vec![Diagnostic::warning(

@@ -89,6 +89,8 @@ warning[WPK-W0002]: <message>
 error[WPK-E0001]: <message>
 ```
 
+When `DEBUG=1` is set, commands may also write debug event lines to stderr. These lines are independent of command diagnostics and fatal errors. Each debug line is a JSON object with `kind: "debug"`, `message`, `timestamp_ns`, and an object-valued `details` field. The `details` content is intentionally free-form.
+
 ## 5. Fatal Error Format and Exit Codes
 
 Process-level failures are fail-fast and machine-parseable. The stderr format is:

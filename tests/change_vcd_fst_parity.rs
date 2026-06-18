@@ -3,6 +3,19 @@ use serde_json::Value;
 mod common;
 use common::{fixture_path, wavepeek_cmd};
 
+fn assert_debug_stderr_is_well_formed(stderr: &[u8]) {
+    let stderr = String::from_utf8(stderr.to_vec()).expect("stderr should be utf8");
+    let lines = stderr.lines().collect::<Vec<_>>();
+    assert!(!lines.is_empty(), "DEBUG=1 should emit debug events");
+    for line in lines {
+        let event: Value = serde_json::from_str(line).expect("debug line should be json");
+        assert_eq!(event["kind"], "debug");
+        assert!(event["message"].is_string());
+        assert!(event["timestamp_ns"].is_u64());
+        assert!(event["details"].is_object());
+    }
+}
+
 fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
     let mut args = vec!["change", "--waves", waves];
     args.extend_from_slice(extra_args);
@@ -39,7 +52,7 @@ fn run_change_json_with_tune_modes(
         .output()
         .expect("change should execute");
     assert!(output.status.success());
-    assert!(output.stderr.is_empty());
+    assert_debug_stderr_is_well_formed(&output.stderr);
     serde_json::from_slice(&output.stdout).expect("stdout should be valid json")
 }
 

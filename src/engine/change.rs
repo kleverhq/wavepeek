@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     SharedWaveform, bind_waveform_event_expr, candidate_sources_for_handles,
@@ -65,6 +66,16 @@ enum ChangeEngineMode {
     Baseline,
     Fused,
     EdgeFast,
+}
+
+impl ChangeEngineMode {
+    const fn as_str(self) -> &'static str {
+        match self {
+            Self::Baseline => "baseline",
+            Self::Fused => "fused",
+            Self::EdgeFast => "edge-fast",
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -205,17 +216,34 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
+    let debug = DebugTrace::for_command(CommandName::Change);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
+    {
+        let waveform_ref = waveform.borrow();
+        debug.event("backend.open.done", || {
+            serde_json::json!({
+                "backend": waveform_ref.backend_name(),
+                "format": waveform_ref.format_name(),
+            })
+        });
+    }
     let metadata = waveform.borrow().metadata()?;
+    debug.event("metadata.load.done", || serde_json::json!({}));
 
     let requested_signals = {
         let waveform_ref = waveform.borrow();
         resolve_requested_signals(&waveform_ref, args.scope.as_deref(), &args)?
     };
+    debug.event(
+        "signal.list.done",
+        || serde_json::json!({"signals": requested_signals.len()}),
+    );
 
     let event_expr_source = args.on.as_deref().unwrap_or("*");
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
+    debug.event("expression.bind.done", || serde_json::json!({}));
 
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
@@ -238,6 +266,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             "--from must be less than or equal to --to".to_string(),
         ));
     }
+    debug.event("time.parse.done", || serde_json::json!({}));
 
     let baseline_raw = from_raw;
     let requested_paths_owned = requested_signals
@@ -255,6 +284,13 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
                 .map_err(|diagnostic| WavepeekError::Internal(diagnostic.message))
         })
         .collect::<Result<Vec<_>, _>>()?;
+    debug.event("signal.resolve.done", || {
+        serde_json::json!({
+            "requested_signals": requested_resolved.len(),
+            "expr_sources": requested_expr_sources.len(),
+            "tracked_signals": tracked_signal_handles.len(),
+        })
+    });
 
     let mut candidate_sources = Vec::new();
     if event_expr_contains_wildcard(&bound_event) {
@@ -287,7 +323,19 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         requested_resolved.len(),
         estimated_work,
     );
+    debug.event("candidate.prepare.done", || {
+        serde_json::json!({
+            "candidate_sources": candidate_sources.len(),
+            "candidate_mode": candidate_mode_name(candidate_mode),
+            "selected_engine": engine_mode.as_str(),
+            "window_timestamps": window_timestamp_count,
+        })
+    });
 
+    debug.event(
+        "change.run.start",
+        || serde_json::json!({"selected_engine": engine_mode.as_str()}),
+    );
     let run_output = match engine_mode {
         ChangeEngineMode::Baseline => run_baseline(
             &waveform,
@@ -343,6 +391,13 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
 
     let snapshots = run_output.snapshots;
     let truncated = run_output.truncated;
+    debug.event("change.run.done", || {
+        serde_json::json!({
+            "selected_engine": engine_mode.as_str(),
+            "snapshots": snapshots.len(),
+            "truncated": truncated,
+        })
+    });
 
     if snapshots.is_empty() {
         diagnostics.push(Diagnostic::warning(
@@ -377,6 +432,14 @@ fn map_candidate_mode(mode: TuneChangeCandidateMode) -> ChangeCandidateCollectio
         TuneChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
         TuneChangeCandidateMode::Random => ChangeCandidateCollectionMode::Random,
         TuneChangeCandidateMode::Stream => ChangeCandidateCollectionMode::Stream,
+    }
+}
+
+fn candidate_mode_name(mode: ChangeCandidateCollectionMode) -> &'static str {
+    match mode {
+        ChangeCandidateCollectionMode::Auto => "auto",
+        ChangeCandidateCollectionMode::Random => "random",
+        ChangeCandidateCollectionMode::Stream => "stream",
     }
 }
 

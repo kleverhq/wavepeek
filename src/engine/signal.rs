@@ -1,5 +1,6 @@
 use crate::cli::limits::LimitArg;
 use crate::cli::signal::SignalArgs;
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
@@ -63,12 +64,24 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
     };
     let scope_prefix = format!("{scope}.");
 
+    let debug = DebugTrace::for_command(CommandName::Signal);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = Waveform::open(waves.as_path())?;
+    debug.event("backend.open.done", || {
+        serde_json::json!({
+            "backend": waveform.backend_name(),
+            "format": waveform.format_name(),
+        })
+    });
     let waveform_entries = if recursive {
         waveform.signals_in_scope_recursive(scope.as_str(), effective_max_depth)?
     } else {
         waveform.signals_in_scope(scope.as_str())?
     };
+    debug.event(
+        "signal.list.done",
+        || serde_json::json!({"signals": waveform_entries.len()}),
+    );
     let mut entries = waveform_entries
         .into_iter()
         .filter(|entry| filter.is_match(entry.name.as_str()))
@@ -85,6 +98,10 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
             width: entry.width,
         })
         .collect::<Vec<_>>();
+    debug.event(
+        "signal.filter.done",
+        || serde_json::json!({"signals": entries.len()}),
+    );
 
     if let Some(max_entries) = max.numeric()
         && entries.len() > max_entries

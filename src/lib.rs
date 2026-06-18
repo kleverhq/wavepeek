@@ -1,4 +1,5 @@
 mod cli;
+mod debug_trace;
 mod diagnostic;
 mod docs;
 mod engine;

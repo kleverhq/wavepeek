@@ -13,6 +13,24 @@ import unittest
 SCRIPT_PATH = pathlib.Path(__file__).with_name("publish_crate.py")
 
 
+GIT_LOCAL_ENV = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_PREFIX",
+    "GIT_WORK_TREE",
+)
+
+
+def env_without_git_local() -> dict[str, str]:
+    env = os.environ.copy()
+    for name in GIT_LOCAL_ENV:
+        env.pop(name, None)
+    return env
+
+
 class PublishCrateCliTest(unittest.TestCase):
     def release_json(self, path: pathlib.Path, *, draft: bool = False, prerelease: bool = False) -> pathlib.Path:
         path.write_text(
@@ -26,7 +44,7 @@ class PublishCrateCliTest(unittest.TestCase):
         return path
 
     def base_env(self) -> dict[str, str]:
-        env = os.environ.copy()
+        env = env_without_git_local()
         env.pop("CARGO_REGISTRY_TOKEN", None)
         env.pop("CRATES_IO_TOKEN", None)
         env.update(
@@ -67,8 +85,9 @@ class PublishCrateCliTest(unittest.TestCase):
             ),
             encoding="utf-8",
         )
-        subprocess.run(["git", "init", "-q"], cwd=path, check=True)
-        subprocess.run(["git", "add", "Cargo.toml"], cwd=path, check=True)
+        git_env = env_without_git_local()
+        subprocess.run(["git", "init", "-q"], cwd=path, check=True, env=git_env)
+        subprocess.run(["git", "add", "Cargo.toml"], cwd=path, check=True, env=git_env)
         subprocess.run(
             [
                 "git",
@@ -83,11 +102,12 @@ class PublishCrateCliTest(unittest.TestCase):
             ],
             cwd=path,
             check=True,
+            env=git_env,
         )
-        subprocess.run(["git", "tag", "v1.2.3"], cwd=path, check=True)
+        subprocess.run(["git", "tag", "v1.2.3"], cwd=path, check=True, env=git_env)
         if extra_commit:
             (path / "README.md").write_text("later\n", encoding="utf-8")
-            subprocess.run(["git", "add", "README.md"], cwd=path, check=True)
+            subprocess.run(["git", "add", "README.md"], cwd=path, check=True, env=git_env)
             subprocess.run(
                 [
                     "git",
@@ -102,6 +122,7 @@ class PublishCrateCliTest(unittest.TestCase):
                 ],
                 cwd=path,
                 check=True,
+                env=git_env,
             )
         return path
 

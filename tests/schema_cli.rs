@@ -140,6 +140,20 @@ fn schema_command_prints_canonical_artifact_bytes() {
 }
 
 #[test]
+fn schema_command_ignores_debug_trace() {
+    let mut command = wavepeek_cmd();
+    let assert = command
+        .env("DEBUG", "1")
+        .args(["schema"])
+        .assert()
+        .success();
+
+    let expected = fs::read(canonical_schema_path()).expect("schema file should be readable");
+    assert_eq!(assert.get_output().stdout, expected);
+    assert!(assert.get_output().stderr.is_empty());
+}
+
+#[test]
 fn schema_command_output_is_valid_json() {
     let value = schema_json();
 
@@ -224,6 +238,22 @@ fn schema_command_exposes_typed_diagnostics_contract() {
     assert_eq!(diagnostic["type"], "object");
     assert_eq!(diagnostic["additionalProperties"], false);
     assert_eq!(diagnostic["required"], json!(["kind", "message"]));
+    let diagnostic_property_keys = diagnostic["properties"]
+        .as_object()
+        .expect("diagnostic properties should be an object")
+        .keys()
+        .cloned()
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        diagnostic_property_keys,
+        [
+            "code".to_string(),
+            "kind".to_string(),
+            "message".to_string()
+        ]
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>()
+    );
     assert_eq!(
         diagnostic["properties"]["kind"]["enum"],
         json!(["info", "warning", "error"])

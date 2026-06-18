@@ -1,5 +1,6 @@
 use crate::cli::limits::LimitArg;
 use crate::cli::scope::ScopeArgs;
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
@@ -51,7 +52,15 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
+    let debug = DebugTrace::for_command(CommandName::Scope);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = Waveform::open(waves.as_path())?;
+    debug.event("backend.open.done", || {
+        serde_json::json!({
+            "backend": waveform.backend_name(),
+            "format": waveform.format_name(),
+        })
+    });
     let mut entries = waveform
         .scopes_depth_first(max_depth.numeric())?
         .into_iter()
@@ -62,6 +71,10 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
             kind: entry.kind,
         })
         .collect::<Vec<_>>();
+    debug.event(
+        "scope.collect.done",
+        || serde_json::json!({"scopes": entries.len()}),
+    );
 
     if let Some(max_entries) = max.numeric()
         && entries.len() > max_entries

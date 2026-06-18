@@ -186,6 +186,8 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
     diagnostic_properties = diagnostic.get("properties")
     if not isinstance(diagnostic_properties, dict):
         fail("error: schema: diagnostic properties must be an object")
+    if set(diagnostic_properties) != {"kind", "code", "message"}:
+        fail("error: schema: diagnostic properties must be exactly kind, code, and message")
     kind = diagnostic_properties.get("kind")
     code = diagnostic_properties.get("code")
     message = diagnostic_properties.get("message")

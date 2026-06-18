@@ -32,7 +32,10 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 - [x] (2026-06-18T11:45:00Z) Restore command execution code close to `main` and add only local `debug.event(...)` lines around existing steps.
 - [x] (2026-06-18T11:45:00Z) Simplify public docs and schema/tests to remove debug diagnostic codes/details from the successful JSON envelope contract.
 - [x] (2026-06-18T11:55:00Z) Run focused tests, `cargo test --quiet`, and `just check`; all passed.
-- [ ] Commit implementation changes on top of the existing PR branch, run review, apply fixes, push, and update PR #31.
+- [x] (2026-06-18T12:00:00Z) Commit implementation changes as `fix(debug): simplify waveform debug trace`.
+- [x] (2026-06-18T12:10:00Z) Run review lanes for code/tests, docs/contract/schema, and performance/architecture. Code/tests and performance/architecture returned no substantive findings. Docs/contract/schema found one low issue: the schema checker did not explicitly reject reintroduced diagnostic `details`.
+- [x] (2026-06-18T12:18:00Z) Fix schema checker and schema test to assert diagnostic properties are exactly `kind`, `code`, and `message`; `just check` passed.
+- [ ] Commit review fix, run final control review if needed, push, and update PR #31.
 
 ## Surprises & Discoveries
 
@@ -50,6 +53,9 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 - Observation: Tune-mode tests that set `DEBUG=1` now receive stderr debug JSON lines.
   Evidence: `tests/change_vcd_fst_parity.rs` and `tests/change_cli.rs` needed assertions changed from empty stderr to well-formed debug stderr or a debug substring.
+
+- Observation: The schema checker needed an explicit guard against accidentally reintroducing envelope diagnostic details.
+  Evidence: docs/contract/schema review reported that `tools/schema/check_schema_contract.py` would allow an extra diagnostic `details` property as long as kind/code/message still matched. The checker and `tests/schema_cli.rs` now require diagnostic properties to be exactly `kind`, `code`, and `message`.
 
 ## Decision Log
 
@@ -83,7 +89,7 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 ## Outcomes & Retrospective
 
-The implementation has been simplified in the working tree. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed. Review, any follow-up fixes, push, and PR update remain.
+The implementation has been simplified and review feedback has been addressed in the working tree. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed before review; after the schema-checker review fix, `just check` passed again. Commit, final control review if needed, push, and PR update remain.
 
 ## Context and Orientation
 
@@ -215,3 +221,5 @@ Plan revision note, 2026-06-17: Marked push and PR creation complete after openi
 Plan revision note, 2026-06-18: Replanned the feature after maintainer review requested direct stderr debug traces instead of an envelope-based performance diagnostics framework.
 
 Plan revision note, 2026-06-18: Recorded completion of the simplified direct stderr debug trace implementation and successful validation before committing the implementation.
+
+Plan revision note, 2026-06-18: Recorded review findings on the simplified implementation and the schema-checker guard fix.

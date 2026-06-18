@@ -37,7 +37,7 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 - [x] (2026-06-18T12:18:00Z) Fix schema checker and schema test to assert diagnostic properties are exactly `kind`, `code`, and `message`; `just check` passed.
 - [x] (2026-06-18T12:25:00Z) Commit review fix as `test(schema): guard diagnostic debug trace boundary`.
 - [x] (2026-06-18T12:35:00Z) Run final control review over `main...HEAD`; it returned no substantive findings.
-- [ ] Push and update PR #31.
+- [x] (2026-06-18T12:42:00Z) Push simplified branch and add a PR #31 update comment summarizing the redesign and validation.
 
 ## Surprises & Discoveries
 
@@ -91,7 +91,7 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 ## Outcomes & Retrospective
 
-The implementation has been simplified and review feedback has been addressed. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed before review; after the schema-checker review fix, `just check` passed again. Final control review returned no substantive findings. Push and PR update remain.
+The implementation has been simplified, review feedback has been addressed, and PR #31 has been updated. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed before review; after the schema-checker review fix, `just check` passed again. Final control review returned no substantive findings.
 
 ## Context and Orientation
 
@@ -227,3 +227,5 @@ Plan revision note, 2026-06-18: Recorded completion of the simplified direct std
 Plan revision note, 2026-06-18: Recorded review findings on the simplified implementation and the schema-checker guard fix.
 
 Plan revision note, 2026-06-18: Recorded clean final control review before pushing the simplified implementation.
+
+Plan revision note, 2026-06-18: Marked the simplified branch push and PR update comment complete.

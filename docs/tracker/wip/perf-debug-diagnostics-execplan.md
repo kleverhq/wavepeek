@@ -35,7 +35,9 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 - [x] (2026-06-18T12:00:00Z) Commit implementation changes as `fix(debug): simplify waveform debug trace`.
 - [x] (2026-06-18T12:10:00Z) Run review lanes for code/tests, docs/contract/schema, and performance/architecture. Code/tests and performance/architecture returned no substantive findings. Docs/contract/schema found one low issue: the schema checker did not explicitly reject reintroduced diagnostic `details`.
 - [x] (2026-06-18T12:18:00Z) Fix schema checker and schema test to assert diagnostic properties are exactly `kind`, `code`, and `message`; `just check` passed.
-- [ ] Commit review fix, run final control review if needed, push, and update PR #31.
+- [x] (2026-06-18T12:25:00Z) Commit review fix as `test(schema): guard diagnostic debug trace boundary`.
+- [x] (2026-06-18T12:35:00Z) Run final control review over `main...HEAD`; it returned no substantive findings.
+- [ ] Push and update PR #31.
 
 ## Surprises & Discoveries
 
@@ -89,7 +91,7 @@ This change does not add a public CLI flag. It reuses `DEBUG=1`, which already u
 
 ## Outcomes & Retrospective
 
-The implementation has been simplified and review feedback has been addressed in the working tree. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed before review; after the schema-checker review fix, `just check` passed again. Commit, final control review if needed, push, and PR update remain.
+The implementation has been simplified and review feedback has been addressed. It preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn. Focused tests, `cargo test --quiet`, and `just check` passed before review; after the schema-checker review fix, `just check` passed again. Final control review returned no substantive findings. Push and PR update remain.
 
 ## Context and Orientation
 
@@ -223,3 +225,5 @@ Plan revision note, 2026-06-18: Replanned the feature after maintainer review re
 Plan revision note, 2026-06-18: Recorded completion of the simplified direct stderr debug trace implementation and successful validation before committing the implementation.
 
 Plan revision note, 2026-06-18: Recorded review findings on the simplified implementation and the schema-checker guard fix.
+
+Plan revision note, 2026-06-18: Recorded clean final control review before pushing the simplified implementation.

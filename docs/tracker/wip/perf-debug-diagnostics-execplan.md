@@ -1,4 +1,4 @@
-# Add DEBUG=1 Performance Diagnostics
+# Simplify DEBUG=1 Waveform Debug Trace
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,243 +6,195 @@ This document is maintained in accordance with the `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-`wavepeek` users and maintainers need a useful answer to “why was this waveform query slow?” without changing normal command output. After this change, running a waveform command with `DEBUG=1` will add debug diagnostics describing coarse performance phases. In human output mode those diagnostics will appear on stderr; in `--json` mode they will appear in the existing `diagnostics` array. Running the same command without `DEBUG=1` will keep stdout and stderr unchanged.
+`wavepeek` maintainers need a low-friction way to ask for timing breadcrumbs when a waveform command is slow. After this change, running a waveform command with `DEBUG=1` writes simple debug event lines to stderr while leaving the normal stdout payload unchanged. Each debug line is one JSON object with `kind: "debug"`, a short `message`, a monotonic `timestamp_ns`, and a free-form `details` object. A maintainer can compare neighboring timestamps to estimate where time went.
 
-The behavior can be observed with a small fixture command such as `DEBUG=1 cargo run -- value --waves tests/fixtures/cli/m2_core.vcd --at 0ns --signals top.clk --json`. The JSON envelope should still contain the normal command data, but its `diagnostics` array should include `kind: "debug"` records with `WPK-D1xxx` performance codes and structured `details` objects.
+The intended behavior can be observed with a command such as:
+
+    DEBUG=1 cargo run -- value --waves tests/fixtures/hand/m2_core.vcd --at 10ns --signals top.clk --json
+
+Stdout should still be the usual JSON envelope. Stderr should contain JSON debug event lines before or around normal fatal/stderr output, for example:
+
+    {"kind":"debug","message":"backend.open.start","timestamp_ns":1234,"details":{"command":"value"}}
+    {"kind":"debug","message":"backend.open.done","timestamp_ns":2345,"details":{"command":"value","backend":"wellen","format":"vcd"}}
 
 ## Non-Goals
 
-This change does not add a new public CLI flag. Debug performance diagnostics are enabled only by `DEBUG=1`, which already exists as the maintainer debug switch. This change does not alter fatal-error behavior: when a command fails before returning a successful `CommandResult`, stdout remains empty and stderr keeps the existing `fatal: <category>: <message>` shape. This change does not expose signal values, waveform file paths, or signal names in performance diagnostics. This change does not benchmark or optimize the backend; it only records low-overhead elapsed times and counts that help maintainers decide where later work belongs.
+This change does not add a public CLI flag. It reuses `DEBUG=1`, which already unlocks maintainer-only `change --tune-*` controls. This change does not introduce a logging or tracing framework. It does not add debug diagnostics to the successful JSON envelope and does not extend the `diagnostics` schema with debug codes. It does not create a mini benchmarking abstraction that wraps command execution. It does not hide debug events on fatal errors: a debug print followed by a fatal print is acceptable because they are independent sequential stderr events. It does not expose signal values, waveform file paths, or signal names in debug details.
 
 ## Progress
 
 - [x] (2026-06-17T20:45:25Z) Confirmed the repository starts clean on branch `feat/perf-diag` and issue #22 requests opt-in backend performance diagnostics.
-- [x] (2026-06-17T20:45:25Z) Confirmed `DEBUG=1` currently only allows hidden `change --tune-*` controls and does not print debug output.
-- [x] (2026-06-17T20:45:25Z) Recorded design decisions from the maintainer discussion: use `DEBUG=1`, only waveform commands, no fatal-output changes, `kind: debug`, `WPK-D####` codes, `D0001` generic debug message, `D1xxx` performance events, code as the discriminator for `details` shape.
-- [x] (2026-06-17T20:55:00Z) Commit this ExecPlan before feature code changes.
-- [x] (2026-06-17T22:05:00Z) Extend the diagnostic model, human renderer, machine-output docs, schema artifact, and schema checker to support debug diagnostics and optional structured details.
-- [x] (2026-06-17T22:05:00Z) Add a low-overhead performance recorder that is enabled only when `DEBUG=1` and can produce `Diagnostic` records on successful waveform commands.
-- [x] (2026-06-17T22:05:00Z) Instrument all waveform commands: `info`, `scope`, `signal`, `value`, `change`, and `property`.
-- [x] (2026-06-17T22:05:00Z) Add tests proving human stderr diagnostics with `DEBUG=1`, JSON diagnostics with structured `details`, all waveform commands receiving debug diagnostics, and no debug diagnostics for the `schema` helper command.
-- [x] (2026-06-17T22:10:00Z) Run focused tests and repository gate `just check`; all passed.
-- [x] (2026-06-17T22:18:00Z) Commit the implementation as `feat(debug): add waveform performance diagnostics`.
-- [x] (2026-06-17T22:35:00Z) Run focused review lanes for code/tests, docs/schema, and performance/architecture. Code/tests returned no substantive findings. Docs/schema found missing `phase_count` requiredness. Performance/architecture found two low-severity attribution issues.
-- [x] (2026-06-17T22:45:00Z) Apply review fixes: require summary `phase_count` in schema/checker/tests, rename value's selection phase from `signal.resolve` to `signal.select`, and make edge-fast change diagnostics report dispatch/fallback risk with `selected_engine` and `may_fallback` metrics. `just check` passed after fixes.
-- [x] (2026-06-17T22:55:00Z) Commit review fixes as `fix(debug): tighten performance diagnostic schema`.
-- [x] (2026-06-17T23:05:00Z) Run a final control review over `main...HEAD`; it returned no substantive findings.
-- [x] (2026-06-17T23:12:00Z) Push branch `feat/perf-diag` and open pull request #31.
+- [x] (2026-06-17T20:45:25Z) Confirmed `DEBUG=1` previously only allowed hidden `change --tune-*` controls and did not print debug output.
+- [x] (2026-06-17T23:12:00Z) Opened PR #31 with an initial implementation using `PerfDiagnostics`, debug codes, schema changes, and buffered diagnostics in the command envelope.
+- [x] (2026-06-18T11:20:41Z) Recorded maintainer review: keep the unrelated Git helper environment fix because hooks need it in this worktree; simplify docs; remove debug opcodes/codes; replace invasive wrappers with direct debug event prints; do not force-push.
+- [ ] Commit this revised ExecPlan before code changes.
+- [ ] Replace the current `PerfDiagnostics`/schema-envelope implementation with a direct stderr debug trace implementation.
+- [ ] Restore command execution code close to `main` and add only local `debug.event(...)` lines around existing steps.
+- [ ] Simplify public docs and schema/tests to remove debug diagnostic codes/details from the successful JSON envelope contract.
+- [ ] Run focused tests and `just check`.
+- [ ] Commit implementation changes on top of the existing PR branch, run review, apply fixes, push, and update PR #31.
 
 ## Surprises & Discoveries
 
-- Observation: `DEBUG=1` exists but currently prints nothing by itself.
-  Evidence: `rg` found the only runtime `DEBUG` check in `src/cli/mod.rs::is_debug_mode_enabled`, where it gates hidden `change --tune-*` flags. Explicit stderr output is limited to diagnostics in `src/output.rs` and fatal errors in `src/main.rs`.
-
-- Observation: The current JSON schema explicitly rejects debug diagnostics and extra fields on diagnostics.
-  Evidence: `schema/wavepeek_v1.json` had diagnostic `kind` enum `info`, `warning`, `error`; `code` pattern `^WPK-[WE][0-9]{4}$`; and `additionalProperties: false` for diagnostic objects.
+- Observation: `DEBUG=1` exists but originally printed nothing by itself.
+  Evidence: the original runtime `DEBUG` check in `src/cli/mod.rs::is_debug_mode_enabled` only gated hidden `change --tune-*` flags. Explicit stderr output was diagnostics in `src/output.rs` and fatal errors in `src/main.rs`.
 
 - Observation: Pre-commit auxiliary tests failed during `git commit` because temporary-repository Git commands inherited hook-local `GIT_*` environment variables.
-  Evidence: `git commit` initially failed in `tools/docs/test_publish_docs.py`, then `tools/release/test_publish_crate.py`, then `tools/repo/test_setup_github_auth.py`; direct test runs passed outside the hook. Clearing local Git environment variables fixed those tests and was committed as `test(tools): isolate git helper environment`.
+  Evidence: `git commit` initially failed in `tools/docs/test_publish_docs.py`, then `tools/release/test_publish_crate.py`, then `tools/repo/test_setup_github_auth.py`; direct test runs passed outside the hook. Clearing local Git environment variables fixed those tests and was committed as `test(tools): isolate git helper environment`. The maintainer accepted keeping this fix in the PR because otherwise quality gates require bypassing hooks in this worktree.
 
-- Observation: Tests that intentionally use `DEBUG=1` for hidden `change --tune-*` flags now receive debug diagnostics.
-  Evidence: `tests/change_opt_equivalence.rs` and tune-mode cases in `tests/change_vcd_fst_parity.rs` compared entire diagnostics arrays and failed on nondeterministic `WPK-D1xxx` durations. Those assertions now compare non-debug diagnostics for equivalence.
-
-- Observation: Review found that docs promised `phase_count` in summary details, but the schema did not require it.
-  Evidence: Docs/schema review reported `schema/wavepeek_v1.json` accepted `WPK-D1003` summary details without `phase_count`. The schema, checker, and schema tests now require it.
-
-- Observation: Review found two low-severity attribution issues in performance phase names/metrics.
-  Evidence: Performance review noted that value `signal.resolve` did not perform backend resolution and that edge-fast may include fallback work. Value now uses `signal.select`; edge-fast uses `change.engine.edge-fast.dispatch` and emits `selected_engine` plus `may_fallback`.
+- Observation: The first implementation was too invasive.
+  Evidence: it wrapped command logic with `perf.time_phase(...)`, rewrote substantial parts of `change`, `property`, and `value`, added D-code schema contracts, and buffered debug diagnostics into successful command envelopes. Maintainer review requested a simpler event trace made of local prints.
 
 ## Decision Log
 
-- Decision: Enable performance diagnostics with `DEBUG=1` instead of a new CLI flag.
-  Rationale: The feature is primarily for maintainer diagnostics and user-provided performance reports. `DEBUG=1` already exists as the maintainer debug switch, so reusing it avoids adding another opt-in surface.
+- Decision: Keep `DEBUG=1` as the only switch for this feature.
+  Rationale: The feature is primarily maintainer diagnostics and user-provided performance reports. Reusing the existing debug mode avoids adding another public CLI option.
   Date/Author: 2026-06-17 / Grin with maintainer confirmation.
 
-- Decision: Emit debug diagnostics only for successful waveform commands and do not change fatal behavior.
-  Rationale: The existing fatal contract keeps stdout empty and prints only `fatal: <category>: <message>` on stderr. Preserving that avoids surprising scripts and keeps this slice smaller.
-  Date/Author: 2026-06-17 / Grin with maintainer confirmation.
+- Decision: Debug events are written directly to stderr as JSON lines, not buffered into `CommandResult::diagnostics`.
+  Rationale: Maintainer review clarified that debug prints and fatal prints are independent sequential events. Direct stderr events are simpler, less invasive, and work even before a command succeeds.
+  Date/Author: 2026-06-18 / Grin with maintainer correction.
 
-- Decision: Use `kind: debug` and require `WPK-D####` codes for debug diagnostics.
-  Rationale: `kind` describes transport and severity behavior, while `code` is the stable discriminator for the shape of `details`. This avoids free-form debug blobs that scripts cannot safely consume.
-  Date/Author: 2026-06-17 / Grin with maintainer confirmation.
+- Decision: The debug event shape is `kind`, `message`, `timestamp_ns`, and `details`.
+  Rationale: This gives scripts enough structure without inventing a debug opcode catalog. `details` is a free object so future debug events can evolve without schema churn.
+  Date/Author: 2026-06-18 / Grin with maintainer confirmation.
 
-- Decision: Reserve `WPK-D0001` for generic debug messages and use `WPK-D1xxx` for performance events.
-  Rationale: A generic code leaves room for future non-performance debug text, while `D1xxx` gives performance diagnostics a recognizable range.
-  Date/Author: 2026-06-17 / Grin with maintainer confirmation.
+- Decision: Do not use `WPK-D####` codes or code-specific `details` schemas.
+  Rationale: The first implementation over-contracted maintainer debug output. Debug messages are not part of the stable successful-envelope diagnostic taxonomy.
+  Date/Author: 2026-06-18 / Grin with maintainer confirmation.
 
-- Decision: Use a small set of performance record codes rather than a new code for every phase.
-  Rationale: `WPK-D1001` can represent performance context, `WPK-D1002` can represent any timed phase with `details.phase`, and `WPK-D1003` can represent a summary. New phase names can be added without schema churn, while the code still discriminates the record shape.
-  Date/Author: 2026-06-17 / Grin.
+- Decision: Do not introduce a logging framework in this slice.
+  Rationale: The required behavior is command-local JSON stderr breadcrumbs under `DEBUG=1`. A global `log` or `tracing` subscriber would add dependency and test complexity without solving a current problem.
+  Date/Author: 2026-06-18 / Grin.
 
-- Decision: Do not include signal values, signal names, or waveform file paths in performance details.
-  Rationale: Issue #22 explicitly forbids signal value exposure, and names/paths may leak proprietary design context. Counts, backend names, formats, phase names, statuses, and durations are enough for performance diagnosis.
-  Date/Author: 2026-06-17 / Grin with maintainer confirmation.
+- Decision: Keep the Git helper environment isolation commit in this PR.
+  Rationale: In this worktree, hooks use local Git environment variables and aux tests create temporary Git repositories. Without the isolation fix, quality gates fail and commits require bypassing hooks.
+  Date/Author: 2026-06-18 / Grin with maintainer confirmation.
+
+- Decision: Do not force-push PR #31.
+  Rationale: The maintainer requested additive fix commits on top of the existing branch history.
+  Date/Author: 2026-06-18 / Grin with maintainer confirmation.
 
 ## Outcomes & Retrospective
 
-Implementation, review, push, and PR creation are complete. The implementation adds `kind: debug`, `WPK-D####` code handling, optional structured `details`, a `PerfDiagnostics` recorder, waveform backend context helpers, instrumentation for all six waveform commands, public machine-output docs, schema contract updates, and focused tests. Review found one medium docs/schema issue and two low performance-attribution issues; all have been fixed. The final control review returned no substantive findings. Pull request #31 is open.
+The initial PR #31 implementation is under revision. It passed tests and review, but maintainer review found the architecture too heavy for the task. The desired final result is a simpler branch that preserves the Git helper test fix, removes the debug code/schema/envelope approach, and adds direct `DEBUG=1` stderr JSON event traces with minimal command-code churn.
 
 ## Context and Orientation
 
-The repository is a Rust CLI named `wavepeek`. Waveform commands inspect VCD, FST, and optionally FSDB waveform files. The CLI layer in `src/cli/` parses command arguments and dispatches to the engine layer in `src/engine/`. The engine layer opens waveform files through the backend-neutral facade in `src/waveform/mod.rs`, performs command-specific work, and returns `CommandResult`. The output layer in `src/output.rs` prints either human output or a JSON envelope.
+The repository is a Rust CLI named `wavepeek`. Waveform commands inspect VCD, FST, and optionally FSDB waveform files. The CLI layer in `src/cli/` parses command arguments and dispatches to command functions in `src/engine/`. Command functions open waveform files through `src/waveform/mod.rs`, then build `CommandResult`. `src/output.rs` prints either human output or the normal JSON envelope.
 
-A diagnostic is a non-fatal message attached to a successful command. In human mode diagnostics go to stderr. In `--json` mode diagnostics go into the JSON envelope field named `diagnostics`. Fatal errors are different: `src/main.rs` prints the formatted `WavepeekError` to stderr and exits non-zero. This plan does not change fatal errors.
+`CommandResult::diagnostics` is for successful command diagnostics in the stdout JSON envelope or human stderr diagnostics. The revised design does not use it for debug events. Debug events are direct stderr lines emitted at the point where the event occurs. Because they are direct stderr lines, they may appear before a later fatal error; this is intended.
 
-The current diagnostic type lives in `src/diagnostic.rs`. It has `DiagnosticKind::{Info, Warning, Error}`, optional `code`, and `message`. Warning diagnostics use `WPK-W####` codes and error diagnostics use `WPK-E####` codes. Info diagnostics currently have no code. The current JSON schema lives in `schema/wavepeek_v1.json`, and the runtime embeds that exact artifact through `src/schema_contract.rs`. The helper `tools/schema/check_schema_contract.py` validates that `wavepeek schema` matches the artifact and that the diagnostic schema has the expected shape.
+The existing first PR implementation added `src/perf_diag.rs`, `DiagnosticKind::Debug`, `DebugDiagnosticCode`, debug schema definitions, and wrapper-style timing in engine modules. The revised implementation should remove those pieces or revert them to the pre-feature shape unless they are still needed for direct stderr events. Backend and format names remain useful for debug event details and can stay as small facade helpers if they are added with minimal risk.
 
-The existing debug mode is `DEBUG=1`, implemented in `src/cli/mod.rs::is_debug_mode_enabled`. Today it only allows hidden `change` tuning arguments. With this plan, `DEBUG=1` will also enable performance debug diagnostics for commands that require `--waves`: `info`, `scope`, `signal`, `value`, `change`, and `property`.
-
-A performance phase is a coarse span of command execution measured with `std::time::Instant`. Coarse means one span around a meaningful chunk, such as opening the waveform or collecting candidate timestamps. The implementation must avoid per-sample hot-loop timing unless the loop is already command-level and the overhead is just one elapsed-time measurement around the whole loop.
+A debug event is a single JSON object written to stderr when `DEBUG=1`. `timestamp_ns` is a monotonic elapsed nanosecond count since the trace object was created for the command, not wall-clock Unix time. This makes it useful for calculating deltas between adjacent events. `details` must not contain signal values, signal names, or waveform file paths.
 
 ## Open Questions
 
-There are no product-design questions left from the maintainer discussion. Implementation details may still be adjusted if tests or Rust ownership expose a simpler shape, but the user-visible contract is fixed by the Decision Log.
+There are no remaining product questions. Implementation should use direct stderr JSON events, no codes, no buffering, no force-push, and minimal command-code changes.
 
 ## Plan of Work
 
-First, extend the diagnostic contract. In `src/diagnostic.rs`, add `DiagnosticKind::Debug`, a `DebugDiagnosticCode` enum with `GenericMessage`, `PerformanceContext`, `PerformancePhase`, and `PerformanceSummary`, and a `details: Option<serde_json::Value>` field on `Diagnostic`. Add constructors for generic debug diagnostics and debug diagnostics with details. Existing info, warning, and error constructors should continue to produce the same JSON as before when `details` is absent. In `src/output.rs`, render debug diagnostics in human mode as `debug[WPK-D####]: <message>`. Update `docs/public/reference/machine-output.md` to describe `debug`, `WPK-D####`, and optional details. Update `schema/wavepeek_v1.json` and `tools/schema/check_schema_contract.py` so the schema accepts debug diagnostics, requires D-codes for debug diagnostics, still forbids codes for info diagnostics, and allows optional object-valued `details` on diagnostics.
+First, update this ExecPlan and commit it so the changed design is durable before editing code. This is the current step.
 
-Second, add a performance recorder module, preferably `src/perf_diag.rs`, and expose it from `src/lib.rs`. The recorder should be cheap when disabled: if `DEBUG` is not exactly `1`, it should avoid calling `Instant::now` for phases. A practical shape is `PerfDiagnostics::for_command(CommandName)`, which checks `DEBUG=1`, stores a command name and a start time only when enabled, and has methods to record context, timed phases, and summary diagnostics. Timed phases can be measured by calling a method that accepts a closure, records elapsed nanoseconds if enabled, and returns the closure result unchanged. Details should use JSON objects with `domain: "performance"`, `event: "context" | "phase" | "summary"`, and fields such as `phase`, `duration_ns`, `status`, `command`, `backend`, `format`, and `metrics`. Counts such as `signals`, `times`, `rows`, and `truncated` can live inside a nested `metrics` object. Do not include signal values, signal names, or file paths.
+Second, remove the envelope-based debug diagnostics. Restore `src/diagnostic.rs`, `src/output.rs`, `schema/wavepeek_v1.json`, `tools/schema/check_schema_contract.py`, and schema tests toward the previous `info`/`warning`/`error` successful-envelope contract. Keep only a concise public docs note in `docs/public/reference/machine-output.md` that `DEBUG=1` may write debug JSON lines to stderr, with the generic event shape. Do not document specific event names or commands.
 
-Third, provide backend context without leaking paths. In `src/waveform/mod.rs`, add methods such as `backend_name(&self) -> &'static str` and `format_name(&self) -> &'static str`. For the Wellen backend in `src/waveform/wellen_backend.rs`, convert `wellen::FileFormat` to stable strings such as `"vcd"`, `"fst"`, and `"unknown"` if needed. For FSDB builds in `src/waveform/fsdb_backend.rs`, return backend `"fsdb"` and format `"fsdb"`. Keep this small and behind the facade.
+Third, replace `src/perf_diag.rs` with a small `src/debug_trace.rs` module. The module should check `DEBUG=1`, store an `Instant` only when enabled, and expose an `event` method that lazily builds `details` only when enabled and writes one JSON line to stderr. The line must contain `kind: "debug"`, `message`, `timestamp_ns`, and `details`. It should add `details.command` automatically when missing. It should use existing `serde` and `serde_json`; no new logging dependency.
 
-Fourth, instrument each waveform command. Each run function should create the recorder after validating cheap argument errors that should not produce a successful command anyway. Wrap `Waveform::open` or `open_shared_waveform` in `backend.open`. After a waveform is open, record performance context with command, backend, and format. Wrap metadata loading in `metadata.load`. For `scope`, wrap hierarchy traversal in `hierarchy.load` and regex filtering/limit application in command phases if useful. For `signal`, wrap direct or recursive signal loading as `signal.list`. For `value`, wrap signal resolution as `signal.resolve`, time parsing as `time.parse`, and the full sampling loop as `value.sample`. For `change`, wrap metadata, signal resolution, expression binding, time parsing, candidate collection, selected engine execution, and result finalization. For `property`, wrap metadata, time parsing, expression binding, candidate collection, schedule building, evaluation loop, and result finalization. At the end of a successful command, extend the existing diagnostics vector with recorder summary diagnostics. Existing warning diagnostics must remain present and deterministic; debug diagnostics should be appended after command warnings to avoid perturbing warning positions for clients that inspect the first warning.
+Fourth, reduce engine changes. Start from the original command flow from `main` for `info`, `scope`, `signal`, `value`, `change`, and `property`, then add local event calls before and after major existing steps. For example, add `backend.open.start` before `Waveform::open`, `backend.open.done` after it succeeds, `metadata.load.done` after metadata is loaded, and command-specific done events after existing loops finish. Avoid wrapping large closures. Avoid moving logic around merely to measure it. Add small backend context helpers only if needed for `backend.open.done` details.
 
-Fifth, test the behavior. Add or update unit tests for diagnostic serialization and human rendering. Add integration tests using existing small CLI fixtures to prove: without `DEBUG=1` output remains unchanged; with `DEBUG=1` human mode sends debug diagnostics to stderr while stdout still contains the normal payload; with both `DEBUG=1` and `--json`, debug diagnostics appear in the JSON diagnostics array with `WPK-D1001`, `WPK-D1002`, and `WPK-D1003` records and object-valued details; helper commands such as `schema` do not emit debug diagnostics under `DEBUG=1`. Also validate schema changes with `just check-schema`.
+Fifth, update tests. Remove assertions that debug diagnostics appear in the stdout JSON envelope. Add tests that run a small waveform command with `DEBUG=1`, assert stdout still has the normal payload, parse stderr lines as JSON debug events, and verify the event shape. Add a fatal-path test that shows a debug line may precede the existing fatal line without changing the fatal line itself. Keep the Git helper environment tests. Update or remove schema tests that referenced debug codes.
+
+Sixth, run focused tests and `just check`. Commit the implementation as a follow-up fix commit on top of the PR branch. Run read-only review lanes focused on code/tests and docs/contract. Apply fixes in the main session, rerun tests, commit fixes, push to `origin feat/perf-diag`, and let PR #31 update normally.
 
 ## Concrete Steps
 
-Work from the repository root `/workspaces/feat-perf-diag`.
+Work from `/workspaces/feat-perf-diag`.
 
-1. Commit this plan before implementation:
+1. Commit this revised plan:
 
     git add docs/tracker/wip/perf-debug-diagnostics-execplan.md
-    git commit -m "docs(tracker): plan debug performance diagnostics"
+    git commit -m "docs(tracker): revise debug trace plan"
 
-2. Implement the diagnostic contract changes in `src/diagnostic.rs`, `src/output.rs`, `docs/public/reference/machine-output.md`, `schema/wavepeek_v1.json`, and `tools/schema/check_schema_contract.py`. Run focused tests:
+2. Restore or simplify the previous debug-diagnostics contract changes. Useful commands are:
 
-    cargo test diagnostic
-    cargo test output
+    git checkout main -- src/diagnostic.rs src/output.rs schema/wavepeek_v1.json tools/schema/check_schema_contract.py tests/schema_cli.rs
+
+   Then reapply only the minimal docs note in `docs/public/reference/machine-output.md`.
+
+3. Replace `src/perf_diag.rs` with `src/debug_trace.rs`, update `src/lib.rs`, and add direct `debug.event(...)` calls in engine modules.
+
+4. Run focused validation:
+
+    cargo fmt --check
+    cargo test --test value_cli debug --quiet
+    cargo test --test schema_cli --quiet
+    cargo test --test change_opt_equivalence --quiet
     just check-schema
 
-3. Implement `src/perf_diag.rs`, expose it from `src/lib.rs`, add backend context helpers in `src/waveform/mod.rs` and concrete backend modules, and instrument all six waveform command run functions.
+5. Run the full local gate:
 
-4. Add integration/unit tests. Focused commands should include:
-
-    cargo test --test value_cli debug
-    cargo test --test cli_contract debug
-    cargo test diagnostic
-    just check-schema
-
-   The exact test names may differ; use `cargo test debug` if the focused names are too broad.
-
-5. Run formatting and broader checks:
-
-    just format
     just check
 
-   If `just check` cannot run because the environment is missing a declared dependency, capture the exact failure in this plan and run the narrowest meaningful alternatives.
-
-6. Commit implementation changes with a conventional commit message, for example:
+6. Commit implementation fixes:
 
     git add src docs/public/reference/machine-output.md schema/wavepeek_v1.json tools/schema/check_schema_contract.py tests
-    git commit -m "feat(debug): add waveform performance diagnostics"
+    git commit -m "fix(debug): simplify waveform debug trace"
 
-7. Run read-only review lanes via subagents for code/schema/tests, docs/contract, and performance/architecture. Apply fixes in the main session only, rerun relevant tests, and commit any fixes.
+7. Request review lanes and iterate. Then push:
 
-8. Run a final independent control review. If clean, push the branch and open a PR:
-
-    git push -u origin feat/perf-diag
-    gh pr create --repo kleverhq/wavepeek --title "feat(debug): add waveform performance diagnostics" --body-file tmp/perf-debug-pr.md
+    git push
 
 ## Validation and Acceptance
 
-Acceptance is observable from CLI behavior. Without `DEBUG=1`, a waveform command must produce the same stdout, stderr, and JSON diagnostics it produced before. With `DEBUG=1`, a successful waveform command must still produce the same main payload, but debug diagnostics must be added. In human mode those diagnostics appear on stderr, for example:
+Without `DEBUG=1`, waveform commands must preserve existing stdout and stderr. With `DEBUG=1`, waveform commands may write JSON debug event lines to stderr. If `--json` is also used, stdout remains the normal command envelope and debug events still go to stderr rather than into `diagnostics`.
 
-    debug[WPK-D1001]: perf: context command=value backend=wellen format=vcd
-    debug[WPK-D1002]: perf: backend.open 1.234ms
-    debug[WPK-D1003]: perf: total 2.345ms
-
-In JSON mode, the same command must emit one valid JSON envelope on stdout with records like:
+Each debug stderr line must parse as JSON and contain:
 
     {
       "kind": "debug",
-      "code": "WPK-D1002",
-      "message": "perf: backend.open 1.234ms",
+      "message": "backend.open.done",
+      "timestamp_ns": 123456,
       "details": {
-        "domain": "performance",
-        "event": "phase",
-        "phase": "backend.open",
-        "duration_ns": 1234000,
-        "status": "ok"
+        "command": "value"
       }
     }
 
-The exact durations are nondeterministic and must not be asserted exactly. Tests should assert structure, code presence, phase names, and that `duration_ns` is a number. Tests must also assert that no diagnostic exposes signal values.
+`timestamp_ns` is nondeterministic and tests must only assert that it is an integer. `details` is a free object and tests should not assert a fixed full set of fields. Tests must assert no signal value strings appear in debug event details.
 
-The repository gate `just check` should pass before handoff. If it cannot run, the failure must be recorded with the exact command and output.
+A fatal command under `DEBUG=1` may print debug events before the normal fatal line. The fatal line itself must keep the existing `fatal: <category>: <message>` format.
+
+`just check` must pass before pushing.
 
 ## Idempotence and Recovery
 
-All edits are ordinary source, docs, schema, and test changes. The plan can be reread and steps can be rerun safely. If a schema check fails because `wavepeek schema` does not match `schema/wavepeek_v1.json`, either update the schema artifact deliberately or revert the schema-affecting code; do not leave runtime and artifact mismatched. If tests fail because durations vary, make assertions structural rather than exact. If a review finding requires changing the debug details shape, update `src/diagnostic.rs`, `schema/wavepeek_v1.json`, `tools/schema/check_schema_contract.py`, public docs, tests, and this ExecPlan together.
+All changes are ordinary source, docs, schema, and tests. If schema tests fail, confirm that debug events are not being added to the successful JSON envelope contract; the current major schema should not need debug-code definitions. If direct debug printing breaks tests that expected empty stderr under `DEBUG=1`, update only those tests where `DEBUG=1` is intentional. If a command refactor grows beyond adding local event calls, stop and simplify; the point of this revision is to reduce risk, not move more control flow around.
 
 ## Artifacts and Notes
 
-Current baseline evidence:
+Existing PR history on the branch before this revision:
 
-    $ git status --short --branch
-    ## feat/perf-diag
+    c97e34d test(tools): isolate git helper environment
+    a21e939 docs(tracker): plan debug performance diagnostics
+    bb93b7e feat(debug): add waveform performance diagnostics
+    e755f18 fix(debug): tighten performance diagnostic schema
+    3d9a791 docs(tracker): record perf diagnostics review
+    427fe5a docs(tracker): record perf diagnostics PR
 
-    $ rg -n "std::env::var\(\"DEBUG\"\)|eprintln!|println!|print!|dbg!|log::|tracing::" src -g '*.rs'
-    src/cli/mod.rs:236:        println!(env!("CARGO_PKG_VERSION"));
-    src/cli/mod.rs:241:        println!("wavepeek v{}", env!("CARGO_PKG_VERSION"));
-    src/cli/mod.rs:253:    std::env::var("DEBUG")
-    src/output.rs:49:    println!("{json}");
-    src/output.rs:218:            DiagnosticKind::Info => eprintln!("info: {}", diagnostic.message()),
-    src/output.rs:219:            DiagnosticKind::Warning => eprintln!(
-    src/output.rs:226:            DiagnosticKind::Error => eprintln!(
-    src/main.rs:7:            eprintln!("{error}");
+The Git helper environment fix remains intentionally in the branch. The subsequent implementation commits should simplify or revert the heavy debug diagnostics implementation without force-pushing.
 
 ## Interfaces and Dependencies
 
-The implementation should use only the Rust standard library timing type `std::time::Instant` and the existing `serde` and `serde_json` dependencies. No logging framework should be introduced.
+The direct trace helper should look like this conceptually:
 
-At the end of the feature, `src/diagnostic.rs` should expose debug constructors resembling:
+    pub(crate) struct DebugTrace { ... }
 
-    pub enum DebugDiagnosticCode {
-        GenericMessage,
-        PerformanceContext,
-        PerformancePhase,
-        PerformanceSummary,
+    impl DebugTrace {
+        pub(crate) fn for_command(command: CommandName) -> Self;
+        pub(crate) fn event(&self, message: &'static str, details: impl FnOnce() -> serde_json::Value);
     }
 
-    impl Diagnostic {
-        pub fn debug(code: DebugDiagnosticCode, message: impl Into<String>) -> Self;
-        pub fn debug_with_details(
-            code: DebugDiagnosticCode,
-            message: impl Into<String>,
-            details: serde_json::Value,
-        ) -> Self;
-    }
-
-At the end of the feature, `src/perf_diag.rs` should expose a recorder resembling:
-
-    pub struct PerfDiagnostics { ... }
-
-    impl PerfDiagnostics {
-        pub fn for_command(command: CommandName) -> Self;
-        pub fn is_enabled(&self) -> bool;
-        pub fn record_context(&mut self, backend: &'static str, format: &'static str);
-        pub fn time_phase<T, E>(
-            &mut self,
-            phase: &'static str,
-            f: impl FnOnce() -> Result<T, E>,
-        ) -> Result<T, E>;
-        pub fn push_phase_metrics(&mut self, phase: &'static str, metrics: serde_json::Value);
-        pub fn finish(self) -> Vec<Diagnostic>;
-    }
-
-The exact method names may change to fit Rust ownership, but the observable diagnostics must match the contract above.
+`DebugTrace::event` should be lazy: when `DEBUG` is not exactly `1`, it must return before constructing details. It should write one JSON object to stderr when enabled. It should not return diagnostics to callers and should not change command result types.
 
 Plan revision note, 2026-06-17: Created the initial self-contained execution plan after maintainer confirmation of the debug-mode diagnostics design.
 
@@ -253,3 +205,5 @@ Plan revision note, 2026-06-17: Recorded review findings and the follow-up fixes
 Plan revision note, 2026-06-17: Recorded the clean final control review before push and PR creation.
 
 Plan revision note, 2026-06-17: Marked push and PR creation complete after opening pull request #31.
+
+Plan revision note, 2026-06-18: Replanned the feature after maintainer review requested direct stderr debug traces instead of an envelope-based performance diagnostics framework.

@@ -904,7 +904,7 @@ mod tests {
 
         let summary = export_catalog(&out_dir, false).expect("export should succeed");
 
-        assert_eq!(summary.topics.len(), 20);
+        assert_eq!(summary.topics.len(), 21);
         assert!(out_dir.join("commands").join("change.md").exists());
         assert!(out_dir.join("manifest.json").exists());
         assert!(!out_dir.join("wavepeek.md").exists());

@@ -7,6 +7,7 @@ see_also:
   - commands/overview
   - reference/command-model
   - reference/expression-language
+  - troubleshooting/clock-edge-sampling
 ---
 # Property command
 
@@ -136,11 +137,29 @@ Common `--on` patterns:
 
 Full trigger and expression syntax is defined in `reference/expression-language`.
 
+## Choose native or pre-edge value sampling
+
+By default, `property` uses dump-native sampling: a row selected by `--on 'posedge clk'` evaluates `--eval` from values at the same dump timestamp as that edge.
+
+For RTL and SVA-style debugging, `--sample-mode pre-edge` evaluates `--eval` from values immediately before the selected edge while keeping the reported row timestamp at the edge:
+
+```text
+$ wavepeek property --waves path/to/dump.vcd --scope top \
+    --on 'posedge clk' --eval valid --capture assert \
+    --sample-mode pre-edge
+@25ns assert
+```
+
+`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the `--eval` value sampling moves to the pre-edge sample point.
+
+Use this mode when `property` appears one clock ahead of a SystemVerilog assertion because a value is dumped after a nonblocking assignment at the same clock edge. See `troubleshooting/clock-edge-sampling` for diagrams and boundary behavior.
+
 ## Non-obvious behavior
 
 - VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `property` supports digital bit-vector/integral expressions, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
 - No output is still success. It emits `WPK-W0003` and usually means no selected timestamp satisfied the requested capture mode.
 - The default capture mode is `switch`, not `match`.
+- `--sample-mode native` is the default and preserves historical behavior. `--sample-mode pre-edge` is opt-in and requires an explicit edge-only trigger.
 - `property` prints only time and result kind. If you also need sampled values, use `change`.
 - With `--scope`, names inside `--on` and `--eval` must stay scope-relative. For example, `--scope top --on 'posedge top.clk'` is an error.
 - If you omit `--on`, `wavepeek` must be able to infer tracked signals from `--eval`. A signal-free expression like `--eval 1` requires explicit `--on`.

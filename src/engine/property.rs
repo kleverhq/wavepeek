@@ -1,13 +1,14 @@
 use serde::Serialize;
 
 use crate::cli::property::{CaptureMode, PropertyArgs};
+use crate::cli::sampling::SampleMode;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     bind_waveform_event_expr, bind_waveform_logical_expr, candidate_sources_for_handles,
     eval_bound_logical_truth, event_candidate_handles, event_expr_contains_wildcard,
-    event_expr_is_any_tracked_only, event_expr_matches, open_shared_waveform,
-    referenced_signal_handles,
+    event_expr_is_any_tracked_only, event_expr_is_edge_only, event_expr_matches,
+    open_shared_waveform, referenced_signal_handles,
 };
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
@@ -17,6 +18,8 @@ use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions}
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
 use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
+
+const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires explicit --on with only edge event terms (posedge, negedge, or edge); wildcard and plain signal triggers are not supported";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -83,6 +86,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     let event_expr_source = args.on.as_deref().unwrap_or("*");
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
+    validate_sample_mode(args.sample_mode, args.on.is_some(), &bound_event)?;
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
     debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
@@ -160,7 +164,16 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             continue;
         }
 
-        let decision = eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, timestamp)?;
+        let decision_timestamp = {
+            let waveform_ref = waveform.borrow();
+            value_sample_time_for_mode(&waveform_ref, args.sample_mode, timestamp)
+        };
+        let Some(decision_timestamp) = decision_timestamp else {
+            continue;
+        };
+
+        let decision =
+            eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, decision_timestamp)?;
         match args.capture {
             CaptureMode::Match => {
                 if decision {
@@ -172,7 +185,9 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             }
             CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
                 if timestamp == from_raw {
-                    previous_state = Some(decision);
+                    if args.sample_mode == SampleMode::Native {
+                        previous_state = Some(decision);
+                    }
                     continue;
                 }
 
@@ -219,6 +234,31 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         data: CommandData::Property(rows),
         diagnostics,
     })
+}
+
+fn validate_sample_mode(
+    sample_mode: SampleMode,
+    explicit_on: bool,
+    bound_event: &crate::expr::BoundEventExpr,
+) -> Result<(), WavepeekError> {
+    if sample_mode == SampleMode::PreEdge && (!explicit_on || !event_expr_is_edge_only(bound_event))
+    {
+        return Err(WavepeekError::Args(
+            PRE_EDGE_REQUIRES_EDGE_ONLY_ON.to_string(),
+        ));
+    }
+    Ok(())
+}
+
+fn value_sample_time_for_mode(
+    waveform: &Waveform,
+    sample_mode: SampleMode,
+    trigger_timestamp: u64,
+) -> Option<u64> {
+    match sample_mode {
+        SampleMode::Native => Some(trigger_timestamp),
+        SampleMode::PreEdge => waveform.previous_sample_time(trigger_timestamp),
+    }
 }
 
 fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
@@ -289,6 +329,7 @@ mod tests {
         parse_bound_time, run,
     };
     use crate::cli::property::{CaptureMode, PropertyArgs};
+    use crate::cli::sampling::SampleMode;
     use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
     use crate::waveform::{Waveform, WaveformMetadata};
@@ -428,6 +469,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             on: Some("posedge sig".to_string()),
+            sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
@@ -446,6 +488,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             on: None,
+            sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Switch,
             json: true,
@@ -466,6 +509,7 @@ mod tests {
             to: Some("10ns".to_string()),
             scope: Some("top".to_string()),
             on: None,
+            sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Assert,
             json: false,
@@ -483,6 +527,7 @@ mod tests {
             to: Some("0ns".to_string()),
             scope: Some("top".to_string()),
             on: Some("posedge sig".to_string()),
+            sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
@@ -504,6 +549,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             on: None,
+            sample_mode: SampleMode::Native,
             eval: "1'b1".to_string(),
             capture: CaptureMode::Match,
             json: false,

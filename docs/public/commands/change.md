@@ -9,6 +9,7 @@ see_also:
   - workflows/find-first-change
   - reference/command-model
   - reference/expression-language
+  - troubleshooting/clock-edge-sampling
 ---
 # Change command
 
@@ -106,6 +107,23 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
 
 This means: sample on `posedge clk`, but only on cycles where `mem_valid` is true.
 
+## Choose native or pre-edge sampling on clock edges
+
+By default, `change` uses dump-native sampling: a row selected by `--on 'posedge clk'` prints values from the same dump timestamp as that edge.
+
+For RTL and SVA-style debugging, `--sample-mode pre-edge` samples the printed `--signals` values immediately before the selected edge while keeping the row timestamp at the edge:
+
+```text
+$ wavepeek change --waves path/to/dump.vcd --scope top \
+    --signals state,valid \
+    --on 'posedge clk' --sample-mode pre-edge
+@25ns state=3'h2 valid=1'h1
+```
+
+`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the displayed signal values move to the pre-edge sample point.
+
+Use this mode when a value updated by nonblocking assignment at a clock edge appears one clock early compared with an RTL assertion or simulator log. See `troubleshooting/clock-edge-sampling` for diagrams and trade-offs.
+
 ## Use scope-relative names or full canonical paths
 
 With `--scope`, short names stay readable. Without it, pass canonical paths directly:
@@ -174,6 +192,7 @@ warning[WPK-W0001]: limit disabled: --max=unlimited
 - VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `change` supports digital bit-vector/integral signals, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
 - `--from` is inclusive for selection, but it also initializes the baseline state. `change` does not emit a row exactly at `--from`; if you need the boundary value itself, use `value`.
 - `--on` does not guarantee a row by itself. A trigger can fire, but `change` still suppresses the row if none of the requested `--signals` changed.
+- `--sample-mode native` is the default and preserves historical behavior. `--sample-mode pre-edge` is opt-in and requires an explicit edge-only trigger.
 - In scoped mode, use scope-relative names in `--signals` and `--on`. Without `--scope`, use canonical full paths.
 - Empty output is valid. If the query is well-formed but nothing matched, the command succeeds and emits a diagnostic:
 

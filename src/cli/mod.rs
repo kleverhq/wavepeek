@@ -3,6 +3,7 @@ pub mod docs;
 pub mod info;
 pub mod limits;
 pub mod property;
+pub mod sampling;
 pub mod schema;
 pub mod scope;
 pub mod signal;
@@ -127,6 +128,7 @@ Behavior:
 - Prints requested signal values for each `--on` trigger firing when at least one value changed since the previous firing.
 - Similar to a modified SystemVerilog `$monitor`, but with print trigger control instead of printing at every timestamp.
 - Range boundaries are inclusive; baseline state is initialized at range start.
+- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` samples displayed values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
 - `--json` uses the machine contract defined by `wavepeek schema`.
@@ -142,6 +144,7 @@ Behavior:
 - Evaluates `--eval` at timestamps selected by `--on` and prints time plus metadata when the property holds.
 - Level capture (`--capture match`) reports a match at every selected timestamp where the property holds.
 - Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.
+- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` evaluates values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
 - Remotely similar to a SystemVerilog assert, but without temporal expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 

@@ -18,6 +18,202 @@ fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
     fixture
 }
 
+const RTL_SAMPLING_VCD: &str = concat!(
+    "$date\n",
+    "  today\n",
+    "$end\n",
+    "$version\n",
+    "  wavepeek-rtl-sampling\n",
+    "$end\n",
+    "$timescale 1ns $end\n",
+    "$scope module top $end\n",
+    "$var wire 1 ! clk $end\n",
+    "$var wire 1 \" valid $end\n",
+    "$var wire 8 # data $end\n",
+    "$upscope $end\n",
+    "$enddefinitions $end\n",
+    "#0\n",
+    "0!\n",
+    "0\"\n",
+    "b00000000 #\n",
+    "#5\n",
+    "1!\n",
+    "1\"\n",
+    "b10101010 #\n",
+    "#10\n",
+    "0!\n",
+    "#15\n",
+    "1!\n",
+    "#20\n",
+    "0!\n",
+    "#25\n",
+    "1!\n",
+    "0\"\n",
+    "b01010101 #\n",
+    "#30\n",
+    "0!\n",
+    "#35\n",
+    "1!\n",
+);
+
+#[test]
+fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "change-rtl-sampling.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let native_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "15ns",
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk",
+            "--json",
+        ])
+        .output()
+        .expect("change should execute");
+    let pre_edge_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "15ns",
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("change should execute");
+
+    assert!(native_output.status.success());
+    assert!(pre_edge_output.status.success());
+    assert_eq!(
+        parse_json(&native_output.stdout)["data"],
+        json!([{
+            "time": "5ns",
+            "signals": [{"path": "top.data", "value": "8'haa"}]
+        }])
+    );
+    assert_eq!(
+        parse_json(&pre_edge_output.stdout)["data"],
+        json!([{
+            "time": "15ns",
+            "signals": [{"path": "top.data", "value": "8'haa"}]
+        }])
+    );
+}
+
+#[test]
+fn change_sample_mode_pre_edge_preserves_from_baseline() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "change-rtl-sampling-boundary.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let short_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "15ns",
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("change should execute");
+    let long_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "35ns",
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("change should execute");
+
+    assert!(short_output.status.success());
+    let short_json = parse_json(&short_output.stdout);
+    assert_eq!(short_json["data"], json!([]));
+    assert_eq!(
+        short_json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no signal changes found in selected time range"}])
+    );
+    assert!(long_output.status.success());
+    assert_eq!(
+        parse_json(&long_output.stdout)["data"],
+        json!([{
+            "time": "35ns",
+            "signals": [{"path": "top.data", "value": "8'h55"}]
+        }])
+    );
+}
+
+#[test]
+fn change_sample_mode_pre_edge_rejects_plain_signal_trigger() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "change-rtl-sampling-invalid.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "data",
+            "--sample-mode",
+            "pre-edge",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::contains(
+            "--sample-mode pre-edge requires explicit --on",
+        ));
+}
+
 #[test]
 fn change_requires_signals_flag() {
     let fixture = fixture_path("m2_core.vcd");

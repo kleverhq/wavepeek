@@ -14,12 +14,15 @@ Common commands:
     python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>
     python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5
     python3 bench/e2e/perf.py compare --functional-only --revised <fsdb-run> --golden bench/e2e/runs/baseline_fst
+    python3 bench/e2e/perf.py compare-sampling-modes --run-dir <dir> --tests bench/e2e/tests_commit.json --max-delta-pct 10
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
 
 Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test threshold violations, functional `data` mismatches, or missing/invalid artifacts. Functional-only compare skips timing thresholds but still fails data mismatches, invalid or missing JSON artifacts, timeout payloads, and unmatched tests unless `--allow-golden-extra` is intentionally used for a filtered smoke.
 
-Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment; see `fsdb.md` for generated FSDB artifacts and repository-safety rules.
+Sampling-mode compare is a same-run performance gate for tests that declare `meta.sampling_mode_pair` and `meta.sampling_mode`. It requires one `native` and one `pre-edge` artifact for each pair and fails when mean or median differs by more than the configured absolute percentage. It only checks artifact validity for wavepeek JSON; it does not compare functional `data` or `diagnostics` because sampling modes may intentionally produce different rows. This gate does not require or refresh committed baseline artifacts.
+
+Use `just bench-e2e-update-baseline` and `just bench-e2e-run` for the default FST baseline flow. The normal FST run and pre-commit smoke also run sampling-mode compare after collecting revised artifacts. Use `just bench-e2e-fsdb-update-baseline`, `just bench-e2e-fsdb-run`, and `just bench-e2e-fsdb-smoke-commit` only in a Verdi-equipped environment; see `fsdb.md` for generated FSDB artifacts and repository-safety rules.
 
 ## Expression Microbenchmarks
 

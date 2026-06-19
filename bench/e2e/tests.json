@@ -3652,6 +3652,266 @@
         "trigger": "*",
         "eval": "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid == 1'b1"
       }
+    },
+    {
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sample_native",
+      "category": "change",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--signals",
+        "TOP.TestDriver.clock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_burst,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_cache,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_len,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_lock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_prot,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_qos,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_size,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_addr,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_burst,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_cache,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_len,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_lock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_prot,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_qos,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_size,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_resp,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_data,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_last,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_resp,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_data,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_last,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_strb,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_addr,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_burst,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_cache,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_len,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_lock,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_prot,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_qos,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_size,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_addr,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_burst,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_cache,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_len,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_lock,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_prot,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_qos,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_size,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_bits_resp,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_data,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_last,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_resp,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_data,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_last,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_strb,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_clock,TOP.TestDriver.testHarness.chiptop0.system.bank.fragmenter.aToggle_r,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_1,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_2,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_3,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_4,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_5,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_6,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_7,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_full,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_1,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_2,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_3,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_4,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_5,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_6,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_7,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_read,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_size,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_source,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_addr,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_addr_pipe_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_data",
+        "--from",
+        "800000000ps",
+        "--to",
+        "832000000ps",
+        "--on",
+        "posedge TOP.TestDriver.clock",
+        "--sample-mode",
+        "native"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "32us",
+        "signal_count": 100,
+        "trigger": "posedge TOP.TestDriver.clock",
+        "sampling_mode_pair": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sampling",
+        "sampling_mode": "native"
+      }
+    },
+    {
+      "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sample_pre_edge",
+      "category": "change",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--signals",
+        "TOP.TestDriver.clock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_addr,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_burst,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_cache,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_len,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_lock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_prot,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_qos,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_bits_size,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_addr,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_burst,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_cache,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_len,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_lock,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_prot,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_qos,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_bits_size,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_aw_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_bits_resp,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_b_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_data,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_id,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_last,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_bits_resp,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_r_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_data,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_last,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_bits_strb,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_ready,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_w_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_addr,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_burst,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_cache,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_len,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_lock,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_prot,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_qos,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_bits_size,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_ar_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_addr,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_burst,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_cache,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_len,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_lock,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_prot,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_qos,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_bits_size,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_aw_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_bits_resp,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_b_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_data,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_id,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_last,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_bits_resp,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_r_valid,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_data,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_last,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_bits_strb,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_ready,TOP.TestDriver.testHarness.chiptop0.system.mem_axi4_0_w_valid,TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_clock,TOP.TestDriver.testHarness.chiptop0.system.bank.fragmenter.aToggle_r,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_1,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_2,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_3,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_4,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_5,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_6,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_7,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_full,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_1,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_2,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_3,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_4,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_5,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_6,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_raw_data_7,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_read,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_size,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.r_source,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_addr,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_addr_pipe_0,TOP.TestDriver.testHarness.chiptop0.system.bank.ram.mem.mem_ext.mem_0_0.ram_RW_0_r_data",
+        "--from",
+        "800000000ps",
+        "--to",
+        "832000000ps",
+        "--on",
+        "posedge TOP.TestDriver.clock",
+        "--sample-mode",
+        "pre-edge"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "32us",
+        "signal_count": 100,
+        "trigger": "posedge TOP.TestDriver.clock",
+        "sampling_mode_pair": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sampling",
+        "sampling_mode": "pre-edge"
+      }
+    },
+    {
+      "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sample_native",
+      "category": "property",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--from",
+        "800000000ps",
+        "--to",
+        "802000000ps",
+        "--on",
+        "posedge TOP.TestDriver.clock",
+        "--eval",
+        "TOP.TestDriver.testHarness.io_success == 1'b1",
+        "--capture",
+        "match",
+        "--sample-mode",
+        "native",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "2us",
+        "capture": "match",
+        "trigger": "posedge TOP.TestDriver.clock",
+        "eval": "TOP.TestDriver.testHarness.io_success == 1'b1",
+        "sampling_mode_pair": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sampling",
+        "sampling_mode": "native"
+      }
+    },
+    {
+      "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sample_pre_edge",
+      "category": "property",
+      "runs": 5,
+      "warmup": 3,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "--from",
+        "800000000ps",
+        "--to",
+        "802000000ps",
+        "--on",
+        "posedge TOP.TestDriver.clock",
+        "--eval",
+        "TOP.TestDriver.testHarness.io_success == 1'b1",
+        "--capture",
+        "match",
+        "--sample-mode",
+        "pre-edge",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
+        "size": "165M",
+        "window_size": "2us",
+        "capture": "match",
+        "trigger": "posedge TOP.TestDriver.clock",
+        "eval": "TOP.TestDriver.testHarness.io_success == 1'b1",
+        "sampling_mode_pair": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sampling",
+        "sampling_mode": "pre-edge"
+      }
+    },
+    {
+      "name": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_native",
+      "category": "change",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "1000ps",
+        "--signals",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr",
+        "--on",
+        "posedge TOP.clk",
+        "--sample-mode",
+        "native",
+        "--max",
+        "1000"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "size": "3.5M",
+        "window_to": "1000ps",
+        "signal_count": 1,
+        "trigger": "posedge TOP.clk",
+        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
+        "sampling_mode": "native"
+      }
+    },
+    {
+      "name": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_native",
+      "category": "property",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "200ps",
+        "--on",
+        "posedge TOP.clk",
+        "--eval",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
+        "--capture",
+        "match",
+        "--sample-mode",
+        "native",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "size": "3.5M",
+        "window_to": "200ps",
+        "capture": "match",
+        "trigger": "posedge TOP.clk",
+        "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
+        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
+        "sampling_mode": "native"
+      }
+    },
+    {
+      "name": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_pre_edge",
+      "category": "change",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "change",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "1000ps",
+        "--signals",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr",
+        "--on",
+        "posedge TOP.clk",
+        "--sample-mode",
+        "pre-edge",
+        "--max",
+        "1000"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "size": "3.5M",
+        "window_to": "1000ps",
+        "signal_count": 1,
+        "trigger": "posedge TOP.clk",
+        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
+        "sampling_mode": "pre-edge"
+      }
+    },
+    {
+      "name": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
+      "category": "property",
+      "runs": 5,
+      "warmup": 1,
+      "command": [
+        "{wavepeek_bin}",
+        "property",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--to",
+        "200ps",
+        "--on",
+        "posedge TOP.clk",
+        "--eval",
+        "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
+        "--capture",
+        "match",
+        "--sample-mode",
+        "pre-edge",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "size": "3.5M",
+        "window_to": "200ps",
+        "capture": "match",
+        "trigger": "posedge TOP.clk",
+        "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
+        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
+        "sampling_mode": "pre-edge"
+      }
     }
   ]
 }

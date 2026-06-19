@@ -37,7 +37,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-19T21:02Z) Updated the plan for the required performance gate: paired native/pre-edge E2E benchmark cases, no new baseline artifacts, and same-run timing comparison within tolerance.
 - [x] (2026-06-19T21:16Z) Implemented the core `--sample-mode native|pre-edge` CLI and engine behavior for `change` and `property`, including boundary tests and public command/troubleshooting docs.
 - [x] (2026-06-19T21:16Z) Ran targeted behavior and docs tests: `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1`, `cargo test --test change_cli -- change_sample_mode_pre_edge --test-threads=1`, and `cargo test --test docs_cli -- docs --test-threads=1`.
-- [ ] Implement the benchmark catalog and harness perf gate without refreshing committed baseline artifacts.
+- [x] (2026-06-19T21:33Z) Implemented the benchmark catalog and harness perf gate: paired native/pre-edge tests, `compare-sampling-modes`, justfile smoke/full-run integration, generated FSDB catalog refresh, and maintainer docs.
+- [x] (2026-06-19T21:33Z) Ran benchmark gate validation: `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
+- [ ] Run final repository gates and review the implementation.
 
 ## Surprises & Discoveries
 
@@ -618,3 +620,4 @@ The comparison must read hyperfine artifacts for timing, inspect wavepeek JSON a
 - 2026-06-19: Control-review update. Replaced invalid VCD hex-like vector values with binary VCD vectors, corrected boundary expectations to preserve the `--from` baseline, and recorded that the final control pass had no substantive findings.
 - 2026-06-19: Performance-gate update. Added required E2E benchmark catalog expansion, same-run native/pre-edge timing comparison, benchmark harness tests, justfile smoke integration, and a no-baseline-refresh constraint.
 - 2026-06-19: Implementation progress update. Recorded completion of the core CLI/engine/docs slice and its targeted test evidence before starting the benchmark perf-gate slice.
+- 2026-06-19: Performance implementation progress update. Recorded completion of the benchmark catalog/harness/justfile/docs slice and its smoke-gate evidence before final review.

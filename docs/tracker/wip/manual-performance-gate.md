@@ -20,13 +20,15 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-18 00:10Z) Read the benchmark harnesses, justfile recipes, release docs, and local breadcrumb guidance relevant to benchmark, docs, tools, workflow, and WIP files.
 - [x] (2026-06-18 00:20Z) Drafted this self-contained ExecPlan for review.
 - [x] (2026-06-18 00:35Z) Requested architecture/code and docs/release-process reviews of the plan, accepted findings, and revised the plan for artifact-set identity checks, FSDB pairing policy, dirty-worktree handling, and release documentation scope.
-- [ ] Implement `tools/bench/gate.py` and its unit tests.
-- [ ] Update `justfile` so public benchmark recipes are `bench-gate`, `bench-capture`, and `bench-compare`, while lower-level harness recipes are private and no longer refresh committed baselines.
-- [ ] Remove tracked benchmark run baselines from `bench/e2e/runs/` and `bench/expr/runs/`, while preserving `.gitignore` files and any ignored local user runs.
-- [ ] Update maintainer docs and benchmark breadcrumbs to describe the manual gate, optional FSDB behavior, patch-release skip recording, and the lack of committed baseline runs.
-- [ ] Run focused tests for the new helper and benchmark harness tests, then run repository gates as far as practical.
-- [ ] Request implementation review, apply fixes, and run a final control review.
-- [ ] Commit logical milestones as they become stable.
+- [x] (2026-06-18 01:40Z) Implemented `tools/bench/gate.py`, `tools/bench/README.md`, and unit tests for parser defaults, output directory safety, dirty-source enforcement, FSDB policy, artifact identity checks, comparison aggregation, and checkout-local capture commands.
+- [x] (2026-06-18 01:50Z) Updated `justfile` so public benchmark recipes are `bench-gate`, `bench-capture`, and `bench-compare`; made low-level harness recipes private and removed baseline-refresh recipes.
+- [x] (2026-06-18 02:00Z) Removed tracked benchmark run baselines from `bench/e2e/runs/` and `bench/expr/runs/`, while preserving `.gitignore` files and ignored local run policy.
+- [x] (2026-06-18 02:10Z) Updated maintainer docs and benchmark breadcrumbs to describe the manual gate, optional FSDB behavior, patch-release skip recording, and the lack of committed baseline runs.
+- [x] (2026-06-18 02:20Z) Ran focused tests for the new helper and benchmark harness tests plus `just test-aux` and `just format-justfile-check`.
+- [x] (2026-06-18 02:55Z) Requested code/correctness and docs/release implementation reviews, accepted findings, and fixed required-suite validation, file output-directory errors, verbose e2e compare logs, and FSDB/layout documentation.
+- [x] (2026-06-18 03:25Z) Ran a final consolidated control review; it returned no substantive findings.
+- [x] (2026-06-18 03:30Z) Ran `just check`; it passed, including Rust format/clippy/check, docs-site check, actionlint, FSDB checks, and auxiliary validation.
+- [x] (2026-06-18 00:45Z) Committed the initial reviewed ExecPlan as `708ed34 docs(tracker): plan manual performance gate`; implementation commit is still pending.
 
 ## Surprises & Discoveries
 
@@ -40,6 +42,12 @@ This work will not add a GitHub Actions performance workflow. This work will not
   Evidence: Plan review found that `bench/e2e/perf.py compare` warns on revised-only or golden-only tests; the gate must add its own artifact-name equality check before treating a comparison as passing.
 - Observation: FSDB capture needs more than Verdi detection.
   Evidence: Existing recipes prepare/check FSDB RTL artifacts, build with `--features fsdb`, and use `target/fsdb/release/wavepeek`; the new helper must mirror that flow rather than reusing the non-FSDB release binary.
+- Observation: Removing committed runs leaves only the two run-directory `.gitignore` files tracked.
+  Evidence: `git ls-files 'bench/e2e/runs/*' 'bench/expr/runs/*'` printed `bench/e2e/runs/.gitignore` and `bench/expr/runs/.gitignore`, with `count=2`.
+- Observation: The new auxiliary-test hook now covers the manual gate helper.
+  Evidence: `just test-aux` ran `python3 -B -m unittest discover -s tools/bench -p "test_*.py"` and all ten gate-helper tests passed.
+- Observation: A compare command with absent required suites is dangerous because it can otherwise return success without comparing anything.
+  Evidence: Implementation review found `compare_captures` skipped every suite absent from both inputs; the fix makes `e2e-fst` and `expr` required and leaves only `e2e-fsdb` optional.
 
 ## Decision Log
 
@@ -64,7 +72,7 @@ This work will not add a GitHub Actions performance workflow. This work will not
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. The intended result is a manual gate that produces comparable artifacts outside git and keeps the repository free of generated baseline runs. This section must be updated after each implementation and review milestone.
+Implementation is complete pending commit. The repository now has a manual gate helper, public `just` entrypoints for gate/capture/compare, no tracked generated benchmark baseline artifacts beyond run-directory `.gitignore` files, and documentation that describes the release policy. Focused auxiliary tests, `just check-actions`, `just test-aux`, `just format-justfile-check`, and `just check` pass. Implementation-review findings have been addressed, and the final control review returned no substantive findings.
 
 ## Context and Orientation
 

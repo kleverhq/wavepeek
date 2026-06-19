@@ -98,7 +98,19 @@ just update-bench-e2e-fsdb-catalog
 just check-bench-e2e-fsdb-catalog
 ```
 
-FSDB benchmark baselines live under `bench/e2e/runs/baseline_fsdb/`. Refresh them only in a Verdi-equipped environment with the dedicated FSDB benchmark recipes.
+FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared refs support FSDB:
+
+```sh
+just bench-gate <baseline-ref> HEAD
+```
+
+For focused local FSDB benchmark development, use the private low-level recipe through an explicit just invocation if needed:
+
+```sh
+just bench-e2e-fsdb-run
+```
+
+Generated FSDB benchmark artifacts remain ignored local evidence unless a maintainer explicitly preserves them outside the repository.
 
 ## Repository safety policy
 

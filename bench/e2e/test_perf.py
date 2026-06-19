@@ -115,14 +115,14 @@ class PerfHelpersTest(unittest.TestCase):
 
     def test_report_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
-        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/baseline_fst"])
+        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/sample"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
         override_args = parser.parse_args(
             [
                 "report",
                 "--run-dir",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/sample",
                 "--tests",
                 "bench/e2e/tests_fsdb.json",
             ]
@@ -163,9 +163,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
             ]
@@ -176,9 +176,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
                 "-v",
@@ -190,9 +190,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
                 "--verbose",
@@ -1286,15 +1286,14 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
 
-class JustfileBaselineRecipeTest(unittest.TestCase):
+class JustfileBenchmarkRecipeTest(unittest.TestCase):
     JUSTFILE_PATH = pathlib.Path(__file__).resolve().parents[2] / "justfile"
 
     @classmethod
     def _recipe_body(cls, recipe_name: str) -> str:
         lines = cls.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
-        recipe_prefix = f"{recipe_name}:"
         for line_index, line in enumerate(lines):
-            if not line.startswith(recipe_prefix):
+            if not (line.startswith(f"{recipe_name}:") or line.startswith(f"{recipe_name} ")):
                 continue
             body: list[str] = []
             for body_line in lines[line_index + 1 :]:
@@ -1304,43 +1303,23 @@ class JustfileBaselineRecipeTest(unittest.TestCase):
             return "\n".join(body)
         raise AssertionError(f"recipe not found: {recipe_name}")
 
-    def assert_recipe_replaces_baseline_after_successful_run(
-        self,
-        recipe_name: str,
-        baseline_dir_variable: str,
-    ) -> None:
-        body = self._recipe_body(recipe_name)
-        baseline_dir = f"{{{{ {baseline_dir_variable} }}}}"
+    def test_public_benchmark_recipes_use_manual_gate_helper(self) -> None:
+        self.assertIn("tools/bench/gate.py gate", self._recipe_body("bench-gate"))
+        self.assertIn("tools/bench/gate.py capture", self._recipe_body("bench-capture"))
+        self.assertIn("tools/bench/gate.py compare", self._recipe_body("bench-compare"))
 
-        temp_index = body.find('tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/')
-        run_index = body.find("bench/e2e/perf.py run")
-        run_dir_index = body.find('--run-dir "$tmp_baseline"')
-        remove_index = body.find(f'rm -rf "{baseline_dir}"')
-        move_index = body.find(f'mv "$tmp_baseline" "{baseline_dir}"')
+    def test_baseline_update_recipes_removed(self) -> None:
+        justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("bench-e2e-update-baseline:", justfile)
+        self.assertNotIn("bench-e2e-fsdb-update-baseline:", justfile)
+        self.assertNotIn("bench-expr-update-baseline:", justfile)
 
-        self.assertNotEqual(temp_index, -1, body)
-        self.assertNotEqual(run_index, -1, body)
-        self.assertNotEqual(run_dir_index, -1, body)
-        self.assertNotEqual(remove_index, -1, body)
-        self.assertNotEqual(move_index, -1, body)
-        self.assertLess(temp_index, run_index, body)
-        self.assertLess(run_index, remove_index, body)
-        self.assertLess(remove_index, move_index, body)
-        self.assertNotIn(f'--run-dir "{baseline_dir}"', body)
-
-    def test_e2e_baseline_update_replaces_baseline_only_after_successful_run(self) -> None:
-        self.assert_recipe_replaces_baseline_after_successful_run(
-            "bench-e2e-update-baseline",
-            "bench_e2e_baseline_dir",
-        )
-
-    def test_fsdb_e2e_baseline_update_replaces_baseline_only_after_successful_run(
-        self,
-    ) -> None:
-        self.assert_recipe_replaces_baseline_after_successful_run(
-            "bench-e2e-fsdb-update-baseline",
-            "bench_e2e_fsdb_baseline_dir",
-        )
+    def test_pre_commit_smoke_no_longer_compares_against_baseline(self) -> None:
+        for recipe_name in ("bench-e2e-smoke-commit", "bench-e2e-fsdb-smoke-commit"):
+            body = self._recipe_body(recipe_name)
+            self.assertIn("bench/e2e/perf.py run", body)
+            self.assertNotIn("bench/e2e/perf.py compare", body)
+            self.assertNotIn("baseline", body)
 
 
 if __name__ == "__main__":

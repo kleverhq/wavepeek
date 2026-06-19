@@ -42,7 +42,8 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-19T21:49Z) Ran focused review lanes for code correctness, docs/user semantics, and benchmark/performance. Code review found a boundary-evaluation bug; docs review found two wording gaps; benchmark review reported no substantive findings.
 - [x] (2026-06-19T21:53Z) Fixed review findings by skipping pre-edge transition boundary rows before evaluating pre-window values, adding a regression test with an error-producing pre-window sample, and clarifying docs.
 - [x] (2026-06-19T21:53Z) Reran `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1` and `cargo test -q` after review fixes.
-- [ ] Run final repository gates and control review the consolidated implementation.
+- [x] (2026-06-19T22:11Z) Ran final `just check`; it passed, including FSDB lint/build smoke in this Verdi-equipped container.
+- [x] (2026-06-19T22:27Z) Ran a fresh final control review on the consolidated diff; it reported no substantive findings.
 
 ## Surprises & Discoveries
 
@@ -121,7 +122,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. The initial plan was reviewed by three read-only lanes, a post-fix control review reported no substantive findings, and all review findings were incorporated. The plan is ready for implementation once this update is committed.
+Implementation is complete on branch `feat/rtl-sampling`. `change` and `property` now accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, and first-edge/no-predecessor skips. The benchmark harness now has paired native/pre-edge E2E cases and a same-run timing gate that avoids refreshing committed baseline artifacts.
+
+Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings.
 
 ## Context and Orientation
 
@@ -625,3 +628,4 @@ The comparison must read hyperfine artifacts for timing, inspect wavepeek JSON a
 - 2026-06-19: Implementation progress update. Recorded completion of the core CLI/engine/docs slice and its targeted test evidence before starting the benchmark perf-gate slice.
 - 2026-06-19: Performance implementation progress update. Recorded completion of the benchmark catalog/harness/justfile/docs slice and its smoke-gate evidence before final review.
 - 2026-06-19: Review-fix update. Recorded focused review findings and the fix for pre-edge transition boundary evaluation before the final control pass.
+- 2026-06-19: Completion update. Recorded final `just check`, final control review result, and the completed implementation outcome.

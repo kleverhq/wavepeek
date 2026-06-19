@@ -170,12 +170,9 @@ pub fn run_jsonl<W: std::io::Write>(
     writer: &mut JsonlWriter<W>,
 ) -> Result<(), WavepeekError> {
     match command {
-        Command::Info(_)
-        | Command::Scope(_)
-        | Command::Signal(_)
-        | Command::Value(_)
-        | Command::Change(_)
-        | Command::Property(_) => {
+        Command::Change(args) => change::run_jsonl(args, writer),
+        Command::Property(args) => property::run_jsonl(args, writer),
+        Command::Info(_) | Command::Scope(_) | Command::Signal(_) | Command::Value(_) => {
             let result = run(command)?;
             output::write_jsonl_result(result, writer)
         }

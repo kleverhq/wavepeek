@@ -78,10 +78,58 @@ impl ChangeEngineMode {
     }
 }
 
+#[cfg(test)]
 #[derive(Debug)]
 struct ChangeRunOutput {
     snapshots: Vec<ChangeSnapshot>,
     truncated: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ChangeRunStats {
+    emitted: usize,
+    truncated: bool,
+}
+
+#[derive(Debug)]
+struct ChangeCommandOutcome {
+    human_options: HumanRenderOptions,
+    diagnostics: Vec<Diagnostic>,
+    stats: ChangeRunStats,
+}
+
+trait ChangeSnapshotSink {
+    fn start(&mut self) -> Result<(), WavepeekError> {
+        Ok(())
+    }
+
+    fn emit(&mut self, snapshot: ChangeSnapshot) -> Result<(), WavepeekError>;
+}
+
+#[derive(Default)]
+struct CollectingChangeSink {
+    snapshots: Vec<ChangeSnapshot>,
+}
+
+impl ChangeSnapshotSink for CollectingChangeSink {
+    fn emit(&mut self, snapshot: ChangeSnapshot) -> Result<(), WavepeekError> {
+        self.snapshots.push(snapshot);
+        Ok(())
+    }
+}
+
+struct JsonlChangeSink<'a, W: std::io::Write> {
+    writer: &'a mut crate::output::JsonlWriter<W>,
+}
+
+impl<W: std::io::Write> ChangeSnapshotSink for JsonlChangeSink<'_, W> {
+    fn start(&mut self) -> Result<(), WavepeekError> {
+        self.writer.begin()
+    }
+
+    fn emit(&mut self, snapshot: ChangeSnapshot) -> Result<(), WavepeekError> {
+        self.writer.item(&snapshot)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -198,6 +246,38 @@ fn indexed_timestamps(waveform: &Waveform) -> Result<&[u64], WavepeekError> {
 }
 
 pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
+    let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
+    let mut sink = CollectingChangeSink::default();
+    let outcome = run_with_sink(args, &mut sink)?;
+
+    Ok(CommandResult {
+        command: CommandName::Change,
+        output_mode,
+        human_options: outcome.human_options,
+        data: CommandData::Change(sink.snapshots),
+        diagnostics: outcome.diagnostics,
+    })
+}
+
+pub fn run_jsonl<W: std::io::Write>(
+    args: ChangeArgs,
+    writer: &mut crate::output::JsonlWriter<W>,
+) -> Result<(), WavepeekError> {
+    let outcome = {
+        let mut sink = JsonlChangeSink { writer };
+        run_with_sink(args, &mut sink)?
+    };
+
+    for diagnostic in &outcome.diagnostics {
+        writer.diagnostic(diagnostic)?;
+    }
+    writer.end(outcome.stats.truncated)
+}
+
+fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
+    args: ChangeArgs,
+    sink: &mut S,
+) -> Result<ChangeCommandOutcome, WavepeekError> {
     let max_entries = match &args.max {
         LimitArg::Numeric(0) => {
             return Err(WavepeekError::Args(
@@ -336,8 +416,9 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         "change.run.start",
         || serde_json::json!({"selected_engine": engine_mode.as_str()}),
     );
-    let run_output = match engine_mode {
-        ChangeEngineMode::Baseline => run_baseline(
+    sink.start()?;
+    let stats = match engine_mode {
+        ChangeEngineMode::Baseline => run_baseline_emit(
             &waveform,
             &host,
             event_expr_source,
@@ -353,8 +434,9 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             max_entries,
             candidate_mode,
             None,
+            sink,
         )?,
-        ChangeEngineMode::Fused => run_fused(
+        ChangeEngineMode::Fused => run_fused_emit(
             &waveform,
             &host,
             event_expr_source,
@@ -369,8 +451,9 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             dump_tick,
             max_entries,
             candidate_mode,
+            sink,
         )?,
-        ChangeEngineMode::EdgeFast => run_edge_fast(
+        ChangeEngineMode::EdgeFast => run_edge_fast_emit(
             &waveform,
             &host,
             event_expr_source,
@@ -386,20 +469,19 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
             max_entries,
             candidate_mode,
             args.tune_edge_fast_force,
+            sink,
         )?,
     };
 
-    let snapshots = run_output.snapshots;
-    let truncated = run_output.truncated;
     debug.event("change.run.done", || {
         serde_json::json!({
             "selected_engine": engine_mode.as_str(),
-            "snapshots": snapshots.len(),
-            "truncated": truncated,
+            "snapshots": stats.emitted,
+            "truncated": stats.truncated,
         })
     });
 
-    if snapshots.is_empty() {
+    if stats.emitted == 0 {
         diagnostics.push(Diagnostic::warning(
             WarningDiagnosticCode::EmptyResult,
             EMPTY_RESULT_MESSAGE,
@@ -407,7 +489,7 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
     }
 
     if let Some(max_entries) = max_entries
-        && truncated
+        && stats.truncated
     {
         diagnostics.push(Diagnostic::warning(
             WarningDiagnosticCode::OutputTruncated,
@@ -415,15 +497,13 @@ pub fn run(args: ChangeArgs) -> Result<CommandResult, WavepeekError> {
         ));
     }
 
-    Ok(CommandResult {
-        command: CommandName::Change,
-        output_mode: crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl),
+    Ok(ChangeCommandOutcome {
         human_options: HumanRenderOptions {
             scope_tree: false,
             signals_abs: args.abs,
         },
-        data: CommandData::Change(snapshots),
         diagnostics,
+        stats,
     })
 }
 
@@ -491,6 +571,7 @@ fn estimate_auto_dispatch_work(
     }
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 fn run_baseline(
     waveform: &SharedWaveform,
@@ -509,6 +590,50 @@ fn run_baseline(
     candidate_mode: ChangeCandidateCollectionMode,
     precomputed_candidate_times: Option<Vec<u64>>,
 ) -> Result<ChangeRunOutput, WavepeekError> {
+    let mut sink = CollectingChangeSink::default();
+    let stats = run_baseline_emit(
+        waveform,
+        host,
+        event_expr_source,
+        bound_event,
+        tracked_signal_handles,
+        requested_signals,
+        requested_resolved,
+        candidate_sources,
+        from_raw,
+        to_raw,
+        baseline_raw,
+        dump_tick,
+        max_entries,
+        candidate_mode,
+        precomputed_candidate_times,
+        &mut sink,
+    )?;
+    Ok(ChangeRunOutput {
+        snapshots: sink.snapshots,
+        truncated: stats.truncated,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+    requested_signals: &[RequestedSignal],
+    requested_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
+    from_raw: u64,
+    to_raw: u64,
+    baseline_raw: u64,
+    dump_tick: ParsedTime,
+    max_entries: Option<usize>,
+    candidate_mode: ChangeCandidateCollectionMode,
+    precomputed_candidate_times: Option<Vec<u64>>,
+    sink: &mut S,
+) -> Result<ChangeRunStats, WavepeekError> {
     let candidate_times = if let Some(precomputed_candidate_times) = precomputed_candidate_times {
         precomputed_candidate_times
     } else {
@@ -529,7 +654,7 @@ fn run_baseline(
     let mut sample_cache = SampleCache::default();
     sample_cache.sample_requested_batch(waveform, requested_resolved, baseline_raw)?;
 
-    let mut snapshots = Vec::new();
+    let mut emitted = 0usize;
     let mut truncated = false;
     for (timestamp, previous_timestamp) in candidate_schedule {
         let current_samples =
@@ -576,26 +701,26 @@ fn run_baseline(
         }
 
         if let Some(limit) = max_entries
-            && snapshots.len() == limit
+            && emitted == limit
         {
             truncated = true;
             break;
         }
 
-        snapshots.push(build_snapshot(
+        sink.emit(build_snapshot(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
             dump_tick,
-        )?);
+        )?)?;
+        emitted += 1;
     }
 
-    Ok(ChangeRunOutput {
-        snapshots,
-        truncated,
-    })
+    Ok(ChangeRunStats { emitted, truncated })
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
 fn run_baseline_fallback(
     waveform: &SharedWaveform,
@@ -634,6 +759,46 @@ fn run_baseline_fallback(
 }
 
 #[allow(clippy::too_many_arguments)]
+fn run_baseline_fallback_emit<S: ChangeSnapshotSink + ?Sized>(
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+    requested_signals: &[RequestedSignal],
+    requested_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
+    from_raw: u64,
+    to_raw: u64,
+    baseline_raw: u64,
+    dump_tick: ParsedTime,
+    max_entries: Option<usize>,
+    candidate_mode: ChangeCandidateCollectionMode,
+    precomputed_candidate_times: Option<Vec<u64>>,
+    sink: &mut S,
+) -> Result<ChangeRunStats, WavepeekError> {
+    run_baseline_emit(
+        waveform,
+        host,
+        event_expr_source,
+        bound_event,
+        tracked_signal_handles,
+        requested_signals,
+        requested_resolved,
+        candidate_sources,
+        from_raw,
+        to_raw,
+        baseline_raw,
+        dump_tick,
+        max_entries,
+        candidate_mode,
+        precomputed_candidate_times,
+        sink,
+    )
+}
+
+#[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 fn run_edge_fast(
     waveform: &SharedWaveform,
     host: &WaveformExprHost,
@@ -651,8 +816,52 @@ fn run_edge_fast(
     candidate_mode: ChangeCandidateCollectionMode,
     force_edge_fast: bool,
 ) -> Result<ChangeRunOutput, WavepeekError> {
+    let mut sink = CollectingChangeSink::default();
+    let stats = run_edge_fast_emit(
+        waveform,
+        host,
+        event_expr_source,
+        bound_event,
+        tracked_signal_handles,
+        requested_signals,
+        requested_resolved,
+        candidate_sources,
+        from_raw,
+        to_raw,
+        baseline_raw,
+        dump_tick,
+        max_entries,
+        candidate_mode,
+        force_edge_fast,
+        &mut sink,
+    )?;
+    Ok(ChangeRunOutput {
+        snapshots: sink.snapshots,
+        truncated: stats.truncated,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_edge_fast_emit<S: ChangeSnapshotSink + ?Sized>(
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+    requested_signals: &[RequestedSignal],
+    requested_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
+    from_raw: u64,
+    to_raw: u64,
+    baseline_raw: u64,
+    dump_tick: ParsedTime,
+    max_entries: Option<usize>,
+    candidate_mode: ChangeCandidateCollectionMode,
+    force_edge_fast: bool,
+    sink: &mut S,
+) -> Result<ChangeRunStats, WavepeekError> {
     if !event_expr_is_edge_only(bound_event) {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -668,6 +877,7 @@ fn run_edge_fast(
             max_entries,
             candidate_mode,
             None,
+            sink,
         );
     }
 
@@ -685,7 +895,7 @@ fn run_edge_fast(
             .saturating_mul(requested_resolved.len())
             < EDGE_FAST_MIN_WORK
     {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -701,11 +911,12 @@ fn run_edge_fast(
             max_entries,
             candidate_mode,
             Some(candidate_times),
+            sink,
         );
     }
 
     if waveform.borrow().indexed_timestamps().is_none() {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -721,6 +932,7 @@ fn run_edge_fast(
             max_entries,
             candidate_mode,
             Some(candidate_times),
+            sink,
         );
     }
 
@@ -742,7 +954,7 @@ fn run_edge_fast(
         .borrow_mut()
         .ensure_indexed_signals_loaded(loaded_signal_ids.as_slice())
     {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -758,6 +970,7 @@ fn run_edge_fast(
             max_entries,
             candidate_mode,
             Some(candidate_times),
+            sink,
         );
     }
     let cached_sources = cached_event_sources(
@@ -766,7 +979,7 @@ fn run_edge_fast(
     )?;
 
     let mut decode_cache = IndexDecodeCache::default();
-    let mut snapshots = Vec::new();
+    let mut emitted = 0usize;
     let mut truncated = false;
 
     for (candidate_index, timestamp) in candidate_indices.into_iter().zip(candidate_times) {
@@ -852,7 +1065,7 @@ fn run_edge_fast(
         }
 
         if let Some(limit) = max_entries
-            && snapshots.len() == limit
+            && emitted == limit
         {
             truncated = true;
             break;
@@ -869,20 +1082,19 @@ fn run_edge_fast(
                 })
             })
             .collect::<Result<Vec<_>, WavepeekError>>()?;
-        snapshots.push(build_snapshot(
+        sink.emit(build_snapshot(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
             dump_tick,
-        )?);
+        )?)?;
+        emitted += 1;
     }
 
-    Ok(ChangeRunOutput {
-        snapshots,
-        truncated,
-    })
+    Ok(ChangeRunStats { emitted, truncated })
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 fn run_fused(
     waveform: &SharedWaveform,
@@ -900,8 +1112,50 @@ fn run_fused(
     max_entries: Option<usize>,
     candidate_mode: ChangeCandidateCollectionMode,
 ) -> Result<ChangeRunOutput, WavepeekError> {
+    let mut sink = CollectingChangeSink::default();
+    let stats = run_fused_emit(
+        waveform,
+        host,
+        event_expr_source,
+        bound_event,
+        tracked_signal_handles,
+        requested_signals,
+        requested_resolved,
+        candidate_sources,
+        from_raw,
+        to_raw,
+        baseline_raw,
+        dump_tick,
+        max_entries,
+        candidate_mode,
+        &mut sink,
+    )?;
+    Ok(ChangeRunOutput {
+        snapshots: sink.snapshots,
+        truncated: stats.truncated,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
+    waveform: &SharedWaveform,
+    host: &WaveformExprHost,
+    event_expr_source: &str,
+    bound_event: &BoundEventExpr,
+    tracked_signal_handles: &[SignalHandle],
+    requested_signals: &[RequestedSignal],
+    requested_resolved: &[ResolvedSignal],
+    candidate_sources: &[ExprResolvedSignal],
+    from_raw: u64,
+    to_raw: u64,
+    baseline_raw: u64,
+    dump_tick: ParsedTime,
+    max_entries: Option<usize>,
+    candidate_mode: ChangeCandidateCollectionMode,
+    sink: &mut S,
+) -> Result<ChangeRunStats, WavepeekError> {
     if waveform.borrow().indexed_timestamps().is_none() {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -917,6 +1171,7 @@ fn run_fused(
             max_entries,
             candidate_mode,
             None,
+            sink,
         );
     }
 
@@ -980,7 +1235,7 @@ fn run_fused(
         .borrow_mut()
         .ensure_indexed_signals_loaded(all_signal_ids.as_slice())
     {
-        return run_baseline_fallback(
+        return run_baseline_fallback_emit(
             waveform,
             host,
             event_expr_source,
@@ -996,6 +1251,7 @@ fn run_fused(
             max_entries,
             candidate_mode,
             None,
+            sink,
         );
     }
 
@@ -1023,8 +1279,8 @@ fn run_fused(
         let Some(window) =
             time_window_indices(indexed_timestamps(&waveform_ref)?, from_raw, to_raw)
         else {
-            return Ok(ChangeRunOutput {
-                snapshots: Vec::new(),
+            return Ok(ChangeRunStats {
+                emitted: 0,
                 truncated: false,
             });
         };
@@ -1069,7 +1325,7 @@ fn run_fused(
 
     let mut changed_offsets = vec![false; tracked_resolved.len()];
     let mut previous_bits = vec![None; tracked_resolved.len()];
-    let mut snapshots = Vec::new();
+    let mut emitted = 0usize;
     let mut truncated = false;
     let mut stream_cursor = 0usize;
 
@@ -1168,7 +1424,7 @@ fn run_fused(
         }
 
         if let Some(limit) = max_entries
-            && snapshots.len() == limit
+            && emitted == limit
         {
             truncated = true;
             break;
@@ -1183,18 +1439,16 @@ fn run_fused(
                 bits: rolling[*tracked_index].bits.clone(),
             })
             .collect::<Vec<_>>();
-        snapshots.push(build_snapshot(
+        sink.emit(build_snapshot(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
             dump_tick,
-        )?);
+        )?)?;
+        emitted += 1;
     }
 
-    Ok(ChangeRunOutput {
-        snapshots,
-        truncated,
-    })
+    Ok(ChangeRunStats { emitted, truncated })
 }
 
 fn should_use_stream_candidates_in_fused(mode: ChangeCandidateCollectionMode) -> bool {
@@ -1498,24 +1752,39 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::{
-        AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, FastEventEvalHost,
-        IndexDecodeCache, RequestedSignal, RollingSignalState, SampleCache,
-        build_candidate_schedule, build_edge_fast_event_eval_host, build_fused_event_eval_host,
-        build_snapshot, cached_event_handles, cached_event_sources, cached_sample_value,
-        candidate_times_to_indices, parse_bound_time, resolve_requested_signals,
-        resolve_token_to_path, run, run_baseline, run_edge_fast, run_fused, select_engine_mode,
-        should_use_stream_candidates_in_fused, time_window_indices,
+        AutoDispatchWorkEstimate, CachedEventSamples, ChangeEngineMode, ChangeSnapshot,
+        ChangeSnapshotSink, FastEventEvalHost, IndexDecodeCache, RequestedSignal,
+        RollingSignalState, SampleCache, build_candidate_schedule, build_edge_fast_event_eval_host,
+        build_fused_event_eval_host, build_snapshot, cached_event_handles, cached_event_sources,
+        cached_sample_value, candidate_times_to_indices, parse_bound_time,
+        resolve_requested_signals, resolve_token_to_path, run, run_baseline, run_edge_fast,
+        run_fused, run_with_sink, select_engine_mode, should_use_stream_candidates_in_fused,
+        time_window_indices,
     };
     use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
     use crate::cli::limits::LimitArg;
     use crate::engine::CommandData;
     use crate::engine::expr_runtime::bind_waveform_event_expr;
+    use crate::error::WavepeekError;
     use crate::expr::SignalHandle;
     use crate::expr::host::{ExprStorage, ExprType, ExprTypeKind, ExpressionHost, SampledValue};
     use crate::expr::sema::{BoundEventExpr, BoundEventKind, BoundEventTerm};
     use crate::waveform::{
         ChangeCandidateCollectionMode, SampledSignalState, Waveform, expr_host::WaveformExprHost,
     };
+
+    struct FailAfterFirstEmitSink {
+        emitted: usize,
+    }
+
+    impl ChangeSnapshotSink for FailAfterFirstEmitSink {
+        fn emit(&mut self, _snapshot: ChangeSnapshot) -> Result<(), WavepeekError> {
+            self.emitted += 1;
+            Err(WavepeekError::Internal(
+                "sentinel change emit failure".to_string(),
+            ))
+        }
+    }
 
     fn select_auto_mode_for_profile(
         any_tracked_only: bool,
@@ -2065,6 +2334,35 @@ mod tests {
         })
         .expect_err("reversed range should fail");
         assert!(reversed.to_string().contains("less than or equal to --to"));
+    }
+
+    #[test]
+    fn change_streaming_sink_errors_stop_during_emission() {
+        let fixture = write_fixture(TEST_VCD, "change-streaming-error.vcd");
+        let mut sink = FailAfterFirstEmitSink { emitted: 0 };
+
+        let error = run_with_sink(
+            ChangeArgs {
+                waves: PathBuf::from(fixture.path()),
+                from: None,
+                to: None,
+                scope: Some("top".to_string()),
+                signals: vec!["sig".to_string()],
+                on: Some("posedge sig".to_string()),
+                max: LimitArg::Unlimited,
+                abs: false,
+                json: false,
+                jsonl: true,
+                tune_engine: TuneChangeEngineMode::Baseline,
+                tune_candidates: TuneChangeCandidateMode::Auto,
+                tune_edge_fast_force: false,
+            },
+            &mut sink,
+        )
+        .expect_err("sink error should stop the streaming run");
+
+        assert_eq!(sink.emitted, 1);
+        assert!(error.to_string().contains("sentinel change emit failure"));
     }
 
     #[test]

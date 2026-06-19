@@ -109,6 +109,8 @@ data        00       aa       aa       aa
 
 For transition modes, that pre-window sample does not replace the `--from` baseline. The baseline remains the value sampled at the range start. This prevents a boundary edge from manufacturing an extra `assert`, `deassert`, or `change` row using a value outside the requested range.
 
+If there is no representable query point before a trigger, for example at the first timestamp in the dump, `pre-edge` skips value evaluation for that trigger. This can produce an empty result even though the edge itself was present.
+
 ## Which mode to choose
 
 Use `native` when you want the literal dump value at each selected timestamp or when your trigger is wildcard/plain-signal based.

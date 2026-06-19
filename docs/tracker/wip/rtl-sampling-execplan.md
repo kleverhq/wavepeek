@@ -39,7 +39,10 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-19T21:16Z) Ran targeted behavior and docs tests: `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1`, `cargo test --test change_cli -- change_sample_mode_pre_edge --test-threads=1`, and `cargo test --test docs_cli -- docs --test-threads=1`.
 - [x] (2026-06-19T21:33Z) Implemented the benchmark catalog and harness perf gate: paired native/pre-edge tests, `compare-sampling-modes`, justfile smoke/full-run integration, generated FSDB catalog refresh, and maintainer docs.
 - [x] (2026-06-19T21:33Z) Ran benchmark gate validation: `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
-- [ ] Run final repository gates and review the implementation.
+- [x] (2026-06-19T21:49Z) Ran focused review lanes for code correctness, docs/user semantics, and benchmark/performance. Code review found a boundary-evaluation bug; docs review found two wording gaps; benchmark review reported no substantive findings.
+- [x] (2026-06-19T21:53Z) Fixed review findings by skipping pre-edge transition boundary rows before evaluating pre-window values, adding a regression test with an error-producing pre-window sample, and clarifying docs.
+- [x] (2026-06-19T21:53Z) Reran `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1` and `cargo test -q` after review fixes.
+- [ ] Run final repository gates and control review the consolidated implementation.
 
 ## Surprises & Discoveries
 
@@ -55,8 +58,8 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - Observation: The Wellen-backed VCD/FST implementation and the FSDB implementation currently use different predecessor mechanics. Wellen can return the previous recorded timestamp, while FSDB returns `raw_time - 1` when that is within dump bounds.
   Evidence: `src/waveform/wellen_backend.rs` implements `previous_sample_time` with the indexed time table; `src/waveform/fsdb_backend.rs` implements it by checking dump start and returning `raw_time.checked_sub(1)`.
 
-- Observation: Review found that boundary edges need explicit handling. A trigger exactly at `--from` can have a pre-edge sample before the selected window; transition baselines must not be overwritten by that pre-window sample.
-  Evidence: Code/design review of this plan flagged the existing `property` `timestamp == from_raw` branch and the planned `change` pre-edge path as boundary risks.
+- Observation: Review found that boundary edges need explicit handling. A trigger exactly at `--from` can have a pre-edge sample before the selected window; transition baselines must not be overwritten by that pre-window sample. The implementation review later tightened this: pre-edge transition captures must skip the boundary row before evaluating the pre-window value, because that value may be invalid or unsupported even though the `--from` baseline is valid.
+  Evidence: Code/design review of this plan flagged the existing `property` `timestamp == from_raw` branch and the planned `change` pre-edge path as boundary risks; implementation review found `src/engine/property.rs` evaluated the pre-window decision before the boundary skip, and `tests/property_cli.rs` now covers `real'(sig)` with `sig=x` before `--from`.
 
 - Observation: Control review caught that the original inline VCD used invalid vector literals and that boundary tests expecting `@15ns` rows contradicted the `--from` baseline rule.
   Evidence: The fixture now uses binary VCD vector values such as `b10101010 #`, and boundary acceptance now expects empty-result diagnostics at `--from 5ns --to 15ns` plus companion longer-window checks for `@35ns` transitions.
@@ -621,3 +624,4 @@ The comparison must read hyperfine artifacts for timing, inspect wavepeek JSON a
 - 2026-06-19: Performance-gate update. Added required E2E benchmark catalog expansion, same-run native/pre-edge timing comparison, benchmark harness tests, justfile smoke integration, and a no-baseline-refresh constraint.
 - 2026-06-19: Implementation progress update. Recorded completion of the core CLI/engine/docs slice and its targeted test evidence before starting the benchmark perf-gate slice.
 - 2026-06-19: Performance implementation progress update. Recorded completion of the benchmark catalog/harness/justfile/docs slice and its smoke-gate evidence before final review.
+- 2026-06-19: Review-fix update. Recorded focused review findings and the fix for pre-edge transition boundary evaluation before the final control pass.

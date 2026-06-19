@@ -213,6 +213,66 @@ fn property_sample_mode_pre_edge_preserves_from_baseline() {
 }
 
 #[test]
+fn property_sample_mode_pre_edge_skips_from_boundary_before_eval() {
+    let fixture = write_fixture(
+        concat!(
+            "$date\n",
+            "  today\n",
+            "$end\n",
+            "$version\n",
+            "  wavepeek-rtl-sampling-boundary\n",
+            "$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! clk $end\n",
+            "$var wire 1 \" sig $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "x\"\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n",
+        ),
+        "property-rtl-sampling-prewindow-error.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "5ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "real'(sig) == 1.0",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    let parsed = parse_json(&output.stdout);
+    assert_eq!(parsed["data"], json!([]));
+    assert_eq!(
+        parsed["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no property matches found in selected time range"}])
+    );
+}
+
+#[test]
 fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
     let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling-invalid.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();

@@ -16,7 +16,7 @@ Use `property` when you want answers like "when did this condition become true?"
 A good mental model is a lightweight SystemVerilog event-driven monitor:
 
 - `--on` uses SystemVerilog-style event semantics, roughly the same surface you would write inside `@(...)`, but without the outer `@` and parentheses.
-- `--eval` uses SystemVerilog-style value and logical expression semantics, evaluated at each timestamp selected by `--on`.
+- `--eval` uses SystemVerilog-style value and logical expression semantics. In default native sampling it is evaluated at each timestamp selected by `--on`; with `--sample-mode pre-edge`, the row timestamp stays at the trigger edge but `--eval` reads values from immediately before that edge.
 - In practice, `--eval` supports 4-state values and the usual useful SV-style operators: logical operators, bitwise operators, comparisons and equalities, arithmetic and shifts, casts, bit-select and part-select, concatenation and replication, and related expression forms. Final property decisions are then reduced to a Boolean true/false result for capture.
 - `wavepeek` supports that SV-like surface as a defined dump-oriented contract, not as full temporal SVA. The exact supported syntax and semantics live in `reference/expression-language`.
 

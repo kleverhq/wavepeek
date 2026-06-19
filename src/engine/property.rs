@@ -164,6 +164,15 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             continue;
         }
 
+        if matches!(
+            args.capture,
+            CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert
+        ) && timestamp == from_raw
+            && args.sample_mode == SampleMode::PreEdge
+        {
+            continue;
+        }
+
         let decision_timestamp = {
             let waveform_ref = waveform.borrow();
             value_sample_time_for_mode(&waveform_ref, args.sample_mode, timestamp)

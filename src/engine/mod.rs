@@ -16,6 +16,8 @@ use serde::Serialize;
 use crate::cli;
 use crate::diagnostic::Diagnostic;
 use crate::error::WavepeekError;
+use crate::output::{self, JsonlWriter};
+use crate::output_mode::OutputMode;
 
 #[derive(Debug)]
 pub enum Command {
@@ -46,6 +48,35 @@ pub enum CommandName {
     DocsSearch,
     DocsExport,
     Skill,
+}
+
+impl Command {
+    pub const fn name(&self) -> CommandName {
+        match self {
+            Self::Schema(_) => CommandName::Schema,
+            Self::Info(_) => CommandName::Info,
+            Self::Scope(_) => CommandName::Scope,
+            Self::Signal(_) => CommandName::Signal,
+            Self::Value(_) => CommandName::Value,
+            Self::Change(_) => CommandName::Change,
+            Self::Property(_) => CommandName::Property,
+            Self::Docs(_) => CommandName::Docs,
+            Self::Skill(_) => CommandName::Skill,
+        }
+    }
+
+    pub const fn output_mode(&self) -> OutputMode {
+        match self {
+            Self::Schema(_) => OutputMode::Human,
+            Self::Info(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Scope(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Signal(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Value(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Change(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Property(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::Docs(_) | Self::Skill(_) => OutputMode::Human,
+        }
+    }
 }
 
 impl CommandName {
@@ -113,7 +144,7 @@ pub struct CommandResult {
     #[serde(skip)]
     pub command: CommandName,
     #[serde(skip)]
-    pub json: bool,
+    pub output_mode: OutputMode,
     #[serde(skip)]
     pub human_options: HumanRenderOptions,
     pub data: CommandData,
@@ -131,6 +162,26 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Property(args) => property::run(args),
         Command::Docs(args) => docs::run(args),
         Command::Skill(args) => skill::run(args),
+    }
+}
+
+pub fn run_jsonl<W: std::io::Write>(
+    command: Command,
+    writer: &mut JsonlWriter<W>,
+) -> Result<(), WavepeekError> {
+    match command {
+        Command::Info(_)
+        | Command::Scope(_)
+        | Command::Signal(_)
+        | Command::Value(_)
+        | Command::Change(_)
+        | Command::Property(_) => {
+            let result = run(command)?;
+            output::write_jsonl_result(result, writer)
+        }
+        Command::Schema(_) | Command::Docs(_) | Command::Skill(_) => Err(WavepeekError::Args(
+            "--jsonl is available only for waveform commands".to_string(),
+        )),
     }
 }
 

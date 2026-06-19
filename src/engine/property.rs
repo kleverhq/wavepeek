@@ -214,7 +214,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Property,
-        json: args.json,
+        output_mode: crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl),
         human_options: HumanRenderOptions::default(),
         data: CommandData::Property(rows),
         diagnostics,
@@ -431,6 +431,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect("match capture should succeed");
         let CommandData::Property(rows) = matched.data else {
@@ -449,6 +450,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Switch,
             json: true,
+            jsonl: false,
         })
         .expect("switch capture should succeed");
         let CommandData::Property(rows) = switched.data else {
@@ -469,6 +471,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Assert,
             json: false,
+            jsonl: false,
         })
         .expect("assert capture should succeed");
         let CommandData::Property(rows) = assert_only.data else {
@@ -486,6 +489,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect_err("reversed time bounds should fail");
         assert!(
@@ -507,6 +511,7 @@ mod tests {
             eval: "1'b1".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect_err("signal-free wildcard trigger should fail");
         assert!(

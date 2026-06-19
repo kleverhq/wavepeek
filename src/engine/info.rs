@@ -27,7 +27,7 @@ pub fn run(args: InfoArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Info,
-        json: args.json,
+        output_mode: crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl),
         human_options: crate::engine::HumanRenderOptions::default(),
         data: CommandData::Info(InfoData {
             time_unit: metadata.time_unit,

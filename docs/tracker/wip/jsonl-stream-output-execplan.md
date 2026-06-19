@@ -34,6 +34,10 @@ This plan does not require a runtime JSON Schema validation dependency in the sh
 - [x] (2026-06-19 00:00Z) Revised this ExecPlan to address review findings: staged flag routing, broken-pipe handling, flush verification, schema publication, command-to-item schema constraints, runtime schema validation, and anti-cosmetic streaming tests.
 - [x] (2026-06-19 00:00Z) Ran an independent control review, fixed the remaining publication and broken-pipe test gaps, and rechecked with no substantive findings.
 - [x] (2026-06-19 00:00Z) Committed the reviewed ExecPlan with a conventional commit message.
+- [x] (2026-06-19 00:00Z) Implemented initial output-mode plumbing: waveform-only `--jsonl` args, `OutputMode`, JSONL writer, buffered JSONL adapter, `schema --stream`, and the checked-in stream schema artifact.
+- [ ] Refactor `change` to stream snapshots through an emitter instead of buffering the JSONL path.
+- [ ] Refactor `property` to stream capture rows through an emitter instead of buffering the JSONL path.
+- [ ] Add end-to-end JSONL CLI/schema/publication tests and docs updates.
 
 ## Surprises & Discoveries
 

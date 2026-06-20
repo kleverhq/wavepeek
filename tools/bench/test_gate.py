@@ -1,42 +1,39 @@
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import pathlib
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
-SPEC = importlib.util.spec_from_file_location(
-    "bench_gate",
-    pathlib.Path(__file__).with_name("gate.py"),
-)
-assert SPEC is not None
-assert SPEC.loader is not None
-gate = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = gate
-SPEC.loader.exec_module(gate)
+BENCH_DIR = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(BENCH_DIR))
+
+import capture  # noqa: E402
+import common  # noqa: E402
+import compare  # noqa: E402
+import gate  # noqa: E402
 
 
-class GateHelperTest(unittest.TestCase):
+class BenchGateHelperTest(unittest.TestCase):
     def test_parser_defaults(self) -> None:
-        parser = gate.build_parser()
-        capture = parser.parse_args(["capture"])
-        self.assertEqual(capture.ref, "HEAD")
-        self.assertEqual(capture.fsdb, "auto")
-        self.assertFalse(capture.allow_dirty_source)
+        capture_args = capture.build_parser().parse_args([])
+        self.assertEqual(capture_args.ref, "HEAD")
+        self.assertEqual(capture_args.fsdb, "auto")
+        self.assertFalse(hasattr(capture_args, "allow_dirty_source"))
 
-        compare = parser.parse_args(
-            ["compare", "--golden", "golden", "--revised", "revised"]
+        compare_args = compare.build_parser().parse_args(
+            ["--golden", "golden", "--revised", "revised"]
         )
-        self.assertEqual(compare.e2e_threshold_pct, gate.DEFAULT_E2E_THRESHOLD_PCT)
-        self.assertEqual(compare.fsdb_threshold_pct, gate.DEFAULT_E2E_THRESHOLD_PCT)
-        self.assertEqual(compare.expr_threshold_pct, gate.DEFAULT_EXPR_THRESHOLD_PCT)
+        self.assertEqual(compare_args.max_negative_delta_pct, common.DEFAULT_TIMING_THRESHOLD_PCT)
 
-        full_gate = parser.parse_args(["gate", "--baseline-ref", "v0.1.0"])
-        self.assertEqual(full_gate.revised_ref, "HEAD")
-        self.assertEqual(full_gate.fsdb, "auto")
+        gate_args = gate.build_parser().parse_args(["--baseline-ref", "v0.1.0"])
+        self.assertEqual(gate_args.revised_ref, "HEAD")
+        self.assertEqual(gate_args.fsdb, "auto")
+        self.assertEqual(gate_args.max_negative_delta_pct, common.DEFAULT_TIMING_THRESHOLD_PCT)
+        self.assertFalse(hasattr(gate_args, "allow_dirty_source"))
 
     def test_ensure_empty_dir_rejects_non_empty_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -44,40 +41,31 @@ class GateHelperTest(unittest.TestCase):
             path.mkdir()
             (path / "keep.txt").write_text("data", encoding="utf-8")
 
-            with self.assertRaises(gate.BenchGateError):
-                gate.ensure_empty_dir(path)
+            with self.assertRaises(common.BenchGateError):
+                common.ensure_empty_dir(path)
 
     def test_ensure_empty_dir_rejects_file_output(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             path = pathlib.Path(temp_dir) / "out"
             path.write_text("data", encoding="utf-8")
 
-            with self.assertRaises(gate.BenchGateError):
-                gate.ensure_empty_dir(path)
+            with self.assertRaises(common.BenchGateError):
+                common.ensure_empty_dir(path)
 
-    def test_dirty_head_refs_require_override(self) -> None:
+    def test_dirty_head_refs_fail_without_override(self) -> None:
         source = pathlib.Path("/repo")
-        with (
-            mock.patch.object(gate, "current_head", return_value="abc123"),
-            mock.patch.object(gate, "worktree_status", return_value=" M src/main.rs"),
-        ):
-            with self.assertRaises(gate.BenchGateError):
-                gate.enforce_clean_source_for_head_refs(
-                    source,
-                    [("HEAD", "abc123")],
-                    allow_dirty_source=False,
-                )
+        with mock.patch.object(common, "worktree_status", return_value=" M src/main.rs"):
+            with self.assertRaises(common.BenchGateError):
+                common.enforce_clean_source_for_head_refs(source, ["HEAD"])
 
-            gate.enforce_clean_source_for_head_refs(
-                source,
-                [("HEAD", "abc123")],
-                allow_dirty_source=True,
-            )
+        with mock.patch.object(common, "worktree_status") as status:
+            common.enforce_clean_source_for_head_refs(source, ["v1.0.0"])
+        status.assert_not_called()
 
     def test_assess_fsdb_auto_skips_when_support_files_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             checkout = pathlib.Path(temp_dir)
-            plan = gate.assess_fsdb(
+            plan = capture.assess_fsdb(
                 checkout,
                 log_path=checkout / "fsdb.log",
                 mode="auto",
@@ -88,14 +76,42 @@ class GateHelperTest(unittest.TestCase):
         self.assertIn("FSDB support files missing", plan.reason or "")
 
     def test_gate_fsdb_plan_fails_asymmetric_support(self) -> None:
-        baseline = gate.FsdbPlan(capture=True, status="available")
-        revised = gate.FsdbPlan(
+        baseline = common.FsdbPlan(capture=True, status="available")
+        revised = common.FsdbPlan(
             capture=False,
             status="unsupported",
             reason="missing tests_fsdb.json",
         )
-        with self.assertRaises(gate.BenchGateError):
-            gate.resolve_gate_fsdb_plan(baseline, revised, mode="auto")
+        with self.assertRaises(common.BenchGateError):
+            capture.resolve_gate_fsdb_plan(baseline, revised, mode="auto")
+
+    def test_fsdb_catalog_filter_skips_vcd_style_scalar_elements(self) -> None:
+        supported = {"command": ["wavepeek", "value", "--signals", "top.bus"]}
+        unsupported = {"command": ["wavepeek", "value", "--signals", "top.mem.[0]"]}
+
+        self.assertTrue(capture.fsdb_catalog_test_is_supported(supported))
+        self.assertFalse(capture.fsdb_catalog_test_is_supported(unsupported))
+
+    def test_write_runnable_fsdb_catalog_records_skipped_tests(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            checkout = root / "checkout"
+            catalog_dir = checkout / "bench/e2e"
+            catalog_dir.mkdir(parents=True)
+            (catalog_dir / "tests_fsdb.json").write_text(
+                '{"tests":[{"name":"ok","command":["wavepeek","info"]},'
+                '{"name":"skip","command":["wavepeek","value","top.mem.[0]"]}]}\n',
+                encoding="utf-8",
+            )
+
+            output, skipped = capture.write_runnable_fsdb_catalog(
+                checkout=checkout,
+                capture_dir=root / "capture",
+            )
+            payload = common.read_json(output)
+
+        self.assertEqual(skipped, ["skip"])
+        self.assertEqual([test["name"] for test in payload["tests"]], ["ok"])
 
     def test_e2e_artifact_identity_rejects_partial_intersection(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -108,8 +124,8 @@ class GateHelperTest(unittest.TestCase):
                 (golden / f"a.{suffix}.json").write_text("{}", encoding="utf-8")
                 (revised / f"b.{suffix}.json").write_text("{}", encoding="utf-8")
 
-            with self.assertRaises(gate.BenchGateError):
-                gate.assert_matching_e2e_artifacts(golden, revised)
+            with self.assertRaises(common.BenchGateError):
+                compare.assert_matching_e2e_artifacts(golden, revised)
 
     def test_compare_captures_fails_when_required_suites_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -119,13 +135,11 @@ class GateHelperTest(unittest.TestCase):
             golden.mkdir()
             revised.mkdir()
 
-            result = gate.compare_captures(
+            result = compare.compare_captures(
                 golden_dir=golden,
                 revised_dir=revised,
                 compare_dir=root / "compare",
-                e2e_threshold_pct=5.0,
-                fsdb_threshold_pct=5.0,
-                expr_threshold_pct=15.0,
+                timing_threshold_pct=5.0,
             )
 
         self.assertEqual(result.exit_code, 1)
@@ -133,8 +147,8 @@ class GateHelperTest(unittest.TestCase):
         self.assertEqual(result.manifest["suites"]["expr"]["status"], "failed")
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
 
-    def test_compare_captures_aggregates_suites_and_skips_missing_fsdb(self) -> None:
-        calls: list[tuple[str, list[str], pathlib.Path]] = []
+    def test_compare_captures_runs_same_format_timing_and_cross_functional(self) -> None:
+        calls: list[tuple[str, list[str]]] = []
 
         def fake_run_command(
             name: str,
@@ -144,17 +158,79 @@ class GateHelperTest(unittest.TestCase):
             log_path: pathlib.Path,
             env: dict[str, str] | None = None,
             check: bool = True,
-        ) -> gate.CommandResult:
-            calls.append((name, list(args), cwd))
+        ) -> common.CommandResult:
+            calls.append((name, list(args)))
             log_path.parent.mkdir(parents=True, exist_ok=True)
             log_path.write_text("ok\n", encoding="utf-8")
-            return gate.CommandResult(
+            return common.CommandResult(
                 name=name,
                 args=list(args),
                 cwd=str(cwd),
                 returncode=0,
                 log_path=str(log_path),
             )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            for base in (golden, revised):
+                for suite in ("e2e-fst", "expr", "e2e-fsdb"):
+                    (base / suite).mkdir(parents=True)
+                for suite in ("e2e-fst", "e2e-fsdb"):
+                    for suffix in ("hyperfine", "wavepeek"):
+                        (base / suite / f"case.{suffix}.json").write_text(
+                            "{}", encoding="utf-8"
+                        )
+
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        self.assertEqual(result.exit_code, 0)
+        names = [name for name, _ in calls]
+        self.assertEqual(
+            names,
+            [
+                "compare-e2e-fst",
+                "compare-expr",
+                "compare-e2e-fsdb",
+                "compare-cross-golden-fst-fsdb",
+                "compare-cross-revised-fst-fsdb",
+            ],
+        )
+        same_format = {name: args for name, args in calls[:3]}
+        self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fst"])
+        self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fsdb"])
+        self.assertIn("--max-negative-delta-pct", same_format["compare-expr"])
+        for name, args in calls[3:]:
+            self.assertIn("--functional-only", args, name)
+            self.assertIn("--allow-golden-extra", args, name)
+            self.assertNotIn("--max-negative-delta-pct", args, name)
+        self.assertFalse(result.manifest["suites"]["e2e-fst"]["functional_only"])
+        self.assertFalse(result.manifest["suites"]["e2e-fsdb"]["functional_only"])
+        self.assertTrue(result.manifest["suites"]["cross-golden-fst-fsdb"]["functional_only"])
+
+    def test_compare_captures_skips_optional_fsdb_and_cross_checks_when_missing(self) -> None:
+        calls: list[str] = []
+
+        def fake_run_command(
+            name: str,
+            args: list[str],
+            *,
+            cwd: pathlib.Path,
+            log_path: pathlib.Path,
+            env: dict[str, str] | None = None,
+            check: bool = True,
+        ) -> common.CommandResult:
+            calls.append(name)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=0, log_path=str(log_path))
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -168,21 +244,18 @@ class GateHelperTest(unittest.TestCase):
                         "{}", encoding="utf-8"
                     )
 
-            with mock.patch.object(gate, "run_command", side_effect=fake_run_command):
-                result = gate.compare_captures(
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
                     golden_dir=golden,
                     revised_dir=revised,
                     compare_dir=root / "compare",
-                    e2e_threshold_pct=5.0,
-                    fsdb_threshold_pct=5.0,
-                    expr_threshold_pct=15.0,
+                    timing_threshold_pct=5.0,
                 )
 
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual([call[0] for call in calls], ["compare-e2e-fst", "compare-expr"])
-        self.assertIn("--verbose", calls[0][1])
-        self.assertNotIn("--verbose", calls[1][1])
+        self.assertEqual(calls, ["compare-e2e-fst", "compare-expr"])
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
+        self.assertEqual(result.manifest["suites"]["cross-golden-fst-fsdb"]["status"], "skipped")
 
     def test_capture_checkout_uses_selected_checkout_harnesses(self) -> None:
         calls: list[tuple[str, list[str], pathlib.Path, dict[str, str] | None]] = []
@@ -195,11 +268,11 @@ class GateHelperTest(unittest.TestCase):
             log_path: pathlib.Path,
             env: dict[str, str] | None = None,
             check: bool = True,
-        ) -> gate.CommandResult:
+        ) -> common.CommandResult:
             calls.append((name, list(args), cwd, dict(env) if env else None))
             log_path.parent.mkdir(parents=True, exist_ok=True)
             log_path.write_text("ok\n", encoding="utf-8")
-            return gate.CommandResult(
+            return common.CommandResult(
                 name=name,
                 args=list(args),
                 cwd=str(cwd),
@@ -212,16 +285,16 @@ class GateHelperTest(unittest.TestCase):
             checkout = root / "checkout"
             checkout.mkdir()
             with (
-                mock.patch.object(gate, "run_command", side_effect=fake_run_command),
-                mock.patch.object(gate, "tool_version", return_value="tool 1.0"),
+                mock.patch.object(capture, "run_command", side_effect=fake_run_command),
+                mock.patch.object(capture, "tool_version", return_value="tool 1.0"),
             ):
-                result = gate.capture_checkout(
+                result = capture.capture_checkout(
                     checkout=checkout,
                     capture_dir=root / "capture",
                     source_ref="HEAD",
                     source_sha="abc123",
                     fsdb_mode="auto",
-                    fsdb_plan=gate.FsdbPlan(
+                    fsdb_plan=common.FsdbPlan(
                         capture=False,
                         status="skipped",
                         reason="test skip",
@@ -236,6 +309,80 @@ class GateHelperTest(unittest.TestCase):
         self.assertEqual(
             e2e_call[3],
             {"WAVEPEEK_BIN": str(checkout / "target/release/wavepeek")},
+        )
+
+    def test_gate_runs_preparation_before_paired_measurement(self) -> None:
+        order: list[str] = []
+
+        def fake_init_capture_session(**kwargs: object) -> types.SimpleNamespace:
+            label = pathlib.Path(str(kwargs["capture_dir"])).name
+            order.append(f"init-{label}")
+            return types.SimpleNamespace(label=label)
+
+        def record(name: str):
+            def inner(session: types.SimpleNamespace) -> None:
+                order.append(f"{name}-{session.label}")
+            return inner
+
+        def fake_compare_captures(**kwargs: object) -> common.CompareResult:
+            order.append("compare")
+            compare_dir = pathlib.Path(str(kwargs["compare_dir"]))
+            compare_dir.mkdir(parents=True)
+            return common.CompareResult(compare_dir=compare_dir, manifest={"status": "passed"}, exit_code=0)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            out_dir = pathlib.Path(temp_dir) / "gate"
+            args = argparse.Namespace(
+                source_root=pathlib.Path("/repo"),
+                baseline_ref="v1.0.0",
+                revised_ref="v1.0.1",
+                out_dir=out_dir,
+                fsdb="auto",
+                max_negative_delta_pct=5.0,
+                environment_note="test env",
+            )
+            with (
+                mock.patch.object(gate, "resolve_ref", side_effect=["aaa", "bbb"]),
+                mock.patch.object(gate, "enforce_clean_source_for_head_refs"),
+                mock.patch.object(gate, "clone_checkout", side_effect=lambda *a, **k: order.append("clone")),
+                mock.patch.object(gate, "assess_fsdb", return_value=common.FsdbPlan(capture=True, status="available")),
+                mock.patch.object(gate, "resolve_gate_fsdb_plan", return_value=common.FsdbPlan(capture=True, status="available")),
+                mock.patch.object(gate, "init_capture_session", side_effect=fake_init_capture_session),
+                mock.patch.object(gate, "build_release", side_effect=record("build")),
+                mock.patch.object(gate, "build_release_fsdb", side_effect=record("build-fsdb")),
+                mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
+                mock.patch.object(gate, "run_e2e_fst", side_effect=record("e2e-fst")),
+                mock.patch.object(gate, "run_e2e_fsdb", side_effect=record("e2e-fsdb")),
+                mock.patch.object(gate, "run_expr", side_effect=record("expr")),
+                mock.patch.object(gate, "finalize_capture", side_effect=record("finalize")),
+                mock.patch.object(gate, "compare_captures", side_effect=fake_compare_captures),
+            ):
+                exit_code = gate.gate_command(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(
+            order,
+            [
+                "clone",
+                "clone",
+                "init-baseline",
+                "init-revised",
+                "build-baseline",
+                "build-revised",
+                "build-fsdb-baseline",
+                "build-fsdb-revised",
+                "prepare-fsdb-baseline",
+                "prepare-fsdb-revised",
+                "e2e-fst-baseline",
+                "e2e-fst-revised",
+                "e2e-fsdb-baseline",
+                "e2e-fsdb-revised",
+                "expr-baseline",
+                "expr-revised",
+                "finalize-baseline",
+                "finalize-revised",
+                "compare",
+            ],
         )
 
 

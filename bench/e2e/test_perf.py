@@ -1303,10 +1303,10 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
             return "\n".join(body)
         raise AssertionError(f"recipe not found: {recipe_name}")
 
-    def test_public_benchmark_recipes_use_manual_gate_helper(self) -> None:
-        self.assertIn("tools/bench/gate.py gate", self._recipe_body("bench-gate"))
-        self.assertIn("tools/bench/gate.py capture", self._recipe_body("bench-capture"))
-        self.assertIn("tools/bench/gate.py compare", self._recipe_body("bench-compare"))
+    def test_public_benchmark_recipes_use_manual_gate_helpers(self) -> None:
+        self.assertIn("tools/bench/gate.py", self._recipe_body("bench-gate"))
+        self.assertIn("tools/bench/capture.py", self._recipe_body("bench-capture"))
+        self.assertIn("tools/bench/compare.py", self._recipe_body("bench-compare"))
 
     def test_baseline_update_recipes_removed(self) -> None:
         justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")

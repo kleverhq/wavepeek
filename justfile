@@ -323,15 +323,15 @@ build-release: require-container
 
 # Run the manual performance gate for two source refs
 bench-gate baseline_ref revised_ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/gate.py gate --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}"
+    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}"
 
 # Capture benchmark artifacts for one source ref
 bench-capture ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/gate.py capture --ref "{{ ref }}" --fsdb "{{ fsdb }}"
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}"
 
 # Compare two benchmark capture directories
 bench-compare golden_dir revised_dir: require-container
-    {{ python }} tools/bench/gate.py compare --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
+    {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
 
 [private]
 bench-e2e-run: check-rtl-artifacts build-release

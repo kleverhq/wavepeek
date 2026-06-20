@@ -89,7 +89,7 @@ Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates i
 - committed hand-written VCD fixtures under `tests/fixtures/hand/`, written to `tests/fixtures/fsdb/`;
 - RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity.
 
-`just prepare-fsdb-test-fixtures` limits preparation to the hand-written VCD-derived test fixtures. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark recipes prepare and verify the complete generated FSDB benchmark catalog.
+`just prepare-fsdb-test-fixtures` limits preparation to the hand-written VCD-derived test fixtures. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 
 `bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths. Update the FST catalog first, then run:
 
@@ -98,7 +98,7 @@ just update-bench-e2e-fsdb-catalog
 just check-bench-e2e-fsdb-catalog
 ```
 
-FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared refs support FSDB:
+FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared refs support FSDB. It writes a generated runnable catalog into the capture directory and records any skipped catalog tests, including VCD-style scalar element paths that converted RTL FSDB fixtures cannot resolve through release binaries. Gate comparison checks FSDB baseline versus FSDB revised with the same timing threshold used for FST. It also checks FST versus FSDB functional payload parity within each ref, allowing FST-only extra tests when the runnable FSDB catalog is a subset.
 
 ```sh
 just bench-gate <baseline-ref> HEAD

@@ -19,7 +19,6 @@ from capture import (
     resolve_gate_fsdb_plan,
     run_e2e_fsdb,
     run_e2e_fst,
-    run_expr,
 )
 from common import (
     DEFAULT_TIMING_THRESHOLD_PCT,
@@ -122,9 +121,6 @@ def gate_command(args: argparse.Namespace) -> int:
         run_e2e_fsdb(baseline)
         run_e2e_fsdb(revised)
 
-    run_expr(baseline)
-    run_expr(revised)
-
     finalize_capture(baseline)
     finalize_capture(revised)
 
@@ -160,8 +156,6 @@ def gate_command(args: argparse.Namespace) -> int:
             "run revised FST e2e",
             "run baseline FSDB e2e if enabled",
             "run revised FSDB e2e if enabled",
-            "run baseline expression benchmarks",
-            "run revised expression benchmarks",
             "compare artifacts",
         ],
     }
@@ -182,12 +176,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="maximum allowed negative delta for same-format FST, same-format FSDB, and expression timing",
+        help="maximum allowed negative delta for same-format FST and FSDB timing",
     )
     parser.add_argument(
         "--environment-note",
         default="wavepeek manual performance gate",
-        help="note written into expression benchmark summaries",
+        help="note written into benchmark gate capture manifests",
     )
     return parser
 

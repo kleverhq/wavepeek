@@ -23,8 +23,11 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-20 12:22Z) Ran three full `just bench-gate v1.0.0 v1.0.1` checks in a quieter environment. All captures completed and all compares failed, proving orchestration worked but the policy produced false positives for a null runtime change.
 - [x] (2026-06-20 18:00Z) Analyzed average, best-delta, best-median, warmup/runs, duration/noise, and version-wide slowdown hypotheses under `tmp/bench-gate/`. The data showed no broad `v1.0.1` runtime slowdown, exposed fixed millisecond-scale jitter in short tests, and showed Criterion can fail despite no runtime code changes.
 - [x] (2026-06-20 19:05Z) Agreed on the new direction: remove Criterion completely, use current benchmark tooling against binaries built from selected refs, and gate same-format end-to-end timing on median with `max(5%, 5ms)` allowed slowdown.
-- [ ] Update this ExecPlan and commit the plan.
-- [ ] Remove Criterion and expression microbenchmark files in a dedicated commit; run focused cleanup tests and request a dedicated review that verifies all references are gone.
+- [x] (2026-06-20 19:15Z) Updated this ExecPlan and committed it as `46ee04a docs(tracker): plan current-tooling performance gate`.
+- [x] (2026-06-20 19:30Z) Removed Criterion and expression microbenchmark files, removed expression benchmark capture/compare steps, and ran focused syntax, unit, and `cargo check` validation.
+- [x] (2026-06-20 19:45Z) Dedicated cleanup review found stale environment-note help, pre-commit metadata, and root breadcrumb references; all were corrected.
+- [x] (2026-06-20 19:55Z) Re-ran focused validation after cleanup fixes: syntax checks, tools/bench tests, bench/e2e tests, `cargo check`, `just test-aux`, and stale-reference search all passed.
+- [ ] Commit Criterion removal locally.
 - [ ] Refactor the manual gate to build binaries from selected refs but capture and compare through current tooling; implement median-only `max(5%, 5ms)` timing policy; run focused tests and request implementation review.
 - [ ] Run project quality checks that do not execute the full benchmark gate.
 - [ ] Commit the harness/policy refactor locally and stop before any final `just bench-gate` validation.

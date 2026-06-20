@@ -121,42 +121,6 @@ def run_e2e_compare(
     }
 
 
-def run_expr_compare(
-    *,
-    golden: pathlib.Path,
-    revised: pathlib.Path,
-    compare_dir: pathlib.Path,
-    threshold_pct: float,
-) -> dict[str, Any]:
-    log_path = compare_dir / "expr.log"
-    result = run_command(
-        "compare-expr",
-        [
-            "python3",
-            "-B",
-            str(REPO_ROOT / "bench/expr/perf.py"),
-            "compare",
-            "--revised",
-            str(revised),
-            "--golden",
-            str(golden),
-            "--max-negative-delta-pct",
-            str(threshold_pct),
-        ],
-        cwd=REPO_ROOT,
-        log_path=log_path,
-        check=False,
-    )
-    status = "passed" if result.returncode == 0 else "failed"
-    return {
-        "status": status,
-        "returncode": result.returncode,
-        "threshold_pct": threshold_pct,
-        "functional_only": False,
-        "log_path": relative_to(log_path, compare_dir),
-    }
-
-
 def render_compare_summary(manifest: Mapping[str, Any]) -> str:
     lines = [
         "# Wavepeek Benchmark Comparison",
@@ -212,12 +176,6 @@ def compare_captures(
             compare_dir=compare_dir,
             threshold_pct=timing_threshold_pct,
             functional_only=False,
-        ),
-        "expr": lambda: run_expr_compare(
-            golden=golden_dir / "expr",
-            revised=revised_dir / "expr",
-            compare_dir=compare_dir,
-            threshold_pct=timing_threshold_pct,
         ),
     }
     for name, runner in required.items():
@@ -330,7 +288,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="maximum allowed negative delta for same-format FST, same-format FSDB, and expression timing",
+        help="maximum allowed negative delta for same-format FST and FSDB timing",
     )
     return parser
 

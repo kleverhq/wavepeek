@@ -12,7 +12,7 @@ Public benchmark entrypoints are:
     just bench-capture [ref] [fsdb-mode]
     just bench-compare <golden-capture-dir> <revised-capture-dir>
 
-`just bench-gate vX.Y.Z HEAD` clones both refs under `tmp/bench-gate/`, builds both refs before measurement, prepares both FSDB fixture sets before FSDB measurement, then runs FST, FSDB, and expression suites in baseline/revised pairs. Same-format FST and FSDB comparisons use timing plus functional checks with a default 5% maximum negative delta. Expression comparisons use Criterion timing and metadata checks with the same default threshold. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful.
+`just bench-gate vX.Y.Z HEAD` clones both refs under `tmp/bench-gate/`, builds both refs before measurement, prepares both FSDB fixture sets before FSDB measurement, then runs FST and FSDB suites in baseline/revised pairs. Same-format FST and FSDB comparisons use timing plus functional checks with a default 5% maximum negative delta. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful.
 
 Default gate output has this shape:
 
@@ -53,20 +53,5 @@ Common focused commands:
 Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog.
 
 Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
-
-## Expression Microbenchmarks
-
-Expression-engine microbenchmarks live under `bench/expr/`. The functional Criterion bench targets are `expr_syntax`, `expr_logical`, `expr_event`, and `expr_waveform_host`; the suite catalog is `bench/expr/suites.json`.
-
-Common focused commands:
-
-    python3 bench/expr/perf.py list
-    cargo test --bench expr_syntax --bench expr_logical --bench expr_event --bench expr_waveform_host
-    python3 bench/expr/perf.py run --run-dir bench/expr/runs/<run-id>
-    python3 bench/expr/perf.py run --run-dir bench/expr/runs/<run-id> --missing-only
-    python3 bench/expr/perf.py report --run-dir bench/expr/runs/<run-id>
-    python3 bench/expr/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5
-
-The private `bench-expr-run` just recipe captures an ad hoc ignored run and does not update committed baselines. Expression compare mode requires matching catalog fingerprints and selected suites. The manual gate does not require matching Criterion crate versions because release comparisons may cross dependency updates.
 
 Use fresh run directories for local experiments. Benchmark run artifacts are evidence, but they are not repository source artifacts unless a maintainer explicitly asks to preserve a specific result outside the ignored run locations.

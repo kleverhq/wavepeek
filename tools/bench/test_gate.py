@@ -144,7 +144,7 @@ class BenchGateHelperTest(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "failed")
-        self.assertEqual(result.manifest["suites"]["expr"]["status"], "failed")
+        self.assertNotIn("expr", result.manifest["suites"])
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
 
     def test_compare_captures_runs_same_format_timing_and_cross_functional(self) -> None:
@@ -175,7 +175,7 @@ class BenchGateHelperTest(unittest.TestCase):
             golden = root / "golden"
             revised = root / "revised"
             for base in (golden, revised):
-                for suite in ("e2e-fst", "expr", "e2e-fsdb"):
+                for suite in ("e2e-fst", "e2e-fsdb"):
                     (base / suite).mkdir(parents=True)
                 for suite in ("e2e-fst", "e2e-fsdb"):
                     for suffix in ("hyperfine", "wavepeek"):
@@ -197,17 +197,15 @@ class BenchGateHelperTest(unittest.TestCase):
             names,
             [
                 "compare-e2e-fst",
-                "compare-expr",
                 "compare-e2e-fsdb",
                 "compare-cross-golden-fst-fsdb",
                 "compare-cross-revised-fst-fsdb",
             ],
         )
-        same_format = {name: args for name, args in calls[:3]}
+        same_format = {name: args for name, args in calls[:2]}
         self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fst"])
         self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fsdb"])
-        self.assertIn("--max-negative-delta-pct", same_format["compare-expr"])
-        for name, args in calls[3:]:
+        for name, args in calls[2:]:
             self.assertIn("--functional-only", args, name)
             self.assertIn("--allow-golden-extra", args, name)
             self.assertNotIn("--max-negative-delta-pct", args, name)
@@ -238,7 +236,6 @@ class BenchGateHelperTest(unittest.TestCase):
             revised = root / "revised"
             for base in (golden, revised):
                 (base / "e2e-fst").mkdir(parents=True)
-                (base / "expr").mkdir(parents=True)
                 for suffix in ("hyperfine", "wavepeek"):
                     (base / "e2e-fst" / f"case.{suffix}.json").write_text(
                         "{}", encoding="utf-8"
@@ -253,7 +250,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
 
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual(calls, ["compare-e2e-fst", "compare-expr"])
+        self.assertEqual(calls, ["compare-e2e-fst"])
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
         self.assertEqual(result.manifest["suites"]["cross-golden-fst-fsdb"]["status"], "skipped")
 
@@ -353,7 +350,6 @@ class BenchGateHelperTest(unittest.TestCase):
                 mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
                 mock.patch.object(gate, "run_e2e_fst", side_effect=record("e2e-fst")),
                 mock.patch.object(gate, "run_e2e_fsdb", side_effect=record("e2e-fsdb")),
-                mock.patch.object(gate, "run_expr", side_effect=record("expr")),
                 mock.patch.object(gate, "finalize_capture", side_effect=record("finalize")),
                 mock.patch.object(gate, "compare_captures", side_effect=fake_compare_captures),
             ):
@@ -377,8 +373,6 @@ class BenchGateHelperTest(unittest.TestCase):
                 "e2e-fst-revised",
                 "e2e-fsdb-baseline",
                 "e2e-fsdb-revised",
-                "expr-baseline",
-                "expr-revised",
                 "finalize-baseline",
                 "finalize-revised",
                 "compare",

@@ -36,7 +36,6 @@ assert_cmd = "~2"
 predicates = "~3"
 tempfile = "~3"
 insta = "~1"
-criterion = { version = "~0.8", features = ["csv_output"] }
 
 [build-dependencies]
 cc = "~1"
@@ -57,23 +56,3 @@ bench = false
 name = "wavepeek"
 path = "src/main.rs"
 bench = false
-
-[[bench]]
-name = "expr_syntax"
-path = "bench/expr/expr_syntax.rs"
-harness = false
-
-[[bench]]
-name = "expr_logical"
-path = "bench/expr/expr_logical.rs"
-harness = false
-
-[[bench]]
-name = "expr_event"
-path = "bench/expr/expr_event.rs"
-harness = false
-
-[[bench]]
-name = "expr_waveform_host"
-path = "bench/expr/expr_waveform_host.rs"
-harness = false

@@ -9,6 +9,6 @@
 
 - Run benchmarks in the devcontainer or CI image so fixture paths, tool versions, and environment variables match project gates.
 - Keep benchmark harnesses deterministic and stdlib-only unless a maintainer accepts a dependency change.
-- End-to-end CLI scenarios live under `e2e/`; expression microbenchmarks carry extra local rules in `expr/AGENTS.md`.
+- End-to-end CLI scenarios live under `e2e/`.
 - Generated run artifacts are ignored local evidence; do not add committed baselines unless a maintainer explicitly changes the benchmark policy.
-- Preserve functional payload parity while optimizing; faster wrong answers are just wrong answers wearing racing stripes.
+- Preserve functional payload parity while optimizing; faster incorrect output remains incorrect output.

@@ -8,7 +8,7 @@ This file holds the internal engineering view of wavepeek: non-functional requir
 
 Performance is the highest implementation priority. Rust is used specifically to keep waveform parsing and query execution fast on large dumps.
 
-Benchmarks are maintained through `bench/e2e/perf.py` for end-to-end CLI scenarios and `bench/expr/perf.py` for expression-engine microbenchmarks.
+Benchmarks are maintained through `bench/e2e/perf.py` for end-to-end CLI scenarios.
 
 ### Compatibility
 
@@ -134,7 +134,7 @@ src/
 | `thiserror` | ~2 | Error derivation | Typed errors with explicit exit mapping |
 | `cc` | ~1 | Native build integration | Build dependency used only when compiling optional FSDB support |
 
-Development dependencies include `assert_cmd`, `predicates`, `tempfile`, `insta`, and `criterion` to cover integration tests, fixture handling, snapshots, and benchmarks.
+Development dependencies include `assert_cmd`, `predicates`, `tempfile`, and `insta` to cover integration tests, fixture handling, and snapshots.
 
 ## Expression Engine Architecture
 

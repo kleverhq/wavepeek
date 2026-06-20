@@ -1312,7 +1312,6 @@ class JustfileBenchmarkRecipeTest(unittest.TestCase):
         justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")
         self.assertNotIn("bench-e2e-update-baseline:", justfile)
         self.assertNotIn("bench-e2e-fsdb-update-baseline:", justfile)
-        self.assertNotIn("bench-expr-update-baseline:", justfile)
 
     def test_pre_commit_smoke_no_longer_compares_against_baseline(self) -> None:
         for recipe_name in ("bench-e2e-smoke-commit", "bench-e2e-fsdb-smoke-commit"):

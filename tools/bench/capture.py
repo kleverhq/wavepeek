@@ -351,27 +351,6 @@ def run_e2e_fsdb(session: CaptureSession) -> None:
     }
 
 
-def run_expr(session: CaptureSession) -> None:
-    session.commands.append(
-        run_command(
-            "bench-expr",
-            [
-                "python3",
-                "-B",
-                "bench/expr/perf.py",
-                "run",
-                "--run-dir",
-                str(session.capture_dir / "expr"),
-                "--environment-note",
-                session.environment_note,
-            ],
-            cwd=session.checkout,
-            log_path=session.logs_dir / "bench-expr.log",
-        )
-    )
-    session.suites["expr"] = {"status": "passed", "path": "expr"}
-
-
 def finalize_capture(session: CaptureSession) -> CaptureResult:
     if "e2e-fsdb" not in session.suites:
         session.suites["e2e-fsdb"] = {
@@ -434,7 +413,6 @@ def capture_checkout(
     run_e2e_fst(session)
     if effective_fsdb_plan.capture:
         run_e2e_fsdb(session)
-    run_expr(session)
     return finalize_capture(session)
 
 
@@ -468,7 +446,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--environment-note",
         default="wavepeek manual performance gate",
-        help="note written into expression benchmark summaries",
+        help="note written into benchmark capture manifests",
     )
     return parser
 

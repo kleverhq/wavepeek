@@ -25,7 +25,7 @@ Maintainer workflow lives under `docs/dev/`:
 - `docs/dev/quality.md` for `just check`, `just ci`, coverage, and hooks.
 - `docs/dev/testing.md` for test strategy and fixtures.
 - `docs/dev/style.md` for Rust, CLI, output, and docs conventions.
-- `docs/dev/benchmarking.md` for E2E and expression benchmark workflows.
+- `docs/dev/benchmarking.md` for manual performance gate and E2E benchmark workflows.
 - `docs/dev/automation.md` for CI, `justfile`, pre-commit, and helper tools.
 - `docs/dev/git.md`, `docs/dev/changelog.md`, and `docs/dev/release.md` for contribution hygiene and releases.
 - `docs/dev/architecture.md` for internal module boundaries.
@@ -35,7 +35,7 @@ Maintainer workflow lives under `docs/dev/`:
 - `src/` — Rust source code and embedded docs runtime.
 - `tests/` — integration tests, fixtures, and test helpers.
 - `tools/` — helper automation used by `just` recipes and workflows.
-- `bench/` — end-to-end and expression benchmark harnesses.
+- `bench/` — end-to-end benchmark harnesses.
 - `.github/workflows/` — CI and release workflows.
 - `.devcontainer/` — local and CI container setup.
 - `docs/dev/` — maintainer workflow, quality, style, release, and architecture docs.

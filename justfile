@@ -239,7 +239,6 @@ test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
 test-aux: require-container
     @just check-bench-e2e-fsdb-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
-    {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
     {{ python }} -m unittest discover -s tools/bench -p "test_*.py"
     {{ python }} -m unittest discover -s tools/docs -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
@@ -340,10 +339,6 @@ bench-e2e-run: check-rtl-artifacts build-release
 [private]
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
     WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}"
-
-[private]
-bench-expr-run: require-container
-    {{ python }} bench/expr/perf.py run
 
 # Run lightweight benchmark e2e smoke for pre-commit
 [private]

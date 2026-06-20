@@ -37,6 +37,7 @@ PUSH_TOKEN_ENV = {
     "GITHUB_PAT",
     "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
 }
+STREAM_SCHEMA_MIN_VERSION = (1, 0, 1)
 
 
 class PublishError(Exception):
@@ -197,6 +198,14 @@ def major_version(version: str) -> int:
     return int(validate_version(version).split(".", maxsplit=1)[0])
 
 
+def version_tuple(version: str) -> tuple[int, int, int]:
+    return tuple(int(part) for part in validate_version(version).split("."))  # type: ignore[return-value]
+
+
+def stream_schema_required(version: str) -> bool:
+    return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
+
+
 def clean_owned_path(path: pathlib.Path) -> None:
     if path.is_dir() and not path.is_symlink():
         shutil.rmtree(path)
@@ -293,6 +302,9 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
     schema_targets = [path for path in copied if path.name.startswith("wavepeek_v")]
     if not schema_targets:
         fail(f"missing versioned schema artifacts under {schema_dir}")
+    stream_schema_targets = [path for path in copied if path.name.startswith("wavepeek-stream-v")]
+    if stream_schema_required(version) and not stream_schema_targets:
+        fail(f"missing stream schema artifacts under {schema_dir}")
     return copied
 
 
@@ -782,18 +794,19 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 def required_pages_artifact_paths(version: str) -> list[str]:
     major = major_version(version)
-    return [
-        "index.html",
-        "versions.json",
-        f"wavepeek_v{major}.json",
-        f"wavepeek-stream-v{major}.json",
-    ]
+    required = ["index.html", "versions.json", f"wavepeek_v{major}.json"]
+    if stream_schema_required(version):
+        required.append(f"wavepeek-stream-v{major}.json")
+    return required
 
 
 def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
     missing: list[str] = []
     major = major_version(version)
-    for artifact in [f"wavepeek_v{major}.json", f"wavepeek-stream-v{major}.json"]:
+    artifacts = [f"wavepeek_v{major}.json"]
+    if stream_schema_required(version):
+        artifacts.append(f"wavepeek-stream-v{major}.json")
+    for artifact in artifacts:
         result = runner.run(
             ["git", "cat-file", "-t", f"{staged_branch}:{artifact}"],
             check=False,

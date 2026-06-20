@@ -118,12 +118,7 @@ impl<W: Write> JsonlWriter<W> {
     }
 
     fn write_record<T: Serialize>(&mut self, record: &T) -> Result<(), WavepeekError> {
-        let json = serde_json::to_string(record).map_err(|error| {
-            WavepeekError::Internal(format!("failed to serialize JSONL output: {error}"))
-        })?;
-        self.writer
-            .write_all(json.as_bytes())
-            .map_err(map_jsonl_io_error)?;
+        serde_json::to_writer(&mut self.writer, record).map_err(map_jsonl_serde_error)?;
         self.writer.write_all(b"\n").map_err(map_jsonl_io_error)?;
         self.writer.flush().map_err(map_jsonl_io_error)?;
         self.next_seq += 1;
@@ -250,6 +245,14 @@ pub fn write_jsonl_result<W: Write>(
 
 fn is_truncation_diagnostic(diagnostic: &Diagnostic) -> bool {
     diagnostic.code() == Some("WPK-W0002")
+}
+
+fn map_jsonl_serde_error(error: serde_json::Error) -> WavepeekError {
+    if error.io_error_kind() == Some(io::ErrorKind::BrokenPipe) {
+        WavepeekError::BrokenPipe
+    } else {
+        WavepeekError::Internal(format!("failed to serialize JSONL output: {error}"))
+    }
 }
 
 fn map_jsonl_io_error(error: io::Error) -> WavepeekError {

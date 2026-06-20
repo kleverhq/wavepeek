@@ -207,6 +207,11 @@ impl SampleCache {
         self.requested_batches.insert(raw_time, sampled.clone());
         Ok(sampled)
     }
+
+    fn retain_only(&mut self, raw_time: u64) {
+        self.requested_batches
+            .retain(|timestamp, _| *timestamp == raw_time);
+    }
 }
 
 #[derive(Default)]
@@ -646,17 +651,13 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
                 candidate_mode,
             )?
     };
-    let candidate_schedule = {
-        let waveform_ref = waveform.borrow();
-        build_candidate_schedule(&waveform_ref, &candidate_times)?
-    };
-
     let mut sample_cache = SampleCache::default();
     sample_cache.sample_requested_batch(waveform, requested_resolved, baseline_raw)?;
 
     let mut emitted = 0usize;
     let mut truncated = false;
-    for (timestamp, previous_timestamp) in candidate_schedule {
+    for timestamp in candidate_times {
+        let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
         let current_samples =
             sample_cache.sample_requested_batch(waveform, requested_resolved, timestamp)?;
         let previous_samples = if let Some(previous) = previous_timestamp {
@@ -714,6 +715,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
             dump_tick,
         )?)?;
         emitted += 1;
+        sample_cache.retain_only(timestamp);
     }
 
     Ok(ChangeRunStats { emitted, truncated })
@@ -1568,6 +1570,7 @@ fn resolve_token_to_path(token: &str, scope: Option<&str>) -> Result<String, Wav
     }
 }
 
+#[cfg(test)]
 fn build_candidate_schedule(
     waveform: &Waveform,
     candidate_times: &[u64],

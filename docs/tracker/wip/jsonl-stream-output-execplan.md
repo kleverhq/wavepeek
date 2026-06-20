@@ -38,7 +38,7 @@ This plan does not require a runtime JSON Schema validation dependency in the sh
 - [x] (2026-06-19 00:00Z) Refactored `change` to stream snapshots through a sink for the JSONL path, with an engine-level sentinel sink test proving emission errors stop during execution.
 - [x] (2026-06-19 00:00Z) Refactored `property` to stream capture rows through a sink for the JSONL path, with an engine-level sentinel sink test proving emission errors stop during execution.
 - [x] (2026-06-19 00:00Z) Added end-to-end JSONL CLI tests, stream schema tests, schema-contract checks, docs publication helper coverage, and public/architecture docs updates.
-- [ ] Run focused code/docs/contract review on the implemented feature and fix findings.
+- [x] (2026-06-19 00:00Z) Ran focused code, contract/docs, and performance review lanes. Fixed contract doc wording, stream-schema deploy gating for pre-JSONL versions, direct JSONL serialization, property stream begin timing, and bounded baseline sample-cache retention.
 - [ ] Run final quality gates and open a draft PR.
 
 ## Surprises & Discoveries
@@ -106,7 +106,7 @@ This plan does not require a runtime JSON Schema validation dependency in the sh
 
 ## Outcomes & Retrospective
 
-This feature is not implemented yet, but the reviewed ExecPlan is ready for execution. When implemented, it should make large `change` and `property` runs observable before completion while keeping existing human and `--json` behavior stable. The review tightened the plan around the main risks: accidental cosmetic JSONL over already-buffered vectors, unpublished schema URLs, stream schema drift from runtime records, and normal broken-pipe behavior for early-stopping consumers.
+The feature is implemented on this branch and has passed focused review lanes. It makes waveform commands accept `--jsonl`, keeps existing `--json` behavior stable, exposes `wavepeek schema --stream`, and gives `change` and `property` streaming sink paths instead of replaying completed result vectors for JSONL. The remaining work is final gate execution and draft PR creation.
 
 ## Context and Orientation
 

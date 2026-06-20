@@ -21,7 +21,7 @@ On success, a command writes its main payload to stdout.
 - In `--jsonl` mode, waveform commands write one JSON object per stdout line; non-fatal diagnostics are diagnostic records in that stream.
 - In `schema` mode, stdout contains exactly one JSON Schema document.
 
-On failure, stdout is empty. Process-level failures are reported on stderr only.
+For non-streaming modes, stdout is empty on failure and process-level failures are reported on stderr only. In `--jsonl` mode, a fatal error after `begin` can leave partial stdout without a final `end`; consumers must treat that stream as incomplete.
 
 ## 2. JSON Envelope for Stable `--json` Commands
 
@@ -77,7 +77,7 @@ Rules for successful JSONL streams:
 - `begin` is first and has `seq: 0`.
 - `seq` increases by one for every record.
 - `command` is stable across the stream.
-- `item` records carry the same row payload shape used inside `--json` data arrays for that command.
+- `item` records carry the same row payload shape used inside `--json` data arrays for array-producing commands, or the `info` data object for `info`.
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
 

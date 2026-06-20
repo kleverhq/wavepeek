@@ -21,6 +21,7 @@ USER_AGENT = "wavepeek-docs-deploy-check"
 SCHEMA_TITLE = "wavepeek JSON output envelope"
 STREAM_SCHEMA_TITLE = "wavepeek JSONL stream record"
 BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
+STREAM_SCHEMA_MIN_VERSION = (1, 0, 1)
 
 
 class DeployCheckError(Exception):
@@ -65,6 +66,20 @@ def validate_version(version: str) -> str:
 
 def major_version(version: str) -> int:
     return int(validate_version(version).split(".", maxsplit=1)[0])
+
+
+def version_tuple(version: str) -> tuple[int, int, int]:
+    parts = version.split(".")
+    if len(parts) != 3:
+        fail(f"version must use major.minor.patch format, got {version!r}")
+    try:
+        return tuple(int(part) for part in parts)  # type: ignore[return-value]
+    except ValueError:
+        fail(f"version must contain numeric components, got {version!r}")
+
+
+def stream_schema_required(version: str) -> bool:
+    return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
 
 
 def schema_artifact_name(version: str) -> str:
@@ -352,8 +367,9 @@ def check_deploy(args: argparse.Namespace) -> None:
         ("version docs", page_url(base_url, f"{version}/")),
         ("versions.json", page_url(base_url, "versions.json")),
         (artifact, page_url(base_url, artifact)),
-        (stream_artifact, page_url(base_url, stream_artifact)),
     ]
+    if stream_schema_required(version):
+        urls.append((stream_artifact, page_url(base_url, stream_artifact)))
     if args.expect_latest:
         urls.insert(2, ("latest docs", page_url(base_url, "latest/")))
 
@@ -408,15 +424,16 @@ def check_deploy(args: argparse.Namespace) -> None:
     )
     print(f"ok: docs-deploy: schema artifact {artifact}")
 
-    retry_check(
-        "stream schema artifact semantic check",
-        retries=args.retries,
-        retry_delay=args.retry_delay,
-        operation=lambda: validate_stream_schema_payload(
-            page_url(base_url, stream_artifact), version, timeout=args.timeout
-        ),
-    )
-    print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
+    if stream_schema_required(version):
+        retry_check(
+            "stream schema artifact semantic check",
+            retries=args.retries,
+            retry_delay=args.retry_delay,
+            operation=lambda: validate_stream_schema_payload(
+                page_url(base_url, stream_artifact), version, timeout=args.timeout
+            ),
+        )
+        print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
 
     if args.repository:
         site = load_pages_site(

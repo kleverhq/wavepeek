@@ -16,7 +16,9 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
-use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
+use crate::waveform::ChangeCandidateCollectionMode;
+#[cfg(test)]
+use crate::waveform::Waveform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -200,6 +202,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
         })
     });
 
+    sink.start()?;
     let candidate_times = waveform
         .borrow_mut()
         .collect_expr_candidate_times_with_mode(
@@ -212,16 +215,11 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
         "candidate.collect.done",
         || serde_json::json!({"times": candidate_times.len()}),
     );
-    let candidate_schedule = {
-        let waveform_ref = waveform.borrow();
-        build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
-    };
     debug.event(
         "candidate.schedule.done",
-        || serde_json::json!({"entries": candidate_schedule.len()}),
+        || serde_json::json!({"entries": candidate_times.len()}),
     );
 
-    sink.start()?;
     let mut emitted = 0usize;
     let mut previous_state = match args.capture {
         CaptureMode::Match => None,
@@ -230,7 +228,8 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
         ),
     };
 
-    for (timestamp, previous_timestamp) in candidate_schedule {
+    for timestamp in candidate_times {
+        let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
         let frame = EventEvalFrame {
             timestamp,
             previous_timestamp,
@@ -308,6 +307,7 @@ fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
     }
 }
 
+#[cfg(test)]
 fn build_candidate_schedule(
     waveform: &Waveform,
     candidate_times: &[u64],

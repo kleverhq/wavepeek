@@ -213,24 +213,24 @@ class PublishDocsTests(unittest.TestCase):
         git(repo, "branch", "gh-pages")
 
         self.paths.root_artifacts.mkdir(parents=True)
-        (self.paths.root_artifacts / "wavepeek_v0.json").write_text("envelope", encoding="utf-8")
-        (self.paths.root_artifacts / "wavepeek-stream-v0.json").write_text("stream", encoding="utf-8")
+        (self.paths.root_artifacts / "wavepeek_v1.json").write_text("envelope", encoding="utf-8")
+        (self.paths.root_artifacts / "wavepeek-stream-v1.json").write_text("stream", encoding="utf-8")
         self.paths.release_assets.mkdir(parents=True)
         (self.paths.release_assets / "wavepeek-installer.sh").write_text("shell", encoding="utf-8")
         (self.paths.release_assets / "wavepeek-installer.ps1").write_text("powershell", encoding="utf-8")
 
         with chdir(repo):
             publish_docs.stage_publication_artifacts(
-                "0.5.0",
+                "1.0.1",
                 self.paths,
                 publish_docs.CommandRunner(),
                 promote_latest=True,
             )
             self.assertEqual(
-                git(repo, "show", "gh-pages:wavepeek-stream-v0.json"),
+                git(repo, "show", "gh-pages:wavepeek-stream-v1.json"),
                 "stream",
             )
-            self.assertEqual(git(repo, "show", "gh-pages:wavepeek_v0.json"), "envelope")
+            self.assertEqual(git(repo, "show", "gh-pages:wavepeek_v1.json"), "envelope")
 
     def test_allowed_path_patterns_limit_gh_pages_diff(self) -> None:
         publish_docs.verify_allowed_paths(
@@ -299,21 +299,21 @@ class PublishDocsTests(unittest.TestCase):
         git(repo, "config", "user.name", "Docs Bot")
         (repo / "index.html").write_text("redirect", encoding="utf-8")
         (repo / "versions.json").write_text("[]", encoding="utf-8")
-        (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
-        (repo / "wavepeek-stream-v0.json").write_text("{}", encoding="utf-8")
-        (repo / ".gitattributes").write_text("0.5.0/index.html export-ignore\n", encoding="utf-8")
-        (repo / "0.5.0").mkdir()
-        (repo / "0.5.0" / "index.html").write_text("docs", encoding="utf-8")
+        (repo / "wavepeek_v1.json").write_text("{}", encoding="utf-8")
+        (repo / "wavepeek-stream-v1.json").write_text("{}", encoding="utf-8")
+        (repo / ".gitattributes").write_text("1.0.1/index.html export-ignore\n", encoding="utf-8")
+        (repo / "1.0.1").mkdir()
+        (repo / "1.0.1" / "index.html").write_text("docs", encoding="utf-8")
         git(repo, "add", ".")
         git(repo, "commit", "-q", "-m", "pages")
 
         with chdir(repo):
-            publish_docs.export_pages_artifact("HEAD", "0.5.0", self.paths, publish_docs.CommandRunner())
+            publish_docs.export_pages_artifact("HEAD", "1.0.1", self.paths, publish_docs.CommandRunner())
 
         self.assertEqual((self.paths.pages_artifact / "index.html").read_text(), "redirect")
-        self.assertEqual((self.paths.pages_artifact / "0.5.0" / "index.html").read_text(), "docs")
-        self.assertTrue((self.paths.pages_artifact / "wavepeek_v0.json").is_file())
-        self.assertTrue((self.paths.pages_artifact / "wavepeek-stream-v0.json").is_file())
+        self.assertEqual((self.paths.pages_artifact / "1.0.1" / "index.html").read_text(), "docs")
+        self.assertTrue((self.paths.pages_artifact / "wavepeek_v1.json").is_file())
+        self.assertTrue((self.paths.pages_artifact / "wavepeek-stream-v1.json").is_file())
         self.assertFalse((self.paths.pages_artifact / ".git").exists())
         self.assertFalse(self.paths.pages_worktree.exists())
 
@@ -339,18 +339,18 @@ class PublishDocsTests(unittest.TestCase):
         git(repo, "init", "-q")
         git(repo, "config", "user.email", "docs@example.invalid")
         git(repo, "config", "user.name", "Docs Bot")
-        (repo / "wavepeek_v0.json").write_text("{}", encoding="utf-8")
-        (repo / "wavepeek-stream-v0.json").write_text("{}", encoding="utf-8")
-        git(repo, "add", "wavepeek_v0.json", "wavepeek-stream-v0.json")
+        (repo / "wavepeek_v1.json").write_text("{}", encoding="utf-8")
+        (repo / "wavepeek-stream-v1.json").write_text("{}", encoding="utf-8")
+        git(repo, "add", "wavepeek_v1.json", "wavepeek-stream-v1.json")
         git(repo, "commit", "-q", "-m", "artifacts")
         runner = publish_docs.CommandRunner()
 
         with chdir(repo):
-            publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
-            git(repo, "rm", "-q", "wavepeek-stream-v0.json")
+            publish_docs.verify_root_artifacts("HEAD", "1.0.1", runner)
+            git(repo, "rm", "-q", "wavepeek-stream-v1.json")
             git(repo, "commit", "-q", "-m", "remove stream schema")
-            with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek-stream-v0.json"):
-                publish_docs.verify_root_artifacts("HEAD", "0.5.0", runner)
+            with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek-stream-v1.json"):
+                publish_docs.verify_root_artifacts("HEAD", "1.0.1", runner)
 
         repo_tree = self.root / "repo-root-artifacts-tree"
         repo_tree.mkdir()

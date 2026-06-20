@@ -21,7 +21,7 @@ USER_AGENT = "wavepeek-docs-deploy-check"
 SCHEMA_TITLE = "wavepeek JSON output envelope"
 STREAM_SCHEMA_TITLE = "wavepeek JSONL stream record"
 BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
-STREAM_SCHEMA_MIN_VERSION = (1, 0, 1)
+STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
 
 
 class DeployCheckError(Exception):

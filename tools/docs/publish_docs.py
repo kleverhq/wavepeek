@@ -37,7 +37,7 @@ PUSH_TOKEN_ENV = {
     "GITHUB_PAT",
     "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
 }
-STREAM_SCHEMA_MIN_VERSION = (1, 0, 1)
+STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
 
 
 class PublishError(Exception):

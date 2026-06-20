@@ -37,6 +37,10 @@ class CheckDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "fragment"):
             check_deploy.page_url("https://kleverhq.github.io/wavepeek#docs", "0.5.0/")
 
+    def test_stream_schema_requirement_starts_after_published_v1_0_1(self) -> None:
+        self.assertFalse(check_deploy.stream_schema_required("1.0.1"))
+        self.assertTrue(check_deploy.stream_schema_required("1.1.0"))
+
     def test_schema_artifact_name_uses_major_version(self) -> None:
         self.assertEqual(check_deploy.schema_artifact_name("0.5.0"), "wavepeek_v0.json")
         self.assertEqual(check_deploy.schema_artifact_name("12.0.1"), "wavepeek_v12.json")

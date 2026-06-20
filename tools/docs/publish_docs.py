@@ -274,9 +274,10 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
 
     schema_dir = source_root / "schema"
     schemas = sorted(schema_dir.glob("wavepeek_v*.json")) if schema_dir.is_dir() else []
+    stream_schemas = sorted(schema_dir.glob("wavepeek-stream-v*.json")) if schema_dir.is_dir() else []
     copied: list[pathlib.Path] = []
     if schemas:
-        for schema in schemas:
+        for schema in [*schemas, *stream_schemas]:
             target = run_paths.root_artifacts / schema.name
             shutil.copyfile(schema, target)
             copied.append(target)
@@ -541,7 +542,7 @@ def stage_publication_artifacts(
         for artifact in sorted(run_paths.root_artifacts.iterdir()):
             if artifact.is_file():
                 shutil.copyfile(artifact, run_paths.gh_pages_worktree / artifact.name)
-        staged_paths.append("wavepeek_v*.json")
+                staged_paths.append(artifact.name)
     installer_paths = copy_installer_entrypoints(version, run_paths, promote_latest=promote_latest)
     runner.run(["git", "add", *staged_paths, *installer_paths], cwd=run_paths.gh_pages_worktree)
     diff = runner.run(
@@ -571,6 +572,7 @@ def allowed_path_patterns(version: str, *, promote_latest: bool) -> list[str]:
                 "sitemap.xml",
                 "sitemap.xml.gz",
                 "wavepeek_v*.json",
+                "wavepeek-stream-v*.json",
                 "latest/**",
                 "install.sh",
                 "install.ps1",
@@ -740,6 +742,9 @@ def path_allowed(path: str, patterns: list[str]) -> bool:
         if pattern == "wavepeek_v*.json":
             if re.fullmatch(r"wavepeek_v[0-9]+[.]json", path):
                 return True
+        elif pattern == "wavepeek-stream-v*.json":
+            if re.fullmatch(r"wavepeek-stream-v[0-9]+[.]json", path):
+                return True
         elif pattern.endswith("/**"):
             prefix = pattern[:-3] + "/"
             if path.startswith(prefix):
@@ -776,12 +781,19 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def required_pages_artifact_paths(version: str) -> list[str]:
-    return ["index.html", "versions.json", f"wavepeek_v{major_version(version)}.json"]
+    major = major_version(version)
+    return [
+        "index.html",
+        "versions.json",
+        f"wavepeek_v{major}.json",
+        f"wavepeek-stream-v{major}.json",
+    ]
 
 
 def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
     missing: list[str] = []
-    for artifact in [f"wavepeek_v{major_version(version)}.json"]:
+    major = major_version(version)
+    for artifact in [f"wavepeek_v{major}.json", f"wavepeek-stream-v{major}.json"]:
         result = runner.run(
             ["git", "cat-file", "-t", f"{staged_branch}:{artifact}"],
             check=False,

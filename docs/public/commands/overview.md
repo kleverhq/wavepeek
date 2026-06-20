@@ -22,7 +22,7 @@ Use `docs` when command help is not enough. It is the packaged narrative surface
 
 ## Helper commands
 
-Use `schema` when a machine client needs the canonical JSON contract for `--json` outputs. It prints the schema artifact directly and does not require a waveform file.
+Use `schema` when a machine client needs the canonical JSON contract for `--json` outputs, or `schema --stream` for the per-record JSONL contract used by waveform `--jsonl` output. It prints the selected schema artifact directly and does not require a waveform file.
 
 Use `skill` when a coding agent needs the packaged Wavepeek skill Markdown from the installed build.
 
@@ -42,4 +42,4 @@ Use `property` when you want to evaluate a logical expression on event-selected 
 
 ## Which document is normative?
 
-Use this overview to choose a command quickly. When exact flags matter, defer to generated help. When behavioral semantics matter, use the reference topics under `reference/*`. When exact JSON shapes matter, use `wavepeek schema`.
+Use this overview to choose a command quickly. When exact flags matter, defer to generated help. When behavioral semantics matter, use the reference topics under `reference/*`. When exact JSON shapes matter, use `wavepeek schema` for envelope output and `wavepeek schema --stream` for JSONL stream records.

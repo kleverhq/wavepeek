@@ -19,6 +19,7 @@ REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DEFAULT_BASE_URL = "https://kleverhq.github.io/wavepeek"
 USER_AGENT = "wavepeek-docs-deploy-check"
 SCHEMA_TITLE = "wavepeek JSON output envelope"
+STREAM_SCHEMA_TITLE = "wavepeek JSONL stream record"
 BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
 
 
@@ -68,6 +69,10 @@ def major_version(version: str) -> int:
 
 def schema_artifact_name(version: str) -> str:
     return f"wavepeek_v{major_version(version)}.json"
+
+
+def stream_schema_artifact_name(version: str) -> str:
+    return f"wavepeek-stream-v{major_version(version)}.json"
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -249,6 +254,42 @@ def validate_schema_payload(url: str, version: str, *, timeout: float) -> Any:
     return schema
 
 
+def validate_stream_schema_json(schema: Any, version: str) -> None:
+    if not isinstance(schema, dict):
+        fail("stream schema artifact must contain a JSON object")
+    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+        fail("stream schema artifact must use JSON Schema draft 2020-12")
+    if schema.get("title") != STREAM_SCHEMA_TITLE:
+        fail(f"stream schema artifact title must be {STREAM_SCHEMA_TITLE!r}")
+    defs = schema.get("$defs")
+    if not isinstance(defs, dict):
+        fail("stream schema artifact must define $defs")
+    command = defs.get("streamCommand")
+    if not isinstance(command, dict):
+        fail("stream schema artifact must define streamCommand")
+    expected_commands = ["info", "scope", "signal", "value", "change", "property"]
+    if command.get("enum") != expected_commands:
+        fail("stream schema artifact command enum mismatch")
+    begin = defs.get("beginRecord")
+    if not isinstance(begin, dict):
+        fail("stream schema artifact must define beginRecord")
+    try:
+        pattern = begin["properties"]["$schema"]["pattern"]
+    except (KeyError, TypeError):
+        fail("stream schema artifact beginRecord must define $schema pattern")
+    if not isinstance(pattern, str) or stream_schema_artifact_name(version) not in pattern.replace(r"\.", "."):
+        fail(
+            "stream schema artifact $schema pattern must reference "
+            f"{stream_schema_artifact_name(version)}"
+        )
+
+
+def validate_stream_schema_payload(url: str, version: str, *, timeout: float) -> Any:
+    schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
+    validate_stream_schema_json(schema, version)
+    return schema
+
+
 def load_pages_site(
     repository: str,
     *,
@@ -304,12 +345,14 @@ def check_deploy(args: argparse.Namespace) -> None:
     version = validate_version(args.version)
     base_url = normalize_base_url(args.base_url)
     artifact = schema_artifact_name(version)
+    stream_artifact = stream_schema_artifact_name(version)
 
     urls = [
         ("site root", page_url(base_url)),
         ("version docs", page_url(base_url, f"{version}/")),
         ("versions.json", page_url(base_url, "versions.json")),
         (artifact, page_url(base_url, artifact)),
+        (stream_artifact, page_url(base_url, stream_artifact)),
     ]
     if args.expect_latest:
         urls.insert(2, ("latest docs", page_url(base_url, "latest/")))
@@ -364,6 +407,16 @@ def check_deploy(args: argparse.Namespace) -> None:
         ),
     )
     print(f"ok: docs-deploy: schema artifact {artifact}")
+
+    retry_check(
+        "stream schema artifact semantic check",
+        retries=args.retries,
+        retry_delay=args.retry_delay,
+        operation=lambda: validate_stream_schema_payload(
+            page_url(base_url, stream_artifact), version, timeout=args.timeout
+        ),
+    )
+    print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
 
     if args.repository:
         site = load_pages_site(

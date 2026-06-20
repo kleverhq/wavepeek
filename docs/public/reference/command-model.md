@@ -55,11 +55,11 @@ Unresolved names are errors. In scoped `change` and `property` mode, canonical f
 
 ## 5. Human-Readable and Machine-Readable Modes
 
-Waveform commands default to human-readable output. Machine-readable output is enabled explicitly with `--json`.
+Waveform commands default to human-readable output. Machine-readable output is enabled explicitly with `--json` for a complete JSON envelope or `--jsonl` for a newline-delimited stream of records.
 
-Human-readable output is optimized for compact operator use and may vary when formatting improvements are made. Machine-readable output is strict and versioned through the JSON schema contract described in `machine-output` and exposed by `wavepeek schema`.
+Human-readable output is optimized for compact operator use and may vary when formatting improvements are made. Machine-readable output is strict and versioned through the schema contracts described in `machine-output` and exposed by `wavepeek schema`. Use `--json` when a client wants one complete result document. Use `--jsonl` when a client wants to consume waveform rows incrementally.
 
-`schema` is a special case: it always prints one JSON Schema document to stdout and never wraps that payload in the normal command envelope. The non-waveform `docs` command family and the human-only `skill` command have their own help and narrative-doc semantics in `commands/docs` and `commands/skill`; only `docs topics --json` and `docs search --json` participate in the stable JSON envelope.
+`schema` is a special case: it always prints one JSON Schema document to stdout and never wraps that payload in the normal command envelope. `wavepeek schema` prints the JSON envelope schema; `wavepeek schema --stream` prints the JSONL record schema. The non-waveform `docs` command family and the human-only `skill` command have their own help and narrative-doc semantics in `commands/docs` and `commands/skill`; only `docs topics --json` and `docs search --json` participate in the stable JSON envelope. Helper commands do not support `--jsonl` output.
 
 ## 6. Bounded Output and Diagnostic Semantics
 

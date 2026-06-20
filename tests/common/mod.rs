@@ -20,6 +20,15 @@ pub fn expected_schema_url() -> &'static str {
 }
 
 #[allow(dead_code)]
+pub fn expected_stream_schema_url() -> &'static str {
+    concat!(
+        "https://kleverhq.github.io/wavepeek/wavepeek-stream-v",
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        ".json"
+    )
+}
+
+#[allow(dead_code)]
 pub fn fixture_path(filename: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests")

@@ -90,3 +90,16 @@ wavepeek JSON output envelope
 ```
 
 This keeps the schema matched to the binary's major-version contract. A current `1.x` build prints the same bytes as `schema/wavepeek_v1.json`.
+
+## Fetch the JSONL stream record schema
+
+Waveform commands support `--jsonl` for newline-delimited JSON streams. A JSONL stream is a sequence of independent JSON objects, so the stream schema validates one record at a time rather than the whole stdout stream.
+
+Use `--stream` to print that record schema:
+
+```text
+$ wavepeek schema --stream | jq -r '.title'
+wavepeek JSONL stream record
+```
+
+A current `1.x` build prints the same bytes as `schema/wavepeek-stream-v1.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.

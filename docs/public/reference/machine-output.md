@@ -1,7 +1,7 @@
 ---
 id: reference/machine-output
 title: Machine Output Contract
-description: Stable stdout, stderr, JSON envelope, diagnostic, schema, fatal-error, and exit-code behavior.
+description: Stable stdout, stderr, JSON envelope, JSONL stream, diagnostic, schema, fatal-error, and exit-code behavior.
 section: reference
 see_also:
   - reference/command-model
@@ -10,7 +10,7 @@ see_also:
 ---
 # Machine Output Contract
 
-This document is normative for stdout, stderr, JSON-mode behavior, schema linkage, diagnostics, and exit codes.
+This document is normative for stdout, stderr, JSON-mode behavior, JSONL stream behavior, schema linkage, diagnostics, and exit codes.
 
 ## 1. Stdout and Stderr Responsibilities
 
@@ -18,6 +18,7 @@ On success, a command writes its main payload to stdout.
 
 - In human-readable mode, non-fatal diagnostics are written to stderr as plain text.
 - In `--json` mode, non-fatal diagnostics are carried inside the JSON payload.
+- In `--jsonl` mode, waveform commands write one JSON object per stdout line; non-fatal diagnostics are diagnostic records in that stream.
 - In `schema` mode, stdout contains exactly one JSON Schema document.
 
 On failure, stdout is empty. Process-level failures are reported on stderr only.
@@ -58,7 +59,35 @@ The exact JSON shapes for every command are defined by the current major artifac
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
-## 3. `schema` Command Behavior
+## 3. JSONL Stream for Waveform Commands
+
+Waveform commands also support `--jsonl` for newline-delimited JSON output. JSONL means each stdout line is an independent JSON object, and the full stdout stream is not wrapped in an array.
+
+A successful stream has these record types:
+
+```jsonl
+{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
+{"type":"item","seq":1,"command":"change","item":{"time":"5ns","signals":[{"path":"top.clk","value":"1'h1"}]}}
+{"type":"diagnostic","seq":2,"command":"change","diagnostic":{"kind":"warning","code":"WPK-W0002","message":"truncated output to 1 entries (use --max to increase limit)"}}
+{"type":"end","seq":3,"command":"change","summary":{"status":"ok","items":1,"diagnostics":1,"truncated":true}}
+```
+
+Rules for successful JSONL streams:
+
+- `begin` is first and has `seq: 0`.
+- `seq` increases by one for every record.
+- `command` is stable across the stream.
+- `item` records carry the same row payload shape used inside `--json` data arrays for that command.
+- `diagnostic` records carry the same diagnostic object shape used by `--json`.
+- `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
+
+The checked-in stream schema, such as `schema/wavepeek-stream-v1.json`, validates one JSONL record at a time. Consumers must validate stream-level invariants themselves: first record is `begin`, last successful record is `end`, sequence numbers are contiguous, commands match, and summary counts match the records seen.
+
+If the process exits non-zero or a stream lacks a final `end` record, treat the stream as incomplete. A consumer that intentionally closes stdout early, for example by piping to `head`, may stop the producer without a fatal error.
+
+`--json` and `--jsonl` are mutually exclusive. `--jsonl` is available only on waveform-inspection commands: `info`, `scope`, `signal`, `value`, `change`, and `property`.
+
+## 4. `schema` Command Behavior
 
 `wavepeek schema` is the authority for the machine-readable output contract.
 
@@ -68,9 +97,11 @@ Its behavior is special and fixed:
 - it accepts no command-specific flags or positional arguments,
 - it writes exactly one JSON Schema document to stdout,
 - it does not wrap that document in the normal command envelope, and
-- its output bytes match the canonical artifact for the running major version, such as `schema/wavepeek_v1.json`.
+- without selectors, its output bytes match the canonical JSON envelope artifact for the running major version, such as `schema/wavepeek_v1.json`.
 
-## 4. Diagnostic Behavior
+`wavepeek schema --stream` prints the canonical JSONL record schema for the running major version, such as `schema/wavepeek-stream-v1.json`. That schema describes one stream record, not a whole JSONL stream.
+
+## 5. Diagnostic Behavior
 
 Diagnostics do not change the exit code. A command can therefore succeed with diagnostics.
 
@@ -79,7 +110,8 @@ Common diagnostic cases include truncated output, explicitly disabled limits, an
 Diagnostic transport depends on the output mode:
 
 - human-readable mode sends diagnostics to stderr,
-- `--json` mode stores diagnostics in the envelope's `diagnostics` array.
+- `--json` mode stores diagnostics in the envelope's `diagnostics` array,
+- `--jsonl` mode stores diagnostics as `diagnostic` records before the final `end` record.
 
 Human-readable diagnostics use these formats:
 
@@ -91,7 +123,7 @@ error[WPK-E0001]: <message>
 
 When `DEBUG=1` is set, commands may also write debug event lines to stderr. These lines are independent of command diagnostics and fatal errors. Each debug line is a JSON object with `kind: "debug"`, `message`, `timestamp_ns`, and an object-valued `details` field. The `details` content is intentionally free-form.
 
-## 5. Fatal Error Format and Exit Codes
+## 6. Fatal Error Format and Exit Codes
 
 Process-level failures are fail-fast and machine-parseable. The stderr format is:
 
@@ -111,6 +143,6 @@ Exit codes are stable at the process level:
 
 Fatal errors are never wrapped in the JSON success envelope. Even in `--json` mode, stdout stays empty on failure and stderr carries the formatted fatal line.
 
-## 6. Human Output Flexibility
+## 7. Human Output Flexibility
 
 Human-readable output is part of the user experience, but it is intentionally less rigid than the machine contract. Commands may improve human formatting over time as long as they preserve the semantic guarantees documented in `command-model` and the stricter cases called out by command-specific help or tests.

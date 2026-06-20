@@ -124,6 +124,15 @@ $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data 
 
 Human output is for quick inspection. `--json` is the stable machine contract.
 
+For long searches or incremental consumers, use `--jsonl`. It streams one JSON object per line: `begin`, one `item` per captured property row, optional `diagnostic` records, and a final `end` summary. Validate each line with `wavepeek schema --stream`, and require the final `end` record before treating the result as complete.
+
+```text
+$ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --jsonl
+{"type":"begin","seq":0,"command":"property","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
+{"type":"item","seq":1,"command":"property","item":{"time":"10ns","kind":"match"}}
+{"type":"end","seq":2,"command":"property","summary":{"status":"ok","items":1,"diagnostics":0,"truncated":false}}
+```
+
 ## Trigger expressions you will actually use
 
 Common `--on` patterns:

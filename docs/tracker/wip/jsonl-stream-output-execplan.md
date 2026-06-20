@@ -37,7 +37,9 @@ This plan does not require a runtime JSON Schema validation dependency in the sh
 - [x] (2026-06-19 00:00Z) Implemented initial output-mode plumbing: waveform-only `--jsonl` args, `OutputMode`, JSONL writer, buffered JSONL adapter, `schema --stream`, and the checked-in stream schema artifact.
 - [x] (2026-06-19 00:00Z) Refactored `change` to stream snapshots through a sink for the JSONL path, with an engine-level sentinel sink test proving emission errors stop during execution.
 - [x] (2026-06-19 00:00Z) Refactored `property` to stream capture rows through a sink for the JSONL path, with an engine-level sentinel sink test proving emission errors stop during execution.
-- [ ] Add end-to-end JSONL CLI/schema/publication tests and docs updates.
+- [x] (2026-06-19 00:00Z) Added end-to-end JSONL CLI tests, stream schema tests, schema-contract checks, docs publication helper coverage, and public/architecture docs updates.
+- [ ] Run focused code/docs/contract review on the implemented feature and fix findings.
+- [ ] Run final quality gates and open a draft PR.
 
 ## Surprises & Discoveries
 

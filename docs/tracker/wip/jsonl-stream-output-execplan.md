@@ -39,6 +39,7 @@ This plan does not require a runtime JSON Schema validation dependency in the sh
 - [x] (2026-06-19 00:00Z) Refactored `property` to stream capture rows through a sink for the JSONL path, with an engine-level sentinel sink test proving emission errors stop during execution.
 - [x] (2026-06-19 00:00Z) Added end-to-end JSONL CLI tests, stream schema tests, schema-contract checks, docs publication helper coverage, and public/architecture docs updates.
 - [x] (2026-06-19 00:00Z) Ran focused code, contract/docs, and performance review lanes. Fixed contract doc wording, stream-schema deploy gating for pre-JSONL versions, direct JSONL serialization, property stream begin timing, and bounded baseline sample-cache retention.
+- [x] (2026-06-19 00:00Z) Ran a final control review and fixed the remaining baseline cache pruning gap by pruning on non-emitting loop paths.
 - [ ] Run final quality gates and open a draft PR.
 
 ## Surprises & Discoveries

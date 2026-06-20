@@ -674,6 +674,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
         };
 
         if timestamp <= baseline_raw {
+            sample_cache.retain_only(timestamp);
             continue;
         }
 
@@ -689,6 +690,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
         let should_emit =
             should_emit_delta_and_update_baseline(&mut previous_values, &current_values);
         if !should_emit {
+            sample_cache.retain_only(timestamp);
             continue;
         }
 
@@ -698,6 +700,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
             tracked_signals: tracked_signal_handles,
         };
         if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
+            sample_cache.retain_only(timestamp);
             continue;
         }
 

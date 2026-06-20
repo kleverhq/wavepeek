@@ -1,4 +1,4 @@
-# Manual Performance Gate Without Committed Baselines
+# Manual Performance Gate With Current Tooling
 
 This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
 
@@ -6,90 +6,93 @@ This document is maintained in accordance with the `exec-plan` skill.
 
 ## Purpose / Big Picture
 
-After this change, maintainers can screen selected release benchmarks by comparing two explicit source revisions in one controlled local environment instead of trusting committed benchmark snapshots or noisy GitHub-hosted runners. A maintainer runs `just bench-gate <baseline-ref> <revised-ref>`, which clones both revisions under `tmp/bench-gate/`, builds both before measurement, prepares optional FSDB fixtures before FSDB measurement, captures FST end-to-end, FSDB end-to-end, and expression benchmark artifacts, then compares baseline versus revised results.
+After this change, maintainers can compare two release binaries with one current benchmark apparatus instead of comparing two historical checkouts that each bring their own benchmark scripts, catalogs, fixtures, and Criterion microbenchmarks. A maintainer runs `just bench-gate <baseline-ref> <revised-ref>`, the helper builds `wavepeek` binaries from those refs, then measures both binaries through the benchmark tools and catalogs from the current working tree. This makes the gate answer the release question directly: whether user-visible CLI behavior regressed when the same current end-to-end tests run against two selected binaries.
 
-The gate compares like with like for timing: FST baseline versus FST revised, FSDB baseline versus FSDB revised, and expression baseline versus expression revised. It also performs cross-format FST-versus-FSDB functional checks inside each ref so FSDB payload parity is verified without pretending FST and FSDB timing are comparable. Generated benchmark artifacts are ignored local evidence, not repository source.
+The gate will only hard-fail on end-to-end CLI timing and functional parity. Same-format timing means FST baseline binary versus FST revised binary and, when FSDB is available, FSDB baseline binary versus FSDB revised binary. Cross-format FST-versus-FSDB checks remain functional-only within each binary ref because FST and FSDB use different readers and their wall-clock timings are not comparable. Timing uses only median wall-clock time and allows a slowdown of `max(5%, 5ms)` so short commands are not failed by fixed millisecond-scale host jitter. Criterion expression microbenchmarks are removed from the repository because they are internal microbenchmarks, not release-gate evidence for user-visible CLI performance.
 
 ## Non-Goals
 
-This work will not add a GitHub Actions performance workflow. This work will not make performance benchmarks part of default pre-merge CI. This work will not store benchmark baseline runs in git. This work will not compare FST timing against FSDB timing. This work will not solve noisy-machine benchmarking with retries, self-hosted runners, or statistical modeling. This work will not require Verdi; FSDB benchmark capture remains optional and is skipped when the local Verdi environment is unavailable.
+This work will not add a GitHub Actions performance workflow. This work will not store benchmark baseline runs in git. This work will not compare FST timing against FSDB timing. This work will not solve noisy-machine benchmarking with self-hosted runners or statistical modeling. This work will not run the final release-like `just bench-gate v1.0.0 v1.0.1` validation until the maintainer explicitly requests it. This work will not keep Criterion as an advisory release-gate artifact; the expression microbenchmark harness is removed rather than demoted.
 
 ## Progress
 
 - [x] (2026-06-18 00:00Z) Rejected the original CI benchmark workflow direction in GitHub issue 24 and recorded the manual gate direction in an issue comment.
-- [x] (2026-06-18 00:35Z) Reviewed the original plan and accepted findings for artifact-set identity checks, FSDB pairing policy, dirty-worktree handling, and release documentation scope.
 - [x] (2026-06-18 03:30Z) Implemented and committed the first manual-gate version as `f3fd31c chore(bench): add manual performance gate`; it removed committed benchmark baselines and added public `just bench-gate`, `just bench-capture`, and `just bench-compare` entrypoints.
-- [x] (2026-06-19 18:05Z) Reproduced a manual gate FSDB failure for `v1.0.0` on `change_scr1_signals_100_pos_50_window_2ns_trigger_any`, traced it to VCD-style scalar element names in the generated FSDB catalog, and added gate-local runnable FSDB catalog filtering.
-- [x] (2026-06-19 22:50Z) Tested an interim follow-up that filtered FSDB scalar-element cases but over-corrected timing policy by making end-to-end comparison functional-only and broadening expression thresholds; this direction was superseded before final handoff.
-- [x] (2026-06-19 23:20Z) Agreed on the corrected benchmark policy: build both refs first, prepare both fixture sets before measurement, run baseline/revised suites in same-format pairs, compare same-format timing at 5%, and run cross-format checks only as functional parity checks.
 - [x] (2026-06-19 23:45Z) Split the overloaded helper into `tools/bench/common.py`, `tools/bench/capture.py`, `tools/bench/compare.py`, and a smaller `tools/bench/gate.py`; updated `justfile` to call the split scripts.
-- [x] (2026-06-19 23:55Z) Replaced the old gate unit tests with module-focused tests covering parser defaults, dirty-HEAD rejection without override, FSDB filtering, same-format timing compare, cross-format functional compare, standalone capture behavior, and gate execution order.
-- [x] (2026-06-20 00:10Z) Ran focused helper, e2e, expression, auxiliary, justfile-format, actionlint, and `just check` gates for the split helper; all passed.
-- [x] (2026-06-20 00:20Z) Requested implementation and docs review for the refactor. Code review returned no substantive findings; docs review found one wording issue in `docs/dev/benchmarking.md`, which was fixed.
-- [x] (2026-06-20 00:35Z) Re-ran `python3 -B -m unittest discover -s tools/bench -p 'test_*.py'` and `just check` after the docs wording fix; both passed.
-- [x] (2026-06-20 00:40Z) Committed the refactor locally.
+- [x] (2026-06-20 00:40Z) Committed the split-helper refactor locally as `54b28d8 refactor(bench): split manual gate helpers`.
+- [x] (2026-06-20 12:22Z) Ran three full `just bench-gate v1.0.0 v1.0.1` checks in a quieter environment. All captures completed and all compares failed, proving orchestration worked but the policy produced false positives for a null runtime change.
+- [x] (2026-06-20 18:00Z) Analyzed average, best-delta, best-median, warmup/runs, duration/noise, and version-wide slowdown hypotheses under `tmp/bench-gate/`. The data showed no broad `v1.0.1` runtime slowdown, exposed fixed millisecond-scale jitter in short tests, and showed Criterion can fail despite no runtime code changes.
+- [x] (2026-06-20 19:05Z) Agreed on the new direction: remove Criterion completely, use current benchmark tooling against binaries built from selected refs, and gate same-format end-to-end timing on median with `max(5%, 5ms)` allowed slowdown.
+- [ ] Update this ExecPlan and commit the plan.
+- [ ] Remove Criterion and expression microbenchmark files in a dedicated commit; run focused cleanup tests and request a dedicated review that verifies all references are gone.
+- [ ] Refactor the manual gate to build binaries from selected refs but capture and compare through current tooling; implement median-only `max(5%, 5ms)` timing policy; run focused tests and request implementation review.
+- [ ] Run project quality checks that do not execute the full benchmark gate.
+- [ ] Commit the harness/policy refactor locally and stop before any final `just bench-gate` validation.
 
 ## Surprises & Discoveries
 
 - Observation: The repository originally tracked 591 files under benchmark run directories, including FST, FSDB, and expression baseline artifacts.
   Evidence: `git ls-files 'bench/e2e/runs/*' 'bench/expr/runs/*' | wc -l` printed `591` before baseline removal.
-- Observation: The end-to-end comparator can pass partial intersections if used directly.
-  Evidence: Plan review found that `bench/e2e/perf.py compare` warns on revised-only or golden-only tests; the gate now checks end-to-end artifact sets before treating same-format comparisons as valid.
-- Observation: FSDB capture needs more than Verdi detection.
-  Evidence: Existing recipes prepare/check FSDB RTL artifacts, build with `--features fsdb`, and use `target/fsdb/release/wavepeek`; the gate mirrors that flow before running FSDB benchmarks.
-- Observation: The full generated FSDB catalog contains VCD-style scalar element signal paths that converted RTL FSDB fixtures do not expose under the same canonical names.
-  Evidence: Running the `v1.0.0` FSDB command for `change_scr1_signals_100_pos_50_window_2ns_trigger_any` failed with `fatal: signal: signal 'TOP.scr1_top_tb_axi.i_memory_tb.araddr.[0]' not found in dump`, while `wavepeek signal` listed `TOP.scr1_top_tb_axi.i_memory_tb.araddr[0] [31:0]`. Filtering tests with `.[` in command tokens skipped 12 of 142 FSDB tests and left 130 runnable FSDB tests.
-- Observation: The previous full-gate timing failures happened while other repository work was running, so they are not reliable evidence for changing thresholds.
-  Evidence: Logs from earlier attempts included cargo package-cache locking and concurrent work. The corrected policy returns to 5% same-format timing thresholds and treats noisy-machine failures as a reason to rerun in a quieter environment.
+- Observation: The generated FSDB catalog can contain VCD-style scalar element signal paths that converted RTL FSDB fixtures do not expose under the same canonical names.
+  Evidence: A `v1.0.0` FSDB command for `change_scr1_signals_100_pos_50_window_2ns_trigger_any` failed with `fatal: signal: signal 'TOP.scr1_top_tb_axi.i_memory_tb.araddr.[0]' not found in dump`, while `wavepeek signal` listed `TOP.scr1_top_tb_axi.i_memory_tb.araddr[0] [31:0]`. Gate-local runnable catalog filtering skipped 12 of 142 FSDB tests and left 130 runnable FSDB tests.
+- Observation: Three full gate runs of `v1.0.0` versus `v1.0.1` are a useful null experiment because `git diff v1.0.0..v1.0.1` changes release metadata, CI/docs/tests, and the package version but no runtime source or dependencies.
+  Evidence: The three full runs captured successfully but failed compare. Pooled timing deltas over all suites were approximately centered around zero, and there was no broad `v1.0.1` slowdown.
+- Observation: Short end-to-end tests suffer from fixed millisecond-scale host jitter.
+  Evidence: The duration/noise analysis under `tmp/bench-gate/duration-vs-noise-20260620/` found that tests under 75ms had about 1.5ms to 2ms typical absolute run-to-run range, enough to exceed a strict 5% relative threshold.
+- Observation: Criterion expression microbenchmarks do not belong in the release gate.
+  Evidence: Criterion failed in one of three null-experiment runs despite no runtime code changes. Its measurements target internal parser/binder/evaluator operations rather than user-visible CLI latency under real waveform workloads.
 
 ## Decision Log
 
-- Decision: Replace committed baseline artifacts with explicit baseline source revisions selected at gate time.
-  Rationale: A baseline ref is smaller, reviewable, and naturally tied to releases. It avoids storing generated JSON/CSV snapshots while still allowing maintainers to compare two revisions in one environment.
+- Decision: Replace committed benchmark baselines with explicit baseline source revisions selected at gate time.
+  Rationale: A baseline ref is small, reviewable, and naturally tied to releases. It avoids storing generated JSON/CSV snapshots while still allowing maintainers to compare two revisions in one environment.
   Date/Author: 2026-06-18 / Grin
 - Decision: Do not add a GitHub Actions benchmark workflow for this issue.
   Rationale: GitHub-hosted runners are noisy, and a heavy manual benchmark workflow would add friction for forks and contributors without producing authoritative performance decisions.
   Date/Author: 2026-06-18 / Grin
-- Decision: Keep FSDB benchmark capture optional by default with an `auto` mode, but treat asymmetric support as a comparison failure.
-  Rationale: FSDB requires a local Synopsys Verdi installation that many contributors and CI environments do not have. If Verdi is available and only one ref supports FSDB, silently skipping would hide a feature or performance regression; maintainers can explicitly choose `never` when they intentionally skip FSDB review.
-  Date/Author: 2026-06-18 / Grin
-- Decision: Split benchmark helper responsibilities across `common.py`, `capture.py`, `compare.py`, and `gate.py`.
-  Rationale: The original single `gate.py` mixed capture, compare, gate orchestration, and shared utilities. Separate scripts keep the public `just` entrypoints simple while making each helper easier to test and review.
-  Date/Author: 2026-06-19 / Grin
-- Decision: Remove the dirty-source override.
-  Rationale: The gate benchmarks committed refs. If a maintainer asks to benchmark `HEAD` while the source worktree is dirty, the helper must fail and ask for a commit or stash. Tags and explicit SHAs are unaffected by unrelated local edits.
-  Date/Author: 2026-06-19 / Grin
-- Decision: Build both refs and prepare both FSDB fixture sets before benchmark measurement, then run suites in baseline/revised pairs.
-  Rationale: Build and fixture preparation are prerequisites, not performance signals. Pairing FST baseline/revised, FSDB baseline/revised, and expression baseline/revised reduces avoidable drift compared with a large all-baseline then all-revised block.
-  Date/Author: 2026-06-19 / Grin
-- Decision: Same-format FST, same-format FSDB, and expression comparisons use timing thresholds; cross-format FST-versus-FSDB checks are functional-only.
-  Rationale: FST versus FSDB timing crosses file formats and readers and is not a meaningful performance comparison. Cross-format checks still matter for payload parity. Same-format comparisons remain the release timing screen and default to 5% maximum negative delta.
-  Date/Author: 2026-06-19 / Grin
-- Decision: FSDB gate capture writes and uses a gate-local runnable catalog that excludes tests with VCD-style scalar element paths containing `.[`.
-  Rationale: The committed FSDB catalog is generated by path replacement from the FST catalog, but converted FSDB fixtures expose some array element signals under FSDB-specific names. Old release refs cannot be changed, so the gate filters non-runnable FSDB scenarios at capture time and records the skip list instead of aborting the entire release performance screen.
-  Date/Author: 2026-06-19 / Grin
+- Decision: Remove Criterion expression microbenchmarks entirely.
+  Rationale: The release gate should measure user-visible CLI behavior. Internal microbenchmarks can detect function-level changes that users do not observe and add noise, maintenance, dependencies, and an incompatible source-ref-based benchmark model. If expression performance matters for release decisions, it should be represented by current end-to-end expression-heavy CLI scenarios.
+  Date/Author: 2026-06-20 / Grin
+- Decision: End-to-end benchmark tooling, catalogs, fixtures, FSDB preparation scripts, and compare scripts come from the current working tree; selected refs provide only the subject binaries.
+  Rationale: The benchmark apparatus should be one ruler. Historical tags cannot be updated when the benchmark harness is fixed. Measuring old and new binaries with current tooling applies catalog and normalization fixes consistently and avoids comparing different benchmark scripts against each other.
+  Date/Author: 2026-06-20 / Grin
+- Decision: The current tooling worktree must be clean before `bench-gate` or `bench-capture` runs.
+  Rationale: If current scripts and catalogs define the measurement apparatus, uncommitted local edits would make the gate irreproducible. Requiring a clean worktree records the tooling SHA as durable provenance.
+  Date/Author: 2026-06-20 / Grin
+- Decision: Same-format end-to-end timing gates on median only, with an allowed slowdown of `max(golden_median * 5%, 0.005 seconds)`.
+  Rationale: Mean wall-clock time is sensitive to rare scheduler or I/O stalls. Median is more stable for hyperfine timing. A 5ms absolute floor prevents short commands from failing on fixed host jitter while preserving a 5% relative threshold for longer commands.
+  Date/Author: 2026-06-20 / Grin
+- Decision: Cross-format FST-versus-FSDB checks remain functional-only hard gates.
+  Rationale: FST and FSDB timing is not comparable, but payload parity matters. Current tooling should own any needed catalog filtering or functional normalization.
+  Date/Author: 2026-06-20 / Grin
 
 ## Outcomes & Retrospective
 
-The corrected design is complete and committed locally. It keeps committed benchmark baselines removed, preserves the public `just` interface, splits helper implementation by responsibility, restores 5% same-format timing thresholds, validates cross-format parity functionally, and records FSDB runnable-catalog skips in capture manifests. Focused tests, review, and `just check` pass. Full `just bench-gate` is intentionally not rerun during this refactor because the user asked not to run it while other work may add noise.
+The previous split-helper design is committed locally, but analysis of three null-experiment full gate runs showed that the policy and capture model are still too noisy and too historical-tooling-dependent for release use. This milestone replaces the gate with a simpler current-tooling model, removes Criterion completely, and changes E2E timing to median plus an absolute jitter floor. The final release-like `just bench-gate v1.0.0 v1.0.1` validation is intentionally deferred until the maintainer asks for it.
 
 ## Context and Orientation
 
-`wavepeek` is a Rust command-line tool for deterministic waveform inspection. Performance coverage lives under `bench/`. The end-to-end benchmark harness is `bench/e2e/perf.py`; it reads JSON benchmark catalogs such as `bench/e2e/tests.json`, runs the `wavepeek` binary through `hyperfine`, captures functional `wavepeek --json` payloads, writes one `*.hyperfine.json` and one `*.wavepeek.json` per test, writes `README.md`, and can compare two run directories with a maximum allowed negative timing delta. A negative timing delta means the revised run is slower than the golden run. The FSDB catalog is `bench/e2e/tests_fsdb.json`; FSDB means Fast Signal Database, a proprietary waveform format read through the optional Synopsys Verdi FSDB Reader SDK.
+`wavepeek` is a Rust command-line tool for deterministic waveform inspection. The end-to-end benchmark harness is `bench/e2e/perf.py`; it reads benchmark catalogs such as `bench/e2e/tests.json`, runs a selected `wavepeek` binary through `hyperfine`, captures functional `wavepeek --json` payloads, writes one `*.hyperfine.json` and one `*.wavepeek.json` per test, and can compare two run directories. Hyperfine is an external command-line timing tool. A run directory is a directory containing those JSON artifacts for one binary and one suite.
 
-The expression microbenchmark harness is `bench/expr/perf.py`; it runs Rust Criterion benchmark targets registered in `Cargo.toml`, exports one raw CSV per scenario, writes `summary.json`, writes `README.md`, and can compare two expression run directories against a negative delta threshold. Criterion is a Rust benchmarking library.
+FST and FSDB are waveform file formats. FST is open and handled through the normal release binary. FSDB is proprietary and requires the optional Synopsys Verdi FSDB Reader SDK; an FSDB-enabled binary is built with `cargo build --release --features fsdb` and stored under `target/fsdb/release/wavepeek`. FSDB capture is automatic in `auto` mode when Verdi and both binary refs support FSDB, skipped when Verdi is unavailable, and failed when support is asymmetric while Verdi is available.
 
-The root `justfile` is the stable local automation interface. Public benchmark recipes are `bench-gate`, `bench-capture`, and `bench-compare`. Low-level benchmark recipes remain private development helpers. Generated benchmark artifacts live under ignored directories such as `tmp/bench-gate/`, `bench/e2e/runs/`, and `bench/expr/runs/`.
+The root `justfile` is the stable local automation interface. Public benchmark recipes are `bench-gate`, `bench-capture`, and `bench-compare`. Generated benchmark artifacts live under ignored directories such as `tmp/bench-gate/` and `bench/e2e/runs/`.
 
-The helper group under `tools/bench/` has four scripts. `common.py` owns shared subprocess, git, JSON, timestamp, and output-directory helpers. `capture.py` owns one-ref capture and FSDB runnable-catalog generation. `compare.py` owns same-format timing comparisons plus cross-format functional comparisons. `gate.py` owns the two-ref release orchestration.
+The helper group under `tools/bench/` has four scripts. `common.py` owns shared subprocess, git, JSON, timestamp, and output-directory helpers. `capture.py` owns one-binary capture and FSDB runnable-catalog generation. `compare.py` owns same-format timing comparisons plus cross-format functional comparisons. `gate.py` owns the two-ref release orchestration.
 
 ## Open Questions
 
-There are no blocking open questions. The implementation uses 5% as the default maximum negative delta for same-format FST, same-format FSDB, and expression timing comparisons. Cross-format FST-versus-FSDB comparisons are functional-only and allow FST-only extra tests when the FSDB runnable catalog is a subset.
+There are no blocking open questions. The implementation should keep the public `just` entrypoints stable. `bench-capture <ref>` must use current tooling against the binary built from `<ref>`, matching `bench-gate` semantics. `bench-compare` remains a standalone comparison over existing capture directories using current compare scripts.
 
 ## Plan of Work
 
-The current milestone is a refactor of the already committed manual gate. First, keep the public `just` recipes stable while changing them to call the split helper scripts directly. Second, move shared code into `tools/bench/common.py`, one-ref capture into `tools/bench/capture.py`, comparison into `tools/bench/compare.py`, and two-ref orchestration into `tools/bench/gate.py`. Third, make the gate sequence explicit: clone both refs, assess FSDB support, initialize capture directories, build both release binaries, build both FSDB release binaries when enabled, prepare both FSDB fixture sets when enabled, run all FST end-to-end captures baseline then revised, run all FSDB end-to-end captures baseline then revised, run expression captures baseline then revised, finalize manifests, and compare all artifacts. Fourth, update docs and tests to match the corrected behavior.
+The current milestone has two implementation commits after this plan commit.
+
+First, remove Criterion completely. Delete `bench/expr/`, remove the Criterion dependency and `[[bench]]` target entries from `Cargo.toml`, update `Cargo.lock`, remove the private `bench-expr-run` recipe, remove expression benchmark runs from `tools/bench/capture.py`, `tools/bench/compare.py`, and `tools/bench/gate.py`, and update docs/tests that mention expression microbenchmarks. Run focused tests that prove no Python unit test suite still references `bench/expr`, and request a review focused only on cleanup completeness.
+
+Second, refactor the gate so selected refs provide only compiled binaries. `tools/bench/gate.py` should still clone both refs under the gate output directory and build both release binaries before measurement. `tools/bench/capture.py` should treat `REPO_ROOT` as the tooling root and the cloned checkout as the binary source root. End-to-end capture must run `python3 -B bench/e2e/perf.py run` with `cwd=REPO_ROOT`, current benchmark catalogs, current fixtures, and `WAVEPEEK_BIN` pointing at the binary in the cloned checkout. FSDB preparation and catalog checks should run once through current tools and current catalogs; the generated runnable catalog should be written into each capture directory so manifests preserve the skip list used for that capture. Capture manifests should record both `tooling_sha` and `binary_sha`.
+
+The E2E comparator should fail timing only when median slowdown exceeds both the relative and absolute allowances, expressed as `revised_median - golden_median > max(golden_median * threshold_pct / 100, threshold_seconds)`. The default threshold remains 5%, and the default absolute floor is 0.005 seconds. Mean remains available in reports and hyperfine artifacts but is no longer a gate timing metric. The compare manifest should record both timing threshold values and identify median as the gating metric.
 
 ### Concrete Steps
 
@@ -99,19 +102,49 @@ From repository root `/workspaces/wavepeek`, keep these stable user commands:
     just bench-capture [ref] [fsdb-mode]
     just bench-compare <golden-capture-dir> <revised-capture-dir>
 
-The `justfile` should call:
+After the refactor, `bench-gate` and `bench-capture` must refuse to run if the current tooling worktree is dirty, regardless of whether the selected ref is a tag, SHA, or `HEAD`. This is separate from the old `HEAD`-only dirty check and exists because current scripts and catalogs are now part of the measurement.
 
-    python3 -B tools/bench/gate.py --baseline-ref <baseline-ref> --revised-ref <revised-ref> --fsdb <mode>
-    python3 -B tools/bench/capture.py --ref <ref> --fsdb <mode>
-    python3 -B tools/bench/compare.py --golden <dir> --revised <dir>
+Remove these source artifacts:
 
-`tools/bench/gate.py` should expose `--max-negative-delta-pct` with default 5.0 and should not expose `--allow-dirty-source`. If `HEAD` is requested from a dirty source worktree, the helper should fail before cloning. `tools/bench/compare.py` should use the same default threshold for FST, FSDB, and expression same-format timing. It should run cross-format FST-versus-FSDB checks with `bench/e2e/perf.py compare --functional-only --allow-golden-extra`.
+    bench/expr/
+    criterion from Cargo.toml dev-dependencies
+    expr_* [[bench]] targets from Cargo.toml
+    private bench-expr-run just recipe
 
-Run focused tests after implementation:
+Update these helper paths:
 
-    python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
+    tools/bench/capture.py
+    tools/bench/compare.py
+    tools/bench/gate.py
+    tools/bench/test_gate.py
+    bench/e2e/perf.py
+    bench/e2e/test_perf.py
+    justfile
+
+Update these docs as needed:
+
+    docs/dev/benchmarking.md
+    docs/dev/quality.md
+    docs/dev/automation.md
+    docs/dev/fsdb.md
+    docs/dev/release.md
+    tools/bench/README.md
+    bench/AGENTS.md
+
+Run focused validation after Criterion removal:
+
+    rg -n "criterion|bench/expr|bench-expr|expr_syntax|expr_logical|expr_event|expr_waveform_host" . --glob '!target/**' --glob '!tmp/**'
+    cargo check
     python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'
-    python3 -B -m unittest discover -s bench/expr -p 'test_*.py'
+    python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
+
+The search should return no source references except this ExecPlan while it remains in `docs/tracker/wip/`.
+
+Run focused validation after the harness/policy refactor:
+
+    python3 -B -m py_compile tools/bench/common.py tools/bench/capture.py tools/bench/compare.py tools/bench/gate.py bench/e2e/perf.py
+    python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'
+    python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
     just test-aux
     just format-justfile-check
     just check-actions
@@ -120,19 +153,17 @@ If the environment supports the full project gates, run:
 
     just check
 
-Do not run full `just bench-gate` during this refactor unless the user asks for it again.
+Do not run `just bench-gate ...` in this milestone until the maintainer explicitly gives permission.
 
 ### Validation and Acceptance
 
-Unit tests should prove that parser defaults match the stable interface, dirty `HEAD` is rejected without an override, FSDB support policy behaves as expected, FSDB runnable-catalog filtering records skipped scalar-element tests, same-format FST/FSDB/expr comparisons include timing thresholds, cross-format checks are functional-only with FST extras allowed, and gate orchestration runs build and fixture preparation before paired measurement.
+Unit tests should prove that Criterion is absent from source, the public benchmark recipes still point at the manual gate helpers, dirty current tooling is rejected, selected refs are built as binaries, current `bench/e2e/perf.py` is used for capture, current FSDB tools are used for preparation, compare no longer requires expression artifacts, same-format timing invokes median-only compare with a 5ms absolute floor, and cross-format checks remain functional-only.
 
-A full release-like acceptance run, when explicitly requested, is:
+A full release-like acceptance run, when explicitly requested later, is:
 
-    just bench-gate <previous-release-tag> HEAD
+    just bench-gate v1.0.0 v1.0.1
 
-A successful gate directory should contain `baseline/`, `revised/`, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. Each capture should contain `manifest.json`, `README.md`, `logs/`, `e2e-fst/`, `expr/`, and optionally `e2e-fsdb/`. If FSDB is captured, each capture manifest should include the generated runnable catalog path and skipped test names. The compare manifest should show same-format FST, same-format FSDB when present, expression, and cross-format functional checks.
-
-The repository should no longer track generated benchmark run artifacts. Running `git ls-files 'bench/e2e/runs/*' 'bench/expr/runs/*'` should list only `bench/e2e/runs/.gitignore` and `bench/expr/runs/.gitignore`.
+A successful gate directory should contain `baseline/`, `revised/`, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. Each capture should contain `manifest.json`, `README.md`, `logs/`, `e2e-fst/`, and optionally `e2e-fsdb/`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with median timing and `absolute_slowdown_floor_seconds` recorded for same-format suites.
 
 ### Idempotence and Recovery
 
@@ -144,16 +175,22 @@ If benchmark capture fails halfway, the partial output directory and logs should
 
 Issue 24 has been updated with the rejected CI direction and selected manual gate direction. The comment URL is `https://github.com/kleverhq/wavepeek/issues/24#issuecomment-4748912184`.
 
-The latest full gate artifact from before this refactor is `tmp/bench-gate/gates/20260619T211137Z-a93aad1db823..81777d4e939e/`. It is useful historical evidence but should not be treated as validation for the current refactor because the helper behavior has changed.
+Recent analysis artifacts are local ignored evidence under `tmp/bench-gate/`, especially:
+
+    tmp/bench-gate/manual-three-runs-20260620T122235Z/
+    tmp/bench-gate/virtual-best-median-20260620T122235Z-3runs/
+    tmp/bench-gate/duration-vs-noise-20260620/
+
+These artifacts explain the policy change but should not be committed.
 
 ### Interfaces and Dependencies
 
 The helper scripts must use only Python standard-library modules. Each script should expose `main(argv: Sequence[str] | None = None) -> int` and return process exit codes rather than calling `sys.exit` deep inside helper functions. The stable public interface is the root `justfile`, not direct helper paths.
 
-`tools/bench/capture.py` must invoke benchmark harnesses from the selected checkout with `cwd` set to that checkout so catalogs and benchmark sources come from the selected ref. `tools/bench/compare.py` may invoke comparison harnesses from the current repository so standalone `just bench-compare` works with existing capture directories.
+`tools/bench/capture.py` must invoke current benchmark harnesses from `REPO_ROOT` and must set `WAVEPEEK_BIN` to the selected binary path. `tools/bench/compare.py` invokes current comparison harnesses from `REPO_ROOT`. Capture manifests must distinguish current tooling provenance from binary source provenance.
 
 ### Revision Notes
 
 - 2026-06-18 / Grin: Initial plan created after discussion switched issue 24 away from CI-collected benchmark artifacts and toward a manual source-ref comparison gate.
-- 2026-06-18 / Grin: Revised plan after architecture/code and docs/release-process review. Added dirty-source handling, e2e artifact identity checks, explicit FSDB build/preparation flow, pairwise FSDB skip policy, `docs/dev/fsdb.md` updates, and patch-release skip recording.
-- 2026-06-19 / Grin: Revised plan after real local runs exposed FSDB runnable-catalog issues and after discussion corrected timing policy. The plan now requires split helper scripts, 5% same-format timing comparisons, cross-format functional-only checks, no dirty-state override, and no full gate run during this refactor.
+- 2026-06-19 / Grin: Revised plan after real local runs exposed FSDB runnable-catalog issues and after discussion corrected timing policy.
+- 2026-06-20 / Grin: Replaced the previous source-ref-tooling plan with the current-tooling plan after three full null-experiment gate runs showed false positives. Added complete Criterion removal, current-tooling capture semantics, median-only E2E timing, and a 5ms absolute slowdown floor.

@@ -24,7 +24,7 @@ README_NAME = "README.md"
 WAVEPEEK_BIN_ENV = "WAVEPEEK_BIN"
 EMOJI_THRESHOLD_PCT = 3.0
 METRICS = ("mean", "stddev", "median", "min", "max")
-COMPARE_TIMING_METRICS = ("mean", "median")
+COMPARE_TIMING_METRIC = "median"
 HYPERFINE_SUFFIX = ".hyperfine.json"
 WAVEPEEK_SUFFIX = ".wavepeek.json"
 FUNCTIONAL_MATCH_MARKER = "✅"
@@ -943,6 +943,9 @@ def cmd_compare(args: argparse.Namespace) -> int:
     threshold = float(args.max_negative_delta_pct)
     if threshold < 0:
         fail("error: compare: --max-negative-delta-pct must be non-negative")
+    threshold_seconds = float(getattr(args, "max_negative_delta_seconds", 0.0) or 0.0)
+    if threshold_seconds < 0:
+        fail("error: compare: --max-negative-delta-seconds must be non-negative")
 
     revised = load_hyperfine_results(revised_dir)
     golden = load_hyperfine_results(golden_dir)
@@ -964,18 +967,21 @@ def cmd_compare(args: argparse.Namespace) -> int:
         revised_row = revised[test_name]
         golden_row = golden[test_name]
 
-        for metric in COMPARE_TIMING_METRICS:
-            delta = delta_pct(float(revised_row[metric]), float(golden_row[metric]))
-            if delta is not None and delta < -threshold:
-                speed = format_speed_factor(
-                    float(revised_row[metric]),
-                    float(golden_row[metric]),
-                )
-                timing_failures.append(
-                    f"{test_name}: {metric} revised={float(revised_row[metric]):.6f}s, "
-                    f"golden={float(golden_row[metric]):.6f}s, "
-                    f"delta={delta:+.2f}%, speed={speed}"
-                )
+        metric = COMPARE_TIMING_METRIC
+        revised_time = float(revised_row[metric])
+        golden_time = float(golden_row[metric])
+        delta = delta_pct(revised_time, golden_time)
+        allowed_slowdown = max(golden_time * threshold / 100.0, threshold_seconds)
+        actual_slowdown = revised_time - golden_time
+        if actual_slowdown > allowed_slowdown:
+            speed = format_speed_factor(revised_time, golden_time)
+            delta_text = "n/a" if delta is None else f"{delta:+.2f}%"
+            timing_failures.append(
+                f"{test_name}: {metric} revised={revised_time:.6f}s, "
+                f"golden={golden_time:.6f}s, delta={delta_text}, "
+                f"slowdown={actual_slowdown:.6f}s, allowed={allowed_slowdown:.6f}s, "
+                f"speed={speed}"
+            )
 
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(
             revised_dir,
@@ -1031,8 +1037,8 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
         if timing_failures:
             print(
-                "error: compare: mean/median regression exceeds allowed negative delta "
-                f"({threshold:.2f}%):",
+                "error: compare: median regression exceeds allowed slowdown "
+                f"(max({threshold:.2f}%, {threshold_seconds:.6f}s)):",
                 file=sys.stderr,
             )
             for issue in timing_failures:
@@ -1123,7 +1129,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         required=False,
         type=float,
-        help="fail when mean or median delta goes below negative threshold",
+        help="relative median slowdown threshold",
+    )
+    compare_parser.add_argument(
+        "--max-negative-delta-seconds",
+        required=False,
+        type=float,
+        default=0.0,
+        help="absolute median slowdown floor in seconds",
     )
     compare_parser.add_argument(
         "--functional-only",

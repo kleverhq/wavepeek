@@ -145,6 +145,7 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertTrue(args.functional_only)
         self.assertTrue(args.allow_golden_extra)
         self.assertIsNone(args.max_negative_delta_pct)
+        self.assertEqual(args.max_negative_delta_seconds, 0.0)
 
     def test_run_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
@@ -171,6 +172,7 @@ class PerfHelpersTest(unittest.TestCase):
             ]
         )
         self.assertFalse(default_args.verbose)
+        self.assertEqual(default_args.max_negative_delta_seconds, 0.0)
 
         short_args = parser.parse_args(
             [
@@ -663,7 +665,7 @@ class PerfHelpersTest(unittest.TestCase):
                 exit_code = perf.cmd_compare(args)
 
         self.assertEqual(exit_code, 1)
-        self.assertIn("sample: mean revised=2.000000s", stderr.getvalue())
+        self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
 
     def test_cmd_compare_fails_on_median_regression(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -700,6 +702,85 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
+
+    def test_cmd_compare_ignores_mean_regression_when_median_is_stable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json", mean=2.0, median=1.0
+            )
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json", mean=1.0, median=1.0
+            )
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                verbose=True,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_cmd_compare_applies_absolute_slowdown_floor(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 0.104)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 0.100)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.005,
+                verbose=True,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_cmd_compare_fails_when_absolute_slowdown_floor_is_exceeded(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 0.106)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 0.100)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.005,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("allowed=0.005000s", stderr.getvalue())
 
     def test_cmd_compare_non_verbose_success_has_concise_ok_line(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

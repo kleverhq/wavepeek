@@ -15,6 +15,7 @@ from typing import Any
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 DEFAULT_OUTPUT_ROOT = pathlib.Path("tmp/bench-gate")
 DEFAULT_TIMING_THRESHOLD_PCT = 5.0
+DEFAULT_TIMING_THRESHOLD_SECONDS = 0.005
 FSDB_SKIP_STATUS = 77
 CAPTURE_SCHEMA_VERSION = 1
 COMPARE_SCHEMA_VERSION = 1
@@ -190,18 +191,22 @@ def worktree_status(source_root: pathlib.Path) -> str:
     ).stdout.strip()
 
 
+def enforce_clean_worktree(source_root: pathlib.Path, *, reason: str) -> None:
+    status = worktree_status(source_root)
+    if status:
+        raise BenchGateError(f"source worktree is dirty; {reason}")
+
+
 def enforce_clean_source_for_head_refs(
     source_root: pathlib.Path,
     refs: Sequence[str],
 ) -> None:
     if "HEAD" not in refs:
         return
-    status = worktree_status(source_root)
-    if status:
-        raise BenchGateError(
-            "source worktree is dirty but HEAD clones only committed state; "
-            "commit or stash changes before benchmarking HEAD"
-        )
+    enforce_clean_worktree(
+        source_root,
+        reason="HEAD clones only committed state; commit or stash changes before benchmarking HEAD",
+    )
 
 
 def clone_checkout(source_root: pathlib.Path, sha: str, checkout_dir: pathlib.Path) -> None:

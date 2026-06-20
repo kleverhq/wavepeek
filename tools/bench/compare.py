@@ -11,12 +11,15 @@ from typing import Any
 from common import (
     COMPARE_SCHEMA_VERSION,
     DEFAULT_TIMING_THRESHOLD_PCT,
+    DEFAULT_TIMING_THRESHOLD_SECONDS,
     REPO_ROOT,
     BenchGateError,
     CompareResult,
+    enforce_clean_worktree,
     ensure_empty_dir,
     make_default_output_dir,
     relative_to,
+    resolve_ref,
     run_command,
     utc_now,
     write_json,
@@ -73,7 +76,9 @@ def run_e2e_compare(
     golden: pathlib.Path,
     revised: pathlib.Path,
     compare_dir: pathlib.Path,
+    tooling_root: pathlib.Path,
     threshold_pct: float,
+    threshold_seconds: float,
     functional_only: bool,
     allow_golden_extra: bool = False,
 ) -> dict[str, Any]:
@@ -87,7 +92,7 @@ def run_e2e_compare(
     args = [
         "python3",
         "-B",
-        str(REPO_ROOT / "bench/e2e/perf.py"),
+        str(tooling_root / "bench/e2e/perf.py"),
         "compare",
         "--revised",
         str(revised),
@@ -100,13 +105,20 @@ def run_e2e_compare(
         if allow_golden_extra:
             args.append("--allow-golden-extra")
     else:
-        args.extend(["--max-negative-delta-pct", str(threshold_pct)])
+        args.extend(
+            [
+                "--max-negative-delta-pct",
+                str(threshold_pct),
+                "--max-negative-delta-seconds",
+                str(threshold_seconds),
+            ]
+        )
 
     log_path = compare_dir / f"{name}.log"
     result = run_command(
         f"compare-{name}",
         args,
-        cwd=REPO_ROOT,
+        cwd=tooling_root,
         log_path=log_path,
         check=False,
     )
@@ -115,6 +127,8 @@ def run_e2e_compare(
         "status": status,
         "returncode": result.returncode,
         "threshold_pct": None if functional_only else threshold_pct,
+        "threshold_seconds": None if functional_only else threshold_seconds,
+        "timing_metric": None if functional_only else "median",
         "functional_only": functional_only,
         "allow_golden_extra": allow_golden_extra,
         "log_path": relative_to(log_path, compare_dir),
@@ -142,7 +156,12 @@ def render_compare_summary(manifest: Mapping[str, Any]) -> str:
             if suite.get("functional_only"):
                 text += " (functional-only)"
             elif suite.get("threshold_pct") is not None:
-                text += f" (threshold {suite['threshold_pct']}%)"
+                threshold_seconds = suite.get("threshold_seconds")
+                timing_metric = suite.get("timing_metric") or "timing"
+                if threshold_seconds is not None:
+                    text += f" ({timing_metric} threshold max({suite['threshold_pct']}%, {threshold_seconds}s))"
+                else:
+                    text += f" ({timing_metric} threshold {suite['threshold_pct']}%)"
             if suite.get("reason"):
                 text += f" — {suite['reason']}"
             if suite.get("log_path"):
@@ -157,13 +176,17 @@ def compare_captures(
     golden_dir: pathlib.Path,
     revised_dir: pathlib.Path,
     compare_dir: pathlib.Path,
+    tooling_root: pathlib.Path = REPO_ROOT,
     timing_threshold_pct: float = DEFAULT_TIMING_THRESHOLD_PCT,
+    timing_threshold_seconds: float = DEFAULT_TIMING_THRESHOLD_SECONDS,
 ) -> CompareResult:
     if not golden_dir.is_dir():
         raise BenchGateError(f"golden capture directory does not exist: {golden_dir}")
     if not revised_dir.is_dir():
         raise BenchGateError(f"revised capture directory does not exist: {revised_dir}")
     ensure_empty_dir(compare_dir)
+    tooling_root = tooling_root.resolve()
+    tooling_sha = resolve_ref(tooling_root, "HEAD")
 
     suites: dict[str, dict[str, Any]] = {}
     failures: list[str] = []
@@ -174,7 +197,9 @@ def compare_captures(
             golden=golden_dir / "e2e-fst",
             revised=revised_dir / "e2e-fst",
             compare_dir=compare_dir,
+            tooling_root=tooling_root,
             threshold_pct=timing_threshold_pct,
+            threshold_seconds=timing_threshold_seconds,
             functional_only=False,
         ),
     }
@@ -206,7 +231,9 @@ def compare_captures(
                     golden=golden_fsdb,
                     revised=revised_fsdb,
                     compare_dir=compare_dir,
+                    tooling_root=tooling_root,
                     threshold_pct=timing_threshold_pct,
+                    threshold_seconds=timing_threshold_seconds,
                     functional_only=False,
                 )
             except BenchGateError as error:
@@ -237,7 +264,9 @@ def compare_captures(
                 golden=fst,
                 revised=fsdb,
                 compare_dir=compare_dir,
+                tooling_root=tooling_root,
                 threshold_pct=timing_threshold_pct,
+                threshold_seconds=timing_threshold_seconds,
                 functional_only=True,
                 allow_golden_extra=True,
             )
@@ -255,7 +284,11 @@ def compare_captures(
         "golden_dir": str(golden_dir),
         "revised_dir": str(revised_dir),
         "status": status,
+        "tooling_root": str(tooling_root),
+        "tooling_sha": tooling_sha,
         "timing_threshold_pct": timing_threshold_pct,
+        "timing_threshold_seconds": timing_threshold_seconds,
+        "timing_metric": "median",
         "suites": suites,
     }
     write_json(compare_dir / "manifest.json", manifest)
@@ -268,12 +301,19 @@ def compare_captures(
 
 
 def compare_command(args: argparse.Namespace) -> int:
+    source_root = args.source_root.resolve()
+    enforce_clean_worktree(
+        source_root,
+        reason="current benchmark tooling must be committed before compare",
+    )
     compare_dir = args.out_dir or make_default_output_dir("compares", "compare")
     result = compare_captures(
         golden_dir=args.golden.resolve(),
         revised_dir=args.revised.resolve(),
         compare_dir=compare_dir.resolve(),
+        tooling_root=source_root,
         timing_threshold_pct=args.max_negative_delta_pct,
+        timing_threshold_seconds=args.max_negative_delta_seconds,
     )
     print(f"comparison written to {result.compare_dir}")
     return result.exit_code
@@ -284,11 +324,18 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--golden", type=pathlib.Path, required=True)
     parser.add_argument("--revised", type=pathlib.Path, required=True)
     parser.add_argument("--out-dir", type=pathlib.Path)
+    parser.add_argument("--source-root", type=pathlib.Path, default=REPO_ROOT)
     parser.add_argument(
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="maximum allowed negative delta for same-format FST and FSDB timing",
+        help="relative median slowdown threshold for same-format FST and FSDB timing",
+    )
+    parser.add_argument(
+        "--max-negative-delta-seconds",
+        type=float,
+        default=DEFAULT_TIMING_THRESHOLD_SECONDS,
+        help="absolute median slowdown floor in seconds for same-format FST and FSDB timing",
     )
     return parser
 

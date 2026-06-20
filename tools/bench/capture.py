@@ -6,6 +6,7 @@ import argparse
 import dataclasses
 import pathlib
 import sys
+import tomllib
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -19,7 +20,7 @@ from common import (
     FsdbPlan,
     clone_checkout,
     command_to_manifest,
-    enforce_clean_source_for_head_refs,
+    enforce_clean_worktree,
     ensure_empty_dir,
     make_default_output_dir,
     read_json,
@@ -34,7 +35,9 @@ from common import (
 
 @dataclasses.dataclass
 class CaptureSession:
-    checkout: pathlib.Path
+    tooling_root: pathlib.Path
+    tooling_sha: str
+    binary_checkout: pathlib.Path
     capture_dir: pathlib.Path
     source_ref: str
     source_sha: str
@@ -48,7 +51,7 @@ class CaptureSession:
     fsdb_skipped_tests: list[str] = dataclasses.field(default_factory=list)
 
 
-def support_files_missing(checkout: pathlib.Path) -> list[str]:
+def support_files_missing(tooling_root: pathlib.Path) -> list[str]:
     required = [
         "tools/fsdb/check_fsdb_env.py",
         "tools/fsdb/generate_bench_catalog.py",
@@ -56,21 +59,38 @@ def support_files_missing(checkout: pathlib.Path) -> list[str]:
         "tools/fsdb/check_fsdb_bench_artifacts.py",
         "bench/e2e/tests_fsdb.json",
     ]
-    return [path for path in required if not (checkout / path).is_file()]
+    return [path for path in required if not (tooling_root / path).is_file()]
+
+
+def source_supports_fsdb(binary_checkout: pathlib.Path) -> bool:
+    cargo_toml = binary_checkout / "Cargo.toml"
+    try:
+        payload = tomllib.loads(cargo_toml.read_text(encoding="utf-8"))
+    except (FileNotFoundError, tomllib.TOMLDecodeError) as error:
+        raise BenchGateError(f"cannot read Cargo.toml for FSDB support check: {cargo_toml}: {error}") from error
+    features = payload.get("features")
+    return isinstance(features, dict) and "fsdb" in features
 
 
 def assess_fsdb(
-    checkout: pathlib.Path,
+    binary_checkout: pathlib.Path,
     *,
+    tooling_root: pathlib.Path,
     log_path: pathlib.Path,
     mode: str,
 ) -> FsdbPlan:
     if mode == "never":
         return FsdbPlan(capture=False, status="skipped", reason="FSDB disabled by --fsdb=never")
 
-    missing = support_files_missing(checkout)
+    missing = support_files_missing(tooling_root)
     if missing:
-        reason = "FSDB support files missing: " + ", ".join(missing)
+        reason = "current FSDB support files missing: " + ", ".join(missing)
+        if mode == "always":
+            raise BenchGateError(reason)
+        return FsdbPlan(capture=False, status="unsupported", reason=reason)
+
+    if not source_supports_fsdb(binary_checkout):
+        reason = f"binary source ref does not define the fsdb feature: {binary_checkout}"
         if mode == "always":
             raise BenchGateError(reason)
         return FsdbPlan(capture=False, status="unsupported", reason=reason)
@@ -78,7 +98,7 @@ def assess_fsdb(
     result = run_command(
         "check-fsdb-env",
         ["python3", "-B", "tools/fsdb/check_fsdb_env.py"],
-        cwd=checkout,
+        cwd=tooling_root,
         log_path=log_path,
         check=False,
     )
@@ -113,10 +133,12 @@ def resolve_gate_fsdb_plan(
             reason="Verdi FSDB Reader SDK unavailable",
         )
     if baseline.status == "unsupported" and revised.status == "unsupported":
+        reasons = [reason for reason in (baseline.reason, revised.reason) if reason]
+        detail = "; ".join(reasons) if reasons else "baseline and revised refs are unsupported"
         return FsdbPlan(
             capture=False,
             status="unsupported",
-            reason="FSDB support files missing in both refs",
+            reason="FSDB unsupported for both refs: " + detail,
         )
     raise BenchGateError(
         "FSDB support is asymmetric between baseline and revised refs while Verdi appears available; "
@@ -138,10 +160,10 @@ def fsdb_catalog_test_is_supported(test: Mapping[str, Any]) -> bool:
 
 def write_runnable_fsdb_catalog(
     *,
-    checkout: pathlib.Path,
+    tooling_root: pathlib.Path,
     capture_dir: pathlib.Path,
 ) -> tuple[pathlib.Path, list[str]]:
-    source = checkout / "bench/e2e/tests_fsdb.json"
+    source = tooling_root / "bench/e2e/tests_fsdb.json"
     payload = read_json(source)
     tests = payload.get("tests")
     if not isinstance(tests, list):
@@ -168,20 +190,25 @@ def write_runnable_fsdb_catalog(
     return output, skipped
 
 
-def capture_environment(checkout: pathlib.Path) -> dict[str, Any]:
+def capture_environment(*, tooling_root: pathlib.Path, binary_checkout: pathlib.Path) -> dict[str, Any]:
     return {
-        "cargo_version": tool_version(["cargo", "--version"], cwd=checkout),
-        "rustc_version": tool_version(["rustc", "--version"], cwd=checkout),
-        "hyperfine_version": tool_version(["hyperfine", "--version"], cwd=checkout),
-        "uname": tool_version(["uname", "-a"], cwd=checkout),
+        "binary_build": {
+            "cargo_version": tool_version(["cargo", "--version"], cwd=binary_checkout),
+            "rustc_version": tool_version(["rustc", "--version"], cwd=binary_checkout),
+        },
+        "tooling": {
+            "hyperfine_version": tool_version(["hyperfine", "--version"], cwd=tooling_root),
+            "uname": tool_version(["uname", "-a"], cwd=tooling_root),
+        },
     }
 
 
 def render_capture_readme(manifest: Mapping[str, Any]) -> str:
     lines = [
-        f"# Wavepeek Benchmark Capture: {manifest.get('source_ref', '<unknown>')}",
+        f"# Wavepeek Benchmark Capture: {manifest.get('binary_ref', manifest.get('source_ref', '<unknown>'))}",
         "",
-        f"Source SHA: `{manifest.get('source_sha', '<unknown>')}`",
+        f"Binary SHA: `{manifest.get('binary_sha', manifest.get('source_sha', '<unknown>'))}`",
+        f"Tooling SHA: `{manifest.get('tooling_sha', '<unknown>')}`",
         f"Generated: `{manifest.get('generated_at_utc', '<unknown>')}`",
         "",
         "## Suites",
@@ -208,7 +235,9 @@ def render_capture_readme(manifest: Mapping[str, Any]) -> str:
 
 def init_capture_session(
     *,
-    checkout: pathlib.Path,
+    tooling_root: pathlib.Path,
+    tooling_sha: str,
+    binary_checkout: pathlib.Path,
     capture_dir: pathlib.Path,
     source_ref: str,
     source_sha: str,
@@ -220,7 +249,9 @@ def init_capture_session(
     logs_dir = capture_dir / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     return CaptureSession(
-        checkout=checkout,
+        tooling_root=tooling_root,
+        tooling_sha=tooling_sha,
+        binary_checkout=binary_checkout,
         capture_dir=capture_dir,
         source_ref=source_ref,
         source_sha=source_sha,
@@ -238,7 +269,7 @@ def build_release(session: CaptureSession) -> None:
         run_command(
             "build-release",
             ["cargo", "build", "--release"],
-            cwd=session.checkout,
+            cwd=session.binary_checkout,
             log_path=session.logs_dir / "build-release.log",
         )
     )
@@ -251,10 +282,19 @@ def build_release_fsdb(session: CaptureSession) -> None:
         run_command(
             "build-release-fsdb",
             ["cargo", "build", "--release", "--features", "fsdb"],
-            cwd=session.checkout,
+            cwd=session.binary_checkout,
             log_path=session.logs_dir / "build-release-fsdb.log",
             env={"CARGO_TARGET_DIR": "target/fsdb"},
         )
+    )
+
+
+def write_fsdb_capture_catalog(session: CaptureSession) -> None:
+    if not session.fsdb_plan.capture:
+        return
+    session.fsdb_catalog, session.fsdb_skipped_tests = write_runnable_fsdb_catalog(
+        tooling_root=session.tooling_root,
+        capture_dir=session.capture_dir,
     )
 
 
@@ -265,7 +305,7 @@ def prepare_fsdb(session: CaptureSession) -> None:
         run_command(
             "fsdb-check-env-required",
             ["python3", "-B", "tools/fsdb/check_fsdb_env.py", "--require"],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "fsdb-check-env-required.log",
         )
     )
@@ -273,7 +313,7 @@ def prepare_fsdb(session: CaptureSession) -> None:
         run_command(
             "fsdb-check-catalog",
             ["python3", "-B", "tools/fsdb/generate_bench_catalog.py", "--check"],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "fsdb-check-catalog.log",
         )
     )
@@ -281,19 +321,16 @@ def prepare_fsdb(session: CaptureSession) -> None:
         run_command(
             "fsdb-prepare-fixtures",
             ["bash", "tools/fsdb/prepare_fsdb_fixtures.sh"],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "fsdb-prepare-fixtures.log",
         )
     )
-    session.fsdb_catalog, session.fsdb_skipped_tests = write_runnable_fsdb_catalog(
-        checkout=session.checkout,
-        capture_dir=session.capture_dir,
-    )
+    write_fsdb_capture_catalog(session)
     session.commands.append(
         run_command(
             "fsdb-check-artifacts",
             ["python3", "-B", "tools/fsdb/check_fsdb_bench_artifacts.py", str(session.fsdb_catalog)],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "fsdb-check-artifacts.log",
         )
     )
@@ -311,9 +348,9 @@ def run_e2e_fst(session: CaptureSession) -> None:
                 "--run-dir",
                 str(session.capture_dir / "e2e-fst"),
             ],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "bench-e2e-fst.log",
-            env={"WAVEPEEK_BIN": str(session.checkout / "target/release/wavepeek")},
+            env={"WAVEPEEK_BIN": str(session.binary_checkout / "target/release/wavepeek")},
         )
     )
     session.suites["e2e-fst"] = {"status": "passed", "path": "e2e-fst"}
@@ -337,9 +374,9 @@ def run_e2e_fsdb(session: CaptureSession) -> None:
                 "--run-dir",
                 str(session.capture_dir / "e2e-fsdb"),
             ],
-            cwd=session.checkout,
+            cwd=session.tooling_root,
             log_path=session.logs_dir / "bench-e2e-fsdb.log",
-            env={"WAVEPEEK_BIN": str(session.checkout / "target/fsdb/release/wavepeek")},
+            env={"WAVEPEEK_BIN": str(session.binary_checkout / "target/fsdb/release/wavepeek")},
         )
     )
     session.suites["e2e-fsdb"] = {
@@ -364,10 +401,17 @@ def finalize_capture(session: CaptureSession) -> CaptureResult:
         "generated_at_utc": utc_now().isoformat().replace("+00:00", "Z"),
         "source_ref": session.source_ref,
         "source_sha": session.source_sha,
-        "checkout_path": str(session.checkout),
+        "binary_ref": session.source_ref,
+        "binary_sha": session.source_sha,
+        "binary_checkout_path": str(session.binary_checkout),
+        "tooling_sha": session.tooling_sha,
+        "tooling_root": str(session.tooling_root),
         "fsdb_mode": session.fsdb_mode,
         "environment_note": session.environment_note,
-        "environment": capture_environment(session.checkout),
+        "environment": capture_environment(
+            tooling_root=session.tooling_root,
+            binary_checkout=session.binary_checkout,
+        ),
         "suites": session.suites,
         "commands": [command_to_manifest(command, session.capture_dir) for command in session.commands],
     }
@@ -378,7 +422,9 @@ def finalize_capture(session: CaptureSession) -> CaptureResult:
 
 def capture_checkout(
     *,
-    checkout: pathlib.Path,
+    tooling_root: pathlib.Path,
+    tooling_sha: str,
+    binary_checkout: pathlib.Path,
     capture_dir: pathlib.Path,
     source_ref: str,
     source_sha: str,
@@ -390,12 +436,15 @@ def capture_checkout(
     logs_dir = capture_dir / "logs"
     logs_dir.mkdir(parents=True, exist_ok=True)
     effective_fsdb_plan = fsdb_plan or assess_fsdb(
-        checkout,
+        binary_checkout,
+        tooling_root=tooling_root,
         log_path=logs_dir / "fsdb-check-env.log",
         mode=fsdb_mode,
     )
     session = CaptureSession(
-        checkout=checkout,
+        tooling_root=tooling_root,
+        tooling_sha=tooling_sha,
+        binary_checkout=binary_checkout,
         capture_dir=capture_dir,
         source_ref=source_ref,
         source_sha=source_sha,
@@ -419,14 +468,20 @@ def capture_checkout(
 def capture_ref(args: argparse.Namespace) -> int:
     source_root = args.source_root.resolve()
     source_sha = resolve_ref(source_root, args.ref)
-    enforce_clean_source_for_head_refs(source_root, [args.ref])
+    tooling_sha = resolve_ref(source_root, "HEAD")
+    enforce_clean_worktree(
+        source_root,
+        reason="current benchmark tooling must be committed before capture",
+    )
     out_dir = args.out_dir or make_default_output_dir("captures", source_sha[:12])
     out_dir = out_dir.resolve()
     ensure_empty_dir(out_dir)
     checkout = out_dir / "checkout"
     clone_checkout(source_root, source_sha, checkout)
     capture_checkout(
-        checkout=checkout,
+        tooling_root=source_root,
+        tooling_sha=tooling_sha,
+        binary_checkout=checkout,
         capture_dir=out_dir / "run",
         source_ref=args.ref,
         source_sha=source_sha,

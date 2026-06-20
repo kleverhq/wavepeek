@@ -17,16 +17,18 @@ from capture import (
     init_capture_session,
     prepare_fsdb,
     resolve_gate_fsdb_plan,
+    write_fsdb_capture_catalog,
     run_e2e_fsdb,
     run_e2e_fst,
 )
 from common import (
     DEFAULT_TIMING_THRESHOLD_PCT,
+    DEFAULT_TIMING_THRESHOLD_SECONDS,
     GATE_SCHEMA_VERSION,
     REPO_ROOT,
     BenchGateError,
     clone_checkout,
-    enforce_clean_source_for_head_refs,
+    enforce_clean_worktree,
     ensure_empty_dir,
     make_default_output_dir,
     resolve_ref,
@@ -57,7 +59,11 @@ def gate_command(args: argparse.Namespace) -> int:
     source_root = args.source_root.resolve()
     baseline_sha = resolve_ref(source_root, args.baseline_ref)
     revised_sha = resolve_ref(source_root, args.revised_ref)
-    enforce_clean_source_for_head_refs(source_root, [args.baseline_ref, args.revised_ref])
+    tooling_sha = resolve_ref(source_root, "HEAD")
+    enforce_clean_worktree(
+        source_root,
+        reason="current benchmark tooling must be committed before running the gate",
+    )
 
     out_dir = args.out_dir or make_default_output_dir(
         "gates",
@@ -75,18 +81,22 @@ def gate_command(args: argparse.Namespace) -> int:
     preflight_dir = out_dir / "logs"
     baseline_fsdb = assess_fsdb(
         baseline_checkout,
+        tooling_root=source_root,
         log_path=preflight_dir / "baseline-fsdb-check-env.log",
         mode=args.fsdb,
     )
     revised_fsdb = assess_fsdb(
         revised_checkout,
+        tooling_root=source_root,
         log_path=preflight_dir / "revised-fsdb-check-env.log",
         mode=args.fsdb,
     )
     gate_fsdb_plan = resolve_gate_fsdb_plan(baseline_fsdb, revised_fsdb, mode=args.fsdb)
 
     baseline = init_capture_session(
-        checkout=baseline_checkout,
+        tooling_root=source_root,
+        tooling_sha=tooling_sha,
+        binary_checkout=baseline_checkout,
         capture_dir=out_dir / "baseline",
         source_ref=args.baseline_ref,
         source_sha=baseline_sha,
@@ -95,7 +105,9 @@ def gate_command(args: argparse.Namespace) -> int:
         environment_note=args.environment_note,
     )
     revised = init_capture_session(
-        checkout=revised_checkout,
+        tooling_root=source_root,
+        tooling_sha=tooling_sha,
+        binary_checkout=revised_checkout,
         capture_dir=out_dir / "revised",
         source_ref=args.revised_ref,
         source_sha=revised_sha,
@@ -105,15 +117,15 @@ def gate_command(args: argparse.Namespace) -> int:
     )
 
     # Keep preparation work out of the measured section. Build both refs first,
-    # then prepare both fixture sets, then run each measured suite for baseline
-    # and revised in same-format pairs before comparing artifacts.
+    # then prepare current FSDB fixtures when needed, then run each measured
+    # suite for baseline and revised in same-format pairs before comparing artifacts.
     build_release(baseline)
     build_release(revised)
     if gate_fsdb_plan.capture:
         build_release_fsdb(baseline)
         build_release_fsdb(revised)
         prepare_fsdb(baseline)
-        prepare_fsdb(revised)
+        write_fsdb_capture_catalog(revised)
 
     run_e2e_fst(baseline)
     run_e2e_fst(revised)
@@ -128,7 +140,9 @@ def gate_command(args: argparse.Namespace) -> int:
         golden_dir=out_dir / "baseline",
         revised_dir=out_dir / "revised",
         compare_dir=out_dir / "compare",
+        tooling_root=source_root,
         timing_threshold_pct=args.max_negative_delta_pct,
+        timing_threshold_seconds=args.max_negative_delta_seconds,
     )
 
     status = "passed" if compare.exit_code == 0 else "failed"
@@ -141,9 +155,12 @@ def gate_command(args: argparse.Namespace) -> int:
         "revised_ref": args.revised_ref,
         "revised_sha": revised_sha,
         "source_root": str(source_root),
+        "tooling_sha": tooling_sha,
         "fsdb_mode": args.fsdb,
         "fsdb_plan": dataclasses.asdict(gate_fsdb_plan),
         "timing_threshold_pct": args.max_negative_delta_pct,
+        "timing_threshold_seconds": args.max_negative_delta_seconds,
+        "timing_metric": "median",
         "compare": {"status": status, "path": "compare"},
         "execution_order": [
             "build baseline release",
@@ -176,7 +193,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-negative-delta-pct",
         type=float,
         default=DEFAULT_TIMING_THRESHOLD_PCT,
-        help="maximum allowed negative delta for same-format FST and FSDB timing",
+        help="relative median slowdown threshold for same-format FST and FSDB timing",
+    )
+    parser.add_argument(
+        "--max-negative-delta-seconds",
+        type=float,
+        default=DEFAULT_TIMING_THRESHOLD_SECONDS,
+        help="absolute median slowdown floor in seconds for same-format FST and FSDB timing",
     )
     parser.add_argument(
         "--environment-note",

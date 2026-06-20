@@ -27,8 +27,13 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-20 19:30Z) Removed Criterion and expression microbenchmark files, removed expression benchmark capture/compare steps, and ran focused syntax, unit, and `cargo check` validation.
 - [x] (2026-06-20 19:45Z) Dedicated cleanup review found stale environment-note help, pre-commit metadata, and root breadcrumb references; all were corrected.
 - [x] (2026-06-20 19:55Z) Re-ran focused validation after cleanup fixes: syntax checks, tools/bench tests, bench/e2e tests, `cargo check`, `just test-aux`, and stale-reference search all passed.
-- [ ] Commit Criterion removal locally.
-- [ ] Refactor the manual gate to build binaries from selected refs but capture and compare through current tooling; implement median-only `max(5%, 5ms)` timing policy; run focused tests and request implementation review.
+- [x] (2026-06-20 20:00Z) Committed Criterion removal locally as `fcc849b chore(bench): remove expression microbenchmarks`.
+- [x] (2026-06-20 20:25Z) Refactored manual gate capture to build selected refs as binaries but run current E2E tooling, and changed E2E compare to median-only timing with a `max(5%, 5ms)` slowdown allowance.
+- [x] (2026-06-20 20:40Z) Ran focused validation for the harness/policy refactor: syntax checks, tools/bench tests, bench/e2e tests, `cargo check`, `just test-aux`, `just format-justfile-check`, and `just check-actions` passed.
+- [x] (2026-06-20 21:10Z) Implementation review found a tooling-root mismatch in standalone compare and a misleading both-unsupported FSDB reason; both were fixed, and focused tests plus `just test-aux` passed again.
+- [x] (2026-06-20 21:35Z) Control review found dirty-tooling provenance missing from standalone compare and a summary that omitted the 5ms floor; both were fixed, focused tests passed, and `just check` passed.
+- [x] (2026-06-20 21:45Z) Final control re-check returned no substantive findings.
+- [x] (2026-06-20 21:50Z) Committed the harness/policy refactor locally as `refactor(bench): use current tooling for performance gate`.
 - [ ] Run project quality checks that do not execute the full benchmark gate.
 - [ ] Commit the harness/policy refactor locally and stop before any final `just bench-gate` validation.
 
@@ -71,7 +76,7 @@ This work will not add a GitHub Actions performance workflow. This work will not
 
 ## Outcomes & Retrospective
 
-The previous split-helper design is committed locally, but analysis of three null-experiment full gate runs showed that the policy and capture model are still too noisy and too historical-tooling-dependent for release use. This milestone replaces the gate with a simpler current-tooling model, removes Criterion completely, and changes E2E timing to median plus an absolute jitter floor. The final release-like `just bench-gate v1.0.0 v1.0.1` validation is intentionally deferred until the maintainer asks for it.
+Criterion removal and the current-tooling gate model are committed locally. The gate now uses current benchmark tooling against selected ref binaries and uses median timing with a 5ms absolute jitter floor. Focused tests, review, final control re-check, and `just check` pass. The final release-like `just bench-gate v1.0.0 v1.0.1` validation is intentionally deferred until the maintainer asks for it.
 
 ## Context and Orientation
 
@@ -166,7 +171,7 @@ A full release-like acceptance run, when explicitly requested later, is:
 
     just bench-gate v1.0.0 v1.0.1
 
-A successful gate directory should contain `baseline/`, `revised/`, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. Each capture should contain `manifest.json`, `README.md`, `logs/`, `e2e-fst/`, and optionally `e2e-fsdb/`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with median timing and `absolute_slowdown_floor_seconds` recorded for same-format suites.
+A successful gate directory should contain `baseline/`, `revised/`, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. Each capture should contain `manifest.json`, `README.md`, `logs/`, `e2e-fst/`, and optionally `e2e-fsdb/`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds` recorded for same-format suites.
 
 ### Idempotence and Recovery
 

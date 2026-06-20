@@ -98,7 +98,7 @@ just update-bench-e2e-fsdb-catalog
 just check-bench-e2e-fsdb-catalog
 ```
 
-FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared refs support FSDB. It writes a generated runnable catalog into the capture directory and records any skipped catalog tests, including VCD-style scalar element paths that converted RTL FSDB fixtures cannot resolve through release binaries. Gate comparison checks FSDB baseline versus FSDB revised with the same timing threshold used for FST. It also checks FST versus FSDB functional payload parity within each ref, allowing FST-only extra tests when the runnable FSDB catalog is a subset.
+FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared binary refs support FSDB. It builds the selected refs but uses the current checkout's FSDB tooling, fixtures, and catalogs for capture. It writes a generated runnable catalog into the capture directory and records any skipped catalog tests, including VCD-style scalar element paths that converted RTL FSDB fixtures cannot resolve through release binaries. Gate comparison checks FSDB baseline versus FSDB revised with the same median timing threshold and 5ms slowdown floor used for FST. It also checks FST versus FSDB functional payload parity within each ref, allowing FST-only extra tests when the runnable FSDB catalog is a subset.
 
 ```sh
 just bench-gate <baseline-ref> HEAD

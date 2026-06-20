@@ -28,11 +28,13 @@ class BenchGateHelperTest(unittest.TestCase):
             ["--golden", "golden", "--revised", "revised"]
         )
         self.assertEqual(compare_args.max_negative_delta_pct, common.DEFAULT_TIMING_THRESHOLD_PCT)
+        self.assertEqual(compare_args.max_negative_delta_seconds, common.DEFAULT_TIMING_THRESHOLD_SECONDS)
 
         gate_args = gate.build_parser().parse_args(["--baseline-ref", "v0.1.0"])
         self.assertEqual(gate_args.revised_ref, "HEAD")
         self.assertEqual(gate_args.fsdb, "auto")
         self.assertEqual(gate_args.max_negative_delta_pct, common.DEFAULT_TIMING_THRESHOLD_PCT)
+        self.assertEqual(gate_args.max_negative_delta_seconds, common.DEFAULT_TIMING_THRESHOLD_SECONDS)
         self.assertFalse(hasattr(gate_args, "allow_dirty_source"))
 
     def test_ensure_empty_dir_rejects_non_empty_output(self) -> None:
@@ -62,12 +64,26 @@ class BenchGateHelperTest(unittest.TestCase):
             common.enforce_clean_source_for_head_refs(source, ["v1.0.0"])
         status.assert_not_called()
 
+    def test_clean_worktree_required_for_current_tooling(self) -> None:
+        source = pathlib.Path("/repo")
+        with mock.patch.object(common, "worktree_status", return_value=" M bench/e2e/perf.py"):
+            with self.assertRaisesRegex(common.BenchGateError, "current benchmark tooling"):
+                common.enforce_clean_worktree(
+                    source,
+                    reason="current benchmark tooling must be committed before running the gate",
+                )
+
     def test_assess_fsdb_auto_skips_when_support_files_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
-            checkout = pathlib.Path(temp_dir)
+            checkout = pathlib.Path(temp_dir) / "checkout"
+            tooling = pathlib.Path(temp_dir) / "tooling"
+            checkout.mkdir()
+            tooling.mkdir()
+            (checkout / "Cargo.toml").write_text('[features]\nfsdb = []\n', encoding="utf-8")
             plan = capture.assess_fsdb(
                 checkout,
-                log_path=checkout / "fsdb.log",
+                tooling_root=tooling,
+                log_path=tooling / "fsdb.log",
                 mode="auto",
             )
 
@@ -105,7 +121,7 @@ class BenchGateHelperTest(unittest.TestCase):
             )
 
             output, skipped = capture.write_runnable_fsdb_catalog(
-                checkout=checkout,
+                tooling_root=checkout,
                 capture_dir=root / "capture",
             )
             payload = common.read_json(output)
@@ -126,6 +142,23 @@ class BenchGateHelperTest(unittest.TestCase):
 
             with self.assertRaises(common.BenchGateError):
                 compare.assert_matching_e2e_artifacts(golden, revised)
+
+    def test_compare_command_requires_clean_current_tooling(self) -> None:
+        args = argparse.Namespace(
+            golden=pathlib.Path("/golden"),
+            revised=pathlib.Path("/revised"),
+            out_dir=None,
+            source_root=pathlib.Path("/repo"),
+            max_negative_delta_pct=5.0,
+            max_negative_delta_seconds=0.005,
+        )
+        with mock.patch.object(
+            compare,
+            "enforce_clean_worktree",
+            side_effect=common.BenchGateError("dirty tooling"),
+        ):
+            with self.assertRaisesRegex(common.BenchGateError, "dirty tooling"):
+                compare.compare_command(args)
 
     def test_compare_captures_fails_when_required_suites_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -204,7 +237,9 @@ class BenchGateHelperTest(unittest.TestCase):
         )
         same_format = {name: args for name, args in calls[:2]}
         self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fst"])
+        self.assertIn("--max-negative-delta-seconds", same_format["compare-e2e-fst"])
         self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fsdb"])
+        self.assertIn("--max-negative-delta-seconds", same_format["compare-e2e-fsdb"])
         for name, args in calls[2:]:
             self.assertIn("--functional-only", args, name)
             self.assertIn("--allow-golden-extra", args, name)
@@ -254,7 +289,7 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
         self.assertEqual(result.manifest["suites"]["cross-golden-fst-fsdb"]["status"], "skipped")
 
-    def test_capture_checkout_uses_selected_checkout_harnesses(self) -> None:
+    def test_capture_checkout_uses_current_tooling_with_selected_binary(self) -> None:
         calls: list[tuple[str, list[str], pathlib.Path, dict[str, str] | None]] = []
 
         def fake_run_command(
@@ -280,13 +315,17 @@ class BenchGateHelperTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             checkout = root / "checkout"
+            tooling = root / "tooling"
             checkout.mkdir()
+            tooling.mkdir()
             with (
                 mock.patch.object(capture, "run_command", side_effect=fake_run_command),
                 mock.patch.object(capture, "tool_version", return_value="tool 1.0"),
             ):
                 result = capture.capture_checkout(
-                    checkout=checkout,
+                    tooling_root=tooling,
+                    tooling_sha="toolsha",
+                    binary_checkout=checkout,
                     capture_dir=root / "capture",
                     source_ref="HEAD",
                     source_sha="abc123",
@@ -300,9 +339,12 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
 
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "passed")
-        self.assertTrue(all(call[2] == checkout for call in calls))
+        self.assertEqual(result.manifest["binary_sha"], "abc123")
+        self.assertEqual(result.manifest["tooling_sha"], "toolsha")
+        self.assertEqual([call[2] for call in calls], [checkout, tooling])
         e2e_call = next(call for call in calls if call[0] == "bench-e2e-fst")
         self.assertIn("bench/e2e/perf.py", e2e_call[1])
+        self.assertEqual(e2e_call[2], tooling)
         self.assertEqual(
             e2e_call[3],
             {"WAVEPEEK_BIN": str(checkout / "target/release/wavepeek")},
@@ -336,11 +378,12 @@ class BenchGateHelperTest(unittest.TestCase):
                 out_dir=out_dir,
                 fsdb="auto",
                 max_negative_delta_pct=5.0,
+                max_negative_delta_seconds=0.005,
                 environment_note="test env",
             )
             with (
-                mock.patch.object(gate, "resolve_ref", side_effect=["aaa", "bbb"]),
-                mock.patch.object(gate, "enforce_clean_source_for_head_refs"),
+                mock.patch.object(gate, "resolve_ref", side_effect=["aaa", "bbb", "toolsha"]),
+                mock.patch.object(gate, "enforce_clean_worktree"),
                 mock.patch.object(gate, "clone_checkout", side_effect=lambda *a, **k: order.append("clone")),
                 mock.patch.object(gate, "assess_fsdb", return_value=common.FsdbPlan(capture=True, status="available")),
                 mock.patch.object(gate, "resolve_gate_fsdb_plan", return_value=common.FsdbPlan(capture=True, status="available")),
@@ -348,6 +391,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 mock.patch.object(gate, "build_release", side_effect=record("build")),
                 mock.patch.object(gate, "build_release_fsdb", side_effect=record("build-fsdb")),
                 mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
+                mock.patch.object(gate, "write_fsdb_capture_catalog", side_effect=record("fsdb-catalog")),
                 mock.patch.object(gate, "run_e2e_fst", side_effect=record("e2e-fst")),
                 mock.patch.object(gate, "run_e2e_fsdb", side_effect=record("e2e-fsdb")),
                 mock.patch.object(gate, "finalize_capture", side_effect=record("finalize")),
@@ -368,7 +412,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 "build-fsdb-baseline",
                 "build-fsdb-revised",
                 "prepare-fsdb-baseline",
-                "prepare-fsdb-revised",
+                "fsdb-catalog-revised",
                 "e2e-fst-baseline",
                 "e2e-fst-revised",
                 "e2e-fsdb-baseline",

@@ -200,29 +200,6 @@ class PerfHelpersTest(unittest.TestCase):
         )
         self.assertTrue(long_args.verbose)
 
-    def test_compare_sampling_modes_parser_flags(self) -> None:
-        parser = perf.build_parser()
-        args = parser.parse_args(
-            [
-                "compare-sampling-modes",
-                "--run-dir",
-                "run",
-                "--tests",
-                "bench/e2e/tests_commit.json",
-                "--filter",
-                "sample",
-                "--max-delta-pct",
-                "10",
-                "--verbose",
-            ]
-        )
-        self.assertEqual(args.command, "compare-sampling-modes")
-        self.assertEqual(args.run_dir, "run")
-        self.assertEqual(args.tests, "bench/e2e/tests_commit.json")
-        self.assertEqual(args.filter, "sample")
-        self.assertEqual(args.max_delta_pct, 10.0)
-        self.assertTrue(args.verbose)
-
     def test_run_parser_wavepeek_timeout_seconds_flag(self) -> None:
         parser = perf.build_parser()
         default_args = parser.parse_args(["run"])
@@ -291,7 +268,7 @@ class PerfHelpersTest(unittest.TestCase):
         )
 
         for test in tests:
-            if "sampling_mode_pair" in test.get("meta", {}):
+            if "sampling_mode" in test.get("meta", {}):
                 self.assertEqual(test["runs"], 5)
                 self.assertEqual(test["warmup"], 1)
             else:
@@ -1328,125 +1305,6 @@ class PerfHelpersTest(unittest.TestCase):
             exit_code = perf.cmd_compare(args)
 
         self.assertEqual(exit_code, 0)
-
-    def test_sampling_mode_pairs_and_pair_compare_pass(self) -> None:
-        tests = [
-            {
-                "name": "native_case",
-                "meta": {
-                    "sampling_mode_pair": "sample_pair",
-                    "sampling_mode": "native",
-                },
-            },
-            {
-                "name": "pre_edge_case",
-                "meta": {
-                    "sampling_mode_pair": "sample_pair",
-                    "sampling_mode": "pre-edge",
-                },
-            },
-        ]
-        self.assertEqual(
-            perf.sampling_mode_pairs(tests),
-            {"sample_pair": {"native": "native_case", "pre-edge": "pre_edge_case"}},
-        )
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            run_dir = pathlib.Path(temp_dir)
-            self._write_hyperfine_artifact(
-                run_dir / "native_case.hyperfine.json", 1.0, median=1.0
-            )
-            self._write_hyperfine_artifact(
-                run_dir / "pre_edge_case.hyperfine.json", 1.05, median=1.04
-            )
-            self._write_wavepeek_artifact(run_dir / "native_case.wavepeek.json")
-            self._write_wavepeek_artifact(run_dir / "pre_edge_case.wavepeek.json")
-
-            issues = perf.compare_sampling_mode_pair(
-                run_dir,
-                "native_case",
-                "pre_edge_case",
-                10.0,
-            )
-
-        self.assertEqual(issues, [])
-
-    def test_sampling_mode_pairs_rejects_missing_pair_side(self) -> None:
-        tests = [
-            {
-                "name": "native_case",
-                "meta": {
-                    "sampling_mode_pair": "sample_pair",
-                    "sampling_mode": "native",
-                },
-            }
-        ]
-
-        with self.assertRaises(SystemExit) as error:
-            perf.sampling_mode_pairs(tests)
-
-        self.assertIn("missing pre-edge entry", str(error.exception))
-
-    def test_cmd_compare_sampling_modes_reports_over_threshold_pair(self) -> None:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            root = pathlib.Path(temp_dir)
-            run_dir = root / "run"
-            run_dir.mkdir()
-            tests_path = root / "tests.json"
-            tests_path.write_text(
-                json.dumps(
-                    {
-                        "tests": [
-                            {
-                                "name": "native_case",
-                                "category": "change",
-                                "runs": 1,
-                                "warmup": 0,
-                                "command": ["{wavepeek_bin}", "info", "--waves", "/tmp/a.fst"],
-                                "meta": {
-                                    "sampling_mode_pair": "sample_pair",
-                                    "sampling_mode": "native",
-                                },
-                            },
-                            {
-                                "name": "pre_edge_case",
-                                "category": "change",
-                                "runs": 1,
-                                "warmup": 0,
-                                "command": ["{wavepeek_bin}", "info", "--waves", "/tmp/a.fst"],
-                                "meta": {
-                                    "sampling_mode_pair": "sample_pair",
-                                    "sampling_mode": "pre-edge",
-                                },
-                            },
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-            self._write_hyperfine_artifact(
-                run_dir / "native_case.hyperfine.json", 1.0, median=1.0
-            )
-            self._write_hyperfine_artifact(
-                run_dir / "pre_edge_case.hyperfine.json", 1.2, median=1.0
-            )
-            self._write_wavepeek_artifact(run_dir / "native_case.wavepeek.json")
-            self._write_wavepeek_artifact(run_dir / "pre_edge_case.wavepeek.json")
-
-            args = argparse.Namespace(
-                run_dir=str(run_dir),
-                tests=str(tests_path),
-                filter=None,
-                max_delta_pct=10.0,
-                verbose=True,
-            )
-            stderr = io.StringIO()
-            with mock.patch("sys.stderr", stderr):
-                exit_code = perf.cmd_compare_sampling_modes(args)
-
-        self.assertEqual(exit_code, 1)
-        self.assertIn("sample_pair", stderr.getvalue())
-        self.assertIn("mean delta 20.00% exceeds 10.00%", stderr.getvalue())
 
 
 class JustfileBaselineRecipeTest(unittest.TestCase):

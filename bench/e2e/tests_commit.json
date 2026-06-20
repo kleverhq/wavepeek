@@ -258,7 +258,6 @@
         "window_to": "1000ps",
         "signal_count": 1,
         "trigger": "posedge TOP.clk",
-        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -291,7 +290,6 @@
         "capture": "match",
         "trigger": "posedge TOP.clk",
         "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
-        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -322,7 +320,6 @@
         "window_to": "1000ps",
         "signal_count": 1,
         "trigger": "posedge TOP.clk",
-        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     },
@@ -355,7 +352,6 @@
         "capture": "match",
         "trigger": "posedge TOP.clk",
         "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
-        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     }

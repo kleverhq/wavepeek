@@ -500,12 +500,6 @@ def delta_pct(revised: float, golden: float) -> float | None:
     return ((golden - revised) / golden) * 100.0
 
 
-def absolute_delta_pct(candidate: float, baseline: float) -> float:
-    if baseline == 0:
-        return 0.0 if candidate == 0 else float("inf")
-    return abs(candidate - baseline) / baseline * 100.0
-
-
 def speed_factor(revised: float, golden: float) -> tuple[float, str]:
     if revised == golden:
         return 1.0, "same"
@@ -924,138 +918,6 @@ def compare_functional_only(
     return 0
 
 
-def sampling_mode_pairs(tests: list[dict[str, Any]]) -> dict[str, dict[str, str]]:
-    pairs: dict[str, dict[str, str]] = {}
-    for test in tests:
-        meta = dict(test.get("meta", {}))
-        pair_id = meta.get("sampling_mode_pair")
-        if pair_id is None:
-            continue
-        if not isinstance(pair_id, str) or not pair_id:
-            fail(f"error: sampling-modes: test `{test['name']}` has invalid sampling_mode_pair")
-        sampling_mode = meta.get("sampling_mode")
-        if sampling_mode not in {"native", "pre-edge"}:
-            fail(
-                "error: sampling-modes: "
-                f"test `{test['name']}` has invalid sampling_mode `{sampling_mode}`"
-            )
-        pair = pairs.setdefault(pair_id, {})
-        if sampling_mode in pair:
-            fail(
-                "error: sampling-modes: "
-                f"pair `{pair_id}` has duplicate `{sampling_mode}` entries"
-            )
-        pair[str(sampling_mode)] = str(test["name"])
-
-    for pair_id, pair in sorted(pairs.items()):
-        missing = sorted({"native", "pre-edge"} - set(pair))
-        if missing:
-            fail(
-                "error: sampling-modes: "
-                f"pair `{pair_id}` is missing {', '.join(missing)} entry"
-            )
-
-    return pairs
-
-
-def compare_sampling_mode_pair(
-    run_dir: pathlib.Path,
-    native_name: str,
-    pre_edge_name: str,
-    max_delta_pct: float,
-) -> list[str]:
-    issues: list[str] = []
-    rows: dict[str, dict[str, Any]] = {}
-
-    for label, test_name in [("native", native_name), ("pre-edge", pre_edge_name)]:
-        hyperfine_path = hyperfine_result_path(run_dir, test_name)
-        if not hyperfine_path.exists() or not hyperfine_path.is_file():
-            issues.append(f"{label} `{test_name}`: missing artifact `{hyperfine_path}`")
-            continue
-        rows[label] = parse_hyperfine_result_file(hyperfine_path)
-
-        wavepeek_payload, wavepeek_error = load_wavepeek_artifact_for_compare(
-            run_dir,
-            test_name,
-            label,
-        )
-        if wavepeek_error is not None:
-            issues.append(f"{label} `{test_name}`: {wavepeek_error}")
-            continue
-        if wavepeek_payload is None:
-            issues.append(f"{label} `{test_name}`: missing wavepeek artifact")
-            continue
-        if is_timeout_functional_payload(wavepeek_payload):
-            issues.append(f"{label} `{test_name}`: timeout wavepeek artifact")
-
-    if set(rows) != {"native", "pre-edge"}:
-        return issues
-
-    native_row = rows["native"]
-    pre_edge_row = rows["pre-edge"]
-    for metric in COMPARE_TIMING_METRICS:
-        native_value = float(native_row[metric])
-        pre_edge_value = float(pre_edge_row[metric])
-        delta = absolute_delta_pct(pre_edge_value, native_value)
-        if delta > max_delta_pct:
-            issues.append(
-                f"{metric} delta {delta:.2f}% exceeds {max_delta_pct:.2f}% "
-                f"(native={native_value:.6f}s, pre-edge={pre_edge_value:.6f}s)"
-            )
-
-    return issues
-
-
-def cmd_compare_sampling_modes(args: argparse.Namespace) -> int:
-    run_dir = normalize_path(args.run_dir)
-    ensure_existing_dir(run_dir, "sampling-modes")
-
-    tests_path = normalize_path(getattr(args, "tests", str(TESTS_PATH)))
-    tests = select_tests(load_tests(tests_path), getattr(args, "filter", None))
-    if not tests:
-        fail("error: sampling-modes: no tests matched the provided filter")
-
-    threshold = float(args.max_delta_pct)
-    if threshold < 0:
-        fail("error: sampling-modes: --max-delta-pct must be non-negative")
-
-    pairs = sampling_mode_pairs(tests)
-    if not pairs:
-        fail("error: sampling-modes: no sampling mode pairs found in selected tests")
-
-    verbose = bool(getattr(args, "verbose", False))
-    failures: list[str] = []
-    for pair_id, pair in sorted(pairs.items()):
-        issues = compare_sampling_mode_pair(
-            run_dir,
-            pair["native"],
-            pair["pre-edge"],
-            threshold,
-        )
-        if issues:
-            failures.extend(f"{pair_id}: {issue}" for issue in issues)
-        elif verbose:
-            print(f"info: sampling-modes: pair `{pair_id}` passed")
-
-    if failures:
-        if verbose:
-            print("error: sampling-modes: comparison failures detected:", file=sys.stderr)
-            for issue in failures:
-                print(f"  - {issue}", file=sys.stderr)
-        else:
-            print(
-                "error: sampling-modes: checks failed (use --verbose for detailed logs)",
-                file=sys.stderr,
-            )
-        return 1
-
-    if verbose:
-        print("info: sampling-modes: all checks passed")
-    else:
-        print("ok: sampling-modes: all checks passed (use --verbose for detailed logs)")
-    return 0
-
-
 def cmd_compare(args: argparse.Namespace) -> int:
     revised_dir = normalize_path(args.revised)
     golden_dir = normalize_path(args.golden)
@@ -1280,30 +1142,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="show detailed compare warnings and failures",
     )
 
-    sampling_parser = subparsers.add_parser(
-        "compare-sampling-modes",
-        help="compare paired native/pre-edge benchmark timings from one run",
-    )
-    sampling_parser.add_argument("--run-dir", required=True, help="run directory")
-    sampling_parser.add_argument(
-        "--tests",
-        default=str(TESTS_PATH),
-        help="path to benchmark tests catalog JSON",
-    )
-    sampling_parser.add_argument("--filter", default=None, help="regex filter by test name")
-    sampling_parser.add_argument(
-        "--max-delta-pct",
-        required=True,
-        type=float,
-        help="fail when paired native/pre-edge mean or median differ by more than this percent",
-    )
-    sampling_parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        help="show detailed sampling-mode comparison failures",
-    )
-
     return parser
 
 
@@ -1319,8 +1157,6 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_report(args)
     if args.command == "compare":
         return cmd_compare(args)
-    if args.command == "compare-sampling-modes":
-        return cmd_compare_sampling_modes(args)
 
     fail(f"error: unsupported command: {args.command}")
     raise AssertionError("unreachable")

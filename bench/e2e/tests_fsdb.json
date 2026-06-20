@@ -3680,7 +3680,6 @@
         "window_size": "32us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock",
-        "sampling_mode_pair": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -3711,7 +3710,6 @@
         "window_size": "32us",
         "signal_count": 100,
         "trigger": "posedge TOP.TestDriver.clock",
-        "sampling_mode_pair": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     },
@@ -3746,7 +3744,6 @@
         "capture": "match",
         "trigger": "posedge TOP.TestDriver.clock",
         "eval": "TOP.TestDriver.testHarness.io_success == 1'b1",
-        "sampling_mode_pair": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -3781,7 +3778,6 @@
         "capture": "match",
         "trigger": "posedge TOP.TestDriver.clock",
         "eval": "TOP.TestDriver.testHarness.io_success == 1'b1",
-        "sampling_mode_pair": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     },
@@ -3812,7 +3808,6 @@
         "window_to": "1000ps",
         "signal_count": 1,
         "trigger": "posedge TOP.clk",
-        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -3845,7 +3840,6 @@
         "capture": "match",
         "trigger": "posedge TOP.clk",
         "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
-        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
         "sampling_mode": "native"
       }
     },
@@ -3876,7 +3870,6 @@
         "window_to": "1000ps",
         "signal_count": 1,
         "trigger": "posedge TOP.clk",
-        "sampling_mode_pair": "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     },
@@ -3909,7 +3902,6 @@
         "capture": "match",
         "trigger": "posedge TOP.clk",
         "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
-        "sampling_mode_pair": "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sampling",
         "sampling_mode": "pre-edge"
       }
     }

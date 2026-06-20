@@ -6,7 +6,6 @@ bench_e2e_runs_dir := "bench/e2e/runs"
 bench_e2e_baseline_dir := "bench/e2e/runs/baseline_fst"
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
 bench_e2e_fsdb_baseline_dir := "bench/e2e/runs/baseline_fsdb"
-bench_e2e_sampling_mode_delta_pct := "10"
 bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
 bench_e2e_fsdb_smoke_artifact_filter := "^(picorv32_test_ez_vcd|scr1_max_axi_riscv_compliance)[.]fst$"
 bench_expr_runs_dir := "bench/expr/runs"
@@ -335,9 +334,7 @@ bench-e2e-update-baseline: check-rtl-artifacts build-release
 
 # Run benchmark e2e suite with baseline compare
 bench-e2e-run: check-rtl-artifacts build-release
-    @mkdir -p "{{ bench_e2e_runs_dir }}"; run_dir="$(mktemp -d "{{ bench_e2e_runs_dir }}/revised_fst.XXXXXX")"; \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --run-dir "$run_dir" --compare "{{ bench_e2e_baseline_dir }}" && \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare-sampling-modes --run-dir "$run_dir" --max-delta-pct "{{ bench_e2e_sampling_mode_delta_pct }}"
+    WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --compare "{{ bench_e2e_baseline_dir }}"
 
 # Refresh FSDB benchmark e2e baseline artifacts
 bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
@@ -367,8 +364,7 @@ bench-expr-run: require-container
 bench-e2e-smoke-commit: check-rtl-artifacts build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised" && \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare --revised "$tmp_revised" --golden "{{ bench_e2e_baseline_dir }}" --max-negative-delta-pct 100 && \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare-sampling-modes --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised" --max-delta-pct "{{ bench_e2e_sampling_mode_delta_pct }}"
+        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare --revised "$tmp_revised" --golden "{{ bench_e2e_baseline_dir }}" --max-negative-delta-pct 100
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit

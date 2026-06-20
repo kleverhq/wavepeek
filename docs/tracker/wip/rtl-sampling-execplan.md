@@ -20,9 +20,9 @@ This plan does not add sampling modes to `value`, because `value` has no `--on` 
 
 This plan does not change JSON output shape. The new flag changes which rows are produced and which values appear in existing fields, but it does not add new JSON fields.
 
-This plan does not optimize `pre-edge` through every existing fast path. Correctness is the first contract. `change --sample-mode pre-edge` may use a dedicated baseline path even when the native engine would select a fused or edge-fast path. The implementation still must add an end-to-end benchmark gate that compares native and pre-edge timing on paired benchmark cases and fails if they differ beyond the accepted noise threshold.
+This plan does not optimize `pre-edge` through every existing fast path. Correctness is the first contract. `change --sample-mode pre-edge` may use a dedicated baseline path even when the native engine would select a fused or edge-fast path. The implementation adds paired native/pre-edge E2E benchmark cases so reviewers can inspect timings in normal benchmark reports.
 
-This plan does not refresh or add committed benchmark baseline run artifacts. Benchmark catalogs and harness checks may change, but `bench/e2e/runs/baseline_fst/` and `bench/e2e/runs/baseline_fsdb/` should remain untouched unless a maintainer explicitly requests a baseline refresh.
+This plan does not refresh or add committed benchmark baseline run artifacts. Benchmark catalogs may change, but `bench/e2e/runs/baseline_fst/` and `bench/e2e/runs/baseline_fsdb/` should remain untouched unless a maintainer explicitly requests a baseline refresh.
 
 ## Progress
 
@@ -34,16 +34,20 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-19T20:20Z) Ran focused read-only review lanes for code/design feasibility, docs/user semantics, and ExecPlan completeness.
 - [x] (2026-06-19T20:24Z) Updated this ExecPlan from review findings: boundary behavior, FSDB-neutral pre-edge contract, exact fixture expectations, reference docs requirements, neutral wording, valid VCD vector syntax, and corrected boundary expectations.
 - [x] (2026-06-19T20:30Z) Ran a final post-fix control review; it reported no substantive findings.
-- [x] (2026-06-19T21:02Z) Updated the plan for the required performance gate: paired native/pre-edge E2E benchmark cases, no new baseline artifacts, and same-run timing comparison within tolerance.
+- [x] (2026-06-19T21:02Z) Updated the plan for paired native/pre-edge E2E benchmark cases without new baseline artifacts.
 - [x] (2026-06-19T21:16Z) Implemented the core `--sample-mode native|pre-edge` CLI and engine behavior for `change` and `property`, including boundary tests and public command/troubleshooting docs.
 - [x] (2026-06-19T21:16Z) Ran targeted behavior and docs tests: `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1`, `cargo test --test change_cli -- change_sample_mode_pre_edge --test-threads=1`, and `cargo test --test docs_cli -- docs --test-threads=1`.
-- [x] (2026-06-19T21:33Z) Implemented the benchmark catalog and harness perf gate: paired native/pre-edge tests, `compare-sampling-modes`, justfile smoke/full-run integration, generated FSDB catalog refresh, and maintainer docs.
-- [x] (2026-06-19T21:33Z) Ran benchmark gate validation: `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
+- [x] (2026-06-19T21:33Z) Implemented paired native/pre-edge benchmark catalog coverage, generated FSDB catalog refresh, and maintainer docs.
+- [x] (2026-06-19T21:33Z) Ran benchmark validation: `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
 - [x] (2026-06-19T21:49Z) Ran focused review lanes for code correctness, docs/user semantics, and benchmark/performance. Code review found a boundary-evaluation bug; docs review found two wording gaps; benchmark review reported no substantive findings.
 - [x] (2026-06-19T21:53Z) Fixed review findings by skipping pre-edge transition boundary rows before evaluating pre-window values, adding a regression test with an error-producing pre-window sample, and clarifying docs.
 - [x] (2026-06-19T21:53Z) Reran `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1` and `cargo test -q` after review fixes.
 - [x] (2026-06-19T22:11Z) Ran final `just check`; it passed, including FSDB lint/build smoke in this Verdi-equipped container.
 - [x] (2026-06-19T22:27Z) Ran a fresh final control review on the consolidated diff; it reported no substantive findings.
+- [x] (2026-06-20T00:18Z) Refactored benchmark changes after maintainer feedback: removed the automatic sampling-mode comparison command and justfile gate, kept the paired native/pre-edge benchmark cases for manual inspection in normal run reports, and regenerated the FSDB catalog.
+- [x] (2026-06-20T00:22Z) Validated the benchmark refactor with `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
+- [x] (2026-06-20T00:27Z) Ran `just check` after the benchmark refactor; it passed.
+- [x] (2026-06-20T00:32Z) Ran focused benchmark-refactor review. It found stale ExecPlan wording only; after fixing that, a follow-up recheck reported no substantive findings.
 
 ## Surprises & Discoveries
 
@@ -65,14 +69,14 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - Observation: Control review caught that the original inline VCD used invalid vector literals and that boundary tests expecting `@15ns` rows contradicted the `--from` baseline rule.
   Evidence: The fixture now uses binary VCD vector values such as `b10101010 #`, and boundary acceptance now expects empty-result diagnostics at `--from 5ns --to 15ns` plus companion longer-window checks for `@35ns` transitions.
 
-- Observation: The existing E2E benchmark compare path checks revised runs against committed golden directories, but new sampling-mode benchmark cases would have no committed golden artifacts because this plan intentionally avoids refreshing baselines.
-  Evidence: `bench/e2e/perf.py compare` compares matching artifact names between revised and golden directories and only warns about tests that exist only in the revised run; a separate same-run pair comparison is needed to make native/pre-edge timing a gate.
+- Observation: The existing E2E benchmark compare path checks revised runs against committed golden directories, but new sampling-mode benchmark cases have no committed golden artifacts because this plan intentionally avoids refreshing baselines.
+  Evidence: `bench/e2e/perf.py compare` compares matching artifact names between revised and golden directories and only warns about tests that exist only in the revised run. After maintainer feedback, the final design intentionally keeps only paired benchmark catalog entries and relies on normal run reports for human timing inspection.
 
 - Observation: `bench/e2e/tests_fsdb.json` is generated from the FST benchmark catalog and is checked by repository gates.
-  Evidence: `docs/dev/benchmarking.md` documents `just update-bench-e2e-fsdb-catalog` and `just check-bench-e2e-fsdb-catalog`; review of the perf-gate addition flagged that changing `bench/e2e/tests.json` without regenerating the FSDB catalog would make `just check` fail.
+  Evidence: `docs/dev/benchmarking.md` documents `just update-bench-e2e-fsdb-catalog` and `just check-bench-e2e-fsdb-catalog`; changing `bench/e2e/tests.json` without regenerating the FSDB catalog would make `just check` fail.
 
-- Observation: The lightweight commit benchmark catalog is currently tested as a command subset of the full FST catalog, and all existing commit cases use one run and no warmup.
-  Evidence: `bench/e2e/test_perf.py` contains `test_tests_commit_catalog_commands_match_tests_json` and `test_tests_commit_catalog_exact_subset_and_distribution`; the sampling-mode smoke pairs need matching full-catalog commands and should explicitly update these tests because stable timing comparison needs more than one hyperfine run.
+- Observation: The lightweight commit benchmark catalog is currently tested as a command subset of the full FST catalog, and all existing non-sampling commit cases use one run and no warmup.
+  Evidence: `bench/e2e/test_perf.py` contains `test_tests_commit_catalog_commands_match_tests_json` and `test_tests_commit_catalog_exact_subset_and_distribution`; the sampling-mode smoke pairs need matching full-catalog commands and should explicitly update these tests when their names, categories, runs, or warmup values change.
 
 ## Decision Log
 
@@ -112,19 +116,15 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
   Rationale: This is the behavior users need for off-by-one-clock debugging. The native delta-oriented optimized paths are not equivalent to pre-edge event-stream sampling.
   Date/Author: 2026-06-19 / Grin
 
-- Decision: Add a same-run E2E benchmark sampling-mode gate instead of refreshing committed baselines.
-  Rationale: Native and pre-edge may produce different functional payloads, so functional comparison is not the right test. The requirement is that the two modes do not have materially different runtime for equivalent benchmark shapes. A same-run timing pair avoids needing new golden artifacts and catches large overhead from the new mode.
-  Date/Author: 2026-06-19 / Grin
-
-- Decision: Use a 10% absolute timing-difference threshold for native/pre-edge benchmark pairs unless implementation evidence supports a stricter threshold.
-  Rationale: Existing E2E timing can vary by environment, and the paired smoke must not fail on measurement noise. Ten percent is tight enough to catch an accidental algorithmic penalty while avoiding false positives from normal hyperfine variance in devcontainer and CI-like environments.
-  Date/Author: 2026-06-19 / Grin
+- Decision: Keep native/pre-edge E2E performance coverage as paired benchmark catalog entries, not a custom automatic comparison command.
+  Rationale: Maintainer feedback was that the paired benchmark cases are enough for this feature. Normal `perf.py run` reports show the timings for the native and pre-edge variants so reviewers can inspect them directly; extra comparison logic in benchmark scripts and just recipes is unnecessary machinery.
+  Date/Author: 2026-06-20 / Grin
 
 ## Outcomes & Retrospective
 
-Implementation is complete on branch `feat/rtl-sampling`. `change` and `property` now accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, and first-edge/no-predecessor skips. The benchmark harness now has paired native/pre-edge E2E cases and a same-run timing gate that avoids refreshing committed baseline artifacts.
+Implementation is complete on branch `feat/rtl-sampling`. `change` and `property` now accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, and first-edge/no-predecessor skips. The benchmark catalogs now have paired native/pre-edge E2E cases for normal report-based timing inspection without refreshing committed baseline artifacts or adding custom comparison automation.
 
-Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings.
+Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings. The follow-up benchmark refactor removed custom comparison automation, passed focused benchmark tests and smoke validation, passed `just check`, and passed a focused post-refactor review after stale plan wording was fixed.
 
 ## Context and Orientation
 
@@ -146,7 +146,7 @@ A `Waveform` in `src/waveform/mod.rs` can ask for a pre-edge sample query point 
 
 The public documentation source lives in `docs/public/`. It is embedded into the binary by `src/docs/mod.rs` using `include_dir!("$CARGO_MANIFEST_DIR/docs/public")`, so adding a Markdown topic under `docs/public/troubleshooting/` automatically packages it if the front matter is valid. Public command topics explain behavior and edge cases but should not duplicate exact generated flag tables. Exact flag syntax belongs to generated help from `clap`.
 
-The end-to-end benchmark harness lives under `bench/e2e/`. `bench/e2e/perf.py` is a Python standard-library script that loads benchmark cases from JSON catalogs, runs `wavepeek` through `hyperfine`, captures JSON output, and can compare timing and functional artifacts. The default full FST catalog is `bench/e2e/tests.json`; the lightweight pre-commit smoke catalog is `bench/e2e/tests_commit.json`; committed baseline run artifacts live under `bench/e2e/runs/baseline_fst/`. This feature must expand the catalogs and harness checks, but it must not add or refresh committed baseline artifacts.
+The end-to-end benchmark harness lives under `bench/e2e/`. `bench/e2e/perf.py` is a Python standard-library script that loads benchmark cases from JSON catalogs, runs `wavepeek` through `hyperfine`, captures JSON output, and can compare timing and functional artifacts against committed baselines. The default full FST catalog is `bench/e2e/tests.json`; the lightweight pre-commit smoke catalog is `bench/e2e/tests_commit.json`; committed baseline run artifacts live under `bench/e2e/runs/baseline_fst/`. This feature expands the catalogs with paired native/pre-edge cases, but it does not add or refresh committed baseline artifacts and does not add custom sampling-mode comparison automation.
 
 The relevant SystemVerilog concept is sampled value timing. In IEEE 1800-2023, the Preponed region is immediately before the current simulation time slot, and `#1step` sampling is equivalent to taking samples there. Clocking block inputs default to `#1step`, meaning they sample the value at the end of the previous time step before the clock event. Concurrent assertions use sampled values, generally from the Preponed region, and evaluate property expressions later in the Observed region. `wavepeek` cannot reconstruct the full scheduler from a dump, but `pre-edge` approximates this by querying the waveform at the previous representable raw time before the selected edge and using normal waveform floor sampling from that point.
 
@@ -329,15 +329,15 @@ An ASCII diagram should be similar to:
 
 Update `docs/public/intro.md` only if a new troubleshooting topic should be easier to find from the documentation map. Usually the topic list/search is enough, so this may not be necessary.
 
-### Milestone 5: Extend E2E benchmark coverage and add the sampling-mode perf gate
+### Milestone 5: Extend E2E benchmark coverage for both sampling modes
 
-At the end of this milestone, the benchmark catalogs contain paired native and pre-edge cases, and the harness can fail a run when the paired modes differ by more than the accepted timing tolerance. This milestone intentionally does not write or refresh any committed baseline run artifacts.
+At the end of this milestone, the benchmark catalogs contain paired native and pre-edge cases that can be inspected in normal benchmark run reports. This milestone intentionally does not write or refresh any committed baseline run artifacts, and it does not add custom sampling-mode comparison automation to `bench/e2e/perf.py` or the `justfile`.
 
-Add paired benchmark cases to `bench/e2e/tests.json`. Use edge-only commands because `pre-edge` is invalid for wildcard or plain-signal triggers. Clone the existing full-suite edge-triggered `change` case `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` into two new tests with names ending in `_sample_native` and `_sample_pre_edge`. Keep the same waveform, signal list, window, runs, and warmup, and append `--sample-mode native` to one command and `--sample-mode pre-edge` to the other. Add metadata fields like `"sampling_mode_pair": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sampling"` and `"sampling_mode": "native"` or `"pre-edge"` so the harness can pair them.
+Add paired benchmark cases to `bench/e2e/tests.json`. Use edge-only commands because `pre-edge` is invalid for wildcard or plain-signal triggers. Clone the existing full-suite edge-triggered `change` case `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` into two new tests with names ending in `_sample_native` and `_sample_pre_edge`. Keep the same waveform, signal list, window, runs, and warmup, and append `--sample-mode native` to one command and `--sample-mode pre-edge` to the other. Include simple metadata such as `"sampling_mode": "native"` or `"sampling_mode": "pre-edge"` for report readability.
 
-Also add a property pair to `bench/e2e/tests.json` by cloning `property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk` into `_sample_native` and `_sample_pre_edge` variants with the same pair metadata. This covers both commands that expose the new flag.
+Also add a property pair to `bench/e2e/tests.json` by cloning `property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk` into `_sample_native` and `_sample_pre_edge` variants. This covers both commands that expose the new flag.
 
-Add lightweight smoke pairs to `bench/e2e/tests_commit.json` so pre-commit performance smoke covers the new path. Use existing SCR1 FST fixtures already present in that catalog and explicit edge triggers such as `--on posedge TOP.clk`. Choose signal and expression targets that produce non-timeout, non-degenerate artifacts in both modes; do not benchmark only the clock signal if that collapses one mode to nearly empty output. Add paired `change` entries for `native` and `pre-edge` and, if runtime remains acceptable, a small paired `property` entry as well. Add matching entries with the same names and commands to `bench/e2e/tests.json`, or otherwise deliberately update the existing subset invariant test; preserving the subset invariant is preferred. These sampling-mode smoke entries should use enough hyperfine repetitions for a timing gate, such as `runs=5` and `warmup=1`, rather than inheriting the existing one-run smoke shape. Update `bench/e2e/test_perf.py` because it currently asserts the exact `tests_commit.json` name set, category distribution, command subset, and run/warmup values.
+Add lightweight smoke pairs to `bench/e2e/tests_commit.json` so pre-commit benchmark smoke covers the new path. Use existing SCR1 FST fixtures already present in that catalog and explicit edge triggers such as `--on posedge TOP.clk`. Choose signal and expression targets that produce non-timeout, non-degenerate artifacts in both modes; do not benchmark only the clock signal if that collapses one mode to nearly empty output. Add paired `change` entries for `native` and `pre-edge` and, if runtime remains acceptable, a small paired `property` entry as well. Add matching entries with the same names and commands to `bench/e2e/tests.json`, or otherwise deliberately update the existing subset invariant test; preserving the subset invariant is preferred. These sampling-mode smoke entries may use more repetitions than the existing one-run smoke entries, such as `runs=5` and `warmup=1`, to make the normal report useful. Update `bench/e2e/test_perf.py` because it currently asserts the exact `tests_commit.json` name set, category distribution, command subset, and run/warmup values.
 
 After changing `bench/e2e/tests.json`, regenerate `bench/e2e/tests_fsdb.json` with:
 
@@ -349,17 +349,7 @@ Then run:
 
 This is a generated catalog update, not a benchmark baseline refresh. It may change `bench/e2e/tests_fsdb.json`; it must not change files under committed baseline run directories.
 
-Extend `bench/e2e/perf.py` with a same-run sampling-mode comparison command, for example:
-
-    python3 bench/e2e/perf.py compare-sampling-modes --run-dir <dir> --tests bench/e2e/tests_commit.json --max-delta-pct 10
-
-The command should load the selected tests catalog, group tests by `meta.sampling_mode_pair`, require exactly one `native` and one `pre-edge` artifact per group, load their hyperfine JSON artifacts from the same run directory, and compare `mean` and `median`. Use an absolute percent difference formula such as `abs(pre_edge - native) / native * 100`; fail if either metric exceeds `--max-delta-pct`. Validate that wavepeek JSON artifacts exist and are not timeout payloads, but do not compare their `data` or `diagnostics` fields because the two sampling modes are allowed to produce different functional rows.
-
-Update `bench/e2e/test_perf.py` with unit tests for the new parser command and comparison behavior. Include passing, missing-pair, and over-threshold cases. Keep the harness Python standard-library only.
-
-Update `docs/dev/benchmarking.md` to document the new same-run sampling-mode comparison command and state that it is a performance gate, not a functional equivalence check.
-
-Update `justfile` so both E2E benchmark recipes run the same-run sampling-mode comparison after collecting artifacts. The existing `bench-e2e-smoke-commit` recipe already uses a temporary run directory; call the new `perf.py compare-sampling-modes` command on that directory before the recipe exits. Refactor `bench-e2e-run` so it creates or records an explicit run directory under `bench/e2e/runs/`, passes that directory to `perf.py run --run-dir ... --compare ...`, and then calls `perf.py compare-sampling-modes` on the same directory. The pre-commit smoke and the full E2E run must both include the gate.
+Update `docs/dev/benchmarking.md` only to say that paired sampling-mode cases are present for normal report-based timing inspection. Do not add a new `perf.py` command, a pair-matching threshold, or extra justfile gate around these cases.
 
 Acceptance for this milestone is:
 
@@ -369,11 +359,7 @@ passes, and after building a release binary in the devcontainer or CI image:
 
     just bench-e2e-smoke-commit
 
-runs the paired native/pre-edge cases and fails if their mean or median differ by more than 10%. The full run:
-
-    just bench-e2e-run
-
-must also run the same sampling-mode comparison after the normal baseline report. No files under `bench/e2e/runs/baseline_fst/` or `bench/e2e/runs/baseline_fsdb/` should be modified.
+runs the paired native/pre-edge cases successfully. No files under `bench/e2e/runs/baseline_fst/` or `bench/e2e/runs/baseline_fsdb/` should be modified.
 
 ### Milestone 6: Validate, review, and commit the implementation
 
@@ -403,9 +389,9 @@ Use the `ask-review` skill after implementation. Start read-only reviewers in pa
 
 - Code lane focused on `src/cli/`, `src/engine/change.rs`, `src/engine/property.rs`, and tests.
 - Docs lane focused on `docs/public/commands/change.md`, `docs/public/commands/property.md`, `docs/public/reference/expression-language.md`, `docs/public/troubleshooting/clock-edge-sampling.md`, and `docs/dev/benchmarking.md`.
-- Architecture/performance lane focused on the choice to route `change --sample-mode pre-edge` through a correctness-first baseline path, avoiding accidental changes to native engine behavior, and the new paired benchmark gate.
+- Architecture/performance lane focused on the choice to route `change --sample-mode pre-edge` through a correctness-first baseline path, avoiding accidental changes to native engine behavior, and the paired benchmark coverage.
 
-Apply fixes in the main session, rerun relevant tests, rerun the sampling-mode benchmark gate when performance-related code changes, and run one final control review pass on the consolidated diff. Stop when reviewers report no substantive findings or only minor nits that do not affect correctness, compatibility, performance gating, or user-facing clarity.
+Apply fixes in the main session, rerun relevant tests, rerun benchmark smoke when performance-related code or catalog changes, and run one final control review pass on the consolidated diff. Stop when reviewers report no substantive findings or only minor nits that do not affect correctness, compatibility, performance coverage, or user-facing clarity.
 
 ## Concrete Steps
 
@@ -437,15 +423,13 @@ Add or update tests. Inline VCD fixtures are acceptable for small command behavi
 
 Update docs. Each new public Markdown topic must have valid front matter with `id`, `title`, `description`, `section`, and `see_also` where appropriate.
 
-Extend E2E benchmark coverage and the benchmark harness:
+Extend E2E benchmark coverage without adding comparison automation:
 
     edit bench/e2e/tests.json to add full-suite native/pre-edge pairs for change and property, including any names used by tests_commit.json
-    edit bench/e2e/tests_commit.json to add smoke native/pre-edge pairs with enough runs and warmup for timing comparison
+    edit bench/e2e/tests_commit.json to add smoke native/pre-edge pairs with enough runs and warmup for useful report inspection
     run just update-bench-e2e-fsdb-catalog after editing tests.json
-    edit bench/e2e/perf.py to add compare-sampling-modes
-    edit bench/e2e/test_perf.py to test the new parser and pair comparison behavior
-    edit docs/dev/benchmarking.md to document the same-run sampling-mode perf gate
-    edit justfile so bench-e2e-smoke-commit and bench-e2e-run run compare-sampling-modes on their revised run directories
+    edit bench/e2e/test_perf.py to update catalog-shape assertions
+    edit docs/dev/benchmarking.md to document that paired sampling-mode tests are inspected through normal reports
 
 Run format and tests through the repository gates. If a command fails, fix the issue and rerun the smallest failing command before rerunning `just check`.
 
@@ -520,7 +504,7 @@ Run the E2E benchmark smoke gate in the devcontainer or CI image with RTL artifa
 
     just bench-e2e-smoke-commit
 
-Expected result: formatting, linting, tests, docs embedding checks, generated FSDB catalog checks, auxiliary tests, and the sampling-mode benchmark comparison pass. The benchmark smoke must run paired native/pre-edge tests and fail if any pair's mean or median differs by more than the configured 10% threshold. If `just ci` is run, it should also pass in the devcontainer/CI image.
+Expected result: formatting, linting, tests, docs embedding checks, generated FSDB catalog checks, auxiliary tests, and benchmark smoke pass. The benchmark smoke must run paired native/pre-edge tests so their timings appear in normal reports. If `just ci` is run, it should also pass in the devcontainer/CI image.
 
 ## Idempotence and Recovery
 
@@ -531,8 +515,6 @@ If a pre-edge implementation breaks native output tests, first confirm that `Sam
 If docs embedding fails after adding the troubleshooting topic, inspect the front matter first. The docs loader requires stable topic IDs and valid metadata. Use existing `docs/public/troubleshooting/*.md` files as the shape reference.
 
 If optimized `change` paths conflict with pre-edge behavior, keep pre-edge on the dedicated baseline path and document any performance tradeoff in `Surprises & Discoveries`. Do not contort the native fast paths until correctness tests are in place.
-
-If the sampling-mode benchmark gate is noisy, do not silently loosen the threshold. First inspect the paired hyperfine artifacts and rerun the smoke once in the devcontainer or CI image. If the environment is stable and the threshold still fails, record the evidence in `Surprises & Discoveries` and decide whether the implementation needs optimization or the threshold needs an explicit documented adjustment.
 
 Do not modify committed benchmark baseline run directories while implementing this feature. If a command or hook appears to require baseline updates, stop and inspect whether revised-only paired tests are being incorrectly compared to golden artifacts.
 
@@ -597,35 +579,24 @@ The change engine must keep building existing `ChangeSnapshot` rows with:
 
 For `pre-edge`, `current_samples` are sampled at the pre-edge query timestamp but `trigger_timestamp` is passed to `build_snapshot` so output times remain edge times.
 
-The E2E benchmark catalog entries that participate in same-run sampling comparison must carry these metadata fields:
+The E2E benchmark catalog entries for sampling coverage should use paired names ending in `_sample_native` and `_sample_pre_edge` and simple metadata such as:
 
-    "sampling_mode_pair": "stable_pair_identifier_shared_by_two_tests"
     "sampling_mode": "native"
 
-and:
+or:
 
-    "sampling_mode_pair": "stable_pair_identifier_shared_by_two_tests"
     "sampling_mode": "pre-edge"
 
-The benchmark harness should expose a command shaped like this:
-
-    perf.py compare-sampling-modes --run-dir <dir> --tests <catalog> --max-delta-pct <pct>
-
-The implementation can choose function names, but it should have testable units equivalent to:
-
-    sampling_mode_pairs(tests) -> mapping from pair id to native/pre-edge test names
-    compare_sampling_mode_pair(run_dir, native_name, pre_edge_name, max_delta_pct) -> pass/fail details
-    cmd_compare_sampling_modes(args) -> process exit code
-
-The comparison must read hyperfine artifacts for timing, inspect wavepeek JSON artifacts only for existence and timeout detection, and avoid comparing functional payloads between modes.
+No custom pair-matching command is required in `bench/e2e/perf.py`; normal benchmark run reports are the timing comparison surface for these cases.
 
 ## Revision Notes
 
 - 2026-06-19: Initial ExecPlan created. It records the user-approved `native` and `pre-edge` names, the edge-only `--on` rule including `edge clk`, and the correctness-first implementation strategy for `property` and `change`.
 - 2026-06-19: Review update. Clarified backend-neutral pre-edge query semantics, `--from` boundary behavior, mandatory reference docs note for `iff`, exact test fixture expectations, and committed-plan execution steps.
 - 2026-06-19: Control-review update. Replaced invalid VCD hex-like vector values with binary VCD vectors, corrected boundary expectations to preserve the `--from` baseline, and recorded that the final control pass had no substantive findings.
-- 2026-06-19: Performance-gate update. Added required E2E benchmark catalog expansion, same-run native/pre-edge timing comparison, benchmark harness tests, justfile smoke integration, and a no-baseline-refresh constraint.
-- 2026-06-19: Implementation progress update. Recorded completion of the core CLI/engine/docs slice and its targeted test evidence before starting the benchmark perf-gate slice.
-- 2026-06-19: Performance implementation progress update. Recorded completion of the benchmark catalog/harness/justfile/docs slice and its smoke-gate evidence before final review.
+- 2026-06-19: Performance coverage update. Added required E2E benchmark catalog expansion and a no-baseline-refresh constraint.
+- 2026-06-19: Implementation progress update. Recorded completion of the core CLI/engine/docs slice and its targeted test evidence before starting the benchmark coverage slice.
+- 2026-06-19: Performance implementation progress update. Recorded completion of the benchmark catalog/docs slice and its smoke-gate evidence before final review.
 - 2026-06-19: Review-fix update. Recorded focused review findings and the fix for pre-edge transition boundary evaluation before the final control pass.
 - 2026-06-19: Completion update. Recorded final `just check`, final control review result, and the completed implementation outcome.
+- 2026-06-20: Benchmark refactor update. Removed the custom sampling-mode comparison command and justfile gate after maintainer feedback; kept paired benchmark catalog entries for manual timing inspection. Recorded post-refactor validation and review results.

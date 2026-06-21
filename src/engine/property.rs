@@ -62,12 +62,14 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
     debug.event("metadata.load.done", || serde_json::json!({}));
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
+    let dump_start_raw =
+        u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
+            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
+        })?;
 
     let from_raw = match args.from.as_deref() {
         Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
-        })?,
+        None => dump_start_raw,
     };
     let to_raw = match args.to.as_deref() {
         Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
@@ -173,10 +175,8 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
             continue;
         }
 
-        let decision_timestamp = {
-            let waveform_ref = waveform.borrow();
-            value_sample_time_for_mode(&waveform_ref, args.sample_mode, timestamp)
-        };
+        let decision_timestamp =
+            value_sample_time_for_mode(args.sample_mode, timestamp, dump_start_raw);
         let Some(decision_timestamp) = decision_timestamp else {
             continue;
         };
@@ -260,13 +260,15 @@ fn validate_sample_mode(
 }
 
 fn value_sample_time_for_mode(
-    waveform: &Waveform,
     sample_mode: SampleMode,
     trigger_timestamp: u64,
+    dump_start_raw: u64,
 ) -> Option<u64> {
     match sample_mode {
         SampleMode::Native => Some(trigger_timestamp),
-        SampleMode::PreEdge => waveform.previous_sample_time(trigger_timestamp),
+        SampleMode::PreEdge => trigger_timestamp
+            .checked_sub(1)
+            .filter(|query_time| *query_time >= dump_start_raw),
     }
 }
 

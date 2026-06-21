@@ -48,6 +48,13 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-20T00:22Z) Validated the benchmark refactor with `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, and `just bench-e2e-smoke-commit`.
 - [x] (2026-06-20T00:27Z) Ran `just check` after the benchmark refactor; it passed.
 - [x] (2026-06-20T00:32Z) Ran focused benchmark-refactor review. It found stale ExecPlan wording only; after fixing that, a follow-up recheck reported no substantive findings.
+- [x] (2026-06-20T20:09Z) Analyzed PR review comment about `property --sample-mode pre-edge` with raw event `.triggered()` operands. Reproduced that using the previous recorded timestamp could replay an older event at a later clock edge.
+- [x] (2026-06-20T20:13Z) Fixed property pre-edge evaluation to use the raw tick immediately before the trigger edge, preserving value floor-sampling while making raw event `.triggered()` exact to that pre-edge tick.
+- [x] (2026-06-20T20:13Z) Added a regression test showing an event at 5ns is not replayed for a 10ns clock edge, while an event at 19ns still matches the 20ns clock edge in pre-edge mode.
+- [x] (2026-06-20T20:14Z) Ran `cargo test --test property_cli -- property_sample_mode_pre_edge --test-threads=1`; it passed.
+- [x] (2026-06-20T20:18Z) Ran `cargo test -q`; it passed.
+- [x] (2026-06-20T20:22Z) Ran focused code review for the raw-event pre-edge fix; it reported no substantive findings.
+- [x] (2026-06-20T20:27Z) Ran `just check`; it passed.
 
 ## Surprises & Discoveries
 
@@ -68,6 +75,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 
 - Observation: Control review caught that the original inline VCD used invalid vector literals and that boundary tests expecting `@15ns` rows contradicted the `--from` baseline rule.
   Evidence: The fixture now uses binary VCD vector values such as `b10101010 #`, and boundary acceptance now expects empty-result diagnostics at `--from 5ns --to 15ns` plus companion longer-window checks for `@35ns` transitions.
+
+- Observation: Raw event operands in `property --eval`, such as `ev.triggered()`, are exact event queries rather than floor-sampled values. Passing the previous recorded timestamp as the pre-edge evaluation timestamp can replay an older event at a later clock edge.
+  Evidence: A local VCD with `ev` at 5ns and `posedge clk` at 10ns produced a false pre-edge match before the fix. The regression test `property_sample_mode_pre_edge_does_not_replay_previous_raw_event` now expects no match at 10ns and a match only when `ev` occurs at 19ns for a 20ns edge.
 
 - Observation: The existing E2E benchmark compare path checks revised runs against committed golden directories, but new sampling-mode benchmark cases have no committed golden artifacts because this plan intentionally avoids refreshing baselines.
   Evidence: `bench/e2e/perf.py compare` compares matching artifact names between revised and golden directories and only warns about tests that exist only in the revised run. After maintainer feedback, the final design intentionally keeps only paired benchmark catalog entries and relies on normal run reports for human timing inspection.
@@ -104,6 +114,10 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
   Rationale: This is backend-neutral. VCD/FST indexed sampling may use the previous recorded timestamp because floor sampling at any point before the edge resolves to that value. FSDB can sample at `raw_time - 1` even when that is not itself a recorded change timestamp. Both produce the value immediately before the edge within dump precision.
   Date/Author: 2026-06-19 / Grin
 
+- Decision: For `pre-edge`, evaluate `property --eval` at the raw tick immediately before the trigger edge when that tick is within dump bounds.
+  Rationale: Ordinary value sampling already floors a raw query time to the last recorded value, so `T-1` preserves the intended pre-edge value behavior. Raw event `.triggered()` operands are exact event queries, so using `T-1` prevents an event from an older recorded timestamp from being replayed at a later clock edge.
+  Date/Author: 2026-06-20 / Grin
+
 - Decision: For `pre-edge`, if an edge has no representable query timestamp before it within dump bounds, skip that trigger for value evaluation.
   Rationale: There is no recorded or queryable T- value to sample. Fabricating SystemVerilog default sampled values would require simulator-state knowledge that the dump does not contain.
   Date/Author: 2026-06-19 / Grin
@@ -124,7 +138,7 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 
 Implementation is complete on branch `feat/rtl-sampling`. `change` and `property` now accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, and first-edge/no-predecessor skips. The benchmark catalogs now have paired native/pre-edge E2E cases for normal report-based timing inspection without refreshing committed baseline artifacts or adding custom comparison automation.
 
-Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings. The follow-up benchmark refactor removed custom comparison automation, passed focused benchmark tests and smoke validation, passed `just check`, and passed a focused post-refactor review after stale plan wording was fixed.
+Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings. The follow-up benchmark refactor removed custom comparison automation, passed focused benchmark tests and smoke validation, passed `just check`, and passed a focused post-refactor review after stale plan wording was fixed. The PR-review raw-event fix passed targeted property tests, `cargo test -q`, `just check`, and a focused code review.
 
 ## Context and Orientation
 
@@ -600,3 +614,4 @@ No custom pair-matching command is required in `bench/e2e/perf.py`; normal bench
 - 2026-06-19: Review-fix update. Recorded focused review findings and the fix for pre-edge transition boundary evaluation before the final control pass.
 - 2026-06-19: Completion update. Recorded final `just check`, final control review result, and the completed implementation outcome.
 - 2026-06-20: Benchmark refactor update. Removed the custom sampling-mode comparison command and justfile gate after maintainer feedback; kept paired benchmark catalog entries for manual timing inspection. Recorded post-refactor validation and review results.
+- 2026-06-20: PR review fix update. Recorded the raw event `.triggered()` pre-edge replay bug, changed property pre-edge evaluation to use the raw tick before the trigger edge, added the regression evidence, and recorded post-fix validation and review results.

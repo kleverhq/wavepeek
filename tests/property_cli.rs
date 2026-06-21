@@ -273,6 +273,70 @@ fn property_sample_mode_pre_edge_skips_from_boundary_before_eval() {
 }
 
 #[test]
+fn property_sample_mode_pre_edge_does_not_replay_previous_raw_event() {
+    let fixture = write_fixture(
+        concat!(
+            "$date\n",
+            "  today\n",
+            "$end\n",
+            "$version\n",
+            "  wavepeek-rtl-sampling-event\n",
+            "$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! clk $end\n",
+            "$var event 1 # ev $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "#5\n",
+            "1#\n",
+            "#10\n",
+            "1!\n",
+            "#15\n",
+            "0!\n",
+            "#19\n",
+            "1#\n",
+            "#20\n",
+            "1!\n",
+        ),
+        "property-rtl-sampling-event.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "ev.triggered()",
+            "--capture",
+            "match",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert_eq!(
+        parse_json(&output.stdout)["data"],
+        json!([{"time": "20ns", "kind": "match"}])
+    );
+}
+
+#[test]
 fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
     let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling-invalid.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();

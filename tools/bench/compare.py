@@ -86,6 +86,94 @@ def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
         )
 
 
+def timing_failure_names(compare_result: Mapping[str, Any]) -> list[str]:
+    failures = compare_result.get("timing_failures")
+    if not isinstance(failures, list):
+        return []
+    names: list[str] = []
+    for item in failures:
+        if isinstance(item, Mapping) and isinstance(item.get("test_name"), str):
+            names.append(str(item["test_name"]))
+    return names
+
+
+def compare_failed_only_on_timing(compare_result: Mapping[str, Any]) -> bool:
+    if not timing_failure_names(compare_result):
+        return False
+    for field in (
+        "functional_mismatches",
+        "functional_artifact_errors",
+        "functional_timeout_warnings",
+    ):
+        value = compare_result.get(field)
+        if isinstance(value, list) and value:
+            return False
+    return True
+
+
+def run_e2e_best_confirm(
+    *,
+    name: str,
+    golden: pathlib.Path,
+    revised: pathlib.Path,
+    compare_dir: pathlib.Path,
+    tooling_root: pathlib.Path,
+    threshold_pct: float,
+    threshold_seconds: float,
+    test_names: Sequence[str],
+) -> dict[str, Any]:
+    result_json_path = compare_dir / f"{name}.best-confirm.result.json"
+    args = [
+        "python3",
+        "-B",
+        str(tooling_root / "bench/e2e/perf.py"),
+        "confirm",
+        "--revised",
+        str(revised),
+        "--golden",
+        str(golden),
+        "--max-negative-delta-pct",
+        str(threshold_pct),
+        "--max-negative-delta-seconds",
+        str(threshold_seconds),
+        "--result-json",
+        str(result_json_path),
+        "--verbose",
+    ]
+    for test_name in test_names:
+        args.extend(["--test", test_name])
+
+    log_path = compare_dir / f"{name}.best-confirm.log"
+    result = run_command(
+        f"confirm-{name}-best",
+        args,
+        cwd=tooling_root,
+        log_path=log_path,
+        check=False,
+    )
+    status = "passed" if result.returncode == 0 else "failed"
+    confirm: dict[str, Any] = {
+        "status": status,
+        "returncode": result.returncode,
+        "metric": "best",
+        "test_count": len(test_names),
+        "threshold_pct": threshold_pct,
+        "threshold_seconds": threshold_seconds,
+        "log_path": relative_to(log_path, compare_dir),
+        "result_json_path": relative_to(result_json_path, compare_dir),
+    }
+    if result_json_path.is_file():
+        try:
+            payload = read_json(result_json_path)
+        except BenchGateError as error:
+            confirm["result_json_error"] = str(error)
+        else:
+            failures = payload.get("failures")
+            if isinstance(failures, list):
+                confirm["failure_count"] = len(failures)
+    return confirm
+
+
 def run_e2e_compare(
     *,
     name: str,
@@ -105,6 +193,7 @@ def run_e2e_compare(
     else:
         assert_matching_e2e_artifacts(golden, revised)
 
+    result_json_path = compare_dir / f"{name}.result.json"
     args = [
         "python3",
         "-B",
@@ -114,6 +203,8 @@ def run_e2e_compare(
         str(revised),
         "--golden",
         str(golden),
+        "--result-json",
+        str(result_json_path),
         "--verbose",
     ]
     if functional_only:
@@ -139,7 +230,7 @@ def run_e2e_compare(
         check=False,
     )
     status = "passed" if result.returncode == 0 else "failed"
-    return {
+    suite: dict[str, Any] = {
         "status": status,
         "returncode": result.returncode,
         "threshold_pct": None if functional_only else threshold_pct,
@@ -148,7 +239,35 @@ def run_e2e_compare(
         "functional_only": functional_only,
         "allow_golden_extra": allow_golden_extra,
         "log_path": relative_to(log_path, compare_dir),
+        "result_json_path": relative_to(result_json_path, compare_dir),
     }
+
+    compare_result: dict[str, Any] = {}
+    if result_json_path.is_file():
+        try:
+            compare_result = read_json(result_json_path)
+        except BenchGateError as error:
+            suite["result_json_error"] = str(error)
+
+    if not functional_only and result.returncode != 0 and compare_failed_only_on_timing(compare_result):
+        failed_tests = timing_failure_names(compare_result)
+        confirm = run_e2e_best_confirm(
+            name=name,
+            golden=golden,
+            revised=revised,
+            compare_dir=compare_dir,
+            tooling_root=tooling_root,
+            threshold_pct=threshold_pct,
+            threshold_seconds=threshold_seconds,
+            test_names=failed_tests,
+        )
+        suite["median_compare_status"] = "failed"
+        suite["median_compare_returncode"] = result.returncode
+        suite["timing_confirm"] = confirm
+        if confirm.get("status") == "passed":
+            suite["status"] = "passed"
+            suite["returncode"] = 0
+    return suite
 
 
 def render_compare_summary(manifest: Mapping[str, Any]) -> str:
@@ -178,10 +297,18 @@ def render_compare_summary(manifest: Mapping[str, Any]) -> str:
                     text += f" ({timing_metric} threshold max({suite['threshold_pct']}%, {threshold_seconds}s))"
                 else:
                     text += f" ({timing_metric} threshold {suite['threshold_pct']}%)"
+            timing_confirm = suite.get("timing_confirm")
+            if isinstance(timing_confirm, Mapping):
+                if timing_confirm.get("status") == "passed":
+                    text += " (median failed, best-sample confirm passed)"
+                else:
+                    text += " (best-sample confirm failed)"
             if suite.get("reason"):
                 text += f" — {suite['reason']}"
             if suite.get("log_path"):
                 text += f" (log: `{suite['log_path']}`)"
+            if isinstance(timing_confirm, Mapping) and timing_confirm.get("log_path"):
+                text += f" (confirm: `{timing_confirm['log_path']}`)"
             lines.append(text)
     lines.append("")
     return "\n".join(lines)

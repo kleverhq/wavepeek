@@ -23,9 +23,13 @@ SPEC.loader.exec_module(perf)
 class PerfHelpersTest(unittest.TestCase):
     @staticmethod
     def _write_hyperfine_artifact(
-        path: pathlib.Path, mean: float, median: float | None = None
+        path: pathlib.Path,
+        mean: float,
+        median: float | None = None,
+        times: list[float] | None = None,
     ) -> None:
         metric_median = mean if median is None else median
+        sample_times = [metric_median] if times is None else times
         path.write_text(
             json.dumps(
                 {
@@ -35,8 +39,9 @@ class PerfHelpersTest(unittest.TestCase):
                             "mean": mean,
                             "stddev": 0.0,
                             "median": metric_median,
-                            "min": mean,
-                            "max": mean,
+                            "min": min(sample_times),
+                            "max": max(sample_times),
+                            "times": sample_times,
                         }
                     ]
                 }
@@ -174,6 +179,29 @@ class PerfHelpersTest(unittest.TestCase):
         long_args = parser.parse_args(["run", "--verbose"])
         self.assertTrue(long_args.verbose)
 
+    def test_confirm_parser_requires_explicit_tests_and_thresholds(self) -> None:
+        parser = perf.build_parser()
+        args = parser.parse_args(
+            [
+                "confirm",
+                "--revised",
+                "revised",
+                "--golden",
+                "golden",
+                "--test",
+                "a",
+                "--test",
+                "b",
+                "--max-negative-delta-pct",
+                "5",
+                "--max-negative-delta-seconds",
+                "0.005",
+            ]
+        )
+        self.assertEqual(args.test, ["a", "b"])
+        self.assertEqual(args.max_negative_delta_pct, 5.0)
+        self.assertEqual(args.max_negative_delta_seconds, 0.005)
+
     def test_compare_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
         default_args = parser.parse_args(
@@ -189,6 +217,7 @@ class PerfHelpersTest(unittest.TestCase):
         )
         self.assertFalse(default_args.verbose)
         self.assertEqual(default_args.max_negative_delta_seconds, 0.0)
+        self.assertIsNone(default_args.result_json)
 
         short_args = parser.parse_args(
             [
@@ -273,8 +302,15 @@ class PerfHelpersTest(unittest.TestCase):
         )
 
         for test in tests:
-            self.assertEqual(test["runs"], 1)
-            self.assertEqual(test["warmup"], 0)
+            self.assertEqual(test["runs"], 10)
+            self.assertEqual(test["warmup"], 5)
+
+    def test_committed_catalogs_use_release_gate_sample_minimums(self) -> None:
+        for catalog in ("tests.json", "tests_fsdb.json", "tests_commit.json"):
+            payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
+            for test in payload["tests"]:
+                self.assertGreaterEqual(test["runs"], 10, f"{catalog}:{test['name']}")
+                self.assertGreaterEqual(test["warmup"], 5, f"{catalog}:{test['name']}")
 
     def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
         payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
@@ -288,8 +324,8 @@ class PerfHelpersTest(unittest.TestCase):
                 "scope_clustered_all_depth13_json": {
                     "name": "scope_clustered_all_depth13_json",
                     "category": "scope",
-                    "runs": 6,
-                    "warmup": 3,
+                    "runs": 10,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -313,7 +349,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "name": "scope_dualrocket_filter_frontend_depth12_json",
                     "category": "scope",
                     "runs": 10,
-                    "warmup": 3,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -339,7 +375,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "name": "scope_scr1_all_depth7_json",
                     "category": "scope",
                     "runs": 15,
-                    "warmup": 3,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -811,6 +847,122 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
+
+    def test_cmd_compare_writes_result_json_for_timing_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json", mean=1.0, median=2.0
+            )
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json", mean=1.0, median=1.0
+            )
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["timing_failures"][0]["test_name"], "sample")
+        self.assertEqual(payload["timing_failures"][0]["metric"], "median")
+        self.assertEqual(payload["functional_mismatches"], [])
+
+    def test_cmd_confirm_passes_using_best_samples(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "confirm-result.json"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.0,
+                times=[1.00, 1.50, 1.60],
+            )
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.4,
+                times=[1.02, 1.40, 1.45],
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                test=["sample"],
+                max_negative_delta_pct=5.0,
+                max_negative_delta_seconds=0.005,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            stdout = io.StringIO()
+            with mock.patch("sys.stdout", stdout):
+                exit_code = perf.cmd_confirm(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("best-sample timing confirmation passed", stdout.getvalue())
+        self.assertEqual(payload["status"], "passed")
+        self.assertEqual(payload["confirmed"][0]["metric"], "best")
+        self.assertAlmostEqual(payload["confirmed"][0]["golden_seconds"], 1.0)
+        self.assertAlmostEqual(payload["confirmed"][0]["revised_seconds"], 1.02)
+
+    def test_cmd_confirm_fails_when_best_sample_exceeds_threshold(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.0,
+                times=[1.00, 1.10],
+            )
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.2,
+                times=[1.20, 1.30],
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                test=["sample"],
+                max_negative_delta_pct=5.0,
+                max_negative_delta_seconds=0.005,
+                result_json=None,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_confirm(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("sample: best revised=1.200000s", stderr.getvalue())
 
     def test_cmd_compare_ignores_mean_regression_when_median_is_stable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

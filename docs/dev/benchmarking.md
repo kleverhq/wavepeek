@@ -14,7 +14,7 @@ Public benchmark entrypoints are:
 
 `just bench-gate vX.Y.Z HEAD` clones both refs under `tmp/bench-gate/` and builds release binaries from those refs. Benchmark scripts, catalogs, fixtures, FSDB preparation helpers, and compare logic come from the current working tree. The helper refuses to run from a dirty current worktree because current benchmark tooling is part of the measurement apparatus and must be reproducible.
 
-Same-format FST and FSDB comparisons use functional checks plus median timing. Timing fails only when revised median time exceeds golden median time by more than `max(5%, 5ms)` by default. Mean timing is still recorded by hyperfine but is not a gate metric. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful.
+Same-format FST and FSDB comparisons use functional checks plus median timing. Timing first fails when revised median time exceeds golden median time by more than `max(5%, 5ms)` by default. When a same-format suite fails only because of median timing, with no functional mismatches, missing/invalid artifacts, or timeout warnings, the gate runs a separate best-sample confirmation over those failed tests using the minimum hyperfine sample from each binary. Timing is accepted when `revised_best - golden_best <= max(golden_best * 5%, 5ms)` for every confirmed test. Mean timing is still recorded by hyperfine but is not a gate metric. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful.
 
 Default gate output has this shape:
 
@@ -44,7 +44,7 @@ The gate screens selected benchmarks for regressions on the machine where it run
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Committed E2E benchmark catalog entries should use at least 10 measured hyperfine runs and 5 warmup runs.
 
 Common focused commands:
 
@@ -53,10 +53,11 @@ Common focused commands:
     python3 bench/e2e/perf.py run --binary current=target/release/wavepeek --run-dir bench/e2e/runs/<run-id> --missing-only
     python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>/current
     python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5 --max-negative-delta-seconds 0.005
+    python3 bench/e2e/perf.py confirm --revised <dir> --golden <dir> --test <name> --max-negative-delta-pct 5 --max-negative-delta-seconds 0.005
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
 
-Pass one or more `--binary label=path` arguments to choose the binaries used by generated commands. The runner always writes one labeled artifact directory per binary and defaults to a round-robin schedule that runs each selected test on all binaries before moving to the next test. Each labeled directory contains per-test timing JSON, captured wavepeek JSON, and a `README.md` report. Timing compare mode fails on matched-test median threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog.
+Pass one or more `--binary label=path` arguments to choose the binaries used by generated commands. The runner always writes one labeled artifact directory per binary and defaults to a round-robin schedule that runs each selected test on all binaries before moving to the next test. Each labeled directory contains per-test timing JSON, captured wavepeek JSON, and a `README.md` report. Timing compare mode reports matched-test median threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. If median timing is the only failure, `perf.py confirm` can check selected tests with best samples; the gate runs this confirmation automatically for failed same-format timing tests. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog.
 
 Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 

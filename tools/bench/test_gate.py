@@ -248,6 +248,168 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertFalse(result.manifest["suites"]["e2e-fsdb"]["functional_only"])
         self.assertTrue(result.manifest["suites"]["cross-golden-fst-fsdb"]["functional_only"])
 
+    def test_compare_captures_confirms_timing_only_failures_with_best_samples(self) -> None:
+        calls: list[str] = []
+
+        def arg_value(args: list[str], flag: str) -> pathlib.Path:
+            return pathlib.Path(args[args.index(flag) + 1])
+
+        def fake_run_command(
+            name: str,
+            args: list[str],
+            *,
+            cwd: pathlib.Path,
+            log_path: pathlib.Path,
+            env: dict[str, str] | None = None,
+            check: bool = True,
+        ) -> common.CommandResult:
+            calls.append(name)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            if name == "compare-e2e-fst":
+                common.write_json(
+                    arg_value(args, "--result-json"),
+                    {
+                        "status": "failed",
+                        "timing_failures": [{"test_name": "case"}],
+                        "functional_mismatches": [],
+                        "functional_artifact_errors": [],
+                    },
+                )
+                return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=1, log_path=str(log_path))
+            if name == "confirm-e2e-fst-best":
+                common.write_json(
+                    arg_value(args, "--result-json"),
+                    {"status": "passed", "failures": []},
+                )
+                return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=0, log_path=str(log_path))
+            return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=0, log_path=str(log_path))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            for base in (golden, revised):
+                (base / "e2e-fst").mkdir(parents=True)
+                for suffix in ("hyperfine", "wavepeek"):
+                    (base / "e2e-fst" / f"case.{suffix}.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(calls, ["compare-e2e-fst", "confirm-e2e-fst-best"])
+        suite = result.manifest["suites"]["e2e-fst"]
+        self.assertEqual(suite["status"], "passed")
+        self.assertEqual(suite["median_compare_status"], "failed")
+        self.assertEqual(suite["timing_confirm"]["status"], "passed")
+
+    def test_compare_captures_does_not_confirm_functional_failures(self) -> None:
+        calls: list[str] = []
+
+        def arg_value(args: list[str], flag: str) -> pathlib.Path:
+            return pathlib.Path(args[args.index(flag) + 1])
+
+        def fake_run_command(
+            name: str,
+            args: list[str],
+            *,
+            cwd: pathlib.Path,
+            log_path: pathlib.Path,
+            env: dict[str, str] | None = None,
+            check: bool = True,
+        ) -> common.CommandResult:
+            calls.append(name)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            common.write_json(
+                arg_value(args, "--result-json"),
+                {
+                    "status": "failed",
+                    "timing_failures": [{"test_name": "case"}],
+                    "functional_mismatches": ["case: mismatched fields data"],
+                    "functional_artifact_errors": [],
+                },
+            )
+            return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=1, log_path=str(log_path))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            for base in (golden, revised):
+                (base / "e2e-fst").mkdir(parents=True)
+                for suffix in ("hyperfine", "wavepeek"):
+                    (base / "e2e-fst" / f"case.{suffix}.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(calls, ["compare-e2e-fst"])
+        self.assertNotIn("timing_confirm", result.manifest["suites"]["e2e-fst"])
+
+    def test_compare_captures_does_not_confirm_functional_timeout_warnings(self) -> None:
+        calls: list[str] = []
+
+        def arg_value(args: list[str], flag: str) -> pathlib.Path:
+            return pathlib.Path(args[args.index(flag) + 1])
+
+        def fake_run_command(
+            name: str,
+            args: list[str],
+            *,
+            cwd: pathlib.Path,
+            log_path: pathlib.Path,
+            env: dict[str, str] | None = None,
+            check: bool = True,
+        ) -> common.CommandResult:
+            calls.append(name)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            common.write_json(
+                arg_value(args, "--result-json"),
+                {
+                    "status": "failed",
+                    "timing_failures": [{"test_name": "case"}],
+                    "functional_timeout_warnings": ["case: timeout artifact on revised"],
+                    "functional_mismatches": [],
+                    "functional_artifact_errors": [],
+                },
+            )
+            return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=1, log_path=str(log_path))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            for base in (golden, revised):
+                (base / "e2e-fst").mkdir(parents=True)
+                for suffix in ("hyperfine", "wavepeek"):
+                    (base / "e2e-fst" / f"case.{suffix}.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        self.assertEqual(result.exit_code, 1)
+        self.assertEqual(calls, ["compare-e2e-fst"])
+        self.assertNotIn("timing_confirm", result.manifest["suites"]["e2e-fst"])
+
     def test_compare_captures_uses_manifest_suite_paths(self) -> None:
         calls: list[tuple[pathlib.Path, pathlib.Path]] = []
 

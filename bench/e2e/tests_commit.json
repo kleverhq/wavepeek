@@ -3,8 +3,8 @@
     {
       "name": "change_scr1_coremark_imem_axi_1sig_to_1000ps",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -29,8 +29,8 @@
     {
       "name": "change_scr1_signals_1_window_2ns_trigger_any",
       "category": "change",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -56,8 +56,8 @@
     {
       "name": "info_picorv32_ez",
       "category": "info",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -73,8 +73,8 @@
     {
       "name": "info_scr1_isr_sample",
       "category": "info",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -90,8 +90,8 @@
     {
       "name": "scope_clustered_all_depth13_json",
       "category": "scope",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "scope",
@@ -114,8 +114,8 @@
     {
       "name": "scope_scr1_all_depth7_json",
       "category": "scope",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "scope",
@@ -138,8 +138,8 @@
     {
       "name": "signal_scr1_top_recursive_depth2_json",
       "category": "signal",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "signal",
@@ -165,8 +165,8 @@
     {
       "name": "signal_scr1_top_recursive_filter_valid_json",
       "category": "signal",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "signal",
@@ -192,8 +192,8 @@
     {
       "name": "value_scr1_signals_1",
       "category": "value",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -213,8 +213,8 @@
     {
       "name": "value_scr1_signals_10",
       "category": "value",
-      "runs": 1,
-      "warmup": 0,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",

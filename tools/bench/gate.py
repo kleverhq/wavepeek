@@ -180,6 +180,7 @@ def gate_command(args: argparse.Namespace) -> int:
             "run FST e2e with labeled round-robin binaries",
             "run FSDB e2e with labeled round-robin binaries if enabled",
             "compare artifacts",
+            "confirm same-format timing outliers with best samples if needed",
         ],
     }
     write_json(out_dir / "manifest.json", manifest)

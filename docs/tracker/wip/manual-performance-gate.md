@@ -8,11 +8,11 @@ This document is maintained in accordance with the `exec-plan` skill.
 
 After this change, maintainers can compare two release binaries with one current benchmark apparatus instead of comparing two historical checkouts that each bring their own benchmark scripts, catalogs, fixtures, and Criterion microbenchmarks. A maintainer runs `just bench-gate <baseline-ref> <revised-ref>`, the helper builds `wavepeek` binaries from those refs, then measures both binaries through the benchmark tools and catalogs from the current working tree. This makes the gate answer the release question directly: whether user-visible CLI behavior regressed when the same current end-to-end tests run against two selected binaries.
 
-The gate will only hard-fail on end-to-end CLI timing and functional parity. Same-format timing means FST baseline binary versus FST revised binary and, when FSDB is available, FSDB baseline binary versus FSDB revised binary. Cross-format FST-versus-FSDB checks remain functional-only within each binary ref because FST and FSDB use different readers and their wall-clock timings are not comparable. Timing uses only median wall-clock time and allows a slowdown of `max(5%, 5ms)` so short commands are not failed by fixed millisecond-scale host jitter. Criterion expression microbenchmarks are removed from the repository because they are internal microbenchmarks, not release-gate evidence for user-visible CLI performance.
+The gate will only hard-fail on end-to-end CLI timing and functional parity. Same-format timing means FST baseline binary versus FST revised binary and, when FSDB is available, FSDB baseline binary versus FSDB revised binary. Cross-format FST-versus-FSDB checks remain functional-only within each binary ref because FST and FSDB use different readers and their wall-clock timings are not comparable. Timing uses median wall-clock time as the primary metric, allows a slowdown of `max(5%, 5ms)` so short commands are not failed by fixed millisecond-scale host jitter, and can run best-sample confirmation for same-format suites that fail only on median timing. Criterion expression microbenchmarks are removed from the repository because they are internal microbenchmarks, not release-gate evidence for user-visible CLI performance.
 
 ## Non-Goals
 
-This work will not add a GitHub Actions performance workflow. This work will not store benchmark baseline runs in git. This work will not compare FST timing against FSDB timing. This work will not solve noisy-machine benchmarking with self-hosted runners or statistical modeling. This work will not run the final release-like `just bench-gate v1.0.0 v1.0.1` validation until the maintainer explicitly requests it. This work will not keep Criterion as an advisory release-gate artifact; the expression microbenchmark harness is removed rather than demoted.
+This work will not add a GitHub Actions performance workflow. This work will not store benchmark baseline runs in git. This work will not compare FST timing against FSDB timing. This work will not solve noisy-machine benchmarking with self-hosted runners or statistical modeling. This work will not keep Criterion as an advisory release-gate artifact; the expression microbenchmark harness is removed rather than demoted. The maintainer has now explicitly requested one full release-like `just bench-gate v1.0.0 v1.0.1` validation after the best-sample timing confirmation change is committed.
 
 ## Progress
 
@@ -38,9 +38,14 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-21 06:05Z) Implemented explicit labeled-binary E2E runner output and switched the gate to one round-robin runner invocation per suite. Focused syntax, E2E, tools/bench, auxiliary, justfile-format, and actionlint checks passed.
 - [x] (2026-06-21 06:20Z) Review found reserved-label, movable-suite-path, report-root, gate-layout docs, and execution-order issues. Fixed them, added tests, and reran focused checks plus `just check`; all passed.
 - [x] (2026-06-21 06:35Z) Final control review returned no substantive findings.
-- [ ] Commit the labeled-runner change and run one full gate validation.
-- [ ] Run project quality checks that do not execute the full benchmark gate.
-- [ ] Commit the harness/policy refactor locally and stop before any final `just bench-gate` validation.
+- [x] (2026-06-21 10:40Z) Committed the labeled-runner change as `52e6858 refactor(bench): interleave labeled e2e binaries` and ran one full `just bench-gate v1.0.0 v1.0.1` validation. Capture passed; compare failed with 5 FST timing failures, 6 FSDB timing failures, and the known cross-format functional mismatches.
+- [x] (2026-06-21 11:05Z) Modeled best-sample and worst-sample confirmation on the failed timing tests. Best-sample confirmation cleared all FST timing failures and 4 of 6 FSDB timing failures; worst-sample cleared all timing failures. The maintainer selected best-sample confirmation plus larger sample sizes rather than worst-sample confirmation.
+- [x] (2026-06-21 11:45Z) Added `bench/e2e/perf.py compare --result-json`, `bench/e2e/perf.py confirm`, and `tools/bench/compare.py` orchestration that runs best-sample confirmation only for same-format median timing failures with no functional hard failures.
+- [x] (2026-06-21 11:45Z) Raised every committed E2E catalog entry in `tests.json`, `tests_fsdb.json`, and `tests_commit.json` to at least 10 measured runs and 5 warmups, and regenerated the FSDB catalog.
+- [x] (2026-06-21 11:50Z) Focused Python tests, `just test-aux`, `just format-justfile-check`, `just check-actions`, and `just check` passed.
+- [x] (2026-06-21 12:00Z) Review found that functional timeout warnings could be incorrectly overridden by best-sample timing confirmation; fixed the blocker check and added a regression test. Docs review found stale median-only and requested-gate wording in this plan; corrected the plan.
+- [x] (2026-06-21 12:15Z) Final control review found only unclear documentation about timeout warnings blocking confirmation; clarified maintainer docs, helper README, and this plan.
+- [ ] Commit and run one full gate validation from a clean worktree, then record the result.
 
 ## Surprises & Discoveries
 
@@ -54,6 +59,8 @@ This work will not add a GitHub Actions performance workflow. This work will not
   Evidence: The duration/noise analysis under `tmp/bench-gate/duration-vs-noise-20260620/` found that tests under 75ms had about 1.5ms to 2ms typical absolute run-to-run range, enough to exceed a strict 5% relative threshold.
 - Observation: Criterion expression microbenchmarks do not belong in the release gate.
   Evidence: Criterion failed in one of three null-experiment runs despite no runtime code changes. Its measurements target internal parser/binder/evaluator operations rather than user-visible CLI latency under real waveform workloads.
+- Observation: Round-robin scheduling removed broad suite-level bias but not per-test bimodal timing.
+  Evidence: The full gate under `tmp/bench-gate/gates/20260621T104432Z-a93aad1db823..81777d4e939e` had suite median deltas around zero, while individual failed tests alternated between fast and slow modes about 50ms apart. On that data, best-sample confirmation passed all 5 FST median failures and 4 of 6 FSDB median failures.
 
 ## Decision Log
 
@@ -72,8 +79,8 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - Decision: The current tooling worktree must be clean before `bench-gate` or `bench-capture` runs.
   Rationale: If current scripts and catalogs define the measurement apparatus, uncommitted local edits would make the gate irreproducible. Requiring a clean worktree records the tooling SHA as durable provenance.
   Date/Author: 2026-06-20 / Grin
-- Decision: Same-format end-to-end timing gates on median only, with an allowed slowdown of `max(golden_median * 5%, 0.005 seconds)`.
-  Rationale: Mean wall-clock time is sensitive to rare scheduler or I/O stalls. Median is more stable for hyperfine timing. A 5ms absolute floor prevents short commands from failing on fixed host jitter while preserving a 5% relative threshold for longer commands.
+- Decision: Same-format end-to-end timing gates on median as the primary metric, with an allowed slowdown of `max(golden_median * 5%, 0.005 seconds)` before any timing-only confirmation is considered.
+  Rationale: Mean wall-clock time is sensitive to rare scheduler or I/O stalls. Median is more stable for hyperfine timing. A 5ms absolute floor prevents short commands from failing on fixed host jitter while preserving a 5% relative threshold for longer commands. Later best-sample confirmation does not replace median as the primary evidence; it only rechecks median-only failures for the same low-latency envelope.
   Date/Author: 2026-06-20 / Grin
 - Decision: `bench/e2e/perf.py run` requires one or more explicit `--binary label=path` arguments, writes one labeled artifact directory per binary, and no longer reads `WAVEPEEK_BIN` or writes flat run directories.
   Rationale: The runner owns test order and output layout. Explicit labels make provenance visible and let the gate run the same test on all compared binaries before moving to the next test, reducing block-level noise while still using hyperfine for timing.
@@ -84,10 +91,16 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - Decision: Cross-format FST-versus-FSDB checks remain functional-only hard gates.
   Rationale: FST and FSDB timing is not comparable, but payload parity matters. Current tooling should own any needed catalog filtering or functional normalization.
   Date/Author: 2026-06-20 / Grin
+- Decision: Add a separate best-sample confirmation step after same-format median timing failures.
+  Rationale: Median remains the primary gate metric, but the current host shows discrete high-latency samples that can land unevenly between binaries. Confirming only failed tests with the best observed sample from each binary checks whether both binaries can still reach the same low-latency envelope. This is less permissive than worst-sample confirmation and matches the maintainer's request.
+  Date/Author: 2026-06-21 / Grin
+- Decision: Every committed E2E catalog entry should use at least 10 measured hyperfine runs and at least 5 warmup runs.
+  Rationale: The previous 5 measured runs and 3 warmups left too little chance for both binaries to show their clean low-latency mode on noisy hosts. Larger samples make median and best-sample confirmation less dependent on a single unlucky scheduler or I/O event.
+  Date/Author: 2026-06-21 / Grin
 
 ## Outcomes & Retrospective
 
-Criterion removal and the current-tooling gate model are committed locally. The working tree adds explicit labeled-binary E2E runner output and switches the gate to round-robin scheduling across baseline/revised binaries. Focused tests, review, final control re-check, and `just check` pass. One full `just bench-gate v1.0.0 v1.0.1` validation remains to run after the labeled-runner commit.
+Criterion removal, the current-tooling gate model, and the explicit labeled-binary round-robin runner are committed locally. The latest full gate validation proved round-robin reduced broad bias but still left bimodal per-test timing outliers and known cross-format functional mismatches. The active change adds best-sample confirmation for same-format median timing failures and raises committed E2E catalog sample counts before a new clean full gate run.
 
 ## Context and Orientation
 
@@ -111,7 +124,7 @@ First, remove Criterion completely. Delete `bench/expr/`, remove the Criterion d
 
 Second, refactor the gate so selected refs provide only compiled binaries. `tools/bench/gate.py` should still clone both refs under the gate output directory and build both release binaries before measurement. `tools/bench/capture.py` should treat `REPO_ROOT` as the tooling root and the cloned checkout as the binary source root. End-to-end capture must run `python3 -B bench/e2e/perf.py run` with `cwd=REPO_ROOT`, current benchmark catalogs, current fixtures, and explicit `--binary label=path` arguments pointing at the binaries in the cloned checkouts. FSDB preparation and catalog checks should run once through current tools and current catalogs; the generated runnable catalog should be written into each capture directory so manifests preserve the skip list used for that capture. Capture manifests should record both `tooling_sha` and `binary_sha`.
 
-The E2E comparator should fail timing only when median slowdown exceeds both the relative and absolute allowances, expressed as `revised_median - golden_median > max(golden_median * threshold_pct / 100, threshold_seconds)`. The default threshold remains 5%, and the default absolute floor is 0.005 seconds. Mean remains available in reports and hyperfine artifacts but is no longer a gate timing metric. The compare manifest should record both timing threshold values and identify median as the gating metric.
+The E2E comparator should first fail timing only when median slowdown exceeds both the relative and absolute allowances, expressed as `revised_median - golden_median > max(golden_median * threshold_pct / 100, threshold_seconds)`. The default threshold remains 5%, and the default absolute floor is 0.005 seconds. Mean remains available in reports and hyperfine artifacts but is not a gate timing metric. If a same-format compare fails only because of median timing failures, with no functional mismatches, missing or invalid artifacts, or timeout warnings, the manual gate should run a separate confirmation step over those failed tests. Confirmation uses the best observed hyperfine sample for each binary, where best means the minimum value in the `times` array in the hyperfine JSON artifact. A confirmed test passes when `revised_best - golden_best <= max(golden_best * threshold_pct / 100, threshold_seconds)`. The compare manifest should record both timing threshold values, identify median as the primary gating metric, and record best-sample confirmation details when confirmation is attempted.
 
 ### Concrete Steps
 
@@ -140,6 +153,8 @@ Update these helper paths:
     bench/e2e/test_perf.py
     justfile
 
+For the best-sample confirmation change, add machine-readable timing failure output to `bench/e2e/perf.py compare` with a `--result-json` option, add a `confirm` subcommand in `bench/e2e/perf.py` that accepts `--golden`, `--revised`, repeated `--test`, and the same threshold flags, then call that subcommand from `tools/bench/compare.py` only after a same-format median compare fails with timing failures and no functional hard failures. The confirmation log should be a separate file such as `compare/e2e-fst.best-confirm.log`.
+
 Update these docs as needed:
 
     docs/dev/benchmarking.md
@@ -159,11 +174,12 @@ Run focused validation after Criterion removal:
 
 The search should return no source references except this ExecPlan while it remains in `docs/tracker/wip/`.
 
-Run focused validation after the harness/policy refactor:
+Run focused validation after the harness/policy refactor and after the best-sample confirmation update:
 
-    python3 -B -m py_compile tools/bench/common.py tools/bench/capture.py tools/bench/compare.py tools/bench/gate.py bench/e2e/perf.py
+    python3 -B -m py_compile tools/bench/common.py tools/bench/capture.py tools/bench/compare.py tools/bench/gate.py bench/e2e/perf.py tools/fsdb/generate_bench_catalog.py
     python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'
     python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
+    python3 -B -m unittest discover -s tools/fsdb -p 'test_*.py'
     just test-aux
     just format-justfile-check
     just check-actions
@@ -172,17 +188,19 @@ If the environment supports the full project gates, run:
 
     just check
 
-Do not run `just bench-gate ...` in this milestone until the maintainer explicitly gives permission.
+The maintainer has explicitly requested one full release-like gate validation after this confirmation change is committed:
+
+    just bench-gate v1.0.0 v1.0.1
 
 ### Validation and Acceptance
 
 Unit tests should prove that Criterion is absent from source, the public benchmark recipes still point at the manual gate helpers, dirty current tooling is rejected, selected refs are built as binaries, current `bench/e2e/perf.py` is used for capture, current FSDB tools are used for preparation, compare no longer requires expression artifacts, same-format timing invokes median-only compare with a 5ms absolute floor, and cross-format checks remain functional-only.
 
-A full release-like acceptance run, when explicitly requested later, is:
+The requested full release-like validation run is:
 
     just bench-gate v1.0.0 v1.0.1
 
-A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds` recorded for same-format suites.
+A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks. Top-level compare metadata records `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds`; same-format suite entries record `timing_metric`, `threshold_pct`, and `threshold_seconds`. When median timing fails but best-sample confirmation passes, the same-format suite should be reported as passed with an attached `timing_confirm` object and a separate confirmation log path, so maintainers can see that the primary median compare needed confirmation.
 
 ### Idempotence and Recovery
 

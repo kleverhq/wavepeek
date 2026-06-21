@@ -559,6 +559,94 @@ def delta_pct(revised: float, golden: float) -> float | None:
     return ((golden - revised) / golden) * 100.0
 
 
+def allowed_slowdown(golden_time: float, threshold_pct: float, threshold_seconds: float) -> float:
+    return max(golden_time * threshold_pct / 100.0, threshold_seconds)
+
+
+def timing_record(
+    *,
+    test_name: str,
+    metric: str,
+    revised_time: float,
+    golden_time: float,
+    threshold_pct: float,
+    threshold_seconds: float,
+) -> dict[str, Any]:
+    actual_slowdown = revised_time - golden_time
+    return {
+        "test_name": test_name,
+        "metric": metric,
+        "revised_seconds": revised_time,
+        "golden_seconds": golden_time,
+        "delta_pct": delta_pct(revised_time, golden_time),
+        "slowdown_seconds": actual_slowdown,
+        "allowed_slowdown_seconds": allowed_slowdown(
+            golden_time,
+            threshold_pct,
+            threshold_seconds,
+        ),
+        "speed": format_speed_factor(revised_time, golden_time),
+    }
+
+
+def format_timing_record(record: dict[str, Any]) -> str:
+    delta = record.get("delta_pct")
+    delta_text = "n/a" if delta is None else f"{float(delta):+.2f}%"
+    return (
+        f"{record['test_name']}: {record['metric']} "
+        f"revised={float(record['revised_seconds']):.6f}s, "
+        f"golden={float(record['golden_seconds']):.6f}s, "
+        f"delta={delta_text}, "
+        f"slowdown={float(record['slowdown_seconds']):.6f}s, "
+        f"allowed={float(record['allowed_slowdown_seconds']):.6f}s, "
+        f"speed={record['speed']}"
+    )
+
+
+def write_result_json(path_arg: str | None, payload: dict[str, Any]) -> None:
+    if not path_arg:
+        return
+    path = normalize_path(path_arg)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def parse_hyperfine_times_file(path: pathlib.Path, caller: str) -> list[float]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        fail(f"error: {caller}: missing hyperfine JSON file: {path}")
+    except json.JSONDecodeError as error:
+        fail(f"error: {caller}: invalid JSON in {path}: {error}")
+
+    if not isinstance(payload, dict):
+        fail(f"error: {caller}: expected object in {path}")
+    results = payload.get("results")
+    if not isinstance(results, list) or not results or not isinstance(results[0], dict):
+        fail(f"error: {caller}: missing `results[0]` object in {path}")
+    raw_times = results[0].get("times")
+    if not isinstance(raw_times, list) or not raw_times:
+        fail(f"error: {caller}: missing non-empty `results[0].times` array in {path}")
+
+    times: list[float] = []
+    for index, raw in enumerate(raw_times):
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            fail(f"error: {caller}: invalid time at `results[0].times[{index}]` in {path}")
+        if not math.isfinite(value) or value < 0:
+            fail(f"error: {caller}: invalid time at `results[0].times[{index}]` in {path}")
+        times.append(value)
+    return times
+
+
+def hyperfine_sample_times(run_dir: pathlib.Path, test_name: str, caller: str) -> list[float]:
+    return parse_hyperfine_times_file(hyperfine_result_path(run_dir, test_name), caller)
+
+
 def speed_factor(revised: float, golden: float) -> tuple[float, str]:
     if revised == golden:
         return 1.0, "same"
@@ -945,6 +1033,7 @@ def compare_functional_only(
     golden_dir: pathlib.Path,
     allow_golden_extra: bool,
     verbose: bool,
+    result_json: str | None = None,
 ) -> int:
     revised_names = wavepeek_artifact_names(revised_dir)
     golden_names = wavepeek_artifact_names(golden_dir)
@@ -1030,7 +1119,26 @@ def compare_functional_only(
             for issue in functional_artifact_errors:
                 print(f"  - {issue}", file=sys.stderr)
 
-    if functional_timeouts or functional_mismatches or functional_artifact_errors:
+    status = "failed" if functional_timeouts or functional_mismatches or functional_artifact_errors else "passed"
+    write_result_json(
+        result_json,
+        {
+            "kind": "wavepeek-e2e-compare-result",
+            "schema_version": 1,
+            "status": status,
+            "functional_only": True,
+            "allow_golden_extra": allow_golden_extra,
+            "matched_count": len(matched),
+            "revised_only": revised_only,
+            "golden_only": golden_only,
+            "functional_timeouts": functional_timeouts,
+            "functional_mismatches": functional_mismatches,
+            "functional_artifact_errors": functional_artifact_errors,
+            "timing_failures": [],
+        },
+    )
+
+    if status == "failed":
         if not verbose:
             print(
                 "error: compare: functional checks failed "
@@ -1058,12 +1166,15 @@ def cmd_compare(args: argparse.Namespace) -> int:
 
     if allow_golden_extra and not functional_only:
         fail("error: compare: --allow-golden-extra requires --functional-only")
+    result_json = getattr(args, "result_json", None)
+
     if functional_only:
         return compare_functional_only(
             revised_dir,
             golden_dir,
             allow_golden_extra,
             verbose,
+            result_json,
         )
 
     if args.max_negative_delta_pct is None:
@@ -1086,7 +1197,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
     revised_only = sorted(revised_names - golden_names)
     golden_only = sorted(golden_names - revised_names)
 
-    timing_failures: list[str] = []
+    timing_failures: list[dict[str, Any]] = []
     functional_mismatches: list[str] = []
     functional_artifact_errors: list[str] = []
     functional_timeout_warnings: list[str] = []
@@ -1098,17 +1209,18 @@ def cmd_compare(args: argparse.Namespace) -> int:
         metric = COMPARE_TIMING_METRIC
         revised_time = float(revised_row[metric])
         golden_time = float(golden_row[metric])
-        delta = delta_pct(revised_time, golden_time)
-        allowed_slowdown = max(golden_time * threshold / 100.0, threshold_seconds)
+        allowed = allowed_slowdown(golden_time, threshold, threshold_seconds)
         actual_slowdown = revised_time - golden_time
-        if actual_slowdown > allowed_slowdown:
-            speed = format_speed_factor(revised_time, golden_time)
-            delta_text = "n/a" if delta is None else f"{delta:+.2f}%"
+        if actual_slowdown > allowed:
             timing_failures.append(
-                f"{test_name}: {metric} revised={revised_time:.6f}s, "
-                f"golden={golden_time:.6f}s, delta={delta_text}, "
-                f"slowdown={actual_slowdown:.6f}s, allowed={allowed_slowdown:.6f}s, "
-                f"speed={speed}"
+                timing_record(
+                    test_name=test_name,
+                    metric=metric,
+                    revised_time=revised_time,
+                    golden_time=golden_time,
+                    threshold_pct=threshold,
+                    threshold_seconds=threshold_seconds,
+                )
             )
 
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(
@@ -1170,7 +1282,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
                 file=sys.stderr,
             )
             for issue in timing_failures:
-                print(f"  - {issue}", file=sys.stderr)
+                print(f"  - {format_timing_record(issue)}", file=sys.stderr)
 
         if functional_mismatches:
             print("error: compare: functional mismatch detected:", file=sys.stderr)
@@ -1182,7 +1294,29 @@ def cmd_compare(args: argparse.Namespace) -> int:
             for issue in functional_artifact_errors:
                 print(f"  - {issue}", file=sys.stderr)
 
-    if timing_failures or functional_mismatches or functional_artifact_errors:
+    status = "failed" if timing_failures or functional_mismatches or functional_artifact_errors else "passed"
+    write_result_json(
+        result_json,
+        {
+            "kind": "wavepeek-e2e-compare-result",
+            "schema_version": 1,
+            "status": status,
+            "functional_only": False,
+            "allow_golden_extra": False,
+            "matched_count": len(matched),
+            "revised_only": revised_only,
+            "golden_only": golden_only,
+            "timing_metric": COMPARE_TIMING_METRIC,
+            "threshold_pct": threshold,
+            "threshold_seconds": threshold_seconds,
+            "timing_failures": timing_failures,
+            "functional_timeout_warnings": functional_timeout_warnings,
+            "functional_mismatches": functional_mismatches,
+            "functional_artifact_errors": functional_artifact_errors,
+        },
+    )
+
+    if status == "failed":
         if not verbose:
             print(
                 "error: compare: checks failed (use --verbose for detailed logs)",
@@ -1194,6 +1328,92 @@ def cmd_compare(args: argparse.Namespace) -> int:
         print("info: compare: all checks passed")
     else:
         print("ok: compare: all checks passed (use --verbose for detailed logs)")
+    return 0
+
+
+def cmd_confirm(args: argparse.Namespace) -> int:
+    revised_dir = normalize_path(args.revised)
+    golden_dir = normalize_path(args.golden)
+    ensure_existing_dir(revised_dir, "confirm")
+    ensure_existing_dir(golden_dir, "confirm")
+
+    tests = list(getattr(args, "test", None) or [])
+    if not tests:
+        fail("error: confirm: at least one --test argument is required")
+
+    threshold = float(args.max_negative_delta_pct)
+    if threshold < 0:
+        fail("error: confirm: --max-negative-delta-pct must be non-negative")
+    threshold_seconds = float(getattr(args, "max_negative_delta_seconds", 0.0) or 0.0)
+    if threshold_seconds < 0:
+        fail("error: confirm: --max-negative-delta-seconds must be non-negative")
+
+    verbose = bool(getattr(args, "verbose", False))
+    records: list[dict[str, Any]] = []
+    failures: list[dict[str, Any]] = []
+    for test_name in tests:
+        golden_times = hyperfine_sample_times(golden_dir, test_name, "confirm")
+        revised_times = hyperfine_sample_times(revised_dir, test_name, "confirm")
+        golden_best = min(golden_times)
+        revised_best = min(revised_times)
+        record = timing_record(
+            test_name=test_name,
+            metric="best",
+            revised_time=revised_best,
+            golden_time=golden_best,
+            threshold_pct=threshold,
+            threshold_seconds=threshold_seconds,
+        )
+        record["golden_sample_count"] = len(golden_times)
+        record["revised_sample_count"] = len(revised_times)
+        records.append(record)
+        if float(record["slowdown_seconds"]) > float(record["allowed_slowdown_seconds"]):
+            failures.append(record)
+
+    status = "failed" if failures else "passed"
+    write_result_json(
+        getattr(args, "result_json", None),
+        {
+            "kind": "wavepeek-e2e-timing-confirm-result",
+            "schema_version": 1,
+            "status": status,
+            "metric": "best",
+            "threshold_pct": threshold,
+            "threshold_seconds": threshold_seconds,
+            "test_count": len(tests),
+            "confirmed": records,
+            "failures": failures,
+        },
+    )
+
+    if verbose:
+        if failures:
+            print(
+                "error: confirm: best-sample regression exceeds allowed slowdown "
+                f"(max({threshold:.2f}%, {threshold_seconds:.6f}s)):",
+                file=sys.stderr,
+            )
+            for record in failures:
+                print(f"  - {format_timing_record(record)}", file=sys.stderr)
+        else:
+            print(
+                "info: confirm: best-sample timing confirmation passed "
+                f"for {len(records)} test(s)"
+            )
+            for record in records:
+                print(f"  - {format_timing_record(record)}")
+
+    if failures:
+        if not verbose:
+            print(
+                "error: confirm: best-sample timing confirmation failed "
+                "(use --verbose for detailed logs)",
+                file=sys.stderr,
+            )
+        return 1
+
+    if not verbose:
+        print("ok: confirm: best-sample timing confirmation passed")
     return 0
 
 
@@ -1289,10 +1509,51 @@ def build_parser() -> argparse.ArgumentParser:
         help="with --functional-only, allow extra artifacts in the golden directory",
     )
     compare_parser.add_argument(
+        "--result-json",
+        default=None,
+        help="write machine-readable compare result JSON",
+    )
+    compare_parser.add_argument(
         "-v",
         "--verbose",
         action="store_true",
         help="show detailed compare warnings and failures",
+    )
+
+    confirm_parser = subparsers.add_parser(
+        "confirm",
+        help="confirm failed timing tests with best hyperfine samples",
+    )
+    confirm_parser.add_argument("--revised", required=True, help="revised run directory")
+    confirm_parser.add_argument("--golden", required=True, help="golden run directory")
+    confirm_parser.add_argument(
+        "--test",
+        action="append",
+        help="test name to confirm; repeat for multiple tests",
+    )
+    confirm_parser.add_argument(
+        "--max-negative-delta-pct",
+        required=True,
+        type=float,
+        help="relative best-sample slowdown threshold",
+    )
+    confirm_parser.add_argument(
+        "--max-negative-delta-seconds",
+        required=False,
+        type=float,
+        default=0.0,
+        help="absolute best-sample slowdown floor in seconds",
+    )
+    confirm_parser.add_argument(
+        "--result-json",
+        default=None,
+        help="write machine-readable confirmation result JSON",
+    )
+    confirm_parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show detailed confirmation failures",
     )
 
     return parser
@@ -1310,6 +1571,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_report(args)
     if args.command == "compare":
         return cmd_compare(args)
+    if args.command == "confirm":
+        return cmd_confirm(args)
 
     fail(f"error: unsupported command: {args.command}")
     raise AssertionError("unreachable")

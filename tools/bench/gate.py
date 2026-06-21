@@ -18,8 +18,8 @@ from capture import (
     prepare_fsdb,
     resolve_gate_fsdb_plan,
     write_fsdb_capture_catalog,
-    run_e2e_fsdb,
-    run_e2e_fst,
+    run_e2e_fsdb_many,
+    run_e2e_fst_many,
 )
 from common import (
     DEFAULT_TIMING_THRESHOLD_PCT,
@@ -103,6 +103,7 @@ def gate_command(args: argparse.Namespace) -> int:
         fsdb_mode=args.fsdb,
         fsdb_plan=gate_fsdb_plan,
         environment_note=args.environment_note,
+        binary_label="baseline",
     )
     revised = init_capture_session(
         tooling_root=source_root,
@@ -114,6 +115,7 @@ def gate_command(args: argparse.Namespace) -> int:
         fsdb_mode=args.fsdb,
         fsdb_plan=gate_fsdb_plan,
         environment_note=args.environment_note,
+        binary_label="revised",
     )
 
     # Keep preparation work out of the measured section. Build both refs first,
@@ -127,11 +129,17 @@ def gate_command(args: argparse.Namespace) -> int:
         prepare_fsdb(baseline)
         write_fsdb_capture_catalog(revised)
 
-    run_e2e_fst(baseline)
-    run_e2e_fst(revised)
+    run_e2e_fst_many(
+        [baseline, revised],
+        run_dir=out_dir / "e2e-fst",
+        log_path=out_dir / "logs" / "bench-e2e-fst.log",
+    )
     if gate_fsdb_plan.capture:
-        run_e2e_fsdb(baseline)
-        run_e2e_fsdb(revised)
+        run_e2e_fsdb_many(
+            [baseline, revised],
+            run_dir=out_dir / "e2e-fsdb",
+            log_path=out_dir / "logs" / "bench-e2e-fsdb.log",
+        )
 
     finalize_capture(baseline)
     finalize_capture(revised)
@@ -167,12 +175,10 @@ def gate_command(args: argparse.Namespace) -> int:
             "build revised release",
             "build baseline fsdb release if enabled",
             "build revised fsdb release if enabled",
-            "prepare baseline fsdb fixtures if enabled",
-            "prepare revised fsdb fixtures if enabled",
-            "run baseline FST e2e",
-            "run revised FST e2e",
-            "run baseline FSDB e2e if enabled",
-            "run revised FSDB e2e if enabled",
+            "prepare current fsdb fixtures if enabled",
+            "write revised fsdb runnable catalog if enabled",
+            "run FST e2e with labeled round-robin binaries",
+            "run FSDB e2e with labeled round-robin binaries if enabled",
             "compare artifacts",
         ],
     }

@@ -44,6 +44,7 @@ class CaptureSession:
     fsdb_mode: str
     fsdb_plan: FsdbPlan
     environment_note: str
+    binary_label: str
     logs_dir: pathlib.Path
     commands: list[CommandResult]
     suites: dict[str, dict[str, Any]]
@@ -244,6 +245,7 @@ def init_capture_session(
     fsdb_mode: str,
     fsdb_plan: FsdbPlan,
     environment_note: str,
+    binary_label: str = "subject",
 ) -> CaptureSession:
     ensure_empty_dir(capture_dir)
     logs_dir = capture_dir / "logs"
@@ -258,6 +260,7 @@ def init_capture_session(
         fsdb_mode=fsdb_mode,
         fsdb_plan=fsdb_plan,
         environment_note=environment_note,
+        binary_label=binary_label,
         logs_dir=logs_dir,
         commands=[],
         suites={},
@@ -336,56 +339,112 @@ def prepare_fsdb(session: CaptureSession) -> None:
     )
 
 
-def run_e2e_fst(session: CaptureSession) -> None:
-    session.commands.append(
-        run_command(
-            "bench-e2e-fst",
+def run_e2e_many(
+    *,
+    name: str,
+    sessions: Sequence[CaptureSession],
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+    binary_path: str,
+    tests_path: pathlib.Path | None = None,
+) -> None:
+    if not sessions:
+        return
+    first = sessions[0]
+    args = [
+        "python3",
+        "-B",
+        "bench/e2e/perf.py",
+        "run",
+        "--run-dir",
+        str(run_dir),
+    ]
+    if tests_path is not None:
+        args.extend(["--tests", str(tests_path)])
+    for session in sessions:
+        args.extend(
             [
-                "python3",
-                "-B",
-                "bench/e2e/perf.py",
-                "run",
-                "--run-dir",
-                str(session.capture_dir / "e2e-fst"),
-            ],
-            cwd=session.tooling_root,
-            log_path=session.logs_dir / "bench-e2e-fst.log",
-            env={"WAVEPEEK_BIN": str(session.binary_checkout / "target/release/wavepeek")},
+                "--binary",
+                f"{session.binary_label}={session.binary_checkout / binary_path}",
+            ]
         )
+    result = run_command(
+        f"bench-{name}",
+        args,
+        cwd=first.tooling_root,
+        log_path=log_path,
     )
-    session.suites["e2e-fst"] = {"status": "passed", "path": "e2e-fst"}
+    for session in sessions:
+        session.commands.append(result)
+        session.suites[name] = {
+            "status": "passed",
+            "path": relative_to(run_dir / session.binary_label, session.capture_dir),
+        }
+
+
+def run_e2e_fst_many(
+    sessions: Sequence[CaptureSession],
+    *,
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+) -> None:
+    run_e2e_many(
+        name="e2e-fst",
+        sessions=sessions,
+        run_dir=run_dir,
+        log_path=log_path,
+        binary_path="target/release/wavepeek",
+    )
+
+
+def run_e2e_fst(session: CaptureSession) -> None:
+    run_e2e_fst_many(
+        [session],
+        run_dir=session.capture_dir / "e2e-fst",
+        log_path=session.logs_dir / "bench-e2e-fst.log",
+    )
+
+
+def run_e2e_fsdb_many(
+    sessions: Sequence[CaptureSession],
+    *,
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+) -> None:
+    active_sessions = [session for session in sessions if session.fsdb_plan.capture]
+    if not active_sessions:
+        return
+    catalog = active_sessions[0].fsdb_catalog
+    if catalog is None:
+        raise BenchGateError("FSDB runnable catalog missing; call prepare_fsdb before run_e2e_fsdb")
+    run_e2e_many(
+        name="e2e-fsdb",
+        sessions=active_sessions,
+        run_dir=run_dir,
+        log_path=log_path,
+        binary_path="target/fsdb/release/wavepeek",
+        tests_path=catalog,
+    )
+    for session in active_sessions:
+        if session.fsdb_catalog is None:
+            raise BenchGateError("FSDB runnable catalog missing from session manifest")
+        session.suites["e2e-fsdb"].update(
+            {
+                "filtered_catalog_path": relative_to(session.fsdb_catalog, session.capture_dir),
+                "skipped_tests": session.fsdb_skipped_tests,
+                "skipped_test_count": len(session.fsdb_skipped_tests),
+            }
+        )
 
 
 def run_e2e_fsdb(session: CaptureSession) -> None:
     if not session.fsdb_plan.capture:
         return
-    if session.fsdb_catalog is None:
-        raise BenchGateError("FSDB runnable catalog missing; call prepare_fsdb before run_e2e_fsdb")
-    session.commands.append(
-        run_command(
-            "bench-e2e-fsdb",
-            [
-                "python3",
-                "-B",
-                "bench/e2e/perf.py",
-                "run",
-                "--tests",
-                str(session.fsdb_catalog),
-                "--run-dir",
-                str(session.capture_dir / "e2e-fsdb"),
-            ],
-            cwd=session.tooling_root,
-            log_path=session.logs_dir / "bench-e2e-fsdb.log",
-            env={"WAVEPEEK_BIN": str(session.binary_checkout / "target/fsdb/release/wavepeek")},
-        )
+    run_e2e_fsdb_many(
+        [session],
+        run_dir=session.capture_dir / "e2e-fsdb",
+        log_path=session.logs_dir / "bench-e2e-fsdb.log",
     )
-    session.suites["e2e-fsdb"] = {
-        "status": "passed",
-        "path": "e2e-fsdb",
-        "filtered_catalog_path": relative_to(session.fsdb_catalog, session.capture_dir),
-        "skipped_tests": session.fsdb_skipped_tests,
-        "skipped_test_count": len(session.fsdb_skipped_tests),
-    }
 
 
 def finalize_capture(session: CaptureSession) -> CaptureResult:
@@ -451,6 +510,7 @@ def capture_checkout(
         fsdb_mode=fsdb_mode,
         fsdb_plan=effective_fsdb_plan,
         environment_note=environment_note,
+        binary_label="subject",
         logs_dir=logs_dir,
         commands=[],
         suites={},

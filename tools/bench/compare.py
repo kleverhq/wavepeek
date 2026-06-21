@@ -18,6 +18,7 @@ from common import (
     enforce_clean_worktree,
     ensure_empty_dir,
     make_default_output_dir,
+    read_json,
     relative_to,
     resolve_ref,
     run_command,
@@ -57,6 +58,21 @@ def assert_matching_e2e_artifacts(golden: pathlib.Path, revised: pathlib.Path) -
         raise BenchGateError(
             f"e2e artifact sets differ between {golden} and {revised}: {'; '.join(details)}"
         )
+
+
+def suite_dir(capture_dir: pathlib.Path, suite_name: str) -> pathlib.Path:
+    manifest_path = capture_dir / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = read_json(manifest_path)
+        except BenchGateError:
+            return capture_dir / suite_name
+        suites = manifest.get("suites")
+        if isinstance(suites, Mapping):
+            suite = suites.get(suite_name)
+            if isinstance(suite, Mapping) and isinstance(suite.get("path"), str):
+                return (capture_dir / str(suite["path"])).resolve()
+    return capture_dir / suite_name
 
 
 def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
@@ -194,8 +210,8 @@ def compare_captures(
     required = {
         "e2e-fst": lambda: run_e2e_compare(
             name="e2e-fst",
-            golden=golden_dir / "e2e-fst",
-            revised=revised_dir / "e2e-fst",
+            golden=suite_dir(golden_dir, "e2e-fst"),
+            revised=suite_dir(revised_dir, "e2e-fst"),
             compare_dir=compare_dir,
             tooling_root=tooling_root,
             threshold_pct=timing_threshold_pct,
@@ -204,8 +220,8 @@ def compare_captures(
         ),
     }
     for name, runner in required.items():
-        golden = golden_dir / name
-        revised = revised_dir / name
+        golden = suite_dir(golden_dir, name)
+        revised = suite_dir(revised_dir, name)
         if not golden.is_dir() or not revised.is_dir():
             suites[name] = {"status": "failed", "reason": "required suite missing from one or both captures"}
             failures.append(name)
@@ -218,8 +234,8 @@ def compare_captures(
         if suite_result.get("status") != "passed":
             failures.append(name)
 
-    golden_fsdb = golden_dir / "e2e-fsdb"
-    revised_fsdb = revised_dir / "e2e-fsdb"
+    golden_fsdb = suite_dir(golden_dir, "e2e-fsdb")
+    revised_fsdb = suite_dir(revised_dir, "e2e-fsdb")
     if golden_fsdb.is_dir() or revised_fsdb.is_dir():
         if not golden_fsdb.is_dir() or not revised_fsdb.is_dir():
             suites["e2e-fsdb"] = {"status": "failed", "reason": "suite exists in only one capture"}
@@ -249,8 +265,8 @@ def compare_captures(
         "cross-revised-fst-fsdb": revised_dir,
     }
     for name, capture_dir in cross_checks.items():
-        fst = capture_dir / "e2e-fst"
-        fsdb = capture_dir / "e2e-fsdb"
+        fst = suite_dir(capture_dir, "e2e-fst")
+        fsdb = suite_dir(capture_dir, "e2e-fsdb")
         if not fsdb.is_dir():
             suites[name] = {"status": "skipped", "reason": "FSDB suite missing from capture"}
             continue

@@ -19,8 +19,14 @@ Same-format FST and FSDB comparisons use functional checks plus median timing. T
 Default gate output has this shape:
 
     tmp/bench-gate/gates/<timestamp>-<baseline>..<revised>/
-      baseline/       # compare input for the baseline binary capture
-      revised/        # compare input for the revised binary capture
+      e2e-fst/
+        baseline/     # FST artifacts for the baseline binary
+        revised/      # FST artifacts for the revised binary
+      e2e-fsdb/       # present when FSDB is captured
+        baseline/
+        revised/
+      baseline/       # baseline capture manifest and logs
+      revised/        # revised capture manifest and logs
       compare/
       checkouts/
       manifest.json
@@ -43,14 +49,14 @@ The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and 
 Common focused commands:
 
     python3 bench/e2e/perf.py list
-    python3 bench/e2e/perf.py run --filter '^info_'
-    python3 bench/e2e/perf.py run --run-dir bench/e2e/runs/<run-id> --missing-only
-    python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>
+    python3 bench/e2e/perf.py run --binary current=target/release/wavepeek --filter '^info_'
+    python3 bench/e2e/perf.py run --binary current=target/release/wavepeek --run-dir bench/e2e/runs/<run-id> --missing-only
+    python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>/current
     python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5 --max-negative-delta-seconds 0.005
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
 
-Set `WAVEPEEK_BIN` to choose the binary used by generated commands. Each run writes per-test timing JSON, captured wavepeek JSON, and a run-level `README.md` report. Timing compare mode fails on matched-test median threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog.
+Pass one or more `--binary label=path` arguments to choose the binaries used by generated commands. The runner always writes one labeled artifact directory per binary and defaults to a round-robin schedule that runs each selected test on all binaries before moving to the next test. Each labeled directory contains per-test timing JSON, captured wavepeek JSON, and a `README.md` report. Timing compare mode fails on matched-test median threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog.
 
 Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 

@@ -334,24 +334,24 @@ bench-compare golden_dir revised_dir: require-container
 
 [private]
 bench-e2e-run: check-rtl-artifacts build-release
-    WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
 
 [private]
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}"
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
 
 # Run lightweight benchmark e2e smoke for pre-commit
 [private]
 bench-e2e-smoke-commit: check-rtl-artifacts build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
+        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 [private]
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-rtl-artifacts build-release-fsdb
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
+        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
 
 # Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

@@ -6,14 +6,13 @@ import argparse
 from datetime import datetime, timezone
 import json
 import math
-import os
 import pathlib
 import re
 import shlex
 import shutil
 import subprocess
 import sys
-from typing import Any, NoReturn
+from typing import Any, NamedTuple, NoReturn
 
 
 SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
@@ -21,7 +20,7 @@ REPO_ROOT = SCRIPT_DIR.parents[1]
 TESTS_PATH = SCRIPT_DIR / "tests.json"
 DEFAULT_RUNS_DIR = SCRIPT_DIR / "runs"
 README_NAME = "README.md"
-WAVEPEEK_BIN_ENV = "WAVEPEEK_BIN"
+BINARY_LABEL_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 EMOJI_THRESHOLD_PCT = 3.0
 METRICS = ("mean", "stddev", "median", "min", "max")
 COMPARE_TIMING_METRIC = "median"
@@ -33,6 +32,11 @@ FUNCTIONAL_MISSING_MARKER = "?"
 FUNCTIONAL_TIMEOUT_MARKER = "⏱T"
 DEFAULT_WAVEPEEK_TIMEOUT_SECONDS = 300
 DIAGNOSTIC_CODE_RE = re.compile(r"^WPK-[WE][0-9]{4}$")
+
+
+class BinarySpec(NamedTuple):
+    label: str
+    path: str
 
 
 def fail(message: str) -> NoReturn:
@@ -167,17 +171,30 @@ def resolve_run_dir(run_dir_arg: str | None, out_dir_arg: str) -> pathlib.Path:
     raise AssertionError("unreachable")
 
 
-def resolve_wavepeek_bin() -> str:
-    value = os.environ.get(WAVEPEEK_BIN_ENV, "wavepeek")
-    if pathlib.Path(value).is_absolute() or "/" in value:
-        path = normalize_path(value)
-        if not path.exists():
-            fail(f"error: run: `{WAVEPEEK_BIN_ENV}` points to missing file: {path}")
-        return str(path)
+def parse_binary_specs(values: list[str] | None) -> list[BinarySpec]:
+    if not values:
+        fail("error: run: at least one --binary label=path argument is required")
 
-    if shutil.which(value) is None:
-        fail(f"error: run: `{WAVEPEEK_BIN_ENV}` value `{value}` is not in PATH")
-    return value
+    specs: list[BinarySpec] = []
+    seen: set[str] = set()
+    for raw in values:
+        if "=" not in raw:
+            fail(f"error: run: --binary must use label=path form: {raw}")
+        label, path_text = raw.split("=", 1)
+        if not label or not BINARY_LABEL_RE.fullmatch(label):
+            fail(
+                "error: run: --binary label must contain only letters, digits, dot, dash, or underscore"
+            )
+        if label in {".", "..", README_NAME, "manifest.json"}:
+            fail(f"error: run: --binary label `{label}` is reserved")
+        if label in seen:
+            fail(f"error: run: duplicate --binary label `{label}`")
+        path = normalize_path(path_text)
+        if not path.exists() or not path.is_file():
+            fail(f"error: run: --binary `{label}` points to missing file: {path}")
+        specs.append(BinarySpec(label=label, path=str(path)))
+        seen.add(label)
+    return specs
 
 
 def ensure_hyperfine() -> None:
@@ -245,6 +262,48 @@ def test_has_complete_artifacts(run_dir: pathlib.Path, test_name: str) -> bool:
     return hyperfine_result_path(run_dir, test_name).is_file() and wavepeek_result_path(
         run_dir, test_name
     ).is_file()
+
+
+def binary_run_dir(run_dir: pathlib.Path, binary: BinarySpec) -> pathlib.Path:
+    return run_dir / binary.label
+
+
+def write_run_manifest(
+    *,
+    run_dir: pathlib.Path,
+    tests_path: pathlib.Path,
+    binaries: list[BinarySpec],
+    selected_tests: list[dict[str, Any]],
+    schedule: str,
+    timeout_seconds: int,
+) -> None:
+    payload = {
+        "kind": "wavepeek-e2e-bench-run",
+        "schema_version": 1,
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "tests_path": str(tests_path),
+        "schedule": schedule,
+        "timeout_seconds": timeout_seconds,
+        "test_count": len(selected_tests),
+        "binaries": [
+            {"label": binary.label, "path": binary.path, "run_dir": binary.label}
+            for binary in binaries
+        ],
+    }
+    (run_dir / "manifest.json").write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def write_run_index(run_dir: pathlib.Path, binaries: list[BinarySpec]) -> pathlib.Path:
+    lines = [f"# CLI E2E Bench Run: {run_dir.name}", "", "## Binaries", ""]
+    for binary in binaries:
+        lines.append(f"- `{binary.label}`: `{binary.path}` (`{binary.label}/`)" )
+    lines.append("")
+    index_path = run_dir / README_NAME
+    index_path.write_text("\n".join(lines), encoding="utf-8")
+    return index_path
 
 
 def partition_missing_only_tests(
@@ -705,9 +764,7 @@ def write_report(
 
 def preview_command(test: dict[str, Any]) -> str:
     try:
-        parts = [
-            str(token).format(wavepeek_bin="${WAVEPEEK_BIN}") for token in test["command"]
-        ]
+        parts = [str(token).format(wavepeek_bin="<binary>") for token in test["command"]]
     except KeyError as error:
         fail(f"error: tests: missing placeholder {error!s} in test `{test['name']}`")
     return shlex.join(parts)
@@ -737,53 +794,98 @@ def cmd_run(args: argparse.Namespace) -> int:
     if compare_dir is not None:
         ensure_existing_dir(compare_dir, "run")
 
+    binaries = parse_binary_specs(args.binary)
+    schedule = str(args.schedule)
     run_dir = resolve_run_dir(args.run_dir, args.out_dir)
+    for binary in binaries:
+        binary_run_dir(run_dir, binary).mkdir(parents=True, exist_ok=True)
     if verbose:
         print(f"info: run directory: {run_dir}")
+        print("info: binaries: " + ", ".join(f"{b.label}={b.path}" for b in binaries))
+        print(f"info: schedule: {schedule}")
 
-    selected_to_run = selected
+    tests_by_name = {str(test["name"]): test for test in tests}
+    runnable_by_label: dict[str, list[dict[str, Any]]] = {}
     if args.missing_only:
-        selected_to_run, skipped = partition_missing_only_tests(selected, run_dir)
-        if verbose:
-            for test_name in skipped:
-                print(
-                    f"info: skip `{test_name}` (missing-only: artifacts already exist)"
-                )
+        for binary in binaries:
+            runnable, skipped = partition_missing_only_tests(
+                selected,
+                binary_run_dir(run_dir, binary),
+            )
+            runnable_by_label[binary.label] = runnable
+            if verbose:
+                for test_name in skipped:
+                    print(
+                        f"info: skip `{test_name}` for `{binary.label}` "
+                        "(missing-only: artifacts already exist)"
+                    )
+    else:
+        runnable_by_label = {binary.label: list(selected) for binary in binaries}
 
-    if selected_to_run:
+    total_jobs = sum(len(jobs) for jobs in runnable_by_label.values())
+    if total_jobs:
         ensure_hyperfine()
-        wavepeek_bin = resolve_wavepeek_bin()
-        for index, test in enumerate(selected_to_run, start=1):
+        completed = 0
+
+        def run_one(binary: BinarySpec, test: dict[str, Any]) -> None:
+            nonlocal completed
+            completed += 1
+            label_dir = binary_run_dir(run_dir, binary)
             if verbose:
                 print(
-                    f"[{index}/{len(selected_to_run)}] {test['name']} "
+                    f"[{completed}/{total_jobs}] {binary.label}/{test['name']} "
                     f"(runs={test['runs']}, warmup={test['warmup']})"
                 )
-            run_test(test, run_dir, wavepeek_bin, timeout_seconds, verbose)
+            run_test(test, label_dir, binary.path, timeout_seconds, verbose)
             try:
                 functional_payload = run_functional_capture(
                     test,
-                    wavepeek_bin,
+                    binary.path,
                     "run",
                     timeout_seconds,
                 )
             except subprocess.TimeoutExpired:
                 if verbose:
                     print(
-                        f"warning: run: functional capture timed out for `{test['name']}` "
-                        f"after {timeout_seconds}s; writing empty wavepeek artifact"
+                        f"warning: run: functional capture timed out for "
+                        f"`{binary.label}/{test['name']}` after {timeout_seconds}s; "
+                        "writing empty wavepeek artifact"
                     )
-                write_wavepeek_timeout_artifact(run_dir, str(test["name"]))
-                continue
-            write_wavepeek_artifact(run_dir, str(test["name"]), functional_payload)
+                write_wavepeek_timeout_artifact(label_dir, str(test["name"]))
+                return
+            write_wavepeek_artifact(label_dir, str(test["name"]), functional_payload)
+
+        if schedule == "round-robin":
+            for test in selected:
+                for binary in binaries:
+                    if test in runnable_by_label[binary.label]:
+                        run_one(binary, test)
+        elif schedule == "grouped":
+            for binary in binaries:
+                for test in runnable_by_label[binary.label]:
+                    run_one(binary, test)
+        else:
+            fail(f"error: run: unsupported schedule `{schedule}`")
     elif verbose:
         print("info: no tests to run after --missing-only filter")
 
-    tests_by_name = {str(test["name"]): test for test in tests}
-    report_path = write_report(run_dir, tests_by_name, compare_dir)
+    report_paths: list[pathlib.Path] = []
+    for binary in binaries:
+        report_paths.append(write_report(binary_run_dir(run_dir, binary), tests_by_name, compare_dir))
+    write_run_manifest(
+        run_dir=run_dir,
+        tests_path=tests_path,
+        binaries=binaries,
+        selected_tests=selected,
+        schedule=schedule,
+        timeout_seconds=timeout_seconds,
+    )
+    index_path = write_run_index(run_dir, binaries)
     if verbose:
         print(f"info: run artifacts written to {run_dir}")
-        print(f"info: report updated at {report_path}")
+        for report_path in report_paths:
+            print(f"info: report updated at {report_path}")
+        print(f"info: run index updated at {index_path}")
     else:
         print("ok: run: completed successfully (use --verbose for detailed logs)")
     return 0
@@ -800,6 +902,32 @@ def cmd_report(args: argparse.Namespace) -> int:
     tests_path = normalize_path(getattr(args, "tests", str(TESTS_PATH)))
     tests = load_tests(tests_path)
     tests_by_name = {str(test["name"]): test for test in tests}
+
+    manifest_path = run_dir / "manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as error:
+            fail(f"error: report: invalid JSON in {manifest_path}: {error}")
+        if isinstance(manifest, dict) and manifest.get("kind") == "wavepeek-e2e-bench-run":
+            binaries = manifest.get("binaries")
+            if not isinstance(binaries, list) or not binaries:
+                fail(f"error: report: invalid labeled run manifest in {manifest_path}")
+            specs: list[BinarySpec] = []
+            for item in binaries:
+                if not isinstance(item, dict) or not isinstance(item.get("label"), str):
+                    fail(f"error: report: invalid binary entry in {manifest_path}")
+                label = str(item["label"])
+                path = str(item.get("path", ""))
+                label_dir = run_dir / label
+                ensure_existing_dir(label_dir, "report")
+                report_path = write_report(label_dir, tests_by_name, compare_dir)
+                print(f"info: report updated at {report_path}")
+                specs.append(BinarySpec(label, path))
+            index_path = write_run_index(run_dir, specs)
+            print(f"info: run index updated at {index_path}")
+            return 0
+
     report_path = write_report(run_dir, tests_by_name, compare_dir)
     print(f"info: report updated at {report_path}")
     return 0
@@ -1083,6 +1211,18 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_parser = subparsers.add_parser("run", help="run selected benchmarks")
     run_parser.add_argument("--filter", default=None, help="regex filter by test name")
+    run_parser.add_argument(
+        "--binary",
+        action="append",
+        metavar="LABEL=PATH",
+        help="binary to benchmark; repeat for multiple labeled binaries",
+    )
+    run_parser.add_argument(
+        "--schedule",
+        choices=("round-robin", "grouped"),
+        default="round-robin",
+        help="test scheduling across multiple binaries",
+    )
     run_parser.add_argument("--run-dir", default=None, help="existing/new run directory")
     run_parser.add_argument(
         "--out-dir",

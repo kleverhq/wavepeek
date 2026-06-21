@@ -109,9 +109,25 @@ class PerfHelpersTest(unittest.TestCase):
         parser = perf.build_parser()
         default_args = parser.parse_args(["run"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
+        self.assertEqual(default_args.schedule, "round-robin")
 
         override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_commit.json"])
         self.assertEqual(override_args.tests, "bench/e2e/tests_commit.json")
+
+    def test_parse_binary_specs_requires_explicit_labeled_binaries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            binary = pathlib.Path(temp_dir) / "wavepeek"
+            binary.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            specs = perf.parse_binary_specs([f"base={binary}"])
+
+        self.assertEqual(specs, [perf.BinarySpec("base", str(binary.resolve()))])
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs(None)
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs(["missing-label"])
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs([f"README.md={binary}"])
 
     def test_report_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
@@ -440,6 +456,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests="fixtures/tests.json",
                 verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             load_tests_mock = mock.Mock(return_value=[test_case])
 
@@ -451,7 +469,7 @@ class PerfHelpersTest(unittest.TestCase):
                     mock.patch.object(perf, "load_tests", load_tests_mock),
                     mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                     mock.patch.object(perf, "ensure_hyperfine"),
-                    mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                    mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                     mock.patch.object(perf, "run_test"),
                     mock.patch.object(
                         perf,
@@ -468,6 +486,44 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         load_tests_mock.assert_called_once_with((run_from / "fixtures/tests.json").resolve())
+
+    def test_cmd_report_regenerates_labeled_run_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            (run_dir / "base").mkdir(parents=True)
+            (run_dir / "rev").mkdir()
+            (run_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "wavepeek-e2e-bench-run",
+                        "binaries": [
+                            {"label": "base", "path": "/bin/base"},
+                            {"label": "rev", "path": "/bin/rev"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                run_dir=str(run_dir),
+                compare=None,
+                tests=str(perf.TESTS_PATH),
+            )
+            report_calls: list[pathlib.Path] = []
+
+            def fake_write_report(path, tests_by_name, compare_dir):
+                report_calls.append(path)
+                return path / "README.md"
+
+            with (
+                mock.patch.object(perf, "load_tests", return_value=[self._sample_test("sample")]),
+                mock.patch.object(perf, "write_report", side_effect=fake_write_report),
+            ):
+                exit_code = perf.cmd_report(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(report_calls, [run_dir / "base", run_dir / "rev"])
 
     def test_cmd_report_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -540,6 +596,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests=str(perf.TESTS_PATH),
                 verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             tests = [self._sample_test("sample")]
             stdout = io.StringIO()
@@ -547,7 +605,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(perf, "load_tests", return_value=tests),
                 mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                 mock.patch.object(perf, "ensure_hyperfine"),
-                mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                 mock.patch.object(perf, "run_test"),
                 mock.patch.object(
                     perf,
@@ -578,6 +636,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests=str(perf.TESTS_PATH),
                 verbose=True,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             tests = [self._sample_test("sample")]
             stdout = io.StringIO()
@@ -585,7 +645,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(perf, "load_tests", return_value=tests),
                 mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                 mock.patch.object(perf, "ensure_hyperfine"),
-                mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                 mock.patch.object(perf, "run_test"),
                 mock.patch.object(
                     perf,
@@ -599,8 +659,57 @@ class PerfHelpersTest(unittest.TestCase):
                 exit_code = perf.cmd_run(args)
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("[1/1] sample", stdout.getvalue())
+        self.assertIn("[1/1] subject/sample", stdout.getvalue())
         self.assertIn("info: run directory:", stdout.getvalue())
+
+    def test_cmd_run_round_robin_orders_tests_across_binaries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            args = argparse.Namespace(
+                filter=None,
+                run_dir=str(run_dir),
+                out_dir=str(root),
+                compare=None,
+                missing_only=False,
+                wavepeek_timeout_seconds=300,
+                tests=str(perf.TESTS_PATH),
+                verbose=False,
+                binary=["base=/bin/base", "rev=/bin/rev"],
+                schedule="round-robin",
+            )
+            tests = [self._sample_test("a"), self._sample_test("b")]
+            order: list[tuple[str, str]] = []
+
+            def fake_run_test(test, label_dir, wavepeek_bin, timeout_seconds, verbose):
+                order.append((str(test["name"]), pathlib.Path(label_dir).name))
+
+            with (
+                mock.patch.object(perf, "load_tests", return_value=tests),
+                mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[
+                    perf.BinarySpec("base", "/bin/base"),
+                    perf.BinarySpec("rev", "/bin/rev"),
+                ]),
+                mock.patch.object(perf, "ensure_hyperfine"),
+                mock.patch.object(perf, "run_test", side_effect=fake_run_test),
+                mock.patch.object(
+                    perf,
+                    "run_functional_capture",
+                    return_value={"data": [], "diagnostics": []},
+                ),
+                mock.patch.object(perf, "write_wavepeek_artifact"),
+                mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
+            ):
+                exit_code = perf.cmd_run(args)
+            base_dir_exists = (run_dir / "base").is_dir()
+            rev_dir_exists = (run_dir / "rev").is_dir()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(order, [("a", "base"), ("a", "rev"), ("b", "base"), ("b", "rev")])
+        self.assertTrue(base_dir_exists)
+        self.assertTrue(rev_dir_exists)
 
     def test_cmd_compare_non_verbose_emits_concise_failure_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -223,7 +223,7 @@ def relative_to(path: pathlib.Path, base: pathlib.Path) -> str:
     try:
         return str(path.relative_to(base))
     except ValueError:
-        return str(path)
+        return os.path.relpath(path, base)
 
 
 def command_to_manifest(result: CommandResult, base: pathlib.Path) -> dict[str, Any]:

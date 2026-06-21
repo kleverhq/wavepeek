@@ -248,6 +248,41 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertFalse(result.manifest["suites"]["e2e-fsdb"]["functional_only"])
         self.assertTrue(result.manifest["suites"]["cross-golden-fst-fsdb"]["functional_only"])
 
+    def test_compare_captures_uses_manifest_suite_paths(self) -> None:
+        calls: list[tuple[pathlib.Path, pathlib.Path]] = []
+
+        def fake_run_e2e_compare(**kwargs: object) -> dict[str, object]:
+            calls.append((pathlib.Path(str(kwargs["golden"])), pathlib.Path(str(kwargs["revised"]))))
+            return {"status": "passed", "functional_only": False}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            (root / "shared/fst/base").mkdir(parents=True)
+            (root / "shared/fst/rev").mkdir(parents=True)
+            golden.mkdir()
+            revised.mkdir()
+            common.write_json(
+                golden / "manifest.json",
+                {"suites": {"e2e-fst": {"path": "../shared/fst/base"}}},
+            )
+            common.write_json(
+                revised / "manifest.json",
+                {"suites": {"e2e-fst": {"path": "../shared/fst/rev"}}},
+            )
+
+            with mock.patch.object(compare, "run_e2e_compare", side_effect=fake_run_e2e_compare):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(calls, [(root / "shared/fst/base", root / "shared/fst/rev")])
+
     def test_compare_captures_skips_optional_fsdb_and_cross_checks_when_missing(self) -> None:
         calls: list[str] = []
 
@@ -345,10 +380,9 @@ class BenchGateHelperTest(unittest.TestCase):
         e2e_call = next(call for call in calls if call[0] == "bench-e2e-fst")
         self.assertIn("bench/e2e/perf.py", e2e_call[1])
         self.assertEqual(e2e_call[2], tooling)
-        self.assertEqual(
-            e2e_call[3],
-            {"WAVEPEEK_BIN": str(checkout / "target/release/wavepeek")},
-        )
+        self.assertIsNone(e2e_call[3])
+        self.assertIn("--binary", e2e_call[1])
+        self.assertIn(f"subject={checkout / 'target/release/wavepeek'}", e2e_call[1])
 
     def test_gate_runs_preparation_before_paired_measurement(self) -> None:
         order: list[str] = []
@@ -392,8 +426,8 @@ class BenchGateHelperTest(unittest.TestCase):
                 mock.patch.object(gate, "build_release_fsdb", side_effect=record("build-fsdb")),
                 mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
                 mock.patch.object(gate, "write_fsdb_capture_catalog", side_effect=record("fsdb-catalog")),
-                mock.patch.object(gate, "run_e2e_fst", side_effect=record("e2e-fst")),
-                mock.patch.object(gate, "run_e2e_fsdb", side_effect=record("e2e-fsdb")),
+                mock.patch.object(gate, "run_e2e_fst_many", side_effect=lambda *a, **k: order.append("e2e-fst-many")),
+                mock.patch.object(gate, "run_e2e_fsdb_many", side_effect=lambda *a, **k: order.append("e2e-fsdb-many")),
                 mock.patch.object(gate, "finalize_capture", side_effect=record("finalize")),
                 mock.patch.object(gate, "compare_captures", side_effect=fake_compare_captures),
             ):
@@ -413,10 +447,8 @@ class BenchGateHelperTest(unittest.TestCase):
                 "build-fsdb-revised",
                 "prepare-fsdb-baseline",
                 "fsdb-catalog-revised",
-                "e2e-fst-baseline",
-                "e2e-fst-revised",
-                "e2e-fsdb-baseline",
-                "e2e-fsdb-revised",
+                "e2e-fst-many",
+                "e2e-fsdb-many",
                 "finalize-baseline",
                 "finalize-revised",
                 "compare",

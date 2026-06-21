@@ -34,6 +34,11 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-20 21:35Z) Control review found dirty-tooling provenance missing from standalone compare and a summary that omitted the 5ms floor; both were fixed, focused tests passed, and `just check` passed.
 - [x] (2026-06-20 21:45Z) Final control re-check returned no substantive findings.
 - [x] (2026-06-20 21:50Z) Committed the harness/policy refactor locally as `refactor(bench): use current tooling for performance gate`.
+- [x] (2026-06-21 05:20Z) Re-ran `just bench-gate v1.0.0 v1.0.1`; timing failures dropped to 6 FST and 1 FSDB outlier in a quiet environment, but block-level revised timing clusters still caused false failures. Decided to move multi-binary scheduling into the E2E runner so tests can be interleaved by binary.
+- [x] (2026-06-21 06:05Z) Implemented explicit labeled-binary E2E runner output and switched the gate to one round-robin runner invocation per suite. Focused syntax, E2E, tools/bench, auxiliary, justfile-format, and actionlint checks passed.
+- [x] (2026-06-21 06:20Z) Review found reserved-label, movable-suite-path, report-root, gate-layout docs, and execution-order issues. Fixed them, added tests, and reran focused checks plus `just check`; all passed.
+- [x] (2026-06-21 06:35Z) Final control review returned no substantive findings.
+- [ ] Commit the labeled-runner change and run one full gate validation.
 - [ ] Run project quality checks that do not execute the full benchmark gate.
 - [ ] Commit the harness/policy refactor locally and stop before any final `just bench-gate` validation.
 
@@ -70,23 +75,29 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - Decision: Same-format end-to-end timing gates on median only, with an allowed slowdown of `max(golden_median * 5%, 0.005 seconds)`.
   Rationale: Mean wall-clock time is sensitive to rare scheduler or I/O stalls. Median is more stable for hyperfine timing. A 5ms absolute floor prevents short commands from failing on fixed host jitter while preserving a 5% relative threshold for longer commands.
   Date/Author: 2026-06-20 / Grin
+- Decision: `bench/e2e/perf.py run` requires one or more explicit `--binary label=path` arguments, writes one labeled artifact directory per binary, and no longer reads `WAVEPEEK_BIN` or writes flat run directories.
+  Rationale: The runner owns test order and output layout. Explicit labels make provenance visible and let the gate run the same test on all compared binaries before moving to the next test, reducing block-level noise while still using hyperfine for timing.
+  Date/Author: 2026-06-21 / Grin
+- Decision: The gate uses the E2E runner's default round-robin schedule for FST and FSDB captures.
+  Rationale: Prior captures measured all baseline tests before all revised tests. A quiet rerun still produced a cluster of revised-only slowdowns around 50ms. Test-level interleaving reduces exposure to block-wide thermal, frequency, scheduler, or I/O shifts without adding a custom timing runner.
+  Date/Author: 2026-06-21 / Grin
 - Decision: Cross-format FST-versus-FSDB checks remain functional-only hard gates.
   Rationale: FST and FSDB timing is not comparable, but payload parity matters. Current tooling should own any needed catalog filtering or functional normalization.
   Date/Author: 2026-06-20 / Grin
 
 ## Outcomes & Retrospective
 
-Criterion removal and the current-tooling gate model are committed locally. The gate now uses current benchmark tooling against selected ref binaries and uses median timing with a 5ms absolute jitter floor. Focused tests, review, final control re-check, and `just check` pass. The final release-like `just bench-gate v1.0.0 v1.0.1` validation is intentionally deferred until the maintainer asks for it.
+Criterion removal and the current-tooling gate model are committed locally. The working tree adds explicit labeled-binary E2E runner output and switches the gate to round-robin scheduling across baseline/revised binaries. Focused tests, review, final control re-check, and `just check` pass. One full `just bench-gate v1.0.0 v1.0.1` validation remains to run after the labeled-runner commit.
 
 ## Context and Orientation
 
-`wavepeek` is a Rust command-line tool for deterministic waveform inspection. The end-to-end benchmark harness is `bench/e2e/perf.py`; it reads benchmark catalogs such as `bench/e2e/tests.json`, runs a selected `wavepeek` binary through `hyperfine`, captures functional `wavepeek --json` payloads, writes one `*.hyperfine.json` and one `*.wavepeek.json` per test, and can compare two run directories. Hyperfine is an external command-line timing tool. A run directory is a directory containing those JSON artifacts for one binary and one suite.
+`wavepeek` is a Rust command-line tool for deterministic waveform inspection. The end-to-end benchmark harness is `bench/e2e/perf.py`; it reads benchmark catalogs such as `bench/e2e/tests.json`, runs one or more explicit labeled `wavepeek` binaries through `hyperfine`, captures functional `wavepeek --json` payloads, writes one `*.hyperfine.json` and one `*.wavepeek.json` per test under each binary label directory, and can compare any two label directories. Hyperfine is an external command-line timing tool. A runner root contains a `manifest.json`, a `README.md` index, and one artifact directory per binary label.
 
 FST and FSDB are waveform file formats. FST is open and handled through the normal release binary. FSDB is proprietary and requires the optional Synopsys Verdi FSDB Reader SDK; an FSDB-enabled binary is built with `cargo build --release --features fsdb` and stored under `target/fsdb/release/wavepeek`. FSDB capture is automatic in `auto` mode when Verdi and both binary refs support FSDB, skipped when Verdi is unavailable, and failed when support is asymmetric while Verdi is available.
 
 The root `justfile` is the stable local automation interface. Public benchmark recipes are `bench-gate`, `bench-capture`, and `bench-compare`. Generated benchmark artifacts live under ignored directories such as `tmp/bench-gate/` and `bench/e2e/runs/`.
 
-The helper group under `tools/bench/` has four scripts. `common.py` owns shared subprocess, git, JSON, timestamp, and output-directory helpers. `capture.py` owns one-binary capture and FSDB runnable-catalog generation. `compare.py` owns same-format timing comparisons plus cross-format functional comparisons. `gate.py` owns the two-ref release orchestration.
+The helper group under `tools/bench/` has four scripts. `common.py` owns shared subprocess, git, JSON, timestamp, and output-directory helpers. `capture.py` owns binary capture orchestration and FSDB runnable-catalog generation. `compare.py` owns same-format timing comparisons plus cross-format functional comparisons. `gate.py` owns the two-ref release orchestration.
 
 ## Open Questions
 
@@ -98,7 +109,7 @@ The current milestone has two implementation commits after this plan commit.
 
 First, remove Criterion completely. Delete `bench/expr/`, remove the Criterion dependency and `[[bench]]` target entries from `Cargo.toml`, update `Cargo.lock`, remove the private `bench-expr-run` recipe, remove expression benchmark runs from `tools/bench/capture.py`, `tools/bench/compare.py`, and `tools/bench/gate.py`, and update docs/tests that mention expression microbenchmarks. Run focused tests that prove no Python unit test suite still references `bench/expr`, and request a review focused only on cleanup completeness.
 
-Second, refactor the gate so selected refs provide only compiled binaries. `tools/bench/gate.py` should still clone both refs under the gate output directory and build both release binaries before measurement. `tools/bench/capture.py` should treat `REPO_ROOT` as the tooling root and the cloned checkout as the binary source root. End-to-end capture must run `python3 -B bench/e2e/perf.py run` with `cwd=REPO_ROOT`, current benchmark catalogs, current fixtures, and `WAVEPEEK_BIN` pointing at the binary in the cloned checkout. FSDB preparation and catalog checks should run once through current tools and current catalogs; the generated runnable catalog should be written into each capture directory so manifests preserve the skip list used for that capture. Capture manifests should record both `tooling_sha` and `binary_sha`.
+Second, refactor the gate so selected refs provide only compiled binaries. `tools/bench/gate.py` should still clone both refs under the gate output directory and build both release binaries before measurement. `tools/bench/capture.py` should treat `REPO_ROOT` as the tooling root and the cloned checkout as the binary source root. End-to-end capture must run `python3 -B bench/e2e/perf.py run` with `cwd=REPO_ROOT`, current benchmark catalogs, current fixtures, and explicit `--binary label=path` arguments pointing at the binaries in the cloned checkouts. FSDB preparation and catalog checks should run once through current tools and current catalogs; the generated runnable catalog should be written into each capture directory so manifests preserve the skip list used for that capture. Capture manifests should record both `tooling_sha` and `binary_sha`.
 
 The E2E comparator should fail timing only when median slowdown exceeds both the relative and absolute allowances, expressed as `revised_median - golden_median > max(golden_median * threshold_pct / 100, threshold_seconds)`. The default threshold remains 5%, and the default absolute floor is 0.005 seconds. Mean remains available in reports and hyperfine artifacts but is no longer a gate timing metric. The compare manifest should record both timing threshold values and identify median as the gating metric.
 
@@ -171,7 +182,7 @@ A full release-like acceptance run, when explicitly requested later, is:
 
     just bench-gate v1.0.0 v1.0.1
 
-A successful gate directory should contain `baseline/`, `revised/`, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. Each capture should contain `manifest.json`, `README.md`, `logs/`, `e2e-fst/`, and optionally `e2e-fsdb/`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds` recorded for same-format suites.
+A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks, with `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds` recorded for same-format suites.
 
 ### Idempotence and Recovery
 
@@ -195,7 +206,7 @@ These artifacts explain the policy change but should not be committed.
 
 The helper scripts must use only Python standard-library modules. Each script should expose `main(argv: Sequence[str] | None = None) -> int` and return process exit codes rather than calling `sys.exit` deep inside helper functions. The stable public interface is the root `justfile`, not direct helper paths.
 
-`tools/bench/capture.py` must invoke current benchmark harnesses from `REPO_ROOT` and must set `WAVEPEEK_BIN` to the selected binary path. `tools/bench/compare.py` invokes current comparison harnesses from `REPO_ROOT`. Capture manifests must distinguish current tooling provenance from binary source provenance.
+`tools/bench/capture.py` must invoke current benchmark harnesses from `REPO_ROOT` and must pass selected binaries with explicit `--binary label=path` arguments. `tools/bench/compare.py` invokes current comparison harnesses from `REPO_ROOT`. Capture manifests must distinguish current tooling provenance from binary source provenance.
 
 ### Revision Notes
 

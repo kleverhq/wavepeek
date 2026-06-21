@@ -243,10 +243,17 @@ class BenchGateHelperTest(unittest.TestCase):
         for name, args in calls[2:]:
             self.assertIn("--functional-only", args, name)
             self.assertIn("--allow-golden-extra", args, name)
+            self.assertIn("--ignore-functional-test", args, name)
             self.assertNotIn("--max-negative-delta-pct", args, name)
         self.assertFalse(result.manifest["suites"]["e2e-fst"]["functional_only"])
         self.assertFalse(result.manifest["suites"]["e2e-fsdb"]["functional_only"])
-        self.assertTrue(result.manifest["suites"]["cross-golden-fst-fsdb"]["functional_only"])
+        cross_suite = result.manifest["suites"]["cross-golden-fst-fsdb"]
+        self.assertTrue(cross_suite["functional_only"])
+        self.assertEqual(len(cross_suite["ignored_functional_tests"]), 5)
+        self.assertEqual(
+            cross_suite["ignored_functional_tests"][0]["test_name"],
+            "scope_clustered_all_depth13_json",
+        )
 
     def test_compare_captures_confirms_timing_only_failures_with_best_samples(self) -> None:
         calls: list[str] = []

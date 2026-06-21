@@ -67,8 +67,15 @@ class PerfHelpersTest(unittest.TestCase):
         }
 
     @staticmethod
-    def _write_wavepeek_artifact(path: pathlib.Path, data: object | None = None) -> None:
-        payload = {"data": [{"id": 1}] if data is None else data, "diagnostics": []}
+    def _write_wavepeek_artifact(
+        path: pathlib.Path,
+        data: object | None = None,
+        diagnostics: object | None = None,
+    ) -> None:
+        payload = {
+            "data": [{"id": 1}] if data is None else data,
+            "diagnostics": [] if diagnostics is None else diagnostics,
+        }
         path.write_text(json.dumps(payload), encoding="utf-8")
 
     def test_test_has_complete_artifacts(self) -> None:
@@ -167,6 +174,24 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertTrue(args.allow_golden_extra)
         self.assertIsNone(args.max_negative_delta_pct)
         self.assertEqual(args.max_negative_delta_seconds, 0.0)
+        self.assertIsNone(args.ignore_functional_test)
+
+        ignored_args = parser.parse_args(
+            [
+                "compare",
+                "--revised",
+                "revised",
+                "--golden",
+                "golden",
+                "--functional-only",
+                "--ignore-functional-test",
+                "scope_case=metadata differs across formats",
+            ]
+        )
+        self.assertEqual(
+            ignored_args.ignore_functional_test,
+            ["scope_case=metadata differs across formats"],
+        )
 
     def test_run_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
@@ -1193,6 +1218,183 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("mismatched fields data", stderr.getvalue())
+
+    def test_cmd_compare_functional_only_ignores_named_mismatch_with_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json", data=[{"id": 1}])
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json", data=[{"id": 2}])
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                result_json=str(result_json),
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ignored functional tests", stderr.getvalue())
+        self.assertEqual(payload["ignored_functional_tests"][0]["test_name"], "sample")
+        self.assertEqual(
+            payload["ignored_functional_tests"][0]["reason"],
+            "metadata differs across formats",
+        )
+        self.assertEqual(payload["functional_mismatches"], [])
+
+    def test_cmd_compare_functional_ignore_requires_presence_on_both_sides(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "ignored.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                ignore_functional_test=["ignored=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn(
+            "ignored functional test `ignored` missing from revised",
+            stderr.getvalue(),
+        )
+
+    def test_cmd_compare_functional_ignore_does_not_hide_diagnostics_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(
+                revised / "sample.wavepeek.json",
+                data=[{"id": 1}],
+                diagnostics=[
+                    {"kind": "warning", "code": "WPK-W0001", "message": "revised"}
+                ],
+            )
+            self._write_wavepeek_artifact(
+                golden / "sample.wavepeek.json",
+                data=[{"id": 2}],
+                diagnostics=[
+                    {"kind": "warning", "code": "WPK-W0001", "message": "golden"}
+                ],
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("mismatched fields diagnostics", stderr.getvalue())
+        self.assertNotIn("mismatched fields data", stderr.getvalue())
+
+    def test_cmd_compare_functional_ignore_does_not_hide_revised_only_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(revised / "extra.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                ignore_functional_test=["extra=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("tests only in revised run: extra", stderr.getvalue())
+
+    def test_cmd_compare_functional_ignore_does_not_hide_timeout_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            (revised / "sample.wavepeek.json").write_text("{}\n", encoding="utf-8")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("timeout artifact", stderr.getvalue())
+
+    def test_cmd_compare_rejects_functional_ignore_outside_functional_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=5.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs"],
+                verbose=False,
+            )
+            with self.assertRaises(SystemExit):
+                perf.cmd_compare(args)
 
     def test_cmd_compare_functional_only_fails_on_timeout_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

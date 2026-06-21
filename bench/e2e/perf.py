@@ -12,6 +12,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping, Sequence
 from typing import Any, NamedTuple, NoReturn
 
 
@@ -614,6 +615,44 @@ def write_result_json(path_arg: str | None, payload: dict[str, Any]) -> None:
     )
 
 
+def parse_ignored_functional_tests(values: Sequence[str] | None) -> dict[str, str]:
+    ignored: dict[str, str] = {}
+    for raw in values or []:
+        if "=" not in raw:
+            fail(
+                "error: compare: --ignore-functional-test must use "
+                "NAME=REASON"
+            )
+        name, reason = raw.split("=", 1)
+        name = name.strip()
+        reason = reason.strip()
+        if not name or not reason:
+            fail(
+                "error: compare: --ignore-functional-test requires non-empty "
+                "NAME and REASON"
+            )
+        if name in ignored:
+            fail(f"error: compare: duplicate ignored functional test `{name}`")
+        ignored[name] = reason
+    return ignored
+
+
+def ignored_functional_test_records(
+    ignored: Mapping[str, str],
+    revised_names: set[str],
+    golden_names: set[str],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "test_name": name,
+            "reason": ignored[name],
+            "present_in_revised": name in revised_names,
+            "present_in_golden": name in golden_names,
+        }
+        for name in sorted(ignored)
+    ]
+
+
 def parse_hyperfine_times_file(path: pathlib.Path, caller: str) -> list[float]:
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -1034,17 +1073,25 @@ def compare_functional_only(
     allow_golden_extra: bool,
     verbose: bool,
     result_json: str | None = None,
+    ignored_tests: Mapping[str, str] | None = None,
 ) -> int:
-    revised_names = wavepeek_artifact_names(revised_dir)
-    golden_names = wavepeek_artifact_names(golden_dir)
-    if not revised_names:
+    raw_revised_names = wavepeek_artifact_names(revised_dir)
+    raw_golden_names = wavepeek_artifact_names(golden_dir)
+    if not raw_revised_names:
         fail(f"error: compare: no wavepeek JSON files found in {revised_dir}")
-    if not golden_names:
+    if not raw_golden_names:
         fail(f"error: compare: no wavepeek JSON files found in {golden_dir}")
 
-    matched = sorted(revised_names & golden_names)
-    revised_only = sorted(revised_names - golden_names)
-    golden_only = sorted(golden_names - revised_names)
+    ignored = dict(ignored_tests or {})
+    ignored_names = set(ignored)
+    ignored_records = ignored_functional_test_records(
+        ignored,
+        raw_revised_names,
+        raw_golden_names,
+    )
+    matched = sorted(raw_revised_names & raw_golden_names)
+    revised_only = sorted(raw_revised_names - raw_golden_names)
+    golden_only = sorted(raw_golden_names - raw_revised_names)
 
     functional_mismatches: list[str] = []
     functional_artifact_errors: list[str] = []
@@ -1052,6 +1099,17 @@ def compare_functional_only(
 
     if not matched:
         functional_artifact_errors.append("no matching wavepeek artifacts between revised and golden")
+    for name in sorted(ignored):
+        missing_sides: list[str] = []
+        if name not in raw_revised_names:
+            missing_sides.append("revised")
+        if name not in raw_golden_names:
+            missing_sides.append("golden")
+        if missing_sides:
+            functional_artifact_errors.append(
+                f"ignored functional test `{name}` missing from "
+                f"{', '.join(missing_sides)}"
+            )
     if revised_only:
         functional_artifact_errors.append(
             "tests only in revised run: " + ", ".join(revised_only)
@@ -1094,12 +1152,21 @@ def compare_functional_only(
             continue
 
         diff_fields = functional_diff_fields(revised_payload, golden_payload)
+        if test_name in ignored_names:
+            diff_fields = [field for field in diff_fields if field != "data"]
         if diff_fields:
             functional_mismatches.append(
                 f"{test_name}: mismatched fields {', '.join(diff_fields)}"
             )
 
     if verbose:
+        if ignored_records:
+            print("warning: compare: ignored functional tests:", file=sys.stderr)
+            for record in ignored_records:
+                print(
+                    f"  - {record['test_name']}: {record['reason']}",
+                    file=sys.stderr,
+                )
         if golden_only and allow_golden_extra:
             print(
                 "warning: compare: ignored tests only in golden run: "
@@ -1131,6 +1198,7 @@ def compare_functional_only(
             "matched_count": len(matched),
             "revised_only": revised_only,
             "golden_only": golden_only,
+            "ignored_functional_tests": ignored_records,
             "functional_timeouts": functional_timeouts,
             "functional_mismatches": functional_mismatches,
             "functional_artifact_errors": functional_artifact_errors,
@@ -1164,8 +1232,13 @@ def cmd_compare(args: argparse.Namespace) -> int:
     allow_golden_extra = bool(getattr(args, "allow_golden_extra", False))
     verbose = bool(getattr(args, "verbose", False))
 
+    ignored_tests = parse_ignored_functional_tests(
+        getattr(args, "ignore_functional_test", None)
+    )
     if allow_golden_extra and not functional_only:
         fail("error: compare: --allow-golden-extra requires --functional-only")
+    if ignored_tests and not functional_only:
+        fail("error: compare: --ignore-functional-test requires --functional-only")
     result_json = getattr(args, "result_json", None)
 
     if functional_only:
@@ -1175,6 +1248,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
             allow_golden_extra,
             verbose,
             result_json,
+            ignored_tests,
         )
 
     if args.max_negative_delta_pct is None:
@@ -1507,6 +1581,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--allow-golden-extra",
         action="store_true",
         help="with --functional-only, allow extra artifacts in the golden directory",
+    )
+    compare_parser.add_argument(
+        "--ignore-functional-test",
+        action="append",
+        help="with --functional-only, ignore one test as NAME=REASON",
     )
     compare_parser.add_argument(
         "--result-json",

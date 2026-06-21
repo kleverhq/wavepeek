@@ -27,6 +27,36 @@ from common import (
 )
 
 
+CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
+    (
+        "scope_clustered_all_depth13_json",
+        "FST exposes generated memory pseudo-scopes such as `.Memory`; "
+        "FSDB does not expose equivalent hierarchy nodes.",
+    ),
+    (
+        "scope_scr1_all_depth7_json",
+        "FST exposes selected unpacked-array and vector aggregates as "
+        "scope-like nodes; FSDB exposes the same objects through signal "
+        "elements instead.",
+    ),
+    (
+        "signal_scr1_top_recursive_all_json",
+        "FST and FSDB encode unpacked-array elements, vector ranges, and "
+        "width-1 scalar ranges differently in signal path strings.",
+    ),
+    (
+        "signal_scr1_top_recursive_depth2_json",
+        "FST and FSDB count array-element hierarchy levels differently at "
+        "this depth boundary, so FSDB reports extra element signals.",
+    ),
+    (
+        "signal_scr1_top_recursive_filter_valid_json",
+        "FSDB includes an explicit `[0:0]` range suffix for this width-1 "
+        "signal while FST reports the scalar name without the suffix.",
+    ),
+)
+
+
 def e2e_artifact_stems(run_dir: pathlib.Path) -> set[str]:
     hyperfine = {path.name.removesuffix(".hyperfine.json") for path in run_dir.glob("*.hyperfine.json")}
     wavepeek = {path.name.removesuffix(".wavepeek.json") for path in run_dir.glob("*.wavepeek.json")}
@@ -185,6 +215,7 @@ def run_e2e_compare(
     threshold_seconds: float,
     functional_only: bool,
     allow_golden_extra: bool = False,
+    ignored_functional_tests: Sequence[tuple[str, str]] = (),
 ) -> dict[str, Any]:
     if functional_only and allow_golden_extra:
         assert_e2e_subset(superset=golden, subset=revised)
@@ -207,10 +238,16 @@ def run_e2e_compare(
         str(result_json_path),
         "--verbose",
     ]
+    ignored_records = [
+        {"test_name": test_name, "reason": reason}
+        for test_name, reason in ignored_functional_tests
+    ]
     if functional_only:
         args.append("--functional-only")
         if allow_golden_extra:
             args.append("--allow-golden-extra")
+        for test_name, reason in ignored_functional_tests:
+            args.extend(["--ignore-functional-test", f"{test_name}={reason}"])
     else:
         args.extend(
             [
@@ -241,6 +278,8 @@ def run_e2e_compare(
         "log_path": relative_to(log_path, compare_dir),
         "result_json_path": relative_to(result_json_path, compare_dir),
     }
+    if ignored_records:
+        suite["ignored_functional_tests"] = ignored_records
 
     compare_result: dict[str, Any] = {}
     if result_json_path.is_file():
@@ -290,6 +329,9 @@ def render_compare_summary(manifest: Mapping[str, Any]) -> str:
             text = f"- `{name}`: {status}"
             if suite.get("functional_only"):
                 text += " (functional-only)"
+                ignored = suite.get("ignored_functional_tests")
+                if isinstance(ignored, list) and ignored:
+                    text += f"; ignored {len(ignored)} functional metadata test(s)"
             elif suite.get("threshold_pct") is not None:
                 threshold_seconds = suite.get("threshold_seconds")
                 timing_metric = suite.get("timing_metric") or "timing"
@@ -412,6 +454,7 @@ def compare_captures(
                 threshold_seconds=timing_threshold_seconds,
                 functional_only=True,
                 allow_golden_extra=True,
+                ignored_functional_tests=CROSS_FORMAT_FUNCTIONAL_IGNORES,
             )
         except BenchGateError as error:
             suite_result = {"status": "failed", "reason": str(error)}

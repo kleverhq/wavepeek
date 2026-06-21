@@ -8,7 +8,7 @@ This document is maintained in accordance with the `exec-plan` skill.
 
 After this change, maintainers can compare two release binaries with one current benchmark apparatus instead of comparing two historical checkouts that each bring their own benchmark scripts, catalogs, fixtures, and Criterion microbenchmarks. A maintainer runs `just bench-gate <baseline-ref> <revised-ref>`, the helper builds `wavepeek` binaries from those refs, then measures both binaries through the benchmark tools and catalogs from the current working tree. This makes the gate answer the release question directly: whether user-visible CLI behavior regressed when the same current end-to-end tests run against two selected binaries.
 
-The gate will only hard-fail on end-to-end CLI timing and functional parity. Same-format timing means FST baseline binary versus FST revised binary and, when FSDB is available, FSDB baseline binary versus FSDB revised binary. Cross-format FST-versus-FSDB checks remain functional-only within each binary ref because FST and FSDB use different readers and their wall-clock timings are not comparable. Timing uses median wall-clock time as the primary metric, allows a slowdown of `max(5%, 5ms)` so short commands are not failed by fixed millisecond-scale host jitter, and can run best-sample confirmation for same-format suites that fail only on median timing. Criterion expression microbenchmarks are removed from the repository because they are internal microbenchmarks, not release-gate evidence for user-visible CLI performance.
+The gate will only hard-fail on end-to-end CLI timing and functional parity. Same-format timing means FST baseline binary versus FST revised binary and, when FSDB is available, FSDB baseline binary versus FSDB revised binary. Cross-format FST-versus-FSDB checks remain functional-only within each binary ref because FST and FSDB use different readers and their wall-clock timings are not comparable. Cross-format checks use an explicit ignored-test list for metadata-only hierarchy and signal cases where FST and FSDB expose arrays, memories, or scalar ranges with different path strings. Timing uses median wall-clock time as the primary metric, allows a slowdown of `max(5%, 5ms)` so short commands are not failed by fixed millisecond-scale host jitter, and can run best-sample confirmation for same-format suites that fail only on median timing. Criterion expression microbenchmarks are removed from the repository because they are internal microbenchmarks, not release-gate evidence for user-visible CLI performance.
 
 ## Non-Goals
 
@@ -47,6 +47,14 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-21 12:15Z) Final control review found only unclear documentation about timeout warnings blocking confirmation; clarified maintainer docs, helper README, and this plan.
 - [x] (2026-06-21 12:30Z) Committed the best-sample confirmation change as `4d9dcd0 refactor(bench): confirm timing outliers with best samples`.
 - [x] (2026-06-21 13:01Z) Ran one full `just bench-gate v1.0.0 v1.0.1` validation from a clean worktree at `4d9dcd0`. Capture passed. Same-format FST and FSDB median compares both failed on timing outliers, best-sample confirmation passed all 4 FST and all 3 FSDB failed timing tests, and the overall gate still failed only because of the known cross-format functional mismatches.
+- [x] (2026-06-21 13:20Z) Investigated the cross-format mismatches and found they are stable metadata path-shape differences, not release-version differences: FST exposes generated `.Memory` pseudo-scopes and VCD-style array element paths such as `foo.[0]`, while FSDB exposes element/range paths such as `foo[0] [31:0]` and scalar `[0:0]` suffixes.
+- [x] (2026-06-21 13:35Z) Added `--ignore-functional-test NAME=REASON` for functional-only E2E compare, wired the explicit five-test cross-format metadata ignore list into `tools/bench/compare.py`, and added unit tests.
+- [x] (2026-06-21 13:40Z) Replayed the two cross-format compares from `tmp/bench-gate/gates/20260621T123044Z-a93aad1db823..81777d4e939e`; both passed with the explicit ignored-test list and reasons printed.
+- [x] (2026-06-21 13:55Z) Review found that ignored tests were being removed too early and could hide invalid or revised-only artifacts. Fixed the compare logic so ignored tests still undergo presence, artifact, and timeout validation; only the final data-field mismatch is suppressed for valid matched artifacts. Added regression tests and replayed the cross-format compares successfully.
+- [x] (2026-06-21 14:05Z) Control review found that ignored tests also suppressed diagnostics mismatches. Fixed the logic so ignored tests suppress only `data` mismatches and still fail on `diagnostics` mismatches; added a regression test.
+- [x] (2026-06-21 14:15Z) Final control review found that `--allow-golden-extra` could still hide ignored tests missing from the revised FSDB side. Fixed ignored tests to require presence in both sides before applying data-only suppression and added a regression test.
+- [x] (2026-06-21 14:20Z) Final focused tests, cross-format replay, `just test-aux`, `just format-justfile-check`, `just check-actions`, `just docs-site-check`, `just check`, and `git diff --check` all passed.
+- [ ] Commit and run one full gate validation from a clean worktree.
 
 ## Surprises & Discoveries
 
@@ -62,6 +70,8 @@ This work will not add a GitHub Actions performance workflow. This work will not
   Evidence: Criterion failed in one of three null-experiment runs despite no runtime code changes. Its measurements target internal parser/binder/evaluator operations rather than user-visible CLI latency under real waveform workloads.
 - Observation: Round-robin scheduling removed broad suite-level bias but not per-test bimodal timing.
   Evidence: The full gate under `tmp/bench-gate/gates/20260621T104432Z-a93aad1db823..81777d4e939e` had suite median deltas around zero, while individual failed tests alternated between fast and slow modes about 50ms apart. On that data, best-sample confirmation passed all 5 FST median failures and 4 of 6 FSDB median failures.
+- Observation: The remaining cross-format functional mismatches are metadata path-shape mismatches, not changed payloads between refs.
+  Evidence: The full gate under `tmp/bench-gate/gates/20260621T123044Z-a93aad1db823..81777d4e939e` failed the same five cross-format tests for both baseline and revised. The mismatches were limited to hierarchy and signal metadata: FST reported 125 extra generated `.Memory` pseudo-scopes in `scope_clustered_all_depth13_json`, 21 extra scope-like array/vector aggregate paths in `scope_scr1_all_depth7_json`, and VCD-style signal paths such as `TOP.scr1_top_tb_axi.i_memory_tb.araddr.[0]`; FSDB reported paths such as `TOP.scr1_top_tb_axi.i_memory_tb.araddr[0] [31:0]` and scalar names such as `DMSTATUS_DEVTREEVALID[0:0]`.
 
 ## Decision Log
 
@@ -89,9 +99,9 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - Decision: The gate uses the E2E runner's default round-robin schedule for FST and FSDB captures.
   Rationale: Prior captures measured all baseline tests before all revised tests. A quiet rerun still produced a cluster of revised-only slowdowns around 50ms. Test-level interleaving reduces exposure to block-wide thermal, frequency, scheduler, or I/O shifts without adding a custom timing runner.
   Date/Author: 2026-06-21 / Grin
-- Decision: Cross-format FST-versus-FSDB checks remain functional-only hard gates.
-  Rationale: FST and FSDB timing is not comparable, but payload parity matters. Current tooling should own any needed catalog filtering or functional normalization.
-  Date/Author: 2026-06-20 / Grin
+- Decision: Cross-format FST-versus-FSDB checks remain functional-only hard gates, except for an explicit ignored-test list of known metadata path-shape cases.
+  Rationale: FST and FSDB timing is not comparable, but payload parity matters. Some hierarchy and signal metadata tests are not meaningful cross-format `data` parity checks because the two readers expose arrays, generated memories, and scalar ranges with different path strings even when both refs behave the same. These tests should be listed explicitly with recorded reasons; they must still pass presence, artifact, timeout, and diagnostics checks, and only the known metadata `data` mismatch is suppressed.
+  Date/Author: 2026-06-20 / Grin, revised 2026-06-21
 - Decision: Add a separate best-sample confirmation step after same-format median timing failures.
   Rationale: Median remains the primary gate metric, but the current host shows discrete high-latency samples that can land unevenly between binaries. Confirming only failed tests with the best observed sample from each binary checks whether both binaries can still reach the same low-latency envelope. This is less permissive than worst-sample confirmation and matches the maintainer's request.
   Date/Author: 2026-06-21 / Grin
@@ -101,7 +111,7 @@ This work will not add a GitHub Actions performance workflow. This work will not
 
 ## Outcomes & Retrospective
 
-Criterion removal, the current-tooling gate model, the explicit labeled-binary round-robin runner, and best-sample confirmation for median timing outliers are committed locally. The latest full gate validation showed the intended timing behavior: median timing outliers were detected, then all same-format FST and FSDB outliers passed best-sample confirmation with the larger 10-run/5-warmup catalogs. The overall gate still failed because the pre-existing cross-format FST-versus-FSDB functional mismatches remain unresolved.
+Criterion removal, the current-tooling gate model, the explicit labeled-binary round-robin runner, and best-sample confirmation for median timing outliers are committed locally. The latest full gate validation showed the intended timing behavior: median timing outliers were detected, then all same-format FST and FSDB outliers passed best-sample confirmation with the larger 10-run/5-warmup catalogs. The active change adds an explicit cross-format functional ignore list for the five known metadata path-shape tests, with reasons recorded in command output and manifests.
 
 ## Context and Orientation
 
@@ -156,6 +166,8 @@ Update these helper paths:
 
 For the best-sample confirmation change, add machine-readable timing failure output to `bench/e2e/perf.py compare` with a `--result-json` option, add a `confirm` subcommand in `bench/e2e/perf.py` that accepts `--golden`, `--revised`, repeated `--test`, and the same threshold flags, then call that subcommand from `tools/bench/compare.py` only after a same-format median compare fails with timing failures and no functional hard failures. The confirmation log should be a separate file such as `compare/e2e-fst.best-confirm.log`.
 
+For the cross-format metadata ignore change, add repeated `--ignore-functional-test NAME=REASON` support to `bench/e2e/perf.py compare` for `--functional-only` mode only. The compare result JSON should record ignored tests with their reasons and presence in revised/golden directories. Ignored tests must still pass presence checks, artifact loading, timeout-artifact checks, and diagnostics comparison; only `data` field differences are suppressed. `tools/bench/compare.py` should define the explicit ignored tests and pass them only to `cross-golden-fst-fsdb` and `cross-revised-fst-fsdb`, not to same-format FST or FSDB compares.
+
 Update these docs as needed:
 
     docs/dev/benchmarking.md
@@ -203,7 +215,7 @@ The requested full release-like validation run was executed from a clean worktre
 
 Its artifacts are under `tmp/bench-gate/gates/20260621T123044Z-a93aad1db823..81777d4e939e`, with the run index at `tmp/bench-gate/best-confirm-single-20260621T123044Z/INDEX.txt`.
 
-A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks. Top-level compare metadata records `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds`; same-format suite entries record `timing_metric`, `threshold_pct`, and `threshold_seconds`. When median timing fails but best-sample confirmation passes, the same-format suite should be reported as passed with an attached `timing_confirm` object and a separate confirmation log path, so maintainers can see that the primary median compare needed confirmation.
+A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks. Cross-format suite entries should include `ignored_functional_tests` with the five metadata-only test names and reasons. Top-level compare metadata records `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds`; same-format suite entries record `timing_metric`, `threshold_pct`, and `threshold_seconds`. When median timing fails but best-sample confirmation passes, the same-format suite should be reported as passed with an attached `timing_confirm` object and a separate confirmation log path, so maintainers can see that the primary median compare needed confirmation.
 
 ### Idempotence and Recovery
 

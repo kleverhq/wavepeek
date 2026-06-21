@@ -45,7 +45,8 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-21 11:50Z) Focused Python tests, `just test-aux`, `just format-justfile-check`, `just check-actions`, and `just check` passed.
 - [x] (2026-06-21 12:00Z) Review found that functional timeout warnings could be incorrectly overridden by best-sample timing confirmation; fixed the blocker check and added a regression test. Docs review found stale median-only and requested-gate wording in this plan; corrected the plan.
 - [x] (2026-06-21 12:15Z) Final control review found only unclear documentation about timeout warnings blocking confirmation; clarified maintainer docs, helper README, and this plan.
-- [ ] Commit and run one full gate validation from a clean worktree, then record the result.
+- [x] (2026-06-21 12:30Z) Committed the best-sample confirmation change as `4d9dcd0 refactor(bench): confirm timing outliers with best samples`.
+- [x] (2026-06-21 13:01Z) Ran one full `just bench-gate v1.0.0 v1.0.1` validation from a clean worktree at `4d9dcd0`. Capture passed. Same-format FST and FSDB median compares both failed on timing outliers, best-sample confirmation passed all 4 FST and all 3 FSDB failed timing tests, and the overall gate still failed only because of the known cross-format functional mismatches.
 
 ## Surprises & Discoveries
 
@@ -100,7 +101,7 @@ This work will not add a GitHub Actions performance workflow. This work will not
 
 ## Outcomes & Retrospective
 
-Criterion removal, the current-tooling gate model, and the explicit labeled-binary round-robin runner are committed locally. The latest full gate validation proved round-robin reduced broad bias but still left bimodal per-test timing outliers and known cross-format functional mismatches. The active change adds best-sample confirmation for same-format median timing failures and raises committed E2E catalog sample counts before a new clean full gate run.
+Criterion removal, the current-tooling gate model, the explicit labeled-binary round-robin runner, and best-sample confirmation for median timing outliers are committed locally. The latest full gate validation showed the intended timing behavior: median timing outliers were detected, then all same-format FST and FSDB outliers passed best-sample confirmation with the larger 10-run/5-warmup catalogs. The overall gate still failed because the pre-existing cross-format FST-versus-FSDB functional mismatches remain unresolved.
 
 ## Context and Orientation
 
@@ -196,9 +197,11 @@ The maintainer has explicitly requested one full release-like gate validation af
 
 Unit tests should prove that Criterion is absent from source, the public benchmark recipes still point at the manual gate helpers, dirty current tooling is rejected, selected refs are built as binaries, current `bench/e2e/perf.py` is used for capture, current FSDB tools are used for preparation, compare no longer requires expression artifacts, same-format timing invokes median-only compare with a 5ms absolute floor, and cross-format checks remain functional-only.
 
-The requested full release-like validation run is:
+The requested full release-like validation run was executed from a clean worktree at `4d9dcd0`:
 
     just bench-gate v1.0.0 v1.0.1
+
+Its artifacts are under `tmp/bench-gate/gates/20260621T123044Z-a93aad1db823..81777d4e939e`, with the run index at `tmp/bench-gate/best-confirm-single-20260621T123044Z/INDEX.txt`.
 
 A successful gate directory should contain root-level `e2e-fst/baseline/` and `e2e-fst/revised/` artifact directories, optional root-level `e2e-fsdb/baseline/` and `e2e-fsdb/revised/` artifact directories, `baseline/` and `revised/` capture manifest/log directories, `compare/`, `checkouts/`, `manifest.json`, and `summary.md`. There should be no `expr/` capture directory. The compare manifest should show `e2e-fst`, optional `e2e-fsdb`, and cross-format functional checks. Top-level compare metadata records `timing_metric`, `timing_threshold_pct`, and `timing_threshold_seconds`; same-format suite entries record `timing_metric`, `threshold_pct`, and `threshold_seconds`. When median timing fails but best-sample confirmation passes, the same-format suite should be reported as passed with an attached `timing_confirm` object and a separate confirmation log path, so maintainers can see that the primary median compare needed confirmation.
 

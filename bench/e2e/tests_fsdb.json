@@ -3,8 +3,8 @@
     {
       "name": "value_picorv32_signals_1000",
       "category": "value",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -25,7 +25,7 @@
       "name": "value_picorv32_signals_100",
       "category": "value",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -46,7 +46,7 @@
       "name": "value_picorv32_signals_10",
       "category": "value",
       "runs": 15,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -67,7 +67,7 @@
       "name": "value_picorv32_signals_1",
       "category": "value",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -87,8 +87,8 @@
     {
       "name": "value_scr1_signals_1000",
       "category": "value",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -109,7 +109,7 @@
       "name": "value_scr1_signals_100",
       "category": "value",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -130,7 +130,7 @@
       "name": "value_scr1_signals_10",
       "category": "value",
       "runs": 15,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -151,7 +151,7 @@
       "name": "value_scr1_signals_1",
       "category": "value",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -171,8 +171,8 @@
     {
       "name": "value_chipyard_dualrocketconfig_dhrystone_signals_1000",
       "category": "value",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -193,7 +193,7 @@
       "name": "value_chipyard_dualrocketconfig_dhrystone_signals_100",
       "category": "value",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -214,7 +214,7 @@
       "name": "value_chipyard_dualrocketconfig_dhrystone_signals_10",
       "category": "value",
       "runs": 15,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -235,7 +235,7 @@
       "name": "value_chipyard_dualrocketconfig_dhrystone_signals_1",
       "category": "value",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -255,8 +255,8 @@
     {
       "name": "value_chipyard_clusteredrocketconfig_dhrystone_signals_1000",
       "category": "value",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -277,7 +277,7 @@
       "name": "value_chipyard_clusteredrocketconfig_dhrystone_signals_100",
       "category": "value",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -298,7 +298,7 @@
       "name": "value_chipyard_clusteredrocketconfig_dhrystone_signals_10",
       "category": "value",
       "runs": 15,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -319,7 +319,7 @@
       "name": "value_chipyard_clusteredrocketconfig_dhrystone_signals_1",
       "category": "value",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "value",
@@ -340,7 +340,7 @@
       "name": "info_chipyard_clustered_dhrystone",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -357,7 +357,7 @@
       "name": "info_chipyard_clustered_mt_memcpy",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -374,7 +374,7 @@
       "name": "info_chipyard_dualrocket_dhrystone",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -391,7 +391,7 @@
       "name": "info_picorv32",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -408,7 +408,7 @@
       "name": "info_picorv32_ez",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -425,7 +425,7 @@
       "name": "info_scr1",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -442,7 +442,7 @@
       "name": "info_scr1_isr_sample",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -459,7 +459,7 @@
       "name": "info_scr1_riscv_compliance",
       "category": "info",
       "runs": 20,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "info",
@@ -476,7 +476,7 @@
       "name": "scope_scr1_all_depth7_json",
       "category": "scope",
       "runs": 15,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "scope",
@@ -500,7 +500,7 @@
       "name": "scope_dualrocket_filter_frontend_depth12_json",
       "category": "scope",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "scope",
@@ -525,8 +525,8 @@
     {
       "name": "scope_clustered_all_depth13_json",
       "category": "scope",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "scope",
@@ -550,7 +550,7 @@
       "name": "signal_scr1_top_recursive_all_json",
       "category": "signal",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "signal",
@@ -575,7 +575,7 @@
       "name": "signal_scr1_top_recursive_filter_valid_json",
       "category": "signal",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "signal",
@@ -602,7 +602,7 @@
       "name": "signal_scr1_top_recursive_depth2_json",
       "category": "signal",
       "runs": 10,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "signal",
@@ -628,8 +628,8 @@
     {
       "name": "change_picorv32_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -655,8 +655,8 @@
     {
       "name": "change_picorv32_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -682,8 +682,8 @@
     {
       "name": "change_picorv32_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -709,8 +709,8 @@
     {
       "name": "change_picorv32_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -736,8 +736,8 @@
     {
       "name": "change_picorv32_signals_100_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -763,8 +763,8 @@
     {
       "name": "change_picorv32_signals_100_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -790,8 +790,8 @@
     {
       "name": "change_picorv32_signals_100_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -817,8 +817,8 @@
     {
       "name": "change_picorv32_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -844,8 +844,8 @@
     {
       "name": "change_picorv32_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -871,8 +871,8 @@
     {
       "name": "change_picorv32_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -898,8 +898,8 @@
     {
       "name": "change_picorv32_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -925,8 +925,8 @@
     {
       "name": "change_picorv32_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -952,8 +952,8 @@
     {
       "name": "change_picorv32_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -979,8 +979,8 @@
     {
       "name": "change_picorv32_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1006,8 +1006,8 @@
     {
       "name": "change_picorv32_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1033,8 +1033,8 @@
     {
       "name": "change_picorv32_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1060,8 +1060,8 @@
     {
       "name": "change_picorv32_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1087,8 +1087,8 @@
     {
       "name": "change_picorv32_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1114,8 +1114,8 @@
     {
       "name": "change_picorv32_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1141,8 +1141,8 @@
     {
       "name": "change_picorv32_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1168,8 +1168,8 @@
     {
       "name": "change_picorv32_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1195,8 +1195,8 @@
     {
       "name": "change_picorv32_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1222,8 +1222,8 @@
     {
       "name": "change_picorv32_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1249,8 +1249,8 @@
     {
       "name": "change_picorv32_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1276,8 +1276,8 @@
     {
       "name": "change_picorv32_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1303,8 +1303,8 @@
     {
       "name": "change_picorv32_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1330,8 +1330,8 @@
     {
       "name": "change_picorv32_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1357,8 +1357,8 @@
     {
       "name": "change_scr1_coremark_imem_axi_2sig_to_1000ps",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1383,8 +1383,8 @@
     {
       "name": "change_scr1_coremark_imem_axi_1sig_to_1000ps",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1409,8 +1409,8 @@
     {
       "name": "change_scr1_signals_100_pos_50_window_2ns_trigger_any",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1436,8 +1436,8 @@
     {
       "name": "change_scr1_signals_100_window_2ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1463,8 +1463,8 @@
     {
       "name": "change_scr1_signals_100_window_2ns_trigger_signal",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1490,8 +1490,8 @@
     {
       "name": "change_scr1_signals_100_window_4ns_trigger_any",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1517,8 +1517,8 @@
     {
       "name": "change_scr1_signals_100_window_4ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1544,8 +1544,8 @@
     {
       "name": "change_scr1_signals_100_window_4ns_trigger_signal",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1571,8 +1571,8 @@
     {
       "name": "change_scr1_signals_100_window_8ns_trigger_any",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1598,8 +1598,8 @@
     {
       "name": "change_scr1_signals_100_window_8ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1625,8 +1625,8 @@
     {
       "name": "change_scr1_signals_100_window_8ns_trigger_signal",
       "category": "change",
-      "runs": 6,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1652,8 +1652,8 @@
     {
       "name": "change_scr1_signals_10_window_2ns_trigger_any",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1679,8 +1679,8 @@
     {
       "name": "change_scr1_signals_10_window_2ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1706,8 +1706,8 @@
     {
       "name": "change_scr1_signals_10_window_2ns_trigger_signal",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1733,8 +1733,8 @@
     {
       "name": "change_scr1_signals_10_window_4ns_trigger_any",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1760,8 +1760,8 @@
     {
       "name": "change_scr1_signals_10_window_4ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1787,8 +1787,8 @@
     {
       "name": "change_scr1_signals_10_window_4ns_trigger_signal",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1814,8 +1814,8 @@
     {
       "name": "change_scr1_signals_10_window_8ns_trigger_any",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1841,8 +1841,8 @@
     {
       "name": "change_scr1_signals_10_window_8ns_trigger_posedge_clk",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1868,8 +1868,8 @@
     {
       "name": "change_scr1_signals_10_window_8ns_trigger_signal",
       "category": "change",
-      "runs": 9,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1896,7 +1896,7 @@
       "name": "change_scr1_signals_1_window_2ns_trigger_any",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1923,7 +1923,7 @@
       "name": "change_scr1_signals_1_window_2ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1950,7 +1950,7 @@
       "name": "change_scr1_signals_1_window_2ns_trigger_signal",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -1977,7 +1977,7 @@
       "name": "change_scr1_signals_1_window_4ns_trigger_any",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2004,7 +2004,7 @@
       "name": "change_scr1_signals_1_window_4ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2031,7 +2031,7 @@
       "name": "change_scr1_signals_1_window_4ns_trigger_signal",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2058,7 +2058,7 @@
       "name": "change_scr1_signals_1_window_8ns_trigger_any",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2085,7 +2085,7 @@
       "name": "change_scr1_signals_1_window_8ns_trigger_posedge_clk",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2112,7 +2112,7 @@
       "name": "change_scr1_signals_1_window_8ns_trigger_signal",
       "category": "change",
       "runs": 12,
-      "warmup": 3,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2138,8 +2138,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2165,8 +2165,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2192,8 +2192,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2219,8 +2219,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2246,8 +2246,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2273,8 +2273,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2300,8 +2300,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2327,8 +2327,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2354,8 +2354,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2381,8 +2381,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2408,8 +2408,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2435,8 +2435,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2462,8 +2462,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2489,8 +2489,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2516,8 +2516,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2543,8 +2543,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2570,8 +2570,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2597,8 +2597,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2624,8 +2624,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2651,8 +2651,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2678,8 +2678,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2705,8 +2705,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2732,8 +2732,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2759,8 +2759,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2786,8 +2786,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2813,8 +2813,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2840,8 +2840,8 @@
     {
       "name": "change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2867,8 +2867,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2894,8 +2894,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2921,8 +2921,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2948,8 +2948,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -2975,8 +2975,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3002,8 +3002,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3029,8 +3029,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3056,8 +3056,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3083,8 +3083,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3110,8 +3110,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3137,8 +3137,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3164,8 +3164,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3191,8 +3191,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3218,8 +3218,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3245,8 +3245,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3272,8 +3272,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3299,8 +3299,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3326,8 +3326,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_10_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3353,8 +3353,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3380,8 +3380,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3407,8 +3407,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_2us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3434,8 +3434,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3461,8 +3461,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3488,8 +3488,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_8us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3515,8 +3515,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_any",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3542,8 +3542,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_posedge_clk",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3569,8 +3569,8 @@
     {
       "name": "change_chipyard_clusteredrocketconfig_dhrystone_signals_1_window_32us_trigger_signal",
       "category": "change",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "change",
@@ -3596,8 +3596,8 @@
     {
       "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk",
       "category": "property",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "property",
@@ -3627,8 +3627,8 @@
     {
       "name": "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_switch_wildcard",
       "category": "property",
-      "runs": 5,
-      "warmup": 3,
+      "runs": 10,
+      "warmup": 5,
       "command": [
         "{wavepeek_bin}",
         "property",

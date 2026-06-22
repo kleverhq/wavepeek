@@ -65,7 +65,7 @@ repos:
 
       - id: aux-test
         name: Auxiliary test suites
-        description: Run bench/e2e, bench/expr, and release-helper unit tests
+        description: Run bench/e2e and helper unit tests
         entry: just test-aux
         language: system
         pass_filenames: false

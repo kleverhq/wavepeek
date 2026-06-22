@@ -9,8 +9,8 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 - `just check`, `just ci`, and `just pre-commit` are the main quality gates.
 - `just update-schema` refreshes the current major artifact such as `schema/wavepeek_v1.json`; `just check-schema` validates it.
 - `just docs-site-build`, `just docs-site-check`, `just docs-site-stage-deploy`, `just docs-site-push-staged`, and `just docs-site-check-deploy` own GitHub Pages docs preparation, publication, and deployed endpoint verification.
-- `just bench-e2e-run`, `just bench-e2e-update-baseline`, `just bench-expr-run`, and `just bench-expr-update-baseline` own default benchmark flows.
-- `just check-fsdb-env`, `just test-fsdb`, `just lint-fsdb`, and `just bench-e2e-fsdb-smoke-commit` own optional Verdi/FSDB flows; see `fsdb.md` for the full contract.
+- `just bench-gate`, `just bench-capture`, and `just bench-compare` own manual performance review; generated benchmark runs are ignored and are not committed baselines.
+- `just check-fsdb-env`, `just test-fsdb`, and `just lint-fsdb` own optional Verdi/FSDB flows; see `fsdb.md` for the full contract.
 
 ## Devcontainer Lifecycle Helpers
 
@@ -26,6 +26,6 @@ Pre-commit configuration lives in `.pre-commit-config.yaml`. Hooks should stay d
 
 ## Helper Tool Layout
 
-Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure. Docs-site helpers live under `tools/docs/`; `prepare_mkdocs.py` generates MkDocs staging input from `wavepeek docs export`, `publish_docs.py` separates local check, staged deploy, and push-only verification, and `check_deploy.py` verifies published Pages state after deployment.
+Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure. Benchmark gate helpers live under `tools/bench/`. Docs-site helpers live under `tools/docs/`; `prepare_mkdocs.py` generates MkDocs staging input from `wavepeek docs export`, `publish_docs.py` separates local check, staged deploy, and push-only verification, and `check_deploy.py` verifies published Pages state after deployment.
 
 During path moves, update `justfile`, affected workflow YAML, hooks, docs, and helper tests in the same change.

@@ -72,6 +72,12 @@ $ wavepeek value --waves path/to/dump.vcd --at 10ns --scope top --signals clk,da
 
 Use this when you plan to paste results into notes, bugs, or follow-up commands.
 
+## Follow `sample_time` from event-driven commands
+
+`change` and `property` JSON rows include both `time` and `sample_time`. Use `sample_time` for follow-up `value --at` queries when you want to inspect the values that were printed or evaluated by that row.
+
+This matters for `--sample-mode pre-edge`: `time` remains the trigger edge, while `sample_time` is the point just before that edge. Querying `value --at <time>` can show the next-cycle payload instead of the values that made the `property` row match.
+
 ## Remember that sampling is state-at-time, not change-at-time
 
 `value` returns the latest known value at or before each `--at` timestamp. A timestamp does not need to be a transition point:
@@ -107,4 +113,5 @@ Use this when another tool needs deterministic parsing instead of human formatti
 - Empty comma entries such as `5ns,,10ns` are errors.
 - If a signal has no sampled value at or before a requested time, the command fails instead of inventing a default.
 - `value` does not truncate output and does not use `--max`; result size is bounded by the number of times and signals you requested.
+- When a timestamp comes from `change` or `property`, use the row's `sample_time` for follow-up payload inspection. `time` can be a trigger edge whose sampled values came from an earlier point.
 - Values are printed as Verilog literals. Non-bit-vector dump encodings are currently rejected by this command.

@@ -100,6 +100,7 @@ fn change_uses_strict_previous_timestamp_not_previous_candidate() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.sig", "value": "1'h1"}
                 ]
@@ -222,6 +223,7 @@ fn change_max_one_truncation_matches_between_modes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.sig", "value": "4'h1"}
                 ]
@@ -261,6 +263,7 @@ fn change_redundant_same_value_dump_does_not_emit_row() {
         json!([
             {
                 "time": "10ns",
+                "sample_time": "10ns",
                 "signals": [
                     {"path": "top.sig", "value": "4'h1"}
                 ]
@@ -292,6 +295,7 @@ fn change_typed_iff_matches_between_modes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "8'h00"},
                     {"path": "top.clk", "value": "1'h1"}
@@ -329,6 +333,7 @@ fn change_anychange_trigger_detects_none_to_some_transition() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.sig", "value": "1'h1"}
                 ]
@@ -447,12 +452,14 @@ fn change_dense_posedge_sparse_delta_matches_all_modes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "1'h1"}
                 ]
             },
             {
                 "time": "9ns",
+                "sample_time": "9ns",
                 "signals": [
                     {"path": "top.data", "value": "1'h0"}
                 ]
@@ -518,12 +525,14 @@ fn change_union_edge_trigger_dedups_same_timestamp_in_all_modes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "1'h1"}
                 ]
             },
             {
                 "time": "9ns",
+                "sample_time": "9ns",
                 "signals": [
                     {"path": "top.data", "value": "1'h0"}
                 ]
@@ -561,6 +570,7 @@ fn change_dense_edge_max_one_truncation_matches_all_modes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "1'h1"}
                 ]

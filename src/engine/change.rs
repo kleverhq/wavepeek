@@ -54,6 +54,7 @@ pub struct ChangeSignalValue {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ChangeSnapshot {
     pub time: String,
+    pub sample_time: String,
     pub signals: Vec<ChangeSignalValue>,
 }
 
@@ -335,12 +336,14 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
 
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
+    let dump_start_raw =
+        u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
+            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
+        })?;
 
     let from_raw = match args.from.as_deref() {
         Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
-        })?,
+        None => dump_start_raw,
     };
     let to_raw = match args.to.as_deref() {
         Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
@@ -446,6 +449,7 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
             dump_tick,
             max_entries,
             candidate_mode,
+            dump_start_raw,
             sink,
         )?
     } else {
@@ -568,6 +572,12 @@ fn candidate_mode_name(mode: ChangeCandidateCollectionMode) -> &'static str {
         ChangeCandidateCollectionMode::Random => "random",
         ChangeCandidateCollectionMode::Stream => "stream",
     }
+}
+
+fn pre_edge_sample_time(trigger_timestamp: u64, dump_start_raw: u64) -> Option<u64> {
+    trigger_timestamp
+        .checked_sub(1)
+        .filter(|query_time| *query_time >= dump_start_raw)
 }
 
 fn select_engine_mode(
@@ -757,6 +767,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
+            timestamp,
             dump_tick,
         )?)?;
         emitted += 1;
@@ -782,6 +793,7 @@ fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
     dump_tick: ParsedTime,
     max_entries: Option<usize>,
     candidate_mode: ChangeCandidateCollectionMode,
+    dump_start_raw: u64,
     sink: &mut S,
 ) -> Result<ChangeRunStats, WavepeekError> {
     let candidate_times = waveform
@@ -817,11 +829,7 @@ fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
             continue;
         }
 
-        let sample_time = {
-            let waveform_ref = waveform.borrow();
-            waveform_ref.previous_sample_time(timestamp)
-        };
-        let Some(sample_time) = sample_time else {
+        let Some(sample_time) = pre_edge_sample_time(timestamp, dump_start_raw) else {
             continue;
         };
 
@@ -848,6 +856,7 @@ fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
+            sample_time,
             dump_tick,
         )?)?;
         emitted += 1;
@@ -1183,6 +1192,7 @@ fn run_edge_fast_emit<S: ChangeSnapshotSink + ?Sized>(
         sink.emit(build_snapshot(
             requested_signals,
             current_samples.as_slice(),
+            timestamp,
             timestamp,
             dump_tick,
         )?)?;
@@ -1541,6 +1551,7 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
+            timestamp,
             dump_tick,
         )?)?;
         emitted += 1;
@@ -1561,6 +1572,7 @@ fn build_snapshot(
     requested_signals: &[RequestedSignal],
     current_samples: &[SampledSignalState],
     timestamp: u64,
+    sample_timestamp: u64,
     dump_tick: ParsedTime,
 ) -> Result<ChangeSnapshot, WavepeekError> {
     let signals = requested_signals
@@ -1583,6 +1595,7 @@ fn build_snapshot(
 
     Ok(ChangeSnapshot {
         time: format_raw_timestamp(timestamp, dump_tick)?,
+        sample_time: format_raw_timestamp(sample_timestamp, dump_tick)?,
         signals,
     })
 }
@@ -1835,6 +1848,7 @@ mod change_inline_derive_tests {
         assert!(serde_json::to_string(&signal).unwrap().contains("top.sig"));
         let snapshot = ChangeSnapshot {
             time: "1ns".to_string(),
+            sample_time: "1ns".to_string(),
             signals: vec![signal],
         };
         assert_eq!(snapshot.clone(), snapshot);
@@ -2050,6 +2064,7 @@ mod tests {
                 bits: Some("1".to_string()),
             }],
             5,
+            5,
             crate::engine::time::ParsedTime {
                 value: 1,
                 unit: crate::engine::time::TimeUnit::Ns,
@@ -2057,6 +2072,7 @@ mod tests {
         )
         .expect("snapshot should build");
         assert_eq!(snapshot.time, "5ns");
+        assert_eq!(snapshot.sample_time, "5ns");
         assert_eq!(snapshot.signals[0].value, "1'h1");
 
         let error = build_snapshot(
@@ -2069,6 +2085,7 @@ mod tests {
                 width: 1,
                 bits: None,
             }],
+            5,
             5,
             crate::engine::time::ParsedTime {
                 value: 1,

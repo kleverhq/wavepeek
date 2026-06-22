@@ -56,10 +56,12 @@ fn exercises_docs_topics_human_json_and_diagnostic_rendering() {
     let properties = CommandData::Property(vec![
         PropertyCaptureRow {
             time: "0ns".to_string(),
+            sample_time: "0ns".to_string(),
             kind: PropertyResultKind::Assert,
         },
         PropertyCaptureRow {
             time: "1ns".to_string(),
+            sample_time: "1ns".to_string(),
             kind: PropertyResultKind::Deassert,
         },
     ]);

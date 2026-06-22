@@ -101,13 +101,35 @@ fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
         ])
         .output()
         .expect("change should execute");
+    let pre_edge_human_output = wavepeek_cmd()
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "15ns",
+            "--scope",
+            "top",
+            "--signals",
+            "data",
+            "--on",
+            "posedge clk",
+            "--sample-mode",
+            "pre-edge",
+        ])
+        .output()
+        .expect("change should execute");
 
     assert!(native_output.status.success());
     assert!(pre_edge_output.status.success());
+    assert!(pre_edge_human_output.status.success());
     assert_eq!(
         parse_json(&native_output.stdout)["data"],
         json!([{
             "time": "5ns",
+            "sample_time": "5ns",
             "signals": [{"path": "top.data", "value": "8'haa"}]
         }])
     );
@@ -115,8 +137,13 @@ fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
         parse_json(&pre_edge_output.stdout)["data"],
         json!([{
             "time": "15ns",
+            "sample_time": "14ns",
             "signals": [{"path": "top.data", "value": "8'haa"}]
         }])
+    );
+    assert_eq!(
+        String::from_utf8(pre_edge_human_output.stdout).expect("human stdout should be UTF-8"),
+        "@15ns sample@14ns data=8'haa\n"
     );
 }
 
@@ -180,6 +207,7 @@ fn change_sample_mode_pre_edge_preserves_from_baseline() {
         parse_json(&long_output.stdout)["data"],
         json!([{
             "time": "35ns",
+            "sample_time": "34ns",
             "signals": [{"path": "top.data", "value": "8'h55"}]
         }])
     );
@@ -263,6 +291,7 @@ fn change_default_when_matches_expected_json_payload() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.clk", "value": "1'h1"},
                     {"path": "top.data", "value": "8'h00"}
@@ -270,6 +299,7 @@ fn change_default_when_matches_expected_json_payload() {
             },
             {
                 "time": "10ns",
+                "sample_time": "10ns",
                 "signals": [
                     {"path": "top.clk", "value": "1'h1"},
                     {"path": "top.data", "value": "8'h0f"}
@@ -358,6 +388,7 @@ fn change_named_non_edge_trigger_emits_expected_single_row() {
         json!([
             {
                 "time": "10ns",
+                "sample_time": "10ns",
                 "signals": [
                     {"path": "top.data", "value": "8'h0f"},
                     {"path": "top.clk", "value": "1'h1"}
@@ -549,6 +580,7 @@ fn change_omitted_from_uses_dump_start_baseline_checkpoint() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.sig", "value": "1'h0"}
                 ]
@@ -870,6 +902,7 @@ fn change_iff_executes_end_to_end() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "8'h00"},
                     {"path": "top.clk", "value": "1'h1"}
@@ -1017,6 +1050,7 @@ fn change_rich_type_iff_payload_executes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.data", "value": "8'h00"},
                     {"path": "top.clk", "value": "1'h1"}
@@ -1059,6 +1093,7 @@ fn change_triggered_iff_payload_executes() {
         json!([
             {
                 "time": "5ns",
+                "sample_time": "5ns",
                 "signals": [
                     {"path": "top.sig", "value": "1'h0"},
                     {"path": "top.clk", "value": "1'h1"}

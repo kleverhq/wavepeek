@@ -128,21 +128,48 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
         ])
         .output()
         .expect("property should execute");
+    let pre_edge_human_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+        ])
+        .output()
+        .expect("property should execute");
 
     assert!(native_output.status.success());
     assert!(pre_edge_posedge_output.status.success());
     assert!(pre_edge_edge_output.status.success());
+    assert!(pre_edge_human_output.status.success());
     assert_eq!(
         parse_json(&native_output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "assert"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "assert"}])
     );
     assert_eq!(
         parse_json(&pre_edge_posedge_output.stdout)["data"],
-        json!([{"time": "15ns", "kind": "assert"}])
+        json!([{"time": "15ns", "sample_time": "14ns", "kind": "assert"}])
     );
     assert_eq!(
         parse_json(&pre_edge_edge_output.stdout)["data"],
-        json!([{"time": "10ns", "kind": "assert"}])
+        json!([{"time": "10ns", "sample_time": "9ns", "kind": "assert"}])
+    );
+    assert_eq!(
+        String::from_utf8(pre_edge_human_output.stdout).expect("human stdout should be UTF-8"),
+        "@15ns sample@14ns assert\n"
     );
 }
 
@@ -208,7 +235,7 @@ fn property_sample_mode_pre_edge_preserves_from_baseline() {
     assert!(deassert_output.status.success());
     assert_eq!(
         parse_json(&deassert_output.stdout)["data"],
-        json!([{"time": "35ns", "kind": "deassert"}])
+        json!([{"time": "35ns", "sample_time": "34ns", "kind": "deassert"}])
     );
 }
 
@@ -332,7 +359,7 @@ fn property_sample_mode_pre_edge_does_not_replay_previous_raw_event() {
     assert!(output.status.success());
     assert_eq!(
         parse_json(&output.stdout)["data"],
-        json!([{"time": "20ns", "kind": "match"}])
+        json!([{"time": "20ns", "sample_time": "19ns", "kind": "match"}])
     );
 }
 
@@ -435,8 +462,8 @@ fn property_switch_capture_reports_transitions() {
     assert_eq!(
         json["data"],
         json!([
-            {"time": "15ns", "kind": "assert"},
-            {"time": "25ns", "kind": "deassert"}
+            {"time": "15ns", "sample_time": "15ns", "kind": "assert"},
+            {"time": "25ns", "sample_time": "25ns", "kind": "deassert"}
         ])
     );
     assert_eq!(
@@ -500,11 +527,11 @@ fn property_assert_and_deassert_capture_filters() {
     assert!(deassert_output.status.success());
     assert_eq!(
         parse_json(&assert_output.stdout)["data"],
-        json!([{"time": "15ns", "kind": "assert"}])
+        json!([{"time": "15ns", "sample_time": "15ns", "kind": "assert"}])
     );
     assert_eq!(
         parse_json(&deassert_output.stdout)["data"],
-        json!([{"time": "25ns", "kind": "deassert"}])
+        json!([{"time": "25ns", "sample_time": "25ns", "kind": "deassert"}])
     );
 }
 
@@ -555,11 +582,11 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
     assert!(real_output.status.success());
     assert_eq!(
         parse_json(&multibit_output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
     assert_eq!(
         parse_json(&real_output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
 }
 
@@ -666,7 +693,10 @@ fn property_omitted_on_tracks_eval_signal_changes() {
 
     let json = parse_json(&output.stdout);
     assert_eq!(json["diagnostics"], json!([]));
-    assert_eq!(json["data"], json!([{"time": "10ns", "kind": "match"}]));
+    assert_eq!(
+        json["data"],
+        json!([{"time": "10ns", "sample_time": "10ns", "kind": "match"}])
+    );
 }
 
 #[test]
@@ -701,8 +731,8 @@ fn property_omitted_on_tracks_raw_event_handles_from_eval() {
     assert_eq!(
         json["data"],
         json!([
-            {"time": "5ns", "kind": "match"},
-            {"time": "20ns", "kind": "match"}
+            {"time": "5ns", "sample_time": "5ns", "kind": "match"},
+            {"time": "20ns", "sample_time": "20ns", "kind": "match"}
         ])
     );
 }
@@ -733,7 +763,7 @@ fn property_mixed_wildcard_union_runs_with_signal_free_eval() {
     assert!(output.status.success());
     assert_eq!(
         parse_json(&output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
 }
 

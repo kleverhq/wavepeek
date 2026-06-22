@@ -330,8 +330,11 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
         CommandData::Change(snapshots) => snapshots
             .iter()
             .map(|snapshot| {
-                let mut parts = Vec::with_capacity(snapshot.signals.len() + 1);
+                let mut parts = Vec::with_capacity(snapshot.signals.len() + 2);
                 parts.push(format!("@{}", snapshot.time));
+                if snapshot.sample_time != snapshot.time {
+                    parts.push(format!("sample@{}", snapshot.sample_time));
+                }
                 for signal in &snapshot.signals {
                     let display = if options.signals_abs {
                         signal.path.as_str()
@@ -346,7 +349,13 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             .join("\n"),
         CommandData::Property(rows) => rows
             .iter()
-            .map(|row| format!("@{} {}", row.time, row.kind))
+            .map(|row| {
+                if row.sample_time == row.time {
+                    format!("@{} {}", row.time, row.kind)
+                } else {
+                    format!("@{} sample@{} {}", row.time, row.sample_time, row.kind)
+                }
+            })
             .collect::<Vec<_>>()
             .join("\n"),
         CommandData::DocsTopics(data) => data
@@ -673,17 +682,19 @@ mod tests {
             &CommandData::Property(vec![
                 crate::engine::property::PropertyCaptureRow {
                     time: "10ns".to_string(),
+                    sample_time: "10ns".to_string(),
                     kind: crate::engine::property::PropertyResultKind::Assert,
                 },
                 crate::engine::property::PropertyCaptureRow {
                     time: "25ns".to_string(),
+                    sample_time: "24ns".to_string(),
                     kind: crate::engine::property::PropertyResultKind::Deassert,
                 },
             ]),
             HumanRenderOptions::default(),
         );
 
-        assert_eq!(rendered, "@10ns assert\n@25ns deassert");
+        assert_eq!(rendered, "@10ns assert\n@25ns sample@24ns deassert");
     }
 
     #[test]
@@ -757,6 +768,7 @@ mod tests {
         let rendered = render_human(
             &CommandData::Change(vec![crate::engine::change::ChangeSnapshot {
                 time: "5ns".to_string(),
+                sample_time: "4ns".to_string(),
                 signals: vec![
                     crate::engine::change::ChangeSignalValue {
                         display: "clk".to_string(),
@@ -773,7 +785,7 @@ mod tests {
             HumanRenderOptions::default(),
         );
 
-        assert_eq!(rendered, "@5ns clk=1'h1 data=8'h00");
+        assert_eq!(rendered, "@5ns sample@4ns clk=1'h1 data=8'h00");
     }
 
     #[test]

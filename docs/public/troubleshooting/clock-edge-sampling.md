@@ -51,7 +51,13 @@ wavepeek property --on 'posedge clk' --eval "data == 8'haa" --sample-mode pre-ed
                                         ^ match at 15ns
 ```
 
-The row timestamp remains the trigger edge timestamp. Only the sampled values move to the pre-edge query point.
+The row `time` remains the trigger edge timestamp. The row `sample_time` is the pre-edge query point whose values were printed or evaluated. Human output shows that distinction as `sample@<time>`:
+
+```text
+@15ns sample@14ns match
+```
+
+Use `sample_time`, not `time`, for follow-up `value --at` payload inspection.
 
 ## What changes and what does not
 
@@ -64,9 +70,11 @@ The row timestamp remains the trigger edge timestamp. Only the sampled values mo
 
 - edge detection in `--on`;
 - `iff` guards in `--on`;
-- row timestamps.
+- the trigger timestamp stored in row `time`.
 
-For example, `--on 'posedge clk iff rst_n' --sample-mode pre-edge` still detects `posedge clk` and evaluates `rst_n` for the `iff` guard at the native edge timestamp. The property expression or printed signal values use the pre-edge sample point.
+`pre-edge` does add a separate `sample_time` to JSON and JSONL rows. In native mode `sample_time == time`; in pre-edge mode `sample_time` is immediately before the trigger edge.
+
+For example, `--on 'posedge clk iff rst_n' --sample-mode pre-edge` still detects `posedge clk` and evaluates `rst_n` for the `iff` guard at the native edge timestamp. The property expression or printed signal values use the pre-edge sample point recorded as `sample_time`.
 
 ## Accepted triggers
 
@@ -110,6 +118,34 @@ data        00       aa       aa       aa
 For transition modes, that pre-window sample does not replace the `--from` baseline. The baseline remains the value sampled at the range start. This prevents a boundary edge from manufacturing an extra `assert`, `deassert`, or `change` row using a value outside the requested range.
 
 If there is no representable query point before a trigger, for example at the first timestamp in the dump, `pre-edge` skips value evaluation for that trigger. This can produce an empty result even though the edge itself was present.
+
+## Back-to-back handshakes
+
+For a ready/valid interface, consecutive accepted beats can keep `ready && valid` high across multiple cycles. Use `property --capture match` to report every selected clock edge where the handshake is true:
+
+```text
+$ wavepeek property --waves path/to/dump.vcd --scope top \
+    --on 'posedge clk' --eval 'ready && valid' \
+    --capture match --sample-mode pre-edge --json
+{
+  "$schema": "https://kleverhq.github.io/wavepeek/wavepeek_v1.json",
+  "command": "property",
+  "data": [
+    {"time":"100ns","sample_time":"99999ps","kind":"match"},
+    {"time":"110ns","sample_time":"109999ps","kind":"match"}
+  ],
+  "diagnostics": []
+}
+```
+
+If you then inspect payload with `value`, use each row's `sample_time`:
+
+```text
+$ wavepeek value --waves path/to/dump.vcd --scope top \
+    --at 99999ps --signals ready,valid,data
+```
+
+Using `value --at 100ns` asks for native dump values at the trigger edge. For nonblocking-assignment style RTL dumps, that can show the next beat's payload, which is precisely the mismatch `pre-edge` is meant to avoid.
 
 ## Which mode to choose
 

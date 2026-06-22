@@ -18,9 +18,11 @@ fn derives_public_capture_types() {
 
     let row = PropertyCaptureRow {
         time: "12ns".to_string(),
+        sample_time: "11ns".to_string(),
         kind: PropertyResultKind::Match,
     };
     assert_eq!(row.clone(), row);
     assert!(format!("{row:?}").contains("12ns"));
+    assert!(serde_json::to_string(&row).unwrap().contains("11ns"));
     assert!(serde_json::to_string(&row).unwrap().contains("match"));
 }

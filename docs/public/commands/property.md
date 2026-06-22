@@ -120,7 +120,7 @@ In this window the property is already true at `10ns`, so there is no visible `a
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"property","data":[{"time":"10ns","kind":"match"}],"diagnostics":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"property","data":[{"time":"10ns","sample_time":"10ns","kind":"match"}],"diagnostics":[]}
 ```
 
 Human output is for quick inspection. `--json` is the stable machine contract.
@@ -130,7 +130,7 @@ For long searches or incremental consumers, use `--jsonl`. It streams one JSON o
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --jsonl
 {"type":"begin","seq":0,"command":"property","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
-{"type":"item","seq":1,"command":"property","item":{"time":"10ns","kind":"match"}}
+{"type":"item","seq":1,"command":"property","item":{"time":"10ns","sample_time":"10ns","kind":"match"}}
 {"type":"end","seq":2,"command":"property","summary":{"status":"ok","items":1,"diagnostics":0,"truncated":false}}
 ```
 
@@ -150,16 +150,16 @@ Full trigger and expression syntax is defined in `reference/expression-language`
 
 By default, `property` uses dump-native sampling: a row selected by `--on 'posedge clk'` evaluates `--eval` from values at the same dump timestamp as that edge.
 
-For RTL and SVA-style debugging, `--sample-mode pre-edge` evaluates `--eval` from values immediately before the selected edge while keeping the reported row timestamp at the edge:
+For RTL and SVA-style debugging, `--sample-mode pre-edge` evaluates `--eval` from values immediately before the selected edge while keeping the reported row timestamp at the edge. Human output shows `sample@<time>` when the evaluation timestamp differs from the trigger timestamp:
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top \
     --on 'posedge clk' --eval valid --capture assert \
     --sample-mode pre-edge
-@25ns assert
+@25ns sample@24999ps assert
 ```
 
-`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the `--eval` value sampling moves to the pre-edge sample point.
+`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the `--eval` value sampling moves to the pre-edge sample point. JSON and JSONL rows always include both `time` and `sample_time`; use `sample_time` for follow-up `value --at` checks.
 
 Use this mode when `property` appears one clock ahead of a SystemVerilog assertion because a value is dumped after a nonblocking assignment at the same clock edge. See `troubleshooting/clock-edge-sampling` for diagrams and boundary behavior.
 
@@ -169,6 +169,7 @@ Use this mode when `property` appears one clock ahead of a SystemVerilog asserti
 - No output is still success. It emits `WPK-W0003` and usually means no selected timestamp satisfied the requested capture mode.
 - The default capture mode is `switch`, not `match`.
 - `--sample-mode native` is the default and preserves historical behavior. `--sample-mode pre-edge` is opt-in and requires an explicit edge-only trigger.
-- `property` prints only time and result kind. If you also need sampled values, use `change`.
+- JSON and JSONL rows always include `sample_time`. In native mode it equals `time`; in pre-edge mode it is the timestamp whose values were evaluated.
+- `property` prints only trigger/sample times and result kind. If you need payload values for a matching row, query them with `value --at <sample_time>`.
 - With `--scope`, names inside `--on` and `--eval` must stay scope-relative. For example, `--scope top --on 'posedge top.clk'` is an error.
 - If you omit `--on`, `wavepeek` must be able to infer tracked signals from `--eval`. A signal-free expression like `--eval 1` requires explicit `--on`.

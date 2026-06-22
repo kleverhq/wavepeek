@@ -536,11 +536,11 @@ fn fsdb_value_change_and_property_use_final_same_time_update() {
     assert_eq!(
         fsdb_change["data"],
         json!([
-            {"time": "5ns", "signals": [
+            {"time": "5ns", "sample_time": "5ns", "signals": [
                 {"path": "top.glitch", "value": "1'h1"},
                 {"path": "top.bus", "value": "2'h2"}
             ]},
-            {"time": "10ns", "signals": [
+            {"time": "10ns", "sample_time": "10ns", "signals": [
                 {"path": "top.glitch", "value": "1'h0"},
                 {"path": "top.bus", "value": "2'h0"}
             ]}
@@ -566,7 +566,7 @@ fn fsdb_value_change_and_property_use_final_same_time_update() {
     assert_eq!(fsdb_property["data"], vcd_property["data"]);
     assert_eq!(
         fsdb_property["data"],
-        json!([{ "time": "5ns", "kind": "match" }])
+        json!([{ "time": "5ns", "sample_time": "5ns", "kind": "match" }])
     );
 }
 
@@ -703,12 +703,12 @@ fn fsdb_change_json_matches_vcd_contracts() {
     assert_eq!(
         fsdb_edge["data"],
         json!([
-            {"time": "5ns", "signals": [
+            {"time": "5ns", "sample_time": "5ns", "signals": [
                 {"path": "top.valid", "value": "1'h1"},
                 {"path": "top.ready", "value": "1'h0"},
                 {"path": "top.data", "value": "8'h0f"}
             ]},
-            {"time": "15ns", "signals": [
+            {"time": "15ns", "sample_time": "15ns", "signals": [
                 {"path": "top.valid", "value": "1'h1"},
                 {"path": "top.ready", "value": "1'h1"},
                 {"path": "top.data", "value": "8'h2a"}
@@ -741,9 +741,9 @@ fn fsdb_change_json_matches_vcd_contracts() {
     assert_eq!(
         fsdb_wildcard["data"],
         json!([
-            {"time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}]},
-            {"time": "7ns", "signals": [{"path": "top.data", "value": "8'h1f"}]},
-            {"time": "15ns", "signals": [{"path": "top.data", "value": "8'h2a"}]}
+            {"time": "5ns", "sample_time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}]},
+            {"time": "7ns", "sample_time": "7ns", "signals": [{"path": "top.data", "value": "8'h1f"}]},
+            {"time": "15ns", "sample_time": "15ns", "signals": [{"path": "top.data", "value": "8'h2a"}]}
         ])
     );
 
@@ -772,7 +772,7 @@ fn fsdb_change_json_matches_vcd_contracts() {
     );
     assert_eq!(
         fsdb_truncated["data"],
-        json!([{ "time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}] }])
+        json!([{ "time": "5ns", "sample_time": "5ns", "signals": [{"path": "top.data", "value": "8'h0f"}] }])
     );
 
     let relative = run_stdout_success(&[
@@ -845,9 +845,9 @@ fn fsdb_property_json_matches_vcd_contracts() {
     assert_eq!(
         fsdb_switch["data"],
         json!([
-            {"time": "15ns", "kind": "assert"},
-            {"time": "25ns", "kind": "deassert"},
-            {"time": "35ns", "kind": "assert"}
+            {"time": "15ns", "sample_time": "15ns", "kind": "assert"},
+            {"time": "25ns", "sample_time": "25ns", "kind": "deassert"},
+            {"time": "35ns", "sample_time": "35ns", "kind": "assert"}
         ])
     );
 
@@ -869,7 +869,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     assert_eq!(fsdb_match["data"], vcd_match["data"]);
     assert_eq!(
         fsdb_match["data"],
-        json!([{ "time": "15ns", "kind": "match" }])
+        json!([{ "time": "15ns", "sample_time": "15ns", "kind": "match" }])
     );
 
     let assert_iff_args = [
@@ -894,7 +894,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     assert_eq!(fsdb_assert["data"], vcd_assert["data"]);
     assert_eq!(
         fsdb_assert["data"],
-        json!([{ "time": "15ns", "kind": "assert" }])
+        json!([{ "time": "15ns", "sample_time": "15ns", "kind": "assert" }])
     );
 
     let deassert_args = [
@@ -915,7 +915,7 @@ fn fsdb_property_json_matches_vcd_contracts() {
     assert_eq!(fsdb_deassert["data"], vcd_deassert["data"]);
     assert_eq!(
         fsdb_deassert["data"],
-        json!([{ "time": "25ns", "kind": "deassert" }])
+        json!([{ "time": "25ns", "sample_time": "25ns", "kind": "deassert" }])
     );
 
     let fsdb_offset = path_str(&fixtures.offset_start());
@@ -982,8 +982,8 @@ fn fsdb_raw_event_property_matches_vcd_when_converter_preserves_events() {
     assert_eq!(
         fsdb_value["data"],
         json!([
-            {"time": "10ns", "kind": "match"},
-            {"time": "25ns", "kind": "match"}
+            {"time": "10ns", "sample_time": "10ns", "kind": "match"},
+            {"time": "25ns", "sample_time": "25ns", "kind": "match"}
         ])
     );
 }

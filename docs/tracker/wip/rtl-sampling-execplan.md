@@ -18,7 +18,7 @@ This plan does not change the default behavior of existing commands. `native` re
 
 This plan does not add sampling modes to `value`, because `value` has no `--on` edge trigger. Documentation will explain that `value` is explicit timestamp sampling; users who need clock-edge pre-sampling should use `change` or `property`, or manually query an explicit timestamp before the edge if they know one.
 
-This plan does not change JSON output shape. The new flag changes which rows are produced and which values appear in existing fields, but it does not add new JSON fields.
+The initial sampling-mode flag preserves existing output shape unless the user opts into different sampled values. A follow-up output-contract change adds `sample_time` to `change` and `property` JSON/JSONL rows so users can distinguish the selected event timestamp from the value-sampling timestamp.
 
 This plan does not optimize `pre-edge` through every existing fast path. Correctness is the first contract. `change --sample-mode pre-edge` may use a dedicated baseline path even when the native engine would select a fused or edge-fast path. The implementation adds paired native/pre-edge E2E benchmark cases so reviewers can inspect timings in normal benchmark reports.
 
@@ -57,6 +57,11 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-20T20:27Z) Ran `just check`; it passed.
 - [x] (2026-06-22T00:00Z) Merged `origin/main` into `feat/rtl-sampling`, resolved conflicts in `docs/dev/benchmarking.md` and `src/engine/change.rs`, adapted `change --sample-mode pre-edge` to the streaming sink path from main, and updated release benchmark catalog sampling pairs to the new 10-run/5-warmup minimum.
 - [x] (2026-06-22T00:00Z) Ran post-merge validation: `python3 -m unittest bench/e2e/test_perf.py`, `just check-bench-e2e-fsdb-catalog`, targeted `change`/`property` pre-edge CLI tests, and `just check`; all passed.
+- [x] (2026-06-22T21:11Z) Added `sample_time` to `change` and `property` JSON/JSONL rows, with human output showing `sample@<time>` only when it differs from `time`.
+- [x] (2026-06-22T21:11Z) Updated the current-major JSON and JSONL schemas, schema contract checker, user docs, and long help for `value`, `change`, and `property` to explain `time` versus `sample_time`.
+- [x] (2026-06-22T21:15Z) Ran targeted `change`/`property` pre-edge CLI tests, `cargo test --test schema_cli -- schema --test-threads=1`, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `just check-schema`, and `just check`; all passed.
+- [x] (2026-06-22T21:38Z) Ran focused review for the `sample_time` update. Code review reported no substantive findings; docs review found a JSON-envelope example and trigger-timestamp wording issue, both fixed.
+- [x] (2026-06-22T21:41Z) Attempted the manual performance gate with `just bench-gate origin/main HEAD`. The gate failed before comparison because current benchmark catalogs include `--sample-mode` cases that the `origin/main` binary does not support; see Surprises & Discoveries.
 
 ## Surprises & Discoveries
 
@@ -87,6 +92,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - Observation: `bench/e2e/tests_fsdb.json` is generated from the FST benchmark catalog and is checked by repository gates.
   Evidence: `docs/dev/benchmarking.md` documents `just update-bench-e2e-fsdb-catalog` and `just check-bench-e2e-fsdb-catalog`; changing `bench/e2e/tests.json` without regenerating the FSDB catalog would make `just check` fail.
 
+- Observation: The current manual gate cannot complete against `origin/main` with the current feature-branch benchmark catalog, because the catalog includes `--sample-mode` commands that `origin/main` does not recognize. Even a common-subset timing run would need an explicit timing-only path or compatibility normalization because the same feature intentionally changes `change`/`property` JSON payloads by adding `sample_time`.
+  Evidence: `just bench-gate origin/main HEAD` failed in `bench-e2e-fst` on `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk_sample_native`; see `tmp/bench-gate/gates/20260622T214137Z-542b75157349..adcbebe46bc6/logs/bench-e2e-fst.log`. The baseline `origin/main` binary help does not list `--sample-mode`.
+
 - Observation: The lightweight commit benchmark catalog is currently tested as a command subset of the full FST catalog, and all existing non-sampling commit cases use one run and no warmup.
   Evidence: `bench/e2e/test_perf.py` contains `test_tests_commit_catalog_commands_match_tests_json` and `test_tests_commit_catalog_exact_subset_and_distribution`; the sampling-mode smoke pairs need matching full-catalog commands and should explicitly update these tests when their names, categories, runs, or warmup values change.
 
@@ -108,9 +116,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
   Rationale: The clock edge must be detected at the dump timestamp where it occurs; otherwise there is no edge to trigger on. SystemVerilog also treats clocking-event expressions differently from sampled assertion values: concurrent assertion values are sampled, while the clock expression controls when the assertion triggers. This preserves useful gated clock expressions such as `posedge clk iff rst_n`.
   Date/Author: 2026-06-19 / Grin
 
-- Decision: Keep output row timestamps equal to the triggering edge timestamp in both modes.
-  Rationale: Users ask "which clock edge did this property report on?" The value sample point changes in `pre-edge`, but the selected event remains the clock edge. Reporting the pre-edge query timestamp would make rows harder to compare with logs and SVA reports.
-  Date/Author: 2026-06-19 / Grin
+- Decision: Keep output row `time` equal to the triggering edge timestamp in both modes, and add `sample_time` for the timestamp whose values were printed or evaluated.
+  Rationale: Users ask both "which clock edge did this property report on?" and "which timestamp should I query with `value` to inspect the payload?" Reporting only the trigger edge makes follow-up `value @time` misleading for `pre-edge`; replacing `time` with the sample timestamp would make rows harder to compare with logs and SVA reports. Emitting both fields preserves both meanings.
+  Date/Author: 2026-06-22 / Grin
 
 - Decision: Define `pre-edge` as sampling at a query point strictly before the edge, not necessarily at a recorded timestamp.
   Rationale: This is backend-neutral. VCD/FST indexed sampling may use the previous recorded timestamp because floor sampling at any point before the edge resolves to that value. FSDB can sample at `raw_time - 1` even when that is not itself a recorded change timestamp. Both produce the value immediately before the edge within dump precision.
@@ -138,9 +146,9 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 
 ## Outcomes & Retrospective
 
-Implementation is complete on branch `feat/rtl-sampling`. `change` and `property` now accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, and first-edge/no-predecessor skips. The benchmark catalogs now have paired native/pre-edge E2E cases for normal report-based timing inspection without refreshing committed baseline artifacts or adding custom comparison automation.
+Implementation is active on branch `feat/rtl-sampling`. `change` and `property` accept `--sample-mode native|pre-edge`; `native` remains the default, and `pre-edge` is accepted only with explicit edge-only triggers while preserving native trigger and `iff` evaluation. Public docs explain the native/pre-edge distinction, RTL/SVA-style one-clock mismatches, boundary behavior, first-edge/no-predecessor skips, and `sample_time` follow-up lookup. The benchmark catalogs have paired native/pre-edge E2E cases for normal report-based timing inspection without refreshing committed baseline artifacts or adding custom comparison automation.
 
-Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings. The follow-up benchmark refactor removed custom comparison automation, passed focused benchmark tests and smoke validation, passed `just check`, and passed a focused post-refactor review after stale plan wording was fixed. The PR-review raw-event fix passed targeted property tests, `cargo test -q`, `just check`, and a focused code review.
+Validation passed with targeted CLI/docs tests, `cargo test -q`, `python3 -m unittest bench/e2e/test_perf.py`, `python3 -B tools/fsdb/generate_bench_catalog.py --check`, `just bench-e2e-smoke-commit`, and final `just check`. Focused code, docs, and performance reviews were run; the code/docs findings were fixed, and a final control review reported no substantive findings. The follow-up benchmark refactor removed custom comparison automation, passed focused benchmark tests and smoke validation, passed `just check`, and passed a focused post-refactor review after stale plan wording was fixed. The PR-review raw-event fix passed targeted property tests, `cargo test -q`, `just check`, and a focused code review. The `sample_time` update has passed targeted CLI/schema tests, `cargo test -q`, `just check`, focused code/docs review, and post-review docs/help tests. The manual performance gate was attempted against `origin/main`, but it cannot complete with the current benchmark catalog because `origin/main` lacks `--sample-mode`.
 
 ## Context and Orientation
 
@@ -349,7 +357,7 @@ Update `docs/public/intro.md` only if a new troubleshooting topic should be easi
 
 At the end of this milestone, the benchmark catalogs contain paired native and pre-edge cases that can be inspected in normal benchmark run reports. This milestone intentionally does not write or refresh any committed baseline run artifacts, and it does not add custom sampling-mode comparison automation to `bench/e2e/perf.py` or the `justfile`.
 
-Add paired benchmark cases to `bench/e2e/tests.json`. Use edge-only commands because `pre-edge` is invalid for wildcard or plain-signal triggers. Clone the existing full-suite edge-triggered `change` case `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` into two new tests with names ending in `_sample_native` and `_sample_pre_edge`. Keep the same waveform, signal list, window, runs, and warmup, and append `--sample-mode native` to one command and `--sample-mode pre-edge` to the other. Include simple metadata such as `"sampling_mode": "native"` or `"sampling_mode": "pre-edge"` for report readability.
+Add paired benchmark cases to `bench/e2e/tests.json`. Use edge-only commands because `pre-edge` is invalid for wildcard or plain-signal triggers. Clone the existing full-suite edge-triggered `change` case `change_chipyard_clusteredrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` into two new tests with names ending in `_sample_native` and `_sample_pre_edge`. Keep the same waveform, signal list, window, runs, and warmup, and append `--sample-mode native` to one command and `--sample-mode pre-edge` to the other. Do not add custom sampling metadata or comparison automation; the paired test names are enough for report inspection.
 
 Also add a property pair to `bench/e2e/tests.json` by cloning `property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk` into `_sample_native` and `_sample_pre_edge` variants. This covers both commands that expose the new flag.
 
@@ -595,15 +603,7 @@ The change engine must keep building existing `ChangeSnapshot` rows with:
 
 For `pre-edge`, `current_samples` are sampled at the pre-edge query timestamp but `trigger_timestamp` is passed to `build_snapshot` so output times remain edge times.
 
-The E2E benchmark catalog entries for sampling coverage should use paired names ending in `_sample_native` and `_sample_pre_edge` and simple metadata such as:
-
-    "sampling_mode": "native"
-
-or:
-
-    "sampling_mode": "pre-edge"
-
-No custom pair-matching command is required in `bench/e2e/perf.py`; normal benchmark run reports are the timing comparison surface for these cases.
+The E2E benchmark catalog entries for sampling coverage should use paired names ending in `_sample_native` and `_sample_pre_edge`. No custom sampling metadata or pair-matching command is required in `bench/e2e/perf.py`; normal benchmark run reports are the timing comparison surface for these cases.
 
 ## Revision Notes
 
@@ -618,3 +618,4 @@ No custom pair-matching command is required in `bench/e2e/perf.py`; normal bench
 - 2026-06-20: Benchmark refactor update. Removed the custom sampling-mode comparison command and justfile gate after maintainer feedback; kept paired benchmark catalog entries for manual timing inspection. Recorded post-refactor validation and review results.
 - 2026-06-20: PR review fix update. Recorded the raw event `.triggered()` pre-edge replay bug, changed property pre-edge evaluation to use the raw tick before the trigger edge, added the regression evidence, and recorded post-fix validation and review results.
 - 2026-06-22: Main merge update. Recorded merge conflict resolution against updated `main`, including the `change` streaming sink integration and benchmark catalog run-count adjustment.
+- 2026-06-22: Sample-time update. Recorded the decision to expose both trigger `time` and value/evaluation `sample_time`, updated schemas and docs, recorded validation and review, and noted that the current manual gate cannot complete against `origin/main` because `origin/main` lacks `--sample-mode`.

@@ -439,7 +439,7 @@ fn schema_command_exposes_value_data_as_snapshot_array() {
     assert_eq!(value["$defs"]["valueData"]["type"], "array");
     assert_eq!(
         value["$defs"]["valueData"]["items"]["$ref"],
-        "#/$defs/changeSnapshot"
+        "#/$defs/valueSnapshot"
     );
     assert_eq!(value["$defs"]["changeData"]["type"], "array");
     assert_eq!(
@@ -466,12 +466,26 @@ fn schema_command_exposes_field_descriptions_for_machine_clients() {
         ],
         &[
             "$defs",
+            "changeSnapshot",
+            "properties",
+            "sample_time",
+            "description",
+        ],
+        &[
+            "$defs",
             "changeSignalValue",
             "properties",
             "value",
             "description",
         ],
         &["$defs", "propertyRow", "properties", "kind", "description"],
+        &[
+            "$defs",
+            "propertyRow",
+            "properties",
+            "sample_time",
+            "description",
+        ],
         &[
             "$defs",
             "topicSummary",
@@ -601,13 +615,13 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             "type": "item",
             "seq": 1,
             "command": "change",
-            "item": {"time": "5ns", "signals": [{"path": "top.clk", "value": "1'h1"}]}
+            "item": {"time": "5ns", "sample_time": "5ns", "signals": [{"path": "top.clk", "value": "1'h1"}]}
         }),
         json!({
             "type": "item",
             "seq": 1,
             "command": "property",
-            "item": {"time": "5ns", "kind": "assert"}
+            "item": {"time": "5ns", "sample_time": "5ns", "kind": "assert"}
         }),
         json!({
             "type": "diagnostic",

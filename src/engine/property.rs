@@ -44,6 +44,7 @@ impl std::fmt::Display for PropertyResultKind {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct PropertyCaptureRow {
     pub time: String,
+    pub sample_time: String,
     pub kind: PropertyResultKind,
 }
 
@@ -267,6 +268,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
                 if decision {
                     sink.emit(PropertyCaptureRow {
                         time: format_raw_timestamp(timestamp, dump_tick)?,
+                        sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
                         kind: PropertyResultKind::Match,
                     })?;
                     emitted += 1;
@@ -297,6 +299,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
 
                 sink.emit(PropertyCaptureRow {
                     time: format_raw_timestamp(timestamp, dump_tick)?,
+                    sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
                     kind,
                 })?;
                 emitted += 1;

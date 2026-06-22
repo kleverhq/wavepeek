@@ -111,16 +111,16 @@ This means: sample on `posedge clk`, but only on cycles where `mem_valid` is tru
 
 By default, `change` uses dump-native sampling: a row selected by `--on 'posedge clk'` prints values from the same dump timestamp as that edge.
 
-For RTL and SVA-style debugging, `--sample-mode pre-edge` samples the printed `--signals` values immediately before the selected edge while keeping the row timestamp at the edge:
+For RTL and SVA-style debugging, `--sample-mode pre-edge` samples the printed `--signals` values immediately before the selected edge while keeping the row timestamp at the edge. Human output shows `sample@<time>` when the sampled-value timestamp differs from the trigger timestamp:
 
 ```text
 $ wavepeek change --waves path/to/dump.vcd --scope top \
     --signals state,valid \
     --on 'posedge clk' --sample-mode pre-edge
-@25ns state=3'h2 valid=1'h1
+@25ns sample@24999ps state=3'h2 valid=1'h1
 ```
 
-`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the displayed signal values move to the pre-edge sample point.
+`pre-edge` is accepted only with an explicit edge-only `--on`: `posedge`, `negedge`, or `edge`, optionally with `iff`. The trigger edge detection and any `iff` guard still use dump-native values at the edge timestamp; only the displayed signal values move to the pre-edge sample point. JSON and JSONL rows always include both `time` and `sample_time`; use `sample_time` for follow-up `value --at` checks.
 
 Use this mode when a value updated by nonblocking assignment at a clock edge appears one clock early compared with an RTL assertion or simulator log. See `troubleshooting/clock-edge-sampling` for diagrams and trade-offs.
 
@@ -154,7 +154,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --scope testbench.uut \
     --signals cpu_state,mem_valid,mem_ready,trap \
     --from 1010000ps --to 1040000ps --json
-{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"change","data":[{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"change","data":[{"time":"1020000ps","sample_time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","sample_time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","sample_time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
 ```
 
 ## Use JSONL for large ranges and incremental consumers
@@ -167,7 +167,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --signals cpu_state,mem_valid \
     --from 1010000ps --to 1040000ps --jsonl
 {"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
-{"type":"item","seq":1,"command":"change","item":{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"}]}}
+{"type":"item","seq":1,"command":"change","item":{"time":"1020000ps","sample_time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"}]}}
 {"type":"end","seq":2,"command":"change","summary":{"status":"ok","items":1,"diagnostics":0,"truncated":false}}
 ```
 
@@ -209,6 +209,7 @@ warning[WPK-W0001]: limit disabled: --max=unlimited
 - `--from` is inclusive for selection, but it also initializes the baseline state. `change` does not emit a row exactly at `--from`; if you need the boundary value itself, use `value`.
 - `--on` does not guarantee a row by itself. A trigger can fire, but `change` still suppresses the row if none of the requested `--signals` changed.
 - `--sample-mode native` is the default and preserves historical behavior. `--sample-mode pre-edge` is opt-in and requires an explicit edge-only trigger.
+- JSON and JSONL rows always include `sample_time`. In native mode it equals `time`; in pre-edge mode it is the timestamp whose values were printed.
 - In scoped mode, use scope-relative names in `--signals` and `--on`. Without `--scope`, use canonical full paths.
 - Empty output is valid. If the query is well-formed but nothing matched, the command succeeds and emits a diagnostic:
 

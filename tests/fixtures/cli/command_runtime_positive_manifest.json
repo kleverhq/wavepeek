@@ -19,6 +19,7 @@
       "expected_data": [
         {
           "time": "5ns",
+          "sample_time": "5ns",
           "signals": [
             {
               "path": "top.data",
@@ -54,6 +55,7 @@
       "expected_data": [
         {
           "time": "5ns",
+          "sample_time": "5ns",
           "kind": "match"
         }
       ],
@@ -78,6 +80,7 @@
       "expected_data": [
         {
           "time": "10ns",
+          "sample_time": "10ns",
           "kind": "assert"
         }
       ],

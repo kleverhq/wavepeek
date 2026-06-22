@@ -16,13 +16,17 @@
 
 ## Quick Start
 
-Install a prebuilt VCD/FST binary:
+Install a prebuilt VCD/FST binary.
+
+macOS and Linux:
 
 ```bash
-# macOS and Linux
 curl --proto '=https' --tlsv1.2 -LsSf https://kleverhq.github.io/wavepeek/install.sh | sh
+```
 
-# Windows PowerShell
+Windows PowerShell:
+
+```bash
 powershell -ExecutionPolicy Bypass -c "irm https://kleverhq.github.io/wavepeek/install.ps1 | iex"
 ```
 

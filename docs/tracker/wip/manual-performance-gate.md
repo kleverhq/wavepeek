@@ -41,7 +41,7 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - [x] (2026-06-21 10:40Z) Committed the labeled-runner change as `52e6858 refactor(bench): interleave labeled e2e binaries` and ran one full `just bench-gate v1.0.0 v1.0.1` validation. Capture passed; compare failed with 5 FST timing failures, 6 FSDB timing failures, and the known cross-format functional mismatches.
 - [x] (2026-06-21 11:05Z) Modeled best-sample and worst-sample confirmation on the failed timing tests. Best-sample confirmation cleared all FST timing failures and 4 of 6 FSDB timing failures; worst-sample cleared all timing failures. The maintainer selected best-sample confirmation plus larger sample sizes rather than worst-sample confirmation.
 - [x] (2026-06-21 11:45Z) Added `bench/e2e/perf.py compare --result-json`, `bench/e2e/perf.py confirm`, and `tools/bench/compare.py` orchestration that runs best-sample confirmation only for same-format median timing failures with no functional hard failures.
-- [x] (2026-06-21 11:45Z) Raised every committed E2E catalog entry in `tests.json`, `tests_fsdb.json`, and `tests_commit.json` to at least 10 measured runs and 5 warmups, and regenerated the FSDB catalog.
+- [x] (2026-06-21 11:45Z) Raised release-gate E2E catalog entries in `tests.json` and `tests_fsdb.json` to at least 10 measured runs and 5 warmups, and regenerated the FSDB catalog. `tests_commit.json` is the pre-commit smoke catalog and intentionally remains at 1 measured run and 0 warmups.
 - [x] (2026-06-21 11:50Z) Focused Python tests, `just test-aux`, `just format-justfile-check`, `just check-actions`, and `just check` passed.
 - [x] (2026-06-21 12:00Z) Review found that functional timeout warnings could be incorrectly overridden by best-sample timing confirmation; fixed the blocker check and added a regression test. Docs review found stale median-only and requested-gate wording in this plan; corrected the plan.
 - [x] (2026-06-21 12:15Z) Final control review found only unclear documentation about timeout warnings blocking confirmation; clarified maintainer docs, helper README, and this plan.
@@ -106,9 +106,9 @@ This work will not add a GitHub Actions performance workflow. This work will not
 - Decision: Add a separate best-sample confirmation step after same-format median timing failures.
   Rationale: Median remains the primary gate metric, but the current host shows discrete high-latency samples that can land unevenly between binaries. Confirming only failed tests with the best observed sample from each binary checks whether both binaries can still reach the same low-latency envelope. This is less permissive than worst-sample confirmation and matches the maintainer's request.
   Date/Author: 2026-06-21 / Grin
-- Decision: Every committed E2E catalog entry should use at least 10 measured hyperfine runs and at least 5 warmup runs.
-  Rationale: The previous 5 measured runs and 3 warmups left too little chance for both binaries to show their clean low-latency mode on noisy hosts. Larger samples make median and best-sample confirmation less dependent on a single unlucky scheduler or I/O event.
-  Date/Author: 2026-06-21 / Grin
+- Decision: Release-gate E2E catalog entries in `tests.json` and `tests_fsdb.json` should use at least 10 measured hyperfine runs and at least 5 warmup runs, while `tests_commit.json` remains a fast pre-commit smoke catalog with 1 measured run and 0 warmups.
+  Rationale: The previous release-gate 5 measured runs and 3 warmups left too little chance for both binaries to show their clean low-latency mode on noisy hosts. Larger samples make median and best-sample confirmation less dependent on a single unlucky scheduler or I/O event. The commit smoke catalog has a different purpose: quick hook coverage, not release performance evidence.
+  Date/Author: 2026-06-21 / Grin; revised 2026-06-21 after restoring smoke semantics
 
 ## Outcomes & Retrospective
 

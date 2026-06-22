@@ -44,7 +44,7 @@ The gate screens selected benchmarks for regressions on the machine where it run
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Committed E2E benchmark catalog entries should use at least 10 measured hyperfine runs and 5 warmup runs.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` intentionally keeps 1 measured run and 0 warmups.
 
 Common focused commands:
 

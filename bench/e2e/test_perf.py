@@ -327,11 +327,11 @@ class PerfHelpersTest(unittest.TestCase):
         )
 
         for test in tests:
-            self.assertEqual(test["runs"], 10)
-            self.assertEqual(test["warmup"], 5)
+            self.assertEqual(test["runs"], 1)
+            self.assertEqual(test["warmup"], 0)
 
-    def test_committed_catalogs_use_release_gate_sample_minimums(self) -> None:
-        for catalog in ("tests.json", "tests_fsdb.json", "tests_commit.json"):
+    def test_release_catalogs_use_gate_sample_minimums(self) -> None:
+        for catalog in ("tests.json", "tests_fsdb.json"):
             payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
             for test in payload["tests"]:
                 self.assertGreaterEqual(test["runs"], 10, f"{catalog}:{test['name']}")

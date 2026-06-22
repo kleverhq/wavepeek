@@ -23,9 +23,13 @@ SPEC.loader.exec_module(perf)
 class PerfHelpersTest(unittest.TestCase):
     @staticmethod
     def _write_hyperfine_artifact(
-        path: pathlib.Path, mean: float, median: float | None = None
+        path: pathlib.Path,
+        mean: float,
+        median: float | None = None,
+        times: list[float] | None = None,
     ) -> None:
         metric_median = mean if median is None else median
+        sample_times = [metric_median] if times is None else times
         path.write_text(
             json.dumps(
                 {
@@ -35,8 +39,9 @@ class PerfHelpersTest(unittest.TestCase):
                             "mean": mean,
                             "stddev": 0.0,
                             "median": metric_median,
-                            "min": mean,
-                            "max": mean,
+                            "min": min(sample_times),
+                            "max": max(sample_times),
+                            "times": sample_times,
                         }
                     ]
                 }
@@ -62,8 +67,15 @@ class PerfHelpersTest(unittest.TestCase):
         }
 
     @staticmethod
-    def _write_wavepeek_artifact(path: pathlib.Path, data: object | None = None) -> None:
-        payload = {"data": [{"id": 1}] if data is None else data, "diagnostics": []}
+    def _write_wavepeek_artifact(
+        path: pathlib.Path,
+        data: object | None = None,
+        diagnostics: object | None = None,
+    ) -> None:
+        payload = {
+            "data": [{"id": 1}] if data is None else data,
+            "diagnostics": [] if diagnostics is None else diagnostics,
+        }
         path.write_text(json.dumps(payload), encoding="utf-8")
 
     def test_test_has_complete_artifacts(self) -> None:
@@ -109,20 +121,36 @@ class PerfHelpersTest(unittest.TestCase):
         parser = perf.build_parser()
         default_args = parser.parse_args(["run"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
+        self.assertEqual(default_args.schedule, "round-robin")
 
         override_args = parser.parse_args(["run", "--tests", "bench/e2e/tests_commit.json"])
         self.assertEqual(override_args.tests, "bench/e2e/tests_commit.json")
 
+    def test_parse_binary_specs_requires_explicit_labeled_binaries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            binary = pathlib.Path(temp_dir) / "wavepeek"
+            binary.write_text("#!/bin/sh\n", encoding="utf-8")
+
+            specs = perf.parse_binary_specs([f"base={binary}"])
+
+        self.assertEqual(specs, [perf.BinarySpec("base", str(binary.resolve()))])
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs(None)
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs(["missing-label"])
+        with self.assertRaises(SystemExit):
+            perf.parse_binary_specs([f"README.md={binary}"])
+
     def test_report_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
-        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/baseline_fst"])
+        default_args = parser.parse_args(["report", "--run-dir", "bench/e2e/runs/sample"])
         self.assertEqual(default_args.tests, str(perf.TESTS_PATH))
 
         override_args = parser.parse_args(
             [
                 "report",
                 "--run-dir",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/sample",
                 "--tests",
                 "bench/e2e/tests_fsdb.json",
             ]
@@ -145,6 +173,25 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertTrue(args.functional_only)
         self.assertTrue(args.allow_golden_extra)
         self.assertIsNone(args.max_negative_delta_pct)
+        self.assertEqual(args.max_negative_delta_seconds, 0.0)
+        self.assertIsNone(args.ignore_functional_test)
+
+        ignored_args = parser.parse_args(
+            [
+                "compare",
+                "--revised",
+                "revised",
+                "--golden",
+                "golden",
+                "--functional-only",
+                "--ignore-functional-test",
+                "scope_case=metadata differs across formats",
+            ]
+        )
+        self.assertEqual(
+            ignored_args.ignore_functional_test,
+            ["scope_case=metadata differs across formats"],
+        )
 
     def test_run_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
@@ -157,28 +204,53 @@ class PerfHelpersTest(unittest.TestCase):
         long_args = parser.parse_args(["run", "--verbose"])
         self.assertTrue(long_args.verbose)
 
+    def test_confirm_parser_requires_explicit_tests_and_thresholds(self) -> None:
+        parser = perf.build_parser()
+        args = parser.parse_args(
+            [
+                "confirm",
+                "--revised",
+                "revised",
+                "--golden",
+                "golden",
+                "--test",
+                "a",
+                "--test",
+                "b",
+                "--max-negative-delta-pct",
+                "5",
+                "--max-negative-delta-seconds",
+                "0.005",
+            ]
+        )
+        self.assertEqual(args.test, ["a", "b"])
+        self.assertEqual(args.max_negative_delta_pct, 5.0)
+        self.assertEqual(args.max_negative_delta_seconds, 0.005)
+
     def test_compare_parser_verbose_flag(self) -> None:
         parser = perf.build_parser()
         default_args = parser.parse_args(
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
             ]
         )
         self.assertFalse(default_args.verbose)
+        self.assertEqual(default_args.max_negative_delta_seconds, 0.0)
+        self.assertIsNone(default_args.result_json)
 
         short_args = parser.parse_args(
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
                 "-v",
@@ -190,9 +262,9 @@ class PerfHelpersTest(unittest.TestCase):
             [
                 "compare",
                 "--revised",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/revised",
                 "--golden",
-                "bench/e2e/runs/baseline_fst",
+                "bench/e2e/runs/golden",
                 "--max-negative-delta-pct",
                 "5",
                 "--verbose",
@@ -258,6 +330,13 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertEqual(test["runs"], 1)
             self.assertEqual(test["warmup"], 0)
 
+    def test_release_catalogs_use_gate_sample_minimums(self) -> None:
+        for catalog in ("tests.json", "tests_fsdb.json"):
+            payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
+            for test in payload["tests"]:
+                self.assertGreaterEqual(test["runs"], 10, f"{catalog}:{test['name']}")
+                self.assertGreaterEqual(test["warmup"], 5, f"{catalog}:{test['name']}")
+
     def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
         payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
         scope_tests = {
@@ -270,8 +349,8 @@ class PerfHelpersTest(unittest.TestCase):
                 "scope_clustered_all_depth13_json": {
                     "name": "scope_clustered_all_depth13_json",
                     "category": "scope",
-                    "runs": 6,
-                    "warmup": 3,
+                    "runs": 10,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -295,7 +374,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "name": "scope_dualrocket_filter_frontend_depth12_json",
                     "category": "scope",
                     "runs": 10,
-                    "warmup": 3,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -321,7 +400,7 @@ class PerfHelpersTest(unittest.TestCase):
                     "name": "scope_scr1_all_depth7_json",
                     "category": "scope",
                     "runs": 15,
-                    "warmup": 3,
+                    "warmup": 5,
                     "command": [
                         "{wavepeek_bin}",
                         "scope",
@@ -438,6 +517,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests="fixtures/tests.json",
                 verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             load_tests_mock = mock.Mock(return_value=[test_case])
 
@@ -449,7 +530,7 @@ class PerfHelpersTest(unittest.TestCase):
                     mock.patch.object(perf, "load_tests", load_tests_mock),
                     mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                     mock.patch.object(perf, "ensure_hyperfine"),
-                    mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                    mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                     mock.patch.object(perf, "run_test"),
                     mock.patch.object(
                         perf,
@@ -466,6 +547,44 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         load_tests_mock.assert_called_once_with((run_from / "fixtures/tests.json").resolve())
+
+    def test_cmd_report_regenerates_labeled_run_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            (run_dir / "base").mkdir(parents=True)
+            (run_dir / "rev").mkdir()
+            (run_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "wavepeek-e2e-bench-run",
+                        "binaries": [
+                            {"label": "base", "path": "/bin/base"},
+                            {"label": "rev", "path": "/bin/rev"},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args = argparse.Namespace(
+                run_dir=str(run_dir),
+                compare=None,
+                tests=str(perf.TESTS_PATH),
+            )
+            report_calls: list[pathlib.Path] = []
+
+            def fake_write_report(path, tests_by_name, compare_dir):
+                report_calls.append(path)
+                return path / "README.md"
+
+            with (
+                mock.patch.object(perf, "load_tests", return_value=[self._sample_test("sample")]),
+                mock.patch.object(perf, "write_report", side_effect=fake_write_report),
+            ):
+                exit_code = perf.cmd_report(args)
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(report_calls, [run_dir / "base", run_dir / "rev"])
 
     def test_cmd_report_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -538,6 +657,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests=str(perf.TESTS_PATH),
                 verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             tests = [self._sample_test("sample")]
             stdout = io.StringIO()
@@ -545,7 +666,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(perf, "load_tests", return_value=tests),
                 mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                 mock.patch.object(perf, "ensure_hyperfine"),
-                mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                 mock.patch.object(perf, "run_test"),
                 mock.patch.object(
                     perf,
@@ -576,6 +697,8 @@ class PerfHelpersTest(unittest.TestCase):
                 wavepeek_timeout_seconds=300,
                 tests=str(perf.TESTS_PATH),
                 verbose=True,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
             )
             tests = [self._sample_test("sample")]
             stdout = io.StringIO()
@@ -583,7 +706,7 @@ class PerfHelpersTest(unittest.TestCase):
                 mock.patch.object(perf, "load_tests", return_value=tests),
                 mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
                 mock.patch.object(perf, "ensure_hyperfine"),
-                mock.patch.object(perf, "resolve_wavepeek_bin", return_value="wavepeek"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
                 mock.patch.object(perf, "run_test"),
                 mock.patch.object(
                     perf,
@@ -597,8 +720,57 @@ class PerfHelpersTest(unittest.TestCase):
                 exit_code = perf.cmd_run(args)
 
         self.assertEqual(exit_code, 0)
-        self.assertIn("[1/1] sample", stdout.getvalue())
+        self.assertIn("[1/1] subject/sample", stdout.getvalue())
         self.assertIn("info: run directory:", stdout.getvalue())
+
+    def test_cmd_run_round_robin_orders_tests_across_binaries(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            args = argparse.Namespace(
+                filter=None,
+                run_dir=str(run_dir),
+                out_dir=str(root),
+                compare=None,
+                missing_only=False,
+                wavepeek_timeout_seconds=300,
+                tests=str(perf.TESTS_PATH),
+                verbose=False,
+                binary=["base=/bin/base", "rev=/bin/rev"],
+                schedule="round-robin",
+            )
+            tests = [self._sample_test("a"), self._sample_test("b")]
+            order: list[tuple[str, str]] = []
+
+            def fake_run_test(test, label_dir, wavepeek_bin, timeout_seconds, verbose):
+                order.append((str(test["name"]), pathlib.Path(label_dir).name))
+
+            with (
+                mock.patch.object(perf, "load_tests", return_value=tests),
+                mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[
+                    perf.BinarySpec("base", "/bin/base"),
+                    perf.BinarySpec("rev", "/bin/rev"),
+                ]),
+                mock.patch.object(perf, "ensure_hyperfine"),
+                mock.patch.object(perf, "run_test", side_effect=fake_run_test),
+                mock.patch.object(
+                    perf,
+                    "run_functional_capture",
+                    return_value={"data": [], "diagnostics": []},
+                ),
+                mock.patch.object(perf, "write_wavepeek_artifact"),
+                mock.patch.object(perf, "write_report", return_value=run_dir / "README.md"),
+            ):
+                exit_code = perf.cmd_run(args)
+            base_dir_exists = (run_dir / "base").is_dir()
+            rev_dir_exists = (run_dir / "rev").is_dir()
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(order, [("a", "base"), ("a", "rev"), ("b", "base"), ("b", "rev")])
+        self.assertTrue(base_dir_exists)
+        self.assertTrue(rev_dir_exists)
 
     def test_cmd_compare_non_verbose_emits_concise_failure_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -663,7 +835,7 @@ class PerfHelpersTest(unittest.TestCase):
                 exit_code = perf.cmd_compare(args)
 
         self.assertEqual(exit_code, 1)
-        self.assertIn("sample: mean revised=2.000000s", stderr.getvalue())
+        self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
 
     def test_cmd_compare_fails_on_median_regression(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -700,6 +872,201 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("sample: median revised=2.000000s", stderr.getvalue())
+
+    def test_cmd_compare_writes_result_json_for_timing_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json", mean=1.0, median=2.0
+            )
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json", mean=1.0, median=1.0
+            )
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["timing_failures"][0]["test_name"], "sample")
+        self.assertEqual(payload["timing_failures"][0]["metric"], "median")
+        self.assertEqual(payload["functional_mismatches"], [])
+
+    def test_cmd_confirm_passes_using_best_samples(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "confirm-result.json"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.0,
+                times=[1.00, 1.50, 1.60],
+            )
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.4,
+                times=[1.02, 1.40, 1.45],
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                test=["sample"],
+                max_negative_delta_pct=5.0,
+                max_negative_delta_seconds=0.005,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            stdout = io.StringIO()
+            with mock.patch("sys.stdout", stdout):
+                exit_code = perf.cmd_confirm(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("best-sample timing confirmation passed", stdout.getvalue())
+        self.assertEqual(payload["status"], "passed")
+        self.assertEqual(payload["confirmed"][0]["metric"], "best")
+        self.assertAlmostEqual(payload["confirmed"][0]["golden_seconds"], 1.0)
+        self.assertAlmostEqual(payload["confirmed"][0]["revised_seconds"], 1.02)
+
+    def test_cmd_confirm_fails_when_best_sample_exceeds_threshold(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.0,
+                times=[1.00, 1.10],
+            )
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json",
+                mean=1.0,
+                median=1.2,
+                times=[1.20, 1.30],
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                test=["sample"],
+                max_negative_delta_pct=5.0,
+                max_negative_delta_seconds=0.005,
+                result_json=None,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_confirm(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("sample: best revised=1.200000s", stderr.getvalue())
+
+    def test_cmd_compare_ignores_mean_regression_when_median_is_stable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(
+                revised / "sample.hyperfine.json", mean=2.0, median=1.0
+            )
+            self._write_hyperfine_artifact(
+                golden / "sample.hyperfine.json", mean=1.0, median=1.0
+            )
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                verbose=True,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_cmd_compare_applies_absolute_slowdown_floor(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 0.104)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 0.100)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.005,
+                verbose=True,
+            )
+            exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 0)
+
+    def test_cmd_compare_fails_when_absolute_slowdown_floor_is_exceeded(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 0.106)
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 0.100)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.005,
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("allowed=0.005000s", stderr.getvalue())
 
     def test_cmd_compare_non_verbose_success_has_concise_ok_line(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -851,6 +1218,183 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 1)
         self.assertIn("mismatched fields data", stderr.getvalue())
+
+    def test_cmd_compare_functional_only_ignores_named_mismatch_with_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json", data=[{"id": 1}])
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json", data=[{"id": 2}])
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                result_json=str(result_json),
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertIn("ignored functional tests", stderr.getvalue())
+        self.assertEqual(payload["ignored_functional_tests"][0]["test_name"], "sample")
+        self.assertEqual(
+            payload["ignored_functional_tests"][0]["reason"],
+            "metadata differs across formats",
+        )
+        self.assertEqual(payload["functional_mismatches"], [])
+
+    def test_cmd_compare_functional_ignore_requires_presence_on_both_sides(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "ignored.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                ignore_functional_test=["ignored=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn(
+            "ignored functional test `ignored` missing from revised",
+            stderr.getvalue(),
+        )
+
+    def test_cmd_compare_functional_ignore_does_not_hide_diagnostics_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(
+                revised / "sample.wavepeek.json",
+                data=[{"id": 1}],
+                diagnostics=[
+                    {"kind": "warning", "code": "WPK-W0001", "message": "revised"}
+                ],
+            )
+            self._write_wavepeek_artifact(
+                golden / "sample.wavepeek.json",
+                data=[{"id": 2}],
+                diagnostics=[
+                    {"kind": "warning", "code": "WPK-W0001", "message": "golden"}
+                ],
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("mismatched fields diagnostics", stderr.getvalue())
+        self.assertNotIn("mismatched fields data", stderr.getvalue())
+
+    def test_cmd_compare_functional_ignore_does_not_hide_revised_only_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            self._write_wavepeek_artifact(revised / "extra.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=True,
+                ignore_functional_test=["extra=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("tests only in revised run: extra", stderr.getvalue())
+
+    def test_cmd_compare_functional_ignore_does_not_hide_timeout_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+            (revised / "sample.wavepeek.json").write_text("{}\n", encoding="utf-8")
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs across formats"],
+                verbose=True,
+            )
+            stderr = io.StringIO()
+            with mock.patch("sys.stderr", stderr):
+                exit_code = perf.cmd_compare(args)
+
+        self.assertEqual(exit_code, 1)
+        self.assertIn("timeout artifact", stderr.getvalue())
+
+    def test_cmd_compare_rejects_functional_ignore_outside_functional_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            revised.mkdir()
+            golden.mkdir()
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=5.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                ignore_functional_test=["sample=metadata differs"],
+                verbose=False,
+            )
+            with self.assertRaises(SystemExit):
+                perf.cmd_compare(args)
 
     def test_cmd_compare_functional_only_fails_on_timeout_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1286,15 +1830,14 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
 
-class JustfileBaselineRecipeTest(unittest.TestCase):
+class JustfileBenchmarkRecipeTest(unittest.TestCase):
     JUSTFILE_PATH = pathlib.Path(__file__).resolve().parents[2] / "justfile"
 
     @classmethod
     def _recipe_body(cls, recipe_name: str) -> str:
         lines = cls.JUSTFILE_PATH.read_text(encoding="utf-8").splitlines()
-        recipe_prefix = f"{recipe_name}:"
         for line_index, line in enumerate(lines):
-            if not line.startswith(recipe_prefix):
+            if not (line.startswith(f"{recipe_name}:") or line.startswith(f"{recipe_name} ")):
                 continue
             body: list[str] = []
             for body_line in lines[line_index + 1 :]:
@@ -1304,43 +1847,22 @@ class JustfileBaselineRecipeTest(unittest.TestCase):
             return "\n".join(body)
         raise AssertionError(f"recipe not found: {recipe_name}")
 
-    def assert_recipe_replaces_baseline_after_successful_run(
-        self,
-        recipe_name: str,
-        baseline_dir_variable: str,
-    ) -> None:
-        body = self._recipe_body(recipe_name)
-        baseline_dir = f"{{{{ {baseline_dir_variable} }}}}"
+    def test_public_benchmark_recipes_use_manual_gate_helpers(self) -> None:
+        self.assertIn("tools/bench/gate.py", self._recipe_body("bench-gate"))
+        self.assertIn("tools/bench/capture.py", self._recipe_body("bench-capture"))
+        self.assertIn("tools/bench/compare.py", self._recipe_body("bench-compare"))
 
-        temp_index = body.find('tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/')
-        run_index = body.find("bench/e2e/perf.py run")
-        run_dir_index = body.find('--run-dir "$tmp_baseline"')
-        remove_index = body.find(f'rm -rf "{baseline_dir}"')
-        move_index = body.find(f'mv "$tmp_baseline" "{baseline_dir}"')
+    def test_baseline_update_recipes_removed(self) -> None:
+        justfile = self.JUSTFILE_PATH.read_text(encoding="utf-8")
+        self.assertNotIn("bench-e2e-update-baseline:", justfile)
+        self.assertNotIn("bench-e2e-fsdb-update-baseline:", justfile)
 
-        self.assertNotEqual(temp_index, -1, body)
-        self.assertNotEqual(run_index, -1, body)
-        self.assertNotEqual(run_dir_index, -1, body)
-        self.assertNotEqual(remove_index, -1, body)
-        self.assertNotEqual(move_index, -1, body)
-        self.assertLess(temp_index, run_index, body)
-        self.assertLess(run_index, remove_index, body)
-        self.assertLess(remove_index, move_index, body)
-        self.assertNotIn(f'--run-dir "{baseline_dir}"', body)
-
-    def test_e2e_baseline_update_replaces_baseline_only_after_successful_run(self) -> None:
-        self.assert_recipe_replaces_baseline_after_successful_run(
-            "bench-e2e-update-baseline",
-            "bench_e2e_baseline_dir",
-        )
-
-    def test_fsdb_e2e_baseline_update_replaces_baseline_only_after_successful_run(
-        self,
-    ) -> None:
-        self.assert_recipe_replaces_baseline_after_successful_run(
-            "bench-e2e-fsdb-update-baseline",
-            "bench_e2e_fsdb_baseline_dir",
-        )
+    def test_pre_commit_smoke_no_longer_compares_against_baseline(self) -> None:
+        for recipe_name in ("bench-e2e-smoke-commit", "bench-e2e-fsdb-smoke-commit"):
+            body = self._recipe_body(recipe_name)
+            self.assertIn("bench/e2e/perf.py run", body)
+            self.assertNotIn("bench/e2e/perf.py compare", body)
+            self.assertNotIn("baseline", body)
 
 
 if __name__ == "__main__":

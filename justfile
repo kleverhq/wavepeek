@@ -2,14 +2,9 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export RTL_ARTIFACTS_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$RTL_ARTIFACTS_DIR"`
 schema_path := `python3 -B -c 'import pathlib, tomllib; version = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; print("schema/wavepeek_v" + version.split(".")[0] + ".json")'`
-bench_e2e_runs_dir := "bench/e2e/runs"
-bench_e2e_baseline_dir := "bench/e2e/runs/baseline_fst"
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
-bench_e2e_fsdb_baseline_dir := "bench/e2e/runs/baseline_fsdb"
 bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
 bench_e2e_fsdb_smoke_artifact_filter := "^(picorv32_test_ez_vcd|scr1_max_axi_riscv_compliance)[.]fst$"
-bench_expr_runs_dir := "bench/expr/runs"
-bench_expr_baseline_dir := "bench/expr/runs/baseline"
 wavepeek_release_bin := "./target/release/wavepeek"
 wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
 codex_setup_script := "tools/codex/codex_setup.sh"
@@ -244,7 +239,7 @@ test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
 test-aux: require-container
     @just check-bench-e2e-fsdb-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
-    {{ python }} -m unittest discover -s bench/expr -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/bench -p "test_*.py"
     {{ python }} -m unittest discover -s tools/docs -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
@@ -325,53 +320,38 @@ docs-site-check-deploy version=docs_version base_url=docs_pages_url repository=d
 build-release: require-container
     cargo build --release
 
-# Refresh benchmark e2e baseline artifacts
-bench-e2e-update-baseline: check-rtl-artifacts build-release
-    @mkdir -p "{{ bench_e2e_runs_dir }}"; tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/baseline_fst.tmp.XXXXXX")"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --run-dir "$tmp_baseline" && \
-        rm -rf "{{ bench_e2e_baseline_dir }}" && \
-        mv "$tmp_baseline" "{{ bench_e2e_baseline_dir }}"
+# Run the manual performance gate for two source refs
+bench-gate baseline_ref revised_ref="HEAD" fsdb="auto": require-container
+    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}"
 
-# Run benchmark e2e suite with baseline compare
+# Capture benchmark artifacts for one source ref
+bench-capture ref="HEAD" fsdb="auto": require-container
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}"
+
+# Compare two benchmark capture directories
+bench-compare golden_dir revised_dir: require-container
+    {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
+
+[private]
 bench-e2e-run: check-rtl-artifacts build-release
-    WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --compare "{{ bench_e2e_baseline_dir }}"
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
 
-# Refresh FSDB benchmark e2e baseline artifacts
-bench-e2e-fsdb-update-baseline: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    @mkdir -p "{{ bench_e2e_runs_dir }}"; tmp_parent="$(mktemp -d "{{ bench_e2e_runs_dir }}/baseline_fsdb.tmp.XXXXXX")"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_baseline" && \
-        rm -rf "{{ bench_e2e_fsdb_baseline_dir }}" && \
-        mv "$tmp_baseline" "{{ bench_e2e_fsdb_baseline_dir }}"
-
-# Run FSDB benchmark e2e suite with FSDB baseline compare
+[private]
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
-    WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --compare "{{ bench_e2e_fsdb_baseline_dir }}"
-
-# Refresh expression benchmark baseline artifacts
-bench-expr-update-baseline: require-container
-    @tmp_parent="$(mktemp -d)"; tmp_baseline="$tmp_parent/baseline"; trap 'rm -rf "$tmp_parent"' EXIT; \
-        {{ python }} bench/expr/perf.py run --run-dir "$tmp_baseline" && \
-        rm -rf "{{ bench_expr_baseline_dir }}" && \
-        mv "$tmp_baseline" "{{ bench_expr_baseline_dir }}"
-
-# Run expression benchmark suite with baseline compare
-bench-expr-run: require-container
-    @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        {{ python }} bench/expr/perf.py run --run-dir "$tmp_revised" --compare "{{ bench_expr_baseline_dir }}" && \
-        {{ python }} bench/expr/perf.py compare --revised "$tmp_revised" --golden "{{ bench_expr_baseline_dir }}" --max-negative-delta-pct 15 --require-matching-metadata cargo_version rustc_version criterion_version environment_note
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
 
 # Run lightweight benchmark e2e smoke for pre-commit
+[private]
 bench-e2e-smoke-commit: check-rtl-artifacts build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py run --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised" && \
-        WAVEPEEK_BIN="{{ wavepeek_release_bin }}" {{ python }} bench/e2e/perf.py compare --revised "$tmp_revised" --golden "{{ bench_e2e_baseline_dir }}" --max-negative-delta-pct 100
+        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
+[private]
 bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-rtl-artifacts build-release-fsdb
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
-        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py run --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}' && \
-        WAVEPEEK_BIN="{{ wavepeek_fsdb_release_bin }}" {{ python }} bench/e2e/perf.py compare --functional-only --allow-golden-extra --revised "$tmp_revised" --golden "{{ bench_e2e_fsdb_baseline_dir }}"
+        {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
 
 # Run pre-commit hooks on all files
 pre-commit: require-container check-rtl-artifacts

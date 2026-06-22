@@ -32,7 +32,7 @@ fn topics(args: DocsTopicsArgs) -> Result<CommandResult, WavepeekError> {
     if args.json {
         return Ok(CommandResult {
             command: CommandName::DocsTopics,
-            json: true,
+            output_mode: crate::output_mode::OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsTopics(DocsTopicsData { topics }),
             diagnostics,
@@ -72,7 +72,7 @@ fn search(args: DocsSearchArgs) -> Result<CommandResult, WavepeekError> {
     if args.json {
         return Ok(CommandResult {
             command: CommandName::DocsSearch,
-            json: true,
+            output_mode: crate::output_mode::OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsSearch(DocsSearchData {
                 query: normalized_query,
@@ -132,7 +132,7 @@ fn text_result_with_diagnostics(
 ) -> CommandResult {
     CommandResult {
         command,
-        json: false,
+        output_mode: crate::output_mode::OutputMode::Human,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Text(text),
         diagnostics,

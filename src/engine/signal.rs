@@ -29,6 +29,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
         max_depth,
         abs,
         json,
+        jsonl,
     } = args;
 
     if max == LimitArg::Numeric(0) {
@@ -122,7 +123,7 @@ pub fn run(args: SignalArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Signal,
-        json,
+        output_mode: crate::output_mode::OutputMode::from_json_flags(json, jsonl),
         human_options: crate::engine::HumanRenderOptions {
             scope_tree: false,
             signals_abs: abs,

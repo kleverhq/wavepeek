@@ -5,6 +5,7 @@ use crate::engine::{
     CommandData, CommandName, CommandResult, DocsSearchData, DocsSearchMatchData, DocsTopicsData,
     HumanRenderOptions,
 };
+use crate::output_mode::OutputMode;
 
 use super::*;
 
@@ -40,7 +41,7 @@ fn exercises_docs_topics_human_json_and_diagnostic_rendering() {
 
     let json = render_json(CommandResult {
         command: CommandName::DocsTopics,
-        json: true,
+        output_mode: OutputMode::Json,
         human_options: HumanRenderOptions::default(),
         data,
         diagnostics: vec![Diagnostic::warning(

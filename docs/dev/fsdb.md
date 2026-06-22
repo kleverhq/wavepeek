@@ -89,7 +89,7 @@ Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates i
 - committed hand-written VCD fixtures under `tests/fixtures/hand/`, written to `tests/fixtures/fsdb/`;
 - RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity.
 
-`just prepare-fsdb-test-fixtures` limits preparation to the hand-written VCD-derived test fixtures. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark recipes prepare and verify the complete generated FSDB benchmark catalog.
+`just prepare-fsdb-test-fixtures` limits preparation to the hand-written VCD-derived test fixtures. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 
 `bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths. Update the FST catalog first, then run:
 
@@ -98,7 +98,19 @@ just update-bench-e2e-fsdb-catalog
 just check-bench-e2e-fsdb-catalog
 ```
 
-FSDB benchmark baselines live under `bench/e2e/runs/baseline_fsdb/`. Refresh them only in a Verdi-equipped environment with the dedicated FSDB benchmark recipes.
+FSDB benchmark runs are not committed. The manual performance gate captures FSDB benchmarks automatically when Verdi is available and both compared binary refs support FSDB. It builds the selected refs but uses the current checkout's FSDB tooling, fixtures, and catalogs for capture. It writes a generated runnable catalog into the capture directory and records any skipped catalog tests, including VCD-style scalar element paths that converted RTL FSDB fixtures cannot resolve through release binaries. Gate comparison checks FSDB baseline versus FSDB revised with the same median timing threshold, 5ms slowdown floor, and best-sample timing confirmation used for FST. It also checks FST versus FSDB functional payload parity within each ref, allowing FST-only extra tests when the runnable FSDB catalog is a subset. Cross-format parity uses an explicit ignored-test list for hierarchy and signal metadata cases where FST and FSDB expose arrays, memories, or scalar ranges with different path strings; the compare manifest records each ignored test and reason.
+
+```sh
+just bench-gate <baseline-ref> HEAD
+```
+
+For focused local FSDB benchmark development, use the private low-level recipe through an explicit just invocation if needed:
+
+```sh
+just bench-e2e-fsdb-run
+```
+
+Generated FSDB benchmark artifacts remain ignored local evidence unless a maintainer explicitly preserves them outside the repository.
 
 ## Repository safety policy
 

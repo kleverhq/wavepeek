@@ -34,12 +34,24 @@ def current_schema_path(major: str) -> pathlib.Path:
     return pathlib.Path("schema") / f"wavepeek_v{major}.json"
 
 
+def current_stream_schema_path(major: str) -> pathlib.Path:
+    return pathlib.Path("schema") / f"wavepeek-stream-v{major}.json"
+
+
 def expected_schema_url(major: str) -> str:
     return f"{SCHEMA_PAGES_BASE}/wavepeek_v{major}.json"
 
 
+def expected_stream_schema_url(major: str) -> str:
+    return f"{SCHEMA_PAGES_BASE}/wavepeek-stream-v{major}.json"
+
+
 def expected_schema_url_pattern(major: str) -> str:
     return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek_v{re.escape(major)}\.json$"
+
+
+def expected_stream_schema_url_pattern(major: str) -> str:
+    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek-stream-v{re.escape(major)}\.json$"
 
 
 def validate_schema_path(schema_path: pathlib.Path, major: str) -> None:
@@ -134,6 +146,127 @@ def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> N
             f"{schema_path} and 'wavepeek schema' output",
             hint_update_schema=True,
         )
+
+
+def validate_runtime_stream_schema(stream_schema_path: pathlib.Path, stream_schema_bytes: bytes) -> None:
+    runtime_schema = subprocess.run(
+        ["cargo", "run", "--quiet", "--", "schema", "--stream"],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=False,
+    ).stdout
+    if runtime_schema != stream_schema_bytes:
+        fail(
+            "error: schema: stream schema mismatch between "
+            f"{stream_schema_path} and 'wavepeek schema --stream' output"
+        )
+
+
+def require_object(value: object, message: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        fail(message)
+    return value
+
+
+def require_list(value: object, message: str) -> list[object]:
+    if not isinstance(value, list):
+        fail(message)
+    return value
+
+
+def validate_stream_schema(stream_schema: dict[str, object], major: str) -> None:
+    if stream_schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+        fail("error: schema: stream schema must use JSON Schema draft 2020-12")
+    if stream_schema.get("title") != "wavepeek JSONL stream record":
+        fail("error: schema: stream schema title mismatch")
+
+    defs = require_object(stream_schema.get("$defs"), "error: schema: stream schema $defs must be an object")
+    one_of = require_list(stream_schema.get("oneOf"), "error: schema: stream schema root must use oneOf")
+    expected_root_refs = {
+        "#/$defs/beginRecord",
+        "#/$defs/itemRecord",
+        "#/$defs/diagnosticRecord",
+        "#/$defs/endRecord",
+    }
+    root_refs = {entry.get("$ref") for entry in one_of if isinstance(entry, dict)}
+    if root_refs != expected_root_refs:
+        fail("error: schema: stream schema root record variants mismatch")
+
+    command_def = require_object(defs.get("streamCommand"), "error: schema: stream schema must define streamCommand")
+    expected_commands = ["info", "scope", "signal", "value", "change", "property"]
+    if command_def.get("enum") != expected_commands:
+        fail("error: schema: stream schema command enum mismatch")
+
+    begin = require_object(defs.get("beginRecord"), "error: schema: stream schema must define beginRecord")
+    begin_properties = require_object(begin.get("properties"), "error: schema: beginRecord properties must be an object")
+    schema_property = require_object(begin_properties.get("$schema"), "error: schema: beginRecord must define $schema")
+    expected_pattern = expected_stream_schema_url_pattern(major)
+    if schema_property.get("pattern") != expected_pattern:
+        fail(
+            "error: schema: stream schema $schema pattern mismatch: "
+            f"expected {expected_pattern}, got {schema_property.get('pattern')}"
+        )
+    try:
+        pattern = re.compile(expected_pattern)
+    except re.error as error:
+        fail(f"error: schema: stream schema $schema pattern is invalid: {error}")
+    expected_url = expected_stream_schema_url(major)
+    if pattern.fullmatch(expected_url) is None:
+        fail(f"error: schema: stream schema $schema pattern does not accept {expected_url}")
+
+    item = require_object(defs.get("itemRecord"), "error: schema: stream schema must define itemRecord")
+    item_variants = require_list(item.get("oneOf"), "error: schema: itemRecord must use oneOf")
+    expected_item_refs = {
+        "#/$defs/infoItemRecord",
+        "#/$defs/scopeItemRecord",
+        "#/$defs/signalItemRecord",
+        "#/$defs/valueItemRecord",
+        "#/$defs/changeItemRecord",
+        "#/$defs/propertyItemRecord",
+    }
+    item_refs = {entry.get("$ref") for entry in item_variants if isinstance(entry, dict)}
+    if item_refs != expected_item_refs:
+        fail("error: schema: stream schema item variants mismatch")
+
+    expected_payload_refs = {
+        "info": "#/$defs/infoData",
+        "scope": "#/$defs/scopeEntry",
+        "signal": "#/$defs/signalEntry",
+        "value": "#/$defs/changeSnapshot",
+        "change": "#/$defs/changeSnapshot",
+        "property": "#/$defs/propertyRow",
+    }
+    for command, payload_ref in expected_payload_refs.items():
+        wrapper_name = f"itemRecordFor{''.join(part.capitalize() for part in payload_ref.rsplit('/', maxsplit=1)[-1].split('_'))}"
+        if command == "info":
+            wrapper_name = "itemRecordForInfoData"
+        elif command == "scope":
+            wrapper_name = "itemRecordForScopeEntry"
+        elif command == "signal":
+            wrapper_name = "itemRecordForSignalEntry"
+        elif command == "value":
+            wrapper_name = "itemRecordForValueSnapshot"
+        elif command == "change":
+            wrapper_name = "itemRecordForChangeSnapshot"
+        elif command == "property":
+            wrapper_name = "itemRecordForPropertyRow"
+        wrapper = require_object(defs.get(wrapper_name), f"error: schema: stream schema missing {wrapper_name}")
+        properties = require_object(wrapper.get("properties"), f"error: schema: {wrapper_name} properties must be an object")
+        command_property = require_object(properties.get("command"), f"error: schema: {wrapper_name} must constrain command")
+        item_property = require_object(properties.get("item"), f"error: schema: {wrapper_name} must constrain item")
+        if command_property.get("const") != command:
+            fail(f"error: schema: {wrapper_name} command const mismatch")
+        if item_property.get("$ref") != payload_ref:
+            fail(f"error: schema: {wrapper_name} item payload reference mismatch")
+        if wrapper.get("additionalProperties") is not False:
+            fail(f"error: schema: {wrapper_name} must reject additional properties")
+
+    summary = require_object(defs.get("streamSummary"), "error: schema: stream schema must define streamSummary")
+    summary_properties = require_object(summary.get("properties"), "error: schema: streamSummary properties must be an object")
+    if require_object(summary_properties.get("status"), "error: schema: streamSummary must define status").get("const") != "ok":
+        fail("error: schema: streamSummary status const mismatch")
+    if "truncated" not in summary_properties:
+        fail("error: schema: streamSummary must define truncated")
 
 
 def validate_diagnostic_schema(schema: dict[str, object]) -> None:
@@ -332,6 +465,11 @@ def main() -> None:
     validate_docs_metadata_schema(schema)
     validate_runtime_schema(schema_path, schema_bytes)
     validate_runtime_envelope_url(version, major)
+
+    stream_schema_path = current_stream_schema_path(major)
+    stream_schema_bytes, stream_schema = load_schema(stream_schema_path)
+    validate_stream_schema(stream_schema, major)
+    validate_runtime_stream_schema(stream_schema_path, stream_schema_bytes)
 
 
 if __name__ == "__main__":

@@ -18,11 +18,14 @@ pub enum WavepeekError {
     Internal(String),
     #[error("fatal: unimplemented: {0}")]
     Unimplemented(&'static str),
+    #[error("broken pipe")]
+    BrokenPipe,
 }
 
 impl WavepeekError {
     pub const fn exit_code(&self) -> u8 {
         match self {
+            Self::BrokenPipe => 0,
             Self::File(_) => 2,
             Self::Args(_)
             | Self::Scope(_)

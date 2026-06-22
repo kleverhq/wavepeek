@@ -16,7 +16,8 @@ use clap::{Arg, ArgAction, CommandFactory, FromArgMatches, Parser, Subcommand};
 
 use crate::engine::{self, Command as EngineCommand};
 use crate::error::WavepeekError;
-use crate::output;
+use crate::output::{self, JsonlWriter};
+use crate::output_mode::OutputMode;
 
 #[derive(Debug, Parser)]
 #[command(
@@ -413,8 +414,13 @@ fn help_hint_for_rendered_clap_error(rendered: &str) -> String {
 
 fn dispatch(command: Command) -> Result<(), WavepeekError> {
     let engine_command = into_engine_command(command);
-    let result = engine::run(engine_command)?;
+    if engine_command.output_mode() == OutputMode::Jsonl {
+        let stdout = std::io::stdout();
+        let mut writer = JsonlWriter::new(stdout.lock(), engine_command.name());
+        return engine::run_jsonl(engine_command, &mut writer);
+    }
 
+    let result = engine::run(engine_command)?;
     output::write(result)
 }
 

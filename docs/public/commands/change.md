@@ -157,6 +157,22 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
 {"$schema":"https://kleverhq.github.io/wavepeek/wavepeek_v1.json","command":"change","data":[{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
 ```
 
+## Use JSONL for large ranges and incremental consumers
+
+`--jsonl` streams one JSON object per line. The first line is `begin`, each change snapshot is an `item`, diagnostics are `diagnostic` records, and a successful stream ends with `end`:
+
+```text
+$ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
+    --scope testbench.uut \
+    --signals cpu_state,mem_valid \
+    --from 1010000ps --to 1040000ps --jsonl
+{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
+{"type":"item","seq":1,"command":"change","item":{"time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"}]}}
+{"type":"end","seq":2,"command":"change","summary":{"status":"ok","items":1,"diagnostics":0,"truncated":false}}
+```
+
+Use this mode for automation that wants to consume rows while the scan is still running. Validate each line against `wavepeek schema --stream`, then require a final `end` record before treating the stream as complete.
+
 ## Watch for bounded-output diagnostics
 
 If `--max` truncates the result, the command still succeeds and emits a diagnostic:

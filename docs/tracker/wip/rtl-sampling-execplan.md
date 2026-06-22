@@ -55,6 +55,8 @@ This plan does not refresh or add committed benchmark baseline run artifacts. Be
 - [x] (2026-06-20T20:18Z) Ran `cargo test -q`; it passed.
 - [x] (2026-06-20T20:22Z) Ran focused code review for the raw-event pre-edge fix; it reported no substantive findings.
 - [x] (2026-06-20T20:27Z) Ran `just check`; it passed.
+- [x] (2026-06-22T00:00Z) Merged `origin/main` into `feat/rtl-sampling`, resolved conflicts in `docs/dev/benchmarking.md` and `src/engine/change.rs`, adapted `change --sample-mode pre-edge` to the streaming sink path from main, and updated release benchmark catalog sampling pairs to the new 10-run/5-warmup minimum.
+- [x] (2026-06-22T00:00Z) Ran post-merge validation: `python3 -m unittest bench/e2e/test_perf.py`, `just check-bench-e2e-fsdb-catalog`, targeted `change`/`property` pre-edge CLI tests, and `just check`; all passed.
 
 ## Surprises & Discoveries
 
@@ -615,3 +617,4 @@ No custom pair-matching command is required in `bench/e2e/perf.py`; normal bench
 - 2026-06-19: Completion update. Recorded final `just check`, final control review result, and the completed implementation outcome.
 - 2026-06-20: Benchmark refactor update. Removed the custom sampling-mode comparison command and justfile gate after maintainer feedback; kept paired benchmark catalog entries for manual timing inspection. Recorded post-refactor validation and review results.
 - 2026-06-20: PR review fix update. Recorded the raw event `.triggered()` pre-edge replay bug, changed property pre-edge evaluation to use the raw tick before the trigger edge, added the regression evidence, and recorded post-fix validation and review results.
+- 2026-06-22: Main merge update. Recorded merge conflict resolution against updated `main`, including the `change` streaming sink integration and benchmark catalog run-count adjustment.

@@ -16,7 +16,9 @@ use crate::engine::time::{
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::expr::EventEvalFrame;
-use crate::waveform::{ChangeCandidateCollectionMode, Waveform};
+use crate::waveform::ChangeCandidateCollectionMode;
+#[cfg(test)]
+use crate::waveform::Waveform;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -42,7 +44,86 @@ pub struct PropertyCaptureRow {
     pub kind: PropertyResultKind,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct PropertyRunStats {
+    emitted: usize,
+}
+
+#[derive(Debug)]
+struct PropertyCommandOutcome {
+    diagnostics: Vec<Diagnostic>,
+    stats: PropertyRunStats,
+}
+
+trait PropertyRowSink {
+    fn start(&mut self) -> Result<(), WavepeekError> {
+        Ok(())
+    }
+
+    fn emit(&mut self, row: PropertyCaptureRow) -> Result<(), WavepeekError>;
+}
+
+#[derive(Default)]
+struct CollectingPropertySink {
+    rows: Vec<PropertyCaptureRow>,
+}
+
+impl PropertyRowSink for CollectingPropertySink {
+    fn emit(&mut self, row: PropertyCaptureRow) -> Result<(), WavepeekError> {
+        self.rows.push(row);
+        Ok(())
+    }
+}
+
+struct JsonlPropertySink<'a, W: std::io::Write> {
+    writer: &'a mut crate::output::JsonlWriter<W>,
+}
+
+impl<W: std::io::Write> PropertyRowSink for JsonlPropertySink<'_, W> {
+    fn start(&mut self) -> Result<(), WavepeekError> {
+        self.writer.begin()
+    }
+
+    fn emit(&mut self, row: PropertyCaptureRow) -> Result<(), WavepeekError> {
+        self.writer.item(&row)
+    }
+}
+
 pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
+    let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);
+    let mut sink = CollectingPropertySink::default();
+    let outcome = run_with_sink(args, &mut sink)?;
+
+    let _emitted = outcome.stats.emitted;
+    Ok(CommandResult {
+        command: CommandName::Property,
+        output_mode,
+        human_options: HumanRenderOptions::default(),
+        data: CommandData::Property(sink.rows),
+        diagnostics: outcome.diagnostics,
+    })
+}
+
+pub fn run_jsonl<W: std::io::Write>(
+    args: PropertyArgs,
+    writer: &mut crate::output::JsonlWriter<W>,
+) -> Result<(), WavepeekError> {
+    let outcome = {
+        let mut sink = JsonlPropertySink { writer };
+        run_with_sink(args, &mut sink)?
+    };
+
+    let _emitted = outcome.stats.emitted;
+    for diagnostic in &outcome.diagnostics {
+        writer.diagnostic(diagnostic)?;
+    }
+    writer.end(false)
+}
+
+fn run_with_sink<S: PropertyRowSink + ?Sized>(
+    args: PropertyArgs,
+    sink: &mut S,
+) -> Result<PropertyCommandOutcome, WavepeekError> {
     let debug = DebugTrace::for_command(CommandName::Property);
     debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
@@ -121,6 +202,7 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         })
     });
 
+    sink.start()?;
     let candidate_times = waveform
         .borrow_mut()
         .collect_expr_candidate_times_with_mode(
@@ -133,16 +215,12 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         "candidate.collect.done",
         || serde_json::json!({"times": candidate_times.len()}),
     );
-    let candidate_schedule = {
-        let waveform_ref = waveform.borrow();
-        build_candidate_schedule(&waveform_ref, candidate_times.as_slice())?
-    };
     debug.event(
         "candidate.schedule.done",
-        || serde_json::json!({"entries": candidate_schedule.len()}),
+        || serde_json::json!({"entries": candidate_times.len()}),
     );
 
-    let mut rows = Vec::new();
+    let mut emitted = 0usize;
     let mut previous_state = match args.capture {
         CaptureMode::Match => None,
         CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => Some(
@@ -150,7 +228,8 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         ),
     };
 
-    for (timestamp, previous_timestamp) in candidate_schedule {
+    for timestamp in candidate_times {
+        let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
         let frame = EventEvalFrame {
             timestamp,
             previous_timestamp,
@@ -164,10 +243,11 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         match args.capture {
             CaptureMode::Match => {
                 if decision {
-                    rows.push(PropertyCaptureRow {
+                    sink.emit(PropertyCaptureRow {
                         time: format_raw_timestamp(timestamp, dump_tick)?,
                         kind: PropertyResultKind::Match,
-                    });
+                    })?;
+                    emitted += 1;
                 }
             }
             CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
@@ -191,19 +271,20 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
                     continue;
                 }
 
-                rows.push(PropertyCaptureRow {
+                sink.emit(PropertyCaptureRow {
                     time: format_raw_timestamp(timestamp, dump_tick)?,
                     kind,
-                });
+                })?;
+                emitted += 1;
             }
         }
     }
     debug.event(
         "property.evaluate.done",
-        || serde_json::json!({"rows": rows.len()}),
+        || serde_json::json!({"rows": emitted}),
     );
 
-    let diagnostics = if rows.is_empty() {
+    let diagnostics = if emitted == 0 {
         vec![Diagnostic::warning(
             WarningDiagnosticCode::EmptyResult,
             "no property matches found in selected time range",
@@ -212,12 +293,9 @@ pub fn run(args: PropertyArgs) -> Result<CommandResult, WavepeekError> {
         Vec::new()
     };
 
-    Ok(CommandResult {
-        command: CommandName::Property,
-        json: args.json,
-        human_options: HumanRenderOptions::default(),
-        data: CommandData::Property(rows),
+    Ok(PropertyCommandOutcome {
         diagnostics,
+        stats: PropertyRunStats { emitted },
     })
 }
 
@@ -229,6 +307,7 @@ fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
     }
 }
 
+#[cfg(test)]
 fn build_candidate_schedule(
     waveform: &Waveform,
     candidate_times: &[u64],
@@ -285,12 +364,13 @@ mod tests {
     use tempfile::NamedTempFile;
 
     use super::{
-        DumpTimeContext, PropertyResultKind, build_candidate_schedule, capture_allows_kind,
-        parse_bound_time, run,
+        DumpTimeContext, PropertyCaptureRow, PropertyResultKind, PropertyRowSink,
+        build_candidate_schedule, capture_allows_kind, parse_bound_time, run, run_with_sink,
     };
     use crate::cli::property::{CaptureMode, PropertyArgs};
     use crate::engine::CommandData;
     use crate::engine::time::{ParsedTime, TimeUnit, as_zeptoseconds};
+    use crate::error::WavepeekError;
     use crate::waveform::{Waveform, WaveformMetadata};
 
     const TEST_VCD: &str = concat!(
@@ -308,6 +388,19 @@ mod tests {
         "#10\n",
         "0!\n"
     );
+
+    struct FailAfterFirstRowSink {
+        emitted: usize,
+    }
+
+    impl PropertyRowSink for FailAfterFirstRowSink {
+        fn emit(&mut self, _row: PropertyCaptureRow) -> Result<(), WavepeekError> {
+            self.emitted += 1;
+            Err(WavepeekError::Internal(
+                "sentinel property emit failure".to_string(),
+            ))
+        }
+    }
 
     fn metadata() -> WaveformMetadata {
         WaveformMetadata {
@@ -431,6 +524,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect("match capture should succeed");
         let CommandData::Property(rows) = matched.data else {
@@ -449,6 +543,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Switch,
             json: true,
+            jsonl: false,
         })
         .expect("switch capture should succeed");
         let CommandData::Property(rows) = switched.data else {
@@ -469,6 +564,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Assert,
             json: false,
+            jsonl: false,
         })
         .expect("assert capture should succeed");
         let CommandData::Property(rows) = assert_only.data else {
@@ -486,6 +582,7 @@ mod tests {
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect_err("reversed time bounds should fail");
         assert!(
@@ -493,6 +590,31 @@ mod tests {
                 .to_string()
                 .contains("--from must be less than or equal to --to")
         );
+    }
+
+    #[test]
+    fn property_streaming_sink_errors_stop_during_emission() {
+        let fixture = write_fixture(TEST_VCD, ".property-streaming-error.vcd");
+        let mut sink = FailAfterFirstRowSink { emitted: 0 };
+
+        let error = run_with_sink(
+            PropertyArgs {
+                waves: PathBuf::from(fixture.path()),
+                from: None,
+                to: None,
+                scope: Some("top".to_string()),
+                on: Some("posedge sig".to_string()),
+                eval: "sig".to_string(),
+                capture: CaptureMode::Match,
+                json: false,
+                jsonl: true,
+            },
+            &mut sink,
+        )
+        .expect_err("sink error should stop the streaming run");
+
+        assert_eq!(sink.emitted, 1);
+        assert!(error.to_string().contains("sentinel property emit failure"));
     }
 
     #[test]
@@ -507,6 +629,7 @@ mod tests {
             eval: "1'b1".to_string(),
             capture: CaptureMode::Match,
             json: false,
+            jsonl: false,
         })
         .expect_err("signal-free wildcard trigger should fail");
         assert!(

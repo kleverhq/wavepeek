@@ -20,7 +20,7 @@ Identical inputs must produce deterministic output.
 
 ### LLM Agent Integration
 
-The repository ships agent-facing workflow assets and deterministic `--json` contracts so LLM clients can consume output without ad hoc parsing.
+The repository ships agent-facing workflow assets plus deterministic `--json` and waveform `--jsonl` contracts so LLM clients can consume output without ad hoc parsing.
 
 ## Technical Architecture
 
@@ -44,14 +44,14 @@ wavepeek is organized as three execution layers plus two shared support modules.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
 3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Default builds dispatch VCD/FST work to the Wellen backend; feature-enabled FSDB builds can dispatch `.fsdb` inputs to the FSDB backend and native shim. FSDB-specific build and SDK details live in `fsdb.md`.
 4. **Embedded docs runtime** (`src/docs/`) loads packaged public topics and the packaged agent skill from repository Markdown assets.
-5. **Output module** (`src/output.rs`) owns stdout rendering for human mode and strict JSON mode.
+5. **Output module** (`src/output.rs`) owns stdout rendering for human mode, strict JSON envelope mode, and JSONL stream records.
 
 Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump, runs once, and exits.
 - The engine is format-agnostic for waveform commands. VCD/FST Wellen handling and optional FSDB Reader handling stay behind the waveform facade.
 - Docs and skill helper surfaces keep their source of truth in packaged Markdown instead of duplicated Rust string tables.
-- JSON contracts are stabilized through checked-in major schema artifacts such as `schema/wavepeek_v1.json`.
+- JSON contracts are stabilized through checked-in major schema artifacts such as `schema/wavepeek_v1.json` and `schema/wavepeek-stream-v1.json`.
 
 ### Module Structure
 
@@ -87,7 +87,7 @@ src/
 │   └── skill.rs         # Packaged agent skill print runtime
 ├── docs/                # Embedded docs asset runtime and export helpers
 │   └── mod.rs           # Topic catalog loading, search, export, and packaged skill source
-├── schema_contract.rs   # Canonical schema URL and embedded schema artifact
+├── schema_contract.rs   # Canonical schema URLs and embedded schema artifacts
 ├── expr/                # Expression engine shared by `change` and `property`
 │   ├── mod.rs           # Public typed facade for parsing/binding/evaluation
 │   ├── ast.rs           # Spanned expression AST types
@@ -107,7 +107,7 @@ src/
 │   ├── fsdb_hierarchy.rs # FSDB hierarchy normalization and kind/value mapping
 │   ├── fsdb_time.rs     # FSDB time-unit parsing and conversion helpers
 │   └── expr_host.rs     # Waveform-backed expression host bridge
-├── output.rs            # Shared output formatting (JSON + human)
+├── output.rs            # Shared output formatting (human, JSON envelope, JSONL)
 └── error.rs             # `WavepeekError` enum and exit mapping
 ```
 
@@ -129,7 +129,7 @@ src/
 | `wellen` | ~0.20 | VCD and FST parsing | Core default waveform dependency |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
-| `serde_json` | ~1 | JSON output | Envelope rendering and schema export |
+| `serde_json` | ~1 | JSON output | Envelope rendering, JSONL records, and schema export |
 | `regex` | ~1 | Pattern matching | Shared filter support |
 | `thiserror` | ~2 | Error derivation | Typed errors with explicit exit mapping |
 | `cc` | ~1 | Native build integration | Build dependency used only when compiling optional FSDB support |
@@ -190,6 +190,8 @@ The dispatcher chooses between those engines from internal workload estimates su
 
 The reason for the multi-engine design is simple: a single internal strategy could not keep latency consistently low across both tiny and large-window scenarios.
 
+For `--jsonl`, `change` emits snapshots through a sink while the selected engine runs instead of collecting the complete result set solely for output. The human and `--json` paths use the same sink interface with a collector so they preserve the existing complete-result behavior. `property` uses the same pattern for captured rows.
+
 ## Testing Strategy
 
 ### Test Levels
@@ -214,7 +216,8 @@ Runtime test execution does not fetch those larger fixtures dynamically; they ar
 - deterministic stdout behavior,
 - exit codes,
 - stderr formatting for error cases,
-- `--json` payload conformance to the schema contract,
+- `--json` payload conformance to the envelope schema contract,
+- `--jsonl` record conformance and stream-order invariants,
 - human-output stability when a command-level contract explicitly fixes that formatting, and
 - VCD/FST parity where equivalent queries should return the same result.
 
@@ -223,6 +226,6 @@ Runtime test execution does not fetch those larger fixtures dynamically; they ar
 The architectural split matters for docs maintenance:
 
 - `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help` are the exact CLI surface authority.
-- The current major schema artifact, such as `schema/wavepeek_v1.json`, and `wavepeek schema` are the machine-readable output authority.
+- The current major schema artifacts, such as `schema/wavepeek_v1.json` and `schema/wavepeek-stream-v1.json`, plus `wavepeek schema` and `wavepeek schema --stream`, are the machine-readable output authorities.
 - `docs/public/reference/` documents the user-visible semantics that code and schema alone do not explain well enough.
 - this file documents internals that help contributors change implementation safely without regrowing a monolithic design doc.

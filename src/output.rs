@@ -1,9 +1,12 @@
+use std::io::{self, Write};
+
 use serde::Serialize;
 
 use crate::diagnostic::{Diagnostic, DiagnosticKind};
-use crate::engine::{CommandData, CommandResult, HumanRenderOptions};
+use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
-use crate::schema_contract::SCHEMA_URL;
+use crate::output_mode::OutputMode;
+use crate::schema_contract::{SCHEMA_URL, STREAM_SCHEMA_URL};
 
 #[derive(Debug, Serialize)]
 pub struct OutputEnvelope<T>
@@ -35,19 +38,229 @@ where
     }
 }
 
-pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
-    if !result.json {
-        let output = render_human(&result.data, result.human_options);
-        if !output.is_empty() {
-            write_stdout(output.as_str());
+pub struct JsonlWriter<W: Write> {
+    writer: W,
+    command: CommandName,
+    next_seq: usize,
+    items: usize,
+    diagnostics: usize,
+}
+
+impl<W: Write> JsonlWriter<W> {
+    pub const fn new(writer: W, command: CommandName) -> Self {
+        Self {
+            writer,
+            command,
+            next_seq: 0,
+            items: 0,
+            diagnostics: 0,
         }
-        emit_human_diagnostics(&result.diagnostics);
-        return Ok(());
     }
 
-    let json = render_json(result)?;
-    println!("{json}");
-    Ok(())
+    pub fn begin(&mut self) -> Result<(), WavepeekError> {
+        let record = JsonlBeginRecord {
+            record_type: "begin",
+            seq: self.next_seq,
+            command: self.command.as_str(),
+            schema: STREAM_SCHEMA_URL,
+        };
+        self.write_record(&record)
+    }
+
+    pub fn item<T: Serialize>(&mut self, item: &T) -> Result<(), WavepeekError> {
+        let record = JsonlItemRecord {
+            record_type: "item",
+            seq: self.next_seq,
+            command: self.command.as_str(),
+            item,
+        };
+        self.write_record(&record)?;
+        self.items += 1;
+        Ok(())
+    }
+
+    pub fn diagnostic(&mut self, diagnostic: &Diagnostic) -> Result<(), WavepeekError> {
+        let record = JsonlDiagnosticRecord {
+            record_type: "diagnostic",
+            seq: self.next_seq,
+            command: self.command.as_str(),
+            diagnostic,
+        };
+        self.write_record(&record)?;
+        self.diagnostics += 1;
+        Ok(())
+    }
+
+    pub fn end(&mut self, truncated: bool) -> Result<(), WavepeekError> {
+        let summary = JsonlEndSummary {
+            status: "ok",
+            items: self.items,
+            diagnostics: self.diagnostics,
+            truncated,
+        };
+        let record = JsonlEndRecord {
+            record_type: "end",
+            seq: self.next_seq,
+            command: self.command.as_str(),
+            summary,
+        };
+        self.write_record(&record)
+    }
+
+    #[cfg(test)]
+    pub const fn item_count(&self) -> usize {
+        self.items
+    }
+
+    #[cfg(test)]
+    pub const fn diagnostic_count(&self) -> usize {
+        self.diagnostics
+    }
+
+    fn write_record<T: Serialize>(&mut self, record: &T) -> Result<(), WavepeekError> {
+        serde_json::to_writer(&mut self.writer, record).map_err(map_jsonl_serde_error)?;
+        self.writer.write_all(b"\n").map_err(map_jsonl_io_error)?;
+        self.writer.flush().map_err(map_jsonl_io_error)?;
+        self.next_seq += 1;
+        Ok(())
+    }
+}
+
+#[derive(Debug, Serialize)]
+struct JsonlBeginRecord {
+    #[serde(rename = "type")]
+    record_type: &'static str,
+    seq: usize,
+    command: &'static str,
+    #[serde(rename = "$schema")]
+    schema: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+struct JsonlItemRecord<'a, T: Serialize + ?Sized> {
+    #[serde(rename = "type")]
+    record_type: &'static str,
+    seq: usize,
+    command: &'static str,
+    item: &'a T,
+}
+
+#[derive(Debug, Serialize)]
+struct JsonlDiagnosticRecord<'a> {
+    #[serde(rename = "type")]
+    record_type: &'static str,
+    seq: usize,
+    command: &'static str,
+    diagnostic: &'a Diagnostic,
+}
+
+#[derive(Debug, Serialize)]
+struct JsonlEndRecord {
+    #[serde(rename = "type")]
+    record_type: &'static str,
+    seq: usize,
+    command: &'static str,
+    summary: JsonlEndSummary,
+}
+
+#[derive(Debug, Serialize)]
+struct JsonlEndSummary {
+    status: &'static str,
+    items: usize,
+    diagnostics: usize,
+    truncated: bool,
+}
+
+pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
+    match result.output_mode {
+        OutputMode::Human => {
+            let output = render_human(&result.data, result.human_options);
+            if !output.is_empty() {
+                write_stdout(output.as_str());
+            }
+            emit_human_diagnostics(&result.diagnostics);
+            Ok(())
+        }
+        OutputMode::Json => {
+            let json = render_json(result)?;
+            println!("{json}");
+            Ok(())
+        }
+        OutputMode::Jsonl => {
+            let stdout = io::stdout();
+            let mut writer = JsonlWriter::new(stdout.lock(), result.command);
+            write_jsonl_result(result, &mut writer)
+        }
+    }
+}
+
+pub fn write_jsonl_result<W: Write>(
+    result: CommandResult,
+    writer: &mut JsonlWriter<W>,
+) -> Result<(), WavepeekError> {
+    writer.begin()?;
+    match &result.data {
+        CommandData::Info(data) => writer.item(data)?,
+        CommandData::Scope(entries) => {
+            for entry in entries {
+                writer.item(entry)?;
+            }
+        }
+        CommandData::Signal(entries) => {
+            for entry in entries {
+                writer.item(entry)?;
+            }
+        }
+        CommandData::Value(snapshots) => {
+            for snapshot in snapshots {
+                writer.item(snapshot)?;
+            }
+        }
+        CommandData::Change(snapshots) => {
+            for snapshot in snapshots {
+                writer.item(snapshot)?;
+            }
+        }
+        CommandData::Property(rows) => {
+            for row in rows {
+                writer.item(row)?;
+            }
+        }
+        CommandData::Schema(_)
+        | CommandData::Text(_)
+        | CommandData::DocsTopics(_)
+        | CommandData::DocsSearch(_) => {
+            return Err(WavepeekError::Args(
+                "--jsonl is available only for waveform commands".to_string(),
+            ));
+        }
+    }
+
+    let truncated = result.diagnostics.iter().any(is_truncation_diagnostic);
+    for diagnostic in &result.diagnostics {
+        writer.diagnostic(diagnostic)?;
+    }
+    writer.end(truncated)
+}
+
+fn is_truncation_diagnostic(diagnostic: &Diagnostic) -> bool {
+    diagnostic.code() == Some("WPK-W0002")
+}
+
+fn map_jsonl_serde_error(error: serde_json::Error) -> WavepeekError {
+    if error.io_error_kind() == Some(io::ErrorKind::BrokenPipe) {
+        WavepeekError::BrokenPipe
+    } else {
+        WavepeekError::Internal(format!("failed to serialize JSONL output: {error}"))
+    }
+}
+
+fn map_jsonl_io_error(error: io::Error) -> WavepeekError {
+    if error.kind() == io::ErrorKind::BrokenPipe {
+        WavepeekError::BrokenPipe
+    } else {
+        WavepeekError::Internal(format!("failed to write JSONL output: {error}"))
+    }
 }
 
 fn render_json(result: CommandResult) -> Result<String, WavepeekError> {
@@ -248,22 +461,25 @@ mod output_rendering_edges;
 
 #[cfg(test)]
 mod tests {
-    use serde_json::Value;
+    use std::io;
+
+    use serde_json::{Value, json};
 
     use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
-    use crate::schema_contract::SCHEMA_URL;
+    use crate::output_mode::OutputMode;
+    use crate::schema_contract::{SCHEMA_URL, STREAM_SCHEMA_URL};
 
     use super::{
-        OutputEnvelope, render_human, render_json, render_scope_tree, scope_entry_is_last_sibling,
-        signal_display_name, write,
+        JsonlWriter, OutputEnvelope, render_human, render_json, render_scope_tree,
+        scope_entry_is_last_sibling, signal_display_name, write, write_jsonl_result,
     };
 
     #[test]
     fn json_envelope_has_required_shape_for_info() {
         let result = CommandResult {
             command: CommandName::Info,
-            json: true,
+            output_mode: OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Info(crate::engine::info::InfoData {
                 time_unit: "1ns".to_string(),
@@ -288,7 +504,7 @@ mod tests {
     fn json_envelope_preserves_diagnostics_for_scope() {
         let result = CommandResult {
             command: CommandName::Scope,
-            json: true,
+            output_mode: OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Scope(vec![crate::engine::scope::ScopeEntry {
                 path: "top.cpu".to_string(),
@@ -317,7 +533,7 @@ mod tests {
     fn docs_topics_json_envelope_uses_nested_topics_payload() {
         let result = CommandResult {
             command: CommandName::DocsTopics,
-            json: true,
+            output_mode: OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsTopics(crate::engine::DocsTopicsData {
                 topics: vec![crate::docs::TopicSummary {
@@ -337,6 +553,118 @@ mod tests {
         assert_eq!(value["command"], "docs topics");
         assert_eq!(value["data"]["topics"][0]["id"], "intro");
         assert_eq!(value["data"]["topics"][0]["see_also"][0], "commands/help");
+    }
+
+    #[derive(Default)]
+    struct FlushCountingSink {
+        bytes: Vec<u8>,
+        flushes: usize,
+    }
+
+    impl io::Write for FlushCountingSink {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            self.bytes.extend_from_slice(buf);
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            self.flushes += 1;
+            Ok(())
+        }
+    }
+
+    struct BrokenPipeSink;
+
+    impl io::Write for BrokenPipeSink {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::from(io::ErrorKind::BrokenPipe))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn jsonl_writer_emits_ordered_records_and_flushes_each_line() {
+        let mut sink = FlushCountingSink::default();
+        {
+            let mut writer = JsonlWriter::new(&mut sink, CommandName::Change);
+            writer.begin().expect("begin record should write");
+            writer
+                .item(&json!({"time": "5ns", "signals": []}))
+                .expect("item record should write");
+            writer
+                .diagnostic(&Diagnostic::warning(
+                    WarningDiagnosticCode::OutputTruncated,
+                    "truncated output to 1 entries",
+                ))
+                .expect("diagnostic record should write");
+            writer.end(true).expect("end record should write");
+            assert_eq!(writer.item_count(), 1);
+            assert_eq!(writer.diagnostic_count(), 1);
+        }
+
+        assert_eq!(sink.flushes, 4);
+        let output = String::from_utf8(sink.bytes).expect("JSONL should be UTF-8");
+        assert!(output.ends_with('\n'));
+        let lines = output.lines().collect::<Vec<_>>();
+        assert_eq!(lines.len(), 4);
+        let records = lines
+            .iter()
+            .map(|line| serde_json::from_str::<Value>(line).expect("line should parse"))
+            .collect::<Vec<_>>();
+
+        assert_eq!(records[0]["type"], "begin");
+        assert_eq!(records[0]["seq"], 0);
+        assert_eq!(records[0]["command"], "change");
+        assert_eq!(records[0]["$schema"], STREAM_SCHEMA_URL);
+        assert_eq!(records[1]["type"], "item");
+        assert_eq!(records[1]["seq"], 1);
+        assert_eq!(records[2]["type"], "diagnostic");
+        assert_eq!(records[2]["diagnostic"]["code"], "WPK-W0002");
+        assert_eq!(records[3]["type"], "end");
+        assert_eq!(records[3]["summary"]["items"], 1);
+        assert_eq!(records[3]["summary"]["diagnostics"], 1);
+        assert_eq!(records[3]["summary"]["truncated"], true);
+    }
+
+    #[test]
+    fn jsonl_writer_maps_broken_pipe_without_internal_fatal() {
+        let mut writer = JsonlWriter::new(BrokenPipeSink, CommandName::Info);
+        let error = writer.begin().expect_err("broken pipe should be returned");
+        assert!(matches!(error, crate::error::WavepeekError::BrokenPipe));
+    }
+
+    #[test]
+    fn jsonl_result_adapter_emits_items_diagnostics_and_summary() {
+        let result = CommandResult {
+            command: CommandName::Scope,
+            output_mode: OutputMode::Jsonl,
+            human_options: HumanRenderOptions::default(),
+            data: CommandData::Scope(vec![crate::engine::scope::ScopeEntry {
+                path: "top".to_string(),
+                depth: 0,
+                kind: "module".to_string(),
+            }]),
+            diagnostics: vec![Diagnostic::warning(
+                WarningDiagnosticCode::OutputTruncated,
+                "truncated output to 1 entries",
+            )],
+        };
+        let mut sink = Vec::new();
+        let mut writer = JsonlWriter::new(&mut sink, CommandName::Scope);
+        write_jsonl_result(result, &mut writer).expect("JSONL adapter should write");
+
+        let output = String::from_utf8(sink).expect("JSONL should be UTF-8");
+        let records = output
+            .lines()
+            .map(|line| serde_json::from_str::<Value>(line).expect("line should parse"))
+            .collect::<Vec<_>>();
+        assert_eq!(records[0]["type"], "begin");
+        assert_eq!(records[1]["item"]["path"], "top");
+        assert_eq!(records[2]["diagnostic"]["code"], "WPK-W0002");
+        assert_eq!(records[3]["summary"]["truncated"], true);
     }
 
     #[test]
@@ -567,7 +895,7 @@ mod tests {
     fn write_entrypoint_exercises_json_empty_human_and_diagnostic_paths() {
         write(CommandResult {
             command: CommandName::Schema,
-            json: true,
+            output_mode: OutputMode::Json,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Schema("{}".to_string()),
             diagnostics: Vec::new(),
@@ -576,7 +904,7 @@ mod tests {
 
         write(CommandResult {
             command: CommandName::DocsSearch,
-            json: false,
+            output_mode: OutputMode::Human,
             human_options: HumanRenderOptions::default(),
             data: CommandData::DocsSearch(crate::engine::DocsSearchData {
                 query: "none".to_string(),
@@ -591,7 +919,7 @@ mod tests {
 
         write(CommandResult {
             command: CommandName::Info,
-            json: false,
+            output_mode: OutputMode::Human,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Text("already-newline\n".to_string()),
             diagnostics: Vec::new(),

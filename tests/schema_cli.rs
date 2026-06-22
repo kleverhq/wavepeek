@@ -4,7 +4,7 @@ use std::fs;
 use std::path::PathBuf;
 
 mod common;
-use common::{expected_schema_url, wavepeek_cmd};
+use common::{expected_schema_url, expected_stream_schema_url, wavepeek_cmd};
 
 const EXPECTED_SCOPE_KINDS: &[&str] = &[
     "module",
@@ -88,6 +88,15 @@ fn canonical_schema_path() -> PathBuf {
         ))
 }
 
+fn canonical_stream_schema_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join(format!(
+            "wavepeek-stream-v{}.json",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        ))
+}
+
 fn run_schema_command() -> Vec<u8> {
     wavepeek_cmd()
         .args(["schema"])
@@ -96,8 +105,25 @@ fn run_schema_command() -> Vec<u8> {
         .stdout
 }
 
+fn run_stream_schema_command() -> Vec<u8> {
+    wavepeek_cmd()
+        .args(["schema", "--stream"])
+        .output()
+        .expect("schema --stream command should execute")
+        .stdout
+}
+
 fn schema_json() -> Value {
     serde_json::from_slice(&run_schema_command()).expect("schema output should be valid json")
+}
+
+fn stream_schema_json() -> Value {
+    serde_json::from_slice(&run_stream_schema_command())
+        .expect("stream schema output should be valid json")
+}
+
+fn stream_schema_validator() -> jsonschema::Validator {
+    jsonschema::validator_for(&stream_schema_json()).expect("stream schema should compile")
 }
 
 fn info_json() -> Value {
@@ -471,6 +497,167 @@ fn schema_command_exposes_field_descriptions_for_machine_clients() {
         assert!(
             !description.trim().is_empty(),
             "description at {path:?} should not be empty"
+        );
+    }
+}
+
+#[test]
+fn schema_stream_command_prints_canonical_artifact_bytes() {
+    let mut command = wavepeek_cmd();
+    let assert = command.args(["schema", "--stream"]).assert().success();
+
+    let expected =
+        fs::read(canonical_stream_schema_path()).expect("stream schema file should read");
+    assert_eq!(assert.get_output().stdout, expected);
+    assert!(assert.get_output().stderr.is_empty());
+}
+
+#[test]
+fn schema_stream_command_output_is_valid_json() {
+    let value = stream_schema_json();
+
+    assert_eq!(
+        value["$schema"],
+        "https://json-schema.org/draft/2020-12/schema"
+    );
+    assert_eq!(value["title"], "wavepeek JSONL stream record");
+    assert!(value["oneOf"].is_array());
+    assert!(value["$defs"].is_object());
+}
+
+#[test]
+fn schema_stream_command_exposes_waveform_command_contract() {
+    let value = stream_schema_json();
+
+    assert_eq!(
+        value["$defs"]["streamCommand"]["enum"],
+        json!(["info", "scope", "signal", "value", "change", "property"])
+    );
+    let root_refs = value["oneOf"]
+        .as_array()
+        .expect("stream schema root should use oneOf")
+        .iter()
+        .map(|entry| {
+            entry["$ref"]
+                .as_str()
+                .expect("root variant should be a ref")
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        root_refs,
+        [
+            "#/$defs/beginRecord",
+            "#/$defs/itemRecord",
+            "#/$defs/diagnosticRecord",
+            "#/$defs/endRecord",
+        ]
+        .into_iter()
+        .collect::<std::collections::BTreeSet<_>>()
+    );
+    assert_eq!(
+        value["$defs"]["beginRecord"]["properties"]["$schema"]["pattern"],
+        format!(
+            r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v{}\.json$",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        )
+    );
+}
+
+#[test]
+fn schema_stream_validator_accepts_representative_waveform_records() {
+    let validator = stream_schema_validator();
+    let cases = [
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "change",
+            "$schema": expected_stream_schema_url()
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "info",
+            "item": {"time_unit": "1ns", "time_start": "0ns", "time_end": "10ns"}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "scope",
+            "item": {"path": "top", "depth": 0, "kind": "module"}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "signal",
+            "item": {"name": "clk", "path": "top.clk", "kind": "wire", "width": 1}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "value",
+            "item": {"time": "5ns", "signals": [{"path": "top.clk", "value": "1'h1"}]}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "change",
+            "item": {"time": "5ns", "signals": [{"path": "top.clk", "value": "1'h1"}]}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "property",
+            "item": {"time": "5ns", "kind": "assert"}
+        }),
+        json!({
+            "type": "diagnostic",
+            "seq": 2,
+            "command": "change",
+            "diagnostic": {"kind": "warning", "code": "WPK-W0002", "message": "truncated"}
+        }),
+        json!({
+            "type": "end",
+            "seq": 3,
+            "command": "change",
+            "summary": {"status": "ok", "items": 1, "diagnostics": 1, "truncated": true}
+        }),
+    ];
+
+    for case in cases {
+        validator
+            .validate(&case)
+            .unwrap_or_else(|error| panic!("valid stream record rejected: {error}\n{case}"));
+    }
+}
+
+#[test]
+fn schema_stream_validator_rejects_command_payload_mismatches() {
+    let validator = stream_schema_validator();
+    let invalid_cases = [
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "property",
+            "item": {"time": "5ns", "signals": [{"path": "top.clk", "value": "1'h1"}]}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "change",
+            "item": {"time": "5ns", "kind": "assert"}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "docs topics",
+            "item": {}
+        }),
+    ];
+
+    for case in invalid_cases {
+        assert!(
+            validator.validate(&case).is_err(),
+            "invalid stream record should fail validation: {case}"
         );
     }
 }

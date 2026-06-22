@@ -28,4 +28,7 @@ pub struct ValueArgs {
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,
+    /// Stream newline-delimited JSON output
+    #[arg(long, conflicts_with = "json", help_heading = "Output options")]
+    pub jsonl: bool,
 }

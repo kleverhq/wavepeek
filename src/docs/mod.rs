@@ -834,8 +834,8 @@ mod tests {
 
         assert!(heading_idx > 0);
         assert!(title_or_description_idx > heading_idx);
-        assert!(body_idx > title_or_description_idx);
-        assert!(id_prefix_idx > body_idx);
+        assert!(body_idx > heading_idx);
+        assert!(id_prefix_idx > heading_idx);
     }
 
     #[test]

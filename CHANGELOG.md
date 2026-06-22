@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added waveform-command `--jsonl` streaming output plus `wavepeek schema --stream` for the per-record stream schema ([issue #26](https://github.com/kleverhq/wavepeek/issues/26)).
+
 ## [1.0.1] - 2026-06-13
 
 ### Fixed

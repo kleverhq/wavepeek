@@ -23,6 +23,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
         filter,
         tree,
         json,
+        jsonl,
     } = args;
 
     if max == LimitArg::Numeric(0) {
@@ -95,7 +96,7 @@ pub fn run(args: ScopeArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Scope,
-        json,
+        output_mode: crate::output_mode::OutputMode::from_json_flags(json, jsonl),
         human_options: crate::engine::HumanRenderOptions {
             scope_tree: tree,
             signals_abs: false,

@@ -91,7 +91,7 @@ pub fn run(args: ValueArgs) -> Result<CommandResult, WavepeekError> {
 
     Ok(CommandResult {
         command: CommandName::Value,
-        json: args.json,
+        output_mode: crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl),
         human_options: crate::engine::HumanRenderOptions {
             scope_tree: false,
             signals_abs: args.abs,
@@ -231,6 +231,7 @@ mod tests {
                     signals: vec!["sig".to_string()],
                     abs: false,
                     json: false,
+                    jsonl: false,
                 },
             )
             .expect("scoped signals should resolve"),
@@ -250,6 +251,7 @@ mod tests {
                     signals: vec!["  ".to_string()],
                     abs: false,
                     json: false,
+                    jsonl: false,
                 },
             )
             .expect_err("empty signal names should fail")
@@ -316,6 +318,7 @@ mod tests {
             signals: vec!["sig".to_string()],
             abs: true,
             json: true,
+            jsonl: false,
         })
         .expect("value run should succeed");
         let CommandData::Value(payload) = result.data else {

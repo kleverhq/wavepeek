@@ -6,7 +6,7 @@ use crate::error::WavepeekError;
 pub fn run(_args: SkillArgs) -> Result<CommandResult, WavepeekError> {
     Ok(CommandResult {
         command: CommandName::Skill,
-        json: false,
+        output_mode: crate::output_mode::OutputMode::Human,
         human_options: HumanRenderOptions::default(),
         data: CommandData::Text(docs::packaged_skill_markdown().to_string()),
         diagnostics: Vec::new(),

@@ -143,6 +143,42 @@ class BenchGateHelperTest(unittest.TestCase):
             with self.assertRaises(common.BenchGateError):
                 compare.assert_matching_e2e_artifacts(golden, revised)
 
+    def test_e2e_artifact_identity_accepts_explicit_failure_outcomes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            golden.mkdir()
+            revised.mkdir()
+            (golden / "sample.failure.json").write_text("{}", encoding="utf-8")
+            for suffix in ("hyperfine", "wavepeek"):
+                (revised / f"sample.{suffix}.json").write_text("{}", encoding="utf-8")
+
+            compare.assert_matching_e2e_artifacts(golden, revised)
+
+    def test_e2e_artifact_identity_rejects_failure_with_normal_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            (run_dir / "sample.failure.json").write_text("{}", encoding="utf-8")
+            (run_dir / "sample.wavepeek.json").write_text("{}", encoding="utf-8")
+
+            with self.assertRaisesRegex(common.BenchGateError, "both normal and failure"):
+                compare.e2e_artifact_stems(run_dir)
+
+    def test_e2e_subset_uses_functional_outcomes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            superset = root / "fst"
+            subset = root / "fsdb"
+            superset.mkdir()
+            subset.mkdir()
+            (superset / "case.wavepeek.json").write_text("{}", encoding="utf-8")
+            (subset / "case.wavepeek.json").write_text("{}", encoding="utf-8")
+
+            compare.assert_e2e_subset(superset=superset, subset=subset)
+
     def test_compare_command_requires_clean_current_tooling(self) -> None:
         args = argparse.Namespace(
             golden=pathlib.Path("/golden"),
@@ -315,6 +351,96 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(suite["status"], "passed")
         self.assertEqual(suite["median_compare_status"], "failed")
         self.assertEqual(suite["timing_confirm"]["status"], "passed")
+
+    def test_compare_captures_copies_uncomparable_summary_fields(self) -> None:
+        def arg_value(args: list[str], flag: str) -> pathlib.Path:
+            return pathlib.Path(args[args.index(flag) + 1])
+
+        def fake_run_command(
+            name: str,
+            args: list[str],
+            *,
+            cwd: pathlib.Path,
+            log_path: pathlib.Path,
+            env: dict[str, str] | None = None,
+            check: bool = True,
+        ) -> common.CommandResult:
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            log_path.write_text("ok\n", encoding="utf-8")
+            common.write_json(
+                arg_value(args, "--result-json"),
+                {
+                    "status": "passed",
+                    "timing_failures": [],
+                    "functional_mismatches": [],
+                    "functional_artifact_errors": [],
+                    "comparable_count": 1,
+                    "skipped_uncomparable_count": 1,
+                    "failed_uncomparable_count": 0,
+                    "baseline_unsupported": [{"test_name": "sample"}],
+                    "revised_failures": [],
+                    "both_side_failures": [],
+                    "integrity_errors": [],
+                },
+            )
+            return common.CommandResult(name=name, args=list(args), cwd=str(cwd), returncode=0, log_path=str(log_path))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            golden = root / "golden"
+            revised = root / "revised"
+            for base in (golden, revised):
+                (base / "e2e-fst").mkdir(parents=True)
+                for suffix in ("hyperfine", "wavepeek"):
+                    (base / "e2e-fst" / f"case.{suffix}.json").write_text("{}", encoding="utf-8")
+
+            with mock.patch.object(compare, "run_command", side_effect=fake_run_command):
+                result = compare.compare_captures(
+                    golden_dir=golden,
+                    revised_dir=revised,
+                    compare_dir=root / "compare",
+                    timing_threshold_pct=5.0,
+                )
+
+        suite = result.manifest["suites"]["e2e-fst"]
+        self.assertEqual(suite["comparable_count"], 1)
+        self.assertEqual(suite["skipped_uncomparable_count"], 1)
+        self.assertEqual(suite["baseline_unsupported"][0]["test_name"], "sample")
+
+    def test_gate_compare_summary_aggregates_suite_counts(self) -> None:
+        manifest = {
+            "suites": {
+                "e2e-fst": {
+                    "status": "passed",
+                    "comparable_count": 2,
+                    "skipped_uncomparable_count": 1,
+                    "failed_uncomparable_count": 0,
+                    "uncomparable_count": 1,
+                    "baseline_unsupported": [{"test_name": "sample"}],
+                    "integrity_errors": [],
+                },
+                "e2e-fsdb": {
+                    "status": "failed",
+                    "comparable_count": 1,
+                    "skipped_uncomparable_count": 0,
+                    "failed_uncomparable_count": 1,
+                    "uncomparable_count": 1,
+                    "revised_failures": [{"test_name": "broken"}],
+                    "integrity_errors": ["broken: missing outcome"],
+                },
+            }
+        }
+
+        summary = gate.gate_compare_summary(manifest)
+
+        self.assertEqual(summary["totals"]["comparable_count"], 3)
+        self.assertEqual(summary["totals"]["skipped_uncomparable_count"], 1)
+        self.assertEqual(summary["totals"]["failed_uncomparable_count"], 1)
+        self.assertEqual(summary["totals"]["integrity_error_count"], 1)
+        self.assertEqual(
+            summary["suites"]["e2e-fst"]["baseline_unsupported"][0]["test_name"],
+            "sample",
+        )
 
     def test_compare_captures_does_not_confirm_functional_failures(self) -> None:
         calls: list[str] = []

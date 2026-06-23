@@ -29,7 +29,7 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 - [x] (2026-06-23 06:59Z) Ran focused checks and `just test-aux`, then ran read-only code/tooling/docs reviews.
 - [x] (2026-06-23 07:04Z) Ran final control review with no substantive findings, ran `just check` successfully, and prepared implementation for commit.
 - [x] (2026-06-23 07:01Z) Ran the proof benchmark/gate against `v1.0.1` and recorded evidence showing `--sample-mode` baseline failures are recorded while the gate continues to compare remaining tests.
-- [ ] Push the branch and open a pull request linked to issue #37.
+- [x] (2026-06-23 07:07Z) Pushed branch `issue-37-bench-gate-greedy` and opened PR #39 linked to issue #37.
 
 ## Surprises & Discoveries
 
@@ -67,7 +67,7 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 
 ## Outcomes & Retrospective
 
-Implementation is complete and validation passes. `python3 -B -m unittest bench.e2e.test_perf tools.bench.test_gate` passed with 115 tests, `just test-aux` passed after review fixes, and `just check` passed. The proof gate `python3 -B tools/bench/gate.py --baseline-ref v1.0.1 --revised-ref HEAD --fsdb never --out-dir tmp/bench-gate/gates/issue-37-proof-v1.0.1..HEAD-20260623T070047Z` completed capture and compare. Its final status is failed because `v1.0.1` and `HEAD` also have timing and functional differences, but the issue-specific behavior worked: baseline has 8 `--sample-mode` preflight failure artifacts, revised has 150 successful artifacts, compare reports 142 comparable tests, 8 skipped uncomparable tests, 0 revised failures, and 0 integrity errors. The remaining outcome work is push and PR.
+Implementation is complete and validation passes. `python3 -B -m unittest bench.e2e.test_perf tools.bench.test_gate` passed with 115 tests, `just test-aux` passed after review fixes, and `just check` passed. The proof gate `python3 -B tools/bench/gate.py --baseline-ref v1.0.1 --revised-ref HEAD --fsdb never --out-dir tmp/bench-gate/gates/issue-37-proof-v1.0.1..HEAD-20260623T070047Z` completed capture and compare. Its final status is failed because `v1.0.1` and `HEAD` also have timing and functional differences, but the issue-specific behavior worked: baseline has 8 `--sample-mode` preflight failure artifacts, revised has 150 successful artifacts, compare reports 142 comparable tests, 8 skipped uncomparable tests, 0 revised failures, and 0 integrity errors. PR #39 links and closes issue #37.
 
 ## Context and Orientation
 
@@ -184,3 +184,5 @@ Revision note, 2026-06-23: Updated after implementation and focused review fixes
 Revision note, 2026-06-23: Updated after final control review and `just check`; no additional control-review fixes were needed.
 
 Revision note, 2026-06-23: Updated after proof gate against `v1.0.1`. The proof gate reached compare and recorded the expected 8 sample-mode baseline preflight failures as skipped uncomparable tests.
+
+Revision note, 2026-06-23: Updated after pushing the branch and opening PR #39.

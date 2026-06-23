@@ -56,6 +56,16 @@ const RTL_SAMPLING_VCD: &str = concat!(
     "1!\n",
 );
 
+fn many_property_matches_vcd(edge_count: u32) -> String {
+    let mut vcd = String::from(
+        "$date\n  today\n$end\n$version\n  wavepeek-many-property-matches\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$var wire 1 \" sig $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
+    );
+    for timestamp in 1..=edge_count {
+        vcd.push_str(&format!("#{}\n{}!\n", timestamp, timestamp % 2));
+    }
+    vcd
+}
+
 #[test]
 fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
     let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling.vcd");
@@ -588,6 +598,206 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
         parse_json(&real_output.stdout)["data"],
         json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
+}
+
+#[test]
+fn property_default_max_is_50_with_truncation_warning() {
+    let fixture = write_fixture(&many_property_matches_vcd(60), ".property-many-matches.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "match",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let value = parse_json(&output.stdout);
+    let rows = value["data"].as_array().expect("data should be array");
+    assert_eq!(rows.len(), 50);
+    assert_eq!(rows[0]["time"], "1ns");
+    assert_eq!(rows[49]["time"], "50ns");
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 50 entries (use --max to increase limit)"}])
+    );
+}
+
+#[test]
+fn property_max_one_truncates_in_human_and_json_modes() {
+    let fixture = write_fixture(&many_property_matches_vcd(60), ".property-max-one.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "match",
+            "--max",
+            "1",
+            "--json",
+        ])
+        .output()
+        .expect("json property should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "match",
+            "--max",
+            "1",
+        ])
+        .output()
+        .expect("human property should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stdout).trim(),
+        "@1ns match"
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)"
+    );
+
+    let value = parse_json(&json_output.stdout);
+    assert_eq!(
+        value["data"]
+            .as_array()
+            .expect("data should be array")
+            .len(),
+        1
+    );
+    assert_eq!(value["data"][0]["time"], "1ns");
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0002", "message": "truncated output to 1 entries (use --max to increase limit)"}])
+    );
+}
+
+#[test]
+fn property_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() {
+    let fixture = write_fixture(&many_property_matches_vcd(60), ".property-unlimited.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let json_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "match",
+            "--max",
+            "unlimited",
+            "--json",
+        ])
+        .output()
+        .expect("json property should execute");
+    let human_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--capture",
+            "match",
+            "--max",
+            "unlimited",
+        ])
+        .output()
+        .expect("human property should execute");
+
+    assert!(json_output.status.success());
+    assert!(human_output.status.success());
+
+    let value = parse_json(&json_output.stdout);
+    assert_eq!(
+        value["data"]
+            .as_array()
+            .expect("data should be array")
+            .len(),
+        60
+    );
+    assert_eq!(
+        value["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0001", "message": "limit disabled: --max=unlimited"}])
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stdout)
+            .lines()
+            .count(),
+        60
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&human_output.stderr).trim(),
+        "warning[WPK-W0001]: limit disabled: --max=unlimited"
+    );
+}
+
+#[test]
+fn property_rejects_zero_max() {
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            "missing.vcd",
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "sig",
+            "--max",
+            "0",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with(
+            "fatal: args: --max must be greater than 0.",
+        ));
 }
 
 #[test]

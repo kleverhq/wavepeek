@@ -80,6 +80,18 @@ $ wavepeek property --waves path/to/dump.vcd --scope top --on 'posedge clk' --ev
 
 This is the simplest mode when you are asking "at which sampled events was the condition true?"
 
+## Control row count with `--max`
+
+`property` output is bounded by default. The default limit is 50 captured rows, which keeps dense event streams from flooding a terminal or a JSON client. When more captured rows would be emitted, `property` emits `WPK-W0002`:
+
+```text
+$ wavepeek property --waves path/to/dump.vcd --scope top --on 'edge clk' --eval ready --capture match --max 1
+@15ns match
+warning[WPK-W0002]: truncated output to 1 entries (use --max to increase limit)
+```
+
+Raise the limit with `--max <N>` when you need a larger bounded sample. Use `--max unlimited` only when you intentionally want every captured row; it emits `WPK-W0001` so scripts can detect that truncation was disabled.
+
 ## Filter only one transition direction
 
 `assert` keeps only false-to-true transitions. `deassert` keeps only true-to-false transitions.
@@ -125,7 +137,7 @@ $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data 
 
 Human output is for quick inspection. `--json` is the stable machine contract.
 
-For long searches or incremental consumers, use `--jsonl`. It streams one JSON object per line: `begin`, one `item` per captured property row, optional `diagnostic` records, and a final `end` summary. Validate each line with `wavepeek schema --stream`, and require the final `end` record before treating the result as complete.
+For long searches or incremental consumers, use `--jsonl`. It streams one JSON object per line: `begin`, one `item` per captured property row, optional `diagnostic` records, and a final `end` summary. When `--max` truncates the stream, the final summary has `"truncated":true`. Validate each line with `wavepeek schema --stream`, and require the final `end` record before treating the result as complete.
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --eval "data == 8'h0f" --capture match --jsonl
@@ -167,6 +179,7 @@ Use this mode when `property` appears one clock ahead of a SystemVerilog asserti
 
 - VCD and FST work in default builds. FSDB works only in binaries built with the `fsdb` Cargo feature and a local Verdi FSDB Reader SDK. FSDB `property` supports digital bit-vector/integral expressions, including raw event triggers when the FSDB contains event occurrences; unsupported real or string values fail with a `signal` error.
 - No output is still success. It emits `WPK-W0003` and usually means no selected timestamp satisfied the requested capture mode.
+- Output is limited to 50 captured rows by default. `--max unlimited` disables truncation and emits `WPK-W0001`.
 - The default capture mode is `switch`, not `match`.
 - `--sample-mode native` is the default and preserves historical behavior. `--sample-mode pre-edge` is opt-in and requires an explicit edge-only trigger.
 - JSON and JSONL rows always include `sample_time`. In native mode it equals `time`; in pre-edge mode it is the timestamp whose values were evaluated.

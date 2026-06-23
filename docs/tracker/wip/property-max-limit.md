@@ -6,7 +6,7 @@ Note that this document must be maintained in accordance with the `exec-plan` sk
 
 ## Purpose / Big Picture
 
-Users can currently ask `wavepeek property` to capture every property match or transition in a waveform range, but they cannot bound the number of rows. Dense trigger streams or `--capture match` can therefore flood a terminal, a JSON client, or an agent context window. After this change, `property` will support `--max` with the same bounded-output contract used by `change`: the default limit is 50 rows, `--max unlimited` deliberately disables truncation with warning `WPK-W0001`, `--max 0` is an argument error, and truncation emits warning `WPK-W0002`. A user can see the behavior by running `wavepeek property --waves <dump> --eval <expr> --capture match --max 1 --json` and observing one data row plus a truncation diagnostic.
+Before this change, users could ask `wavepeek property` to capture every property match or transition in a waveform range, but they could not bound the number of rows. Dense trigger streams or `--capture match` could therefore flood a terminal, a JSON client, or an agent context window. This change adds `--max` with the same bounded-output contract used by `change`: the default limit is 50 rows, `--max unlimited` deliberately disables truncation with warning `WPK-W0001`, `--max 0` is an argument error, and truncation emits warning `WPK-W0002`. A user can see the behavior by running `wavepeek property --waves <dump> --eval <expr> --capture match --max 1 --json` and observing one data row plus a truncation diagnostic.
 
 ## Non-Goals
 
@@ -20,14 +20,15 @@ This change does not alter expression parsing, event trigger semantics, sample t
 - [x] (2026-06-23T09:58:02Z) Created this execution plan.
 - [x] (2026-06-23T10:09:02Z) Committed this execution plan as the first branch milestone (`7226a42`).
 - [x] (2026-06-23T10:09:02Z) Ran a focused read-only review of this execution plan and incorporated the findings.
-- [ ] Implement the CLI and engine changes.
-- [ ] Add and update integration/unit tests for CLI parsing, human output, JSON output, JSONL output, and argument errors.
-- [ ] Update public docs and changelog.
-- [ ] Run formatting and focused tests during implementation.
-- [ ] Run read-only implementation review, fix findings, and run a control pass if needed.
-- [ ] Run the repository pre-handoff gate `just check`.
+- [x] (2026-06-23T10:17:16Z) Implemented the CLI and engine changes for `property --max`.
+- [x] (2026-06-23T10:17:16Z) Added and updated integration/unit tests for CLI parsing, human output, JSON output, JSONL output, and argument errors.
+- [x] (2026-06-23T10:17:16Z) Updated public docs and changelog.
+- [x] (2026-06-23T10:17:16Z) Ran formatting and focused tests during implementation.
+- [x] (2026-06-23T10:26:27Z) Ran read-only implementation review, fixed low-severity docs findings, and recorded that the code lane had no substantive findings.
+- [x] (2026-06-23T10:37:40Z) Ran a final independent control review pass with no substantive findings.
+- [x] (2026-06-23T10:37:40Z) Ran the repository pre-handoff gate `just check` successfully.
 - [ ] Commit the implementation.
-- [ ] Remove or explicitly justify retaining this branch-local WIP plan before merge.
+- [x] (2026-06-23T10:38:32Z) Explicitly justified retaining this branch-local WIP plan for PR review because the user requested a committed ExecPlan; the PR body should note it can be removed before merge if the maintainer prefers.
 - [ ] Push the branch and open a pull request linked to issue #38.
 
 ## Surprises & Discoveries
@@ -38,6 +39,18 @@ This change does not alter expression parsing, event trigger semantics, sample t
   Evidence: `src/cli/mod.rs` dispatches `--jsonl` directly to `engine::run_jsonl`; `src/output.rs::write_jsonl_result` computes truncation only for non-streaming adapter paths.
 - Observation: `change` is the best contract template because it uses `LimitArg`, defaults `--max` to `50`, rejects zero, warns on `unlimited`, stops before emitting row number `limit + 1`, and reports JSONL truncation through `writer.end(outcome.stats.truncated)`.
   Evidence: `src/cli/change.rs` defines `pub max: LimitArg` with default `50`; `src/engine/change.rs::run_with_sink` maps the flag into `Option<usize>` and emits diagnostics.
+- Observation: The new `max` field also affects unit-test struct literals because `PropertyArgs` is constructed directly in `src/engine/property.rs` tests.
+  Evidence: The focused plan review found `PropertyArgs { ... }` literals around `src/engine/property.rs:573`; the implementation now sets `max: LimitArg::Unlimited` in those evaluation-focused tests.
+- Observation: Focused tests confirm JSON, human, and JSONL truncation behavior before full-gate review.
+  Evidence: `cargo test --test property_cli property_` passed 22 tests; `cargo test --test jsonl_cli property_jsonl` passed 2 tests; property help contract tests passed.
+- Observation: Implementation review found no code issues; docs review found two stale or narrow wording issues.
+  Evidence: Code review returned "No substantive findings"; docs review asked to broaden `property` docs from "matching rows" to "captured rows" and to update the plan purpose from future-tense wording.
+- Observation: The final independent control review found no substantive findings after those wording fixes.
+  Evidence: Control review returned "No substantive findings".
+- Observation: The repository pre-handoff gate passed with FSDB tooling available.
+  Evidence: `just check` completed successfully, including `cargo fmt -- --check`, clippy for normal and FSDB targets, docs publish check, commit-message check, and FSDB smoke tests.
+- Observation: The WIP plan is intentionally retained in the PR despite normal cleanup guidance.
+  Evidence: The user explicitly requested a committed ExecPlan as part of this branch workflow.
 
 ## Decision Log
 
@@ -56,7 +69,7 @@ This change does not alter expression parsing, event trigger semantics, sample t
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. The intended end state is that `property` is no longer the odd noisy command in the waveform family: default human, JSON, and JSONL output are bounded; deliberate unbounded output is visible to automation; and the docs explain when to use `--max`.
+Implementation is present in the working tree but not yet committed. The current code adds `property --max`, enforces the default 50-row limit, emits `WPK-W0001` and `WPK-W0002` in the expected modes, and reports JSONL truncation through the end summary. Focused tests pass, implementation review and control review are clean, and `just check` passes. The remaining work is commit, push, and PR creation.
 
 ## Context and Orientation
 
@@ -215,3 +228,7 @@ The implementation must use these existing interfaces:
 
 Revision note: Initial plan created on 2026-06-23 for issue #38 so implementation can proceed from a self-contained specification.
 Revision note: Updated on 2026-06-23 after read-only plan review to mark the plan commit/review complete, mention internal `PropertyArgs` test literals, and document WIP-plan cleanup before merge.
+Revision note: Updated on 2026-06-23 after implementation and focused tests to record completed code, docs, and test work before implementation review.
+Revision note: Updated on 2026-06-23 after implementation review to record the clean code lane and docs wording fixes.
+Revision note: Updated on 2026-06-23 after the final control review and `just check` gate passed.
+Revision note: Updated on 2026-06-23 to record the rationale for retaining the branch-local WIP plan in the PR.

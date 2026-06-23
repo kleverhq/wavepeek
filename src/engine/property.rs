@@ -1,5 +1,6 @@
 use serde::Serialize;
 
+use crate::cli::limits::LimitArg;
 use crate::cli::property::{CaptureMode, PropertyArgs};
 use crate::cli::sampling::SampleMode;
 use crate::debug_trace::DebugTrace;
@@ -51,6 +52,7 @@ pub struct PropertyCaptureRow {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct PropertyRunStats {
     emitted: usize,
+    truncated: bool,
 }
 
 #[derive(Debug)]
@@ -121,13 +123,31 @@ pub fn run_jsonl<W: std::io::Write>(
     for diagnostic in &outcome.diagnostics {
         writer.diagnostic(diagnostic)?;
     }
-    writer.end(false)
+    writer.end(outcome.stats.truncated)
 }
 
 fn run_with_sink<S: PropertyRowSink + ?Sized>(
     args: PropertyArgs,
     sink: &mut S,
 ) -> Result<PropertyCommandOutcome, WavepeekError> {
+    let max_entries = match &args.max {
+        LimitArg::Numeric(0) => {
+            return Err(WavepeekError::Args(
+                "--max must be greater than 0.".to_string(),
+            ));
+        }
+        LimitArg::Numeric(value) => Some(*value),
+        LimitArg::Unlimited => None,
+    };
+
+    let mut diagnostics = Vec::new();
+    if args.max.is_unlimited() {
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max=unlimited",
+        ));
+    }
+
     let debug = DebugTrace::for_command(CommandName::Property);
     debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
@@ -228,6 +248,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     );
 
     let mut emitted = 0usize;
+    let mut truncated = false;
     let mut previous_state = match args.capture {
         CaptureMode::Match => None,
         CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => Some(
@@ -265,13 +286,20 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
             eval_bound_logical_truth(args.eval.as_str(), &bound_eval, &host, decision_timestamp)?;
         match args.capture {
             CaptureMode::Match => {
-                if decision {
-                    sink.emit(PropertyCaptureRow {
-                        time: format_raw_timestamp(timestamp, dump_tick)?,
-                        sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
-                        kind: PropertyResultKind::Match,
-                    })?;
-                    emitted += 1;
+                if decision
+                    && !emit_property_row(
+                        sink,
+                        PropertyCaptureRow {
+                            time: format_raw_timestamp(timestamp, dump_tick)?,
+                            sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
+                            kind: PropertyResultKind::Match,
+                        },
+                        max_entries,
+                        &mut emitted,
+                        &mut truncated,
+                    )?
+                {
+                    break;
                 }
             }
             CaptureMode::Switch | CaptureMode::Assert | CaptureMode::Deassert => {
@@ -297,32 +325,46 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
                     continue;
                 }
 
-                sink.emit(PropertyCaptureRow {
-                    time: format_raw_timestamp(timestamp, dump_tick)?,
-                    sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
-                    kind,
-                })?;
-                emitted += 1;
+                if !emit_property_row(
+                    sink,
+                    PropertyCaptureRow {
+                        time: format_raw_timestamp(timestamp, dump_tick)?,
+                        sample_time: format_raw_timestamp(decision_timestamp, dump_tick)?,
+                        kind,
+                    },
+                    max_entries,
+                    &mut emitted,
+                    &mut truncated,
+                )? {
+                    break;
+                }
             }
         }
     }
     debug.event(
         "property.evaluate.done",
-        || serde_json::json!({"rows": emitted}),
+        || serde_json::json!({"rows": emitted, "truncated": truncated}),
     );
 
-    let diagnostics = if emitted == 0 {
-        vec![Diagnostic::warning(
+    if emitted == 0 {
+        diagnostics.push(Diagnostic::warning(
             WarningDiagnosticCode::EmptyResult,
             "no property matches found in selected time range",
-        )]
-    } else {
-        Vec::new()
-    };
+        ));
+    }
+
+    if let Some(max_entries) = max_entries
+        && truncated
+    {
+        diagnostics.push(Diagnostic::warning(
+            WarningDiagnosticCode::OutputTruncated,
+            format!("truncated output to {max_entries} entries (use --max to increase limit)"),
+        ));
+    }
 
     Ok(PropertyCommandOutcome {
         diagnostics,
-        stats: PropertyRunStats { emitted },
+        stats: PropertyRunStats { emitted, truncated },
     })
 }
 
@@ -359,6 +401,25 @@ fn capture_allows_kind(capture: CaptureMode, kind: PropertyResultKind) -> bool {
         CaptureMode::Assert => kind == PropertyResultKind::Assert,
         CaptureMode::Deassert => kind == PropertyResultKind::Deassert,
     }
+}
+
+fn emit_property_row<S: PropertyRowSink + ?Sized>(
+    sink: &mut S,
+    row: PropertyCaptureRow,
+    max_entries: Option<usize>,
+    emitted: &mut usize,
+    truncated: &mut bool,
+) -> Result<bool, WavepeekError> {
+    if let Some(limit) = max_entries
+        && *emitted == limit
+    {
+        *truncated = true;
+        return Ok(false);
+    }
+
+    sink.emit(row)?;
+    *emitted += 1;
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -421,6 +482,7 @@ mod tests {
         DumpTimeContext, PropertyCaptureRow, PropertyResultKind, PropertyRowSink,
         build_candidate_schedule, capture_allows_kind, parse_bound_time, run, run_with_sink,
     };
+    use crate::cli::limits::LimitArg;
     use crate::cli::property::{CaptureMode, PropertyArgs};
     use crate::cli::sampling::SampleMode;
     use crate::engine::CommandData;
@@ -579,6 +641,7 @@ mod tests {
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
+            max: LimitArg::Unlimited,
             json: false,
             jsonl: false,
         })
@@ -599,6 +662,7 @@ mod tests {
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Switch,
+            max: LimitArg::Unlimited,
             json: true,
             jsonl: false,
         })
@@ -621,6 +685,7 @@ mod tests {
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Assert,
+            max: LimitArg::Unlimited,
             json: false,
             jsonl: false,
         })
@@ -640,6 +705,7 @@ mod tests {
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
+            max: LimitArg::Unlimited,
             json: false,
             jsonl: false,
         })
@@ -666,6 +732,7 @@ mod tests {
                 sample_mode: SampleMode::Native,
                 eval: "sig".to_string(),
                 capture: CaptureMode::Match,
+                max: LimitArg::Unlimited,
                 json: false,
                 jsonl: true,
             },
@@ -689,6 +756,7 @@ mod tests {
             sample_mode: SampleMode::Native,
             eval: "1'b1".to_string(),
             capture: CaptureMode::Match,
+            max: LimitArg::Unlimited,
             json: false,
             jsonl: false,
         })

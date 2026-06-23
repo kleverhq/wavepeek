@@ -38,8 +38,53 @@ from common import (
 from compare import compare_captures
 
 
+def gate_compare_summary(compare_manifest: Mapping[str, Any]) -> dict[str, Any]:
+    suites = compare_manifest.get("suites", {})
+    suite_summaries: dict[str, Any] = {}
+    totals = {
+        "comparable_count": 0,
+        "skipped_uncomparable_count": 0,
+        "failed_uncomparable_count": 0,
+        "uncomparable_count": 0,
+        "integrity_error_count": 0,
+    }
+    if isinstance(suites, Mapping):
+        for name, raw_suite in suites.items():
+            if not isinstance(raw_suite, Mapping):
+                continue
+            summary: dict[str, Any] = {"status": raw_suite.get("status", "unknown")}
+            for field in (
+                "comparable_count",
+                "skipped_uncomparable_count",
+                "failed_uncomparable_count",
+                "uncomparable_count",
+                "baseline_unsupported",
+                "revised_failures",
+                "both_side_failures",
+                "integrity_errors",
+            ):
+                if field in raw_suite:
+                    summary[field] = raw_suite[field]
+            suite_summaries[str(name)] = summary
+            for field in (
+                "comparable_count",
+                "skipped_uncomparable_count",
+                "failed_uncomparable_count",
+                "uncomparable_count",
+            ):
+                value = raw_suite.get(field)
+                if isinstance(value, int):
+                    totals[field] += value
+            integrity_errors = raw_suite.get("integrity_errors")
+            if isinstance(integrity_errors, list):
+                totals["integrity_error_count"] += len(integrity_errors)
+    return {"suites": suite_summaries, "totals": totals}
+
+
 def render_gate_summary(manifest: Mapping[str, Any]) -> str:
-    compare_status = manifest.get("compare", {}).get("status", "unknown") if isinstance(manifest.get("compare"), Mapping) else "unknown"
+    compare_section = manifest.get("compare", {})
+    compare_status = compare_section.get("status", "unknown") if isinstance(compare_section, Mapping) else "unknown"
+    totals = compare_section.get("totals", {}) if isinstance(compare_section, Mapping) else {}
     lines = [
         "# Wavepeek Manual Performance Gate",
         "",
@@ -49,9 +94,23 @@ def render_gate_summary(manifest: Mapping[str, Any]) -> str:
         f"Revised SHA: `{manifest.get('revised_sha', '<unknown>')}`",
         f"Comparison status: **{compare_status}**",
         "",
-        "See `baseline/`, `revised/`, and `compare/` for captured artifacts and logs.",
-        "",
     ]
+    if isinstance(totals, Mapping):
+        lines.extend(
+            [
+                f"Comparable tests: `{totals.get('comparable_count', 0)}`",
+                f"Skipped uncomparable tests: `{totals.get('skipped_uncomparable_count', 0)}`",
+                f"Failed uncomparable tests: `{totals.get('failed_uncomparable_count', 0)}`",
+                f"Integrity errors: `{totals.get('integrity_error_count', 0)}`",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "See `baseline/`, `revised/`, and `compare/` for captured artifacts and logs.",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 
@@ -154,6 +213,7 @@ def gate_command(args: argparse.Namespace) -> int:
     )
 
     status = "passed" if compare.exit_code == 0 else "failed"
+    compare_summary = gate_compare_summary(compare.manifest)
     manifest: dict[str, Any] = {
         "schema_version": GATE_SCHEMA_VERSION,
         "kind": "wavepeek-bench-gate",
@@ -169,7 +229,7 @@ def gate_command(args: argparse.Namespace) -> int:
         "timing_threshold_pct": args.max_negative_delta_pct,
         "timing_threshold_seconds": args.max_negative_delta_seconds,
         "timing_metric": "median",
-        "compare": {"status": status, "path": "compare"},
+        "compare": {"status": status, "path": "compare", **compare_summary},
         "execution_order": [
             "build baseline release",
             "build revised release",

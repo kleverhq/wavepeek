@@ -21,13 +21,13 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 - [x] (2026-06-23 06:29Z) Wrote this initial implementation plan.
 - [x] (2026-06-23 06:30Z) Committed the plan as `docs: plan greedy benchmark gate failures`.
 - [x] (2026-06-23 06:35Z) Ran a read-only plan review and updated this plan for the findings.
-- [ ] Implement explicit per-test failure artifacts and greedy run behavior in `bench/e2e/perf.py`.
-- [ ] Update compare policy in `bench/e2e/perf.py` so success/success tests are compared, baseline-only failures are skipped as unsupported, revised-only failures fail the gate, both-side failures are skipped but reported, and missing outcomes fail as integrity errors in timing and functional-only modes.
-- [ ] Update manual gate helper checks in `tools/bench/compare.py` so explicit failure artifacts are valid benchmark outcomes rather than incomplete artifact sets.
-- [ ] Update reports, compare manifests, the top-level gate manifest, and docs to expose comparable counts, skipped/uncomparable counts, and grouped failure records.
-- [ ] Add and update unit tests covering parser flags, failure artifact writing/loading, compare classification, and gate helper artifact set validation.
-- [ ] Run focused checks, then run a read-only code review.
-- [ ] Apply review fixes, run `just check` or the strongest feasible equivalent, and commit implementation.
+- [x] (2026-06-23 06:56Z) Implemented explicit per-test failure artifacts and greedy run behavior in `bench/e2e/perf.py`.
+- [x] (2026-06-23 06:56Z) Updated compare policy in `bench/e2e/perf.py` so success/success tests are compared, baseline-only failures are skipped as unsupported, revised-only failures fail the gate, both-side failures are skipped but reported, and missing outcomes fail as integrity errors in timing and functional-only modes.
+- [x] (2026-06-23 06:56Z) Updated manual gate helper checks in `tools/bench/compare.py` so explicit failure artifacts are valid benchmark outcomes rather than incomplete artifact sets.
+- [x] (2026-06-23 06:56Z) Updated reports, compare manifests, the top-level gate manifest, and docs to expose comparable counts, skipped/uncomparable counts, and grouped failure records.
+- [x] (2026-06-23 06:56Z) Added and updated unit tests covering parser flags, failure artifact writing/loading, greedy run behavior, compare classification, invalid uncomparable artifacts, functional-only subset validation, and gate summary aggregation.
+- [x] (2026-06-23 06:59Z) Ran focused checks and `just test-aux`, then ran read-only code/tooling/docs reviews.
+- [x] (2026-06-23 07:04Z) Ran final control review with no substantive findings, ran `just check` successfully, and prepared implementation for commit.
 - [ ] Run the proof benchmark/gate against `v1.0.1` and record evidence showing `--sample-mode` baseline failures are recorded while the gate continues.
 - [ ] Push the branch and open a pull request linked to issue #37.
 
@@ -39,6 +39,10 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
   Evidence: `tools/bench/compare.py` has `assert_matching_e2e_artifacts`, which requires equal sets of `*.hyperfine.json` and `*.wavepeek.json` stems and raises `BenchGateError` on differences.
 - Observation: A benchmark-phase failure must not leave a `*.wavepeek.json` file without a matching `*.hyperfine.json` file unless every validator explicitly treats that combination as a valid failure outcome.
   Evidence: The plan review noted that writing the wavepeek artifact before `hyperfine` would conflict with the intended integrity check that dangling normal artifacts are invalid.
+- Observation: Parsing all hyperfine files during compare would let stale or partial uncomparable files abort before the structured compare result could report an integrity error.
+  Evidence: The implementation review found that `cmd_compare` loaded every `*.hyperfine.json`; this was changed so timing mode parses only `classification["comparable"]` tests.
+- Observation: Cross-format functional-only subset validation must not require timing artifacts.
+  Evidence: The implementation review found that `tools/bench/compare.py` was still using same-format hyperfine+wavepeek success validation for FSDB-vs-FST functional subset checks; this was changed to wavepeek-or-failure functional outcomes for subset validation.
 
 ## Decision Log
 
@@ -63,7 +67,7 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. The intended final outcome is that the benchmark gate reports a passed or failed status based on real revised regressions, while preserving visible records for unsupported baseline tests.
+Implementation is complete in the working tree and validation passes. `python3 -B -m unittest bench.e2e.test_perf tools.bench.test_gate` passed with 115 tests, `just test-aux` passed after review fixes, and `just check` passed. The remaining outcome work is the proof benchmark against `v1.0.1`, push, and PR.
 
 ## Context and Orientation
 
@@ -174,3 +178,7 @@ The exact signatures may change if a simpler design emerges, but the behavior mu
 Revision note, 2026-06-23: Initial plan created from issue #37 and source inspection so implementation can proceed from a self-contained document.
 
 Revision note, 2026-06-23: Updated after read-only plan review. The plan now avoids dangling wavepeek artifacts on benchmark failure, covers functional-only compare classification, and requires top-level gate manifest propagation of uncomparable/failure summaries.
+
+Revision note, 2026-06-23: Updated after implementation and focused review fixes. The implemented design now parses hyperfine artifacts only for comparable tests and uses functional-only outcome validation for cross-format subset checks.
+
+Revision note, 2026-06-23: Updated after final control review and `just check`; no additional control-review fixes were needed.

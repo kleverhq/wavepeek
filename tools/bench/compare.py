@@ -27,6 +27,11 @@ from common import (
 )
 
 
+HYPERFINE_SUFFIX = ".hyperfine.json"
+WAVEPEEK_SUFFIX = ".wavepeek.json"
+FAILURE_SUFFIX = ".failure.json"
+
+
 CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
     (
         "scope_clustered_all_depth13_json",
@@ -57,21 +62,30 @@ CROSS_FORMAT_FUNCTIONAL_IGNORES: tuple[tuple[str, str], ...] = (
 )
 
 
-def e2e_artifact_stems(run_dir: pathlib.Path) -> set[str]:
-    hyperfine = {path.name.removesuffix(".hyperfine.json") for path in run_dir.glob("*.hyperfine.json")}
-    wavepeek = {path.name.removesuffix(".wavepeek.json") for path in run_dir.glob("*.wavepeek.json")}
-    if hyperfine != wavepeek:
-        missing_wavepeek = sorted(hyperfine - wavepeek)
-        missing_hyperfine = sorted(wavepeek - hyperfine)
-        details: list[str] = []
-        if missing_wavepeek:
-            details.append("missing wavepeek JSON for " + ", ".join(missing_wavepeek))
-        if missing_hyperfine:
-            details.append("missing hyperfine JSON for " + ", ".join(missing_hyperfine))
+def e2e_artifact_stems(run_dir: pathlib.Path, *, functional_only: bool = False) -> set[str]:
+    hyperfine = {path.name.removesuffix(HYPERFINE_SUFFIX) for path in run_dir.glob(f"*{HYPERFINE_SUFFIX}")}
+    wavepeek = {path.name.removesuffix(WAVEPEEK_SUFFIX) for path in run_dir.glob(f"*{WAVEPEEK_SUFFIX}")}
+    failures = {path.name.removesuffix(FAILURE_SUFFIX) for path in run_dir.glob(f"*{FAILURE_SUFFIX}")}
+    success = set(wavepeek) if functional_only else hyperfine & wavepeek
+    details: list[str] = []
+
+    missing_wavepeek = sorted(hyperfine - wavepeek - failures)
+    missing_hyperfine = [] if functional_only else sorted(wavepeek - hyperfine - failures)
+    if missing_wavepeek:
+        details.append("missing wavepeek JSON for " + ", ".join(missing_wavepeek))
+    if missing_hyperfine:
+        details.append("missing hyperfine JSON for " + ", ".join(missing_hyperfine))
+
+    conflicting = sorted(failures & (hyperfine | wavepeek))
+    if conflicting:
+        details.append("both normal and failure JSON for " + ", ".join(conflicting))
+    if details:
         raise BenchGateError(f"incomplete e2e artifact set in {run_dir}: {'; '.join(details)}")
-    if not hyperfine:
+
+    outcomes = success | failures
+    if not outcomes:
         raise BenchGateError(f"empty e2e artifact set in {run_dir}")
-    return hyperfine
+    return outcomes
 
 
 def assert_matching_e2e_artifacts(golden: pathlib.Path, revised: pathlib.Path) -> None:
@@ -106,8 +120,8 @@ def suite_dir(capture_dir: pathlib.Path, suite_name: str) -> pathlib.Path:
 
 
 def assert_e2e_subset(*, superset: pathlib.Path, subset: pathlib.Path) -> None:
-    superset_stems = e2e_artifact_stems(superset)
-    subset_stems = e2e_artifact_stems(subset)
+    superset_stems = e2e_artifact_stems(superset, functional_only=True)
+    subset_stems = e2e_artifact_stems(subset, functional_only=True)
     extra = sorted(subset_stems - superset_stems)
     if extra:
         raise BenchGateError(
@@ -134,11 +148,39 @@ def compare_failed_only_on_timing(compare_result: Mapping[str, Any]) -> bool:
         "functional_mismatches",
         "functional_artifact_errors",
         "functional_timeout_warnings",
+        "revised_failures",
+        "integrity_errors",
     ):
         value = compare_result.get(field)
         if isinstance(value, list) and value:
             return False
     return True
+
+
+COMPARE_RESULT_SUMMARY_FIELDS = (
+    "matched_count",
+    "comparable_count",
+    "skipped_uncomparable_count",
+    "failed_uncomparable_count",
+    "uncomparable_count",
+    "revised_only",
+    "golden_only",
+    "baseline_unsupported",
+    "revised_failures",
+    "both_side_failures",
+    "integrity_errors",
+    "timing_failures",
+    "functional_timeout_warnings",
+    "functional_timeouts",
+    "functional_mismatches",
+    "functional_artifact_errors",
+)
+
+
+def copy_compare_result_summary(suite: dict[str, Any], compare_result: Mapping[str, Any]) -> None:
+    for field in COMPARE_RESULT_SUMMARY_FIELDS:
+        if field in compare_result:
+            suite[field] = compare_result[field]
 
 
 def run_e2e_best_confirm(
@@ -287,6 +329,8 @@ def run_e2e_compare(
             compare_result = read_json(result_json_path)
         except BenchGateError as error:
             suite["result_json_error"] = str(error)
+        else:
+            copy_compare_result_summary(suite, compare_result)
 
     if not functional_only and result.returncode != 0 and compare_failed_only_on_timing(compare_result):
         failed_tests = timing_failure_names(compare_result)
@@ -340,6 +384,15 @@ def render_compare_summary(manifest: Mapping[str, Any]) -> str:
                 else:
                     text += f" ({timing_metric} threshold {suite['threshold_pct']}%)"
             timing_confirm = suite.get("timing_confirm")
+            comparable_count = suite.get("comparable_count")
+            skipped_count = suite.get("skipped_uncomparable_count")
+            failed_uncomparable_count = suite.get("failed_uncomparable_count")
+            if comparable_count is not None:
+                text += f"; comparable {comparable_count}"
+            if skipped_count:
+                text += f"; skipped {skipped_count} uncomparable"
+            if failed_uncomparable_count:
+                text += f"; failed {failed_uncomparable_count} uncomparable"
             if isinstance(timing_confirm, Mapping):
                 if timing_confirm.get("status") == "passed":
                     text += " (median failed, best-sample confirm passed)"

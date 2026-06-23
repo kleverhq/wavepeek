@@ -27,6 +27,9 @@ METRICS = ("mean", "stddev", "median", "min", "max")
 COMPARE_TIMING_METRIC = "median"
 HYPERFINE_SUFFIX = ".hyperfine.json"
 WAVEPEEK_SUFFIX = ".wavepeek.json"
+FAILURE_SUFFIX = ".failure.json"
+FAILURE_KIND = "wavepeek-e2e-bench-failure"
+FAILURE_SUMMARY_LIMIT = 4096
 FUNCTIONAL_MATCH_MARKER = "✅"
 FUNCTIONAL_MISMATCH_MARKER = "⚠️"
 FUNCTIONAL_MISSING_MARKER = "?"
@@ -38,6 +41,13 @@ DIAGNOSTIC_CODE_RE = re.compile(r"^WPK-[WE][0-9]{4}$")
 class BinarySpec(NamedTuple):
     label: str
     path: str
+
+
+class RunOutcome(NamedTuple):
+    status: str
+    test_name: str
+    failure: dict[str, Any] | None
+    errors: list[str]
 
 
 def fail(message: str) -> NoReturn:
@@ -259,10 +269,33 @@ def wavepeek_result_path(run_dir: pathlib.Path, test_name: str) -> pathlib.Path:
     return run_dir / f"{test_name}{WAVEPEEK_SUFFIX}"
 
 
+def failure_result_path(run_dir: pathlib.Path, test_name: str) -> pathlib.Path:
+    return run_dir / f"{test_name}{FAILURE_SUFFIX}"
+
+
 def test_has_complete_artifacts(run_dir: pathlib.Path, test_name: str) -> bool:
     return hyperfine_result_path(run_dir, test_name).is_file() and wavepeek_result_path(
         run_dir, test_name
     ).is_file()
+
+
+def test_has_terminal_artifact(run_dir: pathlib.Path, test_name: str) -> bool:
+    return test_has_complete_artifacts(run_dir, test_name) or failure_result_path(
+        run_dir,
+        test_name,
+    ).is_file()
+
+
+def remove_test_artifacts(run_dir: pathlib.Path, test_name: str) -> None:
+    for path in (
+        hyperfine_result_path(run_dir, test_name),
+        wavepeek_result_path(run_dir, test_name),
+        failure_result_path(run_dir, test_name),
+    ):
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
 
 
 def binary_run_dir(run_dir: pathlib.Path, binary: BinarySpec) -> pathlib.Path:
@@ -278,6 +311,28 @@ def write_run_manifest(
     schedule: str,
     timeout_seconds: int,
 ) -> None:
+    binary_entries: list[dict[str, Any]] = []
+    for binary in binaries:
+        label_dir = binary_run_dir(run_dir, binary)
+        hyperfine_count = len(list(label_dir.glob(f"*{HYPERFINE_SUFFIX}")))
+        wavepeek_count = len(list(label_dir.glob(f"*{WAVEPEEK_SUFFIX}")))
+        failure_results = load_failure_results(label_dir) if label_dir.is_dir() else {}
+        failures_by_phase: dict[str, int] = {}
+        for failure in failure_results.values():
+            phase = str(failure.get("phase", "unknown"))
+            failures_by_phase[phase] = failures_by_phase.get(phase, 0) + 1
+        binary_entries.append(
+            {
+                "label": binary.label,
+                "path": binary.path,
+                "run_dir": binary.label,
+                "hyperfine_json_count": hyperfine_count,
+                "wavepeek_json_count": wavepeek_count,
+                "failure_count": len(failure_results),
+                "failures_by_phase": failures_by_phase,
+            }
+        )
+
     payload = {
         "kind": "wavepeek-e2e-bench-run",
         "schema_version": 1,
@@ -286,10 +341,7 @@ def write_run_manifest(
         "schedule": schedule,
         "timeout_seconds": timeout_seconds,
         "test_count": len(selected_tests),
-        "binaries": [
-            {"label": binary.label, "path": binary.path, "run_dir": binary.label}
-            for binary in binaries
-        ],
+        "binaries": binary_entries,
     }
     (run_dir / "manifest.json").write_text(
         json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
@@ -315,11 +367,91 @@ def partition_missing_only_tests(
     skipped: list[str] = []
     for test in selected:
         test_name = str(test["name"])
-        if test_has_complete_artifacts(run_dir, test_name):
+        if test_has_terminal_artifact(run_dir, test_name):
             skipped.append(test_name)
         else:
             runnable.append(test)
     return runnable, skipped
+
+
+def summarize_process_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        text = value.decode("utf-8", errors="replace")
+    else:
+        text = str(value)
+    if len(text) <= FAILURE_SUMMARY_LIMIT:
+        return text
+    return text[:FAILURE_SUMMARY_LIMIT] + "\n... truncated ..."
+
+
+def make_failure_artifact(
+    *,
+    test_name: str,
+    phase: str,
+    command: Sequence[str],
+    exit_code: int | None,
+    timed_out: bool = False,
+    stdout: Any = None,
+    stderr: Any = None,
+    message: str | None = None,
+    binary_label: str | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "kind": FAILURE_KIND,
+        "schema_version": 1,
+        "generated_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "test_name": test_name,
+        "phase": phase,
+        "command": [str(arg) for arg in command],
+        "exit_code": exit_code,
+        "timed_out": timed_out,
+        "stdout_summary": summarize_process_text(stdout),
+        "stderr_summary": summarize_process_text(stderr),
+    }
+    if message:
+        payload["message"] = message
+    if binary_label:
+        payload["binary_label"] = binary_label
+    return payload
+
+
+def write_failure_artifact(run_dir: pathlib.Path, test_name: str, payload: dict[str, Any]) -> None:
+    output_path = failure_result_path(run_dir, test_name)
+    output_path.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def parse_failure_result_file(path: pathlib.Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        fail(f"error: report: invalid JSON in {path}: {error}")
+
+    if not isinstance(payload, dict):
+        fail(f"error: report: expected object in {path}")
+    if payload.get("kind") != FAILURE_KIND:
+        fail(f"error: report: unexpected failure artifact kind in {path}")
+    artifact_name = artifact_test_name(path, FAILURE_SUFFIX)
+    test_name = payload.get("test_name")
+    if test_name != artifact_name:
+        fail(f"error: report: failure artifact test name mismatch in {path}")
+    if payload.get("phase") not in {"preflight", "benchmark"}:
+        fail(f"error: report: invalid failure artifact phase in {path}")
+    if not isinstance(payload.get("command"), list):
+        fail(f"error: report: failure artifact command must be list in {path}")
+    return dict(payload)
+
+
+def load_failure_results(run_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
+    result_map: dict[str, dict[str, Any]] = {}
+    for path in sorted(run_dir.glob(f"*{FAILURE_SUFFIX}")):
+        parsed = parse_failure_result_file(path)
+        result_map[str(parsed["test_name"])] = parsed
+    return result_map
 
 
 def run_test(
@@ -328,7 +460,7 @@ def run_test(
     wavepeek_bin: str,
     timeout_seconds: int,
     verbose: bool,
-) -> None:
+) -> dict[str, Any] | None:
     command_args = resolve_test_command(test, wavepeek_bin)
     benchmark_command = build_timed_benchmark_command(
         command_args,
@@ -363,12 +495,21 @@ def run_test(
             text=True,
         )
     if result.returncode != 0:
-        if verbose:
-            fail(f"error: run: hyperfine failed for `{test['name']}`")
-        fail(
-            f"error: run: hyperfine failed for `{test['name']}` "
-            "(use --verbose for detailed logs)"
+        try:
+            output_path.unlink()
+        except FileNotFoundError:
+            pass
+        message = f"hyperfine failed for `{test['name']}`"
+        return make_failure_artifact(
+            test_name=str(test["name"]),
+            phase="benchmark",
+            command=hyperfine_cmd,
+            exit_code=result.returncode,
+            stdout=getattr(result, "stdout", None),
+            stderr=getattr(result, "stderr", None),
+            message=message,
         )
+    return None
 
 
 def validate_functional_diagnostic(diagnostic: Any, source: str, index: int) -> None:
@@ -421,34 +562,91 @@ def run_functional_capture(
     wavepeek_bin: str,
     caller: str,
     timeout_seconds: int,
-) -> dict[str, Any]:
+    *,
+    fail_on_error: bool = True,
+) -> dict[str, Any] | tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    test_name = str(test["name"])
     command_args = build_functional_command(resolve_test_command(test, wavepeek_bin))
-    result = subprocess.run(
-        command_args,
-        check=False,
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        timeout=timeout_seconds,
-    )
+    try:
+        result = subprocess.run(
+            command_args,
+            check=False,
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        failure = make_failure_artifact(
+            test_name=test_name,
+            phase="preflight",
+            command=command_args,
+            exit_code=None,
+            timed_out=True,
+            stdout=getattr(error, "stdout", None),
+            stderr=getattr(error, "stderr", None),
+            message=f"functional capture timed out after {timeout_seconds}s",
+        )
+        if fail_on_error:
+            raise
+        return None, failure
+
     if result.returncode != 0:
         details = result.stderr.strip()
         suffix = f": {details}" if details else ""
-        fail(
-            f"error: {caller}: functional capture failed for `{test['name']}` "
+        message = (
+            f"functional capture failed for `{test_name}` "
             f"(exit {result.returncode}){suffix}"
         )
+        failure = make_failure_artifact(
+            test_name=test_name,
+            phase="preflight",
+            command=command_args,
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            message=message,
+        )
+        if fail_on_error:
+            fail(f"error: {caller}: {message}")
+        return None, failure
 
     try:
         payload = json.loads(result.stdout)
     except json.JSONDecodeError as error:
-        fail(f"error: {caller}: invalid JSON output for `{test['name']}`: {error}")
+        message = f"invalid JSON output for `{test_name}`: {error}"
+        failure = make_failure_artifact(
+            test_name=test_name,
+            phase="preflight",
+            command=command_args,
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            message=message,
+        )
+        if fail_on_error:
+            fail(f"error: {caller}: {message}")
+        return None, failure
 
     try:
-        return validate_functional_payload(payload, f"functional output for `{test['name']}`")
+        validated = validate_functional_payload(payload, f"functional output for `{test_name}`")
     except ValueError as error:
-        fail(f"error: {caller}: {error}")
-    raise AssertionError("unreachable")
+        failure = make_failure_artifact(
+            test_name=test_name,
+            phase="preflight",
+            command=command_args,
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            message=str(error),
+        )
+        if fail_on_error:
+            fail(f"error: {caller}: {error}")
+        return None, failure
+
+    if fail_on_error:
+        return validated
+    return validated, None
 
 
 def write_wavepeek_artifact(run_dir: pathlib.Path, test_name: str, payload: dict[str, Any]) -> None:
@@ -512,9 +710,16 @@ def parse_wavepeek_result_file(path: pathlib.Path) -> dict[str, Any]:
     raise AssertionError("unreachable")
 
 
-def load_hyperfine_results(run_dir: pathlib.Path) -> dict[str, dict[str, Any]]:
+def load_hyperfine_results(
+    run_dir: pathlib.Path,
+    test_names: Iterable[str] | None = None,
+) -> dict[str, dict[str, Any]]:
     result_map: dict[str, dict[str, Any]] = {}
-    for path in sorted(run_dir.glob(f"*{HYPERFINE_SUFFIX}")):
+    if test_names is None:
+        paths = sorted(run_dir.glob(f"*{HYPERFINE_SUFFIX}"))
+    else:
+        paths = [hyperfine_result_path(run_dir, name) for name in sorted(test_names)]
+    for path in paths:
         parsed = parse_hyperfine_result_file(path)
         result_map[str(parsed["test_name"])] = parsed
     return result_map
@@ -791,6 +996,7 @@ def render_report(
     compare_dir: pathlib.Path | None,
     functional_results: dict[str, dict[str, Any]],
     compare_functional_results: dict[str, dict[str, Any]],
+    failure_results: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     lines = [
         f"# CLI E2E Bench Run: {run_dir.name}",
@@ -798,6 +1004,7 @@ def render_report(
         f"- Generated at (UTC): {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}",
         f"- Hyperfine JSON files: {len(results)}",
         f"- Wavepeek JSON files: {len(functional_results)}",
+        f"- Failure JSON files: {len(failure_results or {})}",
     ]
     if compare_dir is not None:
         lines.extend(
@@ -810,6 +1017,27 @@ def render_report(
             ]
         )
     lines.append("")
+
+    failures = failure_results or {}
+    if failures:
+        lines.extend(["## Explicit Failures", ""])
+        lines.extend(["| test | phase | exit | timed out | message |", "| --- | --- | --- | --- | --- |"])
+        for failure in sorted(failures.values(), key=lambda item: str(item.get("test_name", ""))):
+            exit_code = failure.get("exit_code")
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        escape_md(failure.get("test_name", "")),
+                        escape_md(failure.get("phase", "")),
+                        escape_md("-" if exit_code is None else exit_code),
+                        escape_md(str(bool(failure.get("timed_out", False))).lower()),
+                        escape_md(failure.get("message", "")),
+                    ]
+                )
+                + " |"
+            )
+        lines.append("")
 
     if not results:
         lines.append("No hyperfine JSON artifacts found in this run directory.")
@@ -875,6 +1103,7 @@ def write_report(
     compare_functional_results = (
         load_wavepeek_results(compare_dir) if compare_dir is not None else {}
     )
+    failure_results = load_failure_results(run_dir)
     markdown = render_report(
         run_dir,
         results,
@@ -883,6 +1112,7 @@ def write_report(
         compare_dir,
         functional_results,
         compare_functional_results,
+        failure_results,
     )
     report_path = run_dir / README_NAME
     report_path.write_text(markdown, encoding="utf-8")
@@ -912,6 +1142,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if not selected:
         fail("error: run: no tests matched the provided filter")
     verbose = bool(getattr(args, "verbose", False))
+    fail_fast = bool(getattr(args, "fail_fast", False))
 
     timeout_seconds = int(args.wavepeek_timeout_seconds)
     if timeout_seconds < 1:
@@ -963,24 +1194,51 @@ def cmd_run(args: argparse.Namespace) -> int:
                     f"[{completed}/{total_jobs}] {binary.label}/{test['name']} "
                     f"(runs={test['runs']}, warmup={test['warmup']})"
                 )
-            run_test(test, label_dir, binary.path, timeout_seconds, verbose)
-            try:
-                functional_payload = run_functional_capture(
-                    test,
-                    binary.path,
-                    "run",
-                    timeout_seconds,
-                )
-            except subprocess.TimeoutExpired:
+            test_name = str(test["name"])
+            remove_test_artifacts(label_dir, test_name)
+            functional_result = run_functional_capture(
+                test,
+                binary.path,
+                "run",
+                timeout_seconds,
+                fail_on_error=False,
+            )
+            if isinstance(functional_result, tuple):
+                functional_payload, functional_failure = functional_result
+            else:
+                functional_payload = functional_result
+                functional_failure = None
+            if functional_failure is not None:
+                functional_failure["binary_label"] = binary.label
+                write_failure_artifact(label_dir, test_name, functional_failure)
+                if fail_fast:
+                    fail(
+                        f"error: run: preflight failed for "
+                        f"`{binary.label}/{test_name}`; see {failure_result_path(label_dir, test_name)}"
+                    )
                 if verbose:
                     print(
-                        f"warning: run: functional capture timed out for "
-                        f"`{binary.label}/{test['name']}` after {timeout_seconds}s; "
-                        "writing empty wavepeek artifact"
+                        f"warning: run: preflight failed for "
+                        f"`{binary.label}/{test_name}`; wrote failure artifact"
                     )
-                write_wavepeek_timeout_artifact(label_dir, str(test["name"]))
                 return
-            write_wavepeek_artifact(label_dir, str(test["name"]), functional_payload)
+
+            benchmark_failure = run_test(test, label_dir, binary.path, timeout_seconds, verbose)
+            if isinstance(benchmark_failure, dict):
+                benchmark_failure["binary_label"] = binary.label
+                write_failure_artifact(label_dir, test_name, benchmark_failure)
+                if fail_fast:
+                    fail(
+                        f"error: run: benchmark failed for "
+                        f"`{binary.label}/{test_name}`; see {failure_result_path(label_dir, test_name)}"
+                    )
+                if verbose:
+                    print(
+                        f"warning: run: benchmark failed for "
+                        f"`{binary.label}/{test_name}`; wrote failure artifact"
+                    )
+                return
+            write_wavepeek_artifact(label_dir, test_name, functional_payload)
 
         if schedule == "round-robin":
             for test in selected:
@@ -1067,6 +1325,140 @@ def wavepeek_artifact_names(run_dir: pathlib.Path) -> set[str]:
     }
 
 
+def scan_artifact_outcomes(run_dir: pathlib.Path, *, functional_only: bool) -> dict[str, RunOutcome]:
+    hyperfine_names = {
+        artifact_test_name(path, HYPERFINE_SUFFIX)
+        for path in sorted(run_dir.glob(f"*{HYPERFINE_SUFFIX}"))
+    }
+    wavepeek_names = wavepeek_artifact_names(run_dir)
+    failure_names = {
+        artifact_test_name(path, FAILURE_SUFFIX)
+        for path in sorted(run_dir.glob(f"*{FAILURE_SUFFIX}"))
+    }
+    names = hyperfine_names | wavepeek_names | failure_names
+    failures = load_failure_results(run_dir)
+    outcomes: dict[str, RunOutcome] = {}
+    for name in sorted(names):
+        has_hyperfine = name in hyperfine_names
+        has_wavepeek = name in wavepeek_names
+        has_failure = name in failure_names
+        errors: list[str] = []
+        if functional_only:
+            has_success = has_wavepeek
+            if has_hyperfine and not has_wavepeek and not has_failure:
+                errors.append(f"{name}: hyperfine artifact without wavepeek or failure artifact")
+        else:
+            has_success = has_hyperfine and has_wavepeek
+            if has_hyperfine != has_wavepeek and not has_failure:
+                missing = "wavepeek" if has_hyperfine else "hyperfine"
+                errors.append(f"{name}: missing {missing} artifact")
+        if has_failure and (has_hyperfine or has_wavepeek):
+            errors.append(f"{name}: has normal artifacts and a failure artifact")
+        if errors:
+            outcomes[name] = RunOutcome("invalid", name, failures.get(name), errors)
+        elif has_failure:
+            outcomes[name] = RunOutcome("failure", name, failures.get(name), [])
+        elif has_success:
+            outcomes[name] = RunOutcome("success", name, None, [])
+        else:
+            outcomes[name] = RunOutcome("missing", name, None, [f"{name}: missing outcome artifacts"])
+    return outcomes
+
+
+def failure_summary_record(
+    test_name: str,
+    side: str,
+    outcome: RunOutcome | None,
+) -> dict[str, Any]:
+    failure = outcome.failure if outcome is not None and outcome.failure is not None else {}
+    return {
+        "test_name": test_name,
+        "side": side,
+        "phase": failure.get("phase"),
+        "exit_code": failure.get("exit_code"),
+        "timed_out": bool(failure.get("timed_out", False)),
+        "message": failure.get("message", ""),
+    }
+
+
+def classify_compare_outcomes(
+    revised_dir: pathlib.Path,
+    golden_dir: pathlib.Path,
+    *,
+    functional_only: bool,
+    allow_golden_extra: bool = False,
+) -> dict[str, Any]:
+    revised_outcomes = scan_artifact_outcomes(revised_dir, functional_only=functional_only)
+    golden_outcomes = scan_artifact_outcomes(golden_dir, functional_only=functional_only)
+    revised_names = set(revised_outcomes)
+    golden_names = set(golden_outcomes)
+    names = revised_names | golden_names
+
+    integrity_errors: list[str] = []
+    baseline_unsupported: list[dict[str, Any]] = []
+    revised_failures: list[dict[str, Any]] = []
+    both_side_failures: list[dict[str, Any]] = []
+    comparable: list[str] = []
+    golden_extra: list[str] = []
+    revised_only: list[str] = []
+    golden_only: list[str] = []
+
+    for name in sorted(names):
+        revised = revised_outcomes.get(name)
+        golden = golden_outcomes.get(name)
+        if revised is not None and revised.status == "invalid":
+            integrity_errors.extend(f"revised: {error}" for error in revised.errors)
+        if golden is not None and golden.status == "invalid":
+            integrity_errors.extend(f"golden: {error}" for error in golden.errors)
+
+        revised_status = revised.status if revised is not None else "missing"
+        golden_status = golden.status if golden is not None else "missing"
+        if revised_status == "invalid" or golden_status == "invalid":
+            continue
+        if revised_status == "success" and golden_status == "success":
+            comparable.append(name)
+            continue
+        if revised_status == "success" and golden_status == "failure":
+            baseline_unsupported.append(failure_summary_record(name, "golden", golden))
+            continue
+        if revised_status == "failure" and golden_status == "failure":
+            both_side_failures.append(
+                {
+                    "test_name": name,
+                    "revised": failure_summary_record(name, "revised", revised),
+                    "golden": failure_summary_record(name, "golden", golden),
+                }
+            )
+            continue
+        if revised_status == "failure" and golden_status == "success":
+            revised_failures.append(failure_summary_record(name, "revised", revised))
+            continue
+        if revised_status == "missing" and golden_status != "missing":
+            golden_only.append(name)
+            if not allow_golden_extra:
+                integrity_errors.append(f"{name}: missing outcome in revised run")
+            else:
+                golden_extra.append(name)
+            continue
+        if golden_status == "missing" and revised_status != "missing":
+            revised_only.append(name)
+            integrity_errors.append(f"{name}: missing outcome in golden run")
+            continue
+
+    return {
+        "revised_outcomes": revised_outcomes,
+        "golden_outcomes": golden_outcomes,
+        "comparable": comparable,
+        "baseline_unsupported": baseline_unsupported,
+        "revised_failures": revised_failures,
+        "both_side_failures": both_side_failures,
+        "integrity_errors": integrity_errors,
+        "revised_only": revised_only,
+        "golden_only": golden_only,
+        "golden_extra": golden_extra,
+    }
+
+
 def compare_functional_only(
     revised_dir: pathlib.Path,
     golden_dir: pathlib.Path,
@@ -1075,12 +1467,20 @@ def compare_functional_only(
     result_json: str | None = None,
     ignored_tests: Mapping[str, str] | None = None,
 ) -> int:
-    raw_revised_names = wavepeek_artifact_names(revised_dir)
-    raw_golden_names = wavepeek_artifact_names(golden_dir)
+    classification = classify_compare_outcomes(
+        revised_dir,
+        golden_dir,
+        functional_only=True,
+        allow_golden_extra=allow_golden_extra,
+    )
+    revised_outcomes: dict[str, RunOutcome] = classification["revised_outcomes"]
+    golden_outcomes: dict[str, RunOutcome] = classification["golden_outcomes"]
+    raw_revised_names = set(revised_outcomes)
+    raw_golden_names = set(golden_outcomes)
     if not raw_revised_names:
-        fail(f"error: compare: no wavepeek JSON files found in {revised_dir}")
+        fail(f"error: compare: no wavepeek or failure JSON files found in {revised_dir}")
     if not raw_golden_names:
-        fail(f"error: compare: no wavepeek JSON files found in {golden_dir}")
+        fail(f"error: compare: no wavepeek or failure JSON files found in {golden_dir}")
 
     ignored = dict(ignored_tests or {})
     ignored_names = set(ignored)
@@ -1089,16 +1489,27 @@ def compare_functional_only(
         raw_revised_names,
         raw_golden_names,
     )
-    matched = sorted(raw_revised_names & raw_golden_names)
-    revised_only = sorted(raw_revised_names - raw_golden_names)
-    golden_only = sorted(raw_golden_names - raw_revised_names)
+    matched = list(classification["comparable"])
+    revised_only = list(classification["revised_only"])
+    golden_only = list(classification["golden_only"])
+    baseline_unsupported = list(classification["baseline_unsupported"])
+    revised_failures = list(classification["revised_failures"])
+    both_side_failures = list(classification["both_side_failures"])
+    integrity_errors = list(classification["integrity_errors"])
 
     functional_mismatches: list[str] = []
-    functional_artifact_errors: list[str] = []
+    functional_artifact_errors: list[str] = list(integrity_errors)
     functional_timeouts: list[str] = []
 
-    if not matched:
-        functional_artifact_errors.append("no matching wavepeek artifacts between revised and golden")
+    if revised_only:
+        functional_artifact_errors.append(
+            "tests only in revised run: " + ", ".join(revised_only)
+        )
+    if golden_only and not allow_golden_extra:
+        functional_artifact_errors.append(
+            "tests only in golden run: " + ", ".join(golden_only)
+        )
+
     for name in sorted(ignored):
         missing_sides: list[str] = []
         if name not in raw_revised_names:
@@ -1110,14 +1521,10 @@ def compare_functional_only(
                 f"ignored functional test `{name}` missing from "
                 f"{', '.join(missing_sides)}"
             )
-    if revised_only:
-        functional_artifact_errors.append(
-            "tests only in revised run: " + ", ".join(revised_only)
-        )
-    if golden_only and not allow_golden_extra:
-        functional_artifact_errors.append(
-            "tests only in golden run: " + ", ".join(golden_only)
-        )
+        elif name not in matched:
+            functional_artifact_errors.append(
+                f"ignored functional test `{name}` is not comparable on both sides"
+            )
 
     for test_name in matched:
         revised_payload, revised_error = load_wavepeek_artifact_for_compare(
@@ -1173,6 +1580,18 @@ def compare_functional_only(
                 + ", ".join(golden_only),
                 file=sys.stderr,
             )
+        if baseline_unsupported:
+            print("warning: compare: skipped tests unsupported by golden:", file=sys.stderr)
+            for record in baseline_unsupported:
+                print(f"  - {record['test_name']}: {record.get('message', '')}", file=sys.stderr)
+        if both_side_failures:
+            print("warning: compare: skipped tests failed on both sides:", file=sys.stderr)
+            for record in both_side_failures:
+                print(f"  - {record['test_name']}", file=sys.stderr)
+        if revised_failures:
+            print("error: compare: revised failures where golden passed:", file=sys.stderr)
+            for record in revised_failures:
+                print(f"  - {record['test_name']}: {record.get('message', '')}", file=sys.stderr)
         if functional_timeouts:
             print("error: compare: timeout functional artifacts detected:", file=sys.stderr)
             for issue in functional_timeouts:
@@ -1186,7 +1605,12 @@ def compare_functional_only(
             for issue in functional_artifact_errors:
                 print(f"  - {issue}", file=sys.stderr)
 
-    status = "failed" if functional_timeouts or functional_mismatches or functional_artifact_errors else "passed"
+    status = (
+        "failed"
+        if revised_failures or functional_timeouts or functional_mismatches or functional_artifact_errors
+        else "passed"
+    )
+    skipped_uncomparable_count = len(baseline_unsupported) + len(both_side_failures)
     write_result_json(
         result_json,
         {
@@ -1196,8 +1620,16 @@ def compare_functional_only(
             "functional_only": True,
             "allow_golden_extra": allow_golden_extra,
             "matched_count": len(matched),
+            "comparable_count": len(matched),
+            "skipped_uncomparable_count": skipped_uncomparable_count,
+            "failed_uncomparable_count": len(revised_failures),
+            "uncomparable_count": skipped_uncomparable_count + len(revised_failures),
             "revised_only": revised_only,
             "golden_only": golden_only,
+            "baseline_unsupported": baseline_unsupported,
+            "revised_failures": revised_failures,
+            "both_side_failures": both_side_failures,
+            "integrity_errors": integrity_errors,
             "ignored_functional_tests": ignored_records,
             "functional_timeouts": functional_timeouts,
             "functional_mismatches": functional_mismatches,
@@ -1260,20 +1692,32 @@ def cmd_compare(args: argparse.Namespace) -> int:
     if threshold_seconds < 0:
         fail("error: compare: --max-negative-delta-seconds must be non-negative")
 
-    revised = load_hyperfine_results(revised_dir)
-    golden = load_hyperfine_results(golden_dir)
-    if not revised:
-        fail(f"error: compare: no hyperfine JSON files found in {revised_dir}")
+    classification = classify_compare_outcomes(
+        revised_dir,
+        golden_dir,
+        functional_only=False,
+        allow_golden_extra=False,
+    )
+    revised_outcomes: dict[str, RunOutcome] = classification["revised_outcomes"]
+    golden_outcomes: dict[str, RunOutcome] = classification["golden_outcomes"]
+    if not revised_outcomes:
+        fail(f"error: compare: no hyperfine, wavepeek, or failure JSON files found in {revised_dir}")
+    if not golden_outcomes:
+        fail(f"error: compare: no hyperfine, wavepeek, or failure JSON files found in {golden_dir}")
 
-    revised_names = set(revised)
-    golden_names = set(golden)
-    matched = sorted(revised_names & golden_names)
-    revised_only = sorted(revised_names - golden_names)
-    golden_only = sorted(golden_names - revised_names)
+    matched = list(classification["comparable"])
+    revised = load_hyperfine_results(revised_dir, matched)
+    golden = load_hyperfine_results(golden_dir, matched)
+    revised_only = list(classification["revised_only"])
+    golden_only = list(classification["golden_only"])
+    baseline_unsupported = list(classification["baseline_unsupported"])
+    revised_failures = list(classification["revised_failures"])
+    both_side_failures = list(classification["both_side_failures"])
+    integrity_errors = list(classification["integrity_errors"])
 
     timing_failures: list[dict[str, Any]] = []
     functional_mismatches: list[str] = []
-    functional_artifact_errors: list[str] = []
+    functional_artifact_errors: list[str] = list(integrity_errors)
     functional_timeout_warnings: list[str] = []
 
     for test_name in matched:
@@ -1344,6 +1788,18 @@ def cmd_compare(args: argparse.Namespace) -> int:
                 "warning: compare: tests only in golden run: " + ", ".join(golden_only),
                 file=sys.stderr,
             )
+        if baseline_unsupported:
+            print("warning: compare: skipped tests unsupported by golden:", file=sys.stderr)
+            for record in baseline_unsupported:
+                print(f"  - {record['test_name']}: {record.get('message', '')}", file=sys.stderr)
+        if both_side_failures:
+            print("warning: compare: skipped tests failed on both sides:", file=sys.stderr)
+            for record in both_side_failures:
+                print(f"  - {record['test_name']}", file=sys.stderr)
+        if revised_failures:
+            print("error: compare: revised failures where golden passed:", file=sys.stderr)
+            for record in revised_failures:
+                print(f"  - {record['test_name']}: {record.get('message', '')}", file=sys.stderr)
         if functional_timeout_warnings:
             print("warning: compare: timeout functional artifacts detected:", file=sys.stderr)
             for issue in functional_timeout_warnings:
@@ -1368,7 +1824,12 @@ def cmd_compare(args: argparse.Namespace) -> int:
             for issue in functional_artifact_errors:
                 print(f"  - {issue}", file=sys.stderr)
 
-    status = "failed" if timing_failures or functional_mismatches or functional_artifact_errors else "passed"
+    status = (
+        "failed"
+        if revised_failures or timing_failures or functional_mismatches or functional_artifact_errors
+        else "passed"
+    )
+    skipped_uncomparable_count = len(baseline_unsupported) + len(both_side_failures)
     write_result_json(
         result_json,
         {
@@ -1378,8 +1839,16 @@ def cmd_compare(args: argparse.Namespace) -> int:
             "functional_only": False,
             "allow_golden_extra": False,
             "matched_count": len(matched),
+            "comparable_count": len(matched),
+            "skipped_uncomparable_count": skipped_uncomparable_count,
+            "failed_uncomparable_count": len(revised_failures),
+            "uncomparable_count": skipped_uncomparable_count + len(revised_failures),
             "revised_only": revised_only,
             "golden_only": golden_only,
+            "baseline_unsupported": baseline_unsupported,
+            "revised_failures": revised_failures,
+            "both_side_failures": both_side_failures,
+            "integrity_errors": integrity_errors,
             "timing_metric": COMPARE_TIMING_METRIC,
             "threshold_pct": threshold,
             "threshold_seconds": threshold_seconds,
@@ -1528,6 +1997,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--missing-only",
         action="store_true",
         help="run only tests missing artifacts in run directory",
+    )
+    run_parser.add_argument(
+        "--fail-fast",
+        action="store_true",
+        help="stop on the first per-test preflight or benchmark failure",
     )
     run_parser.add_argument(
         "--wavepeek-timeout-seconds",

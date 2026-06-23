@@ -1501,6 +1501,8 @@ def compare_functional_only(
     functional_artifact_errors: list[str] = list(integrity_errors)
     functional_timeouts: list[str] = []
 
+    if not matched:
+        functional_artifact_errors.append("no comparable tests between revised and golden")
     if revised_only:
         functional_artifact_errors.append(
             "tests only in revised run: " + ", ".join(revised_only)
@@ -1719,6 +1721,8 @@ def cmd_compare(args: argparse.Namespace) -> int:
     functional_mismatches: list[str] = []
     functional_artifact_errors: list[str] = list(integrity_errors)
     functional_timeout_warnings: list[str] = []
+    if not matched:
+        functional_artifact_errors.append("no comparable tests between revised and golden")
 
     for test_name in matched:
         revised_row = revised[test_name]

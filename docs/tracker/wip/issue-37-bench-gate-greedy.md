@@ -30,6 +30,7 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 - [x] (2026-06-23 07:04Z) Ran final control review with no substantive findings, ran `just check` successfully, and prepared implementation for commit.
 - [x] (2026-06-23 07:01Z) Ran the proof benchmark/gate against `v1.0.1` and recorded evidence showing `--sample-mode` baseline failures are recorded while the gate continues to compare remaining tests.
 - [x] (2026-06-23 07:07Z) Pushed branch `issue-37-bench-gate-greedy` and opened PR #39 linked to issue #37.
+- [x] (2026-06-23 07:35Z) Addressed PR review feedback by failing compare results that have zero comparable tests, and added timing and functional-only coverage for that case.
 
 ## Surprises & Discoveries
 
@@ -43,6 +44,8 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
   Evidence: The implementation review found that `cmd_compare` loaded every `*.hyperfine.json`; this was changed so timing mode parses only `classification["comparable"]` tests.
 - Observation: Cross-format functional-only subset validation must not require timing artifacts.
   Evidence: The implementation review found that `tools/bench/compare.py` was still using same-format hyperfine+wavepeek success validation for FSDB-vs-FST functional subset checks; this was changed to wavepeek-or-failure functional outcomes for subset validation.
+- Observation: A compare result with zero comparable tests should not pass, even if every non-comparable outcome is an expected baseline unsupported failure.
+  Evidence: PR review noted that an all-skipped matrix could otherwise report success without running any timing or functional comparisons. `perf.py compare` now records `no comparable tests between revised and golden` as an artifact error in timing and functional-only modes.
 
 ## Decision Log
 
@@ -64,10 +67,13 @@ This work does not change the Rust `wavepeek` command-line interface. It does no
 - Decision: Propagate per-suite compare summary fields into the top-level gate manifest rather than relying only on paths to suite result JSON files.
   Rationale: Issue #37 explicitly requires the gate manifest to include comparable and skipped counts plus grouped failure records. Links alone would make the top-level manifest incomplete.
   Date/Author: 2026-06-23 / Grin
+- Decision: Fail compare results that have no comparable success/success tests.
+  Rationale: Skipped uncomparable outcomes are useful evidence, but a release gate must not pass without measuring or functionally comparing at least one test.
+  Date/Author: 2026-06-23 / Grin
 
 ## Outcomes & Retrospective
 
-Implementation is complete and validation passes. `python3 -B -m unittest bench.e2e.test_perf tools.bench.test_gate` passed with 115 tests, `just test-aux` passed after review fixes, and `just check` passed. The proof gate `python3 -B tools/bench/gate.py --baseline-ref v1.0.1 --revised-ref HEAD --fsdb never --out-dir tmp/bench-gate/gates/issue-37-proof-v1.0.1..HEAD-20260623T070047Z` completed capture and compare. Its final status is failed because `v1.0.1` and `HEAD` also have timing and functional differences, but the issue-specific behavior worked: baseline has 8 `--sample-mode` preflight failure artifacts, revised has 150 successful artifacts, compare reports 142 comparable tests, 8 skipped uncomparable tests, 0 revised failures, and 0 integrity errors. PR #39 links and closes issue #37.
+Implementation is complete and validation passes. `python3 -B -m unittest bench.e2e.test_perf tools.bench.test_gate` passed with 117 tests after the PR-review fix, `just test-aux` passed before that fix, and `just check` passed before that fix. The proof gate `python3 -B tools/bench/gate.py --baseline-ref v1.0.1 --revised-ref HEAD --fsdb never --out-dir tmp/bench-gate/gates/issue-37-proof-v1.0.1..HEAD-20260623T070047Z` completed capture and compare. Its final status is failed because `v1.0.1` and `HEAD` also have timing and functional differences, but the issue-specific behavior worked: baseline has 8 `--sample-mode` preflight failure artifacts, revised has 150 successful artifacts, compare reports 142 comparable tests, 8 skipped uncomparable tests, 0 revised failures, and 0 integrity errors. PR #39 links and closes issue #37.
 
 ## Context and Orientation
 
@@ -186,3 +192,5 @@ Revision note, 2026-06-23: Updated after final control review and `just check`; 
 Revision note, 2026-06-23: Updated after proof gate against `v1.0.1`. The proof gate reached compare and recorded the expected 8 sample-mode baseline preflight failures as skipped uncomparable tests.
 
 Revision note, 2026-06-23: Updated after pushing the branch and opening PR #39.
+
+Revision note, 2026-06-23: Updated after PR review feedback. Compare now fails when zero tests are comparable, because a green gate with no actual comparisons is not useful evidence.

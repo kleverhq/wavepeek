@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added a public waveform performance guide covering VCD, FST, and FSDB format trade-offs ([issue #17](https://github.com/kleverhq/wavepeek/issues/17)).
 - Added waveform-command `--jsonl` streaming output plus `wavepeek schema --stream` for the per-record stream schema ([issue #26](https://github.com/kleverhq/wavepeek/issues/26)).
 - Added `change` and `property` `--sample-mode native|pre-edge` for edge-triggered RTL/SVA-style pre-edge value sampling.
 - Added `property --max` bounded output with `unlimited` opt-out support ([issue #38](https://github.com/kleverhq/wavepeek/issues/38)).

@@ -93,21 +93,54 @@ class PerfHelpersTest(unittest.TestCase):
             run_dir = pathlib.Path(temp_dir)
             selected = [
                 {"name": "done"},
+                {"name": "failed"},
                 {"name": "pending"},
             ]
             run_dir.joinpath("done.hyperfine.json").write_text("{}", encoding="utf-8")
             run_dir.joinpath("done.wavepeek.json").write_text("{}", encoding="utf-8")
+            perf.write_failure_artifact(
+                run_dir,
+                "failed",
+                perf.make_failure_artifact(
+                    test_name="failed",
+                    phase="preflight",
+                    command=["wavepeek", "info"],
+                    exit_code=2,
+                ),
+            )
             runnable, skipped = perf.partition_missing_only_tests(selected, run_dir)
 
         self.assertEqual([str(test["name"]) for test in runnable], ["pending"])
-        self.assertEqual(skipped, ["done"])
+        self.assertEqual(skipped, ["done", "failed"])
 
-    def test_run_parser_missing_only_flag(self) -> None:
+    def test_run_parser_missing_only_and_fail_fast_flags(self) -> None:
         parser = perf.build_parser()
         default_args = parser.parse_args(["run"])
         self.assertFalse(default_args.missing_only)
-        missing_only_args = parser.parse_args(["run", "--missing-only"])
-        self.assertTrue(missing_only_args.missing_only)
+        self.assertFalse(default_args.fail_fast)
+        flag_args = parser.parse_args(["run", "--missing-only", "--fail-fast"])
+        self.assertTrue(flag_args.missing_only)
+        self.assertTrue(flag_args.fail_fast)
+
+    def test_write_and_load_failure_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = pathlib.Path(temp_dir)
+            payload = perf.make_failure_artifact(
+                test_name="sample",
+                phase="preflight",
+                command=["wavepeek", "change", "--sample-mode", "native"],
+                exit_code=2,
+                stderr="unknown option: --sample-mode",
+                binary_label="baseline",
+            )
+            perf.write_failure_artifact(run_dir, "sample", payload)
+            loaded = perf.load_failure_results(run_dir)
+
+        self.assertEqual(set(loaded), {"sample"})
+        self.assertEqual(loaded["sample"]["kind"], perf.FAILURE_KIND)
+        self.assertEqual(loaded["sample"]["phase"], "preflight")
+        self.assertEqual(loaded["sample"]["binary_label"], "baseline")
+        self.assertIn("--sample-mode", loaded["sample"]["command"])
 
     def test_list_parser_tests_flag_defaults_and_override(self) -> None:
         parser = perf.build_parser()
@@ -793,6 +826,109 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertTrue(base_dir_exists)
         self.assertTrue(rev_dir_exists)
 
+    def test_cmd_run_continues_after_preflight_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            tests = [self._sample_test("bad"), self._sample_test("good")]
+            args = argparse.Namespace(
+                filter=None,
+                run_dir=str(run_dir),
+                out_dir=str(root),
+                compare=None,
+                missing_only=False,
+                fail_fast=False,
+                wavepeek_timeout_seconds=300,
+                tests=str(perf.TESTS_PATH),
+                verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
+            )
+            preflight_failure = perf.make_failure_artifact(
+                test_name="bad",
+                phase="preflight",
+                command=["/bin/wavepeek", "info", "--sample-mode", "native"],
+                exit_code=2,
+                stderr="unknown option: --sample-mode",
+            )
+            run_test_mock = mock.Mock(return_value=None)
+            with (
+                mock.patch.object(perf, "load_tests", return_value=tests),
+                mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
+                mock.patch.object(perf, "ensure_hyperfine"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
+                mock.patch.object(
+                    perf,
+                    "run_functional_capture",
+                    side_effect=[
+                        (None, preflight_failure),
+                        ({"data": [], "diagnostics": []}, None),
+                    ],
+                ),
+                mock.patch.object(perf, "run_test", run_test_mock),
+                mock.patch.object(perf, "write_report", return_value=run_dir / "subject" / "README.md"),
+            ):
+                exit_code = perf.cmd_run(args)
+            bad_failure_exists = (run_dir / "subject" / "bad.failure.json").is_file()
+            bad_wavepeek_exists = (run_dir / "subject" / "bad.wavepeek.json").exists()
+            good_wavepeek_exists = (run_dir / "subject" / "good.wavepeek.json").is_file()
+            run_test_count = run_test_mock.call_count
+            run_test_name = run_test_mock.call_args.args[0]["name"]
+
+        self.assertEqual(exit_code, 0)
+        self.assertTrue(bad_failure_exists)
+        self.assertFalse(bad_wavepeek_exists)
+        self.assertTrue(good_wavepeek_exists)
+        self.assertEqual(run_test_count, 1)
+        self.assertEqual(run_test_name, "good")
+
+    def test_cmd_run_fail_fast_stops_after_preflight_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            run_dir = root / "run"
+            run_dir.mkdir()
+            tests = [self._sample_test("bad"), self._sample_test("good")]
+            args = argparse.Namespace(
+                filter=None,
+                run_dir=str(run_dir),
+                out_dir=str(root),
+                compare=None,
+                missing_only=False,
+                fail_fast=True,
+                wavepeek_timeout_seconds=300,
+                tests=str(perf.TESTS_PATH),
+                verbose=False,
+                binary=["subject=/bin/wavepeek"],
+                schedule="round-robin",
+            )
+            preflight_failure = perf.make_failure_artifact(
+                test_name="bad",
+                phase="preflight",
+                command=["/bin/wavepeek", "info"],
+                exit_code=2,
+            )
+            run_test_mock = mock.Mock(return_value=None)
+            with (
+                mock.patch.object(perf, "load_tests", return_value=tests),
+                mock.patch.object(perf, "resolve_run_dir", return_value=run_dir),
+                mock.patch.object(perf, "ensure_hyperfine"),
+                mock.patch.object(perf, "parse_binary_specs", return_value=[perf.BinarySpec("subject", "/bin/wavepeek")]),
+                mock.patch.object(
+                    perf,
+                    "run_functional_capture",
+                    return_value=(None, preflight_failure),
+                ),
+                mock.patch.object(perf, "run_test", run_test_mock),
+            ):
+                with self.assertRaises(SystemExit):
+                    perf.cmd_run(args)
+            bad_failure_exists = (run_dir / "subject" / "bad.failure.json").is_file()
+            run_test_count = run_test_mock.call_count
+
+        self.assertTrue(bad_failure_exists)
+        self.assertEqual(run_test_count, 0)
+
     def test_cmd_compare_non_verbose_emits_concise_failure_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
@@ -931,6 +1067,246 @@ class PerfHelpersTest(unittest.TestCase):
         self.assertEqual(payload["timing_failures"][0]["test_name"], "sample")
         self.assertEqual(payload["timing_failures"][0]["metric"], "median")
         self.assertEqual(payload["functional_mismatches"], [])
+
+    def test_cmd_compare_skips_golden_failure_revised_success(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            for run_dir in (revised, golden):
+                self._write_hyperfine_artifact(run_dir / "ok.hyperfine.json", 1.0)
+                self._write_wavepeek_artifact(run_dir / "ok.wavepeek.json")
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            perf.write_failure_artifact(
+                golden,
+                "sample",
+                perf.make_failure_artifact(
+                    test_name="sample",
+                    phase="preflight",
+                    command=["old-wavepeek", "change", "--sample-mode", "native"],
+                    exit_code=2,
+                    stderr="unknown option: --sample-mode",
+                ),
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["comparable_count"], 1)
+        self.assertEqual(payload["skipped_uncomparable_count"], 1)
+        self.assertEqual(payload["baseline_unsupported"][0]["test_name"], "sample")
+        self.assertEqual(payload["timing_failures"], [])
+
+    def test_cmd_compare_fails_when_no_tests_are_comparable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            perf.write_failure_artifact(
+                golden,
+                "sample",
+                perf.make_failure_artifact(
+                    test_name="sample",
+                    phase="preflight",
+                    command=["old-wavepeek", "change", "--sample-mode", "native"],
+                    exit_code=2,
+                ),
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["comparable_count"], 0)
+        self.assertEqual(payload["skipped_uncomparable_count"], 1)
+        self.assertIn(
+            "no comparable tests between revised and golden",
+            payload["functional_artifact_errors"],
+        )
+
+    def test_cmd_compare_fails_on_revised_failure_golden_success(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_hyperfine_artifact(golden / "sample.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(golden / "sample.wavepeek.json")
+            perf.write_failure_artifact(
+                revised,
+                "sample",
+                perf.make_failure_artifact(
+                    test_name="sample",
+                    phase="preflight",
+                    command=["new-wavepeek", "change"],
+                    exit_code=1,
+                ),
+            )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["failed_uncomparable_count"], 1)
+        self.assertEqual(payload["revised_failures"][0]["test_name"], "sample")
+
+    def test_cmd_compare_skips_both_side_failures(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            for run_dir in (revised, golden):
+                self._write_hyperfine_artifact(run_dir / "ok.hyperfine.json", 1.0)
+                self._write_wavepeek_artifact(run_dir / "ok.wavepeek.json")
+            for run_dir, command in ((revised, "new-wavepeek"), (golden, "old-wavepeek")):
+                perf.write_failure_artifact(
+                    run_dir,
+                    "sample",
+                    perf.make_failure_artifact(
+                        test_name="sample",
+                        phase="preflight",
+                        command=[command, "change"],
+                        exit_code=2,
+                    ),
+                )
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(payload["comparable_count"], 1)
+        self.assertEqual(payload["skipped_uncomparable_count"], 1)
+        self.assertEqual(payload["both_side_failures"][0]["test_name"], "sample")
+
+    def test_cmd_compare_reports_invalid_uncomparable_artifact_without_parsing_it(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            for run_dir in (revised, golden):
+                self._write_hyperfine_artifact(run_dir / "ok.hyperfine.json", 1.0)
+                self._write_wavepeek_artifact(run_dir / "ok.wavepeek.json")
+            perf.write_failure_artifact(
+                revised,
+                "bad",
+                perf.make_failure_artifact(
+                    test_name="bad",
+                    phase="benchmark",
+                    command=["hyperfine"],
+                    exit_code=1,
+                ),
+            )
+            (revised / "bad.hyperfine.json").write_text("not json", encoding="utf-8")
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["comparable_count"], 1)
+        self.assertIn(
+            "revised: bad: has normal artifacts and a failure artifact",
+            payload["integrity_errors"],
+        )
+
+    def test_cmd_compare_fails_on_missing_outcome(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_hyperfine_artifact(revised / "sample.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            self._write_hyperfine_artifact(revised / "other.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(revised / "other.wavepeek.json")
+            self._write_hyperfine_artifact(golden / "other.hyperfine.json", 1.0)
+            self._write_wavepeek_artifact(golden / "other.wavepeek.json")
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=0.0,
+                max_negative_delta_seconds=0.0,
+                functional_only=False,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["comparable_count"], 1)
+        self.assertIn("sample: missing outcome in golden run", payload["integrity_errors"])
 
     def test_cmd_confirm_passes_using_best_samples(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1139,6 +1515,47 @@ class PerfHelpersTest(unittest.TestCase):
 
         self.assertEqual(exit_code, 0)
         self.assertIn("functional checks passed", stdout.getvalue())
+
+    def test_cmd_compare_functional_only_fails_when_no_tests_are_comparable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            revised = root / "revised"
+            golden = root / "golden"
+            result_json = root / "compare-result.json"
+            revised.mkdir()
+            golden.mkdir()
+            self._write_wavepeek_artifact(revised / "sample.wavepeek.json")
+            perf.write_failure_artifact(
+                golden,
+                "sample",
+                perf.make_failure_artifact(
+                    test_name="sample",
+                    phase="preflight",
+                    command=["old-wavepeek", "change", "--sample-mode", "native"],
+                    exit_code=2,
+                ),
+            )
+
+            args = argparse.Namespace(
+                revised=str(revised),
+                golden=str(golden),
+                max_negative_delta_pct=None,
+                functional_only=True,
+                allow_golden_extra=False,
+                result_json=str(result_json),
+                verbose=True,
+            )
+            with mock.patch("sys.stderr", io.StringIO()):
+                exit_code = perf.cmd_compare(args)
+            payload = json.loads(result_json.read_text(encoding="utf-8"))
+
+        self.assertEqual(exit_code, 1)
+        self.assertEqual(payload["comparable_count"], 0)
+        self.assertEqual(payload["skipped_uncomparable_count"], 1)
+        self.assertIn(
+            "no comparable tests between revised and golden",
+            payload["functional_artifact_errors"],
+        )
 
     def test_cmd_compare_functional_only_fails_on_revised_extra(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

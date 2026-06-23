@@ -7,7 +7,7 @@ use tempfile::tempdir;
 mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
-const TOPIC_IDS: [&str; 20] = [
+const TOPIC_IDS: [&str; 21] = [
     "intro",
     "commands/change",
     "commands/docs",
@@ -21,6 +21,7 @@ const TOPIC_IDS: [&str; 20] = [
     "commands/skill",
     "commands/value",
     "workflows/find-first-change",
+    "troubleshooting/clock-edge-sampling",
     "troubleshooting/empty-results",
     "troubleshooting/scoped-vs-canonical-names",
     "troubleshooting/time-tokens-and-alignment",

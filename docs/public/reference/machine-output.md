@@ -67,7 +67,7 @@ A successful stream has these record types:
 
 ```jsonl
 {"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v1.json"}
-{"type":"item","seq":1,"command":"change","item":{"time":"5ns","signals":[{"path":"top.clk","value":"1'h1"}]}}
+{"type":"item","seq":1,"command":"change","item":{"time":"5ns","sample_time":"5ns","signals":[{"path":"top.clk","value":"1'h1"}]}}
 {"type":"diagnostic","seq":2,"command":"change","diagnostic":{"kind":"warning","code":"WPK-W0002","message":"truncated output to 1 entries (use --max to increase limit)"}}
 {"type":"end","seq":3,"command":"change","summary":{"status":"ok","items":1,"diagnostics":1,"truncated":true}}
 ```
@@ -78,6 +78,7 @@ Rules for successful JSONL streams:
 - `seq` increases by one for every record.
 - `command` is stable across the stream.
 - `item` records carry the same row payload shape used inside `--json` data arrays for array-producing commands, or the `info` data object for `info`.
+- `change` and `property` rows include both `time` and `sample_time`. `time` is the selected event timestamp; `sample_time` is where values were printed or evaluated.
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
 

@@ -189,7 +189,7 @@
           "const": "value"
         },
         "item": {
-          "$ref": "#/$defs/changeSnapshot"
+          "$ref": "#/$defs/valueSnapshot"
         }
       }
     },
@@ -572,18 +572,23 @@
       "additionalProperties": false,
       "required": [
         "time",
+        "sample_time",
         "signals"
       ],
       "properties": {
         "time": {
           "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp for this sampled snapshot."
+          "description": "Normalized trigger timestamp for this change row."
         },
         "signals": {
           "type": "array",
           "items": {
             "$ref": "#/$defs/changeSignalValue"
           }
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Normalized timestamp whose values were sampled for this change row. Equal to time in native sampling."
         }
       }
     },
@@ -592,12 +597,13 @@
       "additionalProperties": false,
       "required": [
         "time",
+        "sample_time",
         "kind"
       ],
       "properties": {
         "time": {
           "$ref": "#/$defs/normalizedTime",
-          "description": "Normalized timestamp when the property capture event occurred."
+          "description": "Normalized trigger timestamp when the property capture event was reported."
         },
         "kind": {
           "type": "string",
@@ -607,6 +613,30 @@
             "assert",
             "deassert"
           ]
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Normalized timestamp whose values were evaluated for this property row. Equal to time in native sampling."
+        }
+      }
+    },
+    "valueSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "time",
+        "signals"
+      ],
+      "properties": {
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Normalized explicit timestamp requested by the value command."
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/changeSignalValue"
+          }
         }
       }
     }

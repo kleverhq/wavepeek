@@ -18,6 +18,389 @@ fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
     fixture
 }
 
+const RTL_SAMPLING_VCD: &str = concat!(
+    "$date\n",
+    "  today\n",
+    "$end\n",
+    "$version\n",
+    "  wavepeek-rtl-sampling\n",
+    "$end\n",
+    "$timescale 1ns $end\n",
+    "$scope module top $end\n",
+    "$var wire 1 ! clk $end\n",
+    "$var wire 1 \" valid $end\n",
+    "$var wire 8 # data $end\n",
+    "$upscope $end\n",
+    "$enddefinitions $end\n",
+    "#0\n",
+    "0!\n",
+    "0\"\n",
+    "b00000000 #\n",
+    "#5\n",
+    "1!\n",
+    "1\"\n",
+    "b10101010 #\n",
+    "#10\n",
+    "0!\n",
+    "#15\n",
+    "1!\n",
+    "#20\n",
+    "0!\n",
+    "#25\n",
+    "1!\n",
+    "0\"\n",
+    "b01010101 #\n",
+    "#30\n",
+    "0!\n",
+    "#35\n",
+    "1!\n",
+);
+
+#[test]
+fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let native_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let pre_edge_posedge_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let pre_edge_edge_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "edge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let pre_edge_human_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(native_output.status.success());
+    assert!(pre_edge_posedge_output.status.success());
+    assert!(pre_edge_edge_output.status.success());
+    assert!(pre_edge_human_output.status.success());
+    assert_eq!(
+        parse_json(&native_output.stdout)["data"],
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "assert"}])
+    );
+    assert_eq!(
+        parse_json(&pre_edge_posedge_output.stdout)["data"],
+        json!([{"time": "15ns", "sample_time": "14ns", "kind": "assert"}])
+    );
+    assert_eq!(
+        parse_json(&pre_edge_edge_output.stdout)["data"],
+        json!([{"time": "10ns", "sample_time": "9ns", "kind": "assert"}])
+    );
+    assert_eq!(
+        String::from_utf8(pre_edge_human_output.stdout).expect("human stdout should be UTF-8"),
+        "@15ns sample@14ns assert\n"
+    );
+}
+
+#[test]
+fn property_sample_mode_pre_edge_preserves_from_baseline() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling-boundary.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let assert_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+    let deassert_output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "35ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "valid",
+            "--capture",
+            "deassert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(assert_output.status.success());
+    let assert_json = parse_json(&assert_output.stdout);
+    assert_eq!(assert_json["data"], json!([]));
+    assert_eq!(
+        assert_json["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no property matches found in selected time range"}])
+    );
+    assert!(deassert_output.status.success());
+    assert_eq!(
+        parse_json(&deassert_output.stdout)["data"],
+        json!([{"time": "35ns", "sample_time": "34ns", "kind": "deassert"}])
+    );
+}
+
+#[test]
+fn property_sample_mode_pre_edge_skips_from_boundary_before_eval() {
+    let fixture = write_fixture(
+        concat!(
+            "$date\n",
+            "  today\n",
+            "$end\n",
+            "$version\n",
+            "  wavepeek-rtl-sampling-boundary\n",
+            "$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! clk $end\n",
+            "$var wire 1 \" sig $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "x\"\n",
+            "#5\n",
+            "1!\n",
+            "1\"\n",
+        ),
+        "property-rtl-sampling-prewindow-error.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "5ns",
+            "--to",
+            "5ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "real'(sig) == 1.0",
+            "--capture",
+            "assert",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    let parsed = parse_json(&output.stdout);
+    assert_eq!(parsed["data"], json!([]));
+    assert_eq!(
+        parsed["diagnostics"],
+        json!([{"kind": "warning", "code": "WPK-W0003", "message": "no property matches found in selected time range"}])
+    );
+}
+
+#[test]
+fn property_sample_mode_pre_edge_does_not_replay_previous_raw_event() {
+    let fixture = write_fixture(
+        concat!(
+            "$date\n",
+            "  today\n",
+            "$end\n",
+            "$version\n",
+            "  wavepeek-rtl-sampling-event\n",
+            "$end\n",
+            "$timescale 1ns $end\n",
+            "$scope module top $end\n",
+            "$var wire 1 ! clk $end\n",
+            "$var event 1 # ev $end\n",
+            "$upscope $end\n",
+            "$enddefinitions $end\n",
+            "#0\n",
+            "0!\n",
+            "#5\n",
+            "1#\n",
+            "#10\n",
+            "1!\n",
+            "#15\n",
+            "0!\n",
+            "#19\n",
+            "1#\n",
+            "#20\n",
+            "1!\n",
+        ),
+        "property-rtl-sampling-event.vcd",
+    );
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--from",
+            "0ns",
+            "--to",
+            "20ns",
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--eval",
+            "ev.triggered()",
+            "--capture",
+            "match",
+            "--sample-mode",
+            "pre-edge",
+            "--json",
+        ])
+        .output()
+        .expect("property should execute");
+
+    assert!(output.status.success());
+    assert_eq!(
+        parse_json(&output.stdout)["data"],
+        json!([{"time": "20ns", "sample_time": "19ns", "kind": "match"}])
+    );
+}
+
+#[test]
+fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
+    let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling-invalid.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+    let invalid_on_args: &[&[&str]] = &[
+        &[],
+        &["--on", "*"],
+        &["--on", "valid"],
+        &["--on", "valid or posedge clk"],
+    ];
+
+    for on_args in invalid_on_args {
+        let mut args = vec![
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--eval",
+            "valid",
+            "--sample-mode",
+            "pre-edge",
+        ];
+        args.extend_from_slice(on_args);
+
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .failure()
+            .code(1)
+            .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::starts_with("fatal: args:"))
+            .stderr(predicate::str::contains(
+                "--sample-mode pre-edge requires explicit --on",
+            ));
+    }
+}
+
 #[test]
 fn property_switch_capture_reports_transitions() {
     let fixture = write_fixture(
@@ -79,8 +462,8 @@ fn property_switch_capture_reports_transitions() {
     assert_eq!(
         json["data"],
         json!([
-            {"time": "15ns", "kind": "assert"},
-            {"time": "25ns", "kind": "deassert"}
+            {"time": "15ns", "sample_time": "15ns", "kind": "assert"},
+            {"time": "25ns", "sample_time": "25ns", "kind": "deassert"}
         ])
     );
     assert_eq!(
@@ -144,11 +527,11 @@ fn property_assert_and_deassert_capture_filters() {
     assert!(deassert_output.status.success());
     assert_eq!(
         parse_json(&assert_output.stdout)["data"],
-        json!([{"time": "15ns", "kind": "assert"}])
+        json!([{"time": "15ns", "sample_time": "15ns", "kind": "assert"}])
     );
     assert_eq!(
         parse_json(&deassert_output.stdout)["data"],
-        json!([{"time": "25ns", "kind": "deassert"}])
+        json!([{"time": "25ns", "sample_time": "25ns", "kind": "deassert"}])
     );
 }
 
@@ -199,11 +582,11 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
     assert!(real_output.status.success());
     assert_eq!(
         parse_json(&multibit_output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
     assert_eq!(
         parse_json(&real_output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
 }
 
@@ -310,7 +693,10 @@ fn property_omitted_on_tracks_eval_signal_changes() {
 
     let json = parse_json(&output.stdout);
     assert_eq!(json["diagnostics"], json!([]));
-    assert_eq!(json["data"], json!([{"time": "10ns", "kind": "match"}]));
+    assert_eq!(
+        json["data"],
+        json!([{"time": "10ns", "sample_time": "10ns", "kind": "match"}])
+    );
 }
 
 #[test]
@@ -345,8 +731,8 @@ fn property_omitted_on_tracks_raw_event_handles_from_eval() {
     assert_eq!(
         json["data"],
         json!([
-            {"time": "5ns", "kind": "match"},
-            {"time": "20ns", "kind": "match"}
+            {"time": "5ns", "sample_time": "5ns", "kind": "match"},
+            {"time": "20ns", "sample_time": "20ns", "kind": "match"}
         ])
     );
 }
@@ -377,7 +763,7 @@ fn property_mixed_wildcard_union_runs_with_signal_free_eval() {
     assert!(output.status.success());
     assert_eq!(
         parse_json(&output.stdout)["data"],
-        json!([{"time": "5ns", "kind": "match"}])
+        json!([{"time": "5ns", "sample_time": "5ns", "kind": "match"}])
     );
 }
 

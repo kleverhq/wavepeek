@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, ValueEnum};
 
 use crate::cli::limits::LimitArg;
+use crate::cli::sampling::SampleMode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
@@ -49,6 +50,15 @@ pub struct ChangeArgs {
     /// Event trigger expression (default: `*` when omitted)
     #[arg(long, help_heading = "Selection options")]
     pub on: Option<String>,
+    /// Value sampling mode for event-selected rows
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SampleMode::Native,
+        value_name = "MODE",
+        help_heading = "Selection options"
+    )]
+    pub sample_mode: SampleMode,
     /// Maximum number of snapshot rows (`unlimited` disables truncation, value must be > 0)
     #[arg(long, default_value = "50", help_heading = "Output options")]
     pub max: LimitArg,

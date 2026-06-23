@@ -3,6 +3,7 @@ pub mod docs;
 pub mod info;
 pub mod limits;
 pub mod property;
+pub mod sampling;
 pub mod schema;
 pub mod scope;
 pub mod signal;
@@ -112,6 +113,7 @@ Behavior:
 - `--at` accepts one explicit time token or a comma-separated list in one argument.
 - Output preserves the input order from `--at` and `--signals`, including duplicates.
 - Human output emits one `@<time>` row per requested time with `display=value` fields, matching `change`.
+- When following up a `change` or `property` JSON row, prefer that row's `sample_time` field for `--at`; in `pre-edge` mode, `time` is the selected trigger timestamp and `sample_time` is where values were sampled.
 - Time tokens must include explicit units and align to dump precision.
 - Values are emitted as Verilog literals (`<width>'h<digits>` with `x`/`z` support).
 - Fails fast if any requested signal cannot be resolved or if any selected time point is more precise than dump resolution.
@@ -128,6 +130,8 @@ Behavior:
 - Prints requested signal values for each `--on` trigger firing when at least one value changed since the previous firing.
 - Similar to a modified SystemVerilog `$monitor`, but with print trigger control instead of printing at every timestamp.
 - Range boundaries are inclusive; baseline state is initialized at range start.
+- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` samples displayed values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
+- JSON and JSONL rows include both `time` (selected event timestamp) and `sample_time` (where values were sampled); text output shows `sample@<time>` only when it differs from `time`.
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
 - `--json` uses the machine contract defined by `wavepeek schema`.
@@ -143,6 +147,8 @@ Behavior:
 - Evaluates `--eval` at timestamps selected by `--on` and prints time plus metadata when the property holds.
 - Level capture (`--capture match`) reports a match at every selected timestamp where the property holds.
 - Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.
+- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` evaluates values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
+- JSON and JSONL rows include both `time` (selected event timestamp) and `sample_time` (where `--eval` was sampled); text output shows `sample@<time>` only when it differs from `time`.
 - Remotely similar to a SystemVerilog assert, but without temporal expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 

@@ -59,6 +59,8 @@ Common focused commands:
 
 Pass one or more `--binary label=path` arguments to choose the binaries used by generated commands. The runner always writes one labeled artifact directory per binary and defaults to a round-robin schedule that runs each selected test on all binaries before moving to the next test. Each labeled directory contains per-test timing JSON, captured wavepeek JSON, and a `README.md` report. Timing compare mode reports matched-test median threshold violations, functional `data` mismatches, or missing/invalid artifacts. The manual gate additionally fails when golden and revised end-to-end artifact sets differ, so release comparisons do not silently pass on partial intersections. If median timing is the only failure, `perf.py confirm` can check selected tests with best samples; the gate runs this confirmation automatically for failed same-format timing tests. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog, plus repeated `--ignore-functional-test NAME=REASON` entries for known metadata-only path-shape differences.
 
+Some E2E catalogs include paired sampling-mode tests with matching names ending in `sample_native` and `sample_pre_edge`. Use the normal run reports to inspect native and pre-edge timings side by side.
+
 Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 
 Use fresh run directories for local experiments. Benchmark run artifacts are evidence, but they are not repository source artifacts unless a maintainer explicitly asks to preserve a specific result outside the ignored run locations.

@@ -307,9 +307,13 @@ class PerfHelpersTest(unittest.TestCase):
 
         expected_names = {
             "change_scr1_coremark_imem_axi_1sig_to_1000ps",
+            "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_native",
+            "change_scr1_coremark_imem_axi_araddr_to_1000ps_trigger_posedge_clk_sample_pre_edge",
             "change_scr1_signals_1_window_2ns_trigger_any",
             "info_picorv32_ez",
             "info_scr1_isr_sample",
+            "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_native",
+            "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
             "scope_clustered_all_depth13_json",
             "scope_scr1_all_depth7_json",
             "signal_scr1_top_recursive_depth2_json",
@@ -318,17 +322,30 @@ class PerfHelpersTest(unittest.TestCase):
             "value_scr1_signals_10",
         }
         self.assertEqual(set(names), expected_names)
-        self.assertEqual(len(names), 10)
+        self.assertEqual(len(names), 14)
 
         category_counts = Counter(str(test["category"]) for test in tests)
         self.assertEqual(
             category_counts,
-            Counter({"change": 2, "info": 2, "scope": 2, "signal": 2, "value": 2}),
+            Counter(
+                {
+                    "change": 4,
+                    "info": 2,
+                    "property": 2,
+                    "scope": 2,
+                    "signal": 2,
+                    "value": 2,
+                }
+            ),
         )
 
         for test in tests:
-            self.assertEqual(test["runs"], 1)
-            self.assertEqual(test["warmup"], 0)
+            if "sampling_mode" in test.get("meta", {}):
+                self.assertEqual(test["runs"], 5)
+                self.assertEqual(test["warmup"], 1)
+            else:
+                self.assertEqual(test["runs"], 1)
+                self.assertEqual(test["warmup"], 0)
 
     def test_release_catalogs_use_gate_sample_minimums(self) -> None:
         for catalog in ("tests.json", "tests_fsdb.json"):
@@ -433,7 +450,11 @@ class PerfHelpersTest(unittest.TestCase):
             set(property_tests),
             {
                 "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk",
+                "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sample_native",
+                "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_match_posedge_clk_sample_pre_edge",
                 "property_chipyard_clusteredrocketconfig_dhrystone_window_2us_switch_wildcard",
+                "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_native",
+                "property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge",
             },
         )
 

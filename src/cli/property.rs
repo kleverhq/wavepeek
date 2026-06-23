@@ -2,6 +2,8 @@ use std::path::PathBuf;
 
 use clap::{Args, ValueEnum};
 
+use crate::cli::sampling::SampleMode;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
 #[value(rename_all = "kebab-case")]
 pub enum CaptureMode {
@@ -29,6 +31,15 @@ pub struct PropertyArgs {
     /// Event trigger expression (default: `*` when omitted)
     #[arg(long, help_heading = "Selection options")]
     pub on: Option<String>,
+    /// Value sampling mode for event-selected rows
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SampleMode::Native,
+        value_name = "MODE",
+        help_heading = "Selection options"
+    )]
+    pub sample_mode: SampleMode,
     /// Logical expression evaluated at selected event timestamps
     #[arg(long, help_heading = "Selection options")]
     pub eval: String,

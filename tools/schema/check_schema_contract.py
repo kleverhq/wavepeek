@@ -232,7 +232,7 @@ def validate_stream_schema(stream_schema: dict[str, object], major: str) -> None
         "info": "#/$defs/infoData",
         "scope": "#/$defs/scopeEntry",
         "signal": "#/$defs/signalEntry",
-        "value": "#/$defs/changeSnapshot",
+        "value": "#/$defs/valueSnapshot",
         "change": "#/$defs/changeSnapshot",
         "property": "#/$defs/propertyRow",
     }

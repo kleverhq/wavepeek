@@ -20,6 +20,7 @@ fn derives_private_state_and_mode_helpers() {
 
     let snapshot = ChangeSnapshot {
         time: "5ns".to_string(),
+        sample_time: "5ns".to_string(),
         signals: vec![signal.clone()],
     };
     assert_eq!(snapshot.clone(), snapshot);

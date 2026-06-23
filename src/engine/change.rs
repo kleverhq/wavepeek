@@ -4,6 +4,7 @@ use serde::Serialize;
 
 use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
 use crate::cli::limits::LimitArg;
+use crate::cli::sampling::SampleMode;
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
@@ -33,6 +34,7 @@ const AUTO_FUSED_MIN_ESTIMATED_WORK: usize = 100_000;
 const AUTO_EDGE_ONLY_MIN_ESTIMATED_WORK: usize = 500_000;
 const AUTO_EDGE_FAST_MIN_ESTIMATED_WORK: usize = 2_000_000;
 const AUTO_FUSED_WIDE_SIGNAL_CUTOFF: usize = 32;
+const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires explicit --on with only edge event terms (posedge, negedge, or edge); wildcard and plain signal triggers are not supported";
 const AUTO_EDGE_ONLY_MIN_REQUESTED_SIGNALS: usize = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,6 +54,7 @@ pub struct ChangeSignalValue {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ChangeSnapshot {
     pub time: String,
+    pub sample_time: String,
     pub signals: Vec<ChangeSignalValue>,
 }
 
@@ -328,16 +331,19 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
     let event_expr_source = args.on.as_deref().unwrap_or("*");
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
+    validate_sample_mode(args.sample_mode, args.on.is_some(), &bound_event)?;
     debug.event("expression.bind.done", || serde_json::json!({}));
 
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
+    let dump_start_raw =
+        u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
+            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
+        })?;
 
     let from_raw = match args.from.as_deref() {
         Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
-        None => u64::try_from(dump_time.dump_start_zs / dump_time.dump_tick_zs).map_err(|_| {
-            WavepeekError::Internal("dump start timestamp exceeds supported range".to_string())
-        })?,
+        None => dump_start_raw,
     };
     let to_raw = match args.to.as_deref() {
         Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
@@ -408,22 +414,27 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
         requested_resolved.len(),
         estimated_work,
     );
+    let selected_engine_name = if args.sample_mode == SampleMode::PreEdge {
+        "pre-edge"
+    } else {
+        engine_mode.as_str()
+    };
     debug.event("candidate.prepare.done", || {
         serde_json::json!({
             "candidate_sources": candidate_sources.len(),
             "candidate_mode": candidate_mode_name(candidate_mode),
-            "selected_engine": engine_mode.as_str(),
+            "selected_engine": selected_engine_name,
             "window_timestamps": window_timestamp_count,
         })
     });
 
     debug.event(
         "change.run.start",
-        || serde_json::json!({"selected_engine": engine_mode.as_str()}),
+        || serde_json::json!({"selected_engine": selected_engine_name}),
     );
     sink.start()?;
-    let stats = match engine_mode {
-        ChangeEngineMode::Baseline => run_baseline_emit(
+    let stats = if args.sample_mode == SampleMode::PreEdge {
+        run_pre_edge_emit(
             &waveform,
             &host,
             event_expr_source,
@@ -438,49 +449,70 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
             dump_tick,
             max_entries,
             candidate_mode,
-            None,
+            dump_start_raw,
             sink,
-        )?,
-        ChangeEngineMode::Fused => run_fused_emit(
-            &waveform,
-            &host,
-            event_expr_source,
-            &bound_event,
-            tracked_signal_handles.as_slice(),
-            requested_signals.as_slice(),
-            requested_resolved.as_slice(),
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            sink,
-        )?,
-        ChangeEngineMode::EdgeFast => run_edge_fast_emit(
-            &waveform,
-            &host,
-            event_expr_source,
-            &bound_event,
-            tracked_signal_handles.as_slice(),
-            requested_signals.as_slice(),
-            requested_resolved.as_slice(),
-            candidate_sources.as_slice(),
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            args.tune_edge_fast_force,
-            sink,
-        )?,
+        )?
+    } else {
+        match engine_mode {
+            ChangeEngineMode::Baseline => run_baseline_emit(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+                None,
+                sink,
+            )?,
+            ChangeEngineMode::Fused => run_fused_emit(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+                sink,
+            )?,
+            ChangeEngineMode::EdgeFast => run_edge_fast_emit(
+                &waveform,
+                &host,
+                event_expr_source,
+                &bound_event,
+                tracked_signal_handles.as_slice(),
+                requested_signals.as_slice(),
+                requested_resolved.as_slice(),
+                candidate_sources.as_slice(),
+                from_raw,
+                to_raw,
+                baseline_raw,
+                dump_tick,
+                max_entries,
+                candidate_mode,
+                args.tune_edge_fast_force,
+                sink,
+            )?,
+        }
     };
 
     debug.event("change.run.done", || {
         serde_json::json!({
-            "selected_engine": engine_mode.as_str(),
+            "selected_engine": selected_engine_name,
             "snapshots": stats.emitted,
             "truncated": stats.truncated,
         })
@@ -512,6 +544,20 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
     })
 }
 
+fn validate_sample_mode(
+    sample_mode: SampleMode,
+    explicit_on: bool,
+    bound_event: &BoundEventExpr,
+) -> Result<(), WavepeekError> {
+    if sample_mode == SampleMode::PreEdge && (!explicit_on || !event_expr_is_edge_only(bound_event))
+    {
+        return Err(WavepeekError::Args(
+            PRE_EDGE_REQUIRES_EDGE_ONLY_ON.to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn map_candidate_mode(mode: TuneChangeCandidateMode) -> ChangeCandidateCollectionMode {
     match mode {
         TuneChangeCandidateMode::Auto => ChangeCandidateCollectionMode::Auto,
@@ -526,6 +572,12 @@ fn candidate_mode_name(mode: ChangeCandidateCollectionMode) -> &'static str {
         ChangeCandidateCollectionMode::Random => "random",
         ChangeCandidateCollectionMode::Stream => "stream",
     }
+}
+
+fn pre_edge_sample_time(trigger_timestamp: u64, dump_start_raw: u64) -> Option<u64> {
+    trigger_timestamp
+        .checked_sub(1)
+        .filter(|query_time| *query_time >= dump_start_raw)
 }
 
 fn select_engine_mode(
@@ -715,6 +767,7 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
+            timestamp,
             dump_tick,
         )?)?;
         emitted += 1;
@@ -724,10 +777,8 @@ fn run_baseline_emit<S: ChangeSnapshotSink + ?Sized>(
     Ok(ChangeRunStats { emitted, truncated })
 }
 
-#[cfg(test)]
-#[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
-fn run_baseline_fallback(
+fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
     waveform: &SharedWaveform,
     host: &WaveformExprHost,
     event_expr_source: &str,
@@ -742,25 +793,76 @@ fn run_baseline_fallback(
     dump_tick: ParsedTime,
     max_entries: Option<usize>,
     candidate_mode: ChangeCandidateCollectionMode,
-    precomputed_candidate_times: Option<Vec<u64>>,
-) -> Result<ChangeRunOutput, WavepeekError> {
-    run_baseline(
-        waveform,
-        host,
-        event_expr_source,
-        bound_event,
-        tracked_signal_handles,
-        requested_signals,
-        requested_resolved,
-        candidate_sources,
-        from_raw,
-        to_raw,
-        baseline_raw,
-        dump_tick,
-        max_entries,
-        candidate_mode,
-        precomputed_candidate_times,
-    )
+    dump_start_raw: u64,
+    sink: &mut S,
+) -> Result<ChangeRunStats, WavepeekError> {
+    let candidate_times = waveform
+        .borrow_mut()
+        .collect_expr_candidate_times_with_mode(
+            candidate_sources,
+            from_raw,
+            to_raw,
+            candidate_mode,
+        )?;
+    let mut sample_cache = SampleCache::default();
+    let baseline_samples =
+        sample_cache.sample_requested_batch(waveform, requested_resolved, baseline_raw)?;
+    let mut previous_values = baseline_samples
+        .iter()
+        .map(|sample| sample.bits.clone())
+        .collect::<Vec<_>>();
+
+    let mut emitted = 0usize;
+    let mut truncated = false;
+    for timestamp in candidate_times {
+        let previous_timestamp = waveform.borrow().previous_sample_time(timestamp);
+        if timestamp <= baseline_raw {
+            continue;
+        }
+
+        let frame = EventEvalFrame {
+            timestamp,
+            previous_timestamp,
+            tracked_signals: tracked_signal_handles,
+        };
+        if !event_expr_matches(event_expr_source, bound_event, host, &frame)? {
+            continue;
+        }
+
+        let Some(sample_time) = pre_edge_sample_time(timestamp, dump_start_raw) else {
+            continue;
+        };
+
+        let current_samples =
+            sample_cache.sample_requested_batch(waveform, requested_resolved, sample_time)?;
+        let current_values = current_samples
+            .iter()
+            .map(|sample| sample.bits.clone())
+            .collect::<Vec<_>>();
+        let should_emit =
+            should_emit_delta_and_update_baseline(&mut previous_values, &current_values);
+        if !should_emit {
+            continue;
+        }
+
+        if let Some(limit) = max_entries
+            && emitted == limit
+        {
+            truncated = true;
+            break;
+        }
+
+        sink.emit(build_snapshot(
+            requested_signals,
+            current_samples.as_slice(),
+            timestamp,
+            sample_time,
+            dump_tick,
+        )?)?;
+        emitted += 1;
+    }
+
+    Ok(ChangeRunStats { emitted, truncated })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1090,6 +1192,7 @@ fn run_edge_fast_emit<S: ChangeSnapshotSink + ?Sized>(
         sink.emit(build_snapshot(
             requested_signals,
             current_samples.as_slice(),
+            timestamp,
             timestamp,
             dump_tick,
         )?)?;
@@ -1448,6 +1551,7 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
             requested_signals,
             current_samples.as_slice(),
             timestamp,
+            timestamp,
             dump_tick,
         )?)?;
         emitted += 1;
@@ -1468,6 +1572,7 @@ fn build_snapshot(
     requested_signals: &[RequestedSignal],
     current_samples: &[SampledSignalState],
     timestamp: u64,
+    sample_timestamp: u64,
     dump_tick: ParsedTime,
 ) -> Result<ChangeSnapshot, WavepeekError> {
     let signals = requested_signals
@@ -1490,6 +1595,7 @@ fn build_snapshot(
 
     Ok(ChangeSnapshot {
         time: format_raw_timestamp(timestamp, dump_tick)?,
+        sample_time: format_raw_timestamp(sample_timestamp, dump_tick)?,
         signals,
     })
 }
@@ -1742,6 +1848,7 @@ mod change_inline_derive_tests {
         assert!(serde_json::to_string(&signal).unwrap().contains("top.sig"));
         let snapshot = ChangeSnapshot {
             time: "1ns".to_string(),
+            sample_time: "1ns".to_string(),
             signals: vec![signal],
         };
         assert_eq!(snapshot.clone(), snapshot);
@@ -1769,6 +1876,7 @@ mod tests {
     };
     use crate::cli::change::{ChangeArgs, TuneChangeCandidateMode, TuneChangeEngineMode};
     use crate::cli::limits::LimitArg;
+    use crate::cli::sampling::SampleMode;
     use crate::engine::CommandData;
     use crate::engine::expr_runtime::bind_waveform_event_expr;
     use crate::error::WavepeekError;
@@ -1931,6 +2039,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string(), "msg".to_string()],
             on: None,
+            sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
             json: false,
@@ -1955,6 +2064,7 @@ mod tests {
                 bits: Some("1".to_string()),
             }],
             5,
+            5,
             crate::engine::time::ParsedTime {
                 value: 1,
                 unit: crate::engine::time::TimeUnit::Ns,
@@ -1962,6 +2072,7 @@ mod tests {
         )
         .expect("snapshot should build");
         assert_eq!(snapshot.time, "5ns");
+        assert_eq!(snapshot.sample_time, "5ns");
         assert_eq!(snapshot.signals[0].value, "1'h1");
 
         let error = build_snapshot(
@@ -1974,6 +2085,7 @@ mod tests {
                 width: 1,
                 bits: None,
             }],
+            5,
             5,
             crate::engine::time::ParsedTime {
                 value: 1,
@@ -2278,6 +2390,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
             on: Some("posedge sig".to_string()),
+            sample_mode: SampleMode::Native,
             max: LimitArg::Unlimited,
             abs: false,
             json: true,
@@ -2308,6 +2421,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
             on: None,
+            sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(0),
             abs: false,
             json: false,
@@ -2330,6 +2444,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
             on: Some("posedge sig".to_string()),
+            sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
             json: false,
@@ -2355,6 +2470,7 @@ mod tests {
                 scope: Some("top".to_string()),
                 signals: vec!["sig".to_string()],
                 on: Some("posedge sig".to_string()),
+                sample_mode: SampleMode::Native,
                 max: LimitArg::Unlimited,
                 abs: false,
                 json: false,
@@ -2381,6 +2497,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
             on: Some("negedge sig".to_string()),
+            sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
             json: false,
@@ -2412,6 +2529,7 @@ mod tests {
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
             on: Some("*".to_string()),
+            sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(1),
             abs: false,
             json: false,

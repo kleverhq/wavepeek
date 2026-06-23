@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Args, ValueEnum};
 
+use crate::cli::limits::LimitArg;
 use crate::cli::sampling::SampleMode;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Default)]
@@ -52,6 +53,9 @@ pub struct PropertyArgs {
         help_heading = "Output options"
     )]
     pub capture: CaptureMode,
+    /// Maximum number of property rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
+    pub max: LimitArg,
     /// Machine-readable JSON output
     #[arg(long, help_heading = "Output options")]
     pub json: bool,

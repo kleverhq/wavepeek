@@ -257,6 +257,45 @@ fn property_jsonl_streams_capture_rows() {
 }
 
 #[test]
+fn property_jsonl_reports_truncation_in_summary() {
+    let fixture = write_fixture(PROPERTY_VCD, ".property-jsonl-truncated.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--eval",
+            "sig",
+            "--capture",
+            "switch",
+            "--max",
+            "1",
+            "--jsonl",
+        ])
+        .output()
+        .expect("property --jsonl should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let records = parse_stream(&output.stdout, "property");
+    assert_eq!(
+        records
+            .iter()
+            .filter(|record| record["type"] == "item")
+            .count(),
+        1
+    );
+    assert!(records.iter().any(|record| {
+        record["type"] == "diagnostic" && record["diagnostic"]["code"] == "WPK-W0002"
+    }));
+    assert_eq!(records.last().unwrap()["summary"]["truncated"], true);
+}
+
+#[test]
 fn info_scope_signal_and_value_jsonl_emit_representative_items() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

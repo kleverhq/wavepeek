@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Added waveform-command `--jsonl` streaming output plus `wavepeek schema --stream` for the per-record stream schema ([issue #26](https://github.com/kleverhq/wavepeek/issues/26)).
 - Added `change` and `property` `--sample-mode native|pre-edge` for edge-triggered RTL/SVA-style pre-edge value sampling.
+- Added `property --max` bounded output with `unlimited` opt-out support ([issue #38](https://github.com/kleverhq/wavepeek/issues/38)).
 
 ### Changed
 - Updated `change` and `property` JSON/JSONL schemas and output rows to include `sample_time`, while preserving `time` as the selected event timestamp.

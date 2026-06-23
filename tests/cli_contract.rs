@@ -491,6 +491,7 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         "Evaluates `--eval` at timestamps selected by `--on`",
         "Level capture (`--capture match`) reports a match at every selected timestamp",
         "Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.",
+        "Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.",
         "Remotely similar to a SystemVerilog assert, but without temporal expressions.",
     ] {
         assert!(
@@ -516,6 +517,9 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
         assert!(
             help.contains("Capture mode: level (`match`) or edge (`switch`, `assert`, `deassert`)")
         );
+        assert!(help.contains(
+            "Maximum number of property rows (`unlimited` disables truncation, value must be > 0)"
+        ));
         assert!(help.contains("Machine-readable JSON output"));
         assert!(!help.contains("(`--waves <FILE>` is required)"));
         assert!(!help.contains("(`--eval` is required)"));
@@ -1029,6 +1033,8 @@ fn help_documents_unlimited_limit_literals_for_all_affected_commands() {
         .assert()
         .success()
         .stdout(predicate::str::contains("--capture <MODE>"))
+        .stdout(predicate::str::contains("--max <MAX>"))
+        .stdout(predicate::str::contains("unlimited"))
         .stdout(predicate::str::contains("switch"));
 }
 

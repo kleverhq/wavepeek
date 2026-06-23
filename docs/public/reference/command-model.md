@@ -70,7 +70,7 @@ wavepeek is designed to avoid flooding terminals and LLM context windows. Comman
 - the finite size of the requested input set, or
 - an inherently finite command shape such as `schema`.
 
-When a command truncates output because of an active limit, it emits a warning diagnostic. When a command supports disabling a limit explicitly, that opt-out also emits a warning diagnostic so automation can tell the boundedness contract changed on purpose. List and search-style commands also emit an empty-result diagnostic when a valid query produces no rows; diagnostics do not change the successful exit code.
+When a command truncates output because of an active limit, it emits a warning diagnostic. `change` and `property` use `--max` for event-row limits and default to 50 rows. When a command supports disabling a limit explicitly, that opt-out also emits a warning diagnostic so automation can tell the boundedness contract changed on purpose. List and search-style commands also emit an empty-result diagnostic when a valid query produces no rows; diagnostics do not change the successful exit code.
 
 ## 7. Deterministic Ordering
 

@@ -149,6 +149,7 @@ Behavior:
 - Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.
 - Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` evaluates values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
 - JSON and JSONL rows include both `time` (selected event timestamp) and `sample_time` (where `--eval` was sampled); text output shows `sample@<time>` only when it differs from `time`.
+- Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
 - Remotely similar to a SystemVerilog assert, but without temporal expressions.
 - `--json` uses the machine contract defined by `wavepeek schema`.
 
@@ -660,6 +661,31 @@ mod tests {
                 assert_eq!(args.on.as_deref(), Some("posedge top.clk"));
                 assert_eq!(args.eval, "1");
                 assert_eq!(args.capture, crate::cli::property::CaptureMode::Switch);
+                assert_eq!(args.max, LimitArg::Numeric(50));
+            }
+            other => panic!("expected property command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn property_dispatch_accepts_unlimited_max() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "property",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--on",
+            "posedge top.clk",
+            "--eval",
+            "1",
+            "--max",
+            "unlimited",
+        ]);
+
+        let command = into_engine_command(cli.command.expect("parsed command"));
+        match command {
+            EngineCommand::Property(args) => {
+                assert_eq!(args.max, LimitArg::Unlimited);
             }
             other => panic!("expected property command, got {other:?}"),
         }

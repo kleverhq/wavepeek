@@ -8,6 +8,8 @@
     "containerEnv": {
         "WAVEPEEK_IN_CONTAINER": "1"
     },
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
     "remoteUser": "ubuntu",
     "updateRemoteUserUID": true
 }

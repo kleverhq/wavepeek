@@ -21,7 +21,7 @@
         "${localWorkspaceFolder}/.devcontainer/initialize.sh"
     ],
     "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-    "workspaceMount": "source=${localWorkspaceFolder}/..,target=/workspaces,type=bind",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
     "mounts": [
         "source=${localEnv:HOME}/.config/wavepeek-dev/claude,target=/home/ubuntu/.claude,type=bind",
         "source=${localEnv:HOME}/.config/wavepeek-dev/claude.json,target=/home/ubuntu/.claude.json,type=bind",

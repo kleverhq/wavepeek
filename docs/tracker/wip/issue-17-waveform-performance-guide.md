@@ -19,10 +19,13 @@ This plan does not change waveform parsing, command execution, caching, or FSDB 
 - [x] (2026-06-23T11:25Z) Drafted this execution plan.
 - [x] (2026-06-23T11:28Z) Ran read-only plan review and added the missing milestone section requested by the reviewer.
 - [ ] Commit the reviewed execution plan.
-- [ ] Add the public docs topic and update discoverability/tests.
-- [ ] Run targeted docs validation and the repository pre-handoff gate.
-- [ ] Run a read-only implementation review and apply any required fixes.
-- [ ] Commit implementation changes and remove branch-local WIP plan before final handoff unless the maintainer asks to keep it.
+- [x] (2026-06-23T11:35Z) Added `docs/public/reference/waveform-performance.md`, discoverability links, and docs topic tests.
+- [x] (2026-06-23T11:36Z) Ran targeted docs validation with `cargo test -q --test docs_cli` and manual `cargo run -q -- docs ...` checks.
+- [x] (2026-06-23T11:42Z) Ran read-only implementation review; fixed the stale `src/docs/mod.rs` topic-count assertion it found.
+- [x] (2026-06-23T11:45Z) Re-ran targeted tests and `just check` after the review fix; all passed.
+- [x] (2026-06-23T11:47Z) Ran a fresh final read-only control pass; it returned no substantive findings.
+- [ ] Commit implementation changes.
+- [ ] Remove branch-local WIP plan before final handoff unless the maintainer asks to keep it.
 - [ ] Push the branch to `origin` and open a pull request linked to issue #17.
 
 ## Surprises & Discoveries
@@ -32,6 +35,12 @@ This plan does not change waveform parsing, command execution, caching, or FSDB 
 
 - Observation: Public docs are embedded from `docs/public/` at compile time.
   Evidence: `src/docs/mod.rs` defines `static TOPICS_DIR: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/docs/public");`.
+
+- Observation: `cargo test -q docs_cli` is not the correct way to run the `tests/docs_cli.rs` integration test file; it filters test names and ran zero tests.
+  Evidence: the command reported many harnesses with `0 passed` and filtered tests. The correct targeted command is `cargo test -q --test docs_cli`, which ran 24 tests and passed.
+
+- Observation: Adding a docs topic also affects a runtime unit test in `src/docs/mod.rs` that checks exported topic count.
+  Evidence: implementation review found `assert_eq!(summary.topics.len(), 21);`; it was updated to `22`, and `cargo test -q export_writes_manifest_and_topics_without_skill_file` passed.
 
 ## Decision Log
 
@@ -49,7 +58,7 @@ This plan does not change waveform parsing, command execution, caching, or FSDB 
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. The plan is drafted and awaiting review before documentation changes are made.
+The public docs implementation is complete in the working tree. The new topic is discoverable through `docs topics`, `docs show`, and `docs search`; targeted tests, `just check`, implementation review, and final control review passed. Remaining work is commit cleanup, push, and pull request creation.
 
 ## Context and Orientation
 
@@ -124,13 +133,24 @@ Commit implementation and cleanup with a conventional commit message that refere
 
 The change is accepted when `wavepeek docs topics` lists `reference/waveform-performance` in the reference section, `wavepeek docs show reference/waveform-performance` prints the new guide, and `wavepeek docs search performance` can find it. The targeted Rust docs tests should pass with `cargo test -q docs_cli`. The repository pre-handoff gate should pass with `just check`.
 
-A representative successful transcript should look like this after implementation:
+A representative successful transcript from implementation validation:
 
-    $ wavepeek docs show reference/waveform-performance --description
+    $ cargo run -q -- docs show reference/waveform-performance --description
     Understand format-level performance expectations for VCD, FST, and FSDB waveform inspection.
 
-    $ wavepeek docs search performance
-    reference/waveform-performance — Waveform Performance Guide
+    $ cargo run -q -- docs search performance
+    reference/waveform-performance  Waveform Performance Guide — Understand format-level performance expectations for VCD, FST, and FSDB waveform inspection. [matched id prefix]
+
+    $ cargo test -q --test docs_cli
+    running 24 tests
+    ........................
+    test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+
+    $ cargo test -q export_writes_manifest_and_topics_without_skill_file
+    Test Results: 1 passed
+
+    $ just check
+    checked docs for wavepeek 1.0.1; prepared 3 root artifact(s) under /workspaces/wavepeek/tmp/docs-site/root-artifacts
 
 ### Idempotence and Recovery
 

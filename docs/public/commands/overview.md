@@ -9,6 +9,7 @@ see_also:
   - commands/skill
   - reference/command-model
   - reference/machine-output
+  - reference/waveform-performance
 ---
 # Command overview
 
@@ -39,6 +40,8 @@ Use `value` for exact point sampling. It is the most direct command when you alr
 Use `change` to inspect value transitions across a bounded time range. Trigger selection comes from `--on`; expression syntax lives in `reference/expression-language`.
 
 Use `property` when you want to evaluate a logical expression on event-selected timestamps instead of printing raw signal snapshots. Capture modes control whether you keep every match or only state transitions such as asserts and deasserts.
+
+When choosing between VCD, FST, and FSDB input or diagnosing unexpectedly slow queries, use `reference/waveform-performance` for format-level performance guidance.
 
 ## Which document is normative?
 

@@ -10,6 +10,7 @@ see_also:
   - commands/skill
   - reference/command-model
   - reference/machine-output
+  - reference/waveform-performance
 ---
 # Introduction
 

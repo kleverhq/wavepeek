@@ -7,7 +7,7 @@ use tempfile::tempdir;
 mod common;
 use common::{expected_schema_url, wavepeek_cmd};
 
-const TOPIC_IDS: [&str; 21] = [
+const TOPIC_IDS: [&str; 22] = [
     "intro",
     "commands/change",
     "commands/docs",
@@ -29,6 +29,7 @@ const TOPIC_IDS: [&str; 21] = [
     "reference/command-model",
     "reference/expression-language",
     "reference/machine-output",
+    "reference/waveform-performance",
 ];
 
 fn docs_root() -> PathBuf {
@@ -341,6 +342,29 @@ fn expression_reference_describes_fsdb_metadata_support() {
     assert!(
         !output.contains("recoverable from\nVCD/FST waveform dumps"),
         "expression reference should not describe expression metadata as VCD/FST-only"
+    );
+}
+
+#[test]
+fn waveform_performance_guide_describes_current_format_tradeoffs() {
+    let output = successful_stdout_text(&["docs", "show", "reference/waveform-performance"]);
+
+    for expected in [
+        "VCD is a textual waveform format",
+        "FST is a compact, indexed waveform format",
+        "FSDB is a compact proprietary waveform format",
+        "Converting a dump to FST can help",
+    ] {
+        assert!(
+            output.contains(expected),
+            "performance guide should contain {expected:?}"
+        );
+    }
+
+    let lower = output.to_ascii_lowercase();
+    assert!(
+        !lower.contains("batch") && !lower.contains("session workflow"),
+        "performance guide should describe current behavior, not future batch/session workflow"
     );
 }
 

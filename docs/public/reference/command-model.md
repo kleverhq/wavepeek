@@ -5,6 +5,7 @@ description: Stable semantics for waveform inputs, time values, names, output mo
 section: reference
 see_also:
   - reference/machine-output
+  - reference/waveform-performance
   - commands/overview
   - commands/skill
 ---

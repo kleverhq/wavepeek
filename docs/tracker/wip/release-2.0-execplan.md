@@ -19,8 +19,9 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 - [x] (2026-06-24 19:47Z) Created branch `rc/2.0.0` from the current `rc/1.1.0` branch at commit `050cf81`.
 - [x] (2026-06-24 20:00Z) Ran read-only exploration for schema-versioning impact and CLI sampling impact.
 - [x] (2026-06-24 20:04Z) Drafted this initial ExecPlan.
-- [ ] Commit the ExecPlan as its own reviewed planning commit.
-- [ ] Run read-only plan review and incorporate any findings before implementation.
+- [x] (2026-06-24 20:09Z) Committed the ExecPlan as `7b646ea docs(tracker): plan v2 release prep`; commit hooks passed.
+- [x] (2026-06-24 20:23Z) Ran read-only plan review and recorded required plan fixes.
+- [x] (2026-06-24 20:30Z) Incorporated plan-review findings about validation commands, help-contract staging, benchmark catalogs, milestone reconciliation, root schema aliases, and superseding PR #43.
 - [ ] Milestone 1: switch release metadata and schema infrastructure to `2.0.0` / exact major.minor v2 artifacts.
 - [ ] Review Milestone 1.
 - [ ] Milestone 2: implement explicit `--on` and default pre-edge sampling for `change` and `property`.
@@ -39,6 +40,9 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 
 - Observation: `change` optimizer and benchmark tests must pin `--sample-mode native` for wildcard and non-edge trigger workloads after the default becomes pre-edge, or they will stop exercising the optimized native engines.
   Evidence: `src/engine/change.rs` routes `SampleMode::PreEdge` to `run_pre_edge_emit`, while native modes select among baseline, fused, and edge-fast engines.
+
+- Observation: the release performance gate uses current benchmark catalogs against both old and new binaries, so v2-only flags such as `--sample-mode` make `v1.0.1` captures unsupported instead of comparable.
+  Evidence: the earlier `just bench-gate v1.0.1 HEAD` run on `rc/1.1.0` skipped new `--sample-mode` cases because `v1.0.1` reported `unexpected argument '--sample-mode'`.
 
 ## Decision Log
 
@@ -62,9 +66,17 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
   Rationale: RTL debugging should default to the values engineers expect at a clock edge, while raw wildcard dump scans should be an explicit native-mode choice.
   Date/Author: 2026-06-24 / Grin with user direction.
 
+- Decision: root Pages artifacts should preserve historical `wavepeek_v0.json`, `wavepeek_v1.json`, and `wavepeek-stream-v1.json` files and should publish/validate exact current v2 artifacts such as `wavepeek_v2.0.json` and `wavepeek-stream-v2.0.json`; there should not be a new ambiguous `wavepeek_v2.json` alias.
+  Rationale: historical contracts must remain resolvable, while exact minor artifact names keep the current contract unambiguous.
+  Date/Author: 2026-06-24 / Grin after plan review.
+
+- Decision: the final `2.0.0` PR must explicitly say it supersedes PR #43 without pushing to or modifying `rc/1.1.0`.
+  Rationale: two release-prep PRs for adjacent versions are easy to merge in the wrong order unless the newer PR states the intended release path.
+  Date/Author: 2026-06-24 / Grin after plan review.
+
 ## Outcomes & Retrospective
 
-No implementation milestone has completed yet. The plan currently captures the intended behavior, affected areas, known risks, and validation strategy before code changes begin.
+Planning review completed and found fixable gaps in the initial plan: an invalid cargo test command, stale help-contract staging, missing `tests_commit.json` coverage, missing milestone reconciliation, vague root schema alias policy, benchmark uncomparability, and PR #43 supersession wording. Those gaps have been folded into this revision before implementation starts.
 
 ## Context and Orientation
 
@@ -85,8 +97,7 @@ Key files for CLI sampling behavior are `src/cli/sampling.rs`, `src/cli/change.r
 ## Open Questions
 
 - Whether the branch-local ExecPlan should remain in the final PR or be removed before merge. The default repository guidance says tracked WIP artifacts should be removed before merging unless a maintainer wants handoff context. Until that decision, keep this file updated and committed.
-- How to present the failed `v1.0.1` to `2.0.0` benchmark comparison in the final PR. The major release will intentionally change JSON shape and CLI defaults, so same-format functional mismatches are expected; timing regressions still require usable evidence rather than a shrug with a clipboard.
-- Whether root docs aliases should continue exposing major-only v1 names alongside exact-minor v2 names. The implementation should preserve historical files and make the exact v2.0 names the current runtime target.
+- How much additional current-only benchmark evidence maintainers want for v2-only `change` and `property` behaviors that cannot be fairly compared to `v1.0.1`. The plan requires the final PR to record which release-gate comparisons remain comparable and which workloads are intentionally uncomparable because of the major CLI/schema break.
 
 ## Plan of Work
 
@@ -94,11 +105,11 @@ Milestone 0 is planning. Commit this file, run read-only review on the plan, fix
 
 Milestone 1 establishes the v2 release and schema foundation. Change `Cargo.toml`, `Cargo.lock`, and `CHANGELOG.md` from `1.1.0` release prep to `2.0.0`. Add `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json` before changing compile-time include paths. Update `src/schema_contract.rs` so runtime URLs and embedded artifact names use major.minor for the current package. Update the `justfile` schema path, `tools/schema/check_schema_contract.py`, `tests/common/mod.rs`, `tests/schema_cli.rs`, `tests/jsonl_cli.rs`, docs deployment helpers, and helper tests to expect exact v2.0 artifact names. For v2 artifacts, set `$schema` URL patterns to accept same-major minor URLs, make object shapes extension-friendly, and keep old v0/v1 artifacts untouched. Validate with `just check-schema`, targeted schema tests, and helper tests.
 
-Milestone 2 changes `change` and `property` command behavior. Update `src/cli/sampling.rs` so `SampleMode::PreEdge` is the default. Update `src/cli/change.rs` and `src/cli/property.rs` so `--on` is required and help no longer says omission means `*`. Update `src/engine/change.rs` and `src/engine/property.rs` to remove `unwrap_or("*")` fallback, keep wildcard expression support when users explicitly pass `--on '*'`, and emit clear validation when pre-edge is used with wildcard, plain signal, or mixed non-edge triggers. Acceptance is that missing `--on` fails at the CLI layer, `--on 'posedge clk'` defaults to pre-edge, and `--on '*' --sample-mode native` preserves raw wildcard scans.
+Milestone 2 changes `change` and `property` command behavior together with generated-help source and help-contract tests. Update `src/cli/sampling.rs` so `SampleMode::PreEdge` is the default. Update `src/cli/change.rs`, `src/cli/property.rs`, and `src/cli/mod.rs` so `--on` is required, help no longer says omission means `*`, default sampling is documented as pre-edge, and wildcard/plain/mixed triggers tell users to pass `--sample-mode native`. Update `src/engine/change.rs` and `src/engine/property.rs` to remove `unwrap_or("*")` fallback, keep wildcard expression support when users explicitly pass `--on '*'`, and emit clear validation when pre-edge is used with wildcard, plain signal, or mixed non-edge triggers. Acceptance is that missing `--on` fails at the CLI layer, `--on 'posedge clk'` defaults to pre-edge, `--on '*' --sample-mode native` preserves raw wildcard scans, and `cli_contract` validates the new help surface in the same reviewed slice.
 
-Milestone 3 updates evidence around the new behavior. Update integration tests, command fixture manifests, snapshots, and benchmark catalogs. Tests that are meant to exercise old raw wildcard/native behavior must explicitly pass `--on '*' --sample-mode native`. Tests that are meant to cover RTL clock-edge defaults should omit `--sample-mode` and expect pre-edge rows. Update public docs, generated-help assertions, maintainer docs, schema docs, architecture docs, and `docs/skills/wavepeek.md`. Acceptance is that targeted CLI/doc/schema tests pass and examples in docs match the actual CLI behavior.
+Milestone 3 updates evidence around the new behavior. Update integration tests, command fixture manifests, snapshots, and benchmark catalogs including both `bench/e2e/tests.json` and `bench/e2e/tests_commit.json`. Tests that are meant to exercise old raw wildcard/native behavior must explicitly pass `--on '*' --sample-mode native`. Tests that are meant to cover RTL clock-edge defaults should omit `--sample-mode` and expect pre-edge rows. Benchmark commands that are intended for the `v1.0.1` release comparison should not be blindly converted to v2-only flags; instead, mark or summarize uncomparable `change` and `property` workloads and preserve comparable evidence for unaffected command families. Update public docs, maintainer docs, schema docs, architecture docs, and `docs/skills/wavepeek.md`. Acceptance is that targeted CLI/doc/schema tests pass, pre-commit benchmark smoke passes, and examples in docs match the actual CLI behavior.
 
-Milestone 4 performs release validation and PR creation. Run `just update-schema`, `just check-schema`, `just check`, and `just ci`. Run the manual release performance gate against `v1.0.1` as required for a major release, record the artifact path, and distinguish expected major-contract functional changes from timing evidence. Run a final multi-lane read-only review covering code behavior, schema compatibility, docs, and release process. Push `rc/2.0.0` and open a PR to `main` with explicit caveats and validation results.
+Milestone 4 performs release validation and PR creation. Reconcile the GitHub Milestone for `2.0.0` with shipped scope before PR handoff: move unfinished issues out, ensure shipped issues are closed or correctly assigned, and close the completed milestone if release policy calls for it. Run `just update-schema`, `just check-schema`, `just check`, and `just ci`. Run the manual release performance gate against `v1.0.1` as required for a major release, record the artifact path, and distinguish expected major-contract functional changes from timing evidence by listing comparable command families and uncomparable v2-only workloads. Run a final multi-lane read-only review covering code behavior, schema compatibility, docs, and release process. Push `rc/2.0.0` and open a PR to `main` with explicit caveats, validation results, and a statement that it supersedes PR #43 without modifying `rc/1.1.0`.
 
 ### Concrete Steps
 
@@ -125,20 +136,22 @@ Then edit release metadata, schema constants, tooling, tests, and docs helpers. 
 
 Expected result: `wavepeek schema` bytes match `schema/wavepeek_v2.0.json`; JSON envelopes point at `https://kleverhq.github.io/wavepeek/wavepeek_v2.0.json`; schema patterns accept future same-major URLs such as `wavepeek_v2.1.json`; v2 schema validators accept representative records with extra object fields.
 
-For Milestone 2, after CLI and engine edits, run:
+For Milestone 2, after CLI, engine, and generated-help contract edits, run:
 
     cargo test --test cli_contract --test change_cli --test property_cli
-    cargo test --lib engine::change engine::property
+    cargo test --lib change
+    cargo test --lib property
 
-Expected result: missing `--on` errors are covered, edge-trigger commands default to pre-edge, and explicit wildcard native commands still work.
+Expected result: missing `--on` errors are covered, edge-trigger commands default to pre-edge, help text and usage are current, and explicit wildcard native commands still work.
 
 For Milestone 3, after broad test, benchmark, and docs edits, run:
 
     cargo test
     just docs-site-check
     just check-bench-e2e-fsdb-catalog
+    just pre-commit
 
-Expected result: all Rust tests pass, docs build/check passes, and FSDB benchmark catalog remains aligned with the FST catalog.
+Expected result: all Rust tests pass, docs build/check passes, FSDB benchmark catalog remains aligned with the FST catalog, and the pre-commit benchmark smoke that reads `bench/e2e/tests_commit.json` passes.
 
 For Milestone 4:
 
@@ -148,7 +161,7 @@ For Milestone 4:
     just ci
     just bench-gate v1.0.1 HEAD
 
-Expected result: schema and quality gates pass. The benchmark gate may fail functional comparison because this is a major release with intentional JSON and CLI-contract changes; if it fails, preserve the artifact path and summarize comparable timing evidence accurately in the PR.
+Expected result: schema and quality gates pass. The benchmark gate may fail functional comparison because this is a major release with intentional JSON and CLI-contract changes; if it fails, preserve the artifact path, list which command families remained comparable, list which `change`/`property` workloads were uncomparable because `v1.0.1` lacks v2 flags or semantics, and summarize comparable timing evidence accurately in the PR.
 
 ### Validation and Acceptance
 
@@ -164,6 +177,9 @@ The final branch is acceptable when all of the following are true:
 - `wavepeek property --on 'posedge clk' ...` defaults to pre-edge sampling and emits `sample_time` for rows.
 - `wavepeek change --on '*' --sample-mode native ...` preserves raw wildcard scan behavior.
 - `just check` and `just ci` pass before PR creation.
+- `just pre-commit` or an equivalent pre-commit benchmark smoke passes after benchmark catalog edits.
+- GitHub Milestone state for `2.0.0` is reconciled with shipped scope before PR handoff.
+- The final PR body explicitly says it supersedes PR #43 while leaving `rc/1.1.0` untouched.
 - Required reviews have either no substantive findings or findings fixed in follow-up commits.
 
 ### Idempotence and Recovery
@@ -194,12 +210,15 @@ Read-only exploration found these implementation anchors:
       src/cli/sampling.rs
       src/cli/change.rs
       src/cli/property.rs
+      src/cli/mod.rs
       src/engine/change.rs
       src/engine/property.rs
+      tests/cli_contract.rs
       tests/change_cli.rs
       tests/property_cli.rs
       tests/change_opt_equivalence.rs
       bench/e2e/tests.json
+      bench/e2e/tests_commit.json
 
 The current branch starts with release-prep commit:
 
@@ -225,3 +244,5 @@ The exact implementation should still derive those strings from Cargo package ve
 `src/engine/change.rs` and `src/engine/property.rs` must continue using `event_expr_is_edge_only` to reject pre-edge sampling for wildcard, plain signal, or mixed non-edge event expressions. Wildcard remains valid only when explicitly passed and paired with `--sample-mode native`.
 
 Revision note: Initial ExecPlan created on 2026-06-24 to convert the release-candidate work from `1.1.0` to `2.0.0`, define schema-versioning policy, and stage the CLI sampling behavior change before implementation.
+
+Revision note: Plan review findings incorporated on 2026-06-24. The plan now uses valid cargo commands, moves help-contract updates into Milestone 2, includes `bench/e2e/tests_commit.json` and `just pre-commit`, resolves root schema alias policy, adds milestone reconciliation, defines benchmark evidence handling for uncomparable v2 workloads, and requires the final PR to supersede PR #43 explicitly.

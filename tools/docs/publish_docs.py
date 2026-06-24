@@ -221,6 +221,14 @@ def stream_schema_artifact_name(version: str) -> str:
     return f"wavepeek-stream-v{schema_artifact_suffix(version)}.json"
 
 
+def valid_schema_artifact_name(name: str) -> bool:
+    return re.fullmatch(r"wavepeek_v(?:[01]|[2-9][0-9]*[.][0-9]+)[.]json", name) is not None
+
+
+def valid_stream_schema_artifact_name(name: str) -> bool:
+    return re.fullmatch(r"wavepeek-stream-v(?:[01]|[2-9][0-9]*[.][0-9]+)[.]json", name) is not None
+
+
 def clean_owned_path(path: pathlib.Path) -> None:
     if path.is_dir() and not path.is_symlink():
         shutil.rmtree(path)
@@ -297,8 +305,24 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
     run_paths.root_artifacts.mkdir(parents=True, exist_ok=True)
 
     schema_dir = source_root / "schema"
-    schemas = sorted(schema_dir.glob("wavepeek_v*.json")) if schema_dir.is_dir() else []
-    stream_schemas = sorted(schema_dir.glob("wavepeek-stream-v*.json")) if schema_dir.is_dir() else []
+    schema_candidates = sorted(schema_dir.glob("wavepeek_v*.json")) if schema_dir.is_dir() else []
+    stream_schema_candidates = sorted(schema_dir.glob("wavepeek-stream-v*.json")) if schema_dir.is_dir() else []
+    invalid = [
+        path.name
+        for path in [*schema_candidates, *stream_schema_candidates]
+        if not (
+            valid_schema_artifact_name(path.name)
+            or valid_stream_schema_artifact_name(path.name)
+        )
+    ]
+    if invalid:
+        fail("invalid schema artifact name(s): " + ", ".join(sorted(invalid)))
+    schemas = [path for path in schema_candidates if valid_schema_artifact_name(path.name)]
+    stream_schemas = [
+        path
+        for path in stream_schema_candidates
+        if valid_stream_schema_artifact_name(path.name)
+    ]
     copied: list[pathlib.Path] = []
     if schemas:
         for schema in [*schemas, *stream_schemas]:
@@ -767,10 +791,10 @@ def changed_paths(remote_base: str | None, staged_branch: str, runner: CommandRu
 def path_allowed(path: str, patterns: list[str]) -> bool:
     for pattern in patterns:
         if pattern == "wavepeek_v*.json":
-            if re.fullmatch(r"wavepeek_v[0-9]+(?:[.][0-9]+)?[.]json", path):
+            if valid_schema_artifact_name(path):
                 return True
         elif pattern == "wavepeek-stream-v*.json":
-            if re.fullmatch(r"wavepeek-stream-v[0-9]+(?:[.][0-9]+)?[.]json", path):
+            if valid_stream_schema_artifact_name(path):
                 return True
         elif pattern.endswith("/**"):
             prefix = pattern[:-3] + "/"

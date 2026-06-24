@@ -474,6 +474,47 @@ def validate_runtime_envelope_url(version: str, major: str, artifact_version: st
         fail("error: schema: legacy warnings key is still present in JSON envelope")
 
 
+def validate_runtime_stream_envelope_url(version: str, major: str, artifact_version: str) -> None:
+    expected_url = expected_stream_schema_url(artifact_version)
+    runtime_url_pattern = re.compile(expected_stream_schema_url_pattern(major))
+
+    info_jsonl_stdout = subprocess.run(
+        [
+            "cargo",
+            "run",
+            "--quiet",
+            "--",
+            "info",
+            "--waves",
+            "tests/fixtures/hand/m2_core.vcd",
+            "--jsonl",
+        ],
+        check=True,
+        stdout=subprocess.PIPE,
+        text=True,
+    ).stdout
+    first_line = next((line for line in info_jsonl_stdout.splitlines() if line), "")
+    if not first_line:
+        fail("error: schema: info JSONL output did not contain a begin record")
+    begin_record = json.loads(first_line)
+    if begin_record.get("type") != "begin":
+        fail("error: schema: first info JSONL record is not a begin record")
+    actual_schema_url = begin_record.get("$schema")
+
+    if actual_schema_url != expected_url:
+        fail(
+            "error: schema: stream begin $schema URL mismatch: "
+            f"expected {expected_url}, got {actual_schema_url}"
+        )
+
+    if actual_schema_url is None or runtime_url_pattern.fullmatch(actual_schema_url) is None:
+        fail(
+            "error: schema: stream begin $schema URL does not match required pattern: "
+            f"{actual_schema_url}"
+        )
+
+
+
 def main() -> None:
     version = package_version()
     major, _minor = package_major_minor(version)
@@ -494,6 +535,7 @@ def main() -> None:
     validate_extension_friendly_schema(stream_schema)
     validate_stream_schema(stream_schema, major, artifact_version)
     validate_runtime_stream_schema(stream_schema_path, stream_schema_bytes)
+    validate_runtime_stream_envelope_url(version, major, artifact_version)
 
 
 if __name__ == "__main__":

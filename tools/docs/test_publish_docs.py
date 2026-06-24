@@ -96,6 +96,14 @@ class PublishDocsTests(unittest.TestCase):
         self.assertEqual(publish_docs.stream_schema_artifact_name("1.1.0"), "wavepeek-stream-v1.json")
         self.assertEqual(publish_docs.schema_artifact_name("2.0.0"), "wavepeek_v2.0.json")
         self.assertEqual(publish_docs.stream_schema_artifact_name("2.0.0"), "wavepeek-stream-v2.0.json")
+        self.assertTrue(publish_docs.valid_schema_artifact_name("wavepeek_v1.json"))
+        self.assertTrue(publish_docs.valid_schema_artifact_name("wavepeek_v2.0.json"))
+        self.assertFalse(publish_docs.valid_schema_artifact_name("wavepeek_v1.1.json"))
+        self.assertFalse(publish_docs.valid_schema_artifact_name("wavepeek_v2.json"))
+        self.assertTrue(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v1.json"))
+        self.assertTrue(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v2.0.json"))
+        self.assertFalse(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v1.1.json"))
+        self.assertFalse(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v2.json"))
 
     def test_collect_root_artifacts_copies_versioned_schema(self) -> None:
         source = self.root / "source"
@@ -138,6 +146,15 @@ class PublishDocsTests(unittest.TestCase):
                 "wavepeek_v2.0.json",
             ],
         )
+
+    def test_collect_root_artifacts_rejects_invalid_schema_aliases(self) -> None:
+        source = self.root / "source-invalid-schema"
+        (source / "schema").mkdir(parents=True)
+        (source / "schema" / "wavepeek_v2.0.json").write_text("v2", encoding="utf-8")
+        (source / "schema" / "wavepeek_v2.json").write_text("bad", encoding="utf-8")
+
+        with self.assertRaisesRegex(publish_docs.PublishError, "wavepeek_v2.json"):
+            publish_docs.collect_root_artifacts(source, self.paths, "2.0.0")
 
     def test_collect_root_artifacts_maps_legacy_major_zero_schema(self) -> None:
         source = self.root / "legacy-source"
@@ -296,8 +313,28 @@ class PublishDocsTests(unittest.TestCase):
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(
+                ["wavepeek_v2.json"],
+                publish_docs.allowed_path_patterns("2.0.0", promote_latest=True),
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["wavepeek_v1.1.json"],
+                publish_docs.allowed_path_patterns("1.1.0", promote_latest=True),
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
                 ["wavepeek-stream-v0.json/extra.json"],
                 publish_docs.allowed_path_patterns("0.5.0", promote_latest=True),
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["wavepeek-stream-v2.json"],
+                publish_docs.allowed_path_patterns("2.0.0", promote_latest=True),
+            )
+        with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
+            publish_docs.verify_allowed_paths(
+                ["wavepeek-stream-v1.1.json"],
+                publish_docs.allowed_path_patterns("1.1.0", promote_latest=True),
             )
         with self.assertRaisesRegex(publish_docs.PublishError, "disallowed"):
             publish_docs.verify_allowed_paths(

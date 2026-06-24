@@ -40,8 +40,9 @@ Event expressions support these forms:
 
 `*` denotes any change in the command-defined tracked set. `change` binds that
 set to the resolved `--signals`; `property` binds it to the signals referenced
-by `--eval`. `change` and `property` require an explicit `--on`; use `--on '*'`
-when the intended trigger is the tracked-set wildcard.
+by `--eval`. `change` and `property` require an explicit `--on`; use
+`--on '*' --sample-mode native` when the intended trigger is the tracked-set
+wildcard.
 
 ### 1.2 Names and Resolution
 

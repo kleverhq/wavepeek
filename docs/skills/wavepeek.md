@@ -48,7 +48,7 @@ Before using any command in a nontrivial way, read `wavepeek help <command>` or 
 - State at explicit timestamp(s): `value`.
 - Moments when displayed signal values changed: `change`.
 - Timestamps where a Boolean condition is true or changes state: `property`.
-- Event/transaction enumeration and counting: `property --capture match`, then `value` at the match timestamps.
+- Event/transaction enumeration and counting: `property --capture match`, then `value --at <sample_time>` for the returned rows.
 - Machine parsing or aggregation: supported `--json`, plus `wavepeek schema` if the exact shape matters.
 
 Start most investigations with:
@@ -123,7 +123,7 @@ For ready/valid-style protocols, define the transfer on the owning channel clock
 
     --on "posedge <clk>" --eval "<valid> && <ready>" --capture match
 
-Then sample the payload that belongs to that same channel at each match timestamp. This is the generic pattern for repeated transfers, including repeated transfers with identical payload values.
+Then sample the payload that belongs to that same channel at each returned `sample_time`. This is the generic pattern for repeated transfers, including repeated transfers with identical payload values.
 
 For protocols with separate channels, count each channel on its own handshake. Do not require unrelated channel handshakes to occur in the same cycle unless the protocol or the user’s question explicitly says so.
 

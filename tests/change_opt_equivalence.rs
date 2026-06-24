@@ -55,9 +55,14 @@ fn run_change_json_with_mode(
         engine_mode,
         "--tune-candidates",
         candidate_mode,
+        "--sample-mode",
+        "native",
     ];
     if engine_mode == "edge-fast" {
         args.push("--tune-edge-fast-force");
+    }
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
     }
     args.extend_from_slice(extra_args);
     args.push("--json");

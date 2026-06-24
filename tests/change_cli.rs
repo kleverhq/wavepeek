@@ -76,6 +76,8 @@ fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
             "data",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -238,7 +240,7 @@ fn change_sample_mode_pre_edge_rejects_plain_signal_trigger() {
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("fatal: args:"))
         .stderr(predicate::str::contains(
-            "--sample-mode pre-edge requires explicit --on",
+            "--sample-mode pre-edge requires --on with only edge event terms",
         ));
 }
 
@@ -248,7 +250,15 @@ fn change_requires_signals_flag() {
     let fixture = fixture.to_string_lossy().into_owned();
 
     wavepeek_cmd()
-        .args(["change", "--waves", fixture.as_str()])
+        .args([
+            "change",
+            "--waves",
+            fixture.as_str(),
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+        ])
         .assert()
         .failure()
         .code(1)
@@ -274,6 +284,10 @@ fn change_default_when_matches_expected_json_payload() {
             "10ns",
             "--signals",
             "top.clk,top.data",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -310,11 +324,11 @@ fn change_default_when_matches_expected_json_payload() {
 }
 
 #[test]
-fn change_omitted_when_matches_explicit_wildcard() {
+fn change_requires_on_flag() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
-    let default_output = wavepeek_cmd()
+    wavepeek_cmd()
         .args([
             "change",
             "--waves",
@@ -327,30 +341,13 @@ fn change_omitted_when_matches_explicit_wildcard() {
             "top.clk,top.data",
             "--json",
         ])
-        .output()
-        .expect("default --on run should execute");
-    let star_output = wavepeek_cmd()
-        .args([
-            "change",
-            "--waves",
-            fixture.as_str(),
-            "--from",
-            "1ns",
-            "--to",
-            "10ns",
-            "--signals",
-            "top.clk,top.data",
-            "--on",
-            "*",
-            "--json",
-        ])
-        .output()
-        .expect("explicit wildcard run should execute");
-
-    assert!(default_output.status.success());
-    assert!(star_output.status.success());
-    assert_eq!(default_output.stdout, star_output.stdout);
-    assert_eq!(default_output.stderr, star_output.stderr);
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::contains("--on <ON>"))
+        .stderr(predicate::str::contains("See 'wavepeek change --help'."));
 }
 
 #[test]
@@ -373,6 +370,8 @@ fn change_named_non_edge_trigger_emits_expected_single_row() {
             "data,clk",
             "--on",
             "data",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -418,6 +417,8 @@ fn change_zero_delta_path_returns_empty_data_with_warning() {
             "data",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -452,6 +453,8 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
             "data",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -471,6 +474,8 @@ fn change_zero_delta_warning_matches_between_json_and_human_modes() {
             "data",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("human change run should execute");
@@ -498,6 +503,10 @@ fn change_unlimited_warning_precedes_empty_result_warning_in_json_and_human_mode
     let json_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -515,6 +524,10 @@ fn change_unlimited_warning_precedes_empty_result_warning_in_json_and_human_mode
     let human_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -567,6 +580,8 @@ fn change_omitted_from_uses_dump_start_baseline_checkpoint() {
             "sig",
             "--on",
             "*",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -609,6 +624,8 @@ fn change_from_timestamp_is_baseline_only_for_emission() {
             "clk",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -643,6 +660,8 @@ fn change_equal_from_and_to_never_emits_baseline_row() {
             "clk",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -665,6 +684,10 @@ fn change_accepts_inclusive_dump_time_bounds() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -681,6 +704,10 @@ fn change_accepts_inclusive_dump_time_bounds() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -715,6 +742,8 @@ fn change_union_or_and_comma_forms_are_exact_synonyms() {
             "clk1",
             "--on",
             "posedge clk1, posedge clk2",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -734,6 +763,8 @@ fn change_union_or_and_comma_forms_are_exact_synonyms() {
             "clk1",
             "--on",
             "posedge clk1 or posedge clk2",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -765,6 +796,8 @@ fn change_union_overlap_timestamp_is_deduplicated() {
             "clk1",
             "--on",
             "posedge clk1, posedge clk2",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -797,6 +830,8 @@ fn change_negedge_wiring_is_end_to_end() {
             "clk",
             "--on",
             "negedge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -836,6 +871,8 @@ fn change_edge_wiring_is_end_to_end() {
             "clk",
             "--on",
             "edge clk",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -871,6 +908,8 @@ fn change_iff_executes_end_to_end() {
             "data,clk",
             "--on",
             "posedge clk iff data == 8'h00",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -886,6 +925,8 @@ fn change_iff_executes_end_to_end() {
             "data,clk",
             "--on",
             "posedge clk iff data == 8'h00",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("human change run should execute");
@@ -932,6 +973,8 @@ fn change_invalid_on_reports_expr_error() {
             "data",
             "--on",
             "posedge (",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -958,6 +1001,8 @@ fn change_unmatched_close_parenthesis_reports_expr_error() {
             "data",
             "--on",
             "posedge clk)",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -984,6 +1029,8 @@ fn change_broken_union_reports_expr_error() {
             "data",
             "--on",
             "posedge clk or , clk",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1010,6 +1057,8 @@ fn change_empty_iff_reports_expr_error() {
             "data",
             "--on",
             "posedge clk iff",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1036,6 +1085,8 @@ fn change_rich_type_iff_payload_executes() {
             "data,clk",
             "--on",
             "posedge clk iff (type(data)'(0) == 8'h00 && real'(1) > 0.5 && \"go\" == \"go\")",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -1079,6 +1130,8 @@ fn change_triggered_iff_payload_executes() {
             "sig,clk",
             "--on",
             "posedge clk iff ev.triggered()",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -1111,6 +1164,10 @@ fn change_empty_result_warning_matches_between_json_and_human_modes() {
     let json_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1126,6 +1183,10 @@ fn change_empty_result_warning_matches_between_json_and_human_modes() {
     let human_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1162,6 +1223,10 @@ fn change_truncation_warning_matches_between_json_and_human_modes() {
     let json_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1179,6 +1244,10 @@ fn change_truncation_warning_matches_between_json_and_human_modes() {
     let human_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1226,6 +1295,10 @@ fn change_abs_only_affects_human_labels_not_json_payload() {
     let json_default = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1243,6 +1316,10 @@ fn change_abs_only_affects_human_labels_not_json_payload() {
     let json_abs = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1266,6 +1343,10 @@ fn change_abs_only_affects_human_labels_not_json_payload() {
     let human_default = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1282,6 +1363,10 @@ fn change_abs_only_affects_human_labels_not_json_payload() {
     let human_abs = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1324,6 +1409,10 @@ fn change_preserves_duplicate_signal_order() {
     let output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1358,6 +1447,10 @@ fn change_default_max_is_50_with_truncation_warning() {
     let output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1390,6 +1483,10 @@ fn change_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() {
     let json_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1403,6 +1500,10 @@ fn change_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() {
     let human_output = wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1450,6 +1551,10 @@ fn change_rejects_zero_max_with_args_error() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1475,6 +1580,10 @@ fn change_tune_overrides_require_debug_mode() {
         .env_remove("DEBUG")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1500,6 +1609,10 @@ fn change_explicit_tune_auto_still_requires_debug_mode() {
         .env_remove("DEBUG")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1524,6 +1637,10 @@ fn change_tune_candidate_override_requires_debug_mode() {
         .env_remove("DEBUG")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1548,6 +1665,10 @@ fn change_explicit_tune_candidates_auto_still_requires_debug_mode() {
         .env_remove("DEBUG")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1572,6 +1693,10 @@ fn change_tune_edge_fast_force_requires_debug_mode() {
         .env_remove("DEBUG")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1595,6 +1720,10 @@ fn change_rejects_legacy_pre_fusion_engine_label() {
         .env("DEBUG", "1")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1620,6 +1749,10 @@ fn change_tune_overrides_succeed_with_debug_mode() {
         .env("DEBUG", "1")
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1649,6 +1782,10 @@ fn change_rejects_legacy_internal_and_perf_change_flags() {
         wavepeek_cmd()
             .args([
                 "change",
+                "--on",
+                "*",
+                "--sample-mode",
+                "native",
                 "--waves",
                 fixture.as_str(),
                 "--signals",
@@ -1671,6 +1808,10 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--signals",
@@ -1689,6 +1830,10 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1710,6 +1855,10 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1735,6 +1884,8 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
             "top.clk",
             "--on",
             "posedge top.clk",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1751,6 +1902,8 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
             "posedge nope",
             "--signals",
             "top.clk",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1762,6 +1915,10 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -1778,6 +1935,10 @@ fn change_validates_error_paths_for_args_scope_and_signal_resolution() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1803,6 +1964,10 @@ fn change_decimal_time_token_is_rejected_as_args_error() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1833,6 +1998,8 @@ fn change_empty_on_expression_reports_expr_error() {
             "top.clk",
             "--on",
             "",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1850,6 +2017,10 @@ fn change_out_of_range_from_time_is_args_error_with_bounds() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1876,6 +2047,10 @@ fn change_misaligned_time_includes_help_hint() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--from",
@@ -1912,6 +2087,8 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
             "top.clk",
             "--on",
             "posedge top.nope",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1935,6 +2112,8 @@ fn change_invalid_when_signal_fails_even_without_in_range_timestamps() {
             "clk",
             "--on",
             "posedge nope",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1952,6 +2131,10 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
     wavepeek_cmd()
         .args([
             "change",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -1976,6 +2159,8 @@ fn change_scoped_mode_rejects_canonical_tokens_even_if_prefixed_path_exists() {
             "clk",
             "--on",
             "posedge top.clk",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()

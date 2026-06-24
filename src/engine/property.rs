@@ -22,7 +22,7 @@ use crate::waveform::ChangeCandidateCollectionMode;
 #[cfg(test)]
 use crate::waveform::Waveform;
 
-const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires explicit --on with only edge event terms (posedge, negedge, or edge); wildcard and plain signal triggers are not supported";
+const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires --on with only edge event terms (posedge, negedge, or edge); use --sample-mode native for wildcard or plain signal triggers";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -187,10 +187,10 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     }
     debug.event("time.parse.done", || serde_json::json!({}));
 
-    let event_expr_source = args.on.as_deref().unwrap_or("*");
+    let event_expr_source = args.on.as_str();
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
-    validate_sample_mode(args.sample_mode, args.on.is_some(), &bound_event)?;
+    validate_sample_mode(args.sample_mode, &bound_event)?;
     let bound_eval = bind_waveform_logical_expr(&host, args.scope.as_deref(), args.eval.as_str())?;
     debug.event("expression.bind.done", || serde_json::json!({}));
     let eval_signal_handles = referenced_signal_handles(&bound_eval);
@@ -202,8 +202,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     let tracked_signal_handles = if event_expr_contains_wildcard(&bound_event) {
         if eval_signal_handles.is_empty() && event_expr_is_any_tracked_only(&bound_event) {
             return Err(WavepeekError::Args(
-                "wildcard trigger cannot infer tracked signals from --eval; pass --on explicitly"
-                    .to_string(),
+                "wildcard trigger cannot infer tracked signals from --eval; reference at least one signal in --eval or use an edge/plain trigger".to_string(),
             ));
         }
         eval_signal_handles.clone()
@@ -370,11 +369,9 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
 
 fn validate_sample_mode(
     sample_mode: SampleMode,
-    explicit_on: bool,
     bound_event: &crate::expr::BoundEventExpr,
 ) -> Result<(), WavepeekError> {
-    if sample_mode == SampleMode::PreEdge && (!explicit_on || !event_expr_is_edge_only(bound_event))
-    {
+    if sample_mode == SampleMode::PreEdge && !event_expr_is_edge_only(bound_event) {
         return Err(WavepeekError::Args(
             PRE_EDGE_REQUIRES_EDGE_ONLY_ON.to_string(),
         ));
@@ -637,7 +634,7 @@ mod tests {
             from: None,
             to: None,
             scope: Some("top".to_string()),
-            on: Some("posedge sig".to_string()),
+            on: "posedge sig".to_string(),
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
@@ -658,7 +655,7 @@ mod tests {
             from: None,
             to: None,
             scope: Some("top".to_string()),
-            on: None,
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Switch,
@@ -681,7 +678,7 @@ mod tests {
             from: Some("0ns".to_string()),
             to: Some("10ns".to_string()),
             scope: Some("top".to_string()),
-            on: None,
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Assert,
@@ -701,7 +698,7 @@ mod tests {
             from: Some("10ns".to_string()),
             to: Some("0ns".to_string()),
             scope: Some("top".to_string()),
-            on: Some("posedge sig".to_string()),
+            on: "posedge sig".to_string(),
             sample_mode: SampleMode::Native,
             eval: "sig".to_string(),
             capture: CaptureMode::Match,
@@ -728,7 +725,7 @@ mod tests {
                 from: None,
                 to: None,
                 scope: Some("top".to_string()),
-                on: Some("posedge sig".to_string()),
+                on: "posedge sig".to_string(),
                 sample_mode: SampleMode::Native,
                 eval: "sig".to_string(),
                 capture: CaptureMode::Match,
@@ -752,7 +749,7 @@ mod tests {
             from: None,
             to: None,
             scope: Some("top".to_string()),
-            on: None,
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             eval: "1'b1".to_string(),
             capture: CaptureMode::Match,

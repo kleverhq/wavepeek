@@ -29,14 +29,14 @@ pub struct PropertyArgs {
     /// Canonical scope path for scope-relative signal and event names
     #[arg(long, help_heading = "Selection options")]
     pub scope: Option<String>,
-    /// Event trigger expression (default: `*` when omitted)
-    #[arg(long, help_heading = "Selection options")]
-    pub on: Option<String>,
+    /// Event trigger expression (required; use `*` only with `--sample-mode native`)
+    #[arg(long, required = true, help_heading = "Selection options")]
+    pub on: String,
     /// Value sampling mode for event-selected rows
     #[arg(
         long,
         value_enum,
-        default_value_t = SampleMode::Native,
+        default_value_t = SampleMode::PreEdge,
         value_name = "MODE",
         help_heading = "Selection options"
     )]

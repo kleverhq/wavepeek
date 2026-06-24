@@ -257,6 +257,8 @@ fn change_cli_matches(fixture: &str, source: &str, signals: &str) -> Vec<u64> {
             signals,
             "--on",
             source,
+            "--sample-mode",
+            "native",
             "--max",
             "unlimited",
             "--json",

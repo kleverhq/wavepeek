@@ -789,6 +789,8 @@ fn fsdb_change_json_matches_vcd_contracts() {
         "7ns",
         "--on",
         "*",
+        "--sample-mode",
+        "native",
         "--max",
         "10",
     ]);
@@ -810,6 +812,8 @@ fn fsdb_change_json_matches_vcd_contracts() {
         "7ns",
         "--on",
         "*",
+        "--sample-mode",
+        "native",
         "--max",
         "10",
         "--abs",
@@ -1008,6 +1012,8 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "10ns",
             "--on",
             "clk",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1026,6 +1032,8 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "top",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--eval",
             "temp > 1.0",
             "--capture",
@@ -1043,6 +1051,8 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "9ns",
             "--on",
             "*",
+            "--sample-mode",
+            "native",
             "--eval",
             "temp > 1.0",
         ],
@@ -1058,6 +1068,8 @@ fn fsdb_change_property_reject_unsupported_real_operands_clearly() {
             "9ns",
             "--on",
             "posedge clk",
+            "--sample-mode",
+            "native",
             "--eval",
             "temp > 1.0",
         ],
@@ -1197,8 +1209,18 @@ fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_wellen_path() {
 }
 
 fn run_json_success(args: &[&str]) -> Value {
+    let mut normalized_args = args.to_vec();
+    if matches!(args.first(), Some(&"change" | &"property")) {
+        if !args.contains(&"--on") {
+            normalized_args.extend_from_slice(&["--on", "*"]);
+        }
+        if !args.contains(&"--sample-mode") {
+            normalized_args.extend_from_slice(&["--sample-mode", "native"]);
+        }
+    }
+
     let assert = wavepeek_cmd()
-        .args(args)
+        .args(normalized_args)
         .assert()
         .success()
         .stderr(predicate::str::is_empty());

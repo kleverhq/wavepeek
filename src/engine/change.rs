@@ -34,7 +34,7 @@ const AUTO_FUSED_MIN_ESTIMATED_WORK: usize = 100_000;
 const AUTO_EDGE_ONLY_MIN_ESTIMATED_WORK: usize = 500_000;
 const AUTO_EDGE_FAST_MIN_ESTIMATED_WORK: usize = 2_000_000;
 const AUTO_FUSED_WIDE_SIGNAL_CUTOFF: usize = 32;
-const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires explicit --on with only edge event terms (posedge, negedge, or edge); wildcard and plain signal triggers are not supported";
+const PRE_EDGE_REQUIRES_EDGE_ONLY_ON: &str = "--sample-mode pre-edge requires --on with only edge event terms (posedge, negedge, or edge); use --sample-mode native for wildcard or plain signal triggers";
 const AUTO_EDGE_ONLY_MIN_REQUESTED_SIGNALS: usize = 10;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -328,10 +328,10 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
         || serde_json::json!({"signals": requested_signals.len()}),
     );
 
-    let event_expr_source = args.on.as_deref().unwrap_or("*");
+    let event_expr_source = args.on.as_str();
     let (host, bound_event) =
         bind_waveform_event_expr(waveform.clone(), args.scope.as_deref(), event_expr_source)?;
-    validate_sample_mode(args.sample_mode, args.on.is_some(), &bound_event)?;
+    validate_sample_mode(args.sample_mode, &bound_event)?;
     debug.event("expression.bind.done", || serde_json::json!({}));
 
     let dump_time = parse_dump_time_context(&metadata)?;
@@ -546,11 +546,9 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
 
 fn validate_sample_mode(
     sample_mode: SampleMode,
-    explicit_on: bool,
     bound_event: &BoundEventExpr,
 ) -> Result<(), WavepeekError> {
-    if sample_mode == SampleMode::PreEdge && (!explicit_on || !event_expr_is_edge_only(bound_event))
-    {
+    if sample_mode == SampleMode::PreEdge && !event_expr_is_edge_only(bound_event) {
         return Err(WavepeekError::Args(
             PRE_EDGE_REQUIRES_EDGE_ONLY_ON.to_string(),
         ));
@@ -2038,7 +2036,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string(), "msg".to_string()],
-            on: None,
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
@@ -2389,7 +2387,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
-            on: Some("posedge sig".to_string()),
+            on: "posedge sig".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Unlimited,
             abs: false,
@@ -2420,7 +2418,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
-            on: None,
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(0),
             abs: false,
@@ -2443,7 +2441,7 @@ mod tests {
             to: Some("0ns".to_string()),
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
-            on: Some("posedge sig".to_string()),
+            on: "posedge sig".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
@@ -2469,7 +2467,7 @@ mod tests {
                 to: None,
                 scope: Some("top".to_string()),
                 signals: vec!["sig".to_string()],
-                on: Some("posedge sig".to_string()),
+                on: "posedge sig".to_string(),
                 sample_mode: SampleMode::Native,
                 max: LimitArg::Unlimited,
                 abs: false,
@@ -2496,7 +2494,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
-            on: Some("negedge sig".to_string()),
+            on: "negedge sig".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(5),
             abs: false,
@@ -2528,7 +2526,7 @@ mod tests {
             to: None,
             scope: Some("top".to_string()),
             signals: vec!["sig".to_string()],
-            on: Some("*".to_string()),
+            on: "*".to_string(),
             sample_mode: SampleMode::Native,
             max: LimitArg::Numeric(1),
             abs: false,

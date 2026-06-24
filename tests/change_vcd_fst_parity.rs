@@ -18,6 +18,12 @@ fn assert_debug_stderr_is_well_formed(stderr: &[u8]) {
 
 fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
     let mut args = vec!["change", "--waves", waves];
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
+    }
+    if !extra_args.contains(&"--sample-mode") {
+        args.extend_from_slice(&["--sample-mode", "native"]);
+    }
     args.extend_from_slice(extra_args);
     args.push("--json");
 
@@ -43,6 +49,12 @@ fn run_change_json_with_tune_modes(
         "--tune-candidates",
         candidate_mode,
     ]);
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
+    }
+    if !extra_args.contains(&"--sample-mode") {
+        args.extend_from_slice(&["--sample-mode", "native"]);
+    }
     args.extend_from_slice(extra_args);
     args.push("--json");
 

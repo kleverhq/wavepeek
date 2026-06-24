@@ -26,7 +26,7 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 - [x] (2026-06-24 22:10Z) Reviewed Milestone 1 and fixed findings: schema contract now smokes runtime JSONL begin `$schema`, and docs publish tooling rejects invalid `wavepeek_v2.json` / `wavepeek_v1.1.json` aliases.
 - [x] (2026-06-24 22:29Z) Milestone 2 implementation completed locally: `change` and `property` require `--on`, default to `pre-edge`, keep explicit wildcard/native flows, and targeted plus full Rust tests pass.
 - [x] (2026-06-24 22:46Z) Reviewed Milestone 2 and fixed coverage findings: default pre-edge success cases now omit `--sample-mode`, `change` default pre-edge rejects wildcard/plain/mixed non-edge triggers, and stale parity test naming was corrected.
-- [ ] Milestone 3: update tests, benchmark catalogs, public docs, packaged skill, and maintainer docs for the v2 behavior.
+- [x] (2026-06-24 23:31Z) Milestone 3 implementation completed locally: public docs, packaged skill, maintainer docs, changelog, benchmark catalogs, and benchmark catalog tests now reflect required `--on`, default pre-edge sampling, explicit native raw scans, and v2.0 schema artifacts.
 - [ ] Review Milestone 3.
 - [ ] Milestone 4: run full quality gates, release performance evidence, final control review, and open the `rc/2.0.0` pull request.
 
@@ -52,6 +52,9 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 
 - Observation: because pre-commit runs the full Rust and optional FSDB suites, test updates planned for Milestone 3 had to move into Milestone 2 for any code commit to pass hooks.
   Evidence: full `cargo test -q` initially failed in `tests/change_opt_equivalence.rs`, `tests/change_vcd_fst_parity.rs`, `tests/expression_event_runtime.rs`, `tests/fsdb_disabled_cli.rs`, `tests/jsonl_cli.rs`, and `tests/property_vcd_fst_parity.rs`; optional `just run-if-verdi test-fsdb` initially failed in `tests/fsdb_cli.rs`. These suites now pin native sampling or explicit wildcard triggers where their purpose is not default pre-edge behavior.
+
+- Observation: benchmark catalog commands also need contract coverage, not just one-time JSON edits.
+  Evidence: Milestone 3 added a benchmark harness unit test that requires every `change` and `property` catalog command to pass `--on`, and requires wildcard, plain-signal, or mixed-trigger workloads to pass `--sample-mode native`. It covers `bench/e2e/tests.json`, `bench/e2e/tests_commit.json`, and `bench/e2e/tests_fsdb.json`.
 
 ## Decision Log
 
@@ -90,6 +93,8 @@ Planning review completed and found fixable gaps in the initial plan: an invalid
 Milestone 1 implementation and review are complete. It converts release metadata to `2.0.0`, adds exact-minor v2 schema artifacts, switches runtime/schema tooling/docs deployment helpers/tests to the new artifact names, and validates that v2 schemas remain embedded and extension-friendly. Review follow-up tightened docs artifact-name handling and added a JSONL runtime `$schema` smoke to `check-schema`. Targeted checks passed: `cargo check`, `just check-schema`, `cargo test --test schema_cli --test jsonl_cli`, `just test-aux`, docs helper tests, `cargo fmt --check`, and `just update-schema` without schema drift.
 
 Milestone 2 implementation and review are complete. It makes `--on` required in `change` and `property`, switches `SampleMode` default to `pre-edge`, removes engine-level implicit wildcard fallback, updates command help source, pins old raw/native tests to explicit `--on '*' --sample-mode native`, and adds missing-`--on` coverage. Because commit hooks run the full Rust suite and this environment has Verdi, Milestone 2 also updates optimizer, backend-parity, JSONL, FSDB-disabled, FSDB-enabled, and expression-shadow tests that need explicit native sampling. Review follow-up strengthened default-pre-edge positive coverage and non-edge rejection coverage. Checks passed: `cargo test --test cli_contract --test change_cli --test property_cli`, `cargo test --lib change`, `cargo test --lib property`, full `cargo test -q`, `just run-if-verdi test-fsdb`, `cargo check`, `cargo fmt --check`, and `git diff --check`.
+
+Milestone 3 implementation is complete and awaiting review. Public command/reference/troubleshooting docs, maintainer docs, packaged skill guidance, changelog entries, and benchmark catalogs now describe the v2 behavior: `change` and `property` require explicit `--on`, default to pre-edge sampling for edge-only triggers, use `--sample-mode native` for wildcard/plain/mixed triggers, and emit v2.0 schema URLs. Benchmark catalogs now pin native mode for non-edge workloads and include a unit-test invariant to keep that policy from drifting. Checks passed: `python3 -m unittest bench.e2e.test_perf`, `just docs-site-check`, `just check-bench-e2e-fsdb-catalog`, full `cargo test`, and `just pre-commit`.
 
 ## Context and Orientation
 

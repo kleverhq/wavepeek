@@ -12,13 +12,13 @@ see_also:
 
 Use this topic when `change --on 'posedge clk'` or `property --on 'posedge clk'` appears one clock different from an RTL assertion, simulator log, or mental model.
 
-`wavepeek` reads recorded waveform dumps. A dump timestamp contains the values recorded at that simulation time. In default `native` mode, `wavepeek` evaluates and displays values at the same timestamp as the trigger edge.
+`wavepeek` reads recorded waveform dumps. A dump timestamp contains the values recorded at that simulation time. For edge-only triggers, the default `pre-edge` mode evaluates and displays values from just before the trigger edge while keeping the row timestamp at the edge. Use `--sample-mode native` when you want the values recorded at the selected dump timestamp itself.
 
 RTL and concurrent SystemVerilog assertions often use sampled values. A common clocked property samples values before the clocking event and observes nonblocking assignment updates on the following clock, not on the same edge where the dump value changed.
 
 ## Native sampling
 
-With native sampling, the clock edge and same-time data update are observed together:
+With `--sample-mode native`, the clock edge and same-time data update are observed together:
 
 ```text
 time        0ns      5ns      10ns     15ns
@@ -27,15 +27,15 @@ data        00       aa       aa       aa
                       ^
                       posedge clk and data update in the dump
 
-wavepeek property --on 'posedge clk' --eval "data == 8'haa"
+wavepeek property --on 'posedge clk' --eval "data == 8'haa" --sample-mode native
                       ^ match at 5ns
 ```
 
-This is the default for compatibility. It is useful when you want to inspect exactly what is recorded at each dump timestamp.
+Native mode is useful when you want to inspect exactly what is recorded at each dump timestamp. It is also required for wildcard, plain-signal, and mixed triggers.
 
 ## Pre-edge sampling
 
-`--sample-mode pre-edge` keeps trigger detection at the edge timestamp, but samples displayed or evaluated values just before that edge:
+The default `pre-edge` mode keeps trigger detection at the edge timestamp, but samples displayed or evaluated values just before that edge:
 
 ```text
 time        0ns      5ns      10ns     15ns
@@ -47,7 +47,7 @@ data        00       aa       aa       aa
 pre-edge sample before 5ns sees data=00
 pre-edge sample before 15ns sees data=aa
 
-wavepeek property --on 'posedge clk' --eval "data == 8'haa" --sample-mode pre-edge
+wavepeek property --on 'posedge clk' --eval "data == 8'haa"
                                         ^ match at 15ns
 ```
 
@@ -96,7 +96,7 @@ These are rejected:
 --on 'data or posedge clk' --sample-mode pre-edge
 ```
 
-The restriction keeps the mode tied to edge-triggered RTL-style sampling. Use the default `native` mode for wildcard, plain-signal, or mixed triggers.
+The restriction keeps the mode tied to edge-triggered RTL-style sampling. Use `--sample-mode native` for wildcard, plain-signal, or mixed triggers.
 
 ## Range boundaries
 
@@ -128,7 +128,7 @@ $ wavepeek property --waves path/to/dump.vcd --scope top \
     --on 'posedge clk' --eval 'ready && valid' \
     --capture match --sample-mode pre-edge --json
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/wavepeek_v1.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/wavepeek_v2.0.json",
   "command": "property",
   "data": [
     {"time":"100ns","sample_time":"99999ps","kind":"match"},
@@ -151,4 +151,4 @@ Using `value --at 100ns` asks for native dump values at the trigger edge. For no
 
 Use `native` when you want the literal dump value at each selected timestamp or when your trigger is wildcard/plain-signal based.
 
-Use `pre-edge` when debugging clocked RTL or SVA-like checks and a same-edge nonblocking assignment update makes `wavepeek` output look one clock early.
+Use the default `pre-edge` mode when debugging clocked RTL or SVA-like checks and a same-edge nonblocking assignment update makes `wavepeek` output look one clock early.

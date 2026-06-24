@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated `change` and `property` JSON/JSONL schemas and output rows to include `sample_time`, while preserving `time` as the selected event timestamp.
+- Changed `change` and `property` to require explicit `--on`; use `--on '*' --sample-mode native` for raw tracked-set scans.
+- Changed `change` and `property` default sampling to pre-edge for edge-only triggers; use `--sample-mode native` for same-timestamp dump sampling, wildcard triggers, plain-signal triggers, or mixed triggers.
+- Moved current JSON schema artifacts to exact major.minor names (`schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`) and made the v2 schemas extension-friendly for additive object fields.
 
 ## [1.0.1] - 2026-06-13
 

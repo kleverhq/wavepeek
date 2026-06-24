@@ -387,6 +387,31 @@ class PerfHelpersTest(unittest.TestCase):
                 self.assertGreaterEqual(test["runs"], 10, f"{catalog}:{test['name']}")
                 self.assertGreaterEqual(test["warmup"], 5, f"{catalog}:{test['name']}")
 
+    def test_change_property_catalogs_pin_required_trigger_sampling(self) -> None:
+        def is_edge_only(trigger: str) -> bool:
+            if trigger == "*" or " or " in trigger or "," in trigger:
+                return False
+            parts = trigger.split()
+            return bool(parts) and parts[0] in {"posedge", "negedge", "edge"}
+
+        for catalog in ("tests.json", "tests_commit.json", "tests_fsdb.json"):
+            payload = json.loads((perf.SCRIPT_DIR / catalog).read_text(encoding="utf-8"))
+            for test in payload["tests"]:
+                command = test["command"]
+                if len(command) < 2 or command[1] not in {"change", "property"}:
+                    continue
+
+                with self.subTest(catalog=catalog, name=test["name"]):
+                    self.assertIn("--on", command)
+                    trigger = command[command.index("--on") + 1]
+                    mode = (
+                        command[command.index("--sample-mode") + 1]
+                        if "--sample-mode" in command
+                        else "pre-edge"
+                    )
+                    if not is_edge_only(trigger):
+                        self.assertEqual(mode, "native")
+
     def test_tests_json_contains_expected_scope_benchmarks(self) -> None:
         payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
         scope_tests = {

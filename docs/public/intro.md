@@ -34,7 +34,7 @@ Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and sign
 2. **Human by default, JSON when requested.** Human-readable output is the default user experience. Stable machine-readable output is opt-in with `--json` where supported.
 3. **Composable commands.** Each command does one focused job so scripts and agents can combine commands into repeatable debug recipes.
 4. **Deterministic output.** Identical inputs should produce identical observable output.
-5. **Stable machine contracts.** JSON output is versioned through an explicit major-versioned `$schema` URL, while human-readable output stays intentionally more flexible.
+5. **Stable machine contracts.** JSON output is versioned through an explicit schema `$schema` URL such as `wavepeek_v2.0.json`, while human-readable output stays intentionally more flexible.
 6. **Minimal footprint.** `wavepeek` is stateless, fast to start, and does not require a background service.
 
 ## Documentation map

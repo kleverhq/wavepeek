@@ -16,6 +16,10 @@
         "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "--signals",
         "araddr",
+        "--on",
+        "*",
+        "--sample-mode",
+        "native",
         "--max",
         "1000"
       ],
@@ -23,7 +27,8 @@
         "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 1,
-        "window_to": "1000ps"
+        "window_to": "1000ps",
+        "trigger": "*"
       }
     },
     {
@@ -43,7 +48,9 @@
         "--to",
         "941092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",

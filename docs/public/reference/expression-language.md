@@ -40,8 +40,8 @@ Event expressions support these forms:
 
 `*` denotes any change in the command-defined tracked set. `change` binds that
 set to the resolved `--signals`; `property` binds it to the signals referenced
-by `--eval`. If `property --eval` references no signals or raw-event handles,
-the command rejects omitted `--on` and requires an explicit trigger.
+by `--eval`. `change` and `property` require an explicit `--on`; use `--on '*'`
+when the intended trigger is the tracked-set wildcard.
 
 ### 1.2 Names and Resolution
 
@@ -83,13 +83,14 @@ union. For example, `negedge clk iff rstn or ready` means
 Parentheses are part of that `logical_expr` syntax; Event Expressions do not
 define an independent parenthesized grouping form.
 
-For `change --sample-mode pre-edge` and `property --sample-mode pre-edge`, the
-`--on` event expression still uses dump-native event detection at the trigger
+For pre-edge sampling, the default for `change` and `property`, the `--on`
+event expression still uses dump-native event detection at the trigger
 timestamp. This includes edge classification and any `iff` guard. Only the
 values printed by `change --signals` or evaluated by `property --eval` move to
 the pre-edge sample point recorded as `sample_time` in JSON and JSONL rows. The
 pre-edge mode is accepted only for explicit edge-only `--on` expressions:
-`posedge`, `negedge`, or `edge`, optionally with `iff`.
+`posedge`, `negedge`, or `edge`, optionally with `iff`; wildcard, plain-signal,
+and mixed triggers require `--sample-mode native`.
 
 ### 1.5 Precedence and Grouping
 

@@ -69,7 +69,7 @@ fn run_change_json_with_tune_modes(
 }
 
 #[test]
-fn change_vcd_and_fst_payloads_match_for_default_trigger() {
+fn change_vcd_and_fst_payloads_match_for_explicit_wildcard_native_trigger() {
     let vcd_fixture = fixture_path("m2_core.vcd");
     let vcd_fixture = vcd_fixture.to_string_lossy().into_owned();
     let fst_fixture = fixture_path("m2_core.fst");

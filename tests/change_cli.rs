@@ -97,8 +97,6 @@ fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
             "data",
             "--on",
             "posedge clk",
-            "--sample-mode",
-            "pre-edge",
             "--json",
         ])
         .output()
@@ -118,8 +116,6 @@ fn change_sample_mode_pre_edge_samples_before_trigger_edge() {
             "data",
             "--on",
             "posedge clk",
-            "--sample-mode",
-            "pre-edge",
         ])
         .output()
         .expect("change should execute");
@@ -216,32 +212,32 @@ fn change_sample_mode_pre_edge_preserves_from_baseline() {
 }
 
 #[test]
-fn change_sample_mode_pre_edge_rejects_plain_signal_trigger() {
+fn change_default_pre_edge_rejects_non_edge_triggers() {
     let fixture = write_fixture(RTL_SAMPLING_VCD, "change-rtl-sampling-invalid.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();
 
-    wavepeek_cmd()
-        .args([
-            "change",
-            "--waves",
-            fixture.as_str(),
-            "--scope",
-            "top",
-            "--signals",
-            "data",
-            "--on",
-            "data",
-            "--sample-mode",
-            "pre-edge",
-        ])
-        .assert()
-        .failure()
-        .code(1)
-        .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains(
-            "--sample-mode pre-edge requires --on with only edge event terms",
-        ));
+    for trigger in ["*", "data", "data or posedge clk"] {
+        wavepeek_cmd()
+            .args([
+                "change",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--signals",
+                "data",
+                "--on",
+                trigger,
+            ])
+            .assert()
+            .failure()
+            .code(1)
+            .stdout(predicate::str::is_empty())
+            .stderr(predicate::str::starts_with("fatal: args:"))
+            .stderr(predicate::str::contains(
+                "--sample-mode pre-edge requires --on with only edge event terms",
+            ));
+    }
 }
 
 #[test]

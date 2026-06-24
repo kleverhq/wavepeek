@@ -25,7 +25,7 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 - [x] (2026-06-24 21:48Z) Milestone 1 implementation completed locally: release metadata now targets `2.0.0`, v2.0 schema artifacts exist, runtime/tooling/tests use exact major.minor artifact names, and targeted schema/helper checks pass.
 - [x] (2026-06-24 22:10Z) Reviewed Milestone 1 and fixed findings: schema contract now smokes runtime JSONL begin `$schema`, and docs publish tooling rejects invalid `wavepeek_v2.json` / `wavepeek_v1.1.json` aliases.
 - [x] (2026-06-24 22:29Z) Milestone 2 implementation completed locally: `change` and `property` require `--on`, default to `pre-edge`, keep explicit wildcard/native flows, and targeted plus full Rust tests pass.
-- [ ] Review Milestone 2.
+- [x] (2026-06-24 22:46Z) Reviewed Milestone 2 and fixed coverage findings: default pre-edge success cases now omit `--sample-mode`, `change` default pre-edge rejects wildcard/plain/mixed non-edge triggers, and stale parity test naming was corrected.
 - [ ] Milestone 3: update tests, benchmark catalogs, public docs, packaged skill, and maintainer docs for the v2 behavior.
 - [ ] Review Milestone 3.
 - [ ] Milestone 4: run full quality gates, release performance evidence, final control review, and open the `rc/2.0.0` pull request.
@@ -89,7 +89,7 @@ Planning review completed and found fixable gaps in the initial plan: an invalid
 
 Milestone 1 implementation and review are complete. It converts release metadata to `2.0.0`, adds exact-minor v2 schema artifacts, switches runtime/schema tooling/docs deployment helpers/tests to the new artifact names, and validates that v2 schemas remain embedded and extension-friendly. Review follow-up tightened docs artifact-name handling and added a JSONL runtime `$schema` smoke to `check-schema`. Targeted checks passed: `cargo check`, `just check-schema`, `cargo test --test schema_cli --test jsonl_cli`, `just test-aux`, docs helper tests, `cargo fmt --check`, and `just update-schema` without schema drift.
 
-Milestone 2 implementation is complete locally and pending review. It makes `--on` required in `change` and `property`, switches `SampleMode` default to `pre-edge`, removes engine-level implicit wildcard fallback, updates command help source, pins old raw/native tests to explicit `--on '*' --sample-mode native`, and adds missing-`--on` coverage. Because commit hooks run the full Rust suite and this environment has Verdi, Milestone 2 also updates optimizer, backend-parity, JSONL, FSDB-disabled, FSDB-enabled, and expression-shadow tests that need explicit native sampling. Checks passed: `cargo test --test cli_contract --test change_cli --test property_cli`, `cargo test --lib change`, `cargo test --lib property`, full `cargo test -q`, `just run-if-verdi test-fsdb`, `cargo check`, `cargo fmt --check`, and `git diff --check`.
+Milestone 2 implementation and review are complete. It makes `--on` required in `change` and `property`, switches `SampleMode` default to `pre-edge`, removes engine-level implicit wildcard fallback, updates command help source, pins old raw/native tests to explicit `--on '*' --sample-mode native`, and adds missing-`--on` coverage. Because commit hooks run the full Rust suite and this environment has Verdi, Milestone 2 also updates optimizer, backend-parity, JSONL, FSDB-disabled, FSDB-enabled, and expression-shadow tests that need explicit native sampling. Review follow-up strengthened default-pre-edge positive coverage and non-edge rejection coverage. Checks passed: `cargo test --test cli_contract --test change_cli --test property_cli`, `cargo test --lib change`, `cargo test --lib property`, full `cargo test -q`, `just run-if-verdi test-fsdb`, `cargo check`, `cargo fmt --check`, and `git diff --check`.
 
 ## Context and Orientation
 
@@ -267,3 +267,5 @@ Revision note: Milestone 1 review follow-up recorded on 2026-06-24. The plan now
 Revision note: Milestone 2 local implementation recorded on 2026-06-24. The plan now reflects completed explicit-trigger/default-pre-edge CLI work and targeted validation results before Milestone 2 review.
 
 Revision note: Milestone 2 validation expanded on 2026-06-24. The plan now records that full Rust and optional FSDB tests forced native/wildcard updates in optimizer, parity, JSONL, FSDB-disabled, FSDB-enabled, and expression-shadow suites before commit.
+
+Revision note: Milestone 2 review follow-up recorded on 2026-06-24. The plan now reflects stronger default-pre-edge coverage and corrected parity test naming.

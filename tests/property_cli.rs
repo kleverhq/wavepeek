@@ -111,8 +111,6 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
             "valid",
             "--capture",
             "assert",
-            "--sample-mode",
-            "pre-edge",
             "--json",
         ])
         .output()
@@ -157,8 +155,6 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
             "valid",
             "--capture",
             "assert",
-            "--sample-mode",
-            "pre-edge",
         ])
         .output()
         .expect("property should execute");

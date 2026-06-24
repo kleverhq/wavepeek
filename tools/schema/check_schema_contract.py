@@ -26,36 +26,42 @@ def package_version() -> str:
     return cargo_toml["package"]["version"]
 
 
-def package_major(version: str) -> str:
-    return version.split(".", maxsplit=1)[0]
+def package_major_minor(version: str) -> tuple[str, str]:
+    major, minor, _patch = version.split(".", maxsplit=2)
+    return major, minor
 
 
-def current_schema_path(major: str) -> pathlib.Path:
-    return pathlib.Path("schema") / f"wavepeek_v{major}.json"
+def schema_artifact_version(version: str) -> str:
+    major, minor = package_major_minor(version)
+    return f"{major}.{minor}"
 
 
-def current_stream_schema_path(major: str) -> pathlib.Path:
-    return pathlib.Path("schema") / f"wavepeek-stream-v{major}.json"
+def current_schema_path(artifact_version: str) -> pathlib.Path:
+    return pathlib.Path("schema") / f"wavepeek_v{artifact_version}.json"
 
 
-def expected_schema_url(major: str) -> str:
-    return f"{SCHEMA_PAGES_BASE}/wavepeek_v{major}.json"
+def current_stream_schema_path(artifact_version: str) -> pathlib.Path:
+    return pathlib.Path("schema") / f"wavepeek-stream-v{artifact_version}.json"
 
 
-def expected_stream_schema_url(major: str) -> str:
-    return f"{SCHEMA_PAGES_BASE}/wavepeek-stream-v{major}.json"
+def expected_schema_url(artifact_version: str) -> str:
+    return f"{SCHEMA_PAGES_BASE}/wavepeek_v{artifact_version}.json"
+
+
+def expected_stream_schema_url(artifact_version: str) -> str:
+    return f"{SCHEMA_PAGES_BASE}/wavepeek-stream-v{artifact_version}.json"
 
 
 def expected_schema_url_pattern(major: str) -> str:
-    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek_v{re.escape(major)}\.json$"
+    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek_v{re.escape(major)}\.[0-9]+\.json$"
 
 
 def expected_stream_schema_url_pattern(major: str) -> str:
-    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek-stream-v{re.escape(major)}\.json$"
+    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek-stream-v{re.escape(major)}\.[0-9]+\.json$"
 
 
-def validate_schema_path(schema_path: pathlib.Path, major: str) -> None:
-    expected_path = current_schema_path(major)
+def validate_schema_path(schema_path: pathlib.Path, artifact_version: str) -> None:
+    expected_path = current_schema_path(artifact_version)
     if schema_path != expected_path and schema_path.resolve() != expected_path.resolve():
         fail(
             "error: schema: canonical schema path mismatch: "
@@ -104,7 +110,9 @@ def schema_url_pattern(schema: dict[str, object]) -> str:
     return pattern
 
 
-def validate_artifact_schema_url_pattern(schema: dict[str, object], version: str, major: str) -> None:
+def validate_artifact_schema_url_pattern(
+    schema: dict[str, object], version: str, major: str, artifact_version: str
+) -> None:
     pattern = schema_url_pattern(schema)
     expected_pattern = expected_schema_url_pattern(major)
     if pattern != expected_pattern:
@@ -118,7 +126,7 @@ def validate_artifact_schema_url_pattern(schema: dict[str, object], version: str
     except re.error as error:
         fail(f"error: schema: canonical schema properties.$schema.pattern is invalid: {error}")
 
-    expected_url = expected_schema_url(major)
+    expected_url = expected_schema_url(artifact_version)
     if artifact_url_pattern.fullmatch(expected_url) is None:
         fail(
             "error: schema: canonical schema properties.$schema.pattern does not accept "
@@ -174,7 +182,20 @@ def require_list(value: object, message: str) -> list[object]:
     return value
 
 
-def validate_stream_schema(stream_schema: dict[str, object], major: str) -> None:
+def validate_extension_friendly_schema(value: object, path: str = "$") -> None:
+    if isinstance(value, dict):
+        if value.get("additionalProperties") is False:
+            fail(f"error: schema: {path} must allow extension properties")
+        for key, child in value.items():
+            validate_extension_friendly_schema(child, f"{path}.{key}")
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            validate_extension_friendly_schema(child, f"{path}[{index}]")
+
+
+def validate_stream_schema(
+    stream_schema: dict[str, object], major: str, artifact_version: str
+) -> None:
     if stream_schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
         fail("error: schema: stream schema must use JSON Schema draft 2020-12")
     if stream_schema.get("title") != "wavepeek JSONL stream record":
@@ -210,7 +231,7 @@ def validate_stream_schema(stream_schema: dict[str, object], major: str) -> None
         pattern = re.compile(expected_pattern)
     except re.error as error:
         fail(f"error: schema: stream schema $schema pattern is invalid: {error}")
-    expected_url = expected_stream_schema_url(major)
+    expected_url = expected_stream_schema_url(artifact_version)
     if pattern.fullmatch(expected_url) is None:
         fail(f"error: schema: stream schema $schema pattern does not accept {expected_url}")
 
@@ -258,8 +279,8 @@ def validate_stream_schema(stream_schema: dict[str, object], major: str) -> None
             fail(f"error: schema: {wrapper_name} command const mismatch")
         if item_property.get("$ref") != payload_ref:
             fail(f"error: schema: {wrapper_name} item payload reference mismatch")
-        if wrapper.get("additionalProperties") is not False:
-            fail(f"error: schema: {wrapper_name} must reject additional properties")
+        if wrapper.get("additionalProperties") is False:
+            fail(f"error: schema: {wrapper_name} must allow extension properties")
 
     summary = require_object(defs.get("streamSummary"), "error: schema: stream schema must define streamSummary")
     summary_properties = require_object(summary.get("properties"), "error: schema: streamSummary properties must be an object")
@@ -311,8 +332,8 @@ def validate_diagnostic_schema(schema: dict[str, object]) -> None:
         fail("error: schema: canonical schema must define $defs.diagnostic")
     if diagnostic.get("type") != "object":
         fail("error: schema: diagnostic definition must be an object")
-    if diagnostic.get("additionalProperties") is not False:
-        fail("error: schema: diagnostic definition must reject additional properties")
+    if diagnostic.get("additionalProperties") is False:
+        fail("error: schema: diagnostic definition must allow extension properties")
     if diagnostic.get("required") != ["kind", "message"]:
         fail("error: schema: diagnostic definition must require kind and message")
 
@@ -406,8 +427,8 @@ def validate_docs_metadata_schema(schema: dict[str, object]) -> None:
         fail("error: schema: docs search match kind enum must not include title_or_summary")
 
 
-def validate_runtime_envelope_url(version: str, major: str) -> None:
-    expected_url = expected_schema_url(major)
+def validate_runtime_envelope_url(version: str, major: str, artifact_version: str) -> None:
+    expected_url = expected_schema_url(artifact_version)
     runtime_url_pattern = re.compile(expected_schema_url_pattern(major))
 
     info_json_stdout = subprocess.run(
@@ -455,20 +476,23 @@ def validate_runtime_envelope_url(version: str, major: str) -> None:
 
 def main() -> None:
     version = package_version()
-    major = package_major(version)
-    schema_path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else current_schema_path(major)
+    major, _minor = package_major_minor(version)
+    artifact_version = schema_artifact_version(version)
+    schema_path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else current_schema_path(artifact_version)
 
-    validate_schema_path(schema_path, major)
+    validate_schema_path(schema_path, artifact_version)
     schema_bytes, schema = load_schema(schema_path)
-    validate_artifact_schema_url_pattern(schema, version, major)
+    validate_artifact_schema_url_pattern(schema, version, major, artifact_version)
+    validate_extension_friendly_schema(schema)
     validate_diagnostic_schema(schema)
     validate_docs_metadata_schema(schema)
     validate_runtime_schema(schema_path, schema_bytes)
-    validate_runtime_envelope_url(version, major)
+    validate_runtime_envelope_url(version, major, artifact_version)
 
-    stream_schema_path = current_stream_schema_path(major)
+    stream_schema_path = current_stream_schema_path(artifact_version)
     stream_schema_bytes, stream_schema = load_schema(stream_schema_path)
-    validate_stream_schema(stream_schema, major)
+    validate_extension_friendly_schema(stream_schema)
+    validate_stream_schema(stream_schema, major, artifact_version)
     validate_runtime_stream_schema(stream_schema_path, stream_schema_bytes)
 
 

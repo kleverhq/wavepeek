@@ -1,6 +1,8 @@
 pub const SCHEMA_URL: &str = concat!(
     "https://kleverhq.github.io/wavepeek/wavepeek_v",
     env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
     ".json"
 );
 
@@ -8,12 +10,16 @@ pub const CANONICAL_SCHEMA_JSON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/schema/wavepeek_v",
     env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
     ".json"
 ));
 
 pub const STREAM_SCHEMA_URL: &str = concat!(
     "https://kleverhq.github.io/wavepeek/wavepeek-stream-v",
     env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
     ".json"
 );
 
@@ -21,6 +27,8 @@ pub const CANONICAL_STREAM_SCHEMA_JSON: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/schema/wavepeek-stream-v",
     env!("CARGO_PKG_VERSION_MAJOR"),
+    ".",
+    env!("CARGO_PKG_VERSION_MINOR"),
     ".json"
 ));
 

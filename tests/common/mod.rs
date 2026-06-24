@@ -15,6 +15,8 @@ pub fn expected_schema_url() -> &'static str {
     concat!(
         "https://kleverhq.github.io/wavepeek/wavepeek_v",
         env!("CARGO_PKG_VERSION_MAJOR"),
+        ".",
+        env!("CARGO_PKG_VERSION_MINOR"),
         ".json"
     )
 }
@@ -24,6 +26,8 @@ pub fn expected_stream_schema_url() -> &'static str {
     concat!(
         "https://kleverhq.github.io/wavepeek/wavepeek-stream-v",
         env!("CARGO_PKG_VERSION_MAJOR"),
+        ".",
+        env!("CARGO_PKG_VERSION_MINOR"),
         ".json"
     )
 }

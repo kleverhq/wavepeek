@@ -82,12 +82,19 @@ def stream_schema_required(version: str) -> bool:
     return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
 
 
+def schema_artifact_suffix(version: str) -> str:
+    major, minor, _patch = version_tuple(version)
+    if major >= 2:
+        return f"{major}.{minor}"
+    return str(major)
+
+
 def schema_artifact_name(version: str) -> str:
-    return f"wavepeek_v{major_version(version)}.json"
+    return f"wavepeek_v{schema_artifact_suffix(version)}.json"
 
 
 def stream_schema_artifact_name(version: str) -> str:
-    return f"wavepeek-stream-v{major_version(version)}.json"
+    return f"wavepeek-stream-v{schema_artifact_suffix(version)}.json"
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -229,10 +236,21 @@ def normalize_schema_pattern(pattern: str) -> str:
 
 def schema_pattern_references_expected_artifact(pattern: str, version: str) -> bool:
     normalized = normalize_schema_pattern(pattern)
+    major, _minor, _patch = version_tuple(version)
+    if major >= 2:
+        return f"wavepeek_v{major}.[0-9]+.json" in normalized
     artifact = schema_artifact_name(version)
     if artifact in normalized:
         return True
-    return major_version(version) == 0 and "schema/wavepeek.json" in normalized
+    return major == 0 and "schema/wavepeek.json" in normalized
+
+
+def stream_schema_pattern_references_expected_artifact(pattern: str, version: str) -> bool:
+    normalized = normalize_schema_pattern(pattern)
+    major, _minor, _patch = version_tuple(version)
+    if major >= 2:
+        return f"wavepeek-stream-v{major}.[0-9]+.json" in normalized
+    return stream_schema_artifact_name(version) in normalized
 
 
 def validate_schema_json(schema: Any, version: str) -> None:
@@ -292,7 +310,9 @@ def validate_stream_schema_json(schema: Any, version: str) -> None:
         pattern = begin["properties"]["$schema"]["pattern"]
     except (KeyError, TypeError):
         fail("stream schema artifact beginRecord must define $schema pattern")
-    if not isinstance(pattern, str) or stream_schema_artifact_name(version) not in pattern.replace(r"\.", "."):
+    if not isinstance(pattern, str) or not stream_schema_pattern_references_expected_artifact(
+        pattern, version
+    ):
         fail(
             "stream schema artifact $schema pattern must reference "
             f"{stream_schema_artifact_name(version)}"

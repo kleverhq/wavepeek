@@ -206,6 +206,21 @@ def stream_schema_required(version: str) -> bool:
     return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
 
 
+def schema_artifact_suffix(version: str) -> str:
+    major, minor, _patch = version_tuple(version)
+    if major >= 2:
+        return f"{major}.{minor}"
+    return str(major)
+
+
+def schema_artifact_name(version: str) -> str:
+    return f"wavepeek_v{schema_artifact_suffix(version)}.json"
+
+
+def stream_schema_artifact_name(version: str) -> str:
+    return f"wavepeek-stream-v{schema_artifact_suffix(version)}.json"
+
+
 def clean_owned_path(path: pathlib.Path) -> None:
     if path.is_dir() and not path.is_symlink():
         shutil.rmtree(path)
@@ -752,10 +767,10 @@ def changed_paths(remote_base: str | None, staged_branch: str, runner: CommandRu
 def path_allowed(path: str, patterns: list[str]) -> bool:
     for pattern in patterns:
         if pattern == "wavepeek_v*.json":
-            if re.fullmatch(r"wavepeek_v[0-9]+[.]json", path):
+            if re.fullmatch(r"wavepeek_v[0-9]+(?:[.][0-9]+)?[.]json", path):
                 return True
         elif pattern == "wavepeek-stream-v*.json":
-            if re.fullmatch(r"wavepeek-stream-v[0-9]+[.]json", path):
+            if re.fullmatch(r"wavepeek-stream-v[0-9]+(?:[.][0-9]+)?[.]json", path):
                 return True
         elif pattern.endswith("/**"):
             prefix = pattern[:-3] + "/"
@@ -793,19 +808,17 @@ def comparable_entry(entry: dict[str, Any]) -> dict[str, Any]:
 
 
 def required_pages_artifact_paths(version: str) -> list[str]:
-    major = major_version(version)
-    required = ["index.html", "versions.json", f"wavepeek_v{major}.json"]
+    required = ["index.html", "versions.json", schema_artifact_name(version)]
     if stream_schema_required(version):
-        required.append(f"wavepeek-stream-v{major}.json")
+        required.append(stream_schema_artifact_name(version))
     return required
 
 
 def verify_root_artifacts(staged_branch: str, version: str, runner: CommandRunner) -> None:
     missing: list[str] = []
-    major = major_version(version)
-    artifacts = [f"wavepeek_v{major}.json"]
+    artifacts = [schema_artifact_name(version)]
     if stream_schema_required(version):
-        artifacts.append(f"wavepeek-stream-v{major}.json")
+        artifacts.append(stream_schema_artifact_name(version))
     for artifact in artifacts:
         result = runner.run(
             ["git", "cat-file", "-t", f"{staged_branch}:{artifact}"],

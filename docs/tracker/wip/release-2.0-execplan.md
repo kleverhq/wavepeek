@@ -22,7 +22,7 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 - [x] (2026-06-24 20:09Z) Committed the ExecPlan as `7b646ea docs(tracker): plan v2 release prep`; commit hooks passed.
 - [x] (2026-06-24 20:23Z) Ran read-only plan review and recorded required plan fixes.
 - [x] (2026-06-24 20:30Z) Incorporated plan-review findings about validation commands, help-contract staging, benchmark catalogs, milestone reconciliation, root schema aliases, and superseding PR #43.
-- [ ] Milestone 1: switch release metadata and schema infrastructure to `2.0.0` / exact major.minor v2 artifacts.
+- [x] (2026-06-24 21:48Z) Milestone 1 implementation completed locally: release metadata now targets `2.0.0`, v2.0 schema artifacts exist, runtime/tooling/tests use exact major.minor artifact names, and targeted schema/helper checks pass.
 - [ ] Review Milestone 1.
 - [ ] Milestone 2: implement explicit `--on` and default pre-edge sampling for `change` and `property`.
 - [ ] Review Milestone 2.
@@ -43,6 +43,9 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 
 - Observation: the release performance gate uses current benchmark catalogs against both old and new binaries, so v2-only flags such as `--sample-mode` make `v1.0.1` captures unsupported instead of comparable.
   Evidence: the earlier `just bench-gate v1.0.1 HEAD` run on `rc/1.1.0` skipped new `--sample-mode` cases because `v1.0.1` reported `unexpected argument '--sample-mode'`.
+
+- Observation: `just update-schema` is a freshness check for embedded artifacts rather than a schema generator for v2 contract policy.
+  Evidence: after manually creating and editing `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`, `just update-schema` produced no further schema diff because `wavepeek schema` prints those embedded files.
 
 ## Decision Log
 
@@ -77,6 +80,8 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 ## Outcomes & Retrospective
 
 Planning review completed and found fixable gaps in the initial plan: an invalid cargo test command, stale help-contract staging, missing `tests_commit.json` coverage, missing milestone reconciliation, vague root schema alias policy, benchmark uncomparability, and PR #43 supersession wording. Those gaps have been folded into this revision before implementation starts.
+
+Milestone 1 implementation is complete locally and pending review. It converts release metadata to `2.0.0`, adds exact-minor v2 schema artifacts, switches runtime/schema tooling/docs deployment helpers/tests to the new artifact names, and validates that v2 schemas remain embedded and extension-friendly. Targeted checks passed: `cargo check`, `just check-schema`, `cargo test --test schema_cli --test jsonl_cli`, `just test-aux`, and `just update-schema` without schema drift.
 
 ## Context and Orientation
 
@@ -246,3 +251,5 @@ The exact implementation should still derive those strings from Cargo package ve
 Revision note: Initial ExecPlan created on 2026-06-24 to convert the release-candidate work from `1.1.0` to `2.0.0`, define schema-versioning policy, and stage the CLI sampling behavior change before implementation.
 
 Revision note: Plan review findings incorporated on 2026-06-24. The plan now uses valid cargo commands, moves help-contract updates into Milestone 2, includes `bench/e2e/tests_commit.json` and `just pre-commit`, resolves root schema alias policy, adds milestone reconciliation, defines benchmark evidence handling for uncomparable v2 workloads, and requires the final PR to supersede PR #43 explicitly.
+
+Revision note: Milestone 1 local implementation recorded on 2026-06-24. The plan now reflects completed release metadata/schema infrastructure work and the targeted checks that passed before Milestone 1 review.

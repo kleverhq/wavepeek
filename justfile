@@ -1,7 +1,8 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
 export RTL_ARTIFACTS_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$RTL_ARTIFACTS_DIR"`
-schema_path := `python3 -B -c 'import pathlib, tomllib; version = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; print("schema/wavepeek_v" + version.split(".")[0] + ".json")'`
+schema_path := `python3 -B -c 'import pathlib, tomllib; version = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; major, minor, _patch = version.split("."); print(f"schema/wavepeek_v{major}.{minor}.json")'`
+stream_schema_path := `python3 -B -c 'import pathlib, tomllib; version = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; major, minor, _patch = version.split("."); print(f"schema/wavepeek-stream-v{major}.{minor}.json")'`
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
 bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
 bench_e2e_fsdb_smoke_artifact_filter := "^(picorv32_test_ez_vcd|scr1_max_axi_riscv_compliance)[.]fst$"
@@ -60,12 +61,14 @@ check-rtl-artifacts: require-container
         fi; \
     done
 
-# Regenerate canonical schema artifact from runtime output
+# Regenerate canonical schema artifacts from runtime output
 update-schema: require-container
     @mkdir -p schema
-    @tmp_file="$(mktemp)"; trap 'rm -f "$tmp_file"' EXIT; \
+    @tmp_file="$(mktemp)"; tmp_stream_file="$(mktemp)"; trap 'rm -f "$tmp_file" "$tmp_stream_file"' EXIT; \
         cargo run --quiet -- schema > "$tmp_file"; \
-        mv "$tmp_file" "{{ schema_path }}"
+        cargo run --quiet -- schema --stream > "$tmp_stream_file"; \
+        mv "$tmp_file" "{{ schema_path }}"; \
+        mv "$tmp_stream_file" "{{ stream_schema_path }}"
 
 # Validate canonical schema freshness and JSON contract URL
 check-schema: require-container

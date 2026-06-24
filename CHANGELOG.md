@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-06-24
+## [2.0.0] - 2026-06-24
 
 ### Added
 - Added a public waveform performance guide covering VCD, FST, and FSDB format trade-offs ([issue #17](https://github.com/kleverhq/wavepeek/issues/17)).
@@ -135,8 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v1.1.0...HEAD
-[1.1.0]: https://github.com/kleverhq/wavepeek/releases/tag/v1.1.0
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v2.0.0
 [1.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.1
 [1.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.0
 [0.5.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.5.0

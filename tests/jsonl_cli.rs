@@ -11,8 +11,16 @@ mod common;
 use common::{expected_stream_schema_url, fixture_path, wavepeek_cmd};
 
 fn stream_schema_validator() -> jsonschema::Validator {
-    let schema: Value = serde_json::from_str(include_str!("../schema/wavepeek-stream-v1.json"))
-        .expect("stream schema should parse");
+    let schema_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join(format!(
+            "wavepeek-stream-v{}.{}.json",
+            env!("CARGO_PKG_VERSION_MAJOR"),
+            env!("CARGO_PKG_VERSION_MINOR")
+        ));
+    let schema: Value =
+        serde_json::from_str(&fs::read_to_string(schema_path).expect("stream schema should read"))
+            .expect("stream schema should parse");
     jsonschema::validator_for(&schema).expect("stream schema should compile")
 }
 

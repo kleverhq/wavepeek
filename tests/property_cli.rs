@@ -88,6 +88,8 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
             "valid",
             "--capture",
             "assert",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -109,8 +111,6 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
             "valid",
             "--capture",
             "assert",
-            "--sample-mode",
-            "pre-edge",
             "--json",
         ])
         .output()
@@ -155,8 +155,6 @@ fn property_sample_mode_pre_edge_samples_before_trigger_edge() {
             "valid",
             "--capture",
             "assert",
-            "--sample-mode",
-            "pre-edge",
         ])
         .output()
         .expect("property should execute");
@@ -378,7 +376,6 @@ fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
     let fixture = write_fixture(RTL_SAMPLING_VCD, "property-rtl-sampling-invalid.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();
     let invalid_on_args: &[&[&str]] = &[
-        &[],
         &["--on", "*"],
         &["--on", "valid"],
         &["--on", "valid or posedge clk"],
@@ -406,7 +403,7 @@ fn property_sample_mode_pre_edge_rejects_non_edge_triggers() {
             .stdout(predicate::str::is_empty())
             .stderr(predicate::str::starts_with("fatal: args:"))
             .stderr(predicate::str::contains(
-                "--sample-mode pre-edge requires explicit --on",
+                "--sample-mode pre-edge requires --on with only edge event terms",
             ));
     }
 }
@@ -436,6 +433,8 @@ fn property_switch_capture_reports_transitions() {
             "sig",
             "--capture",
             "switch",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -457,6 +456,8 @@ fn property_switch_capture_reports_transitions() {
             "sig",
             "--capture",
             "switch",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("property should execute");
@@ -507,6 +508,8 @@ fn property_assert_and_deassert_capture_filters() {
             "sig",
             "--capture",
             "assert",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -528,6 +531,8 @@ fn property_assert_and_deassert_capture_filters() {
             "sig",
             "--capture",
             "deassert",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -566,6 +571,8 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
             "data",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -583,6 +590,8 @@ fn property_boolean_context_accepts_multibit_and_real_truthy_results() {
             "real'(1)",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -618,6 +627,8 @@ fn property_default_max_is_50_with_truncation_warning() {
             "sig",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -656,6 +667,8 @@ fn property_max_one_truncates_in_human_and_json_modes() {
             "match",
             "--max",
             "1",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -675,6 +688,8 @@ fn property_max_one_truncates_in_human_and_json_modes() {
             "match",
             "--max",
             "1",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("human property should execute");
@@ -725,6 +740,8 @@ fn property_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() 
             "match",
             "--max",
             "unlimited",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -744,6 +761,8 @@ fn property_unlimited_max_disables_truncation_and_emits_warning_in_both_modes() 
             "match",
             "--max",
             "unlimited",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("human property should execute");
@@ -790,6 +809,8 @@ fn property_rejects_zero_max() {
             "sig",
             "--max",
             "0",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -818,6 +839,8 @@ fn property_empty_result_emits_empty_result_diagnostic() {
             "data == 8'hff",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -835,6 +858,8 @@ fn property_empty_result_emits_empty_result_diagnostic() {
             "data == 8'hff",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
         ])
         .output()
         .expect("human property run should execute");
@@ -868,6 +893,8 @@ fn property_invalid_eval_reports_expr_error() {
             "posedge top.clk",
             "--eval",
             "(",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -878,13 +905,17 @@ fn property_invalid_eval_reports_expr_error() {
 }
 
 #[test]
-fn property_omitted_on_tracks_eval_signal_changes() {
+fn property_explicit_wildcard_tracks_eval_signal_changes() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
     let output = wavepeek_cmd()
         .args([
             "property",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -910,7 +941,7 @@ fn property_omitted_on_tracks_eval_signal_changes() {
 }
 
 #[test]
-fn property_omitted_on_tracks_raw_event_handles_from_eval() {
+fn property_explicit_wildcard_tracks_raw_event_handles_from_eval() {
     let fixture = write_fixture(
         "$date\n  today\n$end\n$version\n  wavepeek-test\n$end\n$timescale 1ns $end\n$scope module top $end\n$var event 1 ! ev $end\n$scope module ev $end\n$var wire 1 \" triggered $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0\"\n#5\n1!\n1\"\n#10\n0\"\n#20\n1!\n1\"\n#25\n0\"\n",
         "property-event-track.vcd",
@@ -920,6 +951,10 @@ fn property_omitted_on_tracks_raw_event_handles_from_eval() {
     let output = wavepeek_cmd()
         .args([
             "property",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--scope",
@@ -965,6 +1000,8 @@ fn property_mixed_wildcard_union_runs_with_signal_free_eval() {
             "1",
             "--capture",
             "match",
+            "--sample-mode",
+            "native",
             "--json",
         ])
         .output()
@@ -978,7 +1015,7 @@ fn property_mixed_wildcard_union_runs_with_signal_free_eval() {
 }
 
 #[test]
-fn property_wildcard_without_referenced_signals_requires_explicit_on() {
+fn property_requires_on_flag() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();
 
@@ -989,7 +1026,35 @@ fn property_wildcard_without_referenced_signals_requires_explicit_on() {
         .code(1)
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::starts_with("fatal: args:"))
-        .stderr(predicate::str::contains("pass --on explicitly"));
+        .stderr(predicate::str::contains("--on <ON>"))
+        .stderr(predicate::str::contains("See 'wavepeek property --help'."));
+}
+
+#[test]
+fn property_explicit_wildcard_signal_free_eval_reports_tracking_error() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--eval",
+            "1",
+        ])
+        .assert()
+        .failure()
+        .code(1)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::str::starts_with("fatal: args:"))
+        .stderr(predicate::str::contains(
+            "wildcard trigger cannot infer tracked signals from --eval",
+        ));
 }
 
 #[test]
@@ -1025,6 +1090,10 @@ fn property_rejects_legacy_surface_flags() {
     wavepeek_cmd()
         .args([
             "property",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--clk",
@@ -1049,6 +1118,8 @@ fn property_rejects_legacy_surface_flags() {
             "posedge top.clk",
             "--cond",
             "1",
+            "--sample-mode",
+            "native",
         ])
         .assert()
         .failure()
@@ -1061,6 +1132,10 @@ fn property_rejects_legacy_surface_flags() {
     wavepeek_cmd()
         .args([
             "property",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--waves",
             fixture.as_str(),
             "--when",
@@ -1083,7 +1158,15 @@ fn property_requires_eval_flag() {
     let fixture = fixture.to_string_lossy().into_owned();
 
     wavepeek_cmd()
-        .args(["property", "--waves", fixture.as_str(), "--on", "*"])
+        .args([
+            "property",
+            "--waves",
+            fixture.as_str(),
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+        ])
         .assert()
         .failure()
         .code(1)

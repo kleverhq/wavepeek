@@ -79,13 +79,18 @@ const EXCLUDED_SIGNAL_KINDS: &[&str] = &[
     "std_ulogic_vector",
 ];
 
+fn schema_artifact_version() -> String {
+    format!(
+        "{}.{}",
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        env!("CARGO_PKG_VERSION_MINOR")
+    )
+}
+
 fn canonical_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join(format!(
-            "wavepeek_v{}.json",
-            env!("CARGO_PKG_VERSION_MAJOR")
-        ))
+        .join(format!("wavepeek_v{}.json", schema_artifact_version()))
 }
 
 fn canonical_stream_schema_path() -> PathBuf {
@@ -93,7 +98,7 @@ fn canonical_stream_schema_path() -> PathBuf {
         .join("schema")
         .join(format!(
             "wavepeek-stream-v{}.json",
-            env!("CARGO_PKG_VERSION_MAJOR")
+            schema_artifact_version()
         ))
 }
 
@@ -211,7 +216,7 @@ fn schema_command_schema_url_pattern_matches_current_major_contract() {
         .as_str()
         .expect("envelope schema URL pattern should be a string");
     let expected_pattern = format!(
-        r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v{}\.json$",
+        r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v{}\.[0-9]+\.json$",
         env!("CARGO_PKG_VERSION_MAJOR")
     );
     assert_eq!(pattern, expected_pattern);
@@ -220,7 +225,14 @@ fn schema_command_schema_url_pattern_matches_current_major_contract() {
 
     assert!(
         regex.is_match(expected_schema_url()),
-        "schema URL pattern should accept current major URL"
+        "schema URL pattern should accept current major.minor URL"
+    );
+    assert!(
+        regex.is_match(&format!(
+            "https://kleverhq.github.io/wavepeek/wavepeek_v{}.1.json",
+            env!("CARGO_PKG_VERSION_MAJOR")
+        )),
+        "schema URL pattern should accept future same-major minor URL"
     );
     assert!(
         !regex.is_match(concat!(
@@ -262,7 +274,7 @@ fn schema_command_exposes_typed_diagnostics_contract() {
 
     let diagnostic = &value["$defs"]["diagnostic"];
     assert_eq!(diagnostic["type"], "object");
-    assert_eq!(diagnostic["additionalProperties"], false);
+    assert_ne!(diagnostic["additionalProperties"], false);
     assert_eq!(diagnostic["required"], json!(["kind", "message"]));
     let diagnostic_property_keys = diagnostic["properties"]
         .as_object()
@@ -325,6 +337,33 @@ fn runtime_info_envelope_uses_diagnostics_not_warnings() {
     assert_eq!(value["command"], "info");
     assert_eq!(value["diagnostics"], json!([]));
     assert!(value.get("warnings").is_none());
+}
+
+#[test]
+fn schema_validator_accepts_extension_fields() {
+    let schema = schema_json();
+    let validator = jsonschema::validator_for(&schema).expect("schema should compile");
+    let envelope = json!({
+        "$schema": expected_schema_url(),
+        "command": "info",
+        "data": {
+            "time_unit": "1ns",
+            "time_start": "0ns",
+            "time_end": "10ns",
+            "x_client_note": "accepted extension"
+        },
+        "diagnostics": [{
+            "kind": "warning",
+            "code": "WPK-W0001",
+            "message": "warning text",
+            "x_trace_id": "abc123"
+        }],
+        "x_envelope": true
+    });
+
+    validator.validate(&envelope).unwrap_or_else(|error| {
+        panic!("extension-friendly envelope rejected: {error}\n{envelope}")
+    });
 }
 
 #[test]
@@ -571,7 +610,7 @@ fn schema_stream_command_exposes_waveform_command_contract() {
     assert_eq!(
         value["$defs"]["beginRecord"]["properties"]["$schema"]["pattern"],
         format!(
-            r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v{}\.json$",
+            r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v{}\.[0-9]+\.json$",
             env!("CARGO_PKG_VERSION_MAJOR")
         )
     );
@@ -642,6 +681,27 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             .validate(&case)
             .unwrap_or_else(|error| panic!("valid stream record rejected: {error}\n{case}"));
     }
+}
+
+#[test]
+fn schema_stream_validator_accepts_extension_fields() {
+    let validator = stream_schema_validator();
+    let record = json!({
+        "type": "item",
+        "seq": 1,
+        "command": "change",
+        "item": {
+            "time": "5ns",
+            "sample_time": "5ns",
+            "signals": [{"path": "top.clk", "value": "1'h1", "x_signal": true}],
+            "x_row": "accepted extension"
+        },
+        "x_record": true
+    });
+
+    validator.validate(&record).unwrap_or_else(|error| {
+        panic!("extension-friendly stream record rejected: {error}\n{record}")
+    });
 }
 
 #[test]

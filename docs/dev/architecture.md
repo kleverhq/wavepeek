@@ -51,7 +51,7 @@ Key architectural consequences:
 - Execution is stateless. Every command opens the dump, runs once, and exits.
 - The engine is format-agnostic for waveform commands. VCD/FST Wellen handling and optional FSDB Reader handling stay behind the waveform facade.
 - Docs and skill helper surfaces keep their source of truth in packaged Markdown instead of duplicated Rust string tables.
-- JSON contracts are stabilized through checked-in major schema artifacts such as `schema/wavepeek_v1.json` and `schema/wavepeek-stream-v1.json`.
+- JSON contracts are stabilized through checked-in schema artifacts such as `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`.
 
 ### Module Structure
 
@@ -226,6 +226,6 @@ Runtime test execution does not fetch those larger fixtures dynamically; they ar
 The architectural split matters for docs maintenance:
 
 - `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help` are the exact CLI surface authority.
-- The current major schema artifacts, such as `schema/wavepeek_v1.json` and `schema/wavepeek-stream-v1.json`, plus `wavepeek schema` and `wavepeek schema --stream`, are the machine-readable output authorities.
+- The current schema artifacts, such as `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`, plus `wavepeek schema` and `wavepeek schema --stream`, are the machine-readable output authorities.
 - `docs/public/reference/` documents the user-visible semantics that code and schema alone do not explain well enough.
 - this file documents internals that help contributors change implementation safely without regrowing a monolithic design doc.

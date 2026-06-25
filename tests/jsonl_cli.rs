@@ -11,8 +11,16 @@ mod common;
 use common::{expected_stream_schema_url, fixture_path, wavepeek_cmd};
 
 fn stream_schema_validator() -> jsonschema::Validator {
-    let schema: Value = serde_json::from_str(include_str!("../schema/wavepeek-stream-v1.json"))
-        .expect("stream schema should parse");
+    let schema_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join(format!(
+            "wavepeek-stream-v{}.{}.json",
+            env!("CARGO_PKG_VERSION_MAJOR"),
+            env!("CARGO_PKG_VERSION_MINOR")
+        ));
+    let schema: Value =
+        serde_json::from_str(&fs::read_to_string(schema_path).expect("stream schema should read"))
+            .expect("stream schema should parse");
     jsonschema::validator_for(&schema).expect("stream schema should compile")
 }
 
@@ -124,6 +132,10 @@ fn change_jsonl_streams_items_and_validates_against_schema() {
             "10ns",
             "--signals",
             "top.clk,top.data",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--jsonl",
         ])
         .output()
@@ -160,6 +172,10 @@ fn change_jsonl_reports_truncation_in_summary() {
             "10ns",
             "--signals",
             "top.clk,top.data",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--max",
             "1",
             "--jsonl",
@@ -236,6 +252,10 @@ fn property_jsonl_streams_capture_rows() {
             fixture.as_str(),
             "--scope",
             "top",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--eval",
             "sig",
             "--capture",
@@ -268,6 +288,10 @@ fn property_jsonl_reports_truncation_in_summary() {
             fixture.as_str(),
             "--scope",
             "top",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
             "--eval",
             "sig",
             "--capture",
@@ -417,6 +441,8 @@ fn jsonl_broken_pipe_from_early_consumer_is_silent_success() {
             "top.sig",
             "--on",
             "*",
+            "--sample-mode",
+            "native",
             "--max",
             "unlimited",
             "--jsonl",

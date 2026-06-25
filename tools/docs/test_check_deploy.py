@@ -41,16 +41,26 @@ class CheckDeployTests(unittest.TestCase):
         self.assertFalse(check_deploy.stream_schema_required("1.0.1"))
         self.assertTrue(check_deploy.stream_schema_required("1.1.0"))
 
-    def test_schema_artifact_name_uses_major_version(self) -> None:
+    def test_schema_artifact_name_uses_legacy_major_then_v2_minor(self) -> None:
         self.assertEqual(check_deploy.schema_artifact_name("0.5.0"), "wavepeek_v0.json")
-        self.assertEqual(check_deploy.schema_artifact_name("12.0.1"), "wavepeek_v12.json")
+        self.assertEqual(check_deploy.schema_artifact_name("1.1.0"), "wavepeek_v1.json")
+        self.assertEqual(check_deploy.schema_artifact_name("2.0.0"), "wavepeek_v2.0.json")
+        self.assertEqual(check_deploy.schema_artifact_name("12.3.1"), "wavepeek_v12.3.json")
         self.assertEqual(
             check_deploy.stream_schema_artifact_name("0.5.0"),
             "wavepeek-stream-v0.json",
         )
         self.assertEqual(
-            check_deploy.stream_schema_artifact_name("12.0.1"),
-            "wavepeek-stream-v12.json",
+            check_deploy.stream_schema_artifact_name("1.1.0"),
+            "wavepeek-stream-v1.json",
+        )
+        self.assertEqual(
+            check_deploy.stream_schema_artifact_name("2.0.0"),
+            "wavepeek-stream-v2.0.json",
+        )
+        self.assertEqual(
+            check_deploy.stream_schema_artifact_name("12.3.1"),
+            "wavepeek-stream-v12.3.json",
         )
 
     def test_retry_check_retries_stale_then_fresh(self) -> None:
@@ -184,6 +194,22 @@ class CheckDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "wavepeek_v1"):
             check_deploy.validate_schema_json(schema, "1.0.0")
 
+    def test_validate_schema_json_accepts_v2_same_major_minor_pattern(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSON output envelope",
+            "properties": {
+                "$schema": {
+                    "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v2\.[0-9]+\.json$"
+                },
+                "command": {},
+                "data": {},
+                "diagnostics": {},
+            },
+        }
+
+        check_deploy.validate_schema_json(schema, "2.0.0")
+
     def test_validate_schema_json_requires_schema_property_object(self) -> None:
         schema = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -223,6 +249,26 @@ class CheckDeployTests(unittest.TestCase):
         broken["$defs"]["streamCommand"]["enum"] = ["info"]
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "command enum"):
             check_deploy.validate_stream_schema_json(broken, "1.0.0")
+
+    def test_validate_stream_schema_json_accepts_v2_same_major_minor_pattern(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSONL stream record",
+            "$defs": {
+                "streamCommand": {
+                    "enum": ["info", "scope", "signal", "value", "change", "property"]
+                },
+                "beginRecord": {
+                    "properties": {
+                        "$schema": {
+                            "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v2\.[0-9]+\.json$"
+                        }
+                    }
+                },
+            },
+        }
+
+        check_deploy.validate_stream_schema_json(schema, "2.0.0")
 
     def test_validate_schema_json_requires_schema_pattern(self) -> None:
         schema = {

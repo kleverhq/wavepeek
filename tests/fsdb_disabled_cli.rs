@@ -45,11 +45,18 @@ const DISABLED_FSDB_COMMAND_CASES: &[DisabledFsdbCase] = &[
     },
     DisabledFsdbCase {
         command: "change",
-        extra_args: &["--signals", "top.clk"],
+        extra_args: &[
+            "--signals",
+            "top.clk",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+        ],
     },
     DisabledFsdbCase {
         command: "property",
-        extra_args: &["--eval", "1"],
+        extra_args: &["--eval", "1", "--on", "*", "--sample-mode", "native"],
     },
 ];
 

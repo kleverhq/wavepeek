@@ -130,7 +130,9 @@ Behavior:
 - Prints requested signal values for each `--on` trigger firing when at least one value changed since the previous firing.
 - Similar to a modified SystemVerilog `$monitor`, but with print trigger control instead of printing at every timestamp.
 - Range boundaries are inclusive; baseline state is initialized at range start.
-- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` samples displayed values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
+- `--on` is required. Use explicit clock edges such as `--on 'posedge clk'` for RTL-style sampling.
+- Value sampling defaults to pre-edge sampling: displayed values are sampled just before edge-only triggers while row timestamps stay at the trigger edge.
+- Use `--sample-mode native` for raw wildcard or plain-signal triggers such as `--on '*'`.
 - JSON and JSONL rows include both `time` (selected event timestamp) and `sample_time` (where values were sampled); text output shows `sample@<time>` only when it differs from `time`.
 - Rows are emitted only when sampled signal values changed from prior sampled state.
 - Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
@@ -147,7 +149,9 @@ Behavior:
 - Evaluates `--eval` at timestamps selected by `--on` and prints time plus metadata when the property holds.
 - Level capture (`--capture match`) reports a match at every selected timestamp where the property holds.
 - Edge capture (`--capture switch`, `assert`, or `deassert`) reports transitions: no match to match, or match to no match.
-- Value sampling defaults to dump-native timestamp sampling; `--sample-mode pre-edge` evaluates values just before explicit edge-only triggers while keeping row timestamps at the trigger edge.
+- `--on` is required. Use explicit clock edges such as `--on 'posedge clk'` for RTL-style sampling.
+- Value sampling defaults to pre-edge sampling: `--eval` reads values just before edge-only triggers while row timestamps stay at the trigger edge.
+- Use `--sample-mode native` for raw wildcard or plain-signal triggers such as `--on '*'`.
 - JSON and JSONL rows include both `time` (selected event timestamp) and `sample_time` (where `--eval` was sampled); text output shows `sample@<time>` only when it differs from `time`.
 - Empty-result, truncation, and explicitly disabled-limit conditions emit coded diagnostics.
 - Remotely similar to a SystemVerilog assert, but without temporal expressions.
@@ -633,7 +637,8 @@ mod tests {
                 assert_eq!(args.to.as_deref(), Some("10ns"));
                 assert_eq!(args.scope.as_deref(), Some("top"));
                 assert_eq!(args.signals, vec!["clk", "data"]);
-                assert_eq!(args.on.as_deref(), Some("posedge clk"));
+                assert_eq!(args.on, "posedge clk");
+                assert_eq!(args.sample_mode, crate::cli::sampling::SampleMode::PreEdge);
                 assert_eq!(args.max, LimitArg::Numeric(12));
                 assert!(args.abs);
                 assert!(args.json);
@@ -658,7 +663,8 @@ mod tests {
         let command = into_engine_command(cli.command.expect("parsed command"));
         match command {
             EngineCommand::Property(args) => {
-                assert_eq!(args.on.as_deref(), Some("posedge top.clk"));
+                assert_eq!(args.on, "posedge top.clk");
+                assert_eq!(args.sample_mode, crate::cli::sampling::SampleMode::PreEdge);
                 assert_eq!(args.eval, "1");
                 assert_eq!(args.capture, crate::cli::property::CaptureMode::Switch);
                 assert_eq!(args.max, LimitArg::Numeric(50));
@@ -744,6 +750,10 @@ mod tests {
                 "fixtures/sample.vcd",
                 "--signals",
                 "clk",
+                "--on",
+                "*",
+                "--sample-mode",
+                "native",
                 "--tune-engine",
                 "fused",
             ])
@@ -758,6 +768,10 @@ mod tests {
                 "fixtures/sample.vcd",
                 "--signals",
                 "clk",
+                "--on",
+                "*",
+                "--sample-mode",
+                "native",
             ])
             .expect("change command should parse");
         assert!(!change_tune_overrides_requested(&matches));

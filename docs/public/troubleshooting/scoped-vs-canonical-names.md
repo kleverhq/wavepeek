@@ -28,7 +28,7 @@ Use full canonical paths:
 
 ```text
 wavepeek value --waves dump.vcd --at 10ns --signals top.cpu.clk,top.cpu.state
-wavepeek change --waves dump.vcd --signals top.cpu.clk,top.cpu.state --from 0ns --to 20ns
+wavepeek change --waves dump.vcd --signals top.cpu.clk,top.cpu.state --on 'posedge top.cpu.clk' --from 0ns --to 20ns
 wavepeek property --waves dump.vcd --on 'posedge top.cpu.clk' --eval "top.cpu.state == 8'h03"
 ```
 

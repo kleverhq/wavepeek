@@ -20,7 +20,7 @@ $ wavepeek schema | head -n 10
   "title": "wavepeek JSON output envelope",
   "description": "Canonical schema for wavepeek --json command outputs.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
     "$schema",
     "command",
@@ -89,7 +89,7 @@ $ jq -r '.title' wavepeek-schema.json
 wavepeek JSON output envelope
 ```
 
-This keeps the schema matched to the binary's major-version contract. A current `1.x` build prints the same bytes as `schema/wavepeek_v1.json`.
+This keeps the schema matched to the binary's major/minor contract. A current `2.0.x` build prints the same bytes as `schema/wavepeek_v2.0.json`. The v2 schema allows additive object fields and accepts same-major future `$schema` URLs such as `wavepeek_v2.1.json`.
 
 ## Fetch the JSONL stream record schema
 
@@ -102,4 +102,4 @@ $ wavepeek schema --stream | jq -r '.title'
 wavepeek JSONL stream record
 ```
 
-A current `1.x` build prints the same bytes as `schema/wavepeek-stream-v1.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.
+A current `2.0.x` build prints the same bytes as `schema/wavepeek-stream-v2.0.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.

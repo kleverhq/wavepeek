@@ -18,6 +18,12 @@ fn assert_debug_stderr_is_well_formed(stderr: &[u8]) {
 
 fn run_change_json(waves: &str, extra_args: &[&str]) -> Value {
     let mut args = vec!["change", "--waves", waves];
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
+    }
+    if !extra_args.contains(&"--sample-mode") {
+        args.extend_from_slice(&["--sample-mode", "native"]);
+    }
     args.extend_from_slice(extra_args);
     args.push("--json");
 
@@ -43,6 +49,12 @@ fn run_change_json_with_tune_modes(
         "--tune-candidates",
         candidate_mode,
     ]);
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
+    }
+    if !extra_args.contains(&"--sample-mode") {
+        args.extend_from_slice(&["--sample-mode", "native"]);
+    }
     args.extend_from_slice(extra_args);
     args.push("--json");
 
@@ -57,7 +69,7 @@ fn run_change_json_with_tune_modes(
 }
 
 #[test]
-fn change_vcd_and_fst_payloads_match_for_default_trigger() {
+fn change_vcd_and_fst_payloads_match_for_explicit_wildcard_native_trigger() {
     let vcd_fixture = fixture_path("m2_core.vcd");
     let vcd_fixture = vcd_fixture.to_string_lossy().into_owned();
     let fst_fixture = fixture_path("m2_core.fst");

@@ -5,6 +5,12 @@ use common::{fixture_path, wavepeek_cmd};
 
 fn run_property_json(waves: &str, extra_args: &[&str]) -> Value {
     let mut args = vec!["property", "--waves", waves];
+    if !extra_args.contains(&"--on") {
+        args.extend_from_slice(&["--on", "*"]);
+    }
+    if !extra_args.contains(&"--sample-mode") {
+        args.extend_from_slice(&["--sample-mode", "native"]);
+    }
     args.extend_from_slice(extra_args);
     args.push("--json");
 

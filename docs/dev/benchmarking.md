@@ -44,7 +44,7 @@ The gate screens selected benchmarks for regressions on the machine where it run
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` intentionally keeps 1 measured run and 0 warmups.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` is intentionally small; most entries keep 1 measured run and 0 warmups, while sampling-mode smoke entries may use slightly higher counts to reduce timing noise.
 
 Common focused commands:
 
@@ -61,7 +61,7 @@ Pass one or more `--binary label=path` arguments to choose the binaries used by 
 
 Timing compare mode compares only tests with complete success artifacts on both sides. Golden failure plus revised success, and failures on both sides, are reported as skipped uncomparable tests. Revised failure where golden succeeded, missing outcomes without explicit failure artifacts, functional mismatches, and timing threshold violations fail the comparison. Compare and gate manifests include comparable counts, skipped/failed uncomparable counts, and grouped failure records. If median timing is the only failure, `perf.py confirm` can check selected tests with best samples; the gate runs this confirmation automatically for failed same-format timing tests. Cross-format gate checks use `--functional-only --allow-golden-extra` because the FSDB runnable catalog can be a subset of the FST catalog, plus repeated `--ignore-functional-test NAME=REASON` entries for known metadata-only path-shape differences.
 
-Some E2E catalogs include paired sampling-mode tests with matching names ending in `sample_native` and `sample_pre_edge`. Use the normal run reports to inspect native and pre-edge timings side by side.
+Some E2E catalogs include paired sampling-mode tests with matching names ending in `sample_native` and `sample_pre_edge`. Use the normal run reports to inspect native and pre-edge timings side by side. All `change` and `property` catalog commands must pass `--on` explicitly; wildcard, plain-signal, and mixed-trigger workloads must also pass `--sample-mode native` because the CLI default is pre-edge sampling for edge-only triggers.
 
 Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 

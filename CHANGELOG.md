@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-06-24
+
 ### Added
 - Added a public waveform performance guide covering VCD, FST, and FSDB format trade-offs ([issue #17](https://github.com/kleverhq/wavepeek/issues/17)).
 - Added waveform-command `--jsonl` streaming output plus `wavepeek schema --stream` for the per-record stream schema ([issue #26](https://github.com/kleverhq/wavepeek/issues/26)).
@@ -15,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Updated `change` and `property` JSON/JSONL schemas and output rows to include `sample_time`, while preserving `time` as the selected event timestamp.
+- Changed `change` and `property` to require explicit `--on`; use `--on '*' --sample-mode native` for raw tracked-set scans.
+- Changed `change` and `property` default sampling to pre-edge for edge-only triggers; use `--sample-mode native` for same-timestamp dump sampling, wildcard triggers, plain-signal triggers, or mixed triggers.
+- Moved current JSON schema artifacts to exact major.minor names (`schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`) and made the v2 schemas extension-friendly for additive object fields.
 
 ## [1.0.1] - 2026-06-13
 
@@ -133,7 +138,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v2.0.0
 [1.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.1
 [1.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.0
 [0.5.0]: https://github.com/kleverhq/wavepeek/releases/tag/v0.5.0

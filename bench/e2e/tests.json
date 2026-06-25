@@ -642,7 +642,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -696,7 +698,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -723,7 +727,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -777,7 +783,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -804,7 +812,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -858,7 +868,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -885,7 +897,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -939,7 +953,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -966,7 +982,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1020,7 +1038,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1047,7 +1067,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1101,7 +1123,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1128,7 +1152,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1182,7 +1208,9 @@
         "--to",
         "2452000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1209,7 +1237,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1263,7 +1293,9 @@
         "--to",
         "2458000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1290,7 +1322,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1344,7 +1378,9 @@
         "--to",
         "2482000000ps",
         "--on",
-        "testbench.top.mem_axi_arvalid"
+        "testbench.top.mem_axi_arvalid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/picorv32_test_vcd.fst",
@@ -1370,6 +1406,10 @@
         "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "--signals",
         "araddr,arvalid",
+        "--on",
+        "*",
+        "--sample-mode",
+        "native",
         "--max",
         "1000"
       ],
@@ -1377,7 +1417,8 @@
         "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 2,
-        "window_to": "1000ps"
+        "window_to": "1000ps",
+        "trigger": "*"
       }
     },
     {
@@ -1396,6 +1437,10 @@
         "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "--signals",
         "araddr",
+        "--on",
+        "*",
+        "--sample-mode",
+        "native",
         "--max",
         "1000"
       ],
@@ -1403,7 +1448,8 @@
         "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 1,
-        "window_to": "1000ps"
+        "window_to": "1000ps",
+        "trigger": "*"
       }
     },
     {
@@ -1423,7 +1469,9 @@
         "--to",
         "941092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1477,7 +1525,9 @@
         "--to",
         "941092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1504,7 +1554,9 @@
         "--to",
         "942092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1558,7 +1610,9 @@
         "--to",
         "942092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1585,7 +1639,9 @@
         "--to",
         "944092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1639,7 +1695,9 @@
         "--to",
         "944092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1666,7 +1724,9 @@
         "--to",
         "941092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1720,7 +1780,9 @@
         "--to",
         "941092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1747,7 +1809,9 @@
         "--to",
         "942092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1801,7 +1865,9 @@
         "--to",
         "942092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1828,7 +1894,9 @@
         "--to",
         "944092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1882,7 +1950,9 @@
         "--to",
         "944092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1909,7 +1979,9 @@
         "--to",
         "941092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1963,7 +2035,9 @@
         "--to",
         "941092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -1990,7 +2064,9 @@
         "--to",
         "942092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -2044,7 +2120,9 @@
         "--to",
         "942092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -2071,7 +2149,9 @@
         "--to",
         "944092ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -2125,7 +2205,9 @@
         "--to",
         "944092ps",
         "--on",
-        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr"
+        "TOP.scr1_top_tb_axi.io_axi_dmem_araddr",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
@@ -2152,7 +2234,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2206,7 +2290,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2233,7 +2319,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2287,7 +2375,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2314,7 +2404,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2368,7 +2460,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2395,7 +2489,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2449,7 +2545,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2476,7 +2574,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2530,7 +2630,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2557,7 +2659,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2611,7 +2715,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2638,7 +2744,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2692,7 +2800,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2719,7 +2829,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2773,7 +2885,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2800,7 +2914,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2854,7 +2970,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_DualRocketConfig_dhrystone.fst",
@@ -2881,7 +2999,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -2935,7 +3055,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -2962,7 +3084,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3016,7 +3140,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3043,7 +3169,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3097,7 +3225,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3124,7 +3254,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3178,7 +3310,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3205,7 +3339,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3259,7 +3395,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3286,7 +3424,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3340,7 +3480,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3367,7 +3509,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3421,7 +3565,9 @@
         "--to",
         "802000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3448,7 +3594,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3502,7 +3650,9 @@
         "--to",
         "808000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3529,7 +3679,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "*"
+        "*",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3583,7 +3735,9 @@
         "--to",
         "832000000ps",
         "--on",
-        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid"
+        "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid",
+        "--sample-mode",
+        "native"
       ],
       "meta": {
         "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_dhrystone.fst",
@@ -3638,6 +3792,10 @@
         "800000000ps",
         "--to",
         "802000000ps",
+        "--on",
+        "*",
+        "--sample-mode",
+        "native",
         "--eval",
         "TOP.TestDriver.testHarness.chiptop0.axi4_mem_0_bits_ar_valid == 1'b1",
         "--capture",

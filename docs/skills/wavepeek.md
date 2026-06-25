@@ -48,7 +48,7 @@ Before using any command in a nontrivial way, read `wavepeek help <command>` or 
 - State at explicit timestamp(s): `value`.
 - Moments when displayed signal values changed: `change`.
 - Timestamps where a Boolean condition is true or changes state: `property`.
-- Event/transaction enumeration and counting: `property --capture match`, then `value` at the match timestamps.
+- Event/transaction enumeration and counting: `property --capture match`, then `value --at <sample_time>` for the returned rows.
 - Machine parsing or aggregation: supported `--json`, plus `wavepeek schema` if the exact shape matters.
 
 Start most investigations with:
@@ -79,9 +79,11 @@ For synchronous RTL, the default mental model should be:
 
     --on "posedge <clock>" --eval "<condition over signals>"
 
+Edge-triggered `change` and `property` queries default to pre-edge value sampling: the row `time` is the clock edge, while `sample_time` is where values were evaluated or printed. Use `sample_time` for follow-up payload sampling unless you intentionally want same-edge dump values.
+
 Do not look for `posedge` of payload or control signals when the real question is about cycle-level RTL behavior. A ready/valid transfer, FSM state observation, enable, or sampled payload is normally checked on the owning clock edge. Use `posedge <signal>` only when the task explicitly asks for that signal edge or for asynchronous transition inspection.
 
-Avoid omitted `--on` or `--on "*"` for synchronous protocol counts unless you intentionally want change-driven sampling. It selects value-change timestamps, not clock cycles, and can include mid-cycle or duplicate evidence that is not a transaction boundary.
+Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you intentionally want change-driven sampling. It selects value-change timestamps, not clock cycles, and can include mid-cycle or duplicate evidence that is not a transaction boundary. Omitted `--on` is invalid.
 
 `--on "posedge clk iff cond"` means “select clock edges gated by `cond`”. It is not a substitute for printing every event unless the chosen command emits every selected event. With `change`, the row can still be suppressed if the printed values did not change.
 
@@ -100,16 +102,16 @@ Use `property --capture match` on a clocked predicate:
       --capture match \
       --json
 
-Then sample payload/control signals at the returned timestamps:
+Then sample payload/control signals at the returned `sample_time` values:
 
     wavepeek value \
       --waves <FILE> \
       --scope <SCOPE> \
-      --at <TIME1,TIME2,...> \
+      --at <SAMPLE_TIME1,SAMPLE_TIME2,...> \
       --signals <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`property` prints event times and result kinds, not payload values. Do not write `--eval <payload>` to “print” the payload; `--eval` is reduced as a Boolean predicate. Use `value` to sample payload/control values at the property match timestamps.
+`property` prints event times, sample times, and result kinds, not payload values. Do not write `--eval <payload>` to “print” the payload; `--eval` is reduced as a Boolean predicate. Use `value --at <sample_time>` to sample payload/control values for property matches.
 
 `value --at` supports an explicit comma-separated timestamp list in supported builds. Preserve timestamp order and chunk long lists so output remains readable.
 
@@ -121,7 +123,7 @@ For ready/valid-style protocols, define the transfer on the owning channel clock
 
     --on "posedge <clk>" --eval "<valid> && <ready>" --capture match
 
-Then sample the payload that belongs to that same channel at each match timestamp. This is the generic pattern for repeated transfers, including repeated transfers with identical payload values.
+Then sample the payload that belongs to that same channel at each returned `sample_time`. This is the generic pattern for repeated transfers, including repeated transfers with identical payload values.
 
 For protocols with separate channels, count each channel on its own handshake. Do not require unrelated channel handshakes to occur in the same cycle unless the protocol or the user’s question explicitly says so.
 

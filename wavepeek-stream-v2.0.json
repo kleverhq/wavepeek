@@ -1,21 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "wavepeek JSON output envelope",
-  "description": "Canonical schema for wavepeek --json command outputs.",
-  "type": "object",
-  "additionalProperties": false,
-  "required": [
-    "$schema",
-    "command",
-    "data",
-    "diagnostics"
-  ],
-  "properties": {
-    "$schema": {
-      "type": "string",
-      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v1\\.json$"
+  "title": "wavepeek JSONL stream record",
+  "description": "Canonical schema for one wavepeek --jsonl stream record. Validate each JSONL line independently; stream order and summary counts are stateful invariants.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/beginRecord"
     },
-    "command": {
+    {
+      "$ref": "#/$defs/itemRecord"
+    },
+    {
+      "$ref": "#/$defs/diagnosticRecord"
+    },
+    {
+      "$ref": "#/$defs/endRecord"
+    }
+  ],
+  "$defs": {
+    "streamCommand": {
       "type": "string",
       "enum": [
         "info",
@@ -23,204 +25,299 @@
         "signal",
         "value",
         "change",
-        "property",
-        "docs topics",
-        "docs search"
+        "property"
       ]
     },
-    "data": {
-      "anyOf": [
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "beginRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "$schema"
+      ],
+      "properties": {
+        "type": {
+          "const": "begin"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "$schema": {
+          "type": "string",
+          "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek-stream-v2\\.[0-9]+\\.json$"
+        }
+      }
+    },
+    "itemRecord": {
+      "oneOf": [
         {
+          "$ref": "#/$defs/infoItemRecord"
+        },
+        {
+          "$ref": "#/$defs/scopeItemRecord"
+        },
+        {
+          "$ref": "#/$defs/signalItemRecord"
+        },
+        {
+          "$ref": "#/$defs/valueItemRecord"
+        },
+        {
+          "$ref": "#/$defs/changeItemRecord"
+        },
+        {
+          "$ref": "#/$defs/propertyItemRecord"
+        }
+      ]
+    },
+    "infoItemRecord": {
+      "$ref": "#/$defs/itemRecordForInfoData"
+    },
+    "scopeItemRecord": {
+      "$ref": "#/$defs/itemRecordForScopeEntry"
+    },
+    "signalItemRecord": {
+      "$ref": "#/$defs/itemRecordForSignalEntry"
+    },
+    "valueItemRecord": {
+      "$ref": "#/$defs/itemRecordForValueSnapshot"
+    },
+    "changeItemRecord": {
+      "$ref": "#/$defs/itemRecordForChangeSnapshot"
+    },
+    "propertyItemRecord": {
+      "$ref": "#/$defs/itemRecordForPropertyRow"
+    },
+    "itemRecordForInfoData": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "info"
+        },
+        "item": {
           "$ref": "#/$defs/infoData"
-        },
-        {
-          "$ref": "#/$defs/scopeData"
-        },
-        {
-          "$ref": "#/$defs/signalData"
-        },
-        {
-          "$ref": "#/$defs/valueData"
-        },
-        {
-          "$ref": "#/$defs/changeData"
-        },
-        {
-          "$ref": "#/$defs/propertyData"
-        },
-        {
-          "$ref": "#/$defs/docsTopicsData"
-        },
-        {
-          "$ref": "#/$defs/docsSearchData"
-        }
-      ]
-    },
-    "diagnostics": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/diagnostic"
-      }
-    }
-  },
-  "allOf": [
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "info"
-          }
-        },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/infoData"
-          }
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "scope"
-          }
+    "itemRecordForScopeEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/scopeData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "scope"
+        },
+        "item": {
+          "$ref": "#/$defs/scopeEntry"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "signal"
-          }
+    "itemRecordForSignalEntry": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/signalData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "signal"
+        },
+        "item": {
+          "$ref": "#/$defs/signalEntry"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "value"
-          }
+    "itemRecordForValueSnapshot": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/valueData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "value"
+        },
+        "item": {
+          "$ref": "#/$defs/valueSnapshot"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "change"
-          }
+    "itemRecordForChangeSnapshot": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/changeData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "change"
+        },
+        "item": {
+          "$ref": "#/$defs/changeSnapshot"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "property"
-          }
+    "itemRecordForPropertyRow": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "properties": {
+        "type": {
+          "const": "item"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/propertyData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "const": "property"
+        },
+        "item": {
+          "$ref": "#/$defs/propertyRow"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "docs topics"
-          }
+    "diagnosticRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "diagnostic"
+      ],
+      "properties": {
+        "type": {
+          "const": "diagnostic"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/docsTopicsData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "diagnostic": {
+          "$ref": "#/$defs/diagnostic"
         }
       }
     },
-    {
-      "if": {
-        "properties": {
-          "command": {
-            "const": "docs search"
-          }
+    "endRecord": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "summary"
+      ],
+      "properties": {
+        "type": {
+          "const": "end"
         },
-        "required": [
-          "command"
-        ]
-      },
-      "then": {
-        "properties": {
-          "data": {
-            "$ref": "#/$defs/docsSearchData"
-          }
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "summary": {
+          "$ref": "#/$defs/streamSummary"
         }
       }
-    }
-  ],
-  "$defs": {
+    },
+    "streamSummary": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "status",
+        "items",
+        "diagnostics",
+        "truncated"
+      ],
+      "properties": {
+        "status": {
+          "const": "ok"
+        },
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "diagnostics": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      }
+    },
     "diagnostic": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "kind",
         "message"
@@ -379,7 +476,7 @@
     },
     "infoData": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time_unit",
         "time_start",
@@ -402,7 +499,7 @@
     },
     "scopeEntry": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "path",
         "depth",
@@ -424,15 +521,9 @@
         }
       }
     },
-    "scopeData": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/scopeEntry"
-      }
-    },
     "signalEntry": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "name",
         "path",
@@ -458,40 +549,9 @@
         }
       }
     },
-    "signalData": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/signalEntry"
-      }
-    },
-    "sampledSignalValue": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "path",
-        "value"
-      ],
-      "properties": {
-        "path": {
-          "$ref": "#/$defs/canonicalPath",
-          "description": "Canonical path of the sampled signal."
-        },
-        "value": {
-          "$ref": "#/$defs/sampledValue",
-          "description": "Sampled value for this signal in the selected timestamp snapshot."
-        }
-      }
-    },
-    "valueData": {
-      "type": "array",
-      "description": "Ordered snapshots sampled by the value command.",
-      "items": {
-        "$ref": "#/$defs/valueSnapshot"
-      }
-    },
     "changeSignalValue": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "path",
         "value"
@@ -509,7 +569,7 @@
     },
     "changeSnapshot": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "sample_time",
@@ -532,15 +592,9 @@
         }
       }
     },
-    "changeData": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/changeSnapshot"
-      }
-    },
     "propertyRow": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "sample_time",
@@ -566,115 +620,9 @@
         }
       }
     },
-    "propertyData": {
-      "type": "array",
-      "items": {
-        "$ref": "#/$defs/propertyRow"
-      }
-    },
-    "topicSummary": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "id",
-        "title",
-        "description",
-        "section"
-      ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Stable topic identifier used by wavepeek docs commands."
-        },
-        "title": {
-          "type": "string",
-          "description": "Human-readable topic title."
-        },
-        "description": {
-          "type": "string",
-          "description": "Short description shown in docs listings and search results."
-        },
-        "section": {
-          "type": "string",
-          "description": "Top-level docs section that groups this topic in the embedded catalog."
-        },
-        "see_also": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Related topic identifiers suggested for follow-up reading."
-        }
-      }
-    },
-    "docsTopicsData": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "topics"
-      ],
-      "properties": {
-        "topics": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/topicSummary"
-          }
-        }
-      }
-    },
-    "docsSearchMatch": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "topic",
-        "match_kind",
-        "matched_tokens"
-      ],
-      "properties": {
-        "topic": {
-          "$ref": "#/$defs/topicSummary"
-        },
-        "match_kind": {
-          "type": "string",
-          "description": "Why this topic matched the docs search query.",
-          "enum": [
-            "id_exact",
-            "id_prefix",
-            "title_exact",
-            "title_or_description",
-            "heading",
-            "body"
-          ]
-        },
-        "matched_tokens": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
-    },
-    "docsSearchData": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "query",
-        "matches"
-      ],
-      "properties": {
-        "query": {
-          "type": "string",
-          "description": "Query string emitted by wavepeek for the executed docs search."
-        },
-        "matches": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/docsSearchMatch"
-          }
-        }
-      }
-    },
     "valueSnapshot": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "signals"
@@ -687,7 +635,7 @@
         "signals": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/sampledSignalValue"
+            "$ref": "#/$defs/changeSignalValue"
           }
         }
       }

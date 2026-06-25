@@ -3,7 +3,7 @@
   "title": "wavepeek JSON output envelope",
   "description": "Canonical schema for wavepeek --json command outputs.",
   "type": "object",
-  "additionalProperties": false,
+  "additionalProperties": true,
   "required": [
     "$schema",
     "command",
@@ -13,7 +13,7 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v1\\.json$"
+      "pattern": "^https://kleverhq\\.github\\.io/wavepeek/wavepeek_v2\\.[0-9]+\\.json$"
     },
     "command": {
       "type": "string",
@@ -220,7 +220,7 @@
   "$defs": {
     "diagnostic": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "kind",
         "message"
@@ -379,7 +379,7 @@
     },
     "infoData": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time_unit",
         "time_start",
@@ -402,7 +402,7 @@
     },
     "scopeEntry": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "path",
         "depth",
@@ -432,7 +432,7 @@
     },
     "signalEntry": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "name",
         "path",
@@ -466,7 +466,7 @@
     },
     "sampledSignalValue": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "path",
         "value"
@@ -491,7 +491,7 @@
     },
     "changeSignalValue": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "path",
         "value"
@@ -509,7 +509,7 @@
     },
     "changeSnapshot": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "sample_time",
@@ -540,7 +540,7 @@
     },
     "propertyRow": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "sample_time",
@@ -574,7 +574,7 @@
     },
     "topicSummary": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "id",
         "title",
@@ -609,7 +609,7 @@
     },
     "docsTopicsData": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "topics"
       ],
@@ -624,7 +624,7 @@
     },
     "docsSearchMatch": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "topic",
         "match_kind",
@@ -654,7 +654,7 @@
     },
     "docsSearchData": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "query",
         "matches"
@@ -674,7 +674,7 @@
     },
     "valueSnapshot": {
       "type": "object",
-      "additionalProperties": false,
+      "additionalProperties": true,
       "required": [
         "time",
         "signals"

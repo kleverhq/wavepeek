@@ -37,7 +37,7 @@ This plan does not remove or rewrite historical v0 or v1 schema artifacts. It do
 ## Surprises & Discoveries
 
 - Observation: `wavepeek schema` does not generate a schema from Rust types; it prints a checked-in artifact embedded by `include_str!` through `src/schema_contract.rs`.
-  Evidence: `src/engine/schema.rs` returns `CANONICAL_SCHEMA_JSON`, and `src/schema_contract.rs` builds that constant with `include_str!(.../schema/wavepeek_v<major>.json)`.
+  Evidence: `src/engine/schema.rs` returns `CANONICAL_SCHEMA_JSON`, and `src/schema_contract.rs` builds that constant with `include_str!(.../schema/wavepeek_v<major>.<minor>.json)` for the current v2 contract line.
 
 - Observation: changing Cargo version and schema artifact naming can break compilation before any test runs if the new `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json` files do not already exist.
   Evidence: `src/schema_contract.rs` embeds schema files at compile time.

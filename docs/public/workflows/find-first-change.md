@@ -16,8 +16,8 @@ This workflow helps you narrow an early transition without flooding the result s
 
 1. Use `wavepeek info` to confirm dump bounds and time unit.
 2. Use `wavepeek scope` and `wavepeek signal` if you need to confirm hierarchy and signal names.
-3. Start with `wavepeek change` over a short time range and a focused signal list.
-4. Tighten `--from`, `--to`, or `--on` until the earliest relevant transition is isolated.
+3. Start with `wavepeek change --on '*' --sample-mode native` over a short time range and a focused signal list.
+4. Tighten `--from`, `--to`, or replace `--on` with a narrower event expression until the earliest relevant transition is isolated.
 
 ## When to stop widening
 

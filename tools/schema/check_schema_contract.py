@@ -1,542 +1,299 @@
 #!/usr/bin/env python3
+"""Validate current wavepeek schema contract artifacts."""
 
 from __future__ import annotations
 
+import argparse
 import json
-import pathlib
 import re
 import subprocess
 import sys
-import tomllib
+from pathlib import Path
+from typing import Any
+
+OUTPUT_FAMILY = "wavepeek.output"
+STREAM_FAMILY = "wavepeek.stream-record"
+EXPECTED_OUTPUT_PATH = "schema/output.json"
+EXPECTED_STREAM_PATH = "schema/stream.json"
+EXPECTED_OUTPUT_URL = (
+    "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"
+)
+EXPECTED_STREAM_URL = (
+    "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"
+)
+ROOT = Path(__file__).resolve().parents[2]
 
 
-SCHEMA_PAGES_BASE = "https://kleverhq.github.io/wavepeek"
-RAW_REPOSITORY = "https://raw.githubusercontent.com/kleverhq/wavepeek"
+class ContractError(RuntimeError):
+    pass
 
 
-def fail(message: str, *, hint_update_schema: bool = False) -> None:
-    print(message, file=sys.stderr)
-    if hint_update_schema:
-        print("hint: run just update-schema", file=sys.stderr)
-    raise SystemExit(1)
-
-
-def package_version() -> str:
-    cargo_toml = tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))
-    return cargo_toml["package"]["version"]
-
-
-def package_major_minor(version: str) -> tuple[str, str]:
-    major, minor, _patch = version.split(".", maxsplit=2)
-    return major, minor
-
-
-def schema_artifact_version(version: str) -> str:
-    major, minor = package_major_minor(version)
-    return f"{major}.{minor}"
-
-
-def current_schema_path(artifact_version: str) -> pathlib.Path:
-    return pathlib.Path("schema") / f"wavepeek_v{artifact_version}.json"
-
-
-def current_stream_schema_path(artifact_version: str) -> pathlib.Path:
-    return pathlib.Path("schema") / f"wavepeek-stream-v{artifact_version}.json"
-
-
-def expected_schema_url(artifact_version: str) -> str:
-    return f"{SCHEMA_PAGES_BASE}/wavepeek_v{artifact_version}.json"
-
-
-def expected_stream_schema_url(artifact_version: str) -> str:
-    return f"{SCHEMA_PAGES_BASE}/wavepeek-stream-v{artifact_version}.json"
-
-
-def expected_schema_url_pattern(major: str) -> str:
-    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek_v{re.escape(major)}\.[0-9]+\.json$"
-
-
-def expected_stream_schema_url_pattern(major: str) -> str:
-    return rf"^{re.escape(SCHEMA_PAGES_BASE)}/wavepeek-stream-v{re.escape(major)}\.[0-9]+\.json$"
-
-
-def validate_schema_path(schema_path: pathlib.Path, artifact_version: str) -> None:
-    expected_path = current_schema_path(artifact_version)
-    if schema_path != expected_path and schema_path.resolve() != expected_path.resolve():
-        fail(
-            "error: schema: canonical schema path mismatch: "
-            f"expected {expected_path}, got {schema_path}"
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "legacy_schema_path",
+        nargs="?",
+        help="deprecated positional argument kept only to print a useful error",
+    )
+    parser.add_argument(
+        "--schema-dir",
+        default="schema",
+        help="directory containing committed schema snapshots",
+    )
+    parser.add_argument(
+        "--generated-dir",
+        default="tmp/schema-check",
+        help="directory containing freshly generated schema snapshots",
+    )
+    args = parser.parse_args(argv)
+    if args.legacy_schema_path:
+        raise ContractError(
+            "check_schema_contract.py now expects --schema-dir and --generated-dir; "
+            "run `just check-schema`"
         )
-
-    obsolete_path = pathlib.Path("schema/wavepeek.json")
-    if obsolete_path.exists():
-        fail(f"error: schema: obsolete unversioned schema artifact exists at {obsolete_path}")
+    return args
 
 
-def load_schema(schema_path: pathlib.Path) -> tuple[bytes, dict[str, object]]:
-    if not schema_path.exists():
-        fail(
-            f"error: schema: missing canonical schema artifact at {schema_path}",
-            hint_update_schema=True,
-        )
-
-    schema_bytes = schema_path.read_bytes()
+def load_json(path: Path) -> Any:
     try:
-        schema = json.loads(schema_bytes.decode("utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise ContractError(f"missing required schema artifact: {path}") from error
     except json.JSONDecodeError as error:
-        fail(f"error: schema: canonical schema is not valid JSON: {error}")
+        raise ContractError(f"invalid JSON in {path}: {error}") from error
 
-    if not schema_bytes.endswith(b"\n"):
-        fail(
-            "error: schema: canonical schema must end with trailing newline",
-            hint_update_schema=True,
+
+def load_catalog(schema_dir: Path) -> dict[str, Any]:
+    catalog = load_json(schema_dir / "catalog.json")
+    families = catalog.get("families")
+    if not isinstance(families, list):
+        raise ContractError("schema/catalog.json must contain a families array")
+    by_family = {entry.get("id"): entry for entry in families if isinstance(entry, dict)}
+    if set(by_family) != {OUTPUT_FAMILY, STREAM_FAMILY}:
+        raise ContractError(
+            "schema/catalog.json must contain exactly wavepeek.output and "
+            "wavepeek.stream-record entries"
         )
-
-    if not isinstance(schema, dict):
-        fail("error: schema: canonical schema root must be a JSON object")
-
-    return schema_bytes, schema
+    return catalog
 
 
-def schema_url_pattern(schema: dict[str, object]) -> str:
-    try:
-        pattern = schema["properties"]["$schema"]["pattern"]  # type: ignore[index]
-    except (KeyError, TypeError):
-        fail("error: schema: canonical schema is missing properties.$schema.pattern")
-
-    if not isinstance(pattern, str):
-        fail("error: schema: canonical schema properties.$schema.pattern must be a string")
-
-    return pattern
-
-
-def validate_artifact_schema_url_pattern(
-    schema: dict[str, object], version: str, major: str, artifact_version: str
+def validate_catalog_entry(
+    entry: dict[str, Any],
+    *,
+    family: str,
+    version: str,
+    path: str,
+    url: str,
 ) -> None:
-    pattern = schema_url_pattern(schema)
-    expected_pattern = expected_schema_url_pattern(major)
-    if pattern != expected_pattern:
-        fail(
-            "error: schema: canonical schema properties.$schema.pattern mismatch: "
-            f"expected {expected_pattern}, got {pattern}"
-        )
-
-    try:
-        artifact_url_pattern = re.compile(pattern)
-    except re.error as error:
-        fail(f"error: schema: canonical schema properties.$schema.pattern is invalid: {error}")
-
-    expected_url = expected_schema_url(artifact_version)
-    if artifact_url_pattern.fullmatch(expected_url) is None:
-        fail(
-            "error: schema: canonical schema properties.$schema.pattern does not accept "
-            f"expected URL {expected_url}"
-        )
-
-    old_url = f"{RAW_REPOSITORY}/v{version}/schema/wavepeek.json"
-    if artifact_url_pattern.fullmatch(old_url) is not None:
-        fail(
-            "error: schema: canonical schema properties.$schema.pattern still accepts "
-            f"obsolete URL {old_url}"
-        )
+    expected = {
+        "id": family,
+        "version": version,
+        "path": path,
+        "url": url,
+    }
+    for key, value in expected.items():
+        if entry.get(key) != value:
+            raise ContractError(
+                f"catalog entry {family} has {key}={entry.get(key)!r}; expected {value!r}"
+            )
 
 
-def validate_runtime_schema(schema_path: pathlib.Path, schema_bytes: bytes) -> None:
-    runtime_schema = subprocess.run(
-        ["cargo", "run", "--quiet", "--", "schema"],
-        check=True,
+def validate_catalog(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    by_family = {entry["id"]: entry for entry in catalog["families"]}
+    validate_catalog_entry(
+        by_family[OUTPUT_FAMILY],
+        family=OUTPUT_FAMILY,
+        version="2.0",
+        path=EXPECTED_OUTPUT_PATH,
+        url=EXPECTED_OUTPUT_URL,
+    )
+    validate_catalog_entry(
+        by_family[STREAM_FAMILY],
+        family=STREAM_FAMILY,
+        version="2.0",
+        path=EXPECTED_STREAM_PATH,
+        url=EXPECTED_STREAM_URL,
+    )
+    return by_family
+
+
+def compare_generated(schema_dir: Path, generated_dir: Path) -> None:
+    for name in ("output.json", "stream.json", "catalog.json"):
+        committed = schema_dir / name
+        generated = generated_dir / name
+        if committed.read_bytes() != generated.read_bytes():
+            raise ContractError(
+                f"{committed} is stale; run `just update-schema` and commit the result"
+            )
+
+
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise ContractError(message)
+
+
+def validate_output_schema(schema: dict[str, Any]) -> None:
+    require(schema.get("$id") == EXPECTED_OUTPUT_URL, "output schema $id must be exact URL")
+    require(
+        schema["properties"]["$schema"].get("const") == EXPECTED_OUTPUT_URL,
+        "output schema must require exact $schema URL with const",
+    )
+    require(schema.get("additionalProperties") is True, "output envelope must allow extensions")
+    commands = schema["properties"]["command"]["enum"]
+    require(
+        commands
+        == [
+            "info",
+            "scope",
+            "signal",
+            "value",
+            "change",
+            "property",
+            "docs topics",
+            "docs search",
+        ],
+        "output command enum is not the expected stable list",
+    )
+    require(
+        schema["$defs"]["scopeKind"]["enum"],
+        "output schema must define scopeKind enum",
+    )
+    require(
+        schema["$defs"]["signalKind"]["enum"],
+        "output schema must define signalKind enum",
+    )
+    require(
+        schema["$defs"]["diagnostic"]["additionalProperties"] is True,
+        "diagnostic objects must allow extensions",
+    )
+
+
+def validate_stream_schema(schema: dict[str, Any]) -> None:
+    require(schema.get("$id") == EXPECTED_STREAM_URL, "stream schema $id must be exact URL")
+    require(
+        schema["$defs"]["beginRecord"]["properties"]["$schema"].get("const")
+        == EXPECTED_STREAM_URL,
+        "stream begin record must require exact $schema URL with const",
+    )
+    require(
+        schema["$defs"]["streamCommand"]["enum"]
+        == ["info", "scope", "signal", "value", "change", "property"],
+        "stream command enum is not the expected stable list",
+    )
+
+
+def run_cargo(args: list[str]) -> bytes:
+    process = subprocess.run(
+        ["cargo", "run", "--quiet", "--", *args],
+        cwd=ROOT,
         stdout=subprocess.PIPE,
-        text=False,
-    ).stdout
-    if runtime_schema != schema_bytes:
-        fail(
-            "error: schema: canonical schema mismatch between "
-            f"{schema_path} and 'wavepeek schema' output",
-            hint_update_schema=True,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise ContractError(
+            f"cargo run -- {' '.join(args)} failed with exit {process.returncode}: "
+            f"{process.stderr.decode('utf-8', errors='replace')}"
         )
-
-
-def validate_runtime_stream_schema(stream_schema_path: pathlib.Path, stream_schema_bytes: bytes) -> None:
-    runtime_schema = subprocess.run(
-        ["cargo", "run", "--quiet", "--", "schema", "--stream"],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=False,
-    ).stdout
-    if runtime_schema != stream_schema_bytes:
-        fail(
-            "error: schema: stream schema mismatch between "
-            f"{stream_schema_path} and 'wavepeek schema --stream' output"
+    if process.stderr:
+        raise ContractError(
+            f"cargo run -- {' '.join(args)} wrote stderr: "
+            f"{process.stderr.decode('utf-8', errors='replace')}"
         )
+    return process.stdout
 
 
-def require_object(value: object, message: str) -> dict[str, object]:
-    if not isinstance(value, dict):
-        fail(message)
-    return value
-
-
-def require_list(value: object, message: str) -> list[object]:
-    if not isinstance(value, list):
-        fail(message)
-    return value
-
-
-def validate_extension_friendly_schema(value: object, path: str = "$") -> None:
-    if isinstance(value, dict):
-        if value.get("additionalProperties") is False:
-            fail(f"error: schema: {path} must allow extension properties")
-        for key, child in value.items():
-            validate_extension_friendly_schema(child, f"{path}.{key}")
-    elif isinstance(value, list):
-        for index, child in enumerate(value):
-            validate_extension_friendly_schema(child, f"{path}[{index}]")
-
-
-def validate_stream_schema(
-    stream_schema: dict[str, object], major: str, artifact_version: str
-) -> None:
-    if stream_schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
-        fail("error: schema: stream schema must use JSON Schema draft 2020-12")
-    if stream_schema.get("title") != "wavepeek JSONL stream record":
-        fail("error: schema: stream schema title mismatch")
-
-    defs = require_object(stream_schema.get("$defs"), "error: schema: stream schema $defs must be an object")
-    one_of = require_list(stream_schema.get("oneOf"), "error: schema: stream schema root must use oneOf")
-    expected_root_refs = {
-        "#/$defs/beginRecord",
-        "#/$defs/itemRecord",
-        "#/$defs/diagnosticRecord",
-        "#/$defs/endRecord",
-    }
-    root_refs = {entry.get("$ref") for entry in one_of if isinstance(entry, dict)}
-    if root_refs != expected_root_refs:
-        fail("error: schema: stream schema root record variants mismatch")
-
-    command_def = require_object(defs.get("streamCommand"), "error: schema: stream schema must define streamCommand")
-    expected_commands = ["info", "scope", "signal", "value", "change", "property"]
-    if command_def.get("enum") != expected_commands:
-        fail("error: schema: stream schema command enum mismatch")
-
-    begin = require_object(defs.get("beginRecord"), "error: schema: stream schema must define beginRecord")
-    begin_properties = require_object(begin.get("properties"), "error: schema: beginRecord properties must be an object")
-    schema_property = require_object(begin_properties.get("$schema"), "error: schema: beginRecord must define $schema")
-    expected_pattern = expected_stream_schema_url_pattern(major)
-    if schema_property.get("pattern") != expected_pattern:
-        fail(
-            "error: schema: stream schema $schema pattern mismatch: "
-            f"expected {expected_pattern}, got {schema_property.get('pattern')}"
-        )
-    try:
-        pattern = re.compile(expected_pattern)
-    except re.error as error:
-        fail(f"error: schema: stream schema $schema pattern is invalid: {error}")
-    expected_url = expected_stream_schema_url(artifact_version)
-    if pattern.fullmatch(expected_url) is None:
-        fail(f"error: schema: stream schema $schema pattern does not accept {expected_url}")
-
-    item = require_object(defs.get("itemRecord"), "error: schema: stream schema must define itemRecord")
-    item_variants = require_list(item.get("oneOf"), "error: schema: itemRecord must use oneOf")
-    expected_item_refs = {
-        "#/$defs/infoItemRecord",
-        "#/$defs/scopeItemRecord",
-        "#/$defs/signalItemRecord",
-        "#/$defs/valueItemRecord",
-        "#/$defs/changeItemRecord",
-        "#/$defs/propertyItemRecord",
-    }
-    item_refs = {entry.get("$ref") for entry in item_variants if isinstance(entry, dict)}
-    if item_refs != expected_item_refs:
-        fail("error: schema: stream schema item variants mismatch")
-
-    expected_payload_refs = {
-        "info": "#/$defs/infoData",
-        "scope": "#/$defs/scopeEntry",
-        "signal": "#/$defs/signalEntry",
-        "value": "#/$defs/valueSnapshot",
-        "change": "#/$defs/changeSnapshot",
-        "property": "#/$defs/propertyRow",
-    }
-    for command, payload_ref in expected_payload_refs.items():
-        wrapper_name = f"itemRecordFor{''.join(part.capitalize() for part in payload_ref.rsplit('/', maxsplit=1)[-1].split('_'))}"
-        if command == "info":
-            wrapper_name = "itemRecordForInfoData"
-        elif command == "scope":
-            wrapper_name = "itemRecordForScopeEntry"
-        elif command == "signal":
-            wrapper_name = "itemRecordForSignalEntry"
-        elif command == "value":
-            wrapper_name = "itemRecordForValueSnapshot"
-        elif command == "change":
-            wrapper_name = "itemRecordForChangeSnapshot"
-        elif command == "property":
-            wrapper_name = "itemRecordForPropertyRow"
-        wrapper = require_object(defs.get(wrapper_name), f"error: schema: stream schema missing {wrapper_name}")
-        properties = require_object(wrapper.get("properties"), f"error: schema: {wrapper_name} properties must be an object")
-        command_property = require_object(properties.get("command"), f"error: schema: {wrapper_name} must constrain command")
-        item_property = require_object(properties.get("item"), f"error: schema: {wrapper_name} must constrain item")
-        if command_property.get("const") != command:
-            fail(f"error: schema: {wrapper_name} command const mismatch")
-        if item_property.get("$ref") != payload_ref:
-            fail(f"error: schema: {wrapper_name} item payload reference mismatch")
-        if wrapper.get("additionalProperties") is False:
-            fail(f"error: schema: {wrapper_name} must allow extension properties")
-
-    summary = require_object(defs.get("streamSummary"), "error: schema: stream schema must define streamSummary")
-    summary_properties = require_object(summary.get("properties"), "error: schema: streamSummary properties must be an object")
-    if require_object(summary_properties.get("status"), "error: schema: streamSummary must define status").get("const") != "ok":
-        fail("error: schema: streamSummary status const mismatch")
-    if "truncated" not in summary_properties:
-        fail("error: schema: streamSummary must define truncated")
-
-
-def validate_diagnostic_schema(schema: dict[str, object]) -> None:
-    required = schema.get("required")
-    properties = schema.get("properties")
-    defs = schema.get("$defs")
-    if not isinstance(required, list):
-        fail("error: schema: canonical schema required must be an array")
-    if not isinstance(properties, dict):
-        fail("error: schema: canonical schema properties must be an object")
-    if not isinstance(defs, dict):
-        fail("error: schema: canonical schema $defs must be an object")
-
-    if "diagnostics" not in required:
-        fail("error: schema: canonical schema must require diagnostics")
-    if "warnings" in required:
-        fail("error: schema: canonical schema must not require legacy warnings")
-    if "diagnostics" not in properties:
-        fail("error: schema: canonical schema must define diagnostics")
-    if "warnings" in properties:
-        fail("error: schema: canonical schema must not define legacy warnings")
-
-    data = properties.get("data")
-    if not isinstance(data, dict):
-        fail("error: schema: data property must be an object")
-    if "oneOf" in data:
-        fail("error: schema: data property must not use oneOf because empty arrays match multiple command payloads")
-    if "anyOf" not in data:
-        fail("error: schema: data property must use anyOf for command payload variants")
-
-    diagnostics = properties["diagnostics"]
-    if not isinstance(diagnostics, dict):
-        fail("error: schema: diagnostics property must be an object")
-    if diagnostics.get("type") != "array":
-        fail("error: schema: diagnostics property must be an array")
-    items = diagnostics.get("items")
-    if not isinstance(items, dict) or items.get("$ref") != "#/$defs/diagnostic":
-        fail("error: schema: diagnostics items must reference $defs.diagnostic")
-
-    diagnostic = defs.get("diagnostic")
-    if not isinstance(diagnostic, dict):
-        fail("error: schema: canonical schema must define $defs.diagnostic")
-    if diagnostic.get("type") != "object":
-        fail("error: schema: diagnostic definition must be an object")
-    if diagnostic.get("additionalProperties") is False:
-        fail("error: schema: diagnostic definition must allow extension properties")
-    if diagnostic.get("required") != ["kind", "message"]:
-        fail("error: schema: diagnostic definition must require kind and message")
-
-    diagnostic_properties = diagnostic.get("properties")
-    if not isinstance(diagnostic_properties, dict):
-        fail("error: schema: diagnostic properties must be an object")
-    if set(diagnostic_properties) != {"kind", "code", "message"}:
-        fail("error: schema: diagnostic properties must be exactly kind, code, and message")
-    kind = diagnostic_properties.get("kind")
-    code = diagnostic_properties.get("code")
-    message = diagnostic_properties.get("message")
-    if not isinstance(kind, dict) or kind.get("enum") != ["info", "warning", "error"]:
-        fail("error: schema: diagnostic kind enum mismatch")
-    if not isinstance(code, dict) or code.get("pattern") != r"^WPK-[WE][0-9]{4}$":
-        fail("error: schema: diagnostic code pattern mismatch")
-    if not isinstance(message, dict) or message.get("type") != "string":
-        fail("error: schema: diagnostic message must be a string")
-
-    rules = diagnostic.get("allOf")
-    if not isinstance(rules, list):
-        fail("error: schema: diagnostic definition must use allOf conditionals")
-    found_warning = False
-    found_error = False
-    found_info = False
-    for rule in rules:
-        if not isinstance(rule, dict):
-            continue
-        try:
-            kind_const = rule["if"]["properties"]["kind"]["const"]  # type: ignore[index]
-        except (KeyError, TypeError):
-            continue
-        then = rule.get("then")
-        if not isinstance(then, dict):
-            continue
-        code_properties = then.get("properties")
-        if not isinstance(code_properties, dict):
-            code_pattern = None
-        else:
-            code_schema = code_properties.get("code")
-            code_pattern = code_schema.get("pattern") if isinstance(code_schema, dict) else None
-        if (
-            kind_const == "warning"
-            and then.get("required") == ["code"]
-            and code_pattern == r"^WPK-W[0-9]{4}$"
-        ):
-            found_warning = True
-        if (
-            kind_const == "error"
-            and then.get("required") == ["code"]
-            and code_pattern == r"^WPK-E[0-9]{4}$"
-        ):
-            found_error = True
-        if kind_const == "info" and then.get("not") == {"required": ["code"]}:
-            found_info = True
-    if not found_warning:
-        fail("error: schema: warning diagnostics must require a WPK-W code")
-    if not found_error:
-        fail("error: schema: error diagnostics must require a WPK-E code")
-    if not found_info:
-        fail("error: schema: info diagnostics must reject code")
-
-
-def validate_docs_metadata_schema(schema: dict[str, object]) -> None:
-    try:
-        topic_summary = schema["$defs"]["topicSummary"]  # type: ignore[index]
-        topic_required = topic_summary["required"]  # type: ignore[index]
-        topic_properties = topic_summary["properties"]  # type: ignore[index]
-        match_kind = schema["$defs"]["docsSearchMatch"]["properties"]["match_kind"]  # type: ignore[index]
-        match_kind_enum = match_kind["enum"]  # type: ignore[index]
-    except (KeyError, TypeError):
-        fail("error: schema: canonical schema is missing docs metadata definitions")
-
-    if not isinstance(topic_required, list):
-        fail("error: schema: topicSummary.required must be an array")
-    if not isinstance(topic_properties, dict):
-        fail("error: schema: topicSummary.properties must be an object")
-    if not isinstance(match_kind_enum, list):
-        fail("error: schema: docsSearchMatch.match_kind.enum must be an array")
-
-    if "description" not in topic_required:
-        fail("error: schema: topicSummary must require description")
-    if "summary" in topic_required:
-        fail("error: schema: topicSummary must not require legacy summary")
-    if "description" not in topic_properties:
-        fail("error: schema: topicSummary must define description")
-    if "summary" in topic_properties:
-        fail("error: schema: topicSummary must not define current summary property")
-    if "title_or_description" not in match_kind_enum:
-        fail("error: schema: docs search match kind enum must include title_or_description")
-    if "title_or_summary" in match_kind_enum:
-        fail("error: schema: docs search match kind enum must not include title_or_summary")
-
-
-def validate_runtime_envelope_url(version: str, major: str, artifact_version: str) -> None:
-    expected_url = expected_schema_url(artifact_version)
-    runtime_url_pattern = re.compile(expected_schema_url_pattern(major))
-
-    info_json_stdout = subprocess.run(
+def validate_schema_semantics(schema_dir: Path) -> None:
+    process = subprocess.run(
         [
             "cargo",
             "run",
             "--quiet",
+            "--manifest-path",
+            "tools/schema-gen/Cargo.toml",
             "--",
-            "info",
-            "--waves",
-            "tests/fixtures/hand/m2_core.vcd",
-            "--json",
+            "--validate",
+            str(schema_dir),
         ],
-        check=True,
+        cwd=ROOT,
         stdout=subprocess.PIPE,
-        text=True,
-    ).stdout
-    envelope = json.loads(info_json_stdout)
-    actual_schema_url = envelope.get("$schema")
-
-    if actual_schema_url != expected_url:
-        fail(
-            "error: schema: envelope $schema URL mismatch: "
-            f"expected {expected_url}, got {actual_schema_url}"
-        )
-
-    if actual_schema_url is None or runtime_url_pattern.fullmatch(actual_schema_url) is None:
-        fail(
-            "error: schema: envelope $schema URL does not match required pattern: "
-            f"{actual_schema_url}"
-        )
-
-    obsolete_url = f"{RAW_REPOSITORY}/v{version}/schema/wavepeek.json"
-    if actual_schema_url == obsolete_url:
-        fail("error: schema: envelope $schema URL still uses obsolete full-semver path")
-
-    if "schema_version" in envelope:
-        fail("error: schema: legacy schema_version key is still present in JSON envelope")
-
-    if envelope.get("diagnostics") != []:
-        fail("error: schema: info JSON envelope must contain empty diagnostics")
-    if "warnings" in envelope:
-        fail("error: schema: legacy warnings key is still present in JSON envelope")
-
-
-def validate_runtime_stream_envelope_url(version: str, major: str, artifact_version: str) -> None:
-    expected_url = expected_stream_schema_url(artifact_version)
-    runtime_url_pattern = re.compile(expected_stream_schema_url_pattern(major))
-
-    info_jsonl_stdout = subprocess.run(
-        [
-            "cargo",
-            "run",
-            "--quiet",
-            "--",
-            "info",
-            "--waves",
-            "tests/fixtures/hand/m2_core.vcd",
-            "--jsonl",
-        ],
-        check=True,
-        stdout=subprocess.PIPE,
-        text=True,
-    ).stdout
-    first_line = next((line for line in info_jsonl_stdout.splitlines() if line), "")
-    if not first_line:
-        fail("error: schema: info JSONL output did not contain a begin record")
-    begin_record = json.loads(first_line)
-    if begin_record.get("type") != "begin":
-        fail("error: schema: first info JSONL record is not a begin record")
-    actual_schema_url = begin_record.get("$schema")
-
-    if actual_schema_url != expected_url:
-        fail(
-            "error: schema: stream begin $schema URL mismatch: "
-            f"expected {expected_url}, got {actual_schema_url}"
-        )
-
-    if actual_schema_url is None or runtime_url_pattern.fullmatch(actual_schema_url) is None:
-        fail(
-            "error: schema: stream begin $schema URL does not match required pattern: "
-            f"{actual_schema_url}"
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if process.returncode != 0:
+        raise ContractError(
+            "schema semantic validation failed: "
+            f"{process.stderr.decode('utf-8', errors='replace')}"
         )
 
 
+def validate_runtime(schema_dir: Path) -> None:
+    output_bytes = (schema_dir / "output.json").read_bytes()
+    stream_bytes = (schema_dir / "stream.json").read_bytes()
+    if run_cargo(["schema"]) != output_bytes:
+        raise ContractError("wavepeek schema output differs from schema/output.json")
+    if run_cargo(["schema", "--stream"]) != stream_bytes:
+        raise ContractError("wavepeek schema --stream output differs from schema/stream.json")
 
-def main() -> None:
-    version = package_version()
-    major, _minor = package_major_minor(version)
-    artifact_version = schema_artifact_version(version)
-    schema_path = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else current_schema_path(artifact_version)
+    info_stdout = run_cargo(
+        ["info", "--waves", "tests/fixtures/hand/m2_core.vcd", "--json"]
+    )
+    info = json.loads(info_stdout)
+    require(info["$schema"] == EXPECTED_OUTPUT_URL, "runtime JSON envelope uses wrong schema URL")
 
-    validate_schema_path(schema_path, artifact_version)
-    schema_bytes, schema = load_schema(schema_path)
-    validate_artifact_schema_url_pattern(schema, version, major, artifact_version)
-    validate_extension_friendly_schema(schema)
-    validate_diagnostic_schema(schema)
-    validate_docs_metadata_schema(schema)
-    validate_runtime_schema(schema_path, schema_bytes)
-    validate_runtime_envelope_url(version, major, artifact_version)
+    jsonl_stdout = run_cargo(
+        ["info", "--waves", "tests/fixtures/hand/m2_core.vcd", "--jsonl"]
+    )
+    first = json.loads(jsonl_stdout.splitlines()[0])
+    require(
+        first["$schema"] == EXPECTED_STREAM_URL,
+        "runtime JSONL begin record uses wrong schema URL",
+    )
+    for line in jsonl_stdout.splitlines():
+        record = json.loads(line)
+        require(record["command"] == "info", "runtime JSONL record uses wrong command")
+        require(record["type"] in {"begin", "item", "diagnostic", "end"}, "runtime JSONL record has invalid type")
 
-    stream_schema_path = current_stream_schema_path(artifact_version)
-    stream_schema_bytes, stream_schema = load_schema(stream_schema_path)
-    validate_extension_friendly_schema(stream_schema)
-    validate_stream_schema(stream_schema, major, artifact_version)
-    validate_runtime_stream_schema(stream_schema_path, stream_schema_bytes)
-    validate_runtime_stream_envelope_url(version, major, artifact_version)
+
+def validate_no_obsolete_current_alias(schema_dir: Path) -> None:
+    if (schema_dir / "wavepeek.json").exists():
+        raise ContractError("schema/wavepeek.json is obsolete; remove it")
+
+
+def validate_artifact_names(schema_dir: Path) -> None:
+    historical_output = re.compile(r"^wavepeek_v(?:\d+|\d+\.\d+)\.json$")
+    historical_stream = re.compile(r"^wavepeek-stream-v(?:\d+|\d+\.\d+)\.json$")
+    allowed = {"output.json", "stream.json", "catalog.json"}
+    for path in schema_dir.glob("*.json"):
+        if path.name in allowed:
+            continue
+        if historical_output.match(path.name) or historical_stream.match(path.name):
+            continue
+        raise ContractError(f"unexpected schema artifact name: {path}")
+
+
+def main(argv: list[str]) -> int:
+    try:
+        args = parse_args(argv)
+        schema_dir = (ROOT / args.schema_dir).resolve()
+        generated_dir = (ROOT / args.generated_dir).resolve()
+        validate_no_obsolete_current_alias(schema_dir)
+        validate_artifact_names(schema_dir)
+        catalog = load_catalog(schema_dir)
+        validate_catalog(catalog)
+        compare_generated(schema_dir, generated_dir)
+        output_schema = load_json(schema_dir / "output.json")
+        stream_schema = load_json(schema_dir / "stream.json")
+        validate_output_schema(output_schema)
+        validate_stream_schema(stream_schema)
+        validate_schema_semantics(schema_dir)
+        validate_runtime(schema_dir)
+    except ContractError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+    print("schema contract OK")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main(sys.argv[1:]))

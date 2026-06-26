@@ -29,7 +29,7 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 ```json
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/wavepeek_v<major>.<minor>.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
   "command": "<command>",
   "data": {},
   "diagnostics": []
@@ -38,7 +38,7 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 The semantics of the envelope fields are:
 
-- `$schema` is serialized literally as `$schema` and points at the canonical schema artifact for the running wavepeek major/minor contract.
+- `$schema` is serialized literally as `$schema` and points at the exact canonical schema artifact for the current output schema family version.
 - `command` identifies the executed subcommand and disambiguates the shape of `data`.
 - `data` carries the command payload. Depending on the command contract, it may be an object or an array.
 - `diagnostics` is an array of typed diagnostic objects in deterministic order.
@@ -55,7 +55,7 @@ A diagnostic object has `kind`, `message`, and sometimes `code`:
 
 `kind` is one of `info`, `warning`, or `error`. `warning` and `error` diagnostics always include a stable `code` matching `WPK-W####` or `WPK-E####`. `info` diagnostics omit `code`.
 
-The exact JSON shapes for every command are defined by the current schema artifact such as `schema/wavepeek_v2.0.json` and by `wavepeek schema`. Current v2 schemas are extension-friendly: consumers should ignore unknown object fields unless they intentionally pin to a stricter historical contract.
+The exact JSON shapes for every command are defined by the current schema artifact such as `schema/output.json` and by `wavepeek schema`. Current v2 schemas are extension-friendly: consumers should ignore unknown object fields unless they intentionally pin to a stricter historical contract.
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
@@ -66,7 +66,7 @@ Waveform commands also support `--jsonl` for newline-delimited JSON output. JSON
 A successful stream has these record types:
 
 ```jsonl
-{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/wavepeek-stream-v2.0.json"}
+{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"}
 {"type":"item","seq":1,"command":"change","item":{"time":"5ns","sample_time":"5ns","signals":[{"path":"top.clk","value":"1'h1"}]}}
 {"type":"diagnostic","seq":2,"command":"change","diagnostic":{"kind":"warning","code":"WPK-W0002","message":"truncated output to 1 entries (use --max to increase limit)"}}
 {"type":"end","seq":3,"command":"change","summary":{"status":"ok","items":1,"diagnostics":1,"truncated":true}}
@@ -82,7 +82,7 @@ Rules for successful JSONL streams:
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
 
-The checked-in stream schema, such as `schema/wavepeek-stream-v2.0.json`, validates one JSONL record at a time. Consumers must validate stream-level invariants themselves: first record is `begin`, last successful record is `end`, sequence numbers are contiguous, commands match, and summary counts match the records seen.
+The checked-in stream schema, such as `schema/stream.json`, validates one JSONL record at a time. Consumers must validate stream-level invariants themselves: first record is `begin`, last successful record is `end`, sequence numbers are contiguous, commands match, and summary counts match the records seen.
 
 If the process exits non-zero or a stream lacks a final `end` record, treat the stream as incomplete. A consumer that intentionally closes stdout early, for example by piping to `head`, may stop the producer without a fatal error.
 
@@ -98,9 +98,9 @@ Its behavior is special and fixed:
 - it accepts no command-specific flags or positional arguments,
 - it writes exactly one JSON Schema document to stdout,
 - it does not wrap that document in the normal command envelope, and
-- without selectors, its output bytes match the canonical JSON envelope artifact for the running major/minor contract, such as `schema/wavepeek_v2.0.json`.
+- without selectors, its output bytes match the canonical JSON envelope snapshot, `schema/output.json`.
 
-`wavepeek schema --stream` prints the canonical JSONL record schema for the running major/minor contract, such as `schema/wavepeek-stream-v2.0.json`. That schema describes one stream record, not a whole JSONL stream.
+`wavepeek schema --stream` prints the canonical JSONL record schema snapshot, `schema/stream.json`. That schema describes one stream record, not a whole JSONL stream.
 
 ## 5. Diagnostic Behavior
 

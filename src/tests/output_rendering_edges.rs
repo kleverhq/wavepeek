@@ -67,19 +67,17 @@ fn exercises_docs_topics_human_json_and_diagnostic_rendering() {
     ]);
     assert!(render_human(&properties, HumanRenderOptions::default()).contains("@1ns deassert"));
 
-    let envelope = OutputEnvelope::with_diagnostics(
-        "docs search",
-        search,
-        vec![Diagnostic::warning(
+    let json = render_json(CommandResult {
+        command: CommandName::DocsSearch,
+        output_mode: OutputMode::Json,
+        human_options: HumanRenderOptions::default(),
+        data: search,
+        diagnostics: vec![Diagnostic::warning(
             WarningDiagnosticCode::EmptyResult,
             "heads up",
         )],
-    );
-    let debug = format!("{envelope:?}");
-    assert!(debug.contains("docs search"));
-    assert!(
-        serde_json::to_string(&envelope)
-            .expect("envelope serializes")
-            .contains("heads up")
-    );
+    })
+    .expect("docs search json should render");
+    assert!(json.contains("docs search"));
+    assert!(json.contains("heads up"));
 }

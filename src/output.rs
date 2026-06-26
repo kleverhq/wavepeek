@@ -2,41 +2,11 @@ use std::io::{self, Write};
 
 use serde::Serialize;
 
+use crate::contract::{output::OutputEnvelope, stream};
 use crate::diagnostic::{Diagnostic, DiagnosticKind};
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 use crate::output_mode::OutputMode;
-use crate::schema_contract::{SCHEMA_URL, STREAM_SCHEMA_URL};
-
-#[derive(Debug, Serialize)]
-pub struct OutputEnvelope<T>
-where
-    T: Serialize,
-{
-    #[serde(rename = "$schema")]
-    pub schema: &'static str,
-    pub command: String,
-    pub data: T,
-    pub diagnostics: Vec<Diagnostic>,
-}
-
-impl<T> OutputEnvelope<T>
-where
-    T: Serialize,
-{
-    pub fn with_diagnostics(
-        command: impl Into<String>,
-        data: T,
-        diagnostics: Vec<Diagnostic>,
-    ) -> Self {
-        Self {
-            schema: SCHEMA_URL,
-            command: command.into(),
-            data,
-            diagnostics,
-        }
-    }
-}
 
 pub struct JsonlWriter<W: Write> {
     writer: W,
@@ -58,52 +28,32 @@ impl<W: Write> JsonlWriter<W> {
     }
 
     pub fn begin(&mut self) -> Result<(), WavepeekError> {
-        let record = JsonlBeginRecord {
-            record_type: "begin",
-            seq: self.next_seq,
-            command: self.command.as_str(),
-            schema: STREAM_SCHEMA_URL,
-        };
+        let record = stream::BeginRecord::new(self.next_seq, self.command)?;
         self.write_record(&record)
     }
 
-    pub fn item<T: Serialize>(&mut self, item: &T) -> Result<(), WavepeekError> {
-        let record = JsonlItemRecord {
-            record_type: "item",
-            seq: self.next_seq,
-            command: self.command.as_str(),
-            item,
-        };
+    pub fn item<T: stream::StreamItem + ?Sized>(&mut self, item: &T) -> Result<(), WavepeekError> {
+        let record = stream::ItemRecord::new(self.next_seq, self.command, item)?;
         self.write_record(&record)?;
         self.items += 1;
         Ok(())
     }
 
     pub fn diagnostic(&mut self, diagnostic: &Diagnostic) -> Result<(), WavepeekError> {
-        let record = JsonlDiagnosticRecord {
-            record_type: "diagnostic",
-            seq: self.next_seq,
-            command: self.command.as_str(),
-            diagnostic,
-        };
+        let record = stream::DiagnosticRecord::new(self.next_seq, self.command, diagnostic)?;
         self.write_record(&record)?;
         self.diagnostics += 1;
         Ok(())
     }
 
     pub fn end(&mut self, truncated: bool) -> Result<(), WavepeekError> {
-        let summary = JsonlEndSummary {
-            status: "ok",
-            items: self.items,
-            diagnostics: self.diagnostics,
+        let record = stream::EndRecord::new(
+            self.next_seq,
+            self.command,
+            self.items,
+            self.diagnostics,
             truncated,
-        };
-        let record = JsonlEndRecord {
-            record_type: "end",
-            seq: self.next_seq,
-            command: self.command.as_str(),
-            summary,
-        };
+        )?;
         self.write_record(&record)
     }
 
@@ -124,51 +74,6 @@ impl<W: Write> JsonlWriter<W> {
         self.next_seq += 1;
         Ok(())
     }
-}
-
-#[derive(Debug, Serialize)]
-struct JsonlBeginRecord {
-    #[serde(rename = "type")]
-    record_type: &'static str,
-    seq: usize,
-    command: &'static str,
-    #[serde(rename = "$schema")]
-    schema: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-struct JsonlItemRecord<'a, T: Serialize + ?Sized> {
-    #[serde(rename = "type")]
-    record_type: &'static str,
-    seq: usize,
-    command: &'static str,
-    item: &'a T,
-}
-
-#[derive(Debug, Serialize)]
-struct JsonlDiagnosticRecord<'a> {
-    #[serde(rename = "type")]
-    record_type: &'static str,
-    seq: usize,
-    command: &'static str,
-    diagnostic: &'a Diagnostic,
-}
-
-#[derive(Debug, Serialize)]
-struct JsonlEndRecord {
-    #[serde(rename = "type")]
-    record_type: &'static str,
-    seq: usize,
-    command: &'static str,
-    summary: JsonlEndSummary,
-}
-
-#[derive(Debug, Serialize)]
-struct JsonlEndSummary {
-    status: &'static str,
-    items: usize,
-    diagnostics: usize,
-    truncated: bool,
 }
 
 pub fn write(result: CommandResult) -> Result<(), WavepeekError> {
@@ -264,8 +169,7 @@ fn map_jsonl_io_error(error: io::Error) -> WavepeekError {
 }
 
 fn render_json(result: CommandResult) -> Result<String, WavepeekError> {
-    let envelope =
-        OutputEnvelope::with_diagnostics(result.command.as_str(), result.data, result.diagnostics);
+    let envelope = OutputEnvelope::from_result(&result)?;
     serde_json::to_string(&envelope)
         .map_err(|error| WavepeekError::Internal(format!("failed to serialize output: {error}")))
 }
@@ -472,16 +376,16 @@ mod output_rendering_edges;
 mod tests {
     use std::io;
 
-    use serde_json::{Value, json};
+    use serde_json::Value;
 
+    use crate::contract::schema::{OUTPUT_SCHEMA_URL, STREAM_SCHEMA_URL};
     use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
     use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
     use crate::output_mode::OutputMode;
-    use crate::schema_contract::{SCHEMA_URL, STREAM_SCHEMA_URL};
 
     use super::{
-        JsonlWriter, OutputEnvelope, render_human, render_json, render_scope_tree,
-        scope_entry_is_last_sibling, signal_display_name, write, write_jsonl_result,
+        JsonlWriter, render_human, render_json, render_scope_tree, scope_entry_is_last_sibling,
+        signal_display_name, write, write_jsonl_result,
     };
 
     #[test]
@@ -501,7 +405,7 @@ mod tests {
         let json = render_json(result).expect("json serialization should succeed");
         let value: Value = serde_json::from_str(&json).expect("json should parse");
 
-        assert_eq!(value["$schema"], SCHEMA_URL);
+        assert_eq!(value["$schema"], OUTPUT_SCHEMA_URL);
         assert!(value.get("schema_version").is_none());
         assert_eq!(value["command"], "info");
         assert!(value["data"].is_object());
@@ -601,7 +505,11 @@ mod tests {
             let mut writer = JsonlWriter::new(&mut sink, CommandName::Change);
             writer.begin().expect("begin record should write");
             writer
-                .item(&json!({"time": "5ns", "signals": []}))
+                .item(&crate::engine::change::ChangeSnapshot {
+                    time: "5ns".to_string(),
+                    sample_time: "5ns".to_string(),
+                    signals: Vec::new(),
+                })
                 .expect("item record should write");
             writer
                 .diagnostic(&Diagnostic::warning(
@@ -889,30 +797,15 @@ mod tests {
     }
 
     #[test]
-    fn output_envelope_constructor_sets_schema_and_diagnostics() {
-        let envelope = OutputEnvelope::with_diagnostics(
-            "docs show",
-            serde_json::json!({"ok": true}),
-            vec![Diagnostic::warning(
-                WarningDiagnosticCode::EmptyResult,
-                "careful",
-            )],
-        );
-        assert_eq!(envelope.schema, SCHEMA_URL);
-        assert_eq!(envelope.command, "docs show");
-        assert_eq!(envelope.diagnostics[0].code(), Some("WPK-W0003"));
-    }
-
-    #[test]
     fn write_entrypoint_exercises_json_empty_human_and_diagnostic_paths() {
         write(CommandResult {
             command: CommandName::Schema,
-            output_mode: OutputMode::Json,
+            output_mode: OutputMode::Human,
             human_options: HumanRenderOptions::default(),
             data: CommandData::Schema("{}".to_string()),
             diagnostics: Vec::new(),
         })
-        .expect("json output should write");
+        .expect("schema output should write");
 
         write(CommandResult {
             command: CommandName::DocsSearch,

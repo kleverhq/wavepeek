@@ -15,7 +15,7 @@ Use `just pre-commit` to run all installed pre-commit hooks across the repositor
 - `just format` and `just format-check` run rustfmt and the justfile formatter.
 - `just lint` runs clippy with warnings denied, plus feature-enabled FSDB clippy when Verdi is available; `just lint-fix` applies safe clippy suggestions when useful.
 - `just check-build` runs `cargo check`.
-- `just check-schema` validates the current schema artifacts such as `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json` against the runtime schema contract.
+- `just check-schema` validates generated schema snapshots (`schema/output.json`, `schema/stream.json`, and `schema/catalog.json`) against the Rust contract generator and runtime schema output.
 - `just check-actions` runs `actionlint` for `.github/workflows/`.
 - `just docs-site-build` exports embedded public docs into `tmp/docs-site/`, generates a MkDocs config, and builds the site in strict mode.
 - `just docs-site-check` runs the full local docs publication check, including root Pages artifacts, without touching `gh-pages`.
@@ -32,6 +32,6 @@ Focused FSDB recipes include `just check-fsdb-env`, `just lint-fsdb`, `just chec
 
 ## Interpreting Failures
 
-Schema freshness failures usually mean the runtime schema output changed; regenerate with `just update-schema` only if the schema change is intended. Coverage failures should be fixed by adding meaningful tests, not by lowering thresholds. If `just check-commit` fails before any commit exists because `.git/COMMIT_EDITMSG` is missing or stale, create the commit normally and let the commit-msg hook validate the actual message.
+Schema freshness failures usually mean the Rust contract schema output changed; regenerate with `just update-schema` only if the schema change is intended. Coverage failures should be fixed by adding meaningful tests, not by lowering thresholds. If `just check-commit` fails before any commit exists because `.git/COMMIT_EDITMSG` is missing or stale, create the commit normally and let the commit-msg hook validate the actual message.
 
 Keep stdout and stderr from project tools deterministic. If a gate reports unstable output, treat that as a product-contract problem rather than noisy tooling.

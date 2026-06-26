@@ -79,27 +79,22 @@ const EXCLUDED_SIGNAL_KINDS: &[&str] = &[
     "std_ulogic_vector",
 ];
 
-fn schema_artifact_version() -> String {
-    format!(
-        "{}.{}",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR")
-    )
-}
-
 fn canonical_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join(format!("wavepeek_v{}.json", schema_artifact_version()))
+        .join("output.json")
 }
 
 fn canonical_stream_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join(format!(
-            "wavepeek-stream-v{}.json",
-            schema_artifact_version()
-        ))
+        .join("stream.json")
+}
+
+fn canonical_catalog_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join("catalog.json")
 }
 
 fn run_schema_command() -> Vec<u8> {
@@ -210,38 +205,14 @@ fn schema_command_output_is_deterministic_across_runs() {
 }
 
 #[test]
-fn schema_command_schema_url_pattern_matches_current_major_contract() {
+fn schema_command_schema_url_matches_exact_family_artifact() {
     let value = schema_json();
-    let pattern = value["properties"]["$schema"]["pattern"]
-        .as_str()
-        .expect("envelope schema URL pattern should be a string");
-    let expected_pattern = format!(
-        r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v{}\.[0-9]+\.json$",
-        env!("CARGO_PKG_VERSION_MAJOR")
+    assert_eq!(
+        value["properties"]["$schema"]["const"],
+        expected_schema_url()
     );
-    assert_eq!(pattern, expected_pattern);
-
-    let regex = regex::Regex::new(pattern).expect("schema URL pattern should compile");
-
-    assert!(
-        regex.is_match(expected_schema_url()),
-        "schema URL pattern should accept current major.minor URL"
-    );
-    assert!(
-        regex.is_match(&format!(
-            "https://kleverhq.github.io/wavepeek/wavepeek_v{}.1.json",
-            env!("CARGO_PKG_VERSION_MAJOR")
-        )),
-        "schema URL pattern should accept future same-major minor URL"
-    );
-    assert!(
-        !regex.is_match(concat!(
-            "https://raw.githubusercontent.com/kleverhq/wavepeek/v",
-            env!("CARGO_PKG_VERSION"),
-            "/schema/wavepeek.json"
-        )),
-        "schema URL pattern should reject obsolete full-semver URL"
-    );
+    assert_eq!(value["$id"], expected_schema_url());
+    assert!(value["properties"]["$schema"].get("pattern").is_none());
 }
 
 #[test]
@@ -566,6 +537,30 @@ fn schema_stream_command_prints_canonical_artifact_bytes() {
 }
 
 #[test]
+fn schema_catalog_points_to_current_family_snapshots() {
+    let catalog: Value = serde_json::from_slice(
+        &fs::read(canonical_catalog_path()).expect("schema catalog should be readable"),
+    )
+    .expect("schema catalog should parse");
+    let families = catalog["families"]
+        .as_array()
+        .expect("families should be array");
+    assert_eq!(families.len(), 2);
+    assert!(families.iter().any(|entry| {
+        entry["id"] == "wavepeek.output"
+            && entry["version"] == "2.0"
+            && entry["path"] == "schema/output.json"
+            && entry["url"] == expected_schema_url()
+    }));
+    assert!(families.iter().any(|entry| {
+        entry["id"] == "wavepeek.stream-record"
+            && entry["version"] == "2.0"
+            && entry["path"] == "schema/stream.json"
+            && entry["url"] == expected_stream_schema_url()
+    }));
+}
+
+#[test]
 fn schema_stream_command_output_is_valid_json() {
     let value = stream_schema_json();
 
@@ -608,11 +603,14 @@ fn schema_stream_command_exposes_waveform_command_contract() {
         .collect::<std::collections::BTreeSet<_>>()
     );
     assert_eq!(
-        value["$defs"]["beginRecord"]["properties"]["$schema"]["pattern"],
-        format!(
-            r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v{}\.[0-9]+\.json$",
-            env!("CARGO_PKG_VERSION_MAJOR")
-        )
+        value["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
+        expected_stream_schema_url()
+    );
+    assert_eq!(value["$id"], expected_stream_schema_url());
+    assert!(
+        value["$defs"]["beginRecord"]["properties"]["$schema"]
+            .get("pattern")
+            .is_none()
     );
 }
 

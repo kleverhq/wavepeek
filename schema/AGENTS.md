@@ -8,4 +8,4 @@
 
 ## Local Guidance
 
-Regenerate current schema artifacts with `just update-schema` when the runtime owns the change, and always validate with `just check-schema`. Historical v0/v1 schema artifacts are named `wavepeek_vN.json` by tool major version; v2+ artifacts are named by exact major.minor version, such as `wavepeek_v2.0.json`. Keep prior schema artifacts in this directory; they are public contracts that must remain available in the repository and documentation site. Deliberate edits to current contract artifacts are allowed when the runtime embeds those artifacts; prove the runtime schemas match afterward and do not modify prior artifacts for current changes.
+Regenerate current schema snapshots with `just update-schema` when the Rust contract owns the change, and always validate with `just check-schema`. Current snapshots are `output.json`, `stream.json`, and `catalog.json`; do not edit them manually. Historical artifacts such as `wavepeek_v1.json` and `wavepeek_v2.0.json` remain public contracts and must stay available in the repository and documentation site.

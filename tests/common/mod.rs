@@ -12,24 +12,12 @@ pub fn wavepeek_cmd() -> Command {
 
 #[allow(dead_code)]
 pub fn expected_schema_url() -> &'static str {
-    concat!(
-        "https://kleverhq.github.io/wavepeek/wavepeek_v",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        ".",
-        env!("CARGO_PKG_VERSION_MINOR"),
-        ".json"
-    )
+    "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"
 }
 
 #[allow(dead_code)]
 pub fn expected_stream_schema_url() -> &'static str {
-    concat!(
-        "https://kleverhq.github.io/wavepeek/wavepeek-stream-v",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        ".",
-        env!("CARGO_PKG_VERSION_MINOR"),
-        ".json"
-    )
+    "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"
 }
 
 #[allow(dead_code)]

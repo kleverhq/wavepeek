@@ -20,10 +20,12 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
    - update bottom links for `Unreleased` and the new version tag;
    - treat released sections as immutable historical records.
 3. Reconcile GitHub Milestones with actual shipped scope. Milestones are planned scope; changelog is factual shipped scope. For the `X.Y.Z` milestone, close shipped issues, move unfinished issues to a future milestone or back to the backlog, then close the completed milestone.
-4. Update `Cargo.toml` version to `X.Y.Z`. If this is the first release for minor line `X.Y`, create `schema/wavepeek_vX.Y.json` and `schema/wavepeek-stream-vX.Y.json` before running build-backed schema commands; `wavepeek schema` embeds the checked-in artifact for the package major/minor contract.
-5. Refresh the current schema artifacts:
+4. Update `Cargo.toml` version to `X.Y.Z`. Schema family versions are independent of the package version; bump them only when the public JSON or JSONL contract changes.
+5. Refresh the generated schema snapshots:
 
        just update-schema
+
+   This updates `schema/output.json`, `schema/stream.json`, and `schema/catalog.json` from Rust contract code.
 
 6. Run the release-quality gate:
 
@@ -31,7 +33,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 7. Commit release prep:
 
-       git add CHANGELOG.md Cargo.toml Cargo.lock schema/wavepeek_vX.Y.json schema/wavepeek-stream-vX.Y.json
+       git add CHANGELOG.md Cargo.toml Cargo.lock schema/output.json schema/stream.json schema/catalog.json
        git commit -m "chore(release): prepare vX.Y.Z"
 
 8. Run the manual performance gate before pushing a major or minor release. Use the previous release tag as the baseline and the release-prep commit as the revised ref:

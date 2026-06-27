@@ -1,4 +1,6 @@
 mod cli;
+#[doc(hidden)]
+pub mod contract;
 mod debug_trace;
 mod diagnostic;
 mod docs;

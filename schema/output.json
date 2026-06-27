@@ -1,0 +1,701 @@
+{
+  "$defs": {
+    "canonicalPath": {
+      "description": "Canonical dot-separated hierarchy path emitted by wavepeek for a scope or signal.",
+      "type": "string"
+    },
+    "changeData": {
+      "items": {
+        "$ref": "#/$defs/changeSnapshot"
+      },
+      "type": "array"
+    },
+    "changeSignalValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the changed signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Changed signal value at the reported sample point."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
+    "changeSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp used to sample values for this change row."
+        },
+        "signals": {
+          "description": "Changed signal values for this row.",
+          "items": {
+            "$ref": "#/$defs/changeSignalValue"
+          },
+          "type": "array"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Trigger timestamp emitted by the change command."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "signals"
+      ],
+      "type": "object"
+    },
+    "diagnostic": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "warning"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "pattern": "^WPK-W[0-9]{4}$"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "error"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "pattern": "^WPK-E[0-9]{4}$"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "info"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "code": {
+          "pattern": "^WPK-[WE][0-9]{4}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ],
+      "type": "object"
+    },
+    "docsSearchData": {
+      "additionalProperties": true,
+      "properties": {
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/docsSearchMatch"
+          },
+          "type": "array"
+        },
+        "query": {
+          "description": "Normalized search query used for the docs search.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "matches"
+      ],
+      "type": "object"
+    },
+    "docsSearchMatch": {
+      "additionalProperties": true,
+      "properties": {
+        "match_kind": {
+          "description": "How the topic matched the normalized search query.",
+          "enum": [
+            "id_exact",
+            "id_prefix",
+            "title_exact",
+            "title_or_description",
+            "heading",
+            "body"
+          ],
+          "type": "string"
+        },
+        "matched_tokens": {
+          "description": "Number of query tokens matched by this topic.",
+          "minimum": 1,
+          "type": "integer"
+        },
+        "topic": {
+          "$ref": "#/$defs/topicSummary"
+        }
+      },
+      "required": [
+        "topic",
+        "match_kind",
+        "matched_tokens"
+      ],
+      "type": "object"
+    },
+    "docsTopicsData": {
+      "additionalProperties": true,
+      "properties": {
+        "topics": {
+          "description": "Available embedded documentation topics.",
+          "items": {
+            "$ref": "#/$defs/topicSummary"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "topics"
+      ],
+      "type": "object"
+    },
+    "infoData": {
+      "additionalProperties": true,
+      "properties": {
+        "time_end": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Latest timestamp present in the waveform."
+        },
+        "time_start": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Earliest timestamp present in the waveform."
+        },
+        "time_unit": {
+          "description": "Dump time unit used to normalize timestamps in this waveform, for example 1ns.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_unit",
+        "time_start",
+        "time_end"
+      ],
+      "type": "object"
+    },
+    "normalizedTime": {
+      "description": "Normalized timestamp rendered in the dump's time unit, for example 10ns.",
+      "type": "string"
+    },
+    "propertyData": {
+      "items": {
+        "$ref": "#/$defs/propertyRow"
+      },
+      "type": "array"
+    },
+    "propertyRow": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "description": "Property result kind captured for this row.",
+          "enum": [
+            "match",
+            "assert",
+            "deassert"
+          ],
+          "type": "string"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp used to evaluate the property expression."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Trigger timestamp emitted by the property command."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "sampledSignalValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the sampled signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Sampled value for this signal in the selected timestamp snapshot."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
+    "sampledValue": {
+      "description": "Stable sampled signal value formatted as a Verilog-style literal string.",
+      "type": "string"
+    },
+    "scopeData": {
+      "items": {
+        "$ref": "#/$defs/scopeEntry"
+      },
+      "type": "array"
+    },
+    "scopeEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "depth": {
+          "description": "Zero-based scope depth from the dump root used by list and tree renderers.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/scopeKind",
+          "description": "Stable scope kind alias for this scope entry."
+        },
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical hierarchy path for this scope entry."
+        }
+      },
+      "required": [
+        "path",
+        "depth",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "scopeKind": {
+      "description": "Stable scope kind alias emitted by wavepeek for the selected scope.",
+      "enum": [
+        "module",
+        "task",
+        "function",
+        "begin",
+        "fork",
+        "generate",
+        "struct",
+        "union",
+        "class",
+        "interface",
+        "package",
+        "program",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "signalData": {
+      "items": {
+        "$ref": "#/$defs/signalEntry"
+      },
+      "type": "array"
+    },
+    "signalEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/signalKind",
+          "description": "Stable signal kind alias for this signal entry."
+        },
+        "name": {
+          "description": "Signal name as declared inside its immediate parent scope.",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical hierarchy path for this signal entry."
+        },
+        "width": {
+          "description": "Declared packed bit width when the waveform backend reports one.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "signalKind": {
+      "description": "Stable signal kind alias emitted by wavepeek for the selected signal.",
+      "enum": [
+        "event",
+        "integer",
+        "parameter",
+        "real",
+        "reg",
+        "supply0",
+        "supply1",
+        "time",
+        "tri",
+        "triand",
+        "trior",
+        "trireg",
+        "tri0",
+        "tri1",
+        "wand",
+        "wire",
+        "wor",
+        "string",
+        "port",
+        "sparse_array",
+        "real_time",
+        "real_parameter",
+        "bit",
+        "logic",
+        "int",
+        "short_int",
+        "long_int",
+        "byte",
+        "enum",
+        "short_real",
+        "boolean",
+        "bit_vector"
+      ],
+      "type": "string"
+    },
+    "topicSummary": {
+      "additionalProperties": true,
+      "properties": {
+        "description": {
+          "description": "Short documentation topic description.",
+          "type": "string"
+        },
+        "id": {
+          "description": "Stable documentation topic identifier.",
+          "type": "string"
+        },
+        "section": {
+          "description": "Documentation section that contains this topic.",
+          "type": "string"
+        },
+        "see_also": {
+          "description": "Related documentation topic identifiers.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "title": {
+          "description": "Human-readable documentation topic title.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "section"
+      ],
+      "type": "object"
+    },
+    "valueData": {
+      "description": "Ordered snapshots sampled by the value command.",
+      "items": {
+        "$ref": "#/$defs/valueSnapshot"
+      },
+      "type": "array"
+    },
+    "valueSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "signals": {
+          "description": "Signal values sampled at this timestamp.",
+          "items": {
+            "$ref": "#/$defs/sampledSignalValue"
+          },
+          "type": "array"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp requested by the value command."
+        }
+      },
+      "required": [
+        "time",
+        "signals"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "info"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/infoData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "scope"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/scopeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "signal"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/signalData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "value"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/valueData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "change"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/changeData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "property"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/propertyData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs topics"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsTopicsData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "const": "docs search"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/docsSearchData"
+          }
+        }
+      }
+    }
+  ],
+  "description": "Canonical schema for wavepeek --json command outputs.",
+  "properties": {
+    "$schema": {
+      "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+      "type": "string"
+    },
+    "command": {
+      "enum": [
+        "info",
+        "scope",
+        "signal",
+        "value",
+        "change",
+        "property",
+        "docs topics",
+        "docs search"
+      ],
+      "type": "string"
+    },
+    "data": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/infoData"
+        },
+        {
+          "$ref": "#/$defs/scopeData"
+        },
+        {
+          "$ref": "#/$defs/signalData"
+        },
+        {
+          "$ref": "#/$defs/valueData"
+        },
+        {
+          "$ref": "#/$defs/changeData"
+        },
+        {
+          "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/docsTopicsData"
+        },
+        {
+          "$ref": "#/$defs/docsSearchData"
+        }
+      ]
+    },
+    "diagnostics": {
+      "items": {
+        "$ref": "#/$defs/diagnostic"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "$schema",
+    "command",
+    "data",
+    "diagnostics"
+  ],
+  "title": "wavepeek JSON output envelope",
+  "type": "object"
+}

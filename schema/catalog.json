@@ -1,0 +1,16 @@
+{
+  "families": [
+    {
+      "id": "wavepeek.output",
+      "path": "schema/output.json",
+      "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+      "version": "2.0"
+    },
+    {
+      "id": "wavepeek.stream-record",
+      "path": "schema/stream.json",
+      "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
+      "version": "2.0"
+    }
+  ]
+}

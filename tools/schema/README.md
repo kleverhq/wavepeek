@@ -1,10 +1,10 @@
 # Schema Tools
 
-This group owns validation for the current JSON schema artifacts. Historical v0/v1 artifacts use major-only names such as `schema/wavepeek_v1.json`; current v2+ artifacts use exact major.minor names such as `schema/wavepeek_v2.0.json`.
+This group owns validation for generated JSON schema snapshots. Current snapshots are `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`. Historical schema artifacts remain available from release tags and GitHub Pages rather than duplicate files in the current `schema/` directory.
 
 Normal entrypoints:
 
     just update-schema
     just check-schema
 
-`just check-schema` runs `tools/schema/check_schema_contract.py` and verifies that the committed current schema artifacts match `wavepeek schema` and `wavepeek schema --stream`, the artifacts' `$schema` URL patterns, and the runtime `$schema` URL contract.
+`just check-schema` runs `tools/schema-gen` into `tmp/schema-check`, then runs `tools/schema/check_schema_contract.py`. The check verifies generated snapshot freshness, `wavepeek schema` and `wavepeek schema --stream` byte matches, catalog URLs, and runtime `$schema` values.

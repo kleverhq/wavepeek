@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Reworked machine-output schemas into stable `wavepeek.output` and `wavepeek.stream-record` families with current snapshots at `schema/output.json` and `schema/stream.json`; JSON and JSONL outputs now reference exact family artifact URLs.
+- Moved schema generation to the contract DTO layer shared with runtime JSON and JSONL serialization.
+
+### Removed
+- Removed duplicate historical schema snapshot files from the current `schema/` tree; historical schema artifacts remain available through release tags and GitHub Pages.
+
 ## [2.0.0] - 2026-06-24
 
 ### Added

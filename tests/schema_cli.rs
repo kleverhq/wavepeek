@@ -79,27 +79,22 @@ const EXCLUDED_SIGNAL_KINDS: &[&str] = &[
     "std_ulogic_vector",
 ];
 
-fn schema_artifact_version() -> String {
-    format!(
-        "{}.{}",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR")
-    )
-}
-
 fn canonical_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join(format!("wavepeek_v{}.json", schema_artifact_version()))
+        .join("output.json")
 }
 
 fn canonical_stream_schema_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
-        .join(format!(
-            "wavepeek-stream-v{}.json",
-            schema_artifact_version()
-        ))
+        .join("stream.json")
+}
+
+fn canonical_catalog_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join("catalog.json")
 }
 
 fn run_schema_command() -> Vec<u8> {
@@ -127,23 +122,64 @@ fn stream_schema_json() -> Value {
         .expect("stream schema output should be valid json")
 }
 
+fn output_schema_validator() -> jsonschema::Validator {
+    let schema: Value = serde_json::from_slice(
+        &fs::read(canonical_schema_path()).expect("schema file should be readable"),
+    )
+    .expect("schema file should parse");
+    jsonschema::validator_for(&schema).expect("schema should compile")
+}
+
 fn stream_schema_validator() -> jsonschema::Validator {
     jsonschema::validator_for(&stream_schema_json()).expect("stream schema should compile")
 }
 
-fn info_json() -> Value {
+fn run_json_command(args: &[&str], expected_command: &str) -> Value {
     let output = wavepeek_cmd()
-        .args([
+        .args(args)
+        .output()
+        .expect("json command should execute");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "json command {args:?} failed with status {}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        output.status
+    );
+    assert!(
+        output.stderr.is_empty(),
+        "json command {args:?} wrote stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+        panic!("json command {args:?} stdout should be valid json: {error}\nstdout:\n{stdout}")
+    });
+    assert_eq!(
+        value["$schema"],
+        expected_schema_url(),
+        "json command {args:?} emitted unexpected schema URL: {value}"
+    );
+    assert_eq!(
+        value["command"], expected_command,
+        "json command {args:?} emitted unexpected command: {value}"
+    );
+
+    let validator = output_schema_validator();
+    validator.validate(&value).unwrap_or_else(|error| {
+        panic!("json command {args:?} output should match schema: {error}\n{value}")
+    });
+    value
+}
+
+fn info_json() -> Value {
+    run_json_command(
+        &[
             "info",
             "--waves",
             "tests/fixtures/hand/m2_core.vcd",
             "--json",
-        ])
-        .output()
-        .expect("info command should execute");
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    serde_json::from_slice(&output.stdout).expect("info output should be valid json")
+        ],
+        "info",
+    )
 }
 
 fn schema_enum(schema: &Value, def_name: &str) -> Vec<String> {
@@ -210,38 +246,14 @@ fn schema_command_output_is_deterministic_across_runs() {
 }
 
 #[test]
-fn schema_command_schema_url_pattern_matches_current_major_contract() {
+fn schema_command_schema_url_matches_exact_family_artifact() {
     let value = schema_json();
-    let pattern = value["properties"]["$schema"]["pattern"]
-        .as_str()
-        .expect("envelope schema URL pattern should be a string");
-    let expected_pattern = format!(
-        r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v{}\.[0-9]+\.json$",
-        env!("CARGO_PKG_VERSION_MAJOR")
+    assert_eq!(
+        value["properties"]["$schema"]["const"],
+        expected_schema_url()
     );
-    assert_eq!(pattern, expected_pattern);
-
-    let regex = regex::Regex::new(pattern).expect("schema URL pattern should compile");
-
-    assert!(
-        regex.is_match(expected_schema_url()),
-        "schema URL pattern should accept current major.minor URL"
-    );
-    assert!(
-        regex.is_match(&format!(
-            "https://kleverhq.github.io/wavepeek/wavepeek_v{}.1.json",
-            env!("CARGO_PKG_VERSION_MAJOR")
-        )),
-        "schema URL pattern should accept future same-major minor URL"
-    );
-    assert!(
-        !regex.is_match(concat!(
-            "https://raw.githubusercontent.com/kleverhq/wavepeek/v",
-            env!("CARGO_PKG_VERSION"),
-            "/schema/wavepeek.json"
-        )),
-        "schema URL pattern should reject obsolete full-semver URL"
-    );
+    assert_eq!(value["$id"], expected_schema_url());
+    assert!(value["properties"]["$schema"].get("pattern").is_none());
 }
 
 #[test]
@@ -340,6 +352,117 @@ fn runtime_info_envelope_uses_diagnostics_not_warnings() {
 }
 
 #[test]
+fn runtime_metadata_json_outputs_validate_against_schema() {
+    let fixture = "tests/fixtures/hand/m2_core.vcd";
+
+    let info = run_json_command(&["info", "--waves", fixture, "--json"], "info");
+    assert_eq!(info["data"]["time_unit"], "1ns");
+
+    let scope = run_json_command(&["scope", "--waves", fixture, "--json"], "scope");
+    assert!(
+        scope["data"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["path"] == "top") })
+    );
+
+    let signal = run_json_command(
+        &["signal", "--waves", fixture, "--scope", "top", "--json"],
+        "signal",
+    );
+    assert!(
+        signal["data"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["path"] == "top.clk") })
+    );
+}
+
+#[test]
+fn runtime_waveform_data_json_outputs_validate_against_schema() {
+    let fixture = "tests/fixtures/hand/m2_core.vcd";
+
+    let value = run_json_command(
+        &[
+            "value",
+            "--waves",
+            fixture,
+            "--at",
+            "5ns",
+            "--signals",
+            "top.clk,top.data",
+            "--json",
+        ],
+        "value",
+    );
+    assert_eq!(value["data"][0]["time"], "5ns");
+    assert_eq!(value["data"][0]["signals"].as_array().unwrap().len(), 2);
+
+    let change = run_json_command(
+        &[
+            "change",
+            "--waves",
+            fixture,
+            "--from",
+            "1ns",
+            "--to",
+            "10ns",
+            "--signals",
+            "top.clk,top.data",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--max",
+            "2",
+            "--json",
+        ],
+        "change",
+    );
+    assert_eq!(change["data"].as_array().unwrap().len(), 2);
+    assert_eq!(change["data"][0]["sample_time"], "5ns");
+
+    let property = run_json_command(
+        &[
+            "property",
+            "--waves",
+            fixture,
+            "--scope",
+            "top",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--eval",
+            "clk",
+            "--capture",
+            "switch",
+            "--max",
+            "2",
+            "--json",
+        ],
+        "property",
+    );
+    assert_eq!(property["data"][0]["kind"], "assert");
+}
+
+#[test]
+fn runtime_docs_json_outputs_validate_against_schema() {
+    let topics = run_json_command(&["docs", "topics", "--json"], "docs topics");
+    assert!(
+        topics["data"]["topics"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["id"] == "intro") })
+    );
+
+    let search = run_json_command(&["docs", "search", "schema", "--json"], "docs search");
+    assert_eq!(search["data"]["query"], "schema");
+    assert!(search["data"]["matches"].as_array().is_some_and(|matches| {
+        matches
+            .iter()
+            .any(|entry| entry["topic"]["id"] == "commands/schema")
+    }));
+}
+
+#[test]
 fn schema_validator_accepts_extension_fields() {
     let schema = schema_json();
     let validator = jsonschema::validator_for(&schema).expect("schema should compile");
@@ -419,6 +542,10 @@ fn schema_command_includes_docs_command_branches() {
             .iter()
             .any(|entry| entry["$ref"] == "#/$defs/docsSearchData"),
         "schema data variants should include docsSearchData"
+    );
+    assert_eq!(
+        value["$defs"]["docsSearchMatch"]["properties"]["matched_tokens"]["minimum"], 1,
+        "docs search matched_tokens should match the runtime minimum"
     );
 }
 
@@ -566,6 +693,30 @@ fn schema_stream_command_prints_canonical_artifact_bytes() {
 }
 
 #[test]
+fn schema_catalog_points_to_current_family_snapshots() {
+    let catalog: Value = serde_json::from_slice(
+        &fs::read(canonical_catalog_path()).expect("schema catalog should be readable"),
+    )
+    .expect("schema catalog should parse");
+    let families = catalog["families"]
+        .as_array()
+        .expect("families should be array");
+    assert_eq!(families.len(), 2);
+    assert!(families.iter().any(|entry| {
+        entry["id"] == "wavepeek.output"
+            && entry["version"] == "2.0"
+            && entry["path"] == "schema/output.json"
+            && entry["url"] == expected_schema_url()
+    }));
+    assert!(families.iter().any(|entry| {
+        entry["id"] == "wavepeek.stream-record"
+            && entry["version"] == "2.0"
+            && entry["path"] == "schema/stream.json"
+            && entry["url"] == expected_stream_schema_url()
+    }));
+}
+
+#[test]
 fn schema_stream_command_output_is_valid_json() {
     let value = stream_schema_json();
 
@@ -608,11 +759,14 @@ fn schema_stream_command_exposes_waveform_command_contract() {
         .collect::<std::collections::BTreeSet<_>>()
     );
     assert_eq!(
-        value["$defs"]["beginRecord"]["properties"]["$schema"]["pattern"],
-        format!(
-            r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v{}\.[0-9]+\.json$",
-            env!("CARGO_PKG_VERSION_MAJOR")
-        )
+        value["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
+        expected_stream_schema_url()
+    );
+    assert_eq!(value["$id"], expected_stream_schema_url());
+    assert!(
+        value["$defs"]["beginRecord"]["properties"]["$schema"]
+            .get("pattern")
+            .is_none()
     );
 }
 

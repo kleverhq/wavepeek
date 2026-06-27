@@ -174,7 +174,11 @@ class WorkflowDocsTests(unittest.TestCase):
             metadata_dir.mkdir(parents=True)
             metadata_path = metadata_dir / workflow_docs.publish_docs.METADATA_NAME
             metadata_path.write_text(
-                json.dumps({"promote_latest": False}), encoding="utf-8"
+                json.dumps({
+                    "promote_latest": False,
+                    "schema_artifacts": ["schema-output-v2.0.json", "schema-stream-v2.0.json"],
+                }),
+                encoding="utf-8",
             )
             original_cwd = pathlib.Path.cwd()
             try:
@@ -196,12 +200,17 @@ class WorkflowDocsTests(unittest.TestCase):
                         "--base-url",
                         "https://kleverhq.github.io/wavepeek",
                         "--no-expect-latest",
+                        "--schema-artifact",
+                        "schema-output-v2.0.json",
+                        "--stream-schema-artifact",
+                        "schema-stream-v2.0.json",
                         "--repository",
                         "kleverhq/wavepeek",
                     ],
                 )
                 metadata_path.write_text(
-                    json.dumps({"promote_latest": True}), encoding="utf-8"
+                    json.dumps({"promote_latest": True, "schema_artifacts": []}),
+                    encoding="utf-8",
                 )
                 self.assertIn(
                     "--expect-latest",

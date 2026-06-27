@@ -1,0 +1,665 @@
+{
+  "$defs": {
+    "beginRecord": {
+      "additionalProperties": true,
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
+          "type": "string"
+        },
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "begin"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "$schema"
+      ],
+      "type": "object"
+    },
+    "canonicalPath": {
+      "description": "Canonical dot-separated hierarchy path emitted by wavepeek for a scope or signal.",
+      "type": "string"
+    },
+    "changeItemRecord": {
+      "$ref": "#/$defs/itemRecordForChangeSnapshot"
+    },
+    "changeSignalValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the changed signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Changed signal value at the reported sample point."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
+    "changeSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp used to sample values for this change row."
+        },
+        "signals": {
+          "description": "Changed signal values for this row.",
+          "items": {
+            "$ref": "#/$defs/changeSignalValue"
+          },
+          "type": "array"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Trigger timestamp emitted by the change command."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "signals"
+      ],
+      "type": "object"
+    },
+    "diagnostic": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "warning"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "pattern": "^WPK-W[0-9]{4}$"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "error"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "code": {
+                "pattern": "^WPK-E[0-9]{4}$"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "info"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "code"
+              ]
+            }
+          }
+        }
+      ],
+      "properties": {
+        "code": {
+          "pattern": "^WPK-[WE][0-9]{4}$",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "info",
+            "warning",
+            "error"
+          ],
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "message"
+      ],
+      "type": "object"
+    },
+    "diagnosticRecord": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "diagnostic": {
+          "$ref": "#/$defs/diagnostic"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "diagnostic"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "diagnostic"
+      ],
+      "type": "object"
+    },
+    "endRecord": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "$ref": "#/$defs/streamCommand"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "summary": {
+          "$ref": "#/$defs/streamSummary"
+        },
+        "type": {
+          "const": "end"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "summary"
+      ],
+      "type": "object"
+    },
+    "infoData": {
+      "additionalProperties": true,
+      "properties": {
+        "time_end": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Latest timestamp present in the waveform."
+        },
+        "time_start": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Earliest timestamp present in the waveform."
+        },
+        "time_unit": {
+          "description": "Dump time unit used to normalize timestamps in this waveform, for example 1ns.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_unit",
+        "time_start",
+        "time_end"
+      ],
+      "type": "object"
+    },
+    "infoItemRecord": {
+      "$ref": "#/$defs/itemRecordForInfoData"
+    },
+    "itemRecord": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/infoItemRecord"
+        },
+        {
+          "$ref": "#/$defs/scopeItemRecord"
+        },
+        {
+          "$ref": "#/$defs/signalItemRecord"
+        },
+        {
+          "$ref": "#/$defs/valueItemRecord"
+        },
+        {
+          "$ref": "#/$defs/changeItemRecord"
+        },
+        {
+          "$ref": "#/$defs/propertyItemRecord"
+        }
+      ]
+    },
+    "itemRecordForChangeSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "change"
+        },
+        "item": {
+          "$ref": "#/$defs/changeSnapshot"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForInfoData": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "info"
+        },
+        "item": {
+          "$ref": "#/$defs/infoData"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForPropertyRow": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "property"
+        },
+        "item": {
+          "$ref": "#/$defs/propertyRow"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForScopeEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "scope"
+        },
+        "item": {
+          "$ref": "#/$defs/scopeEntry"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForSignalEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "signal"
+        },
+        "item": {
+          "$ref": "#/$defs/signalEntry"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForValueSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "value"
+        },
+        "item": {
+          "$ref": "#/$defs/valueSnapshot"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "normalizedTime": {
+      "description": "Normalized timestamp rendered in the dump's time unit, for example 10ns.",
+      "type": "string"
+    },
+    "propertyItemRecord": {
+      "$ref": "#/$defs/itemRecordForPropertyRow"
+    },
+    "propertyRow": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "description": "Property result kind captured for this row.",
+          "enum": [
+            "match",
+            "assert",
+            "deassert"
+          ],
+          "type": "string"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp used to evaluate the property expression."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Trigger timestamp emitted by the property command."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "sampledSignalValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the sampled signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Sampled value for this signal in the selected timestamp snapshot."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
+    "sampledValue": {
+      "description": "Stable sampled signal value formatted as a Verilog-style literal string.",
+      "type": "string"
+    },
+    "scopeEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "depth": {
+          "description": "Zero-based scope depth from the dump root used by list and tree renderers.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "kind": {
+          "$ref": "#/$defs/scopeKind",
+          "description": "Stable scope kind alias for this scope entry."
+        },
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical hierarchy path for this scope entry."
+        }
+      },
+      "required": [
+        "path",
+        "depth",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "scopeItemRecord": {
+      "$ref": "#/$defs/itemRecordForScopeEntry"
+    },
+    "scopeKind": {
+      "description": "Stable scope kind alias emitted by wavepeek for the selected scope.",
+      "enum": [
+        "module",
+        "task",
+        "function",
+        "begin",
+        "fork",
+        "generate",
+        "struct",
+        "union",
+        "class",
+        "interface",
+        "package",
+        "program",
+        "unknown"
+      ],
+      "type": "string"
+    },
+    "sequence": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "signalEntry": {
+      "additionalProperties": true,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/signalKind",
+          "description": "Stable signal kind alias for this signal entry."
+        },
+        "name": {
+          "description": "Signal name as declared inside its immediate parent scope.",
+          "type": "string"
+        },
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical hierarchy path for this signal entry."
+        },
+        "width": {
+          "description": "Declared packed bit width when the waveform backend reports one.",
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "kind"
+      ],
+      "type": "object"
+    },
+    "signalItemRecord": {
+      "$ref": "#/$defs/itemRecordForSignalEntry"
+    },
+    "signalKind": {
+      "description": "Stable signal kind alias emitted by wavepeek for the selected signal.",
+      "enum": [
+        "event",
+        "integer",
+        "parameter",
+        "real",
+        "reg",
+        "supply0",
+        "supply1",
+        "time",
+        "tri",
+        "triand",
+        "trior",
+        "trireg",
+        "tri0",
+        "tri1",
+        "wand",
+        "wire",
+        "wor",
+        "string",
+        "port",
+        "sparse_array",
+        "real_time",
+        "real_parameter",
+        "bit",
+        "logic",
+        "int",
+        "short_int",
+        "long_int",
+        "byte",
+        "enum",
+        "short_real",
+        "boolean",
+        "bit_vector"
+      ],
+      "type": "string"
+    },
+    "streamCommand": {
+      "enum": [
+        "info",
+        "scope",
+        "signal",
+        "value",
+        "change",
+        "property"
+      ],
+      "type": "string"
+    },
+    "streamSummary": {
+      "additionalProperties": true,
+      "properties": {
+        "diagnostics": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "items": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "status": {
+          "const": "ok"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "status",
+        "items",
+        "diagnostics",
+        "truncated"
+      ],
+      "type": "object"
+    },
+    "valueItemRecord": {
+      "$ref": "#/$defs/itemRecordForValueSnapshot"
+    },
+    "valueSnapshot": {
+      "additionalProperties": true,
+      "properties": {
+        "signals": {
+          "description": "Signal values sampled at this timestamp.",
+          "items": {
+            "$ref": "#/$defs/sampledSignalValue"
+          },
+          "type": "array"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Timestamp requested by the value command."
+        }
+      },
+      "required": [
+        "time",
+        "signals"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Canonical schema for one wavepeek --jsonl stream record. Validate each JSONL line independently; stream order and summary counts are stateful invariants.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/beginRecord"
+    },
+    {
+      "$ref": "#/$defs/itemRecord"
+    },
+    {
+      "$ref": "#/$defs/diagnosticRecord"
+    },
+    {
+      "$ref": "#/$defs/endRecord"
+    }
+  ],
+  "title": "wavepeek JSONL stream record"
+}

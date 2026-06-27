@@ -6,7 +6,7 @@ This document must be maintained in accordance with the `exec-plan` skill. It is
 
 ## Purpose / Big Picture
 
-After this change, users and release tooling can rely on two stable schema families, `wavepeek.output` for `--json` envelopes and `wavepeek.stream-record` for JSONL records, without tying schema artifact names to the `wavepeek` binary minor version. The runtime machine output will serialize through Rust contract data-transfer objects, and `just update-schema` will regenerate committed schema snapshots from that contract layer instead of round-tripping the schema embedded in the binary.
+After this change, users and release tooling can rely on two stable schema families, `wavepeek.output` for `--json` envelopes and `wavepeek.stream-record` for JSONL records, without tying schema artifact names to the `wavepeek` binary minor version. The runtime machine output serializes through Rust contract data-transfer objects. The remaining work is to make committed schema snapshots more honestly derived from those contract DTOs, and to add runtime validation coverage for every JSON-capable CLI command before changing the generator internals.
 
 The behavior is visible by running `just update-schema`, `just check-schema`, `wavepeek schema`, and `wavepeek schema --stream` from the repository root. `wavepeek schema` must print `schema/output.json` byte-for-byte, `wavepeek schema --stream` must print `schema/stream.json` byte-for-byte, and runtime `--json` / `--jsonl` outputs must contain exact schema URLs from `schema/catalog.json`. This plan also records the follow-up policy that current branch checkouts keep only generated current schema snapshots in `schema/`; historical schema URLs remain public through GitHub Pages and release tags, not through duplicate files in the current tree.
 
@@ -33,15 +33,25 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-27T11:22:00Z) Removed checked-in historical schema artifacts from `schema/` while preserving current generated snapshots.
 - [x] (2026-06-27T11:22:00Z) Updated schema/tooling documentation to describe where historical schema artifacts are preserved.
 - [x] (2026-06-27T11:22:00Z) Ran focused validation and post-change review; fixed the review finding about stale pre-migration wording.
-- [ ] Commit, push, and update pull request 45.
+- [x] (2026-06-27T11:24:00Z) Committed and pushed the historical schema cleanup to pull request 45.
+- [x] (2026-06-27T11:42:26Z) Reopened the plan after identifying that `src/contract/schema.rs` is still a manual schema builder and that JSON CLI runtime validation is weaker than JSONL validation.
+- [x] (2026-06-27T11:42:26Z) Prepared this ExecPlan update as a separate plan-only change before adding more code.
+- [ ] Add runtime JSON validation coverage for `info`, `scope`, and `signal` `--json` outputs.
+- [ ] Add runtime JSON validation coverage for `value`, `change`, and `property` `--json` outputs.
+- [ ] Add runtime JSON validation coverage for `docs topics` and `docs search` `--json` outputs.
+- [ ] Review the JSON validation tests, fix findings, run focused Rust tests, and commit the test slices.
+- [ ] Expand this ExecPlan with the exact `schemars` implementation details after the test safety net is in place.
+- [ ] Refactor schema generation so DTO-owned `JsonSchema` derives or custom implementations produce payload definitions, with hand-written code limited to catalog metadata and root command/data composition that JSON Schema cannot infer safely.
+- [ ] Regenerate schema snapshots, run focused schema validation, review the schema-generation refactor, fix findings, and commit.
+- [ ] Run `just check`, push all follow-up commits, and update pull request 45.
 
 ## Surprises & Discoveries
 
-- Observation: The current `just update-schema` recipe is artifact-first, not code-first. It runs `cargo run -- schema` and writes the embedded schema output back to the checked-in schema file.
-  Evidence: `justfile` defines `update-schema` with `cargo run --quiet -- schema > "$tmp_file"` and `src/schema_contract.rs` embeds `schema/wavepeek_v{major}.{minor}.json` through `include_str!`.
+- Observation: Before this branch, the `just update-schema` recipe was artifact-first, not code-first. It ran `cargo run -- schema` and wrote the embedded schema output back to the checked-in schema file.
+  Evidence: the old `justfile` recipe used `cargo run --quiet -- schema > "$tmp_file"` and `src/schema_contract.rs` embedded `schema/wavepeek_v{major}.{minor}.json` through `include_str!`.
 
-- Observation: The current runtime serializes public JSON and JSONL directly from engine structs.
-  Evidence: `src/output.rs::render_json` wraps `result.data` in `OutputEnvelope`, and `src/output.rs::write_jsonl_result` passes engine payloads directly to `JsonlWriter::item`.
+- Observation: Before this branch, runtime public JSON and JSONL serialization bypassed a dedicated contract DTO layer.
+  Evidence: the old `src/output.rs::render_json` wrapped `result.data` in `OutputEnvelope`, and the old `src/output.rs::write_jsonl_result` passed engine payloads directly to `JsonlWriter::item`.
 
 - Observation: Current tests already cover many contract semantics that should be preserved: diagnostics rules, extension-friendly objects, command-to-payload JSONL records, scope/signal kind enums, and byte-for-byte schema command output.
   Evidence: `tests/schema_cli.rs`, `tests/jsonl_cli.rs`, and `tools/schema/check_schema_contract.py` validate these constraints.
@@ -58,11 +68,17 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - Observation: Current runtime and schema freshness checks no longer depend on checked-in historical schema files.
   Evidence: `src/schema_contract.rs` embeds only `schema/output.json` and `schema/stream.json`; `tools/schema/check_schema_contract.py` compares only `output.json`, `stream.json`, and `catalog.json`; `tools/docs/publish_docs.py` publishes catalog-listed current artifacts when `schema/catalog.json` exists.
 
+- Observation: The current branch still has two schema sources for field-level shape: runtime DTOs in `src/contract/output.rs` and `src/contract/stream.rs`, and a manual schema builder in `src/contract/schema.rs`.
+  Evidence: `OutputEnvelope`, `OutputData`, `BeginRecord`, `ItemRecord`, and related DTOs derive `serde::Serialize` and are used on the stdout path, while `output_schema_value`, `stream_schema_value`, `output_defs`, and `stream_defs` hand-build JSON Schema definitions with `serde_json::json!`.
+
+- Observation: JSONL CLI runtime outputs are validated against `schema/stream.json` more comprehensively than JSON CLI runtime outputs are validated against `schema/output.json`.
+  Evidence: `tests/jsonl_cli.rs::parse_stream` validates every JSONL record it parses with a compiled stream schema validator. `tests/schema_cli.rs` validates representative hand-built output samples and checks one runtime `info --json` envelope, but it does not validate every JSON-capable command's actual `--json` stdout.
+
 ## Decision Log
 
-- Decision: Use a manual deterministic Rust schema builder in `src/contract/schema.rs` rather than introducing a derive-based schema dependency in the first migration.
-  Rationale: The current schema has command-to-payload conditionals, extension-friendly objects, diagnostic conditionals, exact URL constants, and stable definition names. A small explicit builder preserves the public schema shape and keeps the migration reviewable. The builder still lives next to the Rust contract DTO and is invoked by `tools/schema-gen`, removing the current binary round-trip.
-  Date/Author: 2026-06-26 / coding agent
+- Decision: Use a manual deterministic Rust schema builder in `src/contract/schema.rs` only for the first migration slice, not as the final contract source-of-truth design.
+  Rationale: The current schema has command-to-payload conditionals, extension-friendly objects, diagnostic conditionals, exact URL constants, and stable definition names. A small explicit builder preserved the public schema shape and kept the initial migration reviewable, but it can still drift from the runtime DTOs. The remaining work moves field-level schema definitions to DTO-owned `schemars` derives or custom `JsonSchema` implementations.
+  Date/Author: 2026-06-26, revised 2026-06-27 / coding agent
 
 - Decision: Keep already published historical schema URLs resolvable through GitHub Pages and release tags, but remove duplicate historical schema files from current branch checkouts.
   Rationale: Historical artifacts are public contracts, but the current branch does not need duplicate copies once the runtime embeds generated family snapshots and publication uses `schema/catalog.json`. Keeping old files in `main` makes the current schema directory look like it has multiple active sources of truth.
@@ -92,9 +108,21 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
   Rationale: The Python test environment lacks `jsonschema`, while the Rust helper can depend on the existing Rust `jsonschema` crate and validate generated schemas without adding a new Python runtime dependency.
   Date/Author: 2026-06-26 / coding agent
 
+- Decision: Add runtime JSON `--json` schema validation tests before refactoring schema generation.
+  Rationale: JSONL already has a runtime validation safety net. Adding the same kind of safety net for JSON output gives immediate protection against `output.rs` and `schema.rs` drift and makes the later `schemars` refactor safer to review.
+  Date/Author: 2026-06-27 / user and coding agent
+
+- Decision: Use `schemars` for DTO-owned field and payload definitions, while retaining a small hand-written root composition layer for the global output and stream schemas.
+  Rationale: Rust DTOs can own field names, optionality, value constraints, descriptions, stable kind enums, and diagnostic schema rules through derives or custom `JsonSchema` implementations. The global schemas still need explicit root semantics that a plain untagged DTO cannot safely infer, especially `command -> data` conditionals for JSON envelopes and command-specific JSONL item records.
+  Date/Author: 2026-06-27 / user and coding agent
+
+- Decision: Keep the follow-up commit series reviewable: one plan commit, small JSON test commits by command group, then one or more schema-generation refactor commits.
+  Rationale: The work touches public machine-output contracts. Splitting tests from generator changes makes regressions easier to isolate and gives reviewers a stable test safety net before the internal refactor.
+  Date/Author: 2026-06-27 / user and coding agent
+
 ## Outcomes & Retrospective
 
-The implementation and review milestones for code-first schema generation are complete. Runtime JSON and JSONL now serialize through `src/contract` DTOs, generated snapshots live at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, `just check-schema` validates generated freshness plus runtime embedding, and docs publication handles both catalog-based exact artifacts and historical no-catalog artifacts. The historical artifact cleanup has removed duplicate legacy schema files from the current tree and documented that release tags and GitHub Pages preserve those contracts. Validation and post-change review are complete. Remaining work is commit, push, and pull request 45 update.
+The initial migration delivered the stable schema family flow, runtime serialization through `src/contract` DTOs, current snapshots at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, catalog-aware docs publication, and removal of duplicate historical schema artifacts from the current tree. Review then identified two remaining contract-quality gaps: `src/contract/schema.rs` still hand-builds field-level schema definitions instead of deriving them from the DTOs, and JSON `--json` runtime outputs do not have the same comprehensive schema-validation coverage as JSONL outputs. This plan is reopened to close those gaps before pull request 45 is considered complete.
 
 ## Context and Orientation
 
@@ -102,21 +130,23 @@ The implementation and review milestones for code-first schema generation are co
 
 Before this branch, the schema runtime in `src/schema_contract.rs` constructed schema URLs from `CARGO_PKG_VERSION_MAJOR` and `CARGO_PKG_VERSION_MINOR`, embedded `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`, and exposed those strings to the CLI. In the current branch, `src/schema_contract.rs` embeds `schema/output.json` and `schema/stream.json`, while URL and family metadata come from `src/contract/schema.rs`. `src/engine/schema.rs` returns the embedded current snapshots for `wavepeek schema` and `wavepeek schema --stream`.
 
-The current JSON and JSONL serialization entrypoint is `src/output.rs`. `render_json` serializes `crate::engine::CommandData` directly inside `OutputEnvelope`. `JsonlWriter::item` serializes any `serde::Serialize` payload passed by engine code. `src/engine/change.rs` and `src/engine/property.rs` stream JSONL rows through sink types that call `JsonlWriter::item`.
+The current JSON and JSONL serialization entrypoint is `src/output.rs`. `render_json` converts `crate::engine::CommandResult` into `contract::output::OutputEnvelope` before calling `serde_json`. `JsonlWriter::begin`, `JsonlWriter::item`, `JsonlWriter::diagnostic`, and `JsonlWriter::end` serialize records from `contract::stream`; the `StreamItem` trait restricts which engine values can become JSONL item payloads. `src/engine/change.rs` and `src/engine/property.rs` stream JSONL rows through sink types that call this typed item API.
 
-The engine modules currently define the payload structs that appear on the wire: `src/engine/info.rs::InfoData`, `src/engine/scope.rs::ScopeEntry`, `src/engine/signal.rs::SignalEntry`, `src/engine/value.rs::ValueSnapshot`, `src/engine/change.rs::ChangeSnapshot`, `src/engine/property.rs::PropertyCaptureRow`, and docs JSON payloads in `src/engine/mod.rs` plus `src/docs/mod.rs`.
+The engine modules still own computation-oriented structs: `src/engine/info.rs::InfoData`, `src/engine/scope.rs::ScopeEntry`, `src/engine/signal.rs::SignalEntry`, `src/engine/value.rs::ValueSnapshot`, `src/engine/change.rs::ChangeSnapshot`, `src/engine/property.rs::PropertyCaptureRow`, and docs JSON payloads in `src/engine/mod.rs` plus `src/docs/mod.rs`. Before machine-output serialization, those engine structs are converted to contract DTOs in `src/contract/output.rs`, `src/contract/stream.rs`, and `src/contract/common.rs`.
 
-The new contract layer will live under `src/contract/`. A contract data-transfer object, abbreviated DTO, is a Rust struct or enum whose purpose is to describe the public wire shape. Engine structs may continue to exist for computation and human rendering, but machine output must convert engine results into contract DTOs before `serde_json` serializes them. The schema generator must be based on the same contract module and explicit schema metadata.
+The current contract layer lives under `src/contract/`. A contract data-transfer object, abbreviated DTO, is a Rust struct or enum whose purpose is to describe the public wire shape. Engine structs may continue to exist for computation and human rendering, but machine output must convert engine results into contract DTOs before `serde_json` serializes them. The schema generator must be based on the same contract module. Today `src/contract/schema.rs` hand-builds schema definitions next to the DTOs; the next refactor moves those definitions onto the DTOs via `schemars` derives or custom `JsonSchema` implementations.
 
-The helper entrypoints are in `justfile`. `just update-schema` must generate `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`. `just check-schema` must generate fresh files under `tmp/schema-check` and compare them with committed snapshots before checking runtime output. `tools/schema/check_schema_contract.py` currently assumes Cargo major/minor artifact names and must become catalog-based.
+The helper entrypoints are in `justfile`. `just update-schema` generates `schema/output.json`, `schema/stream.json`, and `schema/catalog.json` by running `tools/schema-gen`. `just check-schema` generates fresh files under `tmp/schema-check`, compares them with committed snapshots, runs semantic schema validation through `tools/schema-gen --validate`, and checks runtime `wavepeek schema` output. `tools/schema/check_schema_contract.py` is catalog-based.
 
 Docs publication lives in `tools/docs/publish_docs.py`. Deployed-doc validation lives in `tools/docs/check_deploy.py`. Current catalog-based releases read `schema/catalog.json` for exact family artifacts. Historical release repair and deployed checks still understand legacy artifact names such as `wavepeek_v2.0.json`, but those historical files do not need to be present in the current branch checkout.
 
 ## Open Questions
 
-There are no blocking open questions. The chosen policy is that `main`/current branch checkouts keep generated current snapshots only, while GitHub Pages and release tags preserve historical artifacts. If validation shows that docs publication still requires historical files in the current checkout, record that finding and either add a compatibility fixture or restore the files.
+There are no blocking open questions. The chosen policy is that `main`/current branch checkouts keep generated current snapshots only, while GitHub Pages and release tags preserve historical artifacts. The chosen generator policy is that DTO-owned `schemars` output should produce field-level and payload definitions, while explicit root composition remains allowed for global schema semantics that cannot be derived safely from an untagged runtime enum.
 
 ## Plan of Work
+
+The initial migration sequence in this section has already been executed and is retained so a new reader can understand how the branch reached its current state. The active follow-up starts after the historical schema cleanup paragraph below.
 
 First, review this plan against the current source. The review should check whether all runtime paths that emit JSON or JSONL are covered, whether docs publication and deployed-doc checks are included, and whether the migration leaves historical artifacts intact.
 
@@ -144,6 +174,10 @@ Finally, run formatting, focused tests, `just check-schema`, docs helper tests, 
 
 Follow-up cleanup for checked-in historical schema artifacts is now part of this plan. Remove these five files from the current tree: `schema/wavepeek_v0.json`, `schema/wavepeek_v1.json`, `schema/wavepeek_v2.0.json`, `schema/wavepeek-stream-v1.json`, and `schema/wavepeek-stream-v2.0.json`. Do not remove `schema/output.json`, `schema/stream.json`, or `schema/catalog.json`. Update `schema/AGENTS.md` and `tools/schema/README.md` to say that current checkouts contain only generated current snapshots and that historical artifacts are preserved by release tags and GitHub Pages. Update `tools/docs/README.md` to distinguish publishing current catalog artifacts from preserving already deployed historical artifacts. Keep `tools/docs/publish_docs.py` legacy support intact for old source refs and tests, because old tags still contain no-catalog historical artifacts.
 
+The active follow-up starts by adding JSON runtime validation tests in `tests/schema_cli.rs`. Add a helper that compiles `schema/output.json` with the Rust `jsonschema` crate, executes a CLI command with `--json`, parses stdout, validates the parsed value, and asserts that `$schema` and `command` match the expected values. Keep command fixtures small and deterministic. Use `tests/fixtures/hand/m2_core.vcd` for waveform commands, a tiny temporary VCD for property capture when a purpose-built sequence is clearer, and the embedded docs commands for `docs topics` and `docs search`. Split the test additions into reviewable command groups: `info`/`scope`/`signal`, then `value`/`change`/`property`, then `docs topics`/`docs search`. After each group, run `cargo test -q --test schema_cli` and commit the passing slice.
+
+After the JSON validation tests pass and have been reviewed, expand this plan with the final implementation details for the schema generator refactor. The intended design is to add `schemars` to the main crate, derive `JsonSchema` on contract DTOs where derive output is sufficient, and implement custom `JsonSchema` next to DTO types when the public contract needs rules that derive cannot express. Examples of custom DTO-owned schema are stable scope and signal kind string enums, diagnostic `kind`/`code` conditionals, and exact nonzero or minimum constraints. Keep `src/contract/schema.rs` responsible for schema family IDs, exact URLs, catalog JSON, deterministic pretty-printing, and explicit root composition such as output `command -> data` branches and JSONL command-specific item records. Do not keep duplicate hand-written field definitions in `schema.rs` once a DTO-owned schema can provide them.
+
 ### Concrete Steps
 
 Run all commands from `/workspaces/wavepeek/.worktrees/feat-rework-schema-flow`.
@@ -166,27 +200,40 @@ Run all commands from `/workspaces/wavepeek/.worktrees/feat-rework-schema-flow`.
 
    Expected result: the script reports success. If generated files differ, it fails with a hint to run `just update-schema`.
 
-4. Run focused Rust tests:
+4. Run focused Rust tests after each JSON validation test slice:
 
-    cargo test -q schema_cli jsonl_cli
+    cargo test -q --test schema_cli
 
-   Expected result: schema and JSONL CLI tests pass. If the exact filter does not select all desired tests, run `cargo test -q --test schema_cli --test jsonl_cli`.
+   Expected result: the newly added runtime `--json` validation tests pass for the command group just added.
 
-5. Run helper tests affected by docs publication and schema checks:
+5. After all JSON validation slices are present, run the schema and JSONL integration tests together:
+
+    cargo test -q --test schema_cli --test jsonl_cli
+
+   Expected result: schema, JSON runtime validation, and JSONL runtime validation tests pass.
+
+6. After the later `schemars` refactor, regenerate and check schema artifacts:
+
+    just update-schema
+    just check-schema
+
+   Expected result: generated snapshots are deterministic, runtime `wavepeek schema` output still matches committed snapshots, and semantic schema validation passes.
+
+7. Run helper tests affected by docs publication and schema checks:
 
     python3 -B -m unittest discover -s tools/docs -p "test_*.py"
     python3 -B -m unittest discover -s tools/schema -p "test_*.py"
 
    Expected result: all helper tests pass. If `tools/schema` has no tests, the command should report zero tests rather than fail.
 
-6. Run formatting and the local pre-handoff gate:
+8. Run formatting and the local pre-handoff gate:
 
     just format
     just check
 
    Expected result: formatting completes and `just check` passes.
 
-7. Inspect final diff and ensure the proposal file is not staged:
+9. Inspect final diff and ensure the proposal file is not staged:
 
     git status --short
     git diff --stat
@@ -204,25 +251,36 @@ The change is accepted when a human can verify these behaviors:
 - `wavepeek schema --stream` prints exactly the bytes in `schema/stream.json`, including the trailing newline.
 - Runtime `wavepeek info --waves tests/fixtures/hand/m2_core.vcd --json` contains `$schema` equal to the `wavepeek.output` URL in `schema/catalog.json`.
 - Runtime `wavepeek info --waves tests/fixtures/hand/m2_core.vcd --jsonl` begins with a `begin` record whose `$schema` equals the `wavepeek.stream-record` URL in `schema/catalog.json`.
-- Representative runtime `--json` outputs validate against `schema/output.json` and representative runtime JSONL records validate against `schema/stream.json`.
+- Runtime `--json` outputs for `info`, `scope`, `signal`, `value`, `change`, `property`, `docs topics`, and `docs search` validate against `schema/output.json`.
+- Representative runtime JSONL records validate against `schema/stream.json`.
 - Current branch checkouts contain no `schema/wavepeek_v*.json` or `schema/wavepeek-stream-v*.json` files.
 - `just update-schema` does not recreate historical schema files.
 - Docs publication stages exact catalog artifacts for every current release, preserves already deployed historical artifacts on GitHub Pages, and refuses to overwrite an existing exact artifact path with different bytes.
+- Field-level schema definitions for contract payloads are owned by `src/contract` DTOs through `schemars` derives or custom `JsonSchema` implementations, not duplicated as independent hand-written objects in `src/contract/schema.rs`.
+- `src/contract/schema.rs` remains responsible for schema-family metadata, deterministic output, catalog JSON, and root-level composition that expresses global schema semantics.
 
 ### Idempotence and Recovery
 
 `just update-schema` is safe to run repeatedly; if the Rust contract did not change, it should produce no git diff. `just check-schema` writes disposable generated output under `tmp/schema-check`, which is ignored scratch space. Do not delete arbitrary existing files in `tmp/`; only overwrite or remove paths owned by this plan, such as `tmp/schema-check`.
 
-If generated schemas are wrong, restore committed snapshots with `git checkout -- schema/output.json schema/stream.json schema/catalog.json`, fix the Rust contract schema builder, and rerun `just update-schema`. If deleting historical schema files breaks validation, first determine whether the failing path is a current-catalog path or a historical-tag repair path. Current-catalog paths should not require historical files. Historical-tag repair behavior should be covered by fixtures or tests without requiring historical artifacts in the current `schema/` directory. If docs publication tests fail after tooling changes, keep the old tests as evidence of required behavior and update the code before changing expectations.
+If generated schemas are wrong, restore committed snapshots with `git checkout -- schema/output.json schema/stream.json schema/catalog.json`, fix the Rust contract schema generator, and rerun `just update-schema`. If a new JSON runtime validation test fails before the `schemars` refactor, inspect whether the runtime DTO or the schema is wrong; do not weaken the test without identifying which contract is intended. If deleting historical schema files breaks validation, first determine whether the failing path is a current-catalog path or a historical-tag repair path. Current-catalog paths should not require historical files. Historical-tag repair behavior should be covered by fixtures or tests without requiring historical artifacts in the current `schema/` directory. If docs publication tests fail after tooling changes, keep the old tests as evidence of required behavior and update the code before changing expectations.
 
 ### Artifacts and Notes
 
-Current relevant facts before implementation:
+Historical relevant facts before the first migration:
 
-    src/schema_contract.rs embeds schema/wavepeek_v{major}.{minor}.json and schema/wavepeek-stream-v{major}.{minor}.json.
-    just update-schema runs cargo run -- schema and cargo run -- schema --stream.
-    tests/schema_cli.rs expects current artifact paths derived from Cargo package major/minor.
-    tools/docs/publish_docs.py copies schema/wavepeek_v*.json and schema/wavepeek-stream-v*.json root artifacts, with latest-promotion behavior.
+    src/schema_contract.rs embedded schema/wavepeek_v{major}.{minor}.json and schema/wavepeek-stream-v{major}.{minor}.json.
+    just update-schema ran cargo run -- schema and cargo run -- schema --stream.
+    tests/schema_cli.rs expected current artifact paths derived from Cargo package major/minor.
+    tools/docs/publish_docs.py copied schema/wavepeek_v*.json and schema/wavepeek-stream-v*.json root artifacts, with latest-promotion behavior.
+
+Current relevant facts before the JSON validation and `schemars` follow-up:
+
+    src/output.rs routes JSON and JSONL stdout through src/contract DTOs.
+    src/contract/schema.rs manually builds output and stream schema definitions with serde_json::json!.
+    tests/jsonl_cli.rs validates actual JSONL runtime records against schema/stream.json.
+    tests/schema_cli.rs does not yet validate every JSON-capable command's actual --json stdout against schema/output.json.
+    tools/schema-gen calls wavepeek::contract::schema::{output_schema_json, stream_schema_json, catalog_json}.
 
 ### Interfaces and Dependencies
 
@@ -242,6 +300,8 @@ At the end of the implementation, `src/contract/schema.rs` must expose these con
 
 `tools/schema-gen/src/main.rs` must write exactly three files named `output.json`, `stream.json`, and `catalog.json` under the requested output directory.
 
+The `schemars` refactor must keep these public interfaces stable while changing how `output_schema_json()` and `stream_schema_json()` obtain field-level definitions. DTO modules should expose only the schema support needed by `src/contract/schema.rs`; hidden helper types or functions are acceptable when they prevent duplicate hand-written schema objects.
+
 Revision note 2026-06-26: Initial plan created after reading the proposal and current code. The plan records the artifact-first current state and chooses an explicit Rust schema builder to keep the migration narrow and deterministic.
 
 Revision note 2026-06-26: Plan review findings were incorporated. The plan now defines the hidden library boundary used by `tools/schema-gen`, canonical catalog paths independent of `--out`, DTO bypass mitigation, deployed catalog handoff through staged metadata, `just test-aux` coverage for new schema helper tests, `tools/docs/README.md` updates, and an executable proposal-not-committed check.
@@ -255,3 +315,5 @@ Revision note 2026-06-27: The plan was restored in a separate commit at the user
 Revision note 2026-06-27: Historical schema cleanup was implemented after plan review. The current tree now removes `schema/wavepeek_v0.json`, `schema/wavepeek_v1.json`, `schema/wavepeek_v2.0.json`, `schema/wavepeek-stream-v1.json`, and `schema/wavepeek-stream-v2.0.json`, and documentation now states that historical artifacts live in release tags and GitHub Pages.
 
 Revision note 2026-06-27: Post-change review found stale pre-migration wording in this plan. The context now distinguishes the pre-branch artifact-first runtime from the current `schema/output.json` and `schema/stream.json` embedding.
+
+Revision note 2026-06-27: User review identified two remaining gaps: the schema builder is still manual and can drift from the runtime DTOs, and JSON CLI runtime outputs have weaker schema-validation coverage than JSONL outputs. The plan is reopened to add JSON `--json` validation tests first, then refactor schema generation toward DTO-owned `schemars` definitions with explicit root composition.

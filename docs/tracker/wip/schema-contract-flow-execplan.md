@@ -45,7 +45,7 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-27T11:58:06Z) Regenerated schema snapshots, ran focused schema validation, reviewed the schema-generation refactor, and fixed the architecture documentation finding.
 - [x] (2026-06-27T11:58:06Z) Ran `just check` after the schema-generation refactor.
 - [x] (2026-06-27T11:58:06Z) Committed the schema-generation refactor.
-- [ ] Push all follow-up commits and update pull request 45.
+- [x] (2026-06-27T12:24:00Z) Pushed all follow-up commits to pull request 45.
 
 ## Surprises & Discoveries
 
@@ -131,7 +131,7 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 
 ## Outcomes & Retrospective
 
-The initial migration delivered the stable schema family flow, runtime serialization through `src/contract` DTOs, current snapshots at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, catalog-aware docs publication, and removal of duplicate historical schema artifacts from the current tree. Review then identified two remaining contract-quality gaps: `src/contract/schema.rs` still hand-builds field-level schema definitions instead of deriving them from the DTOs, and JSON `--json` runtime outputs do not have the same comprehensive schema-validation coverage as JSONL outputs. This plan was reopened to close those gaps before pull request 45 is considered complete. The JSON runtime validation tests and `schemars` refactor are now implemented and reviewed. Remaining work is to commit and push the schema-generation refactor and update the pull request.
+The initial migration delivered the stable schema family flow, runtime serialization through `src/contract` DTOs, current snapshots at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, catalog-aware docs publication, and removal of duplicate historical schema artifacts from the current tree. Review then identified two remaining contract-quality gaps: `src/contract/schema.rs` still hand-builds field-level schema definitions instead of deriving them from the DTOs, and JSON `--json` runtime outputs do not have the same comprehensive schema-validation coverage as JSONL outputs. This plan was reopened to close those gaps before pull request 45 is considered complete. The JSON runtime validation tests and `schemars` refactor are now implemented and reviewed. The JSON runtime validation tests and `schemars` refactor are implemented, reviewed, committed, and pushed to pull request 45.
 
 ## Context and Orientation
 
@@ -343,4 +343,4 @@ Revision note 2026-06-27: The third JSON validation slice added `tests/schema_cl
 
 Revision note 2026-06-27: The `schemars` follow-up is now specified in detail. DTO-owned derives or custom `JsonSchema` implementations should produce field-level definitions, while `src/contract/schema.rs` keeps only schema family metadata, deterministic output, and root-level composition for command/data and JSONL record semantics.
 
-Revision note 2026-06-27: The `schemars` refactor was implemented with byte-identical generated schema snapshots. Code review returned no substantive findings. Architecture review requested documenting the new `schemars` dependency in `docs/dev/architecture.md`; that finding was fixed.
+Revision note 2026-06-27: The `schemars` refactor was implemented with byte-identical generated schema snapshots. Code review returned no substantive findings. Architecture review requested documenting the new `schemars` dependency in `docs/dev/architecture.md`; that finding was fixed. The follow-up commits were pushed to pull request 45.

@@ -41,9 +41,11 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-27T11:42:26Z) Added runtime JSON validation coverage for `docs topics` and `docs search` `--json` outputs.
 - [x] (2026-06-27T11:42:26Z) Reviewed the JSON validation tests, fixed the helper diagnostics finding, ran focused Rust tests, and committed the test slices.
 - [x] (2026-06-27T11:58:06Z) Expanded this ExecPlan with the exact `schemars` implementation details after the test safety net was in place.
-- [ ] Refactor schema generation so DTO-owned `JsonSchema` derives or custom implementations produce payload definitions, with hand-written code limited to catalog metadata and root command/data composition that JSON Schema cannot infer safely.
-- [ ] Regenerate schema snapshots, run focused schema validation, review the schema-generation refactor, fix findings, and commit.
-- [ ] Run `just check`, push all follow-up commits, and update pull request 45.
+- [x] (2026-06-27T11:58:06Z) Refactored schema generation so DTO-owned `JsonSchema` derives or custom implementations produce payload definitions, with hand-written code limited to catalog metadata and root command/data composition that JSON Schema cannot infer safely.
+- [x] (2026-06-27T11:58:06Z) Regenerated schema snapshots, ran focused schema validation, reviewed the schema-generation refactor, and fixed the architecture documentation finding.
+- [x] (2026-06-27T11:58:06Z) Ran `just check` after the schema-generation refactor.
+- [x] (2026-06-27T11:58:06Z) Committed the schema-generation refactor.
+- [ ] Push all follow-up commits and update pull request 45.
 
 ## Surprises & Discoveries
 
@@ -73,6 +75,9 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 
 - Observation: JSONL CLI runtime outputs are validated against `schema/stream.json` more comprehensively than JSON CLI runtime outputs are validated against `schema/output.json`.
   Evidence: `tests/jsonl_cli.rs::parse_stream` validates every JSONL record it parses with a compiled stream schema validator. `tests/schema_cli.rs` validates representative hand-built output samples and checks one runtime `info --json` envelope, but it does not validate every JSON-capable command's actual `--json` stdout.
+
+- Observation: The `schemars` refactor can make schema definitions DTO-owned without changing the generated public schema snapshots.
+  Evidence: after deriving or implementing `JsonSchema` on contract DTOs, `just update-schema` left `schema/output.json` and `schema/stream.json` with no git diff, and `just check-schema` passed.
 
 ## Decision Log
 
@@ -120,9 +125,13 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
   Rationale: The work touches public machine-output contracts. Splitting tests from generator changes makes regressions easier to isolate and gives reviewers a stable test safety net before the internal refactor.
   Date/Author: 2026-06-27 / user and coding agent
 
+- Decision: Preserve generated `schema/output.json` and `schema/stream.json` byte-for-byte during the `schemars` refactor.
+  Rationale: The goal is to make the source of truth more honest, not to revise the public schema artifact. Keeping snapshots unchanged proves that this slice is an internal generator refactor guarded by runtime validation tests.
+  Date/Author: 2026-06-27 / coding agent
+
 ## Outcomes & Retrospective
 
-The initial migration delivered the stable schema family flow, runtime serialization through `src/contract` DTOs, current snapshots at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, catalog-aware docs publication, and removal of duplicate historical schema artifacts from the current tree. Review then identified two remaining contract-quality gaps: `src/contract/schema.rs` still hand-builds field-level schema definitions instead of deriving them from the DTOs, and JSON `--json` runtime outputs do not have the same comprehensive schema-validation coverage as JSONL outputs. This plan is reopened to close those gaps before pull request 45 is considered complete.
+The initial migration delivered the stable schema family flow, runtime serialization through `src/contract` DTOs, current snapshots at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, catalog-aware docs publication, and removal of duplicate historical schema artifacts from the current tree. Review then identified two remaining contract-quality gaps: `src/contract/schema.rs` still hand-builds field-level schema definitions instead of deriving them from the DTOs, and JSON `--json` runtime outputs do not have the same comprehensive schema-validation coverage as JSONL outputs. This plan was reopened to close those gaps before pull request 45 is considered complete. The JSON runtime validation tests and `schemars` refactor are now implemented and reviewed. Remaining work is to commit and push the schema-generation refactor and update the pull request.
 
 ## Context and Orientation
 
@@ -333,3 +342,5 @@ Revision note 2026-06-27: The second JSON validation slice added `tests/schema_c
 Revision note 2026-06-27: The third JSON validation slice added `tests/schema_cli.rs` coverage for `docs topics` and `docs search` runtime `--json` stdout against `schema/output.json`. Review found weak helper failure diagnostics; the helper now includes args, status, stdout, stderr, and parsed value context in failures, and a control pass found no code issues.
 
 Revision note 2026-06-27: The `schemars` follow-up is now specified in detail. DTO-owned derives or custom `JsonSchema` implementations should produce field-level definitions, while `src/contract/schema.rs` keeps only schema family metadata, deterministic output, and root-level composition for command/data and JSONL record semantics.
+
+Revision note 2026-06-27: The `schemars` refactor was implemented with byte-identical generated schema snapshots. Code review returned no substantive findings. Architecture review requested documenting the new `schemars` dependency in `docs/dev/architecture.md`; that finding was fixed.

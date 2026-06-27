@@ -1,3 +1,4 @@
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
 use crate::diagnostic::Diagnostic;
@@ -10,13 +11,19 @@ use super::output::{
 };
 use super::schema::STREAM_SCHEMA_URL;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "beginRecord")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct BeginRecord {
     #[serde(rename = "type")]
+    #[schemars(schema_with = "begin_record_type_schema")]
     record_type: &'static str,
+    #[schemars(schema_with = "sequence_ref_schema")]
     seq: usize,
+    #[schemars(schema_with = "stream_command_ref_schema")]
     command: &'static str,
     #[serde(rename = "$schema")]
+    #[schemars(schema_with = "stream_schema_url_schema")]
     schema: &'static str,
 }
 
@@ -32,11 +39,16 @@ impl BeginRecord {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "itemRecord")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct ItemRecord<'a> {
     #[serde(rename = "type")]
+    #[schemars(schema_with = "item_record_type_schema")]
     record_type: &'static str,
+    #[schemars(schema_with = "sequence_ref_schema")]
     seq: usize,
+    #[schemars(schema_with = "stream_command_ref_schema")]
     command: &'static str,
     item: StreamItemData<'a>,
 }
@@ -57,11 +69,16 @@ impl<'a> ItemRecord<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "diagnosticRecord")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct DiagnosticRecord<'a> {
     #[serde(rename = "type")]
+    #[schemars(schema_with = "diagnostic_record_type_schema")]
     record_type: &'static str,
+    #[schemars(schema_with = "sequence_ref_schema")]
     seq: usize,
+    #[schemars(schema_with = "stream_command_ref_schema")]
     command: &'static str,
     diagnostic: ContractDiagnostic<'a>,
 }
@@ -82,11 +99,16 @@ impl<'a> DiagnosticRecord<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "endRecord")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct EndRecord {
     #[serde(rename = "type")]
+    #[schemars(schema_with = "end_record_type_schema")]
     record_type: &'static str,
+    #[schemars(schema_with = "sequence_ref_schema")]
     seq: usize,
+    #[schemars(schema_with = "stream_command_ref_schema")]
     command: &'static str,
     summary: StreamSummary,
 }
@@ -114,15 +136,21 @@ impl EndRecord {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "streamSummary")]
+#[schemars(extend("additionalProperties" = true))]
 struct StreamSummary {
+    #[schemars(schema_with = "ok_status_schema")]
     status: &'static str,
+    #[schemars(schema_with = "nonnegative_count_schema")]
     items: usize,
+    #[schemars(schema_with = "nonnegative_count_schema")]
     diagnostics: usize,
     truncated: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "streamItemData")]
 #[serde(untagged)]
 pub enum StreamItemData<'a> {
     Info(InfoData<'a>),
@@ -177,6 +205,42 @@ impl StreamItem for crate::engine::property::PropertyCaptureRow {
         require_item_command(command, CommandName::Property)?;
         Ok(StreamItemData::Property(PropertyRow::from(self)))
     }
+}
+
+fn begin_record_type_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"const": "begin"})
+}
+
+fn item_record_type_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"const": "item"})
+}
+
+fn diagnostic_record_type_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"const": "diagnostic"})
+}
+
+fn end_record_type_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"const": "end"})
+}
+
+fn ok_status_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"const": "ok"})
+}
+
+fn sequence_ref_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"$ref": "#/$defs/sequence"})
+}
+
+fn nonnegative_count_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "integer", "minimum": 0})
+}
+
+fn stream_command_ref_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"$ref": "#/$defs/streamCommand"})
+}
+
+fn stream_schema_url_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "const": STREAM_SCHEMA_URL})
 }
 
 fn require_item_command(actual: CommandName, expected: CommandName) -> Result<(), WavepeekError> {

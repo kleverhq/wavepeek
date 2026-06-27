@@ -129,7 +129,8 @@ src/
 | `wellen` | ~0.20 | VCD and FST parsing | Core default waveform dependency |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
-| `serde_json` | ~1 | JSON output | Envelope rendering, JSONL records, and schema export |
+| `serde_json` | ~1 | JSON output | Envelope rendering, JSONL records, and generated schema serialization |
+| `schemars` | 1.2.1 | JSON Schema generation | Derives and custom schema implementations for contract DTO definitions |
 | `regex` | ~1 | Pattern matching | Shared filter support |
 | `thiserror` | ~2 | Error derivation | Typed errors with explicit exit mapping |
 | `cc` | ~1 | Native build integration | Build dependency used only when compiling optional FSDB support |

@@ -1,6 +1,14 @@
-use serde_json::{Value, json};
+use schemars::SchemaGenerator;
+use serde_json::{Map, Value, json};
 
-use crate::waveform::{STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES};
+use super::common::{
+    CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
+};
+use super::output::{
+    ChangeSignalValue, ChangeSnapshot, DocsSearchData, DocsSearchMatch, DocsTopicsData, InfoData,
+    PropertyRow, SampledSignalValue, ScopeEntry, SignalEntry, TopicSummary, ValueSnapshot,
+};
+use super::stream::{BeginRecord, DiagnosticRecord, EndRecord};
 
 pub const OUTPUT_SCHEMA_ID: &str = "wavepeek.output";
 pub const STREAM_SCHEMA_ID: &str = "wavepeek.stream-record";
@@ -113,10 +121,7 @@ fn catalog_value() -> Value {
 }
 
 fn output_defs() -> Value {
-    let mut defs = common_payload_defs();
-    let object = defs
-        .as_object_mut()
-        .expect("common payload defs should be an object");
+    let mut object = generated_output_payload_defs();
     object.insert(
         "scopeData".to_string(),
         json!({"type": "array", "items": ref_schema("scopeEntry")}),
@@ -141,43 +146,12 @@ fn output_defs() -> Value {
         "propertyData".to_string(),
         json!({"type": "array", "items": ref_schema("propertyRow")}),
     );
-    object.insert("topicSummary".to_string(), topic_summary_def());
-    object.insert(
-        "docsTopicsData".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["topics"],
-            "properties": {
-                "topics": {
-                    "type": "array",
-                    "items": ref_schema("topicSummary"),
-                    "description": "Available embedded documentation topics."
-                }
-            }
-        }),
-    );
-    object.insert("docsSearchMatch".to_string(), docs_search_match_def());
-    object.insert(
-        "docsSearchData".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["query", "matches"],
-            "properties": {
-                "query": {"type": "string", "description": "Normalized search query used for the docs search."},
-                "matches": {"type": "array", "items": ref_schema("docsSearchMatch")}
-            }
-        }),
-    );
-    defs
+    Value::Object(object)
 }
 
 fn stream_defs() -> Value {
-    let mut defs = common_payload_defs();
-    let object = defs
-        .as_object_mut()
-        .expect("common payload defs should be an object");
+    let mut object = generated_waveform_payload_defs();
+    object.extend(generated_stream_record_defs());
     object.insert(
         "streamCommand".to_string(),
         json!({"type": "string", "enum": stream_commands()}),
@@ -185,20 +159,6 @@ fn stream_defs() -> Value {
     object.insert(
         "sequence".to_string(),
         json!({"type": "integer", "minimum": 0}),
-    );
-    object.insert(
-        "beginRecord".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["type", "seq", "command", "$schema"],
-            "properties": {
-                "type": {"const": "begin"},
-                "seq": ref_schema("sequence"),
-                "command": ref_schema("streamCommand"),
-                "$schema": {"type": "string", "const": STREAM_SCHEMA_URL}
-            }
-        }),
     );
     object.insert(
         "itemRecord".to_string(),
@@ -233,214 +193,49 @@ fn stream_defs() -> Value {
     ] {
         object.insert(name.to_string(), item_record_for(command, item_ref));
     }
-    object.insert(
-        "diagnosticRecord".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["type", "seq", "command", "diagnostic"],
-            "properties": {
-                "type": {"const": "diagnostic"},
-                "seq": ref_schema("sequence"),
-                "command": ref_schema("streamCommand"),
-                "diagnostic": ref_schema("diagnostic"),
-            }
-        }),
-    );
-    object.insert(
-        "endRecord".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["type", "seq", "command", "summary"],
-            "properties": {
-                "type": {"const": "end"},
-                "seq": ref_schema("sequence"),
-                "command": ref_schema("streamCommand"),
-                "summary": ref_schema("streamSummary"),
-            }
-        }),
-    );
-    object.insert(
-        "streamSummary".to_string(),
-        json!({
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["status", "items", "diagnostics", "truncated"],
-            "properties": {
-                "status": {"const": "ok"},
-                "items": {"type": "integer", "minimum": 0},
-                "diagnostics": {"type": "integer", "minimum": 0},
-                "truncated": {"type": "boolean"},
-            }
-        }),
-    );
+    Value::Object(object)
+}
+
+fn generated_output_payload_defs() -> Map<String, Value> {
+    let mut defs = generated_waveform_payload_defs();
+    defs.extend(generated_docs_payload_defs());
     defs
 }
 
-fn common_payload_defs() -> Value {
-    json!({
-        "diagnostic": diagnostic_def(),
-        "normalizedTime": {
-            "type": "string",
-            "description": "Normalized timestamp rendered in the dump's time unit, for example 10ns."
-        },
-        "canonicalPath": {
-            "type": "string",
-            "description": "Canonical dot-separated hierarchy path emitted by wavepeek for a scope or signal."
-        },
-        "sampledValue": {
-            "type": "string",
-            "description": "Stable sampled signal value formatted as a Verilog-style literal string."
-        },
-        "scopeKind": {
-            "type": "string",
-            "description": "Stable scope kind alias emitted by wavepeek for the selected scope.",
-            "enum": STABLE_SCOPE_KIND_ALIASES,
-        },
-        "signalKind": {
-            "type": "string",
-            "description": "Stable signal kind alias emitted by wavepeek for the selected signal.",
-            "enum": STABLE_SIGNAL_KIND_ALIASES,
-        },
-        "infoData": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["time_unit", "time_start", "time_end"],
-            "properties": {
-                "time_unit": {"type": "string", "description": "Dump time unit used to normalize timestamps in this waveform, for example 1ns."},
-                "time_start": {"$ref": "#/$defs/normalizedTime", "description": "Earliest timestamp present in the waveform."},
-                "time_end": {"$ref": "#/$defs/normalizedTime", "description": "Latest timestamp present in the waveform."},
-            }
-        },
-        "scopeEntry": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["path", "depth", "kind"],
-            "properties": {
-                "path": {"$ref": "#/$defs/canonicalPath", "description": "Canonical hierarchy path for this scope entry."},
-                "depth": {"type": "integer", "minimum": 0, "description": "Zero-based scope depth from the dump root used by list and tree renderers."},
-                "kind": {"$ref": "#/$defs/scopeKind", "description": "Stable scope kind alias for this scope entry."},
-            }
-        },
-        "signalEntry": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["name", "path", "kind"],
-            "properties": {
-                "name": {"type": "string", "description": "Signal name as declared inside its immediate parent scope."},
-                "path": {"$ref": "#/$defs/canonicalPath", "description": "Canonical hierarchy path for this signal entry."},
-                "kind": {"$ref": "#/$defs/signalKind", "description": "Stable signal kind alias for this signal entry."},
-                "width": {"type": "integer", "minimum": 1, "description": "Declared packed bit width when the waveform backend reports one."},
-            }
-        },
-        "sampledSignalValue": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["path", "value"],
-            "properties": {
-                "path": {"$ref": "#/$defs/canonicalPath", "description": "Canonical path of the sampled signal."},
-                "value": {"$ref": "#/$defs/sampledValue", "description": "Sampled value for this signal in the selected timestamp snapshot."},
-            }
-        },
-        "valueSnapshot": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["time", "signals"],
-            "properties": {
-                "time": {"$ref": "#/$defs/normalizedTime", "description": "Timestamp requested by the value command."},
-                "signals": {"type": "array", "items": ref_schema("sampledSignalValue"), "description": "Signal values sampled at this timestamp."},
-            }
-        },
-        "changeSignalValue": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["path", "value"],
-            "properties": {
-                "path": {"$ref": "#/$defs/canonicalPath", "description": "Canonical path of the changed signal."},
-                "value": {"$ref": "#/$defs/sampledValue", "description": "Changed signal value at the reported sample point."},
-            }
-        },
-        "changeSnapshot": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["time", "sample_time", "signals"],
-            "properties": {
-                "time": {"$ref": "#/$defs/normalizedTime", "description": "Trigger timestamp emitted by the change command."},
-                "sample_time": {"$ref": "#/$defs/normalizedTime", "description": "Timestamp used to sample values for this change row."},
-                "signals": {"type": "array", "items": ref_schema("changeSignalValue"), "description": "Changed signal values for this row."},
-            }
-        },
-        "propertyRow": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["time", "sample_time", "kind"],
-            "properties": {
-                "time": {"$ref": "#/$defs/normalizedTime", "description": "Trigger timestamp emitted by the property command."},
-                "sample_time": {"$ref": "#/$defs/normalizedTime", "description": "Timestamp used to evaluate the property expression."},
-                "kind": {"type": "string", "enum": ["match", "assert", "deassert"], "description": "Property result kind captured for this row."},
-            }
-        },
-    })
+fn generated_waveform_payload_defs() -> Map<String, Value> {
+    let mut generator = SchemaGenerator::default();
+    generator.subschema_for::<ContractDiagnostic<'static>>();
+    generator.subschema_for::<NormalizedTime<'static>>();
+    generator.subschema_for::<CanonicalPath<'static>>();
+    generator.subschema_for::<SampledValue<'static>>();
+    generator.subschema_for::<ScopeKind<'static>>();
+    generator.subschema_for::<SignalKind<'static>>();
+    generator.subschema_for::<InfoData<'static>>();
+    generator.subschema_for::<ScopeEntry<'static>>();
+    generator.subschema_for::<SignalEntry<'static>>();
+    generator.subschema_for::<SampledSignalValue<'static>>();
+    generator.subschema_for::<ChangeSignalValue<'static>>();
+    generator.subschema_for::<ValueSnapshot<'static>>();
+    generator.subschema_for::<ChangeSnapshot<'static>>();
+    generator.subschema_for::<PropertyRow<'static>>();
+    generator.take_definitions(true)
 }
 
-fn diagnostic_def() -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["kind", "message"],
-        "properties": {
-            "kind": {"type": "string", "enum": ["info", "warning", "error"]},
-            "code": {"type": "string", "pattern": "^WPK-[WE][0-9]{4}$"},
-            "message": {"type": "string"},
-        },
-        "allOf": [
-            {
-                "if": {"properties": {"kind": {"const": "warning"}}, "required": ["kind"]},
-                "then": {"required": ["code"], "properties": {"code": {"pattern": "^WPK-W[0-9]{4}$"}}},
-            },
-            {
-                "if": {"properties": {"kind": {"const": "error"}}, "required": ["kind"]},
-                "then": {"required": ["code"], "properties": {"code": {"pattern": "^WPK-E[0-9]{4}$"}}},
-            },
-            {
-                "if": {"properties": {"kind": {"const": "info"}}, "required": ["kind"]},
-                "then": {"not": {"required": ["code"]}},
-            },
-        ],
-    })
+fn generated_docs_payload_defs() -> Map<String, Value> {
+    let mut generator = SchemaGenerator::default();
+    generator.subschema_for::<TopicSummary<'static>>();
+    generator.subschema_for::<DocsTopicsData<'static>>();
+    generator.subschema_for::<DocsSearchMatch<'static>>();
+    generator.subschema_for::<DocsSearchData<'static>>();
+    generator.take_definitions(true)
 }
 
-fn topic_summary_def() -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["id", "title", "description", "section"],
-        "properties": {
-            "id": {"type": "string", "description": "Stable documentation topic identifier."},
-            "title": {"type": "string", "description": "Human-readable documentation topic title."},
-            "description": {"type": "string", "description": "Short documentation topic description."},
-            "section": {"type": "string", "description": "Documentation section that contains this topic."},
-            "see_also": {"type": "array", "items": {"type": "string"}, "description": "Related documentation topic identifiers."},
-        }
-    })
-}
-
-fn docs_search_match_def() -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["topic", "match_kind", "matched_tokens"],
-        "properties": {
-            "topic": ref_schema("topicSummary"),
-            "match_kind": {
-                "type": "string",
-                "enum": ["id_exact", "id_prefix", "title_exact", "title_or_description", "heading", "body"],
-                "description": "How the topic matched the normalized search query."
-            },
-            "matched_tokens": {"type": "integer", "minimum": 1, "description": "Number of query tokens matched by this topic."},
-        }
-    })
+fn generated_stream_record_defs() -> Map<String, Value> {
+    let mut generator = SchemaGenerator::default();
+    generator.subschema_for::<BeginRecord>();
+    generator.subschema_for::<DiagnosticRecord<'static>>();
+    generator.subschema_for::<EndRecord>();
+    generator.take_definitions(true)
 }
 
 fn command_data_branch(command: &str, data_def: &str) -> Value {

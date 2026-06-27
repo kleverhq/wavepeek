@@ -1,13 +1,21 @@
+use std::borrow::Cow;
+
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
 
 use crate::diagnostic::Diagnostic;
 use crate::engine::{CommandData, CommandName, CommandResult};
 use crate::error::WavepeekError;
 
-use super::common::{ContractDiagnostic, validate_scope_kind, validate_signal_kind};
+use super::common::{
+    CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
+    validate_scope_kind, validate_signal_kind,
+};
 use super::schema::OUTPUT_SCHEMA_URL;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "outputEnvelope")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct OutputEnvelope<'a> {
     #[serde(rename = "$schema")]
     schema: &'static str,
@@ -34,7 +42,8 @@ fn diagnostics(diagnostics: &[Diagnostic]) -> Result<Vec<ContractDiagnostic<'_>>
         .collect()
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "outputData")]
 #[serde(untagged)]
 pub enum OutputData<'a> {
     Info(InfoData<'a>),
@@ -87,28 +96,43 @@ impl<'a> OutputData<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "infoData")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct InfoData<'a> {
+    #[schemars(
+        description = "Dump time unit used to normalize timestamps in this waveform, for example 1ns."
+    )]
     time_unit: &'a str,
-    time_start: &'a str,
-    time_end: &'a str,
+    #[schemars(description = "Earliest timestamp present in the waveform.")]
+    time_start: NormalizedTime<'a>,
+    #[schemars(description = "Latest timestamp present in the waveform.")]
+    time_end: NormalizedTime<'a>,
 }
 
 impl<'a> From<&'a crate::engine::info::InfoData> for InfoData<'a> {
     fn from(data: &'a crate::engine::info::InfoData) -> Self {
         Self {
             time_unit: data.time_unit.as_str(),
-            time_start: data.time_start.as_str(),
-            time_end: data.time_end.as_str(),
+            time_start: NormalizedTime::new(data.time_start.as_str()),
+            time_end: NormalizedTime::new(data.time_end.as_str()),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "scopeEntry")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct ScopeEntry<'a> {
-    path: &'a str,
+    #[schemars(description = "Canonical hierarchy path for this scope entry.")]
+    path: CanonicalPath<'a>,
+    #[schemars(schema_with = "nonnegative_integer_schema")]
+    #[schemars(
+        description = "Zero-based scope depth from the dump root used by list and tree renderers."
+    )]
     depth: usize,
-    kind: &'a str,
+    #[schemars(description = "Stable scope kind alias for this scope entry.")]
+    kind: ScopeKind<'a>,
 }
 
 impl<'a> TryFrom<&'a crate::engine::scope::ScopeEntry> for ScopeEntry<'a> {
@@ -116,19 +140,27 @@ impl<'a> TryFrom<&'a crate::engine::scope::ScopeEntry> for ScopeEntry<'a> {
 
     fn try_from(entry: &'a crate::engine::scope::ScopeEntry) -> Result<Self, Self::Error> {
         Ok(Self {
-            path: entry.path.as_str(),
+            path: CanonicalPath::new(entry.path.as_str()),
             depth: entry.depth,
             kind: validate_scope_kind(entry.kind.as_str())?,
         })
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "signalEntry")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct SignalEntry<'a> {
+    #[schemars(description = "Signal name as declared inside its immediate parent scope.")]
     name: &'a str,
-    path: &'a str,
-    kind: &'a str,
+    #[schemars(description = "Canonical hierarchy path for this signal entry.")]
+    path: CanonicalPath<'a>,
+    #[schemars(description = "Stable signal kind alias for this signal entry.")]
+    kind: SignalKind<'a>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "signal_width_schema")]
+    #[schemars(description = "Declared packed bit width when the waveform backend reports one.")]
     width: Option<u32>,
 }
 
@@ -138,47 +170,83 @@ impl<'a> TryFrom<&'a crate::engine::signal::SignalEntry> for SignalEntry<'a> {
     fn try_from(entry: &'a crate::engine::signal::SignalEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             name: entry.name.as_str(),
-            path: entry.path.as_str(),
+            path: CanonicalPath::new(entry.path.as_str()),
             kind: validate_signal_kind(entry.kind.as_str())?,
             width: entry.width,
         })
     }
 }
 
-#[derive(Debug, Serialize)]
+fn signal_width_schema(generator: &mut SchemaGenerator) -> Schema {
+    positive_integer_schema(generator)
+}
+
+fn positive_integer_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "integer",
+        "minimum": 1
+    })
+}
+
+fn nonnegative_integer_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "integer",
+        "minimum": 0
+    })
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "sampledSignalValue")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct SampledSignalValue<'a> {
-    path: &'a str,
-    value: &'a str,
+    #[schemars(description = "Canonical path of the sampled signal.")]
+    path: CanonicalPath<'a>,
+    #[schemars(description = "Sampled value for this signal in the selected timestamp snapshot.")]
+    value: SampledValue<'a>,
 }
 
 impl<'a> From<&'a crate::engine::value::ValueSignalValue> for SampledSignalValue<'a> {
     fn from(signal: &'a crate::engine::value::ValueSignalValue) -> Self {
         Self {
-            path: signal.path.as_str(),
-            value: signal.value.as_str(),
+            path: CanonicalPath::new(signal.path.as_str()),
+            value: SampledValue::new(signal.value.as_str()),
         }
     }
 }
 
-impl<'a> From<&'a crate::engine::change::ChangeSignalValue> for SampledSignalValue<'a> {
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "changeSignalValue")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ChangeSignalValue<'a> {
+    #[schemars(description = "Canonical path of the changed signal.")]
+    path: CanonicalPath<'a>,
+    #[schemars(description = "Changed signal value at the reported sample point.")]
+    value: SampledValue<'a>,
+}
+
+impl<'a> From<&'a crate::engine::change::ChangeSignalValue> for ChangeSignalValue<'a> {
     fn from(signal: &'a crate::engine::change::ChangeSignalValue) -> Self {
         Self {
-            path: signal.path.as_str(),
-            value: signal.value.as_str(),
+            path: CanonicalPath::new(signal.path.as_str()),
+            value: SampledValue::new(signal.value.as_str()),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "valueSnapshot")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct ValueSnapshot<'a> {
-    time: &'a str,
+    #[schemars(description = "Timestamp requested by the value command.")]
+    time: NormalizedTime<'a>,
+    #[schemars(description = "Signal values sampled at this timestamp.")]
     signals: Vec<SampledSignalValue<'a>>,
 }
 
 impl<'a> From<&'a crate::engine::value::ValueSnapshot> for ValueSnapshot<'a> {
     fn from(snapshot: &'a crate::engine::value::ValueSnapshot) -> Self {
         Self {
-            time: snapshot.time.as_str(),
+            time: NormalizedTime::new(snapshot.time.as_str()),
             signals: snapshot
                 .signals
                 .iter()
@@ -188,22 +256,27 @@ impl<'a> From<&'a crate::engine::value::ValueSnapshot> for ValueSnapshot<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "changeSnapshot")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct ChangeSnapshot<'a> {
-    time: &'a str,
-    sample_time: &'a str,
-    signals: Vec<SampledSignalValue<'a>>,
+    #[schemars(description = "Trigger timestamp emitted by the change command.")]
+    time: NormalizedTime<'a>,
+    #[schemars(description = "Timestamp used to sample values for this change row.")]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "Changed signal values for this row.")]
+    signals: Vec<ChangeSignalValue<'a>>,
 }
 
 impl<'a> From<&'a crate::engine::change::ChangeSnapshot> for ChangeSnapshot<'a> {
     fn from(snapshot: &'a crate::engine::change::ChangeSnapshot) -> Self {
         Self {
-            time: snapshot.time.as_str(),
-            sample_time: snapshot.sample_time.as_str(),
+            time: NormalizedTime::new(snapshot.time.as_str()),
+            sample_time: NormalizedTime::new(snapshot.sample_time.as_str()),
             signals: snapshot
                 .signals
                 .iter()
-                .map(SampledSignalValue::from)
+                .map(ChangeSignalValue::from)
                 .collect(),
         }
     }
@@ -217,6 +290,20 @@ pub enum PropertyKind {
     Deassert,
 }
 
+impl JsonSchema for PropertyKind {
+    fn inline_schema() -> bool {
+        true
+    }
+
+    fn schema_name() -> Cow<'static, str> {
+        "propertyKind".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        json_schema!({"type": "string", "enum": ["match", "assert", "deassert"]})
+    }
+}
+
 impl From<crate::engine::property::PropertyResultKind> for PropertyKind {
     fn from(kind: crate::engine::property::PropertyResultKind) -> Self {
         match kind {
@@ -227,30 +314,43 @@ impl From<crate::engine::property::PropertyResultKind> for PropertyKind {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "propertyRow")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct PropertyRow<'a> {
-    time: &'a str,
-    sample_time: &'a str,
+    #[schemars(description = "Trigger timestamp emitted by the property command.")]
+    time: NormalizedTime<'a>,
+    #[schemars(description = "Timestamp used to evaluate the property expression.")]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "Property result kind captured for this row.")]
     kind: PropertyKind,
 }
 
 impl<'a> From<&'a crate::engine::property::PropertyCaptureRow> for PropertyRow<'a> {
     fn from(row: &'a crate::engine::property::PropertyCaptureRow) -> Self {
         Self {
-            time: row.time.as_str(),
-            sample_time: row.sample_time.as_str(),
+            time: NormalizedTime::new(row.time.as_str()),
+            sample_time: NormalizedTime::new(row.sample_time.as_str()),
             kind: row.kind.into(),
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "topicSummary")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct TopicSummary<'a> {
+    #[schemars(description = "Stable documentation topic identifier.")]
     id: &'a str,
+    #[schemars(description = "Human-readable documentation topic title.")]
     title: &'a str,
+    #[schemars(description = "Short documentation topic description.")]
     description: &'a str,
+    #[schemars(description = "Documentation section that contains this topic.")]
     section: &'a str,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    #[schemars(description = "Related documentation topic identifiers.")]
     see_also: Vec<&'a str>,
 }
 
@@ -266,8 +366,11 @@ impl<'a> From<&'a crate::docs::TopicSummary> for TopicSummary<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "docsTopicsData")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct DocsTopicsData<'a> {
+    #[schemars(description = "Available embedded documentation topics.")]
     topics: Vec<TopicSummary<'a>>,
 }
 
@@ -279,10 +382,15 @@ impl<'a> From<&'a crate::engine::DocsTopicsData> for DocsTopicsData<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "docsSearchMatch")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct DocsSearchMatch<'a> {
     topic: TopicSummary<'a>,
-    match_kind: &'a crate::docs::MatchKind,
+    #[schemars(description = "How the topic matched the normalized search query.")]
+    match_kind: DocsMatchKind,
+    #[schemars(schema_with = "positive_integer_schema")]
+    #[schemars(description = "Number of query tokens matched by this topic.")]
     matched_tokens: usize,
 }
 
@@ -290,14 +398,58 @@ impl<'a> From<&'a crate::engine::DocsSearchMatchData> for DocsSearchMatch<'a> {
     fn from(entry: &'a crate::engine::DocsSearchMatchData) -> Self {
         Self {
             topic: TopicSummary::from(&entry.topic),
-            match_kind: &entry.match_kind,
+            match_kind: entry.match_kind.into(),
             matched_tokens: entry.matched_tokens,
         }
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum DocsMatchKind {
+    IdExact,
+    IdPrefix,
+    TitleExact,
+    TitleOrDescription,
+    Heading,
+    Body,
+}
+
+impl JsonSchema for DocsMatchKind {
+    fn inline_schema() -> bool {
+        true
+    }
+
+    fn schema_name() -> Cow<'static, str> {
+        "docsMatchKind".into()
+    }
+
+    fn json_schema(_: &mut SchemaGenerator) -> Schema {
+        json_schema!({
+            "type": "string",
+            "enum": ["id_exact", "id_prefix", "title_exact", "title_or_description", "heading", "body"],
+        })
+    }
+}
+
+impl From<crate::docs::MatchKind> for DocsMatchKind {
+    fn from(kind: crate::docs::MatchKind) -> Self {
+        match kind {
+            crate::docs::MatchKind::IdExact => Self::IdExact,
+            crate::docs::MatchKind::IdPrefix => Self::IdPrefix,
+            crate::docs::MatchKind::TitleExact => Self::TitleExact,
+            crate::docs::MatchKind::TitleOrDescription => Self::TitleOrDescription,
+            crate::docs::MatchKind::Heading => Self::Heading,
+            crate::docs::MatchKind::Body => Self::Body,
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "docsSearchData")]
+#[schemars(extend("additionalProperties" = true))]
 pub struct DocsSearchData<'a> {
+    #[schemars(description = "Normalized search query used for the docs search.")]
     query: &'a str,
     matches: Vec<DocsSearchMatch<'a>>,
 }

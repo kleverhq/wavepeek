@@ -3,10 +3,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
-use wavepeek::contract::schema::{catalog_json, output_schema_json, stream_schema_json};
-
-const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json";
-const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json";
+use wavepeek::contract::schema::{
+    OUTPUT_SCHEMA_URL, STREAM_SCHEMA_URL, catalog_json, output_schema_json, stream_schema_json,
+};
 
 fn main() {
     match run() {
@@ -64,13 +63,28 @@ fn validate_schemas(schema_dir: &Path) -> Result<(), String> {
         &mismatch_output,
         "output command/data mismatch must reject",
     )?;
-    let mut invalid_info_code = valid_output;
+    let mut invalid_info_code = valid_output.clone();
     invalid_info_code["diagnostics"] =
         json!([{"kind": "info", "code": "WPK-W0001", "message": "bad"}]);
     expect_invalid(
         &output_validator,
         &invalid_info_code,
         "info diagnostics with codes must reject",
+    )?;
+    let mut invalid_matched_tokens = valid_output;
+    invalid_matched_tokens["command"] = json!("docs search");
+    invalid_matched_tokens["data"] = json!({
+        "query": "docs",
+        "matches": [{
+            "topic": {"id": "intro", "title": "Intro", "description": "Start", "section": "intro"},
+            "match_kind": "body",
+            "matched_tokens": 0,
+        }],
+    });
+    expect_invalid(
+        &output_validator,
+        &invalid_matched_tokens,
+        "docs search matched_tokens below one must reject",
     )?;
 
     for record in [

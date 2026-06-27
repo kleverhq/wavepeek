@@ -391,6 +391,10 @@ fn schema_command_includes_docs_command_branches() {
             .any(|entry| entry["$ref"] == "#/$defs/docsSearchData"),
         "schema data variants should include docsSearchData"
     );
+    assert_eq!(
+        value["$defs"]["docsSearchMatch"]["properties"]["matched_tokens"]["minimum"], 1,
+        "docs search matched_tokens should match the runtime minimum"
+    );
 }
 
 #[test]

@@ -181,7 +181,7 @@
         },
         "matched_tokens": {
           "description": "Number of query tokens matched by this topic.",
-          "minimum": 0,
+          "minimum": 1,
           "type": "integer"
         },
         "topic": {

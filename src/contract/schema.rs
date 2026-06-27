@@ -438,7 +438,7 @@ fn docs_search_match_def() -> Value {
                 "enum": ["id_exact", "id_prefix", "title_exact", "title_or_description", "heading", "body"],
                 "description": "How the topic matched the normalized search query."
             },
-            "matched_tokens": {"type": "integer", "minimum": 0, "description": "Number of query tokens matched by this topic."},
+            "matched_tokens": {"type": "integer", "minimum": 1, "description": "Number of query tokens matched by this topic."},
         }
     })
 }

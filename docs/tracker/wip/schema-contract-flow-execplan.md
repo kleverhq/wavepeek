@@ -38,8 +38,8 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-27T11:42:26Z) Prepared this ExecPlan update as a separate plan-only change before adding more code.
 - [x] (2026-06-27T11:42:26Z) Added runtime JSON validation coverage for `info`, `scope`, and `signal` `--json` outputs.
 - [x] (2026-06-27T11:42:26Z) Added runtime JSON validation coverage for `value`, `change`, and `property` `--json` outputs.
-- [ ] Add runtime JSON validation coverage for `docs topics` and `docs search` `--json` outputs.
-- [ ] Review the JSON validation tests, fix findings, run focused Rust tests, and commit the test slices.
+- [x] (2026-06-27T11:42:26Z) Added runtime JSON validation coverage for `docs topics` and `docs search` `--json` outputs.
+- [x] (2026-06-27T11:42:26Z) Reviewed the JSON validation tests, fixed the helper diagnostics finding, ran focused Rust tests, and committed the test slices.
 - [ ] Expand this ExecPlan with the exact `schemars` implementation details after the test safety net is in place.
 - [ ] Refactor schema generation so DTO-owned `JsonSchema` derives or custom implementations produce payload definitions, with hand-written code limited to catalog metadata and root command/data composition that JSON Schema cannot infer safely.
 - [ ] Regenerate schema snapshots, run focused schema validation, review the schema-generation refactor, fix findings, and commit.
@@ -321,3 +321,5 @@ Revision note 2026-06-27: User review identified two remaining gaps: the schema 
 Revision note 2026-06-27: The first JSON validation slice added `tests/schema_cli.rs` coverage for `info`, `scope`, and `signal` runtime `--json` stdout against `schema/output.json`.
 
 Revision note 2026-06-27: The second JSON validation slice added `tests/schema_cli.rs` coverage for `value`, `change`, and `property` runtime `--json` stdout against `schema/output.json`.
+
+Revision note 2026-06-27: The third JSON validation slice added `tests/schema_cli.rs` coverage for `docs topics` and `docs search` runtime `--json` stdout against `schema/output.json`. Review found weak helper failure diagnostics; the helper now includes args, status, stdout, stderr, and parsed value context in failures, and a control pass found no code issues.

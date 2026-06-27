@@ -139,15 +139,33 @@ fn run_json_command(args: &[&str], expected_command: &str) -> Value {
         .args(args)
         .output()
         .expect("json command should execute");
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid json");
-    assert_eq!(value["$schema"], expected_schema_url());
-    assert_eq!(value["command"], expected_command);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        output.status.success(),
+        "json command {args:?} failed with status {}\nstdout:\n{stdout}\nstderr:\n{stderr}",
+        output.status
+    );
+    assert!(
+        output.stderr.is_empty(),
+        "json command {args:?} wrote stderr\nstdout:\n{stdout}\nstderr:\n{stderr}"
+    );
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
+        panic!("json command {args:?} stdout should be valid json: {error}\nstdout:\n{stdout}")
+    });
+    assert_eq!(
+        value["$schema"],
+        expected_schema_url(),
+        "json command {args:?} emitted unexpected schema URL: {value}"
+    );
+    assert_eq!(
+        value["command"], expected_command,
+        "json command {args:?} emitted unexpected command: {value}"
+    );
 
     let validator = output_schema_validator();
     validator.validate(&value).unwrap_or_else(|error| {
-        panic!("runtime JSON output should match schema: {error}\n{value}")
+        panic!("json command {args:?} output should match schema: {error}\n{value}")
     });
     value
 }
@@ -424,6 +442,24 @@ fn runtime_waveform_data_json_outputs_validate_against_schema() {
         "property",
     );
     assert_eq!(property["data"][0]["kind"], "assert");
+}
+
+#[test]
+fn runtime_docs_json_outputs_validate_against_schema() {
+    let topics = run_json_command(&["docs", "topics", "--json"], "docs topics");
+    assert!(
+        topics["data"]["topics"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["id"] == "intro") })
+    );
+
+    let search = run_json_command(&["docs", "search", "schema", "--json"], "docs search");
+    assert_eq!(search["data"]["query"], "schema");
+    assert!(search["data"]["matches"].as_array().is_some_and(|matches| {
+        matches
+            .iter()
+            .any(|entry| entry["topic"]["id"] == "commands/schema")
+    }));
 }
 
 #[test]

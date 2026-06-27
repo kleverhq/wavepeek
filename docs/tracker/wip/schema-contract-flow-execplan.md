@@ -36,7 +36,7 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-27T11:24:00Z) Committed and pushed the historical schema cleanup to pull request 45.
 - [x] (2026-06-27T11:42:26Z) Reopened the plan after identifying that `src/contract/schema.rs` is still a manual schema builder and that JSON CLI runtime validation is weaker than JSONL validation.
 - [x] (2026-06-27T11:42:26Z) Prepared this ExecPlan update as a separate plan-only change before adding more code.
-- [ ] Add runtime JSON validation coverage for `info`, `scope`, and `signal` `--json` outputs.
+- [x] (2026-06-27T11:42:26Z) Added runtime JSON validation coverage for `info`, `scope`, and `signal` `--json` outputs.
 - [ ] Add runtime JSON validation coverage for `value`, `change`, and `property` `--json` outputs.
 - [ ] Add runtime JSON validation coverage for `docs topics` and `docs search` `--json` outputs.
 - [ ] Review the JSON validation tests, fix findings, run focused Rust tests, and commit the test slices.
@@ -317,3 +317,5 @@ Revision note 2026-06-27: Historical schema cleanup was implemented after plan r
 Revision note 2026-06-27: Post-change review found stale pre-migration wording in this plan. The context now distinguishes the pre-branch artifact-first runtime from the current `schema/output.json` and `schema/stream.json` embedding.
 
 Revision note 2026-06-27: User review identified two remaining gaps: the schema builder is still manual and can drift from the runtime DTOs, and JSON CLI runtime outputs have weaker schema-validation coverage than JSONL outputs. The plan is reopened to add JSON `--json` validation tests first, then refactor schema generation toward DTO-owned `schemars` definitions with explicit root composition.
+
+Revision note 2026-06-27: The first JSON validation slice added `tests/schema_cli.rs` coverage for `info`, `scope`, and `signal` runtime `--json` stdout against `schema/output.json`.

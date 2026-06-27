@@ -122,23 +122,46 @@ fn stream_schema_json() -> Value {
         .expect("stream schema output should be valid json")
 }
 
+fn output_schema_validator() -> jsonschema::Validator {
+    let schema: Value = serde_json::from_slice(
+        &fs::read(canonical_schema_path()).expect("schema file should be readable"),
+    )
+    .expect("schema file should parse");
+    jsonschema::validator_for(&schema).expect("schema should compile")
+}
+
 fn stream_schema_validator() -> jsonschema::Validator {
     jsonschema::validator_for(&stream_schema_json()).expect("stream schema should compile")
 }
 
-fn info_json() -> Value {
+fn run_json_command(args: &[&str], expected_command: &str) -> Value {
     let output = wavepeek_cmd()
-        .args([
+        .args(args)
+        .output()
+        .expect("json command should execute");
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let value: Value = serde_json::from_slice(&output.stdout).expect("stdout should be valid json");
+    assert_eq!(value["$schema"], expected_schema_url());
+    assert_eq!(value["command"], expected_command);
+
+    let validator = output_schema_validator();
+    validator.validate(&value).unwrap_or_else(|error| {
+        panic!("runtime JSON output should match schema: {error}\n{value}")
+    });
+    value
+}
+
+fn info_json() -> Value {
+    run_json_command(
+        &[
             "info",
             "--waves",
             "tests/fixtures/hand/m2_core.vcd",
             "--json",
-        ])
-        .output()
-        .expect("info command should execute");
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    serde_json::from_slice(&output.stdout).expect("info output should be valid json")
+        ],
+        "info",
+    )
 }
 
 fn schema_enum(schema: &Value, def_name: &str) -> Vec<String> {
@@ -308,6 +331,31 @@ fn runtime_info_envelope_uses_diagnostics_not_warnings() {
     assert_eq!(value["command"], "info");
     assert_eq!(value["diagnostics"], json!([]));
     assert!(value.get("warnings").is_none());
+}
+
+#[test]
+fn runtime_metadata_json_outputs_validate_against_schema() {
+    let fixture = "tests/fixtures/hand/m2_core.vcd";
+
+    let info = run_json_command(&["info", "--waves", fixture, "--json"], "info");
+    assert_eq!(info["data"]["time_unit"], "1ns");
+
+    let scope = run_json_command(&["scope", "--waves", fixture, "--json"], "scope");
+    assert!(
+        scope["data"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["path"] == "top") })
+    );
+
+    let signal = run_json_command(
+        &["signal", "--waves", fixture, "--scope", "top", "--json"],
+        "signal",
+    );
+    assert!(
+        signal["data"]
+            .as_array()
+            .is_some_and(|entries| { entries.iter().any(|entry| entry["path"] == "top.clk") })
+    );
 }
 
 #[test]

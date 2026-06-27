@@ -359,6 +359,74 @@ fn runtime_metadata_json_outputs_validate_against_schema() {
 }
 
 #[test]
+fn runtime_waveform_data_json_outputs_validate_against_schema() {
+    let fixture = "tests/fixtures/hand/m2_core.vcd";
+
+    let value = run_json_command(
+        &[
+            "value",
+            "--waves",
+            fixture,
+            "--at",
+            "5ns",
+            "--signals",
+            "top.clk,top.data",
+            "--json",
+        ],
+        "value",
+    );
+    assert_eq!(value["data"][0]["time"], "5ns");
+    assert_eq!(value["data"][0]["signals"].as_array().unwrap().len(), 2);
+
+    let change = run_json_command(
+        &[
+            "change",
+            "--waves",
+            fixture,
+            "--from",
+            "1ns",
+            "--to",
+            "10ns",
+            "--signals",
+            "top.clk,top.data",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--max",
+            "2",
+            "--json",
+        ],
+        "change",
+    );
+    assert_eq!(change["data"].as_array().unwrap().len(), 2);
+    assert_eq!(change["data"][0]["sample_time"], "5ns");
+
+    let property = run_json_command(
+        &[
+            "property",
+            "--waves",
+            fixture,
+            "--scope",
+            "top",
+            "--on",
+            "*",
+            "--sample-mode",
+            "native",
+            "--eval",
+            "clk",
+            "--capture",
+            "switch",
+            "--max",
+            "2",
+            "--json",
+        ],
+        "property",
+    );
+    assert_eq!(property["data"][0]["kind"], "assert");
+}
+
+#[test]
 fn schema_validator_accepts_extension_fields() {
     let schema = schema_json();
     let validator = jsonschema::validator_for(&schema).expect("schema should compile");

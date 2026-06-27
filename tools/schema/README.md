@@ -1,6 +1,6 @@
 # Schema Tools
 
-This group owns validation for generated JSON schema snapshots. Current snapshots are `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`; historical artifacts such as `schema/wavepeek_v1.json` remain available for published contracts.
+This group owns validation for generated JSON schema snapshots. Current snapshots are `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`. Historical schema artifacts remain available from release tags and GitHub Pages rather than duplicate files in the current `schema/` directory.
 
 Normal entrypoints:
 

@@ -8,11 +8,11 @@ This document must be maintained in accordance with the `exec-plan` skill. It is
 
 After this change, users and release tooling can rely on two stable schema families, `wavepeek.output` for `--json` envelopes and `wavepeek.stream-record` for JSONL records, without tying schema artifact names to the `wavepeek` binary minor version. The runtime machine output will serialize through Rust contract data-transfer objects, and `just update-schema` will regenerate committed schema snapshots from that contract layer instead of round-tripping the schema embedded in the binary.
 
-The behavior is visible by running `just update-schema`, `just check-schema`, `wavepeek schema`, and `wavepeek schema --stream` from the repository root. `wavepeek schema` must print `schema/output.json` byte-for-byte, `wavepeek schema --stream` must print `schema/stream.json` byte-for-byte, and runtime `--json` / `--jsonl` outputs must contain exact schema URLs from `schema/catalog.json`.
+The behavior is visible by running `just update-schema`, `just check-schema`, `wavepeek schema`, and `wavepeek schema --stream` from the repository root. `wavepeek schema` must print `schema/output.json` byte-for-byte, `wavepeek schema --stream` must print `schema/stream.json` byte-for-byte, and runtime `--json` / `--jsonl` outputs must contain exact schema URLs from `schema/catalog.json`. This plan also records the follow-up policy that current branch checkouts keep only generated current schema snapshots in `schema/`; historical schema URLs remain public through GitHub Pages and release tags, not through duplicate files in the current tree.
 
 ## Non-Goals
 
-This plan does not introduce one canonical schema per command. It does not remove historical schema artifacts such as `schema/wavepeek_v1.json` or `schema/wavepeek_v2.0.json`. It does not change the JSON or JSONL public wire shape except for the schema artifact URL values. It does not dynamically generate schemas in normal production CLI execution. It does not automatically decide whether a schema change is major or minor; the version constants remain explicit maintainer-owned values.
+This plan does not introduce one canonical schema per command. It does not remove already published historical schema URLs from GitHub Pages and does not rewrite historical release tags. It does remove duplicate historical schema files such as `schema/wavepeek_v1.json` and `schema/wavepeek_v2.0.json` from the current branch checkout, because current runtime and current schema checks use `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`. It does not change the JSON or JSONL public wire shape except for the schema artifact URL values. It does not dynamically generate schemas in normal production CLI execution. It does not automatically decide whether a schema change is major or minor; the version constants remain explicit maintainer-owned values.
 
 The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal.v4.md` is source material only and must not be committed.
 
@@ -27,7 +27,13 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - [x] (2026-06-26T22:05:51Z) Updated schema checks, just recipes, tests, docs publication tooling, and documentation.
 - [x] (2026-06-26T22:39:28Z) Ran focused validation and the repository quality gate.
 - [x] (2026-06-26T22:39:28Z) Performed post-implementation reviews, fixed findings, and completed a clean control pass.
-- [ ] Commit, push, and open a pull request.
+- [x] (2026-06-26T22:48:00Z) Committed, pushed, and opened pull request 45 for the schema contract migration.
+- [x] (2026-06-27T11:22:00Z) Restored this ExecPlan as requested in a separate commit before starting the historical schema artifact cleanup.
+- [x] (2026-06-27T11:22:00Z) Reviewed the updated plan for removing duplicate checked-in historical schema artifacts; review returned no substantive findings.
+- [x] (2026-06-27T11:22:00Z) Removed checked-in historical schema artifacts from `schema/` while preserving current generated snapshots.
+- [x] (2026-06-27T11:22:00Z) Updated schema/tooling documentation to describe where historical schema artifacts are preserved.
+- [x] (2026-06-27T11:22:00Z) Ran focused validation and post-change review; fixed the review finding about stale pre-migration wording.
+- [ ] Commit, push, and update pull request 45.
 
 ## Surprises & Discoveries
 
@@ -49,15 +55,18 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 - Observation: Publication compatibility for historical artifacts required a separate legacy path.
   Evidence: Post-implementation tooling review found that old no-catalog v2.0 deployments could be blocked by new catalog assumptions and that historical `wavepeek_v*.json` artifacts needed the same immutable overwrite guard as new `schema-output-v*.json` artifacts.
 
+- Observation: Current runtime and schema freshness checks no longer depend on checked-in historical schema files.
+  Evidence: `src/schema_contract.rs` embeds only `schema/output.json` and `schema/stream.json`; `tools/schema/check_schema_contract.py` compares only `output.json`, `stream.json`, and `catalog.json`; `tools/docs/publish_docs.py` publishes catalog-listed current artifacts when `schema/catalog.json` exists.
+
 ## Decision Log
 
 - Decision: Use a manual deterministic Rust schema builder in `src/contract/schema.rs` rather than introducing a derive-based schema dependency in the first migration.
   Rationale: The current schema has command-to-payload conditionals, extension-friendly objects, diagnostic conditionals, exact URL constants, and stable definition names. A small explicit builder preserves the public schema shape and keeps the migration reviewable. The builder still lives next to the Rust contract DTO and is invoked by `tools/schema-gen`, removing the current binary round-trip.
   Date/Author: 2026-06-26 / coding agent
 
-- Decision: Keep historical `schema/wavepeek_v*.json` and `schema/wavepeek-stream-v*.json` artifacts in the repository while adding new current snapshots `schema/output.json` and `schema/stream.json`.
-  Rationale: Historical artifacts are already public contracts. The new family-based snapshots become the embedded current artifacts without deleting prior published files.
-  Date/Author: 2026-06-26 / coding agent
+- Decision: Keep already published historical schema URLs resolvable through GitHub Pages and release tags, but remove duplicate historical schema files from current branch checkouts.
+  Rationale: Historical artifacts are public contracts, but the current branch does not need duplicate copies once the runtime embeds generated family snapshots and publication uses `schema/catalog.json`. Keeping old files in `main` makes the current schema directory look like it has multiple active sources of truth.
+  Date/Author: 2026-06-27 / user and coding agent
 
 - Decision: Set the initial explicit schema family versions to output `2.0` and stream-record `2.0`.
   Rationale: The migration is intended to preserve the existing wire shape, with only the schema artifact URL moving to the new exact family URL names. There is no maintainer-directed schema semantic bump in the proposal.
@@ -85,13 +94,13 @@ The external proposal file at `/workspaces/wavepeek/tmp/schema-contract-proposal
 
 ## Outcomes & Retrospective
 
-The implementation and review milestones are complete. Runtime JSON and JSONL now serialize through `src/contract` DTOs, generated snapshots live at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, `just check-schema` validates generated freshness plus runtime embedding, and docs publication handles both catalog-based exact artifacts and historical no-catalog artifacts. Remaining work is commit, push, and PR.
+The implementation and review milestones for code-first schema generation are complete. Runtime JSON and JSONL now serialize through `src/contract` DTOs, generated snapshots live at `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`, `just check-schema` validates generated freshness plus runtime embedding, and docs publication handles both catalog-based exact artifacts and historical no-catalog artifacts. The historical artifact cleanup has removed duplicate legacy schema files from the current tree and documented that release tags and GitHub Pages preserve those contracts. Validation and post-change review are complete. Remaining work is commit, push, and pull request 45 update.
 
 ## Context and Orientation
 
 `wavepeek` is a Rust CLI. Its machine output has two formats. The `--json` format is a single JSON object called an envelope. The envelope has a `$schema` URL, a `command` string, a command-specific `data` payload, and a `diagnostics` array. The JSONL format prints one JSON object per line; each line is a stream record with `type` equal to `begin`, `item`, `diagnostic`, or `end`.
 
-The current schema runtime is in `src/schema_contract.rs`. It constructs schema URLs from `CARGO_PKG_VERSION_MAJOR` and `CARGO_PKG_VERSION_MINOR`, embeds `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`, and exposes those strings to the CLI. `src/engine/schema.rs` returns the embedded strings for `wavepeek schema` and `wavepeek schema --stream`.
+Before this branch, the schema runtime in `src/schema_contract.rs` constructed schema URLs from `CARGO_PKG_VERSION_MAJOR` and `CARGO_PKG_VERSION_MINOR`, embedded `schema/wavepeek_v2.0.json` and `schema/wavepeek-stream-v2.0.json`, and exposed those strings to the CLI. In the current branch, `src/schema_contract.rs` embeds `schema/output.json` and `schema/stream.json`, while URL and family metadata come from `src/contract/schema.rs`. `src/engine/schema.rs` returns the embedded current snapshots for `wavepeek schema` and `wavepeek schema --stream`.
 
 The current JSON and JSONL serialization entrypoint is `src/output.rs`. `render_json` serializes `crate::engine::CommandData` directly inside `OutputEnvelope`. `JsonlWriter::item` serializes any `serde::Serialize` payload passed by engine code. `src/engine/change.rs` and `src/engine/property.rs` stream JSONL rows through sink types that call `JsonlWriter::item`.
 
@@ -101,11 +110,11 @@ The new contract layer will live under `src/contract/`. A contract data-transfer
 
 The helper entrypoints are in `justfile`. `just update-schema` must generate `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`. `just check-schema` must generate fresh files under `tmp/schema-check` and compare them with committed snapshots before checking runtime output. `tools/schema/check_schema_contract.py` currently assumes Cargo major/minor artifact names and must become catalog-based.
 
-Docs publication lives in `tools/docs/publish_docs.py`. Deployed-doc validation lives in `tools/docs/check_deploy.py`. Both currently infer artifact names from the CLI version and historical glob patterns. They must read `schema/catalog.json` for current exact family artifacts and preserve historical artifact support.
+Docs publication lives in `tools/docs/publish_docs.py`. Deployed-doc validation lives in `tools/docs/check_deploy.py`. Current catalog-based releases read `schema/catalog.json` for exact family artifacts. Historical release repair and deployed checks still understand legacy artifact names such as `wavepeek_v2.0.json`, but those historical files do not need to be present in the current branch checkout.
 
 ## Open Questions
 
-There are no blocking open questions. If implementation shows that preserving output schema version `2.0` while changing the `$schema` URL is treated as a semantic contract change by tests or tooling, record that finding here and update the version constants or tests consistently.
+There are no blocking open questions. The chosen policy is that `main`/current branch checkouts keep generated current snapshots only, while GitHub Pages and release tags preserve historical artifacts. If validation shows that docs publication still requires historical files in the current checkout, record that finding and either add a compatibility fixture or restore the files.
 
 ## Plan of Work
 
@@ -131,7 +140,9 @@ Update Rust and integration tests. `tests/common/mod.rs` should return exact out
 
 Update documentation and breadcrumbs. Refresh `tools/schema/README.md`, `tools/docs/README.md`, `schema/AGENTS.md`, `docs/dev/release.md`, `docs/dev/architecture.md`, `docs/dev/automation.md`, `docs/dev/quality.md`, `docs/public/reference/machine-output.md`, and `docs/public/commands/schema.md` to describe code-first generation, `schema/output.json`, `schema/stream.json`, `schema/catalog.json`, and exact family URLs. Keep historical examples only where they explicitly discuss old releases.
 
-Finally, run formatting, focused tests, `just check-schema`, docs helper tests, and `just check`. Request a post-implementation review, address findings, then commit the branch and open a pull request. Confirm the external proposal file was not added to git.
+Finally, run formatting, focused tests, `just check-schema`, docs helper tests, and `just check`. Request a post-implementation review, address findings, then commit the branch and update pull request 45. Confirm the external proposal file was not added to git.
+
+Follow-up cleanup for checked-in historical schema artifacts is now part of this plan. Remove these five files from the current tree: `schema/wavepeek_v0.json`, `schema/wavepeek_v1.json`, `schema/wavepeek_v2.0.json`, `schema/wavepeek-stream-v1.json`, and `schema/wavepeek-stream-v2.0.json`. Do not remove `schema/output.json`, `schema/stream.json`, or `schema/catalog.json`. Update `schema/AGENTS.md` and `tools/schema/README.md` to say that current checkouts contain only generated current snapshots and that historical artifacts are preserved by release tags and GitHub Pages. Update `tools/docs/README.md` to distinguish publishing current catalog artifacts from preserving already deployed historical artifacts. Keep `tools/docs/publish_docs.py` legacy support intact for old source refs and tests, because old tags still contain no-catalog historical artifacts.
 
 ### Concrete Steps
 
@@ -147,7 +158,7 @@ Run all commands from `/workspaces/wavepeek/.worktrees/feat-rework-schema-flow`.
 
     just update-schema
 
-   Expected result: `schema/output.json`, `schema/stream.json`, and `schema/catalog.json` are created or updated. Historical schema artifacts remain present.
+   Expected result: `schema/output.json`, `schema/stream.json`, and `schema/catalog.json` are created or updated. No `schema/wavepeek_v*.json` or `schema/wavepeek-stream-v*.json` files are created in the current checkout.
 
 3. Check schema freshness and runtime embed behavior:
 
@@ -194,14 +205,15 @@ The change is accepted when a human can verify these behaviors:
 - Runtime `wavepeek info --waves tests/fixtures/hand/m2_core.vcd --json` contains `$schema` equal to the `wavepeek.output` URL in `schema/catalog.json`.
 - Runtime `wavepeek info --waves tests/fixtures/hand/m2_core.vcd --jsonl` begins with a `begin` record whose `$schema` equals the `wavepeek.stream-record` URL in `schema/catalog.json`.
 - Representative runtime `--json` outputs validate against `schema/output.json` and representative runtime JSONL records validate against `schema/stream.json`.
-- Historical schema files remain in `schema/` and are not modified by `just update-schema`.
-- Docs publication stages exact catalog artifacts for every release and refuses to overwrite an existing exact artifact path with different bytes.
+- Current branch checkouts contain no `schema/wavepeek_v*.json` or `schema/wavepeek-stream-v*.json` files.
+- `just update-schema` does not recreate historical schema files.
+- Docs publication stages exact catalog artifacts for every current release, preserves already deployed historical artifacts on GitHub Pages, and refuses to overwrite an existing exact artifact path with different bytes.
 
 ### Idempotence and Recovery
 
 `just update-schema` is safe to run repeatedly; if the Rust contract did not change, it should produce no git diff. `just check-schema` writes disposable generated output under `tmp/schema-check`, which is ignored scratch space. Do not delete arbitrary existing files in `tmp/`; only overwrite or remove paths owned by this plan, such as `tmp/schema-check`.
 
-If generated schemas are wrong, restore committed snapshots with `git checkout -- schema/output.json schema/stream.json schema/catalog.json`, fix the Rust contract schema builder, and rerun `just update-schema`. If docs publication tests fail after tooling changes, keep the old tests as evidence of required behavior and update the code before changing expectations.
+If generated schemas are wrong, restore committed snapshots with `git checkout -- schema/output.json schema/stream.json schema/catalog.json`, fix the Rust contract schema builder, and rerun `just update-schema`. If deleting historical schema files breaks validation, first determine whether the failing path is a current-catalog path or a historical-tag repair path. Current-catalog paths should not require historical files. Historical-tag repair behavior should be covered by fixtures or tests without requiring historical artifacts in the current `schema/` directory. If docs publication tests fail after tooling changes, keep the old tests as evidence of required behavior and update the code before changing expectations.
 
 ### Artifacts and Notes
 
@@ -237,3 +249,9 @@ Revision note 2026-06-26: Plan review findings were incorporated. The plan now d
 Revision note 2026-06-26: Implementation progress recorded. The plan now reflects the `families` catalog shape without an `artifact` field, Rust-based schema semantic validation, completed contract/generator/tooling/doc updates, and the remaining validation/review/PR work.
 
 Revision note 2026-06-26: Post-implementation review findings and fixes recorded. The docs publication path now preserves historical no-catalog artifacts, applies immutable overwrite checks to all versioned schema artifacts, and passes exact schema artifact names through staged metadata for new catalog releases.
+
+Revision note 2026-06-27: The plan was restored in a separate commit at the user's request and updated for a follow-up cleanup. Current branch checkouts should contain only generated current schema snapshots; historical schema artifacts remain available through GitHub Pages and release tags rather than duplicate files in `schema/`. The cleanup intentionally does not add a `check-schema` guard against reintroducing old files.
+
+Revision note 2026-06-27: Historical schema cleanup was implemented after plan review. The current tree now removes `schema/wavepeek_v0.json`, `schema/wavepeek_v1.json`, `schema/wavepeek_v2.0.json`, `schema/wavepeek-stream-v1.json`, and `schema/wavepeek-stream-v2.0.json`, and documentation now states that historical artifacts live in release tags and GitHub Pages.
+
+Revision note 2026-06-27: Post-change review found stale pre-migration wording in this plan. The context now distinguishes the pre-branch artifact-first runtime from the current `schema/output.json` and `schema/stream.json` embedding.

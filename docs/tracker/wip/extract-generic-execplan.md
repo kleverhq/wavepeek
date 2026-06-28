@@ -25,7 +25,8 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-28T14:53Z) Ran local pre-handoff gate `just check`; it passed, including schema checks, docs-site check, commit message check, and FSDB checks because Verdi was available.
 - [x] (2026-06-28T13:51Z) Committed the implementation slice as `8c2a039 feat(extract): add generic waveform extraction`; commit hooks passed Rust format, clippy, build, schema contract, Rust tests, auxiliary tests, FSDB tests, benchmark smoke, and commit style.
 - [x] (2026-06-28T14:24Z) Ran implementation review lanes for code/runtime, schema/tooling, and docs/tests; fixed findings in `ec1892e fix(extract): preflight generic extraction inputs`.
-- [x] (2026-06-28T14:47Z) Ran follow-up review lanes for code/runtime and schema/docs collateral; both returned no substantive findings. Attempted fresh control-pass reviewers, but the subagent backend returned empty output without usable findings, so no control pass result was available.
+- [x] (2026-06-28T14:47Z) Ran follow-up review lanes for code/runtime and schema/docs collateral; both returned no substantive findings. Initial fresh control-pass attempts returned empty output, so they were not counted.
+- [x] (2026-06-28T15:12Z) Re-ran final control review as two narrow independent lanes for runtime and schema/tooling; both returned no substantive findings.
 - [x] (2026-06-28T14:58Z) Opened draft PR https://github.com/kleverhq/wavepeek/pull/46.
 
 ## Surprises & Discoveries
@@ -64,7 +65,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 
 ## Outcomes & Retrospective
 
-Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Fresh control-pass subagents returned empty output, so no usable control-pass result was available. Draft PR #46 was opened.
+Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Final narrow control review lanes for runtime and schema/tooling returned no substantive findings. Draft PR #46 was opened.
 
 ## Context and Orientation
 
@@ -310,5 +311,5 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-06-28: Updated after focused plan review to bump changed schema families to v2.1, correct pre-edge range-bound semantics, require pre-output expression support validation, enforce scoped payload naming, and add missing schema/docs/tests/tooling collateral.
 - 2026-06-28: Updated after implementation commit `8c2a039` to record completed feature surfaces, generated schemas, targeted validation, and passing commit-hook evidence.
 - 2026-06-28: Updated after implementation review and fix commit `ec1892e` to record reviewer findings, runtime preflight fixes, tooling/docs corrections, and targeted validation.
-- 2026-06-28: Updated after follow-up review and `just check` to record clean follow-up lanes, local gate success, and unavailable control-pass output.
+- 2026-06-28: Updated after follow-up review and `just check` to record clean follow-up lanes, local gate success, initially unavailable broad control-pass output, and successful narrow control review lanes.
 - 2026-06-28: Updated after opening draft PR #46.

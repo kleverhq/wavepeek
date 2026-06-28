@@ -29,7 +29,7 @@ When a stable JSON-producing command succeeds under `--json`, it emits one JSON 
 
 ```json
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
   "command": "<command>",
   "data": {},
   "diagnostics": []
@@ -59,6 +59,21 @@ The exact JSON shapes for every command are defined by the current schema artifa
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
+`extract generic` data is an array of rows. Each row has `time`, `sample_time`, `source`, and ordered `payload` entries:
+
+```json
+{
+  "time": "25ns",
+  "sample_time": "24999ps",
+  "source": "transfer",
+  "payload": [
+    {"path": "top.dut.data", "value": "32'hdeadbeef"}
+  ]
+}
+```
+
+Payload paths are canonical in JSON and JSONL output.
+
 ## 3. JSONL Stream for Waveform Commands
 
 Waveform commands also support `--jsonl` for newline-delimited JSON output. JSONL means each stdout line is an independent JSON object, and the full stdout stream is not wrapped in an array.
@@ -66,7 +81,7 @@ Waveform commands also support `--jsonl` for newline-delimited JSON output. JSON
 A successful stream has these record types:
 
 ```jsonl
-{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"}
+{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"}
 {"type":"item","seq":1,"command":"change","item":{"time":"5ns","sample_time":"5ns","signals":[{"path":"top.clk","value":"1'h1"}]}}
 {"type":"diagnostic","seq":2,"command":"change","diagnostic":{"kind":"warning","code":"WPK-W0002","message":"truncated output to 1 entries (use --max to increase limit)"}}
 {"type":"end","seq":3,"command":"change","summary":{"status":"ok","items":1,"diagnostics":1,"truncated":true}}
@@ -78,7 +93,7 @@ Rules for successful JSONL streams:
 - `seq` increases by one for every record.
 - `command` is stable across the stream.
 - `item` records carry the same row payload shape used inside `--json` data arrays for array-producing commands, or the `info` data object for `info`.
-- `change` and `property` rows include both `time` and `sample_time`. `time` is the selected event timestamp; `sample_time` is where values were printed or evaluated.
+- `change`, `property`, and `extract generic` rows include both `time` and `sample_time`. `time` is the selected event timestamp; `sample_time` is where values were printed, evaluated, or extracted.
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
 
@@ -86,7 +101,7 @@ The checked-in stream schema, such as `schema/stream.json`, validates one JSONL 
 
 If the process exits non-zero or a stream lacks a final `end` record, treat the stream as incomplete. A consumer that intentionally closes stdout early, for example by piping to `head`, may stop the producer without a fatal error.
 
-`--json` and `--jsonl` are mutually exclusive. `--jsonl` is available only on waveform-inspection commands: `info`, `scope`, `signal`, `value`, `change`, and `property`.
+`--json` and `--jsonl` are mutually exclusive. `--jsonl` is available only on waveform-inspection commands: `info`, `scope`, `signal`, `value`, `change`, `property`, and `extract generic`.
 
 ## 4. `schema` Command Behavior
 
@@ -101,6 +116,8 @@ Its behavior is special and fixed:
 - without selectors, its output bytes match the canonical JSON envelope snapshot, `schema/output.json`.
 
 `wavepeek schema --stream` prints the canonical JSONL record schema snapshot, `schema/stream.json`. That schema describes one stream record, not a whole JSONL stream.
+
+`wavepeek schema --input` prints the canonical JSON input document schema snapshot, `schema/input.json`. The first input document kind is `extract.generic.sources`, used by `wavepeek extract generic --source`.
 
 ## 5. Diagnostic Behavior
 

@@ -52,6 +52,7 @@ pub enum OutputData<'a> {
     Value(Vec<ValueSnapshot<'a>>),
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
+    ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
     DocsSearch(DocsSearchData<'a>),
 }
@@ -82,6 +83,9 @@ impl<'a> OutputData<'a> {
             (CommandName::Property, CommandData::Property(rows)) => {
                 Ok(Self::Property(rows.iter().map(PropertyRow::from).collect()))
             }
+            (CommandName::ExtractGeneric, CommandData::ExtractGeneric(data)) => Ok(
+                Self::ExtractGeneric(data.rows.iter().map(ExtractGenericRow::from).collect()),
+            ),
             (CommandName::DocsTopics, CommandData::DocsTopics(data)) => {
                 Ok(Self::DocsTopics(DocsTopicsData::from(data)))
             }
@@ -332,6 +336,52 @@ impl<'a> From<&'a crate::engine::property::PropertyCaptureRow> for PropertyRow<'
             time: NormalizedTime::new(row.time.as_str()),
             sample_time: NormalizedTime::new(row.sample_time.as_str()),
             kind: row.kind.into(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractPayloadValue")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractPayloadValue<'a> {
+    #[schemars(description = "Canonical path of the sampled payload signal.")]
+    path: CanonicalPath<'a>,
+    #[schemars(description = "Sampled payload value formatted as a Verilog-style literal string.")]
+    value: SampledValue<'a>,
+}
+
+impl<'a> From<&'a crate::engine::extract::ExtractPayloadValue> for ExtractPayloadValue<'a> {
+    fn from(value: &'a crate::engine::extract::ExtractPayloadValue) -> Self {
+        Self {
+            path: CanonicalPath::new(value.path.as_str()),
+            value: SampledValue::new(value.value.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractGenericRow")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractGenericRow<'a> {
+    #[schemars(description = "Selected event timestamp emitted by extract generic.")]
+    time: NormalizedTime<'a>,
+    #[schemars(
+        description = "Pre-edge timestamp used to evaluate the predicate and sample payload values."
+    )]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "Source name supplied by CLI flags or source JSON.")]
+    source: &'a str,
+    #[schemars(description = "Ordered payload values sampled for this row.")]
+    payload: Vec<ExtractPayloadValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::extract::ExtractGenericRow> for ExtractGenericRow<'a> {
+    fn from(row: &'a crate::engine::extract::ExtractGenericRow) -> Self {
+        Self {
+            time: NormalizedTime::new(row.time.as_str()),
+            sample_time: NormalizedTime::new(row.sample_time.as_str()),
+            source: row.source.as_str(),
+            payload: row.payload.iter().map(ExtractPayloadValue::from).collect(),
         }
     }
 }

@@ -39,6 +39,7 @@ PUSH_TOKEN_ENV = {
     "ACTIONS_ID_TOKEN_REQUEST_TOKEN",
 }
 STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
+INPUT_SCHEMA_MIN_VERSION = (2, 1, 0)
 
 
 class PublishError(Exception):
@@ -207,6 +208,10 @@ def stream_schema_required(version: str) -> bool:
     return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
 
 
+def input_schema_required(version: str) -> bool:
+    return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
+
+
 def schema_artifact_suffix(version: str) -> str:
     major, minor, _patch = version_tuple(version)
     if major >= 2:
@@ -242,6 +247,11 @@ def legacy_stream_schema_artifact_name(version: str) -> str:
     return f"wavepeek-stream-v{major}.json"
 
 
+def input_schema_artifact_name(version: str) -> str:
+    major, minor, _patch = version_tuple(version)
+    return f"schema-input-v{major}.{minor}.json"
+
+
 def valid_legacy_schema_artifact_name(name: str) -> bool:
     return re.fullmatch(r"wavepeek_v(?:[01]|[2-9][0-9]*[.][0-9]+)[.]json", name) is not None
 
@@ -258,6 +268,10 @@ def valid_family_stream_schema_artifact_name(name: str) -> bool:
     return re.fullmatch(r"schema-stream-v[1-9][0-9]*[.][0-9]+[.]json", name) is not None
 
 
+def valid_family_input_schema_artifact_name(name: str) -> bool:
+    return re.fullmatch(r"schema-input-v[1-9][0-9]*[.][0-9]+[.]json", name) is not None
+
+
 def valid_schema_artifact_name(name: str) -> bool:
     return valid_legacy_schema_artifact_name(name) or valid_family_schema_artifact_name(name)
 
@@ -266,8 +280,16 @@ def valid_stream_schema_artifact_name(name: str) -> bool:
     return valid_legacy_stream_schema_artifact_name(name) or valid_family_stream_schema_artifact_name(name)
 
 
+def valid_input_schema_artifact_name(name: str) -> bool:
+    return valid_family_input_schema_artifact_name(name)
+
+
 def valid_versioned_schema_artifact_name(name: str) -> bool:
-    return valid_schema_artifact_name(name) or valid_stream_schema_artifact_name(name)
+    return (
+        valid_schema_artifact_name(name)
+        or valid_stream_schema_artifact_name(name)
+        or valid_input_schema_artifact_name(name)
+    )
 
 
 def legacy_no_catalog_allowed(version: str) -> bool:
@@ -278,7 +300,7 @@ def catalog_artifact_names(root_artifacts: Sequence[pathlib.Path]) -> set[str]:
     return {
         path.name
         for path in root_artifacts
-        if re.fullmatch(r"schema-(output|stream)-v[1-9][0-9]*[.][0-9]+[.]json", path.name)
+        if re.fullmatch(r"schema-(output|stream|input)-v[1-9][0-9]*[.][0-9]+[.]json", path.name)
     }
 
 
@@ -300,7 +322,11 @@ def load_schema_catalog(schema_dir: pathlib.Path) -> list[dict[str, str]]:
         if any(not isinstance(entry.get(key), str) for key in required):
             fail(f"schema catalog {catalog_path} entries must contain string {sorted(required)}")
         artifact = pathlib.PurePosixPath(urllib.parse.urlparse(entry["url"]).path).name
-        if not (valid_schema_artifact_name(artifact) or valid_stream_schema_artifact_name(artifact)):
+        if not (
+            valid_schema_artifact_name(artifact)
+            or valid_stream_schema_artifact_name(artifact)
+            or valid_input_schema_artifact_name(artifact)
+        ):
             fail(f"schema catalog artifact name is invalid: {artifact}")
         copied = {key: entry[key] for key in required}
         copied["artifact"] = artifact
@@ -402,18 +428,24 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
 
     schema_candidates = sorted(schema_dir.glob("wavepeek_v*.json"))
     stream_schema_candidates = sorted(schema_dir.glob("wavepeek-stream-v*.json"))
+    input_schema_candidates: list[pathlib.Path] = []
     invalid = [
         path.name
-        for path in [*schema_candidates, *stream_schema_candidates]
+        for path in [*schema_candidates, *stream_schema_candidates, *input_schema_candidates]
         if not (
             valid_schema_artifact_name(path.name)
             or valid_stream_schema_artifact_name(path.name)
+            or valid_input_schema_artifact_name(path.name)
         )
     ]
     if invalid:
         fail("invalid schema artifact name(s): " + ", ".join(sorted(invalid)))
-    for schema in [*schema_candidates, *stream_schema_candidates]:
-        if valid_schema_artifact_name(schema.name) or valid_stream_schema_artifact_name(schema.name):
+    for schema in [*schema_candidates, *stream_schema_candidates, *input_schema_candidates]:
+        if (
+            valid_schema_artifact_name(schema.name)
+            or valid_stream_schema_artifact_name(schema.name)
+            or valid_input_schema_artifact_name(schema.name)
+        ):
             target = run_paths.root_artifacts / schema.name
             shutil.copyfile(schema, target)
             copied.append(target)
@@ -433,6 +465,8 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
             fail(f"schema catalog under {schema_dir} is missing wavepeek.output")
         if stream_schema_required(version) and "wavepeek.stream-record" not in catalog_ids:
             fail(f"schema catalog under {schema_dir} is missing wavepeek.stream-record")
+        if input_schema_required(version) and "wavepeek.input" not in catalog_ids:
+            fail(f"schema catalog under {schema_dir} is missing wavepeek.input")
     else:
         expected_schema = legacy_schema_artifact_name(version)
         expected_stream_schema = legacy_stream_schema_artifact_name(version)
@@ -442,6 +476,10 @@ def collect_root_artifacts(source_root: pathlib.Path, run_paths: Paths, version:
             path.name == expected_stream_schema for path in copied
         ):
             fail(f"missing current stream schema artifact {expected_stream_schema} under {schema_dir}")
+        if input_schema_required(version):
+            expected_input_schema = input_schema_artifact_name(version)
+            if not any(path.name == expected_input_schema for path in copied):
+                fail(f"missing current input schema artifact {expected_input_schema} under {schema_dir}")
     return copied
 
 
@@ -722,7 +760,7 @@ def allowed_path_patterns(version: str, *, promote_latest: bool) -> list[str]:
         ".nojekyll",
         "versions.json",
     ]
-    patterns.extend(["schema-output-v*.json", "schema-stream-v*.json"])
+    patterns.extend(["schema-output-v*.json", "schema-stream-v*.json", "schema-input-v*.json"])
     if promote_latest:
         patterns.extend(
             [
@@ -923,6 +961,9 @@ def path_allowed(path: str, patterns: list[str]) -> bool:
         elif pattern == "schema-stream-v*.json":
             if valid_family_stream_schema_artifact_name(path):
                 return True
+        elif pattern == "schema-input-v*.json":
+            if valid_family_input_schema_artifact_name(path):
+                return True
         elif pattern.endswith("/**"):
             prefix = pattern[:-3] + "/"
             if path.startswith(prefix):
@@ -967,6 +1008,8 @@ def fallback_root_schema_artifacts(version: str) -> list[str]:
     artifacts = [schema_artifact_name(version)]
     if stream_schema_required(version):
         artifacts.append(stream_schema_artifact_name(version))
+    if input_schema_required(version):
+        artifacts.append(input_schema_artifact_name(version))
     return artifacts
 
 

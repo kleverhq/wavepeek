@@ -14,49 +14,43 @@ sys.modules["check_schema_contract"] = check_schema_contract
 SPEC.loader.exec_module(check_schema_contract)
 
 
+def current_catalog(path: str = "schema/output.json") -> dict[str, object]:
+    return {
+        "families": [
+            {
+                "id": "wavepeek.output",
+                "version": "2.1",
+                "path": path,
+                "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
+            },
+            {
+                "id": "wavepeek.stream-record",
+                "version": "2.1",
+                "path": "schema/stream.json",
+                "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
+            },
+            {
+                "id": "wavepeek.input",
+                "version": "2.1",
+                "path": "schema/input.json",
+                "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+            },
+        ],
+    }
+
+
 class CheckSchemaContractTests(unittest.TestCase):
     def test_validate_catalog_requires_exact_current_families(self) -> None:
-        catalog = {
-            "families": [
-                {
-                    "id": "wavepeek.output",
-                    "version": "2.0",
-                    "path": "schema/output.json",
-                    "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
-                },
-                {
-                    "id": "wavepeek.stream-record",
-                    "version": "2.0",
-                    "path": "schema/stream.json",
-                    "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
-                },
-            ],
-        }
+        by_family = check_schema_contract.validate_catalog(current_catalog())
 
-        by_family = check_schema_contract.validate_catalog(catalog)
-
-        self.assertEqual(set(by_family), {"wavepeek.output", "wavepeek.stream-record"})
+        self.assertEqual(
+            set(by_family),
+            {"wavepeek.output", "wavepeek.stream-record", "wavepeek.input"},
+        )
 
     def test_validate_catalog_rejects_versioned_paths(self) -> None:
-        catalog = {
-            "families": [
-                {
-                    "id": "wavepeek.output",
-                    "version": "2.0",
-                    "path": "schema/wavepeek_v2.0.json",
-                    "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
-                },
-                {
-                    "id": "wavepeek.stream-record",
-                    "version": "2.0",
-                    "path": "schema/stream.json",
-                    "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
-                },
-            ],
-        }
-
         with self.assertRaisesRegex(check_schema_contract.ContractError, "path"):
-            check_schema_contract.validate_catalog(catalog)
+            check_schema_contract.validate_catalog(current_catalog("schema/wavepeek_v2.1.json"))
 
     def test_legacy_positional_arg_reports_just_check_schema(self) -> None:
         with self.assertRaisesRegex(check_schema_contract.ContractError, "just check-schema"):

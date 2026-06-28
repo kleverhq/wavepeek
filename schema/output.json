@@ -211,6 +211,61 @@
       ],
       "type": "object"
     },
+    "extractGenericData": {
+      "items": {
+        "$ref": "#/$defs/extractGenericRow"
+      },
+      "type": "array"
+    },
+    "extractGenericRow": {
+      "additionalProperties": true,
+      "properties": {
+        "payload": {
+          "description": "Ordered payload values sampled for this row.",
+          "items": {
+            "$ref": "#/$defs/extractPayloadValue"
+          },
+          "type": "array"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the predicate and sample payload values."
+        },
+        "source": {
+          "description": "Source name supplied by CLI flags or source JSON.",
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected event timestamp emitted by extract generic."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "source",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractPayloadValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the sampled payload signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Sampled payload value formatted as a Verilog-style literal string."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
     "infoData": {
       "additionalProperties": true,
       "properties": {
@@ -479,7 +534,7 @@
       "type": "object"
     }
   },
-  "$id": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+  "$id": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
   "allOf": [
@@ -601,6 +656,25 @@
       "if": {
         "properties": {
           "command": {
+            "const": "extract generic"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/extractGenericData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
             "const": "docs topics"
           }
         },
@@ -639,7 +713,7 @@
   "description": "Canonical schema for wavepeek --json command outputs.",
   "properties": {
     "$schema": {
-      "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json",
+      "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
       "type": "string"
     },
     "command": {
@@ -650,6 +724,7 @@
         "value",
         "change",
         "property",
+        "extract generic",
         "docs topics",
         "docs search"
       ],
@@ -674,6 +749,9 @@
         },
         {
           "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/extractGenericData"
         },
         {
           "$ref": "#/$defs/docsTopicsData"

@@ -180,6 +180,8 @@ def check_deploy_args(args: argparse.Namespace, env: Mapping[str, str]) -> list[
             deploy_args.extend(["--schema-artifact", artifact])
         elif artifact.startswith("schema-stream-v"):
             deploy_args.extend(["--stream-schema-artifact", artifact])
+        elif artifact.startswith("schema-input-v"):
+            deploy_args.extend(["--input-schema-artifact", artifact])
     if args.repository:
         deploy_args.extend(["--repository", args.repository])
     return deploy_args

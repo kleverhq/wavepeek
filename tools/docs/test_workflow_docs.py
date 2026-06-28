@@ -176,7 +176,11 @@ class WorkflowDocsTests(unittest.TestCase):
             metadata_path.write_text(
                 json.dumps({
                     "promote_latest": False,
-                    "schema_artifacts": ["schema-output-v2.0.json", "schema-stream-v2.0.json"],
+                    "schema_artifacts": [
+                        "schema-output-v2.1.json",
+                        "schema-stream-v2.1.json",
+                        "schema-input-v2.1.json",
+                    ],
                 }),
                 encoding="utf-8",
             )
@@ -201,9 +205,11 @@ class WorkflowDocsTests(unittest.TestCase):
                         "https://kleverhq.github.io/wavepeek",
                         "--no-expect-latest",
                         "--schema-artifact",
-                        "schema-output-v2.0.json",
+                        "schema-output-v2.1.json",
                         "--stream-schema-artifact",
-                        "schema-stream-v2.0.json",
+                        "schema-stream-v2.1.json",
+                        "--input-schema-artifact",
+                        "schema-input-v2.1.json",
                         "--repository",
                         "kleverhq/wavepeek",
                     ],

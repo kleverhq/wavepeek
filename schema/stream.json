@@ -4,7 +4,7 @@
       "additionalProperties": true,
       "properties": {
         "$schema": {
-          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
+          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
           "type": "string"
         },
         "command": {
@@ -214,6 +214,58 @@
       ],
       "type": "object"
     },
+    "extractGenericItemRecord": {
+      "$ref": "#/$defs/itemRecordForExtractGenericRow"
+    },
+    "extractGenericRow": {
+      "additionalProperties": true,
+      "properties": {
+        "payload": {
+          "description": "Ordered payload values sampled for this row.",
+          "items": {
+            "$ref": "#/$defs/extractPayloadValue"
+          },
+          "type": "array"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the predicate and sample payload values."
+        },
+        "source": {
+          "description": "Source name supplied by CLI flags or source JSON.",
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected event timestamp emitted by extract generic."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "source",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractPayloadValue": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical path of the sampled payload signal."
+        },
+        "value": {
+          "$ref": "#/$defs/sampledValue",
+          "description": "Sampled payload value formatted as a Verilog-style literal string."
+        }
+      },
+      "required": [
+        "path",
+        "value"
+      ],
+      "type": "object"
+    },
     "infoData": {
       "additionalProperties": true,
       "properties": {
@@ -259,6 +311,9 @@
         },
         {
           "$ref": "#/$defs/propertyItemRecord"
+        },
+        {
+          "$ref": "#/$defs/extractGenericItemRecord"
         }
       ]
     },
@@ -270,6 +325,30 @@
         },
         "item": {
           "$ref": "#/$defs/changeSnapshot"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForExtractGenericRow": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "extract generic"
+        },
+        "item": {
+          "$ref": "#/$defs/extractGenericRow"
         },
         "seq": {
           "$ref": "#/$defs/sequence"
@@ -589,7 +668,8 @@
         "signal",
         "value",
         "change",
-        "property"
+        "property",
+        "extract generic"
       ],
       "type": "string"
     },
@@ -644,7 +724,7 @@
       "type": "object"
     }
   },
-  "$id": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json",
+  "$id": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Canonical schema for one wavepeek --jsonl stream record. Validate each JSONL line independently; stream order and summary counts are stateful invariants.",
   "oneOf": [

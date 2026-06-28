@@ -105,6 +105,8 @@ class PublishDocsTests(unittest.TestCase):
         self.assertTrue(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v1.json"))
         self.assertTrue(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v2.0.json"))
         self.assertTrue(publish_docs.valid_stream_schema_artifact_name("schema-stream-v2.0.json"))
+        self.assertTrue(publish_docs.valid_input_schema_artifact_name("schema-input-v2.1.json"))
+        self.assertFalse(publish_docs.valid_input_schema_artifact_name("wavepeek-input-v2.1.json"))
         self.assertFalse(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v1.1.json"))
         self.assertFalse(publish_docs.valid_stream_schema_artifact_name("wavepeek-stream-v2.json"))
         self.assertFalse(publish_docs.valid_stream_schema_artifact_name("schema-stream-v2.json"))
@@ -136,30 +138,34 @@ class PublishDocsTests(unittest.TestCase):
         (source / "schema").mkdir(parents=True)
         (source / "schema" / "wavepeek_v1.json").write_text("v1", encoding="utf-8")
         (source / "schema" / "wavepeek-stream-v1.json").write_text("stream-v1", encoding="utf-8")
-        (source / "schema" / "output.json").write_text("v2", encoding="utf-8")
-        (source / "schema" / "stream.json").write_text("stream-v2", encoding="utf-8")
+        (source / "schema" / "output.json").write_text("v2.1", encoding="utf-8")
+        (source / "schema" / "stream.json").write_text("stream-v2.1", encoding="utf-8")
+        (source / "schema" / "input.json").write_text("input-v2.1", encoding="utf-8")
         (source / "schema" / "catalog.json").write_text(
             json.dumps({
                 "families": [
-                    {"id": "wavepeek.output", "version": "2.0", "path": "schema/output.json", "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"},
-                    {"id": "wavepeek.stream-record", "version": "2.0", "path": "schema/stream.json", "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"},
+                    {"id": "wavepeek.output", "version": "2.1", "path": "schema/output.json", "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json"},
+                    {"id": "wavepeek.stream-record", "version": "2.1", "path": "schema/stream.json", "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"},
+                    {"id": "wavepeek.input", "version": "2.1", "path": "schema/input.json", "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"},
                 ],
             }),
             encoding="utf-8",
         )
 
-        copied = publish_docs.collect_root_artifacts(source, self.paths, "2.10.0")
+        copied = publish_docs.collect_root_artifacts(source, self.paths, "2.1.0")
 
         self.assertEqual(
             sorted(path.name for path in copied),
             [
-                "schema-output-v2.0.json",
-                "schema-stream-v2.0.json",
+                "schema-input-v2.1.json",
+                "schema-output-v2.1.json",
+                "schema-stream-v2.1.json",
                 "wavepeek-stream-v1.json",
                 "wavepeek_v1.json",
             ],
         )
-        self.assertEqual((self.paths.root_artifacts / "schema-output-v2.0.json").read_text(), "v2")
+        self.assertEqual((self.paths.root_artifacts / "schema-output-v2.1.json").read_text(), "v2.1")
+        self.assertEqual((self.paths.root_artifacts / "schema-input-v2.1.json").read_text(), "input-v2.1")
 
     def test_collect_root_artifacts_allows_legacy_v2_without_catalog(self) -> None:
         source = self.root / "source-v2-legacy"

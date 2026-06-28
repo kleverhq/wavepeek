@@ -80,6 +80,31 @@ fn assert_info_disabled_for_path(path: &Path) {
 }
 
 #[test]
+fn extract_generic_reports_feature_required_for_invalid_fsdb_suffix() {
+    let file = write_temp_file(b"not-a-waveform", ".fsdb");
+    let path = file.path().to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            path.as_str(),
+            "--on",
+            "posedge top.clk",
+            "--when",
+            "1",
+            "--payload",
+            "top.data",
+        ])
+        .assert()
+        .failure()
+        .code(2)
+        .stdout(predicate::str::is_empty())
+        .stderr(predicate::eq(FSDB_DISABLED_STDERR));
+}
+
+#[test]
 fn waveform_commands_report_feature_required_for_invalid_fsdb_suffix() {
     for case in DISABLED_FSDB_COMMAND_CASES {
         let file = write_temp_file(b"not-a-waveform", ".fsdb");

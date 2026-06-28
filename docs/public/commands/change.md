@@ -155,7 +155,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --signals cpu_state,mem_valid,mem_ready,trap \
     --from 1010000ps --to 1040000ps \
     --on '*' --sample-mode native --json
-{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.0.json","command":"change","data":[{"time":"1020000ps","sample_time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","sample_time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","sample_time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.1.json","command":"change","data":[{"time":"1020000ps","sample_time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1030000ps","sample_time":"1030000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"},{"path":"testbench.uut.mem_ready","value":"1'h1"},{"path":"testbench.uut.trap","value":"1'h0"}]},{"time":"1040000ps","sample_time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"},{"path":"testbench.uut.mem_ready","value":"1'h0"},{"path":"testbench.uut.trap","value":"1'h0"}]}],"diagnostics":[]}
 ```
 
 ## Use JSONL for large ranges and incremental consumers
@@ -168,7 +168,7 @@ $ wavepeek change --waves /opt/rtl-artifacts/picorv32_test_ez_vcd.fst \
     --signals cpu_state,mem_valid \
     --from 1010000ps --to 1040000ps \
     --on '*' --sample-mode native --jsonl
-{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"}
+{"type":"begin","seq":0,"command":"change","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"}
 {"type":"item","seq":1,"command":"change","item":{"time":"1020000ps","sample_time":"1020000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h1"}]}}
 {"type":"item","seq":2,"command":"change","item":{"time":"1040000ps","sample_time":"1040000ps","signals":[{"path":"testbench.uut.cpu_state","value":"8'h40"},{"path":"testbench.uut.mem_valid","value":"1'h0"}]}}
 {"type":"end","seq":3,"command":"change","summary":{"status":"ok","items":2,"diagnostics":0,"truncated":false}}

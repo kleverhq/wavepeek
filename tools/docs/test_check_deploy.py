@@ -328,6 +328,25 @@ class CheckDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "reference"):
             check_deploy.validate_schema_json(schema, "0.5.0")
 
+    def test_validate_input_schema_json_checks_contract_shape(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSON input documents",
+            "properties": {
+                "$schema": {
+                    "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
+                },
+                "kind": {"const": "extract.generic.sources"},
+            },
+        }
+
+        check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.1.json")
+
+        broken = json.loads(json.dumps(schema))
+        broken["properties"]["kind"]["const"] = "wrong"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "kind"):
+            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.1.json")
+
     def test_load_pages_site_retries_and_uses_timeout(self) -> None:
         calls = 0
         original_run = check_deploy.subprocess.run

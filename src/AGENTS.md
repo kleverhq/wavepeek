@@ -5,7 +5,7 @@
 - Rust style and CLI constraints: `../docs/dev/style.md`
 - Internal architecture: `../docs/dev/architecture.md`
 - Public command and output contracts: `../docs/public/reference/command-model.md`, `../docs/public/reference/machine-output.md`
-- Expression semantics for `change` and `property`: `../docs/public/reference/expression-language.md`
+- Expression semantics for `change`, `property`, and `extract generic`: `../docs/public/reference/expression-language.md`
 
 ## Embedded Docs Runtime
 

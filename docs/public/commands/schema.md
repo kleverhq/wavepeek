@@ -1,7 +1,7 @@
 ---
 id: commands/schema
 title: Schema command
-description: Fetch the exact JSON contract this build guarantees for `--json` output.
+description: Fetch exact JSON contracts for output, stream records, and structured input documents.
 section: commands
 see_also:
   - commands/overview
@@ -35,7 +35,8 @@ Use `schema` when you need to answer practical questions such as:
 - which commands have stable `--json` output,
 - which `command` values are valid,
 - which `$defs` describe each command's `data`,
-- which schema artifact should be saved or pinned in CI.
+- which schema artifact should be saved or pinned in CI,
+- which structured JSON input documents are accepted by commands such as `extract generic --source`.
 
 `schema` does not need a waveform file and does not inspect one.
 
@@ -52,6 +53,7 @@ $ wavepeek schema | jq '.properties.command.enum'
   "value",
   "change",
   "property",
+  "extract generic",
   "docs topics",
   "docs search"
 ]
@@ -72,6 +74,7 @@ $ wavepeek schema | jq '.properties.data.anyOf | map(.["$ref"])'
   "#/$defs/valueData",
   "#/$defs/changeData",
   "#/$defs/propertyData",
+  "#/$defs/extractGenericData",
   "#/$defs/docsTopicsData",
   "#/$defs/docsSearchData"
 ]
@@ -89,7 +92,7 @@ $ jq -r '.title' wavepeek-schema.json
 wavepeek JSON output envelope
 ```
 
-This keeps the schema matched to the binary's embedded contract snapshots. A current `2.0.x` build prints the same bytes as `schema/output.json`. The v2 schema allows additive object fields and requires the exact `$schema` URL published for the current schema family version.
+This keeps the schema matched to the binary's embedded contract snapshots. A current `2.1.x` build prints the same bytes as `schema/output.json`. The v2 schema allows additive object fields and requires the exact `$schema` URL published for the current schema family version.
 
 ## Fetch the JSONL stream record schema
 
@@ -102,4 +105,17 @@ $ wavepeek schema --stream | jq -r '.title'
 wavepeek JSONL stream record
 ```
 
-A current `2.0.x` build prints the same bytes as `schema/stream.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.
+A current `2.1.x` build prints the same bytes as `schema/stream.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.
+
+## Fetch the JSON input document schema
+
+Some commands accept structured JSON input. `extract generic --source` uses the `extract.generic.sources` input document kind.
+
+Use `--input` to print the input schema:
+
+```text
+$ wavepeek schema --input | jq -r '.title'
+wavepeek JSON input documents
+```
+
+A current `2.1.x` build prints the same bytes as `schema/input.json`. Runtime validation still enforces semantic rules that JSON Schema cannot express directly, such as unique source names and unique payload entries within each source.

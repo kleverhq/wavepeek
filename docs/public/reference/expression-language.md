@@ -1,17 +1,18 @@
 ---
 id: reference/expression-language
 title: Expression Language Contract
-description: Syntax and semantics for event and value expressions used by change and property.
+description: Syntax and semantics for event and value expressions used by change, property, and extract generic.
 section: reference
 see_also:
   - commands/change
   - commands/property
+  - commands/extract-generic
   - reference/command-model
 ---
 # Expression Language Contract
 
 This document defines the shipped `wavepeek` expression language used by
-`property --on` / `property --eval` and by `change --on`.
+`property --on` / `property --eval`, `change --on`, and `extract generic --on` / `extract generic --when`.
 
 It is the public reference for the expression syntax and semantics available in
 this build.
@@ -40,9 +41,8 @@ Event expressions support these forms:
 
 `*` denotes any change in the command-defined tracked set. `change` binds that
 set to the resolved `--signals`; `property` binds it to the signals referenced
-by `--eval`. `change` and `property` require an explicit `--on`; use
-`--on '*' --sample-mode native` when the intended trigger is the tracked-set
-wildcard.
+by `--eval`. `extract generic` does not support wildcard triggers. `change`,
+`property`, and `extract generic` require an explicit `--on`; use `--on '*' --sample-mode native` for `change` or `property` when the intended trigger is the tracked-set wildcard.
 
 ### 1.2 Names and Resolution
 
@@ -84,14 +84,7 @@ union. For example, `negedge clk iff rstn or ready` means
 Parentheses are part of that `logical_expr` syntax; Event Expressions do not
 define an independent parenthesized grouping form.
 
-For pre-edge sampling, the default for `change` and `property`, the `--on`
-event expression still uses dump-native event detection at the trigger
-timestamp. This includes edge classification and any `iff` guard. Only the
-values printed by `change --signals` or evaluated by `property --eval` move to
-the pre-edge sample point recorded as `sample_time` in JSON and JSONL rows. The
-pre-edge mode is accepted only for explicit edge-only `--on` expressions:
-`posedge`, `negedge`, or `edge`, optionally with `iff`; wildcard, plain-signal,
-and mixed triggers require `--sample-mode native`.
+For pre-edge sampling, the default for `change` and `property` and the only mode for `extract generic`, the `--on` event expression still uses dump-native event detection at the trigger timestamp. This includes edge classification and any `iff` guard. Only the values printed by `change --signals`, evaluated by `property --eval`, or evaluated/sampled by `extract generic --when` and `--payload` move to the pre-edge sample point recorded as `sample_time` in JSON and JSONL rows. The pre-edge mode is accepted only for explicit edge-only `--on` expressions: `posedge`, `negedge`, or `edge`, optionally with `iff`. For `change` and `property`, wildcard, plain-signal, and mixed triggers require `--sample-mode native`. For `extract generic`, wildcard, plain-signal, and mixed triggers are rejected because the command always samples pre-edge.
 
 ### 1.5 Precedence and Grouping
 

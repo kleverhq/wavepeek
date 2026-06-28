@@ -1,5 +1,6 @@
 pub mod change;
 pub mod docs;
+pub mod extract;
 pub mod info;
 pub mod limits;
 pub mod property;
@@ -37,7 +38,7 @@ General conventions:
 - Parsed times are normalized to dump `time_unit`; time-window flags (`--from`, `--to`) use inclusive boundaries.
 - Process-level failures follow `fatal: <category>: <message>`."#,
     after_help = "Next steps:\n  wavepeek --help\n  wavepeek help <command-path...>\n  wavepeek docs\n  wavepeek skill",
-    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at explicit time point(s)\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
+    help_template = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show waveform metadata\n  scope     Explore hierarchy scopes\n  signal    Explore signals within scope\n  value     Get signal values at explicit time point(s)\n  change    List signal changes over a time range\n  property  Evaluate properties over a time range\n  extract   Extract event rows from waveform signals\n\nHelper commands:\n  schema    Print canonical JSON schema contract\n  docs      Browse embedded documentation\n  skill     Print packaged agent skill Markdown\n  help      Show help for the given subcommand(s)\n\nOptions:\n{options}{after-help}"
 )]
 pub struct Cli {
     /// Print semver version
@@ -160,6 +161,14 @@ Behavior:
 Use this command to check event-driven property matches and transitions over bounded time windows."#
     )]
     Property(property::PropertyArgs),
+    #[command(
+        subcommand,
+        about = "Extract row-oriented waveform data.",
+        long_about = r#"Extract row-oriented waveform data.
+
+Use nested extractors for protocol-neutral or protocol-specific event rows. The generic extractor selects edge events, evaluates a predicate at the pre-edge sample point, and emits ordered payload values."#
+    )]
+    Extract(extract::ExtractCommand),
 }
 
 #[derive(Debug, Subcommand)]
@@ -170,9 +179,11 @@ enum HelperCommand {
 
 Behavior:
 - Prints exactly one deterministic schema document to stdout.
-- This is the source of truth for all `--json` command outputs.
+- Default output is the JSON envelope schema for `--json` command outputs.
+- `--stream` prints the JSONL record schema for `--jsonl` output.
+- `--input` prints the JSON input document schema for commands that accept structured input.
 
-Use this command to fetch the machine-readable contract consumed by JSON-mode clients."#
+Use this command to fetch machine-readable contracts consumed by JSON-mode clients."#
     )]
     Schema(schema::SchemaArgs),
     Docs(docs::DocsArgs),
@@ -290,6 +301,11 @@ fn build_cli_command() -> clap::Command {
         if let Some(subcommand) = command.find_subcommand_mut(command_name) {
             *subcommand = with_other_help_options(subcommand.clone());
         }
+    }
+    if let Some(extract) = command.find_subcommand_mut("extract")
+        && let Some(generic) = extract.find_subcommand_mut("generic")
+    {
+        *generic = with_other_help_options(generic.clone());
     }
     command
 }
@@ -441,6 +457,9 @@ fn into_engine_command(command: Command) -> EngineCommand {
             WaveformCommand::Value(args) => EngineCommand::Value(args),
             WaveformCommand::Change(args) => EngineCommand::Change(args),
             WaveformCommand::Property(args) => EngineCommand::Property(args),
+            WaveformCommand::Extract(command) => match command {
+                extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(args),
+            },
         },
         Command::Helper(command) => match command {
             HelperCommand::Schema(args) => EngineCommand::Schema(args),
@@ -694,6 +713,50 @@ mod tests {
                 assert_eq!(args.max, LimitArg::Unlimited);
             }
             other => panic!("expected property command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn extract_generic_dispatch_keeps_single_source_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "extract",
+            "generic",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--scope",
+            "top",
+            "--name",
+            "rx.beat",
+            "--on",
+            "posedge clk",
+            "--when",
+            "valid && ready",
+            "--payload",
+            "data,last",
+            "--max",
+            "unlimited",
+            "--abs",
+            "--jsonl",
+        ]);
+
+        let command = into_engine_command(cli.command.expect("parsed command"));
+        match command {
+            EngineCommand::ExtractGeneric(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.scope.as_deref(), Some("top"));
+                assert_eq!(args.name.as_deref(), Some("rx.beat"));
+                assert_eq!(args.on.as_deref(), Some("posedge clk"));
+                assert_eq!(args.when.as_deref(), Some("valid && ready"));
+                assert_eq!(
+                    args.payload,
+                    Some(vec!["data".to_string(), "last".to_string()])
+                );
+                assert_eq!(args.max, LimitArg::Unlimited);
+                assert!(args.abs);
+                assert!(args.jsonl);
+            }
+            other => panic!("expected extract generic command, got {other:?}"),
         }
     }
 

@@ -20,8 +20,9 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-28T12:12Z) Committed the initial ExecPlan as `1a83a76 docs(tracker): plan generic extraction`.
 - [x] (2026-06-28T12:22Z) Ran focused read-only review lanes for engine architecture, schema/tooling, and docs/tests, then recorded required plan changes.
 - [x] (2026-06-28T12:28Z) Committed the reviewed ExecPlan revision.
-- [ ] Implement CLI, input parsing, engine execution, human output, JSON output, JSONL output, schemas, docs, tests, and tooling updates.
-- [ ] Run repository validation, including schema regeneration/checking and the local pre-handoff gate.
+- [x] (2026-06-28T13:28Z) Implemented CLI, input parsing, engine execution, human output, JSON output, JSONL output, schema contracts, schema tooling, docs publication tooling, public docs, packaged skill guidance, and targeted tests.
+- [x] (2026-06-28T13:30Z) Regenerated schemas and ran targeted validation: `just check-schema`, `cargo test --test docs_cli`, `cargo test --test skill_cli`, `cargo test --test schema_cli`, `cargo test --test cli_contract`, `cargo test --test extract_generic_cli`, `cargo test --test jsonl_cli`, `cargo test --test extract_generic_vcd_fst_parity`, `cargo test --test fsdb_disabled_cli`, `python3 -m unittest discover -s tools/docs -p 'test_*.py'`, and `python3 -m unittest discover -s tools/schema -p 'test_*.py'`.
+- [ ] Run repository validation, including the local pre-handoff gate.
 - [ ] Commit implementation slices and fixes after review.
 - [ ] Run implementation review, fix findings, run the final control pass, and open a draft PR.
 
@@ -37,6 +38,10 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
   Evidence: The repository has tag `v2.0.0` in history, and `schema/output.json` plus `schema/stream.json` currently publish v2.0 URLs. Adding `extract generic` changes both schema families.
 - Observation: The plan review found that `--from` and `--to` must bound selected event times, not pre-edge sample times.
   Evidence: The proposal says a row is skipped when `time - 1` is outside the dump, not when it is before the user-specified `--from`. Existing pre-edge commands keep `time` and `sample_time` as distinct concepts.
+- Observation: Manual `$ref` schemas in schemars do not cause referenced definitions to be generated automatically.
+  Evidence: `tools/schema-gen --validate tmp/schema-try` initially failed with `Pointer '/$defs/extractGenericSource' does not exist`; explicitly asking `SchemaGenerator` for `ExtractGenericSource` fixed the generated input schema.
+- Observation: Docs publication helpers had separate hard-coded paths for catalog copying, deploy validation, workflow metadata forwarding, allowed gh-pages paths, and release tests.
+  Evidence: `tools/docs` tests failed until `schema-input-v2.1.json` was added to `publish_docs.py`, `check_deploy.py`, `workflow_docs.py`, and their tests.
 
 ## Decision Log
 
@@ -55,7 +60,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 
 ## Outcomes & Retrospective
 
-Plan review completed with substantive corrections. The implementation plan now requires a schema family minor bump to v2.1, event-time-only range bounds for pre-edge rows, pre-output expression value support validation, scope-relative payload-name enforcement, input schema runtime embedding, docs workflow helper updates, schema command docs, expression docs, packaged skill tests, pre-edge corner tests, semantic input-schema tests, and waveform format coverage.
+Plan review completed with substantive corrections. The implementation now provides `wavepeek extract generic`, input schema family support, v2.1 output and stream schema families, docs/tooling updates, and targeted regression coverage. Full repository gate, implementation review, review fixes, and draft PR creation remain.
 
 ## Context and Orientation
 

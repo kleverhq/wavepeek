@@ -4,23 +4,30 @@ use serde_json::{Map, Value, json};
 use super::common::{
     CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
 };
+use super::input::{ExtractGenericSource, ExtractGenericSourcesInput};
 use super::output::{
-    ChangeSignalValue, ChangeSnapshot, DocsSearchData, DocsSearchMatch, DocsTopicsData, InfoData,
-    PropertyRow, SampledSignalValue, ScopeEntry, SignalEntry, TopicSummary, ValueSnapshot,
+    ChangeSignalValue, ChangeSnapshot, DocsSearchData, DocsSearchMatch, DocsTopicsData,
+    ExtractGenericRow, ExtractPayloadValue, InfoData, PropertyRow, SampledSignalValue, ScopeEntry,
+    SignalEntry, TopicSummary, ValueSnapshot,
 };
 use super::stream::{BeginRecord, DiagnosticRecord, EndRecord};
 
 pub const OUTPUT_SCHEMA_ID: &str = "wavepeek.output";
 pub const STREAM_SCHEMA_ID: &str = "wavepeek.stream-record";
-pub const OUTPUT_SCHEMA_VERSION_STR: &str = "2.0";
-pub const STREAM_SCHEMA_VERSION_STR: &str = "2.0";
+pub const INPUT_SCHEMA_ID: &str = "wavepeek.input";
+pub const OUTPUT_SCHEMA_VERSION_STR: &str = "2.1";
+pub const STREAM_SCHEMA_VERSION_STR: &str = "2.1";
+pub const INPUT_SCHEMA_VERSION_STR: &str = "2.1";
 pub const OUTPUT_SCHEMA_ARTIFACT_PATH: &str = "schema/output.json";
 pub const STREAM_SCHEMA_ARTIFACT_PATH: &str = "schema/stream.json";
+pub const INPUT_SCHEMA_ARTIFACT_PATH: &str = "schema/input.json";
 pub const SCHEMA_CATALOG_PATH: &str = "schema/catalog.json";
-pub const OUTPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-output-v2.0.json";
-pub const STREAM_SCHEMA_ARTIFACT_NAME: &str = "schema-stream-v2.0.json";
-pub const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json";
-pub const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json";
+pub const OUTPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-output-v2.1.json";
+pub const STREAM_SCHEMA_ARTIFACT_NAME: &str = "schema-stream-v2.1.json";
+pub const INPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-input-v2.1.json";
+pub const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json";
+pub const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json";
+pub const INPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json";
 
 const JSON_SCHEMA_DRAFT: &str = "https://json-schema.org/draft/2020-12/schema";
 
@@ -30,6 +37,10 @@ pub fn output_schema_json() -> String {
 
 pub fn stream_schema_json() -> String {
     pretty_json(&stream_schema_value())
+}
+
+pub fn input_schema_json() -> String {
+    pretty_json(&input_schema_value())
 }
 
 pub fn catalog_json() -> String {
@@ -65,6 +76,7 @@ fn output_schema_value() -> Value {
                     ref_schema("valueData"),
                     ref_schema("changeData"),
                     ref_schema("propertyData"),
+                    ref_schema("extractGenericData"),
                     ref_schema("docsTopicsData"),
                     ref_schema("docsSearchData"),
                 ],
@@ -78,6 +90,7 @@ fn output_schema_value() -> Value {
             command_data_branch("value", "valueData"),
             command_data_branch("change", "changeData"),
             command_data_branch("property", "propertyData"),
+            command_data_branch("extract generic", "extractGenericData"),
             command_data_branch("docs topics", "docsTopicsData"),
             command_data_branch("docs search", "docsSearchData"),
         ],
@@ -101,6 +114,26 @@ fn stream_schema_value() -> Value {
     })
 }
 
+fn input_schema_value() -> Value {
+    let mut defs = generated_input_payload_defs();
+    let root = defs
+        .remove("extractGenericSourcesInput")
+        .expect("input root definition should be generated");
+    let mut schema = match root {
+        Value::Object(object) => object,
+        _ => Map::new(),
+    };
+    schema.insert("$schema".to_string(), json!(JSON_SCHEMA_DRAFT));
+    schema.insert("$id".to_string(), json!(INPUT_SCHEMA_URL));
+    schema.insert("title".to_string(), json!("wavepeek JSON input documents"));
+    schema.insert(
+        "description".to_string(),
+        json!("Canonical schema for wavepeek JSON input documents."),
+    );
+    schema.insert("$defs".to_string(), Value::Object(defs));
+    Value::Object(schema)
+}
+
 fn catalog_value() -> Value {
     json!({
         "families": [
@@ -115,6 +148,12 @@ fn catalog_value() -> Value {
                 "version": STREAM_SCHEMA_VERSION_STR,
                 "path": STREAM_SCHEMA_ARTIFACT_PATH,
                 "url": STREAM_SCHEMA_URL,
+            },
+            {
+                "id": INPUT_SCHEMA_ID,
+                "version": INPUT_SCHEMA_VERSION_STR,
+                "path": INPUT_SCHEMA_ARTIFACT_PATH,
+                "url": INPUT_SCHEMA_URL,
             },
         ],
     })
@@ -146,6 +185,10 @@ fn output_defs() -> Value {
         "propertyData".to_string(),
         json!({"type": "array", "items": ref_schema("propertyRow")}),
     );
+    object.insert(
+        "extractGenericData".to_string(),
+        json!({"type": "array", "items": ref_schema("extractGenericRow")}),
+    );
     Value::Object(object)
 }
 
@@ -170,6 +213,7 @@ fn stream_defs() -> Value {
                 ref_schema("valueItemRecord"),
                 ref_schema("changeItemRecord"),
                 ref_schema("propertyItemRecord"),
+                ref_schema("extractGenericItemRecord"),
             ]
         }),
     );
@@ -180,6 +224,7 @@ fn stream_defs() -> Value {
         ("valueItemRecord", "itemRecordForValueSnapshot"),
         ("changeItemRecord", "itemRecordForChangeSnapshot"),
         ("propertyItemRecord", "itemRecordForPropertyRow"),
+        ("extractGenericItemRecord", "itemRecordForExtractGenericRow"),
     ] {
         object.insert(alias.to_string(), ref_schema(wrapper));
     }
@@ -190,6 +235,11 @@ fn stream_defs() -> Value {
         ("itemRecordForValueSnapshot", "value", "valueSnapshot"),
         ("itemRecordForChangeSnapshot", "change", "changeSnapshot"),
         ("itemRecordForPropertyRow", "property", "propertyRow"),
+        (
+            "itemRecordForExtractGenericRow",
+            "extract generic",
+            "extractGenericRow",
+        ),
     ] {
         object.insert(name.to_string(), item_record_for(command, item_ref));
     }
@@ -218,6 +268,15 @@ fn generated_waveform_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ValueSnapshot<'static>>();
     generator.subschema_for::<ChangeSnapshot<'static>>();
     generator.subschema_for::<PropertyRow<'static>>();
+    generator.subschema_for::<ExtractPayloadValue<'static>>();
+    generator.subschema_for::<ExtractGenericRow<'static>>();
+    generator.take_definitions(true)
+}
+
+fn generated_input_payload_defs() -> Map<String, Value> {
+    let mut generator = SchemaGenerator::default();
+    generator.subschema_for::<ExtractGenericSourcesInput<'static>>();
+    generator.subschema_for::<ExtractGenericSource<'static>>();
     generator.take_definitions(true)
 }
 
@@ -271,20 +330,29 @@ fn output_commands() -> Vec<&'static str> {
         "value",
         "change",
         "property",
+        "extract generic",
         "docs topics",
         "docs search",
     ]
 }
 
 fn stream_commands() -> Vec<&'static str> {
-    vec!["info", "scope", "signal", "value", "change", "property"]
+    vec![
+        "info",
+        "scope",
+        "signal",
+        "value",
+        "change",
+        "property",
+        "extract generic",
+    ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        OUTPUT_SCHEMA_ARTIFACT_PATH, STREAM_SCHEMA_ARTIFACT_PATH, catalog_value,
-        output_schema_value, stream_schema_value,
+        INPUT_SCHEMA_ARTIFACT_PATH, OUTPUT_SCHEMA_ARTIFACT_PATH, STREAM_SCHEMA_ARTIFACT_PATH,
+        catalog_value, input_schema_value, output_schema_value, stream_schema_value,
     };
 
     #[test]
@@ -295,6 +363,7 @@ mod tests {
             .expect("families should be array");
         assert_eq!(families[0]["path"], OUTPUT_SCHEMA_ARTIFACT_PATH);
         assert_eq!(families[1]["path"], STREAM_SCHEMA_ARTIFACT_PATH);
+        assert_eq!(families[2]["path"], INPUT_SCHEMA_ARTIFACT_PATH);
     }
 
     #[test]
@@ -302,12 +371,17 @@ mod tests {
         let output = output_schema_value();
         assert_eq!(
             output["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"
+            "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json"
         );
         let stream = stream_schema_value();
         assert_eq!(
             stream["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"
+            "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+        );
+        let input = input_schema_value();
+        assert_eq!(
+            input["properties"]["$schema"]["const"],
+            "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
         );
     }
 }

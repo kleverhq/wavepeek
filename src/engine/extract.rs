@@ -11,7 +11,8 @@ use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     SharedWaveform, bind_waveform_event_expr, bind_waveform_logical_expr,
     candidate_sources_for_handles, eval_bound_logical_truth, event_candidate_handles,
-    event_expr_is_edge_only, event_expr_matches, open_shared_waveform, referenced_signal_handles,
+    event_expr_is_edge_only, event_expr_matches, event_iff_handles, open_shared_waveform,
+    referenced_signal_handles,
 };
 use crate::engine::time::{
     DumpTimeContext, TimeValidationError, format_raw_timestamp, parse_dump_time_context,
@@ -471,6 +472,11 @@ fn bind_extract_sources(
         if !event_expr_is_edge_only(&bound_event) {
             return Err(WavepeekError::Args(EDGE_ONLY_ON_MESSAGE.to_string()));
         }
+        let iff_signal_handles = event_iff_handles(&bound_event);
+        let iff_sources = candidate_sources_for_handles(&host, iff_signal_handles.as_slice())?;
+        waveform
+            .borrow()
+            .validate_expr_values_supported(iff_sources.as_slice())?;
         let bound_when = bind_waveform_logical_expr(&host, scope, source.when.as_str())?;
         let eval_signal_handles = referenced_signal_handles(&bound_when);
         let eval_sources = candidate_sources_for_handles(&host, eval_signal_handles.as_slice())?;
@@ -514,6 +520,12 @@ fn resolve_payload_signals(
         canonical_paths.push(path);
     }
 
+    let expr_resolved = waveform
+        .borrow()
+        .resolve_expr_signals(canonical_paths.as_slice())?;
+    waveform
+        .borrow()
+        .validate_expr_values_supported(expr_resolved.as_slice())?;
     let resolved = waveform
         .borrow()
         .resolve_signals(canonical_paths.as_slice())?;

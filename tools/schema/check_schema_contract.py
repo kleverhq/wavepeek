@@ -309,16 +309,11 @@ def validate_no_obsolete_current_alias(schema_dir: Path) -> None:
 def validate_artifact_names(schema_dir: Path) -> None:
     historical_output = re.compile(r"^wavepeek_v(?:\d+|\d+\.\d+)\.json$")
     historical_stream = re.compile(r"^wavepeek-stream-v(?:\d+|\d+\.\d+)\.json$")
-    historical_input = re.compile(r"^wavepeek-input-v(?:\d+|\d+\.\d+)\.json$")
     allowed = {"output.json", "stream.json", "input.json", "catalog.json"}
     for path in schema_dir.glob("*.json"):
         if path.name in allowed:
             continue
-        if (
-            historical_output.match(path.name)
-            or historical_stream.match(path.name)
-            or historical_input.match(path.name)
-        ):
+        if historical_output.match(path.name) or historical_stream.match(path.name):
             continue
         raise ContractError(f"unexpected schema artifact name: {path}")
 

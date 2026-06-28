@@ -118,6 +118,21 @@ pub(crate) fn referenced_signal_handles(expr: &BoundLogicalExpr) -> Vec<SignalHa
     handles
 }
 
+pub(crate) fn event_iff_handles(expr: &BoundEventExpr) -> Vec<SignalHandle> {
+    let mut handles = Vec::new();
+    let mut seen = HashSet::new();
+    for term in &expr.terms {
+        if let Some(iff) = &term.iff {
+            for handle in referenced_signal_handles(iff) {
+                if seen.insert(handle) {
+                    handles.push(handle);
+                }
+            }
+        }
+    }
+    handles
+}
+
 pub(crate) fn event_candidate_handles(expr: &BoundEventExpr) -> Vec<SignalHandle> {
     let mut handles = Vec::new();
     let mut seen = HashSet::new();

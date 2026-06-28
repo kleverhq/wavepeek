@@ -121,6 +121,20 @@ def input_schema_artifact_name(version: str) -> str:
     return f"schema-input-v{major}.{minor}.json"
 
 
+def artifact_family_tuple(artifact: str, prefix: str) -> tuple[int, int] | None:
+    match = re.fullmatch(rf"{re.escape(prefix)}v([1-9][0-9]*)[.]([0-9]+)[.]json", artifact)
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def stream_schema_includes_extract(version: str, stream_schema_artifact: str) -> bool:
+    family = artifact_family_tuple(stream_schema_artifact, "schema-stream-")
+    if family is not None:
+        return family >= (2, 1)
+    return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
+
+
 def normalize_base_url(base_url: str) -> str:
     value = base_url.strip().rstrip("/")
     parsed = urllib.parse.urlparse(value)
@@ -348,7 +362,8 @@ def validate_stream_schema_json(
     if not isinstance(command, dict):
         fail("stream schema artifact must define streamCommand")
     expected_commands = ["info", "scope", "signal", "value", "change", "property"]
-    if version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION:
+    stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
+    if stream_schema_includes_extract(version, stream_schema_artifact):
         expected_commands.append("extract generic")
     if command.get("enum") != expected_commands:
         fail("stream schema artifact command enum mismatch")
@@ -359,7 +374,6 @@ def validate_stream_schema_json(
         schema_property = begin["properties"]["$schema"]
     except (KeyError, TypeError):
         fail("stream schema artifact beginRecord must define $schema")
-    stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
     if not isinstance(schema_property, dict) or not stream_schema_url_references_expected_artifact(
         schema_property, version, stream_schema_artifact
     ):
@@ -477,9 +491,11 @@ def check_deploy(args: argparse.Namespace) -> None:
         ("versions.json", page_url(base_url, "versions.json")),
         (artifact, page_url(base_url, artifact)),
     ]
-    if stream_schema_required(version):
+    check_stream_schema = args.stream_schema_artifact is not None or stream_schema_required(version)
+    check_input_schema = args.input_schema_artifact is not None or input_schema_required(version)
+    if check_stream_schema:
         urls.append((stream_artifact, page_url(base_url, stream_artifact)))
-    if input_schema_required(version):
+    if check_input_schema:
         urls.append((input_artifact, page_url(base_url, input_artifact)))
     if args.expect_latest:
         urls.insert(2, ("latest docs", page_url(base_url, "latest/")))
@@ -538,7 +554,7 @@ def check_deploy(args: argparse.Namespace) -> None:
     )
     print(f"ok: docs-deploy: schema artifact {artifact}")
 
-    if stream_schema_required(version):
+    if check_stream_schema:
         retry_check(
             "stream schema artifact semantic check",
             retries=args.retries,
@@ -552,7 +568,7 @@ def check_deploy(args: argparse.Namespace) -> None:
         )
         print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
 
-    if input_schema_required(version):
+    if check_input_schema:
         retry_check(
             "input schema artifact semantic check",
             retries=args.retries,

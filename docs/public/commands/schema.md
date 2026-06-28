@@ -92,7 +92,7 @@ $ jq -r '.title' wavepeek-schema.json
 wavepeek JSON output envelope
 ```
 
-This keeps the schema matched to the binary's embedded contract snapshots. A current `2.1.x` build prints the same bytes as `schema/output.json`. The v2 schema allows additive object fields and requires the exact `$schema` URL published for the current schema family version.
+This keeps the schema matched to the binary's embedded contract snapshots. This build prints the same bytes as `schema/output.json`. The v2 schema allows additive object fields and requires the exact `$schema` URL published for the current schema family version.
 
 ## Fetch the JSONL stream record schema
 
@@ -105,7 +105,7 @@ $ wavepeek schema --stream | jq -r '.title'
 wavepeek JSONL stream record
 ```
 
-A current `2.1.x` build prints the same bytes as `schema/stream.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.
+This build prints the same bytes as `schema/stream.json`. Stream consumers should validate each line against this schema and separately check ordering rules such as first `begin`, final `end`, contiguous `seq`, and matching summary counts.
 
 ## Fetch the JSON input document schema
 
@@ -118,4 +118,4 @@ $ wavepeek schema --input | jq -r '.title'
 wavepeek JSON input documents
 ```
 
-A current `2.1.x` build prints the same bytes as `schema/input.json`. Runtime validation still enforces semantic rules that JSON Schema cannot express directly, such as unique source names and unique payload entries within each source.
+This build prints the same bytes as `schema/input.json`. Runtime validation still enforces semantic rules that JSON Schema cannot express directly, such as unique source names and unique payload entries within each source.

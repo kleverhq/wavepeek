@@ -52,6 +52,71 @@ fn parse_stream(stdout: &[u8]) -> Vec<Value> {
         .collect()
 }
 
+const IFF_EVENT_TIME_VCD: &str = concat!(
+    "$date\n  today\n$end\n",
+    "$version\n  wavepeek-extract-iff-event-time\n$end\n",
+    "$timescale 1ns $end\n",
+    "$scope module top $end\n",
+    "$var wire 1 ! clk $end\n",
+    "$var wire 1 \" rst_n $end\n",
+    "$var wire 1 # valid $end\n",
+    "$var wire 8 $ data $end\n",
+    "$upscope $end\n",
+    "$enddefinitions $end\n",
+    "#0\n",
+    "0!\n",
+    "0\"\n",
+    "0#\n",
+    "b00000000 $\n",
+    "#4\n",
+    "1#\n",
+    "b10101010 $\n",
+    "#5\n",
+    "1!\n",
+    "1\"\n",
+    "#10\n",
+    "0!\n"
+);
+
+const MULTI_CLOCK_VCD: &str = concat!(
+    "$date\n  today\n$end\n",
+    "$version\n  wavepeek-extract-multi-clock\n$end\n",
+    "$timescale 1ns $end\n",
+    "$scope module top $end\n",
+    "$var wire 1 ! wclk $end\n",
+    "$var wire 1 \" rclk $end\n",
+    "$var wire 1 # wvalid $end\n",
+    "$var wire 1 $ wready $end\n",
+    "$var wire 8 % wdata $end\n",
+    "$var wire 1 & rvalid $end\n",
+    "$var wire 1 ' rready $end\n",
+    "$var wire 8 ( rdata $end\n",
+    "$upscope $end\n",
+    "$enddefinitions $end\n",
+    "#0\n",
+    "0!\n",
+    "0\"\n",
+    "0#\n",
+    "1$\n",
+    "b00000000 %\n",
+    "0&\n",
+    "1'\n",
+    "b00000000 (\n",
+    "#4\n",
+    "1#\n",
+    "b10101010 %\n",
+    "#5\n",
+    "1!\n",
+    "#6\n",
+    "1&\n",
+    "b01010101 (\n",
+    "#7\n",
+    "1\"\n",
+    "#10\n",
+    "0!\n",
+    "0\"\n"
+);
+
 const HANDSHAKE_VCD: &str = concat!(
     "$date\n  today\n$end\n",
     "$version\n  wavepeek-extract-generic-test\n$end\n",
@@ -250,6 +315,74 @@ fn extract_generic_from_bounds_apply_to_event_time_not_sample_time() {
 }
 
 #[test]
+fn extract_generic_iff_uses_event_time_while_when_uses_sample_time() {
+    let fixture = write_fixture(IFF_EVENT_TIME_VCD, "extract-generic-iff.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let iff_output = wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--from",
+            "5ns",
+            "--to",
+            "5ns",
+            "--on",
+            "posedge clk iff rst_n",
+            "--when",
+            "valid",
+            "--payload",
+            "data",
+            "--json",
+        ])
+        .output()
+        .expect("extract should execute");
+    let when_output = wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--from",
+            "5ns",
+            "--to",
+            "5ns",
+            "--on",
+            "posedge clk",
+            "--when",
+            "rst_n",
+            "--payload",
+            "data",
+            "--json",
+        ])
+        .output()
+        .expect("extract should execute");
+
+    assert!(iff_output.status.success());
+    assert_eq!(
+        parse_json(&iff_output.stdout)["data"],
+        json!([{
+            "time": "5ns",
+            "sample_time": "4ns",
+            "source": "transfer",
+            "payload": [{"path": "top.data", "value": "8'haa"}]
+        }])
+    );
+    assert!(when_output.status.success());
+    assert_eq!(parse_json(&when_output.stdout)["data"], json!([]));
+    assert_eq!(
+        parse_json(&when_output.stdout)["diagnostics"][0]["code"],
+        "WPK-W0003"
+    );
+}
+
+#[test]
 fn extract_generic_source_file_preserves_declaration_order_in_jsonl() {
     let fixture = write_fixture(HANDSHAKE_VCD, "extract-generic-source.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();
@@ -294,6 +427,59 @@ fn extract_generic_source_file_preserves_declaration_order_in_jsonl() {
     assert_eq!(records[1]["item"]["source"], "beat.a");
     assert_eq!(records[2]["item"]["source"], "beat.b");
     assert_eq!(records.last().unwrap()["summary"]["items"], 2);
+}
+
+#[test]
+fn extract_generic_source_file_collects_independent_clock_sources() {
+    let fixture = write_fixture(MULTI_CLOCK_VCD, "extract-generic-multi-clock.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+    let source = write_source(&format!(
+        r#"{{
+  "$schema": "{}",
+  "kind": "extract.generic.sources",
+  "sources": [
+    {{"name": "write", "on": "posedge wclk", "when": "wvalid && wready", "payload": ["wdata"]}},
+    {{"name": "read", "on": "posedge rclk", "when": "rvalid && rready", "payload": ["rdata"]}}
+  ]
+}}
+"#,
+        expected_input_schema_url()
+    ));
+    let source = source.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--source",
+            source.as_str(),
+            "--json",
+        ])
+        .output()
+        .expect("extract should execute");
+
+    assert!(output.status.success());
+    assert_eq!(
+        parse_json(&output.stdout)["data"],
+        json!([
+            {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "source": "write",
+                "payload": [{"path": "top.wdata", "value": "8'haa"}]
+            },
+            {
+                "time": "7ns",
+                "sample_time": "6ns",
+                "source": "read",
+                "payload": [{"path": "top.rdata", "value": "8'h55"}]
+            }
+        ])
+    );
 }
 
 #[test]

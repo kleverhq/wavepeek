@@ -1,6 +1,6 @@
 ---
 name: wavepeek
-description: Use this skill when you need to inspect or analyze `.vcd`, `.fst`, or `.fsdb` waveforms with the wavepeek CLI. Load it for dump metadata, hierarchy/signal discovery, point samples, value transitions, event/property checks, protocol transaction enumeration, and JSON-backed automation.
+description: Use this skill when you need to inspect or analyze `.vcd`, `.fst`, or `.fsdb` waveforms with the wavepeek CLI. Load it for dump metadata, hierarchy/signal discovery, point samples, value transitions, event/property checks, transfer/handshake row extraction, and JSON-backed automation.
 ---
 
 Use `wavepeek` for waveform questions. Treat waveform files as CLI inputs, not as text files to inspect directly.
@@ -104,7 +104,7 @@ Use `extract generic` on a clocked predicate when payload values are needed:
       --payload <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`extract generic` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled.
+`extract generic` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. It does not decode protocol-specific transactions, bursts, ordering rules, or outstanding request state; use it as a protocol-neutral row extractor.
 
 Use `property --capture match` when you only need timestamp rows or when you need property capture modes rather than payload extraction. Use `value --at <sample_time>` as a fallback follow-up when a payload set is decided after the property query.
 

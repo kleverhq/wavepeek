@@ -23,7 +23,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-28T13:28Z) Implemented CLI, input parsing, engine execution, human output, JSON output, JSONL output, schema contracts, schema tooling, docs publication tooling, public docs, packaged skill guidance, and targeted tests.
 - [x] (2026-06-28T13:30Z) Regenerated schemas and ran targeted validation: `just check-schema`, `cargo test --test docs_cli`, `cargo test --test skill_cli`, `cargo test --test schema_cli`, `cargo test --test cli_contract`, `cargo test --test extract_generic_cli`, `cargo test --test jsonl_cli`, `cargo test --test extract_generic_vcd_fst_parity`, `cargo test --test fsdb_disabled_cli`, `python3 -m unittest discover -s tools/docs -p 'test_*.py'`, and `python3 -m unittest discover -s tools/schema -p 'test_*.py'`.
 - [ ] Run repository validation, including the local pre-handoff gate.
-- [ ] Commit implementation slices and fixes after review.
+- [x] (2026-06-28T13:51Z) Committed the implementation slice as `8c2a039 feat(extract): add generic waveform extraction`; commit hooks passed Rust format, clippy, build, schema contract, Rust tests, auxiliary tests, FSDB tests, benchmark smoke, and commit style.
 - [ ] Run implementation review, fix findings, run the final control pass, and open a draft PR.
 
 ## Surprises & Discoveries
@@ -60,7 +60,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 
 ## Outcomes & Retrospective
 
-Plan review completed with substantive corrections. The implementation now provides `wavepeek extract generic`, input schema family support, v2.1 output and stream schema families, docs/tooling updates, and targeted regression coverage. Full repository gate, implementation review, review fixes, and draft PR creation remain.
+Implementation slice committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. The implementation commit hook passed, including FSDB tests because Verdi was available. The local `just check` gate, implementation review, review fixes, final control review, and draft PR creation remain.
 
 ## Context and Orientation
 
@@ -304,3 +304,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 
 - 2026-06-28: Initial ExecPlan created from the local v3 proposal, issue context, and repository inspection so implementation can proceed through reviewed milestones.
 - 2026-06-28: Updated after focused plan review to bump changed schema families to v2.1, correct pre-edge range-bound semantics, require pre-output expression support validation, enforce scoped payload naming, and add missing schema/docs/tests/tooling collateral.
+- 2026-06-28: Updated after implementation commit `8c2a039` to record completed feature surfaces, generated schemas, targeted validation, and passing commit-hook evidence.

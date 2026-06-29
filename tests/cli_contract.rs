@@ -956,7 +956,7 @@ fn extract_generic_help_is_self_descriptive() {
         "Selects edge-only event timestamps with --on.",
         "Always samples --when and --payload at the pre-edge sample point.",
         "In source-file mode, --source provides one or more sources",
-        "Contract for source-file mode is defined by wavepeek schema --input.",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
         "JSON and JSONL rows include time, sample_time, source, and ordered payload values.",
         "wavepeek docs show commands/extract",
     ] {

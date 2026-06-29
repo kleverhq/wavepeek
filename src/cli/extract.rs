@@ -15,7 +15,7 @@ Behavior:
 - Always samples --when and --payload at the pre-edge sample point.
 - In single-source mode, --on, --when, and --payload define one source named by --name or "transfer".
 - In source-file mode, --source provides one or more sources and conflicts with --name, --on, --when, and --payload.
-- Contract for source-file mode is defined by wavepeek schema --input.
+- Contract for source-file mode is defined by `wavepeek schema --input`.
 - JSON and JSONL rows include time, sample_time, source, and ordered payload values.
 
 Use this command to extract synchronous handshakes or transfer-like rows without joining property and value output outside wavepeek."#,

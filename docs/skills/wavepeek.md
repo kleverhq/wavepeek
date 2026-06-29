@@ -31,7 +31,7 @@ Use these routes first:
 
 - command choice: `wavepeek docs show commands/overview`
 - exact flags/defaults: `wavepeek help <command>`
-- `extract generic` event-row extraction: `wavepeek docs show commands/extract-generic`
+- `extract` event-row extraction: `wavepeek docs show commands/extract`
 - `property` semantics and capture modes: `wavepeek docs show commands/property`
 - `change` semantics, `--on`, and `--max`: `wavepeek docs show commands/change`
 - scope/name rules, time windows, ordering, bounds: `wavepeek docs show reference/command-model`
@@ -49,7 +49,7 @@ Before using any command in a nontrivial way, read `wavepeek help <command>` or 
 - State at explicit timestamp(s): `value`.
 - Moments when displayed signal values changed: `change`.
 - Timestamps where a Boolean condition is true or changes state: `property`.
-- Event/transaction rows, handshakes, beats, and counts with payload values: `extract generic`.
+- Event/transaction rows, handshakes, beats, and counts with payload values: `extract`.
 - Fallback timestamp-only event enumeration: `property --capture match`, then `value --at <sample_time>` for payload sampling.
 - Machine parsing or aggregation: supported `--json`, plus `wavepeek schema` if the exact shape matters.
 
@@ -71,7 +71,7 @@ Choose one naming mode per command:
 - Without `--scope`, use canonical full paths everywhere.
 - With `--scope <SCOPE>`, use names relative to that scope in `--signals`, `--on`, `--eval`, `--when`, and `--payload`.
 
-Do not mix `--scope top.cpu` with references like `top.cpu.clk` in the same `value`, `change`, `property`, or `extract generic` query. If name lookup fails, run `scope`, then `signal --scope <SCOPE>`, then rewrite the query in one naming mode.
+Do not mix `--scope top.cpu` with references like `top.cpu.clk` in the same `value`, `change`, `property`, or `extract` query. If name lookup fails, run `scope`, then `signal --scope <SCOPE>`, then rewrite the query in one naming mode.
 
 ## RTL event model
 
@@ -81,7 +81,7 @@ For synchronous RTL, the default mental model should be:
 
     --on "posedge <clock>" --eval "<condition over signals>"
 
-Edge-triggered `change` and `property` queries default to pre-edge value sampling, and `extract generic` always uses pre-edge sampling: the row `time` is the clock edge, while `sample_time` is where values were evaluated, printed, or extracted. Use `sample_time` for follow-up payload sampling unless you intentionally want same-edge dump values.
+Edge-triggered `change` and `property` queries default to pre-edge value sampling, and `extract` always uses pre-edge sampling: the row `time` is the clock edge, while `sample_time` is where values were evaluated, printed, or extracted. Use `sample_time` for follow-up payload sampling unless you intentionally want same-edge dump values.
 
 Do not look for `posedge` of payload or control signals when the real question is about cycle-level RTL behavior. A ready/valid transfer, FSM state observation, enable, or sampled payload is normally checked on the owning clock edge. Use `posedge <signal>` only when the task explicitly asks for that signal edge or for asynchronous transition inspection.
 
@@ -93,7 +93,7 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
-Use `extract generic` on a clocked predicate when payload values are needed:
+Use `extract` on a clocked predicate when payload values are needed. The current protocol-neutral extractor is `extract generic`:
 
     wavepeek extract generic \
       --waves <FILE> \
@@ -104,7 +104,7 @@ Use `extract generic` on a clocked predicate when payload values are needed:
       --payload <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`extract generic` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. It does not decode protocol-specific transactions, bursts, ordering rules, or outstanding request state; use it as a protocol-neutral row extractor.
+`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. It does not decode protocol-specific transactions, bursts, ordering rules, or outstanding request state; use it as a protocol-neutral row extractor.
 
 Use `property --capture match` when you only need timestamp rows or when you need property capture modes rather than payload extraction. Use `value --at <sample_time>` as a fallback follow-up when a payload set is decided after the property query.
 
@@ -137,7 +137,7 @@ Examples of what `change` does and does not answer:
 
 - `change --signals addr` answers “when did `addr` visibly change?”, not “how many transfers used this address?”.
 - `change --on "posedge clk iff valid && ready" --signals addr,data` answers “when did printed payload values change on matching cycles?”, not “list every matching cycle”.
-- `change --signals valid,ready,payload --on "posedge clk"` can be a useful inspection shortcut, but validate event counts or transfer rows with `extract generic`.
+- `change --signals valid,ready,payload --on "posedge clk"` can be a useful inspection shortcut, but validate event counts or transfer rows with `extract`.
 
 If you use `change` for broad scans, set a deliberate `--max` or `--max unlimited` only after judging the output size. A truncated `change` result is not reliable for counts.
 
@@ -159,7 +159,7 @@ Before writing a report or artifact:
 
 - Verify that no truncation diagnostic was ignored.
 - Verify that the final time window covers the requested range.
-- For event/transaction counts, derive counts from `extract generic` rows or `property --capture match`, not from payload transitions.
+- For event/transaction counts, derive counts from `extract` rows or `property --capture match`, not from payload transitions.
 - For repeated payloads, explicitly ensure the method does not collapse identical consecutive events.
 - For protocol “completion” claims, state which channel/event proves request, data, and response completion; do not conflate them.
 - Include scope/clock provenance when it matters.
@@ -173,4 +173,4 @@ If a command fails with an expression or trigger error, read `wavepeek help prop
 
 If results are empty, check `diagnostics`, widen the time window, remove filters, simplify the trigger/predicate, and consult `troubleshooting/empty-results` or `troubleshooting/scoped-vs-canonical-names`.
 
-If results are too large, narrow the scope, filter signal names, reduce the time window, use `extract generic --max`, or use `property` to compute timestamp-only predicates before sampling payloads.
+If results are too large, narrow the scope, filter signal names, reduce the time window, set an extract row limit with `--max`, or use `property` to compute timestamp-only predicates before sampling payloads.

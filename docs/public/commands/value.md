@@ -74,7 +74,7 @@ Use this when you plan to paste results into notes, bugs, or follow-up commands.
 
 ## Follow `sample_time` from event-driven commands
 
-`change`, `property`, and `extract generic` JSON rows include both `time` and `sample_time`. Use `sample_time` for follow-up `value --at` queries when you want to inspect the values that were printed, evaluated, or extracted by that row.
+`change`, `property`, and `extract` JSON rows include both `time` and `sample_time`. Use `sample_time` for follow-up `value --at` queries when you want to inspect the values that were printed, evaluated, or extracted by that row.
 
 This matters for `--sample-mode pre-edge`: `time` remains the trigger edge, while `sample_time` is the point just before that edge. Querying `value --at <time>` can show the next-cycle payload instead of the values that made the `property` row match.
 

@@ -55,8 +55,11 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
 
     assert!(packaged.contains("wavepeek help <command-path...>"));
     assert!(packaged.contains(".fsdb"));
-    assert!(packaged.contains("wavepeek docs show commands/extract-generic"));
-    assert!(packaged.contains("Event/transaction rows, handshakes, beats, and counts with payload values: `extract generic`."));
+    assert!(packaged.contains("wavepeek docs show commands/extract"));
+    assert!(!packaged.contains("commands/extract-generic"));
+    assert!(packaged.contains(
+        "Event/transaction rows, handshakes, beats, and counts with payload values: `extract`."
+    ));
     assert!(packaged.contains("It does not decode protocol-specific transactions"));
     assert!(!packaged.contains("protocol transaction enumeration"));
     assert!(!packaged.contains("Event/transaction enumeration and counting: `property --capture match`, then `value --at <sample_time>`"));

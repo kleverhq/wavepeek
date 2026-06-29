@@ -36,7 +36,7 @@ Use `schema` when you need to answer practical questions such as:
 - which `command` values are valid,
 - which `$defs` describe each command's `data`,
 - which schema artifact should be saved or pinned in CI,
-- which structured JSON input documents are accepted by commands such as `extract generic --source`.
+- which structured JSON input documents are accepted by source-file modes such as `extract generic --source`.
 
 `schema` does not need a waveform file and does not inspect one.
 
@@ -109,7 +109,7 @@ This build prints the same bytes as `schema/stream.json`. Stream consumers shoul
 
 ## Fetch the JSON input document schema
 
-Some commands accept structured JSON input. `extract generic --source` uses the `extract.generic.sources` input document kind.
+Some commands accept structured JSON input. Source-file extraction with `extract generic --source` uses the `extract.generic.sources` input document kind.
 
 Use `--input` to print the input schema:
 

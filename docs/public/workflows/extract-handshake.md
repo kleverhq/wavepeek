@@ -1,17 +1,17 @@
 ---
-id: workflows/extract-handshake-rows
-title: Extract handshake rows
+id: workflows/extract-handshake
+title: Extract handshakes from synchronous bus
 description: Turn ready/valid clock edges into deterministic row output.
 section: workflows
 see_also:
-  - commands/extract-generic
+  - commands/extract
   - commands/property
   - commands/value
   - reference/expression-language
 ---
-# Extract handshake rows
+# Extract handshakes from synchronous bus
 
-Use `extract generic` when you need a compact table of transfer-like events from a waveform.
+Use `extract` commands when you need a compact table of transfer-like events from a waveform. The current extractor for protocol-neutral handshakes is `extract generic`.
 
 Start by selecting a scope and an edge-only event:
 

@@ -19,7 +19,7 @@ wavepeek is a stateless CLI. Each invocation opens one waveform dump when needed
 
 All waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. Non-waveform surfaces such as `schema`, `help`, `docs`, and `skill` are outside this document's scope and follow `commands/docs`, `commands/skill`, plus the exact CLI/help surface.
 
-Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB support is currently Linux x86_64 only. FSDB (Fast Signal Database) requires a wavepeek binary built with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK. In an FSDB-enabled build, `info`, `scope`, `signal`, point-in-time `value` sampling, time-range `change`, `property` evaluation, and `extract generic` use the same command contracts as VCD/FST for digital bit-vector/integral signals. FSDB real and string value decoding are not part of the current implementation; commands that need those values fail with a `signal` error instead of guessing.
+Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB support is currently Linux x86_64 only. FSDB (Fast Signal Database) requires a wavepeek binary built with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK. In an FSDB-enabled build all waveform-related commands use the same command contracts as VCD/FST for digital bit-vector/integral signals. FSDB real and string value decoding are not part of the current implementation.
 
 ## 2. Time Tokens and Normalization
 
@@ -51,9 +51,9 @@ The commands that depend on this model are:
 - `signal`, which requires an exact scope path and can optionally traverse child scopes.
 - `value`, which accepts either canonical paths or scope-relative signal names depending on whether `--scope` is set.
 - `change` and `property`, which apply the same scope-relative resolution model to sampled signals, trigger names, and expression references.
-- `extract generic`, which applies the same scope-relative model to `--on`, `--when`, and payload signal names from CLI flags or source JSON.
+- `extract`, which applies the same scope-relative model to `--on`, `--when`, and payload signal names from CLI flags or source JSON.
 
-Unresolved names are errors. In scoped `change`, `property`, and `extract generic` mode, canonical full-path tokens are rejected in places where the command contract expects names to stay relative to the selected scope, preventing mixed-resolution queries.
+Unresolved names are errors. In scoped `change`, `property`, and `extract` mode, canonical full-path tokens are rejected in places where the command contract expects names to stay relative to the selected scope, preventing mixed-resolution queries.
 
 ## 5. Human-Readable and Machine-Readable Modes
 
@@ -72,7 +72,7 @@ wavepeek is designed to avoid flooding terminals and LLM context windows. Comman
 - the finite size of the requested input set, or
 - an inherently finite command shape such as `schema`.
 
-When a command truncates output because of an active limit, it emits a warning diagnostic. `change`, `property`, and `extract generic` use `--max` for event-row limits and default to 50 rows. When a command supports disabling a limit explicitly, that opt-out also emits a warning diagnostic so automation can tell the boundedness contract changed on purpose. List and search-style commands also emit an empty-result diagnostic when a valid query produces no rows; diagnostics do not change the successful exit code.
+When a command truncates output because of an active limit, it emits a warning diagnostic. `change`, `property`, and `extract` use `--max` for event-row limits and default to 50 rows. When a command supports disabling a limit explicitly, that opt-out also emits a warning diagnostic so automation can tell the boundedness contract changed on purpose. List and search-style commands also emit an empty-result diagnostic when a valid query produces no rows; diagnostics do not change the successful exit code.
 
 ## 7. Deterministic Ordering
 
@@ -84,7 +84,7 @@ The main ordering rules are:
 - Recursive `signal` queries walk scopes in that same stable order and sort signals deterministically within each visited scope.
 - `value` preserves the request order from `--at` and `--signals`, including duplicates.
 - `change` and `property` emit rows in ascending normalized timestamp order.
-- `extract generic` emits rows in ascending event timestamp order and, when multiple sources match at the same timestamp, source declaration order.
+- `extract` emits rows in ascending event timestamp order and, when multiple sources match at the same timestamp, source declaration order.
 - When multiple diagnostics apply, their order is deterministic for a given command contract.
 
 These ordering guarantees are part of the command model because automation depends on predictable, replayable output.

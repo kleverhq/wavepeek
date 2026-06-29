@@ -1,7 +1,7 @@
 ---
-id: commands/extract-generic
-title: Extract generic command
-description: Extract protocol-neutral event rows from synchronous waveform signals.
+id: commands/extract
+title: Extract command
+description: Extract events, handshakes, and transfers from synchronous waveform signals.
 section: commands
 see_also:
   - commands/overview
@@ -11,13 +11,17 @@ see_also:
   - reference/expression-language
   - reference/machine-output
 ---
-# Extract generic command
+# Extract command
 
-`extract generic` emits one row per matching synchronous event. It is intended for transfer-like data such as ready/valid handshakes, FIFO pushes and pops, and other protocol-neutral clocked events.
-
-Use it when you need rows that combine event selection, predicate evaluation, and payload sampling. It avoids the manual workflow of running `property`, extracting `sample_time` values, running `value`, and joining the results externally.
+Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. The current extractor is `extract generic`, a protocol-neutral command for ready/valid handshakes, FIFO pushes and pops, and other clocked transfer-like events.
 
 For exact syntax and flags, run `wavepeek help extract generic`.
+
+## `extract generic`
+
+`extract generic` emits one row per matching synchronous event. It avoids the manual workflow of running `property`, extracting `sample_time` values, running `value`, and joining the results externally.
+
+The command always samples at the pre-edge sample point. It does not support `--sample-mode`.
 
 ## Single-source extraction
 
@@ -67,11 +71,11 @@ Then run:
 $ wavepeek extract generic --waves path/to/dump.vcd --scope top.dut --source sources.json --jsonl
 ```
 
-Source names must be unique within the file. Payload names must be unique within one source. Source-file mode conflicts with `--name`, `--on`, `--when`, and `--payload` because those fields come from the file.
+Source names must be unique within the file. Payload names must be unique within one source. Source-file mode conflicts with `--name`, `--on`, `--when`, and `--payload` because those fields come from the file. The source-file contract is defined by `wavepeek schema --input`.
 
 ## Pre-edge sampling
 
-`extract generic` always samples pre-edge. The row `time` is the selected edge timestamp. The row `sample_time` is one dump tick before that edge. Predicate and payload values come from `sample_time`.
+`extract` rows use `time` for the selected event timestamp and `sample_time` for the point where predicate and payload values are read. For `extract generic`, `sample_time` is one dump tick before the selected edge.
 
 This matches common RTL debugging expectations: the row describes the values that caused the edge to be interesting, not values updated on the edge itself.
 
@@ -95,7 +99,7 @@ Add `--abs` to print canonical payload paths in human output.
 
 `--json` emits the standard envelope with `command: "extract generic"` and an array of rows. `--jsonl` streams `begin`, `item`, `diagnostic`, and `end` records; each item row has `time`, `sample_time`, `source`, and ordered `payload` values.
 
-Repeated events are preserved even when payload values do not change. `extract generic` is not a delta command.
+Repeated events are preserved even when payload values do not change. `extract` is not a delta command.
 
 ## Limits and diagnostics
 

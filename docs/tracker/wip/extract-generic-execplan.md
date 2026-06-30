@@ -31,6 +31,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-29T20:59Z) Collected maintainer PR review comments, renamed public extract docs from the concrete `commands/extract-generic` topic to the `commands/extract` command-family topic, renamed the handshake workflow to `workflows/extract-handshake`, updated README/help/docs/skill wording, and ran targeted docs/help validation.
 - [x] (2026-06-29T21:08Z) Ran focused review for the PR-comment fixes, tightened CLI and skill tests against stale `commands/extract-generic` links, ran follow-up review with no substantive findings, and reran `just check` successfully.
 - [x] (2026-06-29T21:18Z) Applied the remaining live CLI-help review suggestion for the `wavepeek schema --input` reference and updated the help contract test.
+- [x] (2026-06-30T19:39Z) Fixed the `wavepeek extract` namespace invocation to print short help like `wavepeek docs` instead of returning a fatal missing-subcommand error, and added CLI contract coverage.
 
 ## Surprises & Discoveries
 
@@ -317,3 +318,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-06-28: Updated after follow-up review and `just check` to record clean follow-up lanes, local gate success, initially unavailable broad control-pass output, and successful narrow control review lanes.
 - 2026-06-28: Updated after opening draft PR #46.
 - 2026-06-29: Updated after maintainer PR review comments to record extract-family docs renaming, README/help/skill wording fixes, targeted validation, focused review, follow-up review, and final `just check` success.
+- 2026-06-30: Updated after fixing `wavepeek extract` no-subcommand help behavior.

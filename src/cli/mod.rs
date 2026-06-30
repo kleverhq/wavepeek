@@ -232,8 +232,8 @@ pub fn run() -> Result<(), WavepeekError> {
     let argv: Vec<_> = std::env::args_os().collect();
     let parse_argv = if argv.len() == 1 {
         vec![argv[0].clone(), "-h".into()]
-    } else if argv.len() == 2 && argv[1] == std::ffi::OsStr::new("docs") {
-        vec![argv[0].clone(), "docs".into(), "-h".into()]
+    } else if argv.len() == 2 && matches!(argv[1].to_str(), Some("docs" | "extract")) {
+        vec![argv[0].clone(), argv[1].clone(), "-h".into()]
     } else {
         argv
     };

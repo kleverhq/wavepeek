@@ -532,6 +532,34 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
 }
 
 #[test]
+fn extract_command_without_subcommand_prints_help() {
+    let no_args = successful_stdout_text(&["extract"]);
+    let short_help = successful_stdout_text(&["extract", "-h"]);
+    let long_help = successful_stdout_text(&["extract", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "extract"]);
+
+    for help in [&no_args, &short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Extract row-oriented waveform data.")
+        );
+        assert!(help.contains("Usage: wavepeek extract"));
+        assert!(help.contains("Commands:"));
+        assert!(help.contains("generic"));
+        assert!(!help.contains("fatal: args:"));
+    }
+
+    assert_eq!(
+        no_args, short_help,
+        "wavepeek extract should show short help"
+    );
+    assert!(
+        short_help.len() < long_help.len(),
+        "extract -h should be materially shorter than extract --help"
+    );
+}
+
+#[test]
 fn docs_command_help_is_direct_and_omits_examples() {
     let no_args = successful_stdout_text(&["docs"]);
     let short_help = successful_stdout_text(&["docs", "-h"]);

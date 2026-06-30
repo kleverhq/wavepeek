@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
+use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
@@ -89,8 +90,16 @@ struct BoundExtractSource {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ExtractRunStats {
+    candidate_times: usize,
+    event_checks: usize,
+    event_matches: usize,
+    predicate_true: usize,
+    skipped_no_sample_time: usize,
     emitted: usize,
     truncated: bool,
+    event_match_ns: u64,
+    predicate_eval_ns: u64,
+    build_emit_ns: u64,
 }
 
 struct ExtractEmitContext<'a> {
@@ -100,6 +109,7 @@ struct ExtractEmitContext<'a> {
     dump_end_raw: u64,
     dump_tick: crate::engine::time::ParsedTime,
     max_entries: Option<usize>,
+    profile_timing: bool,
 }
 
 #[derive(Debug)]
@@ -224,6 +234,7 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         });
     }
     let metadata = waveform.borrow().metadata()?;
+    debug.event("metadata.load.done", || serde_json::json!({}));
     let dump_time = parse_dump_time_context(&metadata)?;
     let dump_tick = dump_time.dump_tick;
     let dump_start_raw =
@@ -248,6 +259,28 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
             "--from must be less than or equal to --to".to_string(),
         ));
     }
+    let (indexed_timestamps, window_timestamps) = {
+        let waveform_ref = waveform.borrow();
+        waveform_ref
+            .indexed_timestamps()
+            .map(|timestamps| {
+                (
+                    Some(timestamps.len()),
+                    Some(count_timestamps_in_range(timestamps, from_raw, to_raw)),
+                )
+            })
+            .unwrap_or((None, None))
+    };
+    debug.event("time.parse.done", || {
+        serde_json::json!({
+            "dump_start_raw": dump_start_raw,
+            "dump_end_raw": dump_end_raw,
+            "from_raw": from_raw,
+            "to_raw": to_raw,
+            "indexed_timestamps": indexed_timestamps,
+            "window_timestamps": window_timestamps,
+        })
+    });
 
     let bound_sources = bind_extract_sources(&waveform, args.scope.as_deref(), plan.sources)?;
     let candidate_sources = candidate_sources_for_bound_sources(&bound_sources)?;
@@ -272,6 +305,12 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
     );
 
     sink.start()?;
+    debug.event("extract.emit.start", || {
+        serde_json::json!({
+            "candidate_times": candidate_times.len(),
+            "sources": bound_sources.len(),
+        })
+    });
     let emit_context = ExtractEmitContext {
         waveform: &waveform,
         sources: &bound_sources,
@@ -279,8 +318,23 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         dump_end_raw,
         dump_tick,
         max_entries,
+        profile_timing: debug.is_enabled(),
     };
     let stats = emit_rows(emit_context, candidate_times, sink)?;
+    debug.event("extract.emit.done", || {
+        serde_json::json!({
+            "candidate_times": stats.candidate_times,
+            "event_checks": stats.event_checks,
+            "event_matches": stats.event_matches,
+            "predicate_true": stats.predicate_true,
+            "skipped_no_sample_time": stats.skipped_no_sample_time,
+            "emitted": stats.emitted,
+            "truncated": stats.truncated,
+            "event_match_ns": stats.event_match_ns,
+            "predicate_eval_ns": stats.predicate_eval_ns,
+            "build_emit_ns": stats.build_emit_ns,
+        })
+    });
 
     if stats.emitted == 0 {
         diagnostics.push(Diagnostic::warning(
@@ -559,13 +613,31 @@ fn candidate_sources_for_bound_sources(
     Ok(result)
 }
 
+fn count_timestamps_in_range(timestamps: &[u64], from_raw: u64, to_raw: u64) -> usize {
+    let start_idx = timestamps.partition_point(|timestamp| *timestamp < from_raw);
+    let end_idx = timestamps.partition_point(|timestamp| *timestamp <= to_raw);
+    end_idx.saturating_sub(start_idx)
+}
+
+fn duration_ns(duration: Duration) -> u64 {
+    u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX)
+}
+
 fn emit_rows<S: ExtractRowSink + ?Sized>(
     context: ExtractEmitContext<'_>,
     candidate_times: Vec<u64>,
     sink: &mut S,
 ) -> Result<ExtractRunStats, WavepeekError> {
+    let candidate_count = candidate_times.len();
+    let mut event_checks = 0usize;
+    let mut event_matches_count = 0usize;
+    let mut predicate_true = 0usize;
+    let mut skipped_no_sample_time = 0usize;
     let mut emitted = 0usize;
     let mut truncated = false;
+    let mut event_match_time = Duration::ZERO;
+    let mut predicate_eval_time = Duration::ZERO;
+    let mut build_emit_time = Duration::ZERO;
 
     'timestamps: for timestamp in candidate_times {
         let previous_timestamp = context.waveform.borrow().previous_sample_time(timestamp);
@@ -576,34 +648,49 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
                 previous_timestamp,
                 tracked_signals: &[],
             };
-            if !event_expr_matches(
+            event_checks += 1;
+            let started_at = context.profile_timing.then(Instant::now);
+            let event_matches_row = event_expr_matches(
                 source.on.as_str(),
                 &source.bound_event,
                 &source.host,
                 &frame,
-            )? {
+            )?;
+            if let Some(started_at) = started_at {
+                event_match_time += started_at.elapsed();
+            }
+            if !event_matches_row {
                 continue;
             }
+            event_matches_count += 1;
             let Some(sample_timestamp) = timestamp
                 .checked_sub(1)
                 .filter(|value| *value >= context.dump_start_raw && *value <= context.dump_end_raw)
             else {
+                skipped_no_sample_time += 1;
                 continue;
             };
-            if !eval_bound_logical_truth(
+            let started_at = context.profile_timing.then(Instant::now);
+            let predicate_matches = eval_bound_logical_truth(
                 source.when.as_str(),
                 &source.bound_when,
                 &source.host,
                 sample_timestamp,
-            )? {
+            )?;
+            if let Some(started_at) = started_at {
+                predicate_eval_time += started_at.elapsed();
+            }
+            if !predicate_matches {
                 continue;
             }
+            predicate_true += 1;
             if let Some(limit) = context.max_entries
                 && emitted == limit
             {
                 truncated = true;
                 break 'timestamps;
             }
+            let started_at = context.profile_timing.then(Instant::now);
             let row = build_row(
                 source,
                 timestamp,
@@ -612,11 +699,25 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
                 context.waveform,
             )?;
             sink.emit(row)?;
+            if let Some(started_at) = started_at {
+                build_emit_time += started_at.elapsed();
+            }
             emitted += 1;
         }
     }
 
-    Ok(ExtractRunStats { emitted, truncated })
+    Ok(ExtractRunStats {
+        candidate_times: candidate_count,
+        event_checks,
+        event_matches: event_matches_count,
+        predicate_true,
+        skipped_no_sample_time,
+        emitted,
+        truncated,
+        event_match_ns: duration_ns(event_match_time),
+        predicate_eval_ns: duration_ns(predicate_eval_time),
+        build_emit_ns: duration_ns(build_emit_time),
+    })
 }
 
 fn build_row(

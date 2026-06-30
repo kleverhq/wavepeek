@@ -32,6 +32,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-29T21:08Z) Ran focused review for the PR-comment fixes, tightened CLI and skill tests against stale `commands/extract-generic` links, ran follow-up review with no substantive findings, and reran `just check` successfully.
 - [x] (2026-06-29T21:18Z) Applied the remaining live CLI-help review suggestion for the `wavepeek schema --input` reference and updated the help contract test.
 - [x] (2026-06-30T19:39Z) Fixed the `wavepeek extract` namespace invocation to print short help like `wavepeek docs` instead of returning a fatal missing-subcommand error, and added CLI contract coverage.
+- [x] (2026-06-30T20:19Z) Profiled `extract generic` on the SCR1 AXI DMEM FST case, added DEBUG-only extract timing counters for time parsing, candidate collection, event matching, predicate evaluation, and row build/emit, and reviewed the instrumentation.
 
 ## Surprises & Discoveries
 
@@ -319,3 +320,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-06-28: Updated after opening draft PR #46.
 - 2026-06-29: Updated after maintainer PR review comments to record extract-family docs renaming, README/help/skill wording fixes, targeted validation, focused review, follow-up review, and final `just check` success.
 - 2026-06-30: Updated after fixing `wavepeek extract` no-subcommand help behavior.
+- 2026-06-30: Updated after profiling the SCR1 AXI DMEM extraction run and adding DEBUG-only extract timing diagnostics.

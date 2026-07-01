@@ -77,6 +77,8 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
   Evidence: `docs/tracker/wip/extract_generic_perf_baseline.md` records `Binary: ./target/debug/wavepeek` and `Output mode: --jsonl`. Fresh current `target/debug` JSONL runs without `DEBUG` took `16.639s` for 2 channels and `23.247s` for 5 channels, compared with saved baseline files `tmp/axi_extract_nodebug_null.time.json` at `23.078s` and `tmp/axi_extract_5ch_nodebug_null.time.json` at `56.607s`. Fresh current `target/debug` runs with `DEBUG=1` took `18.398s` for 2 channels and `25.900s` for 5 channels.
 - Observation: Functional output remained stable in direct JSON and JSONL validation.
   Evidence: Direct current JSON payloads matched saved FST bench baseline/grouped artifacts for 2 channels and 5 channels, with `9,878` and `20,242` rows respectively. Fresh current JSONL outputs from `target/debug` with `DEBUG=1` matched `tmp/axi_extract_profile2.jsonl` and `tmp/axi_extract_5ch_profile.jsonl` byte-for-byte.
+- Observation: Direct FSDB diagnostic runs confirm event grouping, but release wall-clock improvement is muted by FSDB backend and system time.
+  Evidence: A temporary detached worktree at baseline commit `550e058` was built with `--features fsdb` and compared with current commit `1e313b1`. For `target/fsdb/release` with `DEBUG=1`, 2 channels changed from `28.480s` wall (`10.906s` user, `17.576s` sys) to `25.830s` wall (`9.330s` user, `16.501s` sys), while `event_checks` dropped from `2,497,724` to `1,248,862`. The 5-channel release run changed from `42.787s` wall (`17.738s` user, `25.067s` sys) to `42.302s` wall (`16.613s` user, `25.739s` sys), while `event_checks` dropped from `6,244,310` to `1,248,862`. For `target/fsdb/debug` with `DEBUG=1`, 2 channels changed from `65.456s` to `59.810s`, and 5 channels changed from `110.096s` to `86.205s`. Baseline/current JSONL outputs matched byte-for-byte for all four pairs.
 
 ## Decision Log
 
@@ -418,3 +420,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-07-01: Updated after focused review, performance/correctness follow-up fixes, and reviewer rechecks with no substantive findings.
 - 2026-07-01: Updated after the clean control review and final FST/FSDB extract e2e benchmark gate.
 - 2026-07-01: Updated after direct current-vs-baseline output comparison and apples-to-apples `target/debug` JSONL timing validation against the original 23s/57s baseline.
+- 2026-07-01: Updated after direct baseline/current FSDB diagnostic comparisons for release and debug builds on the 2-channel and 5-channel source-file workloads.

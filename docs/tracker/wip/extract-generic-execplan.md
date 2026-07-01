@@ -73,6 +73,10 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
   Evidence: `tmp/bench-extract-grouped-fst/grouped` reports functional matches for all three cases. Relative to `tmp/bench-extract-baseline-fst/baseline`, the 2-channel JSON case improved from `2.543s` mean to `1.726s` mean (`1.47x` faster), and the 5-channel JSON case improved from `5.754s` mean to `2.467s` mean (`2.33x` faster). The 1-channel CLI case changed from `1.465s` mean to `1.495s` mean, within the expected overhead/noise for a workload with no grouping opportunity.
 - Observation: The final FSDB benchmark also improves the shared-event source-file cases, but backend/system cost dominates absolute runtime.
   Evidence: `tmp/bench-extract-grouped-fsdb/grouped` reports functional matches for all three cases. Relative to `tmp/bench-extract-baseline-fsdb/baseline`, the 2-channel JSON case improved from `30.029s` mean to `29.437s` mean (`1.02x` faster), and the 5-channel JSON case improved from `44.757s` mean to `42.275s` mean (`1.06x` faster).
+- Observation: The original 23s and 57s comparison points were `target/debug` JSONL runs, not release runs.
+  Evidence: `docs/tracker/wip/extract_generic_perf_baseline.md` records `Binary: ./target/debug/wavepeek` and `Output mode: --jsonl`. Fresh current `target/debug` JSONL runs without `DEBUG` took `16.639s` for 2 channels and `23.247s` for 5 channels, compared with saved baseline files `tmp/axi_extract_nodebug_null.time.json` at `23.078s` and `tmp/axi_extract_5ch_nodebug_null.time.json` at `56.607s`. Fresh current `target/debug` runs with `DEBUG=1` took `18.398s` for 2 channels and `25.900s` for 5 channels.
+- Observation: Functional output remained stable in direct JSON and JSONL validation.
+  Evidence: Direct current JSON payloads matched saved FST bench baseline/grouped artifacts for 2 channels and 5 channels, with `9,878` and `20,242` rows respectively. Fresh current JSONL outputs from `target/debug` with `DEBUG=1` matched `tmp/axi_extract_profile2.jsonl` and `tmp/axi_extract_5ch_profile.jsonl` byte-for-byte.
 
 ## Decision Log
 
@@ -413,3 +417,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-07-01: Updated after implementing event-expression grouping and collecting DEBUG evidence on the SCR1 AXI 2-channel and 5-channel source-file runs.
 - 2026-07-01: Updated after focused review, performance/correctness follow-up fixes, and reviewer rechecks with no substantive findings.
 - 2026-07-01: Updated after the clean control review and final FST/FSDB extract e2e benchmark gate.
+- 2026-07-01: Updated after direct current-vs-baseline output comparison and apples-to-apples `target/debug` JSONL timing validation against the original 23s/57s baseline.

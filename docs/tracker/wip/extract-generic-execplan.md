@@ -33,6 +33,11 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-29T21:18Z) Applied the remaining live CLI-help review suggestion for the `wavepeek schema --input` reference and updated the help contract test.
 - [x] (2026-06-30T19:39Z) Fixed the `wavepeek extract` namespace invocation to print short help like `wavepeek docs` instead of returning a fatal missing-subcommand error, and added CLI contract coverage.
 - [x] (2026-06-30T20:19Z) Profiled `extract generic` on the SCR1 AXI DMEM FST case, added DEBUG-only extract timing counters for time parsing, candidate collection, event matching, predicate evaluation, and row build/emit, and reviewed the instrumentation.
+- [x] (2026-07-01T05:56Z) Add SCR1 AXI DMEM extract e2e benchmark scenarios for one CLI-defined channel, two JSON-defined channels, and five JSON-defined channels to the FST and FSDB catalogs. Validated with `python3 -m unittest bench.e2e.test_perf` and `just check-bench-e2e-fsdb-catalog`.
+- [x] (2026-07-01T06:29Z) Run the new extract benchmark scenarios on the current implementation and confirm the expected poor scaling. FST medians were `1.445s` for 1ch, `2.548s` for 2ch, and `5.705s` for 5ch. FSDB medians were `25.123s` for 1ch, `29.984s` for 2ch, and `44.790s` for 5ch.
+- [ ] (2026-07-01T05:56Z) Implement event-expression grouping for `extract generic` without changing benchmark definitions or command output contracts.
+- [ ] (2026-07-01T05:56Z) Validate the grouping fix with DEBUG diagnostics and focused review.
+- [ ] (2026-07-01T05:56Z) Run the extract e2e benchmark scenarios as the final performance gate and record the speedup evidence before handoff.
 
 ## Surprises & Discoveries
 
@@ -52,6 +57,14 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
   Evidence: `tools/docs` tests failed until `schema-input-v2.1.json` was added to `publish_docs.py`, `check_deploy.py`, `workflow_docs.py`, and their tests.
 - Observation: Implementation review found that JSONL preflight must include `--on ... iff` dependencies and payload encodings, not only `--when` dependencies.
   Evidence: The fix added `event_iff_handles` in `src/engine/expr_runtime.rs`, preflight validation in `src/engine/extract.rs`, and regression tests for event-time `iff` versus sample-time `when` evaluation.
+- Observation: The SCR1 AXI DMEM performance baseline is dominated by repeated event matching when several sources share `posedge clk iff axi_rst_n`.
+  Evidence: `docs/tracker/wip/extract_generic_perf_baseline.md` records the 2-channel run at `2,497,724` event checks and `23.078s` non-DEBUG wall time to `/dev/null`, while the 5-channel run performs `6,244,310` event checks and takes `56.607s`; the candidate timestamp count stays `1,248,862` in both runs.
+- Observation: The FSDB e2e benchmark catalog is generated from the FST catalog by rewriting `/opt/rtl-artifacts/*.fst` strings to `.fsdb`.
+  Evidence: `tools/fsdb/generate_bench_catalog.py` walks every JSON string in `bench/e2e/tests.json`; `bench/e2e/test_perf.py` asserts that `tests_fsdb.json` matches the FST catalog except for the artifact extension.
+- Observation: The release FST benchmark is much faster than the earlier DEBUG baseline, but it still shows source-count scaling for shared-event source files.
+  Evidence: `tmp/bench-extract-baseline-fst/baseline` records medians of `1.445s` for the 1-channel CLI case, `2.548s` for the 2-channel JSON case, and `5.705s` for the 5-channel JSON case.
+- Observation: The FSDB benchmark has a large backend cost, but the extract workload still grows materially with channel count.
+  Evidence: `tmp/bench-extract-baseline-fsdb/baseline` records medians of `25.123s` for 1 channel, `29.984s` for 2 channels, and `44.790s` for 5 channels.
 
 ## Decision Log
 
@@ -67,10 +80,16 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - Decision: Publish updated output, stream, and input schemas as the next schema family minor, using `https://kleverhq.github.io/wavepeek/schema-output-v2.1.json`, `https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json`, and `https://kleverhq.github.io/wavepeek/schema-input-v2.1.json`.
   Rationale: `v2.0.0` exists in repository history, so reusing `schema-output-v2.0.json` or `schema-stream-v2.0.json` for a changed command/schema contract would mutate a published artifact. This intentionally differs from the local proposal's v2.0 example to preserve stable schema URLs.
   Date/Author: 2026-06-28 / coding agent.
+- Decision: Add the SCR1 AXI extract performance scenarios to `bench/e2e/tests.json`, store reusable source manifests under `bench/e2e/inputs/`, and regenerate `bench/e2e/tests_fsdb.json` from the FST catalog. Do not add these long-running cases to `bench/e2e/tests_commit.json`.
+  Rationale: The release benchmark catalog already carries long-running timing cases with at least ten measured runs and five warmups. The commit-smoke catalog is intentionally small and its tests assert an exact set of cases.
+  Date/Author: 2026-07-01 / coding agent.
+- Decision: Optimize `extract generic` by grouping sources that share the same resolved event expression, while keeping `when` predicates and payload sampling per source.
+  Rationale: Grouping removes duplicate edge and `iff` evaluation for repeated `on` expressions without introducing protocol-specific AXI behavior or changing output ordering, JSON contracts, diagnostics, or `--max` semantics.
+  Date/Author: 2026-07-01 / coding agent.
 
 ## Outcomes & Retrospective
 
-Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Final narrow control review lanes for runtime and schema/tooling returned no substantive findings. Draft PR #46 was opened. Maintainer PR review comments then narrowed user-facing docs toward the `extract` command family rather than the first `extract generic` subcommand; docs topic IDs, help cross-links, README wording, packaged skill routing, and affected tests were updated accordingly. A focused review of those PR-comment fixes found only stale-link substring assertion gaps, which were fixed and re-reviewed cleanly.
+Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Final narrow control review lanes for runtime and schema/tooling returned no substantive findings. Draft PR #46 was opened. Maintainer PR review comments then narrowed user-facing docs toward the `extract` command family rather than the first `extract generic` subcommand; docs topic IDs, help cross-links, README wording, packaged skill routing, and affected tests were updated accordingly. A focused review of those PR-comment fixes found only stale-link substring assertion gaps, which were fixed and re-reviewed cleanly. The performance follow-up now has committed benchmark workloads for the SCR1 AXI DMEM extraction case and local FST/FSDB baseline runs showing the current shared-event scaling problem.
 
 ## Context and Orientation
 
@@ -110,7 +129,15 @@ The eighth milestone is to update user-facing docs and packaged guidance. Add a 
 
 The ninth milestone is to add tests. Update `tests/cli_contract.rs` to include `extract` and nested help coverage. Add runtime tests, preferably in a new `tests/extract_generic_cli.rs`, for single-source CLI extraction, source-file multi-source extraction, repeated identical payload preservation, declaration-order tie-breaking, inclusive event-time bounds, `sample_time` before `--from` at a range-start edge, `iff` event-time gating versus `when` sample-time evaluation, `--abs` human output, JSON envelope shape, JSONL stream shape, invalid CLI/source combinations, invalid source JSON, duplicate source names, duplicate payload names, fail-fast unresolved payload, rejected wildcard/plain/mixed `on` expressions, `--max 0`, `--max unlimited`, truncation, and empty-result diagnostics. Update `tests/jsonl_cli.rs` and `tests/schema_cli.rs` for the new stream/output/input schema branches, including semantic input-schema validation cases for a valid wrapper, missing or wrong `kind`, empty `sources`, and empty payload. Update `tests/docs_cli.rs` topic lists if a new topic is added. Update `tests/skill_cli.rs` to cover packaged skill routing to `extract generic` and to prevent stale property-plus-value guidance from remaining as the primary transaction extraction path. Add VCD/FST parity coverage for the new command and extend FSDB disabled or feature-gated smoke lists if the repository has comparable waveform command coverage. Add or update tool tests for schema and docs publication helpers.
 
-The final milestone is review, fixes, and PR creation. Run the validation commands below, commit coherent slices, run focused implementation review lanes, fix findings, run one fresh control review pass on the final diff, push the branch, and open a draft PR for issue #35.
+The final feature milestone is review, fixes, and PR creation. Run the validation commands below, commit coherent slices, run focused implementation review lanes, fix findings, run one fresh control review pass on the final diff, push the branch, and open a draft PR for issue #35.
+
+The current performance follow-up has four milestones and does not push the branch. First, add benchmark coverage for the SCR1 AXI DMEM extraction workload: a one-channel CLI-argument case, a two-channel source-file case matching `tmp/axi_dmem_extract.json`, and a five-channel source-file case matching `tmp/axi_dmem_extract_5ch.json`. These cases belong in the FST release catalog and the generated FSDB catalog; their shared source JSON files belong under `bench/e2e/inputs/`. Validate that the new cases load and show the known poor scaling, then commit this benchmark baseline slice.
+
+Second, implement the grouping fix described in `docs/tracker/wip/proposal_fix_grouping.md`. A grouped execution plan must evaluate each distinct resolved event expression once per relevant timestamp and then run the source-specific `when` predicates and payload sampling in source declaration order. A safe implementation may use a conservative group key; if semantic identity cannot be proven for a source, place it in a singleton group rather than risking an incorrect merge.
+
+Third, validate the implementation through DEBUG diagnostics and focused review. Diagnostics should show the number of event-expression evaluations scaling with the number of event groups rather than with the number of sources for the SCR1 AXI shared-clock manifests. Output rows, JSON/JSONL payloads, diagnostics, and ordering must remain unchanged except for performance/debug counters.
+
+Fourth, run the extract e2e benchmark scenarios as the final performance gate. The expected result is a visible runtime reduction for the two-channel and five-channel source-file cases, with the largest improvement in the five-channel case because all five sources share `posedge clk iff axi_rst_n`. Record the run directories, representative medians, and diagnostic counters in this plan before handoff.
 
 ## Concrete Steps
 
@@ -161,6 +188,55 @@ If `just check` fails because the environment is outside the devcontainer, rerun
 
 Expected success markers include cargo tests reporting `ok`, schema checks reporting no diffs between committed and generated artifacts, and `just check` finishing successfully.
 
+For the performance follow-up, add the benchmark source files and regenerate the FSDB catalog with:
+
+    mkdir -p bench/e2e/inputs
+    just update-bench-e2e-fsdb-catalog
+    python3 -m unittest bench.e2e.test_perf
+
+Build the release binary and run the new FST extract scenarios with a filter that selects only the new cases:
+
+    cargo build --release
+    python3 bench/e2e/perf.py run \
+      --tests bench/e2e/tests.json \
+      --filter 'extract_scr1_coremark_dmem_axi_(1ch_cli|2ch_source|5ch_source)$' \
+      --binary baseline=target/release/wavepeek \
+      --run-dir tmp/bench-extract-baseline-fst \
+      --wavepeek-timeout-seconds 300 \
+      --verbose
+
+If Verdi and FSDB fixtures are available, run the matching FSDB scenarios from the generated catalog:
+
+    python3 bench/e2e/perf.py run \
+      --tests bench/e2e/tests_fsdb.json \
+      --filter 'extract_scr1_coremark_dmem_axi_(1ch_cli|2ch_source|5ch_source)$' \
+      --binary baseline=target/release/wavepeek \
+      --run-dir tmp/bench-extract-baseline-fsdb \
+      --wavepeek-timeout-seconds 300 \
+      --verbose
+
+During optimization, do not modify `bench/e2e/tests.json`, `bench/e2e/tests_fsdb.json`, or `bench/e2e/inputs/`; they are the fixed baseline workload. Use DEBUG runs against the same source files to inspect counters, for example:
+
+    DEBUG=1 target/release/wavepeek extract generic \
+      --waves /opt/rtl-artifacts/scr1_max_axi_coremark.fst \
+      --scope TOP.scr1_top_tb_axi.i_top \
+      --source bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json \
+      --max unlimited \
+      --jsonl > tmp/extract-grouping-check.jsonl \
+      2> tmp/extract-grouping-check.debug.jsonl
+
+After the grouping fix, run the same e2e filter into a new run directory and compare against the baseline run:
+
+    python3 bench/e2e/perf.py run \
+      --tests bench/e2e/tests.json \
+      --filter 'extract_scr1_coremark_dmem_axi_(1ch_cli|2ch_source|5ch_source)$' \
+      --binary grouped=target/release/wavepeek \
+      --run-dir tmp/bench-extract-grouped-fst \
+      --compare tmp/bench-extract-baseline-fst/baseline \
+      --wavepeek-timeout-seconds 300 \
+      --verbose
+
+
 ## Validation and Acceptance
 
 A human can verify the main behavior with a small VCD fixture or integration test. The command:
@@ -191,7 +267,7 @@ Machine-output acceptance requires all generated schema artifacts to validate. `
 
 Documentation acceptance requires `wavepeek docs topics` to include `commands/extract` and `workflows/extract-handshake`, `wavepeek docs show commands/extract` to explain when to use the command family and current `extract generic` subcommand, and the packaged skill to route event/transaction extraction tasks to `extract` without duplicating full command reference.
 
-Repository acceptance requires `just check` to pass before handoff and `just ci` to pass or be run in CI if local runtime constraints make it impractical. The draft PR must reference issue #35 and state which validation commands passed.
+Repository acceptance requires `just check` to pass before handoff and `just ci` to pass or be run in CI if local runtime constraints make it impractical. The draft PR must reference issue #35 and state which validation commands passed. For the performance follow-up, acceptance also requires the new extract e2e cases to exist in both `bench/e2e/tests.json` and the generated `bench/e2e/tests_fsdb.json`, a local baseline commit containing only the benchmark additions and plan update, DEBUG evidence that grouped event evaluation reduced duplicate checks for shared `on` expressions, focused review with no unresolved findings, and final benchmark evidence showing improved runtime on the extract scenarios.
 
 ## Idempotence and Recovery
 
@@ -321,3 +397,5 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-06-29: Updated after maintainer PR review comments to record extract-family docs renaming, README/help/skill wording fixes, targeted validation, focused review, follow-up review, and final `just check` success.
 - 2026-06-30: Updated after fixing `wavepeek extract` no-subcommand help behavior.
 - 2026-06-30: Updated after profiling the SCR1 AXI DMEM extraction run and adding DEBUG-only extract timing diagnostics.
+- 2026-07-01: Added the performance follow-up plan for SCR1 AXI extract e2e benchmarks, baseline validation, event-expression grouping, review, and final performance gate.
+- 2026-07-01: Updated after adding the extract e2e benchmark scenarios and collecting FST/FSDB baseline timings for the current implementation.

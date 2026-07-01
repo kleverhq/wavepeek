@@ -35,8 +35,8 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-06-30T20:19Z) Profiled `extract generic` on the SCR1 AXI DMEM FST case, added DEBUG-only extract timing counters for time parsing, candidate collection, event matching, predicate evaluation, and row build/emit, and reviewed the instrumentation.
 - [x] (2026-07-01T05:56Z) Add SCR1 AXI DMEM extract e2e benchmark scenarios for one CLI-defined channel, two JSON-defined channels, and five JSON-defined channels to the FST and FSDB catalogs. Validated with `python3 -m unittest bench.e2e.test_perf` and `just check-bench-e2e-fsdb-catalog`.
 - [x] (2026-07-01T06:29Z) Run the new extract benchmark scenarios on the current implementation and confirm the expected poor scaling. FST medians were `1.445s` for 1ch, `2.548s` for 2ch, and `5.705s` for 5ch. FSDB medians were `25.123s` for 1ch, `29.984s` for 2ch, and `44.790s` for 5ch.
-- [ ] (2026-07-01T05:56Z) Implement event-expression grouping for `extract generic` without changing benchmark definitions or command output contracts.
-- [ ] (2026-07-01T05:56Z) Validate the grouping fix with DEBUG diagnostics and focused review.
+- [x] (2026-07-01T06:38Z) Implement event-expression grouping for `extract generic` without changing benchmark definitions or command output contracts. The implementation groups by original `on` text plus resolved event candidate signal IDs, collects candidate timestamps per group, and emits matching sources in declaration order.
+- [ ] (2026-07-01T05:56Z) Validate the grouping fix with DEBUG diagnostics and focused review. DEBUG diagnostics already show one event group and `1,248,862` event checks for both 2-channel and 5-channel SCR1 AXI source-file runs; focused review remains.
 - [ ] (2026-07-01T05:56Z) Run the extract e2e benchmark scenarios as the final performance gate and record the speedup evidence before handoff.
 
 ## Surprises & Discoveries
@@ -65,6 +65,8 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
   Evidence: `tmp/bench-extract-baseline-fst/baseline` records medians of `1.445s` for the 1-channel CLI case, `2.548s` for the 2-channel JSON case, and `5.705s` for the 5-channel JSON case.
 - Observation: The FSDB benchmark has a large backend cost, but the extract workload still grows materially with channel count.
   Evidence: `tmp/bench-extract-baseline-fsdb/baseline` records medians of `25.123s` for 1 channel, `29.984s` for 2 channels, and `44.790s` for 5 channels.
+- Observation: Grouping the shared SCR1 AXI `posedge clk iff axi_rst_n` event reduces event checks to the candidate timestamp count while preserving output.
+  Evidence: After the grouping implementation, `DEBUG=1 target/release/wavepeek extract generic ... --source bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json --jsonl` records `event_groups=1`, `candidate_times=1,248,862`, `event_checks=1,248,862`, and `event_match_ns=939,154,836`; `cmp` confirms the grouped 5-channel JSON output matches the pre-grouping release output byte-for-byte.
 
 ## Decision Log
 
@@ -86,10 +88,13 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - Decision: Optimize `extract generic` by grouping sources that share the same resolved event expression, while keeping `when` predicates and payload sampling per source.
   Rationale: Grouping removes duplicate edge and `iff` evaluation for repeated `on` expressions without introducing protocol-specific AXI behavior or changing output ordering, JSON contracts, diagnostics, or `--max` semantics.
   Date/Author: 2026-07-01 / coding agent.
+- Decision: Use a conservative event-group key made of the original `on` expression text and the resolved event candidate `SignalId` list.
+  Rationale: Every `extract generic` invocation has one global scope, so identical `on` text in the same run resolves through the same namespace. Adding the resolved event candidate IDs prevents accidental grouping if local expression handles differ between hosts. Semantically equivalent but textually different expressions are intentionally not grouped.
+  Date/Author: 2026-07-01 / coding agent.
 
 ## Outcomes & Retrospective
 
-Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Final narrow control review lanes for runtime and schema/tooling returned no substantive findings. Draft PR #46 was opened. Maintainer PR review comments then narrowed user-facing docs toward the `extract` command family rather than the first `extract generic` subcommand; docs topic IDs, help cross-links, README wording, packaged skill routing, and affected tests were updated accordingly. A focused review of those PR-comment fixes found only stale-link substring assertion gaps, which were fixed and re-reviewed cleanly. The performance follow-up now has committed benchmark workloads for the SCR1 AXI DMEM extraction case and local FST/FSDB baseline runs showing the current shared-event scaling problem.
+Implementation and review-fix slices committed. `wavepeek extract generic` now supports single-source CLI mode, source-file mode, pre-edge event-row extraction, human/JSON/JSONL output, v2.1 output and stream schemas, input schema publication, docs/tooling collateral, and targeted regression coverage. Review fixes added preflight validation for `iff` dependencies and payload encodings, independent-clock source-file coverage, corrected docs deploy artifact-family handling, and tightened packaged skill wording. Follow-up reviewers found no substantive issues. The local `just check` gate passed. Final narrow control review lanes for runtime and schema/tooling returned no substantive findings. Draft PR #46 was opened. Maintainer PR review comments then narrowed user-facing docs toward the `extract` command family rather than the first `extract generic` subcommand; docs topic IDs, help cross-links, README wording, packaged skill routing, and affected tests were updated accordingly. A focused review of those PR-comment fixes found only stale-link substring assertion gaps, which were fixed and re-reviewed cleanly. The performance follow-up now has committed benchmark workloads for the SCR1 AXI DMEM extraction case and local FST/FSDB baseline runs showing the current shared-event scaling problem. The grouping implementation reduces duplicate event evaluation for shared `on` expressions and has passed focused extract CLI tests plus byte-for-byte output comparison against the pre-grouping release binary; focused review and final benchmark runs remain.
 
 ## Context and Orientation
 
@@ -399,3 +404,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-06-30: Updated after profiling the SCR1 AXI DMEM extraction run and adding DEBUG-only extract timing diagnostics.
 - 2026-07-01: Added the performance follow-up plan for SCR1 AXI extract e2e benchmarks, baseline validation, event-expression grouping, review, and final performance gate.
 - 2026-07-01: Updated after adding the extract e2e benchmark scenarios and collecting FST/FSDB baseline timings for the current implementation.
+- 2026-07-01: Updated after implementing event-expression grouping and collecting DEBUG evidence on the SCR1 AXI 2-channel and 5-channel source-file runs.

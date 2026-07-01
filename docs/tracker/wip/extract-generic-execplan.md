@@ -36,7 +36,7 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - [x] (2026-07-01T05:56Z) Add SCR1 AXI DMEM extract e2e benchmark scenarios for one CLI-defined channel, two JSON-defined channels, and five JSON-defined channels to the FST and FSDB catalogs. Validated with `python3 -m unittest bench.e2e.test_perf` and `just check-bench-e2e-fsdb-catalog`.
 - [x] (2026-07-01T06:29Z) Run the new extract benchmark scenarios on the current implementation and confirm the expected poor scaling. FST medians were `1.445s` for 1ch, `2.548s` for 2ch, and `5.705s` for 5ch. FSDB medians were `25.123s` for 1ch, `29.984s` for 2ch, and `44.790s` for 5ch.
 - [x] (2026-07-01T06:38Z) Implement event-expression grouping for `extract generic` without changing benchmark definitions or command output contracts. The implementation groups by original `on` text plus resolved event candidate signal IDs, collects candidate timestamps per group, and emits matching sources in declaration order.
-- [ ] (2026-07-01T05:56Z) Validate the grouping fix with DEBUG diagnostics and focused review. DEBUG diagnostics already show one event group and `1,248,862` event checks for both 2-channel and 5-channel SCR1 AXI source-file runs; focused review remains.
+- [ ] (2026-07-01T05:56Z) Validate the grouping fix with DEBUG diagnostics and focused review. DEBUG diagnostics show one event group and `1,248,862` event checks for both 2-channel and 5-channel SCR1 AXI source-file runs. Initial code/performance review found DEBUG truncation counter semantics and three hot-path concerns; fixes were applied and both reviewers rechecked with no substantive findings. A fresh control pass remains.
 - [ ] (2026-07-01T05:56Z) Run the extract e2e benchmark scenarios as the final performance gate and record the speedup evidence before handoff.
 
 ## Surprises & Discoveries
@@ -66,7 +66,9 @@ This plan does not implement protocol-specific extractors such as AXI, AXI-Strea
 - Observation: The FSDB benchmark has a large backend cost, but the extract workload still grows materially with channel count.
   Evidence: `tmp/bench-extract-baseline-fsdb/baseline` records medians of `25.123s` for 1 channel, `29.984s` for 2 channels, and `44.790s` for 5 channels.
 - Observation: Grouping the shared SCR1 AXI `posedge clk iff axi_rst_n` event reduces event checks to the candidate timestamp count while preserving output.
-  Evidence: After the grouping implementation, `DEBUG=1 target/release/wavepeek extract generic ... --source bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json --jsonl` records `event_groups=1`, `candidate_times=1,248,862`, `event_checks=1,248,862`, and `event_match_ns=939,154,836`; `cmp` confirms the grouped 5-channel JSON output matches the pre-grouping release output byte-for-byte.
+  Evidence: After the grouping implementation, `DEBUG=1 target/release/wavepeek extract generic ... --source bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json --jsonl` records `event_groups=1`, `candidate_times=1,248,862`, `event_checks=1,248,862`, and `event_match_ns=960,580,774`; `cmp` confirms the grouped 5-channel JSON output matches the pre-grouping release output byte-for-byte.
+- Observation: Review found three avoidable costs in the first grouping implementation.
+  Evidence: The performance review flagged duplicate candidate collection for same-signal event groups, unconditional pre-emit merged timestamp counting in non-DEBUG runs, and per-timestamp sorting for the common single-matching-group case. The follow-up patch caches candidate streams by sorted candidate `SignalId` set, only computes the merged timestamp count for DEBUG diagnostics, and skips source-index sorting unless more than one event group matches.
 
 ## Decision Log
 
@@ -405,3 +407,4 @@ The exact enum payload type can differ, but the command name string must be `ext
 - 2026-07-01: Added the performance follow-up plan for SCR1 AXI extract e2e benchmarks, baseline validation, event-expression grouping, review, and final performance gate.
 - 2026-07-01: Updated after adding the extract e2e benchmark scenarios and collecting FST/FSDB baseline timings for the current implementation.
 - 2026-07-01: Updated after implementing event-expression grouping and collecting DEBUG evidence on the SCR1 AXI 2-channel and 5-channel source-file runs.
+- 2026-07-01: Updated after focused review, performance/correctness follow-up fixes, and reviewer rechecks with no substantive findings.

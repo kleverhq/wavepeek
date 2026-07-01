@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -123,12 +124,13 @@ struct EventGroupKey {
 struct EventGroup {
     source_indices: Vec<usize>,
     candidate_sources: Vec<ExprResolvedSignal>,
+    candidate_key: Vec<SignalId>,
 }
 
 #[derive(Debug)]
 struct EventGroupCandidateTimes {
     group_index: usize,
-    times: Vec<u64>,
+    times: Rc<Vec<u64>>,
     cursor: usize,
 }
 
@@ -318,7 +320,11 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
 
     let group_candidate_times =
         collect_event_group_candidate_times(&waveform, &event_groups, from_raw, to_raw)?;
-    let candidate_times = count_merged_candidate_times(&group_candidate_times);
+    let candidate_times = if debug.is_enabled() {
+        count_merged_candidate_times(&group_candidate_times)
+    } else {
+        0
+    };
     debug.event("candidate.collect.done", || {
         serde_json::json!({
             "times": candidate_times,
@@ -348,7 +354,7 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         max_entries,
         profile_timing: debug.is_enabled(),
     };
-    let stats = emit_rows(emit_context, group_candidate_times, sink)?;
+    let stats = emit_rows(emit_context, group_candidate_times, candidate_times, sink)?;
     debug.event("extract.emit.done", || {
         serde_json::json!({
             "candidate_times": stats.candidate_times,
@@ -632,12 +638,10 @@ fn build_event_groups(sources: &[BoundExtractSource]) -> Result<Vec<EventGroup>,
             &source.host,
             event_candidate_handles(&source.bound_event).as_slice(),
         )?;
+        let candidate_key = candidate_key_for_sources(&candidate_sources);
         let key = EventGroupKey {
             on: source.on.clone(),
-            candidate_ids: candidate_sources
-                .iter()
-                .map(|candidate| candidate.id)
-                .collect(),
+            candidate_ids: candidate_key.clone(),
         };
 
         if let Some(group_index) = groups_by_key.get(&key).copied() {
@@ -649,11 +653,22 @@ fn build_event_groups(sources: &[BoundExtractSource]) -> Result<Vec<EventGroup>,
         groups.push(EventGroup {
             source_indices: vec![source_index],
             candidate_sources,
+            candidate_key,
         });
         groups_by_key.insert(key, group_index);
     }
 
     Ok(groups)
+}
+
+fn candidate_key_for_sources(candidate_sources: &[ExprResolvedSignal]) -> Vec<SignalId> {
+    let mut candidate_ids = candidate_sources
+        .iter()
+        .map(|candidate| candidate.id)
+        .collect::<Vec<_>>();
+    candidate_ids.sort_unstable();
+    candidate_ids.dedup();
+    candidate_ids
 }
 
 fn collect_event_group_candidate_times(
@@ -662,25 +677,34 @@ fn collect_event_group_candidate_times(
     from_raw: u64,
     to_raw: u64,
 ) -> Result<Vec<EventGroupCandidateTimes>, WavepeekError> {
-    event_groups
-        .iter()
-        .enumerate()
-        .map(|(group_index, group)| {
-            let times = waveform
-                .borrow_mut()
-                .collect_expr_candidate_times_with_mode(
-                    group.candidate_sources.as_slice(),
-                    from_raw,
-                    to_raw,
-                    ChangeCandidateCollectionMode::Auto,
-                )?;
-            Ok(EventGroupCandidateTimes {
-                group_index,
-                times,
-                cursor: 0,
-            })
-        })
-        .collect()
+    let mut times_by_candidate_key: HashMap<Vec<SignalId>, Rc<Vec<u64>>> = HashMap::new();
+    let mut group_candidate_times = Vec::with_capacity(event_groups.len());
+
+    for (group_index, group) in event_groups.iter().enumerate() {
+        let times = if let Some(times) = times_by_candidate_key.get(&group.candidate_key) {
+            Rc::clone(times)
+        } else {
+            let times = Rc::new(
+                waveform
+                    .borrow_mut()
+                    .collect_expr_candidate_times_with_mode(
+                        group.candidate_sources.as_slice(),
+                        from_raw,
+                        to_raw,
+                        ChangeCandidateCollectionMode::Auto,
+                    )?,
+            );
+            times_by_candidate_key.insert(group.candidate_key.clone(), Rc::clone(&times));
+            times
+        };
+        group_candidate_times.push(EventGroupCandidateTimes {
+            group_index,
+            times,
+            cursor: 0,
+        });
+    }
+
+    Ok(group_candidate_times)
 }
 
 fn count_merged_candidate_times(group_candidate_times: &[EventGroupCandidateTimes]) -> usize {
@@ -749,6 +773,7 @@ fn duration_ns(duration: Duration) -> u64 {
 fn emit_rows<S: ExtractRowSink + ?Sized>(
     context: ExtractEmitContext<'_>,
     mut group_candidate_times: Vec<EventGroupCandidateTimes>,
+    candidate_times_total: usize,
     sink: &mut S,
 ) -> Result<ExtractRunStats, WavepeekError> {
     let mut candidate_count = 0usize;
@@ -771,6 +796,7 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
         matched_source_indices.clear();
         let previous_timestamp = context.waveform.borrow().previous_sample_time(timestamp);
 
+        let mut matching_group_count = 0usize;
         for group_index in &active_groups {
             let group = &context.event_groups[*group_index];
             let representative = &context.sources[group.source_indices[0]];
@@ -792,6 +818,7 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
             }
             if event_matches_row {
                 event_matches_count += 1;
+                matching_group_count += 1;
                 matched_source_indices.extend(group.source_indices.iter().copied());
             }
         }
@@ -799,8 +826,11 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
         if matched_source_indices.is_empty() {
             continue;
         }
-        matched_source_indices
-            .sort_unstable_by_key(|source_index| context.sources[*source_index].declaration_index);
+        if matching_group_count > 1 {
+            matched_source_indices.sort_unstable_by_key(|source_index| {
+                context.sources[*source_index].declaration_index
+            });
+        }
 
         let Some(sample_timestamp) = timestamp
             .checked_sub(1)
@@ -850,7 +880,11 @@ fn emit_rows<S: ExtractRowSink + ?Sized>(
     }
 
     Ok(ExtractRunStats {
-        candidate_times: candidate_count,
+        candidate_times: if context.profile_timing {
+            candidate_times_total
+        } else {
+            candidate_count
+        },
         event_checks,
         event_matches: event_matches_count,
         predicate_true,

@@ -1131,6 +1131,37 @@ struct sample_records_deleter {
 
 using owned_sample_records = std::unique_ptr<wp_fsdb_sample_record, sample_records_deleter>;
 
+void free_signal_timeline_records(
+    wp_fsdb_signal_timeline_record *signals,
+    std::size_t count
+) {
+    if (signals == nullptr) {
+        return;
+    }
+    for (std::size_t signal_index = 0; signal_index < count; ++signal_index) {
+        for (std::size_t change_index = 0; change_index < signals[signal_index].change_count;
+             ++change_index) {
+            std::free(signals[signal_index].changes[change_index].bits);
+            signals[signal_index].changes[change_index].bits = nullptr;
+        }
+        std::free(signals[signal_index].changes);
+        signals[signal_index].changes = nullptr;
+        signals[signal_index].change_count = 0;
+    }
+    std::free(signals);
+}
+
+struct signal_timeline_records_deleter {
+    std::size_t count = 0;
+
+    void operator()(wp_fsdb_signal_timeline_record *signals) const {
+        free_signal_timeline_records(signals, count);
+    }
+};
+
+using owned_signal_timeline_records =
+    std::unique_ptr<wp_fsdb_signal_timeline_record, signal_timeline_records_deleter>;
+
 class signal_list_guard {
   public:
     explicit signal_list_guard(ffrObject *object) : object_(object) {}
@@ -1472,6 +1503,159 @@ wp_fsdb_status fill_sample_record(
         record,
         error_message
     );
+}
+
+void append_timeline_sample(
+    std::vector<sampled_bit_vector> &samples,
+    sampled_bit_vector sample
+) {
+    if (!sample.has_value) {
+        return;
+    }
+    if (samples.empty() || sample.time_raw > samples.back().time_raw) {
+        samples.push_back(std::move(sample));
+        return;
+    }
+    if (sample.time_raw == samples.back().time_raw) {
+        const vc_position position{sample.time_raw, sample.seq_num};
+        if (position_is_not_before_selected(position, samples.back())) {
+            samples.back() = std::move(sample);
+        }
+    }
+}
+
+wp_fsdb_status append_current_timeline_sample(
+    ffrVCTrvsHdl handle,
+    uint_T bit_width,
+    const vc_position &position,
+    std::vector<sampled_bit_vector> &samples,
+    char **error_message
+) {
+    sampled_bit_vector sample;
+    if (capture_current_bit_vector_sample(
+            handle,
+            bit_width,
+            position,
+            &sample,
+            error_message
+        ) != WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
+    }
+    append_timeline_sample(samples, std::move(sample));
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status copy_timeline_samples(
+    const std::vector<sampled_bit_vector> &samples,
+    wp_fsdb_signal_timeline_record *record,
+    char **error_message
+) {
+    if (record == nullptr) {
+        return fail(error_message, "FSDB Reader: timeline copy received a null record");
+    }
+
+    record->changes = nullptr;
+    record->change_count = samples.size();
+    if (samples.empty()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    auto *changes = static_cast<wp_fsdb_value_change_record *>(
+        std::calloc(samples.size(), sizeof(wp_fsdb_value_change_record))
+    );
+    if (changes == nullptr) {
+        record->change_count = 0;
+        return fail(error_message, "FSDB Reader: failed to allocate value-change timeline");
+    }
+    record->changes = changes;
+
+    for (std::size_t index = 0; index < samples.size(); ++index) {
+        changes[index].time_raw = samples[index].time_raw;
+        changes[index].bits = copy_string(samples[index].bits.c_str());
+        if (changes[index].bits == nullptr) {
+            return fail(error_message, "FSDB Reader: failed to allocate timeline bit string");
+        }
+    }
+    return WP_FSDB_STATUS_OK;
+}
+
+wp_fsdb_status fill_timeline_record_from_handle(
+    ffrVCTrvsHdl handle,
+    uint64_t idcode,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    wp_fsdb_signal_timeline_record *record,
+    char **error_message
+) {
+    if (handle == nullptr || record == nullptr) {
+        return fail(error_message, "FSDB Reader: timeline read received a null argument");
+    }
+
+    record->idcode = idcode;
+    record->bit_width = 0;
+    record->changes = nullptr;
+    record->change_count = 0;
+
+    const uint_T bit_width = handle->ffrGetBitSize();
+    if (bit_width == 0) {
+        return fail(error_message, "FSDB Reader: signal has unsupported zero-width value encoding");
+    }
+    record->bit_width = static_cast<uint32_t>(bit_width);
+
+    if (handle->ffrGetBytesPerBit() != FSDB_BYTES_PER_BIT_1B) {
+        return fail(error_message, "FSDB Reader: signal has unsupported non-bit-vector encoding");
+    }
+    if (!handle->ffrHasIncoreVC()) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    std::vector<sampled_bit_vector> samples;
+    sampled_bit_vector initial;
+    if (read_final_sample_at_or_before(handle, from_raw, bit_width, &initial, error_message) !=
+        WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
+    }
+    append_timeline_sample(samples, std::move(initial));
+
+    fsdbTag64 tag = u64_to_tag64(from_raw);
+    if (handle->ffrGotoXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+        if (handle->ffrGetMinXTag(static_cast<void *>(&tag)) != FSDB_RC_SUCCESS) {
+            return copy_timeline_samples(samples, record, error_message);
+        }
+    }
+
+    vc_position position;
+    if (read_current_vc_position(handle, &position, error_message) != WP_FSDB_STATUS_OK) {
+        return WP_FSDB_STATUS_ERROR;
+    }
+    while (position.time_raw < from_raw) {
+        if (handle->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            return copy_timeline_samples(samples, record, error_message);
+        }
+        if (read_current_vc_position(handle, &position, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+    }
+
+    while (position.time_raw <= to_raw) {
+        if (append_current_timeline_sample(
+                handle,
+                bit_width,
+                position,
+                samples,
+                error_message
+            ) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+        if (handle->ffrGotoNextVC() != FSDB_RC_SUCCESS) {
+            break;
+        }
+        if (read_current_vc_position(handle, &position, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+    }
+
+    return copy_timeline_samples(samples, record, error_message);
 }
 
 wp_fsdb_status append_change_times_for_handle(
@@ -2329,6 +2513,86 @@ extern "C" wp_fsdb_status wp_fsdb_signal_session_collect_change_times(
     }
 }
 
+extern "C" wp_fsdb_status wp_fsdb_signal_session_read_value_changes(
+    wp_fsdb_signal_session *session,
+    const uint64_t *idcodes,
+    std::size_t count,
+    uint64_t from_raw,
+    uint64_t to_raw,
+    wp_fsdb_signal_timeline_list *out,
+    char **error_message
+) {
+    clear_error(error_message);
+    if (session == nullptr || out == nullptr || (count > 0 && idcodes == nullptr)) {
+        return fail(
+            error_message,
+            "FSDB Reader: signal session timeline read received a null argument"
+        );
+    }
+    out->signals = nullptr;
+    out->count = 0;
+    if (from_raw > to_raw || count == 0) {
+        return WP_FSDB_STATUS_OK;
+    }
+
+    try {
+        std::lock_guard<std::recursive_mutex> lock(reader_mutex());
+        scoped_output_suppressor output_suppressor;
+        suppress_reader_messages();
+
+        if (session->require_open(error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+        if (require_integer_time_tags(session->object, error_message) != WP_FSDB_STATUS_OK) {
+            return WP_FSDB_STATUS_ERROR;
+        }
+
+        auto *raw_timelines = static_cast<wp_fsdb_signal_timeline_record *>(
+            std::calloc(count, sizeof(wp_fsdb_signal_timeline_record))
+        );
+        if (raw_timelines == nullptr) {
+            return fail(error_message, "FSDB Reader: failed to allocate signal timelines");
+        }
+        owned_signal_timeline_records timelines(
+            raw_timelines,
+            signal_timeline_records_deleter{count}
+        );
+
+        for (std::size_t index = 0; index < count; ++index) {
+            if (session->require_idcode(idcodes[index], error_message) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+            vc_handle_guard handle(
+                session->object->ffrCreateVCTrvsHdl(static_cast<fsdbVarIdcode>(idcodes[index]))
+            );
+            if (handle.get() == nullptr) {
+                return fail(error_message, "FSDB Reader: failed to create value-change traverse handle");
+            }
+            if (fill_timeline_record_from_handle(
+                    handle.get(),
+                    idcodes[index],
+                    from_raw,
+                    to_raw,
+                    &timelines.get()[index],
+                    error_message
+                ) != WP_FSDB_STATUS_OK) {
+                return WP_FSDB_STATUS_ERROR;
+            }
+        }
+
+        out->signals = timelines.release();
+        out->count = count;
+        return WP_FSDB_STATUS_OK;
+    } catch (const std::exception &error) {
+        return fail(
+            error_message,
+            std::string("FSDB Reader: signal session timeline read failed: ") + error.what()
+        );
+    } catch (...) {
+        return fail_unknown_exception(error_message);
+    }
+}
+
 extern "C" wp_fsdb_status wp_fsdb_signal_session_event_occurred(
     wp_fsdb_signal_session *session,
     uint64_t idcode,
@@ -2404,6 +2668,15 @@ extern "C" void wp_fsdb_free_time_list(wp_fsdb_time_list *list) {
     }
     std::free(list->times);
     list->times = nullptr;
+    list->count = 0;
+}
+
+extern "C" void wp_fsdb_free_signal_timelines(wp_fsdb_signal_timeline_list *list) {
+    if (list == nullptr) {
+        return;
+    }
+    free_signal_timeline_records(list->signals, list->count);
+    list->signals = nullptr;
     list->count = 0;
 }
 

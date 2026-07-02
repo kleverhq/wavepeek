@@ -145,7 +145,7 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Commit the baseline report.
 - [x] Implement native sequential timeline API and Rust FFI wrappers.
 - [x] Implement FSDB timeline cache, preload API, command hooks, and DEBUG counters.
-- [ ] Run focused tests and implementation review.
+- [x] Run focused tests and implementation review.
 - [ ] Capture after-fix benchmark and DEBUG diagnostic evidence.
 - [ ] Update and commit the final performance report.
 - [ ] Run final gates and control review.
@@ -174,6 +174,8 @@ Decision: collect baseline and after-fix evidence with debug builds and reduced 
 
 Decision: use shell `time` for focused DEBUG diagnostics in this container. Rationale: `/usr/bin/time` is unavailable, but shell `time` still records real, user, and system durations needed for before/after comparison.
 
+Decision: skip full-window timeline preload when `--max` is bounded. Rationale: the issue workload uses `--max unlimited`, where preloading amortizes millions of samples. For default or bounded runs, full-window preload can traverse and store far more data than needed before truncation, so those runs keep the fallback path.
+
 ## Outcomes & Retrospective
 
 Milestone 1 complete. The ExecPlan was committed and a read-only docs/design review returned no substantive findings.
@@ -182,7 +184,9 @@ Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB bina
 
 Milestone 3 complete. The native C ABI now exposes a signal-session value-change timeline reader and Rust FFI wrappers. The focused test `CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb fsdb_signal_session_reads_value_changes -- --nocapture` passed.
 
-Milestone 4 complete. The FSDB backend now caches per-signal timelines, serves expression and resolved sampling from the cache when covered, and falls back to native random sampling otherwise. `extract generic` preloads event, `iff`, predicate, and payload sources; `property` preloads candidate and eval sources. Focused tests and a local two-channel DEBUG smoke run passed.
+Milestone 4 complete. The FSDB backend now caches per-signal timelines, serves expression and resolved sampling from the cache when covered, and falls back to native random sampling otherwise. `extract generic` preloads event, `iff`, predicate, and payload sources; `property` preloads candidate and eval sources for unlimited runs. Focused tests and a local two-channel DEBUG smoke run passed.
+
+Milestone 5 complete. Read-only review lanes covered native/FFI correctness, Rust backend/command correctness, and performance. Native and Rust lanes returned no substantive findings. The performance lane found that bounded `--max` runs could pay full-window preload cost; commit `380fdc6` skips timeline preload for bounded runs, and a performance follow-up review returned no substantive findings.
 
 ## Revision notes
 
@@ -197,3 +201,5 @@ Milestone 4 complete. The FSDB backend now caches per-signal timelines, serves e
 2026-07-02: Recorded native timeline API completion after commit `20bde48`. The native API returns final per-timestamp bit-vector values and includes an initial sample at or before the preload start.
 
 2026-07-02: Recorded backend timeline cache completion after commit `6953b20`. The first smoke run shows the random sampling hot path has effectively disappeared for the two-channel SCR1 extract workload.
+
+2026-07-02: Recorded implementation review completion. Commit `380fdc6` addresses the only substantive review finding by keeping bounded `--max` runs on the fallback path instead of preloading complete timelines.

@@ -146,8 +146,8 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Implement native sequential timeline API and Rust FFI wrappers.
 - [x] Implement FSDB timeline cache, preload API, command hooks, and DEBUG counters.
 - [x] Run focused tests and implementation review.
-- [ ] Capture after-fix benchmark and DEBUG diagnostic evidence.
-- [ ] Update and commit the final performance report.
+- [x] Capture after-fix benchmark and DEBUG diagnostic evidence.
+- [x] Update and commit the final performance report.
 - [ ] Run final gates and control review.
 
 ## Surprises & Discoveries
@@ -161,6 +161,8 @@ The baseline reproduced the issue on commit `4b35f03d9f47`: debug FSDB benchmark
 The native timeline API was added in commit `20bde48`. A focused FSDB unit test converts `change_property_events.vcd`, reads `top.armed` over raw time `1..=20`, and verifies that the returned timeline includes the initial value at raw time 0 plus later changes at 10 and 15.
 
 The backend timeline cache and extract/property preload hooks were added in commit `6953b20`. A local DEBUG smoke run of the two-channel SCR1 extract workload dropped shell `real` time from the baseline 61.107s to 13.503s, with `timeline_sample_hits=4,420,390`, `sample_resolved_calls=1`, and `sample_resolved_native_ns=0.000074s`.
+
+Final after-fix evidence on commit `de5fc613b095` measured 12.821s for the two-channel debug benchmark and 18.335s for the five-channel benchmark. DEBUG diagnostics showed 4,420,390 timeline hits for 2ch and 6,364,263 for 5ch, with one native sample fallback in each run. Baseline and after JSONL outputs matched byte-for-byte for both diagnostic workloads.
 
 ## Decision Log
 
@@ -188,6 +190,8 @@ Milestone 4 complete. The FSDB backend now caches per-signal timelines, serves e
 
 Milestone 5 complete. Read-only review lanes covered native/FFI correctness, Rust backend/command correctness, and performance. Native and Rust lanes returned no substantive findings. The performance lane found that bounded `--max` runs could pay full-window preload cost; commit `380fdc6` skips timeline preload for bounded runs, and a performance follow-up review returned no substantive findings.
 
+Milestone 6 complete. The after-fix debug benchmark and DEBUG diagnostics were run with the same workloads and binary type as baseline. The final performance report now compares before/after timings, DEBUG counters, and byte-for-byte JSONL parity.
+
 ## Revision notes
 
 2026-07-02: Initial ExecPlan created from issue #47 and repository context. The plan includes baseline collection, implementation strategy, review gates, after-fix evidence, and final report requirements.
@@ -203,3 +207,5 @@ Milestone 5 complete. Read-only review lanes covered native/FFI correctness, Rus
 2026-07-02: Recorded backend timeline cache completion after commit `6953b20`. The first smoke run shows the random sampling hot path has effectively disappeared for the two-channel SCR1 extract workload.
 
 2026-07-02: Recorded implementation review completion. Commit `380fdc6` addresses the only substantive review finding by keeping bounded `--max` runs on the fallback path instead of preloading complete timelines.
+
+2026-07-02: Recorded final after-fix benchmark and DEBUG diagnostic evidence. The final report shows about 4.7x debug-build speedup and elimination of the native random sampling hot path for the targeted extract workloads.

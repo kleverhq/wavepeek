@@ -11,7 +11,9 @@ use crate::error::WavepeekError;
 use crate::expr::{ExprType, ExprTypeKind, SampledValue};
 
 use super::fsdb_hierarchy::{FsdbHierarchyIndex, FsdbValueEncoding};
-use super::fsdb_native::{self, FsdbNativeMetadata, FsdbReader, FsdbSignalSession};
+use super::fsdb_native::{
+    self, FsdbNativeMetadata, FsdbNativeSignalTimeline, FsdbReader, FsdbSignalSession,
+};
 use super::fsdb_time::{normalize_raw_time, parse_scale_unit};
 use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
@@ -25,9 +27,34 @@ pub(super) struct FsdbBackend {
     hierarchy: RefCell<Option<FsdbHierarchyIndex>>,
     signal_session: Option<FsdbSignalSession>,
     loaded_session_idcodes: BTreeSet<u64>,
+    value_timeline_cache: HashMap<SignalId, FsdbValueTimeline>,
     expr_sample_cache: HashMap<(SignalId, u64), SampledValue>,
     event_occurrence_cache: HashMap<(SignalId, u64), bool>,
     debug_stats: Option<FsdbDebugStats>,
+}
+
+#[derive(Debug, Clone)]
+struct FsdbValueTimeline {
+    from_raw: u64,
+    to_raw: u64,
+    bit_width: u32,
+    changes: Vec<FsdbTimelineChange>,
+}
+
+#[derive(Debug, Clone)]
+struct FsdbTimelineChange {
+    time_raw: u64,
+    bits: String,
+}
+
+impl FsdbValueTimeline {
+    fn covers(&self, from_raw: u64, to_raw: u64) -> bool {
+        self.from_raw <= from_raw && self.to_raw >= to_raw
+    }
+
+    fn covers_timestamp(&self, query_time_raw: u64) -> bool {
+        self.from_raw <= query_time_raw && query_time_raw <= self.to_raw
+    }
 }
 
 #[derive(Debug, Default)]
@@ -38,6 +65,12 @@ struct FsdbDebugStats {
     event_occurrence_cache_hits: usize,
     event_occurrence_cache_misses: usize,
     event_occurrence_uncached_ns: u64,
+    timeline_preload_calls: usize,
+    timeline_preload_idcodes: usize,
+    timeline_preload_changes: usize,
+    timeline_preload_native_ns: u64,
+    timeline_sample_hits: usize,
+    timeline_sample_misses: usize,
     sample_resolved_calls: usize,
     sample_resolved_idcodes: usize,
     sample_resolved_native_ns: u64,
@@ -59,6 +92,13 @@ pub(crate) struct FsdbDebugStatsSnapshot {
     pub event_occurrence_cache_misses: usize,
     pub event_occurrence_uncached_ns: u64,
     pub event_occurrence_cache_len: usize,
+    pub timeline_preload_calls: usize,
+    pub timeline_preload_idcodes: usize,
+    pub timeline_preload_changes: usize,
+    pub timeline_preload_native_ns: u64,
+    pub timeline_sample_hits: usize,
+    pub timeline_sample_misses: usize,
+    pub timeline_cache_len: usize,
     pub sample_resolved_calls: usize,
     pub sample_resolved_idcodes: usize,
     pub sample_resolved_native_ns: u64,
@@ -79,6 +119,7 @@ impl FsdbBackend {
             hierarchy: RefCell::new(None),
             signal_session: None,
             loaded_session_idcodes: BTreeSet::new(),
+            value_timeline_cache: HashMap::new(),
             expr_sample_cache: HashMap::new(),
             event_occurrence_cache: HashMap::new(),
             debug_stats: fsdb_debug_stats_enabled().then(FsdbDebugStats::default),
@@ -168,6 +209,79 @@ impl FsdbBackend {
         }
     }
 
+    pub(super) fn preload_expr_value_changes(
+        &mut self,
+        resolved: &[ExprResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        if resolved.is_empty() || from_raw > to_raw {
+            return Ok(());
+        }
+        self.raw_metadata()?;
+        self.validate_expr_values_supported(resolved)?;
+        let signals = resolved
+            .iter()
+            .filter(|signal| !matches!(signal.expr_type.kind, ExprTypeKind::Event))
+            .map(|signal| ResolvedSignal {
+                path: signal.path.clone(),
+                id: signal.id,
+                width: signal.expr_type.width.max(1),
+            })
+            .collect::<Vec<_>>();
+        self.preload_resolved_value_changes(signals.as_slice(), from_raw, to_raw)
+    }
+
+    pub(super) fn preload_resolved_value_changes(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        if resolved.is_empty() || from_raw > to_raw {
+            return Ok(());
+        }
+        self.raw_metadata()?;
+        self.validate_resolved_values_supported(resolved)?;
+
+        let mut idcodes = Vec::new();
+        let mut seen = BTreeSet::new();
+        for signal in resolved {
+            if !seen.insert(signal.id) {
+                continue;
+            }
+            if self
+                .value_timeline_cache
+                .get(&signal.id)
+                .is_some_and(|timeline| timeline.covers(from_raw, to_raw))
+            {
+                continue;
+            }
+            idcodes.push(signal.id.as_u64());
+        }
+        if idcodes.is_empty() {
+            return Ok(());
+        }
+
+        let started_at = self.debug_stats.is_some().then(Instant::now);
+        let timelines = {
+            let session = self.ensure_signal_session(idcodes.as_slice())?;
+            session.read_value_changes(idcodes.as_slice(), from_raw, to_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.timeline_preload_calls += 1;
+            stats.timeline_preload_idcodes += idcodes.len();
+            stats.timeline_preload_changes += timelines
+                .iter()
+                .map(|timeline| timeline.changes.len())
+                .sum::<usize>();
+            if let Some(started_at) = started_at {
+                stats.timeline_preload_native_ns += duration_ns(started_at.elapsed());
+            }
+        }
+        self.store_value_timelines(idcodes.as_slice(), timelines, from_raw, to_raw)
+    }
+
     pub(super) fn sample_resolved_optional(
         &mut self,
         resolved: &[ResolvedSignal],
@@ -178,64 +292,35 @@ impl FsdbBackend {
         }
 
         self.raw_metadata()?;
+        self.validate_resolved_values_supported(resolved)?;
 
-        {
-            let hierarchy = self.hierarchy()?;
-            for signal in resolved {
-                match hierarchy.signal_value_encoding(signal.path.as_str())? {
-                    FsdbValueEncoding::BitVector => {}
-                    FsdbValueEncoding::Unsupported | FsdbValueEncoding::DatatypeCandidate => {
-                        return Err(unsupported_signal_value_encoding(signal.path.as_str()));
-                    }
-                }
+        let mut results = vec![None; resolved.len()];
+        let mut fallback_indices = Vec::new();
+        for (index, signal) in resolved.iter().enumerate() {
+            if let Some(sample) = self.sample_resolved_from_timeline(signal, query_time_raw) {
+                results[index] = Some(sample);
+            } else {
+                fallback_indices.push(index);
             }
         }
 
-        let idcodes = resolved
-            .iter()
-            .map(|signal| signal.id.as_u64())
-            .collect::<Vec<_>>();
-        let started_at = self.debug_stats.is_some().then(Instant::now);
-        let samples = {
-            let session = self.ensure_signal_session(&idcodes)?;
-            session.sample_signal_values(&idcodes, query_time_raw)?
-        };
-        if let Some(stats) = self.debug_stats.as_mut() {
-            stats.sample_resolved_calls += 1;
-            stats.sample_resolved_idcodes += idcodes.len();
-            if let Some(started_at) = started_at {
-                stats.sample_resolved_native_ns += duration_ns(started_at.elapsed());
+        if !fallback_indices.is_empty() {
+            let fallback_signals = fallback_indices
+                .iter()
+                .map(|index| resolved[*index].clone())
+                .collect::<Vec<_>>();
+            let fallback_samples =
+                self.sample_resolved_optional_native(fallback_signals.as_slice(), query_time_raw)?;
+            for (index, sample) in fallback_indices.into_iter().zip(fallback_samples) {
+                results[index] = Some(sample);
             }
         }
-        if samples.len() != resolved.len() {
-            return Err(WavepeekError::Internal(
-                "FSDB Reader returned the wrong number of sampled values".to_string(),
-            ));
-        }
 
-        resolved
-            .iter()
-            .zip(samples)
-            .map(|(signal, sample)| {
-                if sample.idcode != signal.id.as_u64() {
-                    return Err(WavepeekError::Internal(
-                        "FSDB Reader returned sampled values out of order".to_string(),
-                    ));
-                }
-                if let Some(bits) = sample.bits.as_ref()
-                    && bits.len() != sample.bit_width as usize
-                {
-                    return Err(WavepeekError::File(format!(
-                        "FSDB Reader returned {} bits for {}-bit signal '{}'",
-                        bits.len(),
-                        sample.bit_width,
-                        signal.path
-                    )));
-                }
-                Ok(SampledSignalState {
-                    path: signal.path.clone(),
-                    width: sample.bit_width,
-                    bits: sample.bits,
+        results
+            .into_iter()
+            .map(|sample| {
+                sample.ok_or_else(|| {
+                    WavepeekError::Internal("FSDB sampled signal result was not filled".to_string())
                 })
             })
             .collect()
@@ -252,6 +337,10 @@ impl FsdbBackend {
                 stats.expr_sample_cache_hits += 1;
             }
             return Ok(value.clone());
+        }
+
+        if let Some(value) = self.sample_expr_value_from_timeline(resolved, query_time_raw)? {
+            return Ok(value);
         }
 
         if let Some(stats) = self.debug_stats.as_mut() {
@@ -402,6 +491,189 @@ impl FsdbBackend {
         false
     }
 
+    fn sample_resolved_optional_native(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        query_time_raw: u64,
+    ) -> Result<Vec<SampledSignalState>, WavepeekError> {
+        let idcodes = resolved
+            .iter()
+            .map(|signal| signal.id.as_u64())
+            .collect::<Vec<_>>();
+        let started_at = self.debug_stats.is_some().then(Instant::now);
+        let samples = {
+            let session = self.ensure_signal_session(&idcodes)?;
+            session.sample_signal_values(&idcodes, query_time_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.sample_resolved_calls += 1;
+            stats.sample_resolved_idcodes += idcodes.len();
+            if let Some(started_at) = started_at {
+                stats.sample_resolved_native_ns += duration_ns(started_at.elapsed());
+            }
+        }
+        if samples.len() != resolved.len() {
+            return Err(WavepeekError::Internal(
+                "FSDB Reader returned the wrong number of sampled values".to_string(),
+            ));
+        }
+
+        resolved
+            .iter()
+            .zip(samples)
+            .map(|(signal, sample)| {
+                if sample.idcode != signal.id.as_u64() {
+                    return Err(WavepeekError::Internal(
+                        "FSDB Reader returned sampled values out of order".to_string(),
+                    ));
+                }
+                if let Some(bits) = sample.bits.as_ref()
+                    && bits.len() != sample.bit_width as usize
+                {
+                    return Err(WavepeekError::File(format!(
+                        "FSDB Reader returned {} bits for {}-bit signal '{}'",
+                        bits.len(),
+                        sample.bit_width,
+                        signal.path
+                    )));
+                }
+                Ok(SampledSignalState {
+                    path: signal.path.clone(),
+                    width: sample.bit_width,
+                    bits: sample.bits,
+                })
+            })
+            .collect()
+    }
+
+    fn sample_expr_value_from_timeline(
+        &mut self,
+        resolved: &ExprResolvedSignal,
+        query_time_raw: u64,
+    ) -> Result<Option<SampledValue>, WavepeekError> {
+        match resolved.expr_type.kind {
+            ExprTypeKind::Real | ExprTypeKind::String => {
+                return Err(unsupported_value_sampling(resolved.path.as_str()));
+            }
+            ExprTypeKind::Event => return Ok(None),
+            ExprTypeKind::BitVector | ExprTypeKind::IntegerLike(_) | ExprTypeKind::EnumCore => {}
+        }
+
+        let signal = ResolvedSignal {
+            path: resolved.path.clone(),
+            id: resolved.id,
+            width: resolved.expr_type.width.max(1),
+        };
+        let Some(sample) = self.sample_resolved_from_timeline(&signal, query_time_raw) else {
+            return Ok(None);
+        };
+        Ok(Some(self.sampled_state_to_expr_value(resolved, sample)))
+    }
+
+    fn sample_resolved_from_timeline(
+        &mut self,
+        signal: &ResolvedSignal,
+        query_time_raw: u64,
+    ) -> Option<SampledSignalState> {
+        let Some(timeline) = self.value_timeline_cache.get(&signal.id) else {
+            if let Some(stats) = self.debug_stats.as_mut() {
+                stats.timeline_sample_misses += 1;
+            }
+            return None;
+        };
+        if !timeline.covers_timestamp(query_time_raw) {
+            if let Some(stats) = self.debug_stats.as_mut() {
+                stats.timeline_sample_misses += 1;
+            }
+            return None;
+        }
+
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.timeline_sample_hits += 1;
+        }
+        let change_idx = timeline
+            .changes
+            .partition_point(|change| change.time_raw <= query_time_raw);
+        let bits = change_idx
+            .checked_sub(1)
+            .map(|index| timeline.changes[index].bits.clone());
+        Some(SampledSignalState {
+            path: signal.path.clone(),
+            width: timeline.bit_width,
+            bits,
+        })
+    }
+
+    fn sampled_state_to_expr_value(
+        &self,
+        resolved: &ExprResolvedSignal,
+        sample: SampledSignalState,
+    ) -> SampledValue {
+        let label = sample
+            .bits
+            .as_deref()
+            .and_then(|bits| enum_label_for_bits(&resolved.expr_type, bits));
+        SampledValue::Integral {
+            bits: sample.bits,
+            label,
+        }
+    }
+
+    fn store_value_timelines(
+        &mut self,
+        idcodes: &[u64],
+        timelines: Vec<FsdbNativeSignalTimeline>,
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        if timelines.len() != idcodes.len() {
+            return Err(WavepeekError::Internal(
+                "FSDB Reader returned the wrong number of signal timelines".to_string(),
+            ));
+        }
+        for (expected_idcode, timeline) in idcodes.iter().copied().zip(timelines) {
+            if timeline.idcode != expected_idcode {
+                return Err(WavepeekError::Internal(
+                    "FSDB Reader returned signal timelines out of order".to_string(),
+                ));
+            }
+            let id = SignalId::from_backend_index(timeline.idcode);
+            self.value_timeline_cache.insert(
+                id,
+                FsdbValueTimeline {
+                    from_raw,
+                    to_raw,
+                    bit_width: timeline.bit_width,
+                    changes: timeline
+                        .changes
+                        .into_iter()
+                        .map(|change| FsdbTimelineChange {
+                            time_raw: change.time_raw,
+                            bits: change.bits,
+                        })
+                        .collect(),
+                },
+            );
+        }
+        Ok(())
+    }
+
+    fn validate_resolved_values_supported(
+        &self,
+        resolved: &[ResolvedSignal],
+    ) -> Result<(), WavepeekError> {
+        let hierarchy = self.hierarchy()?;
+        for signal in resolved {
+            match hierarchy.signal_value_encoding(signal.path.as_str())? {
+                FsdbValueEncoding::BitVector => {}
+                FsdbValueEncoding::Unsupported | FsdbValueEncoding::DatatypeCandidate => {
+                    return Err(unsupported_signal_value_encoding(signal.path.as_str()));
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn ensure_signal_session(
         &mut self,
         idcodes: &[u64],
@@ -457,6 +729,13 @@ impl FsdbBackend {
             event_occurrence_cache_misses: stats.event_occurrence_cache_misses,
             event_occurrence_uncached_ns: stats.event_occurrence_uncached_ns,
             event_occurrence_cache_len: self.event_occurrence_cache.len(),
+            timeline_preload_calls: stats.timeline_preload_calls,
+            timeline_preload_idcodes: stats.timeline_preload_idcodes,
+            timeline_preload_changes: stats.timeline_preload_changes,
+            timeline_preload_native_ns: stats.timeline_preload_native_ns,
+            timeline_sample_hits: stats.timeline_sample_hits,
+            timeline_sample_misses: stats.timeline_sample_misses,
+            timeline_cache_len: self.value_timeline_cache.len(),
             sample_resolved_calls: stats.sample_resolved_calls,
             sample_resolved_idcodes: stats.sample_resolved_idcodes,
             sample_resolved_native_ns: stats.sample_resolved_native_ns,
@@ -527,18 +806,11 @@ impl FsdbBackend {
             width: resolved.expr_type.width.max(1),
         };
         let mut samples =
-            self.sample_resolved_optional(std::slice::from_ref(&signal), query_time_raw)?;
+            self.sample_resolved_optional_native(std::slice::from_ref(&signal), query_time_raw)?;
         let sample = samples.pop().ok_or_else(|| {
             WavepeekError::Internal("FSDB expression sampling returned no sample row".to_string())
         })?;
-        let label = sample
-            .bits
-            .as_deref()
-            .and_then(|bits| enum_label_for_bits(&resolved.expr_type, bits));
-        Ok(SampledValue::Integral {
-            bits: sample.bits,
-            label,
-        })
+        Ok(self.sampled_state_to_expr_value(resolved, sample))
     }
 
     fn hierarchy(&self) -> Result<Ref<'_, FsdbHierarchyIndex>, WavepeekError> {
@@ -618,6 +890,40 @@ mod tests {
                 .contains("signal 'top.armed' is not a raw event"),
             "unexpected error: {error}"
         );
+    }
+
+    #[test]
+    fn fsdb_timeline_cache_serves_expr_samples() {
+        let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
+        let mut backend = FsdbBackend::open(fixture.path()).expect("FSDB fixture should open");
+        let armed = backend
+            .resolve_expr_signal("top.armed")
+            .expect("ordinary signal should resolve");
+
+        backend
+            .preload_expr_value_changes(std::slice::from_ref(&armed), 1, 20)
+            .expect("timeline should preload");
+
+        assert_eq!(backend.value_timeline_cache.len(), 1);
+        assert!(backend.expr_sample_cache.is_empty());
+        assert_eq!(sample_bits(&mut backend, &armed, 1), Some("0".to_string()));
+        assert_eq!(sample_bits(&mut backend, &armed, 12), Some("1".to_string()));
+        assert_eq!(sample_bits(&mut backend, &armed, 20), Some("0".to_string()));
+        assert!(backend.expr_sample_cache.is_empty());
+    }
+
+    fn sample_bits(
+        backend: &mut FsdbBackend,
+        signal: &ExprResolvedSignal,
+        timestamp: u64,
+    ) -> Option<String> {
+        match backend
+            .sample_expr_value(signal, timestamp)
+            .expect("sample should succeed")
+        {
+            SampledValue::Integral { bits, .. } => bits,
+            other => panic!("unexpected sampled value: {other:?}"),
+        }
     }
 
     struct GeneratedFsdbFixture {

@@ -70,6 +70,28 @@ Focused DEBUG diagnostics used shell `time` because `/usr/bin/time` is not avail
 | 2-channel JSON source | 60.227s | 12.821s | 4.70x | 78.7% |
 | 5-channel JSON source | 85.989s | 18.335s | 4.69x | 78.7% |
 
+## Release reference
+
+The release reference was measured on commit `f3215b4` with the optimized FSDB binary:
+
+    CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
+    python3 -B bench/e2e/perf.py run \
+      --binary release=target/fsdb/release/wavepeek \
+      --tests tmp/fsdb-random-sampling/release/extract_fsdb_release_tests.json \
+      --run-dir tmp/fsdb-random-sampling/release/bench \
+      --wavepeek-timeout-seconds 900 \
+      --verbose
+
+The catalog used the standard `bench/e2e/tests_fsdb.json` run counts for these three workloads: `runs=10`, `warmup=5`.
+
+| Workload | Mean ± σ | Median | Min | Max | User | System |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1-channel CLI | 1.535s ± 0.016s | 1.540s | 1.488s | 1.542s | 1.346s | 0.162s |
+| 2-channel JSON source | 1.730s ± 0.022s | 1.740s | 1.689s | 1.741s | 1.543s | 0.172s |
+| 5-channel JSON source | 2.418s ± 0.039s | 2.393s | 2.389s | 2.508s | 2.229s | 0.174s |
+
+Hyperfine reported statistical outliers for all three release runs. The variation is small relative to the means, so these values are suitable as reference numbers rather than formal baselines.
+
 ## DEBUG comparison
 
 | Metric | 2ch baseline | 2ch after | 5ch baseline | 5ch after |

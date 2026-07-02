@@ -299,6 +299,42 @@ impl Waveform {
         }
     }
 
+    pub(crate) fn preload_expr_value_changes(
+        &mut self,
+        resolved: &[ExprResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        match &mut self.backend {
+            Backend::Wellen(_) => {
+                let _ = (resolved, from_raw, to_raw);
+                Ok(())
+            }
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => {
+                backend.preload_expr_value_changes(resolved, from_raw, to_raw)
+            }
+        }
+    }
+
+    pub(crate) fn preload_resolved_value_changes(
+        &mut self,
+        resolved: &[ResolvedSignal],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        match &mut self.backend {
+            Backend::Wellen(_) => {
+                let _ = (resolved, from_raw, to_raw);
+                Ok(())
+            }
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => {
+                backend.preload_resolved_value_changes(resolved, from_raw, to_raw)
+            }
+        }
+    }
+
     #[inline]
     pub(crate) fn indexed_timestamps(&self) -> Option<&[u64]> {
         match &self.backend {

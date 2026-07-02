@@ -336,6 +336,25 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
+    let preload_from_raw = from_raw
+        .checked_sub(1)
+        .filter(|value| *value >= dump_start_raw)
+        .unwrap_or(from_raw);
+    preload_extract_value_changes(
+        &waveform,
+        &bound_sources,
+        &event_groups,
+        preload_from_raw,
+        to_raw,
+    )?;
+    debug.event("value.preload.done", || {
+        serde_json::json!({
+            "from_raw": preload_from_raw,
+            "to_raw": to_raw,
+            "backend_stats": waveform.borrow().debug_stats(),
+        })
+    });
+
     sink.start()?;
     debug.event("extract.emit.start", || {
         serde_json::json!({
@@ -706,6 +725,55 @@ fn collect_event_group_candidate_times(
     }
 
     Ok(group_candidate_times)
+}
+
+fn preload_extract_value_changes(
+    waveform: &SharedWaveform,
+    sources: &[BoundExtractSource],
+    event_groups: &[EventGroup],
+    from_raw: u64,
+    to_raw: u64,
+) -> Result<(), WavepeekError> {
+    let mut expr_sources = Vec::new();
+    let mut seen_expr = HashSet::new();
+    for group in event_groups {
+        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &group.candidate_sources);
+    }
+    for source in sources {
+        let iff_handles = event_iff_handles(&source.bound_event);
+        let iff_sources = candidate_sources_for_handles(&source.host, iff_handles.as_slice())?;
+        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &iff_sources);
+
+        let when_handles = referenced_signal_handles(&source.bound_when);
+        let when_sources = candidate_sources_for_handles(&source.host, when_handles.as_slice())?;
+        extend_unique_expr_sources(&mut expr_sources, &mut seen_expr, &when_sources);
+    }
+
+    let mut payload_sources = Vec::new();
+    let mut seen_payload = HashSet::new();
+    for source in sources {
+        for payload in &source.payload {
+            if seen_payload.insert(payload.resolved.id) {
+                payload_sources.push(payload.resolved.clone());
+            }
+        }
+    }
+
+    let mut waveform = waveform.borrow_mut();
+    waveform.preload_expr_value_changes(expr_sources.as_slice(), from_raw, to_raw)?;
+    waveform.preload_resolved_value_changes(payload_sources.as_slice(), from_raw, to_raw)
+}
+
+fn extend_unique_expr_sources(
+    target: &mut Vec<ExprResolvedSignal>,
+    seen: &mut HashSet<SignalId>,
+    sources: &[ExprResolvedSignal],
+) {
+    for source in sources {
+        if seen.insert(source.id) {
+            target.push(source.clone());
+        }
+    }
 }
 
 fn count_merged_candidate_times(group_candidate_times: &[EventGroupCandidateTimes]) -> usize {

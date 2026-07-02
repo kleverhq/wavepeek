@@ -237,6 +237,43 @@ fn change_jsonl_reports_empty_result_before_end() {
 }
 
 #[test]
+fn extract_generic_jsonl_streams_rows_and_validates_against_schema() {
+    let fixture = fixture_path("m2_core.vcd");
+    let fixture = fixture.to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--when",
+            "1",
+            "--payload",
+            "data",
+            "--max",
+            "1",
+            "--jsonl",
+        ])
+        .output()
+        .expect("extract generic should execute");
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+    let records = parse_stream(&output.stdout, "extract generic");
+    let items = records
+        .iter()
+        .filter(|record| record["type"] == "item")
+        .collect::<Vec<_>>();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0]["item"]["source"], "transfer");
+}
+
+#[test]
 fn property_jsonl_streams_capture_rows() {
     let fixture = write_fixture(PROPERTY_VCD, ".property-jsonl.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();

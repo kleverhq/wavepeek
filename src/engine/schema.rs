@@ -1,10 +1,14 @@
 use crate::cli::schema::SchemaArgs;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
-use crate::schema_contract::{CANONICAL_SCHEMA_JSON, CANONICAL_STREAM_SCHEMA_JSON};
+use crate::schema_contract::{
+    CANONICAL_INPUT_SCHEMA_JSON, CANONICAL_SCHEMA_JSON, CANONICAL_STREAM_SCHEMA_JSON,
+};
 
 pub fn run(args: SchemaArgs) -> Result<CommandResult, WavepeekError> {
-    let schema = if args.stream {
+    let schema = if args.input {
+        CANONICAL_INPUT_SCHEMA_JSON
+    } else if args.stream {
         CANONICAL_STREAM_SCHEMA_JSON
     } else {
         CANONICAL_SCHEMA_JSON

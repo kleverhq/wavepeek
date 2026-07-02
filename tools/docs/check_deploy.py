@@ -20,8 +20,10 @@ DEFAULT_BASE_URL = "https://kleverhq.github.io/wavepeek"
 USER_AGENT = "wavepeek-docs-deploy-check"
 SCHEMA_TITLE = "wavepeek JSON output envelope"
 STREAM_SCHEMA_TITLE = "wavepeek JSONL stream record"
+INPUT_SCHEMA_TITLE = "wavepeek JSON input documents"
 BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
 STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
+INPUT_SCHEMA_MIN_VERSION = (2, 1, 0)
 
 
 class DeployCheckError(Exception):
@@ -52,6 +54,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--retry-delay", type=float, default=3.0)
     parser.add_argument("--schema-artifact")
     parser.add_argument("--stream-schema-artifact")
+    parser.add_argument("--input-schema-artifact")
     parser.add_argument("--timeout", type=float, default=20.0)
     return parser.parse_args(list(argv))
 
@@ -84,6 +87,10 @@ def stream_schema_required(version: str) -> bool:
     return version_tuple(version) >= STREAM_SCHEMA_MIN_VERSION
 
 
+def input_schema_required(version: str) -> bool:
+    return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
+
+
 def schema_artifact_suffix(version: str) -> str:
     major, minor, _patch = version_tuple(version)
     if major >= 2:
@@ -107,6 +114,25 @@ def stream_schema_artifact_name(version: str) -> str:
     if major >= 2:
         return f"wavepeek-stream-v{major}.{minor}.json"
     return f"wavepeek-stream-v{major}.json"
+
+
+def input_schema_artifact_name(version: str) -> str:
+    major, minor, _patch = version_tuple(version)
+    return f"schema-input-v{major}.{minor}.json"
+
+
+def artifact_family_tuple(artifact: str, prefix: str) -> tuple[int, int] | None:
+    match = re.fullmatch(rf"{re.escape(prefix)}v([1-9][0-9]*)[.]([0-9]+)[.]json", artifact)
+    if match is None:
+        return None
+    return int(match.group(1)), int(match.group(2))
+
+
+def stream_schema_includes_extract(version: str, stream_schema_artifact: str) -> bool:
+    family = artifact_family_tuple(stream_schema_artifact, "schema-stream-")
+    if family is not None:
+        return family >= (2, 1)
+    return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
 
 
 def normalize_base_url(base_url: str) -> str:
@@ -280,6 +306,12 @@ def stream_schema_url_references_expected_artifact(
     return False
 
 
+def input_schema_url_references_expected_artifact(
+    schema_property: dict[str, Any], input_schema_artifact: str
+) -> bool:
+    return schema_property.get("const") == page_url(DEFAULT_BASE_URL, input_schema_artifact)
+
+
 def validate_schema_json(schema: Any, version: str, schema_artifact: str | None = None) -> None:
     if not isinstance(schema, dict):
         fail("schema artifact must contain a JSON object")
@@ -330,6 +362,9 @@ def validate_stream_schema_json(
     if not isinstance(command, dict):
         fail("stream schema artifact must define streamCommand")
     expected_commands = ["info", "scope", "signal", "value", "change", "property"]
+    stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
+    if stream_schema_includes_extract(version, stream_schema_artifact):
+        expected_commands.append("extract generic")
     if command.get("enum") != expected_commands:
         fail("stream schema artifact command enum mismatch")
     begin = defs.get("beginRecord")
@@ -339,7 +374,6 @@ def validate_stream_schema_json(
         schema_property = begin["properties"]["$schema"]
     except (KeyError, TypeError):
         fail("stream schema artifact beginRecord must define $schema")
-    stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
     if not isinstance(schema_property, dict) or not stream_schema_url_references_expected_artifact(
         schema_property, version, stream_schema_artifact
     ):
@@ -354,6 +388,42 @@ def validate_stream_schema_payload(
 ) -> Any:
     schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
     validate_stream_schema_json(schema, version, stream_schema_artifact)
+    return schema
+
+
+def validate_input_schema_json(
+    schema: Any, version: str, input_schema_artifact: str | None = None
+) -> None:
+    if not isinstance(schema, dict):
+        fail("input schema artifact must contain a JSON object")
+    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
+        fail("input schema artifact must use JSON Schema draft 2020-12")
+    if schema.get("title") != INPUT_SCHEMA_TITLE:
+        fail(f"input schema artifact title must be {INPUT_SCHEMA_TITLE!r}")
+    properties = schema.get("properties")
+    if not isinstance(properties, dict):
+        fail("input schema artifact properties must be an object")
+    schema_property = properties.get("$schema")
+    if not isinstance(schema_property, dict):
+        fail("input schema artifact $schema property must be an object")
+    input_schema_artifact = input_schema_artifact or input_schema_artifact_name(version)
+    if not input_schema_url_references_expected_artifact(
+        schema_property, input_schema_artifact
+    ):
+        fail(
+            "input schema artifact $schema property must reference "
+            f"{input_schema_artifact}"
+        )
+    kind = properties.get("kind")
+    if not isinstance(kind, dict) or kind.get("const") != "extract.generic.sources":
+        fail("input schema artifact must require extract generic kind")
+
+
+def validate_input_schema_payload(
+    url: str, version: str, *, input_schema_artifact: str, timeout: float
+) -> Any:
+    schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
+    validate_input_schema_json(schema, version, input_schema_artifact)
     return schema
 
 
@@ -413,6 +483,7 @@ def check_deploy(args: argparse.Namespace) -> None:
     base_url = normalize_base_url(args.base_url)
     artifact = args.schema_artifact or schema_artifact_name(version)
     stream_artifact = args.stream_schema_artifact or stream_schema_artifact_name(version)
+    input_artifact = args.input_schema_artifact or input_schema_artifact_name(version)
 
     urls = [
         ("site root", page_url(base_url)),
@@ -420,8 +491,12 @@ def check_deploy(args: argparse.Namespace) -> None:
         ("versions.json", page_url(base_url, "versions.json")),
         (artifact, page_url(base_url, artifact)),
     ]
-    if stream_schema_required(version):
+    check_stream_schema = args.stream_schema_artifact is not None or stream_schema_required(version)
+    check_input_schema = args.input_schema_artifact is not None or input_schema_required(version)
+    if check_stream_schema:
         urls.append((stream_artifact, page_url(base_url, stream_artifact)))
+    if check_input_schema:
+        urls.append((input_artifact, page_url(base_url, input_artifact)))
     if args.expect_latest:
         urls.insert(2, ("latest docs", page_url(base_url, "latest/")))
 
@@ -479,7 +554,7 @@ def check_deploy(args: argparse.Namespace) -> None:
     )
     print(f"ok: docs-deploy: schema artifact {artifact}")
 
-    if stream_schema_required(version):
+    if check_stream_schema:
         retry_check(
             "stream schema artifact semantic check",
             retries=args.retries,
@@ -492,6 +567,20 @@ def check_deploy(args: argparse.Namespace) -> None:
             ),
         )
         print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
+
+    if check_input_schema:
+        retry_check(
+            "input schema artifact semantic check",
+            retries=args.retries,
+            retry_delay=args.retry_delay,
+            operation=lambda: validate_input_schema_payload(
+                page_url(base_url, input_artifact),
+                version,
+                input_schema_artifact=input_artifact,
+                timeout=args.timeout,
+            ),
+        )
+        print(f"ok: docs-deploy: input schema artifact {input_artifact}")
 
     if args.repository:
         site = load_pages_site(

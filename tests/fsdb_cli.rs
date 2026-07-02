@@ -399,6 +399,35 @@ fn fsdb_bundled_cpu_smoke_supports_info_scope_signal_and_value() {
 }
 
 #[test]
+fn fsdb_extract_generic_json_matches_vcd_sampling_contract() {
+    let fixtures = GeneratedFsdbFixtures::new();
+    let fsdb_fixture = path_str(&fixtures.value_vectors());
+    let vcd_fixture = path_str(&fixture_path("value_vectors.vcd"));
+    let args = [
+        "extract",
+        "generic",
+        "--scope",
+        "top",
+        "--on",
+        "posedge clk",
+        "--when",
+        "1",
+        "--payload",
+        "data",
+        "--max",
+        "3",
+        "--json",
+    ];
+
+    let fsdb_value = run_json_success_with_waves(fsdb_fixture.as_str(), &args);
+    let vcd_value = run_json_success_with_waves(vcd_fixture.as_str(), &args);
+
+    assert_eq!(fsdb_value["command"], "extract generic");
+    assert_eq!(fsdb_value["data"], vcd_value["data"]);
+    assert_eq!(fsdb_value["diagnostics"], vcd_value["diagnostics"]);
+}
+
+#[test]
 fn fsdb_value_json_matches_vcd_sampling_contract() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fsdb_fixture = path_str(&fixtures.value_vectors());
@@ -1228,8 +1257,17 @@ fn run_json_success(args: &[&str]) -> Value {
 }
 
 fn run_json_success_with_waves(waves: &str, args: &[&str]) -> Value {
-    let mut full_args = vec![args[0], "--waves", waves];
-    full_args.extend_from_slice(&args[1..]);
+    let mut full_args = if args.starts_with(&["extract", "generic"]) {
+        vec!["extract", "generic", "--waves", waves]
+    } else {
+        vec![args[0], "--waves", waves]
+    };
+    let consumed = if args.starts_with(&["extract", "generic"]) {
+        2
+    } else {
+        1
+    };
+    full_args.extend_from_slice(&args[consumed..]);
     run_json_success(&full_args)
 }
 

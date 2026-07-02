@@ -1453,6 +1453,108 @@
       }
     },
     {
+      "name": "extract_scr1_coremark_dmem_axi_1ch_cli",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "generic",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top",
+        "--name",
+        "axi_dmem_ar",
+        "--on",
+        "posedge clk iff axi_rst_n",
+        "--when",
+        "io_axi_dmem_arvalid && io_axi_dmem_arready",
+        "--payload",
+        "io_axi_dmem_araddr,io_axi_dmem_arlen,io_axi_dmem_arsize,io_axi_dmem_arburst,io_axi_dmem_arid",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "scope": "TOP.scr1_top_tb_axi.i_top",
+        "trigger": "posedge clk iff axi_rst_n",
+        "max": "unlimited",
+        "output": "json",
+        "input": "cli",
+        "source_count": 1,
+        "channel_count": 1,
+        "payload_count": 5,
+        "predicate": "io_axi_dmem_arvalid && io_axi_dmem_arready"
+      }
+    },
+    {
+      "name": "extract_scr1_coremark_dmem_axi_2ch_source",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "generic",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top",
+        "--source",
+        "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch.json",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "scope": "TOP.scr1_top_tb_axi.i_top",
+        "trigger": "posedge clk iff axi_rst_n",
+        "max": "unlimited",
+        "output": "json",
+        "input": "json",
+        "source": "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch.json",
+        "source_count": 2,
+        "channel_count": 2,
+        "payload_count": 8
+      }
+    },
+    {
+      "name": "extract_scr1_coremark_dmem_axi_5ch_source",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "generic",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top",
+        "--source",
+        "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fsdb",
+        "scope": "TOP.scr1_top_tb_axi.i_top",
+        "trigger": "posedge clk iff axi_rst_n",
+        "max": "unlimited",
+        "output": "json",
+        "input": "json",
+        "source": "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch.json",
+        "source_count": 5,
+        "channel_count": 5,
+        "payload_count": 22
+      }
+    },
+    {
       "name": "change_scr1_signals_100_pos_50_window_2ns_trigger_any",
       "category": "change",
       "runs": 10,

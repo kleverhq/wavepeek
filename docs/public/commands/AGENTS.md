@@ -6,7 +6,7 @@
 - Help/docs/skill behavior topics: `help.md`, `docs.md`, `skill.md`
 - Stable command semantics: `../reference/command-model.md`
 - Machine output behavior: `../reference/machine-output.md`
-- Expression syntax for `change` and `property`: `../reference/expression-language.md`
+- Expression syntax for `change`, `property`, and `extract` family: `../reference/expression-language.md`
 - Topic metadata and docs style rules: `../../dev/style.md`
 - Exact command reference: `../../../src/cli/`, `wavepeek --help`, `wavepeek help <command-path...>`, and `wavepeek docs --help`
 

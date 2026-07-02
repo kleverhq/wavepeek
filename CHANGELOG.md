@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added `wavepeek extract generic` for protocol-neutral synchronous event extraction with pre-edge payload sampling, source-file mode, and human, JSON, and JSONL output.
+- Added structured input schema support through `wavepeek schema --input` and the `extract.generic.sources` source-file contract.
+- Added DEBUG trace timing counters for profiling `extract generic` candidate collection and row emission.
+
 ### Changed
 - Reworked machine-output schemas into stable `wavepeek.output` and `wavepeek.stream-record` families with current snapshots at `schema/output.json` and `schema/stream.json`; JSON and JSONL outputs now reference exact family artifact URLs.
 - Moved schema generation to the contract DTO layer shared with runtime JSON and JSONL serialization.

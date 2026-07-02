@@ -4,7 +4,9 @@ use std::fs;
 use std::path::PathBuf;
 
 mod common;
-use common::{expected_schema_url, expected_stream_schema_url, wavepeek_cmd};
+use common::{
+    expected_input_schema_url, expected_schema_url, expected_stream_schema_url, wavepeek_cmd,
+};
 
 const EXPECTED_SCOPE_KINDS: &[&str] = &[
     "module",
@@ -91,6 +93,12 @@ fn canonical_stream_schema_path() -> PathBuf {
         .join("stream.json")
 }
 
+fn canonical_input_schema_path() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("schema")
+        .join("input.json")
+}
+
 fn canonical_catalog_path() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("schema")
@@ -113,6 +121,14 @@ fn run_stream_schema_command() -> Vec<u8> {
         .stdout
 }
 
+fn run_input_schema_command() -> Vec<u8> {
+    wavepeek_cmd()
+        .args(["schema", "--input"])
+        .output()
+        .expect("schema --input command should execute")
+        .stdout
+}
+
 fn schema_json() -> Value {
     serde_json::from_slice(&run_schema_command()).expect("schema output should be valid json")
 }
@@ -120,6 +136,11 @@ fn schema_json() -> Value {
 fn stream_schema_json() -> Value {
     serde_json::from_slice(&run_stream_schema_command())
         .expect("stream schema output should be valid json")
+}
+
+fn input_schema_json() -> Value {
+    serde_json::from_slice(&run_input_schema_command())
+        .expect("input schema output should be valid json")
 }
 
 fn output_schema_validator() -> jsonschema::Validator {
@@ -132,6 +153,10 @@ fn output_schema_validator() -> jsonschema::Validator {
 
 fn stream_schema_validator() -> jsonschema::Validator {
     jsonschema::validator_for(&stream_schema_json()).expect("stream schema should compile")
+}
+
+fn input_schema_validator() -> jsonschema::Validator {
+    jsonschema::validator_for(&input_schema_json()).expect("input schema should compile")
 }
 
 fn run_json_command(args: &[&str], expected_command: &str) -> Value {
@@ -442,6 +467,28 @@ fn runtime_waveform_data_json_outputs_validate_against_schema() {
         "property",
     );
     assert_eq!(property["data"][0]["kind"], "assert");
+
+    let extract = run_json_command(
+        &[
+            "extract",
+            "generic",
+            "--waves",
+            fixture,
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--when",
+            "1",
+            "--payload",
+            "data",
+            "--max",
+            "1",
+            "--json",
+        ],
+        "extract generic",
+    );
+    assert_eq!(extract["data"][0]["source"], "transfer");
 }
 
 #[test]
@@ -490,7 +537,7 @@ fn schema_validator_accepts_extension_fields() {
 }
 
 #[test]
-fn schema_command_includes_property_command_branch() {
+fn schema_command_includes_property_and_extract_command_branches() {
     let value = schema_json();
 
     let commands = value["properties"]["command"]["enum"]
@@ -499,6 +546,10 @@ fn schema_command_includes_property_command_branch() {
     assert!(
         commands.iter().any(|entry| entry == "property"),
         "schema command enum should include property"
+    );
+    assert!(
+        commands.iter().any(|entry| entry == "extract generic"),
+        "schema command enum should include extract generic"
     );
 
     let data_variants = value["properties"]["data"]["anyOf"]
@@ -509,6 +560,12 @@ fn schema_command_includes_property_command_branch() {
             .iter()
             .any(|entry| entry["$ref"] == "#/$defs/propertyData"),
         "schema data variants should include propertyData"
+    );
+    assert!(
+        data_variants
+            .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/extractGenericData"),
+        "schema data variants should include extractGenericData"
     );
 }
 
@@ -693,6 +750,16 @@ fn schema_stream_command_prints_canonical_artifact_bytes() {
 }
 
 #[test]
+fn schema_input_command_prints_canonical_artifact_bytes() {
+    let mut command = wavepeek_cmd();
+    let assert = command.args(["schema", "--input"]).assert().success();
+
+    let expected = fs::read(canonical_input_schema_path()).expect("input schema file should read");
+    assert_eq!(assert.get_output().stdout, expected);
+    assert!(assert.get_output().stderr.is_empty());
+}
+
+#[test]
 fn schema_catalog_points_to_current_family_snapshots() {
     let catalog: Value = serde_json::from_slice(
         &fs::read(canonical_catalog_path()).expect("schema catalog should be readable"),
@@ -701,19 +768,83 @@ fn schema_catalog_points_to_current_family_snapshots() {
     let families = catalog["families"]
         .as_array()
         .expect("families should be array");
-    assert_eq!(families.len(), 2);
+    assert_eq!(families.len(), 3);
     assert!(families.iter().any(|entry| {
         entry["id"] == "wavepeek.output"
-            && entry["version"] == "2.0"
+            && entry["version"] == "2.1"
             && entry["path"] == "schema/output.json"
             && entry["url"] == expected_schema_url()
     }));
     assert!(families.iter().any(|entry| {
         entry["id"] == "wavepeek.stream-record"
-            && entry["version"] == "2.0"
+            && entry["version"] == "2.1"
             && entry["path"] == "schema/stream.json"
             && entry["url"] == expected_stream_schema_url()
     }));
+    assert!(families.iter().any(|entry| {
+        entry["id"] == "wavepeek.input"
+            && entry["version"] == "2.1"
+            && entry["path"] == "schema/input.json"
+            && entry["url"] == expected_input_schema_url()
+    }));
+}
+
+#[test]
+fn schema_input_command_output_is_valid_json() {
+    let value = input_schema_json();
+
+    assert_eq!(
+        value["$schema"],
+        "https://json-schema.org/draft/2020-12/schema"
+    );
+    assert_eq!(value["$id"], expected_input_schema_url());
+    assert_eq!(value["title"], "wavepeek JSON input documents");
+    assert_eq!(
+        value["properties"]["kind"]["const"],
+        "extract.generic.sources"
+    );
+}
+
+#[test]
+fn schema_input_validator_accepts_and_rejects_source_documents() {
+    let validator = input_schema_validator();
+    let valid = json!({
+        "$schema": expected_input_schema_url(),
+        "kind": "extract.generic.sources",
+        "sources": [{
+            "name": "rx.beat",
+            "on": "posedge clk iff rst_n",
+            "when": "valid && ready",
+            "payload": ["data", "last"]
+        }],
+        "x-extension": true
+    });
+    validator
+        .validate(&valid)
+        .unwrap_or_else(|error| panic!("valid input document rejected: {error}\n{valid}"));
+
+    for invalid in [
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "wrong",
+            "sources": [{"name": "rx", "on": "posedge clk", "when": "1", "payload": ["data"]}]
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.generic.sources",
+            "sources": []
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.generic.sources",
+            "sources": [{"name": "rx", "on": "posedge clk", "when": "1", "payload": []}]
+        }),
+    ] {
+        assert!(
+            validator.validate(&invalid).is_err(),
+            "invalid input document should fail validation: {invalid}"
+        );
+    }
 }
 
 #[test]
@@ -735,7 +866,15 @@ fn schema_stream_command_exposes_waveform_command_contract() {
 
     assert_eq!(
         value["$defs"]["streamCommand"]["enum"],
-        json!(["info", "scope", "signal", "value", "change", "property"])
+        json!([
+            "info",
+            "scope",
+            "signal",
+            "value",
+            "change",
+            "property",
+            "extract generic"
+        ])
     );
     let root_refs = value["oneOf"]
         .as_array()
@@ -815,6 +954,17 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             "seq": 1,
             "command": "property",
             "item": {"time": "5ns", "sample_time": "5ns", "kind": "assert"}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract generic",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "source": "transfer",
+                "payload": [{"path": "top.data", "value": "8'haa"}]
+            }
         }),
         json!({
             "type": "diagnostic",

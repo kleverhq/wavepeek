@@ -67,6 +67,9 @@ wavepeek change --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --signals
 
 # 6) Check a property on selected events (--eval is a SystemVerilog-like logical expression)
 wavepeek property --waves "$WAVES" --from 0ns --to 500ns --scope top.cpu --on 'posedge clk' --eval 'ready && !stall' --capture assert
+
+# 7) Extract transfer-like event rows with payload values
+wavepeek extract generic --waves "$WAVES" --from 0ns --to 500ns --scope top.pipe --on 'posedge clk' --when 'valid_i && ready_i' --payload data0_i,data1_i
 ```
 
 By default, commands print human-readable output. Add `--json` for strict machine output:
@@ -108,7 +111,8 @@ wavepeek skill
 | `value` | Signal values at explicit time point(s) |
 | `change` | Delta snapshots over a time range with event triggers |
 | `property` | Property checks over event triggers with capture modes |
-| `schema` | Print canonical JSON schema used by `--json` output |
+| `extract` | Get events, handshakes, transfers from synchronous signals |
+| `schema` | Print canonical JSON schemas used by JSON output, JSONL streams, and structured input |
 | `docs` | Browse embedded narrative docs, search topics, and export Markdown |
 | `skill` | Print packaged agent skill Markdown |
 | `help` | Print detailed long help for top-level or nested command paths |
@@ -118,7 +122,7 @@ Use progressive disclosure via built-in help and docs:
 - `wavepeek -h` for compact lookup help
 - `wavepeek --help` or `wavepeek help <command-path...>` for detailed top-level reference help
 - `wavepeek docs` for embedded command guidance, workflows, troubleshooting, reference topics, and export
-- `wavepeek schema` for packaged JSON contract
+- `wavepeek schema` for packaged JSON output, input and stream contracts
 - `wavepeek skill` for packaged agent skill Markdown
 
 ## Development

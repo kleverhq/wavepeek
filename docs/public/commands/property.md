@@ -132,7 +132,7 @@ In this window the property is already true at `10ns`, so there is no visible `a
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --sample-mode native --eval "data == 8'h0f" --capture match --json
-{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.0.json","command":"property","data":[{"time":"10ns","sample_time":"10ns","kind":"match"}],"diagnostics":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.1.json","command":"property","data":[{"time":"10ns","sample_time":"10ns","kind":"match"}],"diagnostics":[]}
 ```
 
 Human output is for quick inspection. `--json` is the stable machine contract.
@@ -141,7 +141,7 @@ For long searches or incremental consumers, use `--jsonl`. It streams one JSON o
 
 ```text
 $ wavepeek property --waves path/to/dump.vcd --scope top --on data --sample-mode native --eval "data == 8'h0f" --capture match --jsonl
-{"type":"begin","seq":0,"command":"property","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"}
+{"type":"begin","seq":0,"command":"property","$schema":"https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"}
 {"type":"item","seq":1,"command":"property","item":{"time":"10ns","sample_time":"10ns","kind":"match"}}
 {"type":"end","seq":2,"command":"property","summary":{"status":"ok","items":1,"diagnostics":0,"truncated":false}}
 ```

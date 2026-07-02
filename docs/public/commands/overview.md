@@ -23,7 +23,7 @@ Use `docs` when command help is not enough. It is the packaged narrative surface
 
 ## Helper commands
 
-Use `schema` when a machine client needs the canonical JSON contract for `--json` outputs, or `schema --stream` for the per-record JSONL contract used by waveform `--jsonl` output. It prints the selected schema artifact directly and does not require a waveform file.
+Use `schema` when a machine client needs the canonical JSON contract for `--json` outputs, `schema --stream` for per-record JSONL contracts, or `schema --input` for structured JSON input documents. It prints the selected schema artifact directly and does not require a waveform file.
 
 Use `skill` when a coding agent needs the packaged Wavepeek skill Markdown from the installed build.
 
@@ -41,8 +41,10 @@ Use `change` to inspect value transitions across a bounded time range. Trigger s
 
 Use `property` when you want to evaluate a logical expression on event-selected timestamps instead of printing raw signal snapshots. Capture modes control whether you keep every match or only state transitions such as asserts and deasserts.
 
+Use `extract` commands when you want one row per matching synchronous event with ordered payload values sampled at the pre-edge point. The current protocol-neutral extractor covers handshakes, FIFO pushes and pops, and other transfer-like rows.
+
 When choosing between VCD, FST, and FSDB input or diagnosing unexpectedly slow queries, use `reference/waveform-performance` for format-level performance guidance.
 
 ## Which document is normative?
 
-Use this overview to choose a command quickly. When exact flags matter, defer to generated help. When behavioral semantics matter, use the reference topics under `reference/*`. When exact JSON shapes matter, use `wavepeek schema` for envelope output and `wavepeek schema --stream` for JSONL stream records.
+Use this overview to choose a command quickly. When exact flags matter, defer to generated help. When behavioral semantics matter, use the reference topics under `reference/*`. When exact JSON shapes matter, use `wavepeek schema` for envelope output, `wavepeek schema --stream` for JSONL stream records, and `wavepeek schema --input` for structured input documents.

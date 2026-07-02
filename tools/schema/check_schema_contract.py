@@ -13,13 +13,18 @@ from typing import Any
 
 OUTPUT_FAMILY = "wavepeek.output"
 STREAM_FAMILY = "wavepeek.stream-record"
+INPUT_FAMILY = "wavepeek.input"
 EXPECTED_OUTPUT_PATH = "schema/output.json"
 EXPECTED_STREAM_PATH = "schema/stream.json"
+EXPECTED_INPUT_PATH = "schema/input.json"
 EXPECTED_OUTPUT_URL = (
-    "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"
+    "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json"
 )
 EXPECTED_STREAM_URL = (
-    "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"
+    "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+)
+EXPECTED_INPUT_URL = (
+    "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
 )
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -69,10 +74,10 @@ def load_catalog(schema_dir: Path) -> dict[str, Any]:
     if not isinstance(families, list):
         raise ContractError("schema/catalog.json must contain a families array")
     by_family = {entry.get("id"): entry for entry in families if isinstance(entry, dict)}
-    if set(by_family) != {OUTPUT_FAMILY, STREAM_FAMILY}:
+    if set(by_family) != {OUTPUT_FAMILY, STREAM_FAMILY, INPUT_FAMILY}:
         raise ContractError(
-            "schema/catalog.json must contain exactly wavepeek.output and "
-            "wavepeek.stream-record entries"
+            "schema/catalog.json must contain exactly wavepeek.output, "
+            "wavepeek.stream-record, and wavepeek.input entries"
         )
     return catalog
 
@@ -103,22 +108,29 @@ def validate_catalog(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
     validate_catalog_entry(
         by_family[OUTPUT_FAMILY],
         family=OUTPUT_FAMILY,
-        version="2.0",
+        version="2.1",
         path=EXPECTED_OUTPUT_PATH,
         url=EXPECTED_OUTPUT_URL,
     )
     validate_catalog_entry(
         by_family[STREAM_FAMILY],
         family=STREAM_FAMILY,
-        version="2.0",
+        version="2.1",
         path=EXPECTED_STREAM_PATH,
         url=EXPECTED_STREAM_URL,
+    )
+    validate_catalog_entry(
+        by_family[INPUT_FAMILY],
+        family=INPUT_FAMILY,
+        version="2.1",
+        path=EXPECTED_INPUT_PATH,
+        url=EXPECTED_INPUT_URL,
     )
     return by_family
 
 
 def compare_generated(schema_dir: Path, generated_dir: Path) -> None:
-    for name in ("output.json", "stream.json", "catalog.json"):
+    for name in ("output.json", "stream.json", "input.json", "catalog.json"):
         committed = schema_dir / name
         generated = generated_dir / name
         if committed.read_bytes() != generated.read_bytes():
@@ -149,6 +161,7 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
             "value",
             "change",
             "property",
+            "extract generic",
             "docs topics",
             "docs search",
         ],
@@ -177,7 +190,15 @@ def validate_stream_schema(schema: dict[str, Any]) -> None:
     )
     require(
         schema["$defs"]["streamCommand"]["enum"]
-        == ["info", "scope", "signal", "value", "change", "property"],
+        == [
+            "info",
+            "scope",
+            "signal",
+            "value",
+            "change",
+            "property",
+            "extract generic",
+        ],
         "stream command enum is not the expected stable list",
     )
 
@@ -201,6 +222,28 @@ def run_cargo(args: list[str]) -> bytes:
             f"{process.stderr.decode('utf-8', errors='replace')}"
         )
     return process.stdout
+
+
+def validate_input_schema(schema: dict[str, Any]) -> None:
+    require(schema.get("$id") == EXPECTED_INPUT_URL, "input schema $id must be exact URL")
+    require(
+        schema["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
+        "input schema must require exact $schema URL with const",
+    )
+    require(schema.get("additionalProperties") is True, "input wrapper must allow extensions")
+    require(
+        schema["properties"]["kind"].get("const") == "extract.generic.sources",
+        "input schema must require exact extract generic kind",
+    )
+    require(
+        schema["properties"]["sources"].get("minItems") == 1,
+        "input sources must require at least one source",
+    )
+    source_def = schema["$defs"]["extractGenericSource"]
+    require(
+        source_def["properties"]["payload"].get("minItems") == 1,
+        "input payload must require at least one signal",
+    )
 
 
 def validate_schema_semantics(schema_dir: Path) -> None:
@@ -230,10 +273,13 @@ def validate_schema_semantics(schema_dir: Path) -> None:
 def validate_runtime(schema_dir: Path) -> None:
     output_bytes = (schema_dir / "output.json").read_bytes()
     stream_bytes = (schema_dir / "stream.json").read_bytes()
+    input_bytes = (schema_dir / "input.json").read_bytes()
     if run_cargo(["schema"]) != output_bytes:
         raise ContractError("wavepeek schema output differs from schema/output.json")
     if run_cargo(["schema", "--stream"]) != stream_bytes:
         raise ContractError("wavepeek schema --stream output differs from schema/stream.json")
+    if run_cargo(["schema", "--input"]) != input_bytes:
+        raise ContractError("wavepeek schema --input output differs from schema/input.json")
 
     info_stdout = run_cargo(
         ["info", "--waves", "tests/fixtures/hand/m2_core.vcd", "--json"]
@@ -263,7 +309,7 @@ def validate_no_obsolete_current_alias(schema_dir: Path) -> None:
 def validate_artifact_names(schema_dir: Path) -> None:
     historical_output = re.compile(r"^wavepeek_v(?:\d+|\d+\.\d+)\.json$")
     historical_stream = re.compile(r"^wavepeek-stream-v(?:\d+|\d+\.\d+)\.json$")
-    allowed = {"output.json", "stream.json", "catalog.json"}
+    allowed = {"output.json", "stream.json", "input.json", "catalog.json"}
     for path in schema_dir.glob("*.json"):
         if path.name in allowed:
             continue
@@ -284,8 +330,10 @@ def main(argv: list[str]) -> int:
         compare_generated(schema_dir, generated_dir)
         output_schema = load_json(schema_dir / "output.json")
         stream_schema = load_json(schema_dir / "stream.json")
+        input_schema = load_json(schema_dir / "input.json")
         validate_output_schema(output_schema)
         validate_stream_schema(stream_schema)
+        validate_input_schema(input_schema)
         validate_schema_semantics(schema_dir)
         validate_runtime(schema_dir)
     except ContractError as error:

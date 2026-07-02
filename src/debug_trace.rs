@@ -22,6 +22,10 @@ impl DebugTrace {
         }
     }
 
+    pub(crate) fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+
     pub(crate) fn event(&self, message: &'static str, details: impl FnOnce() -> Value) {
         if !self.enabled {
             return;

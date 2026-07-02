@@ -67,6 +67,18 @@ class CheckDeployTests(unittest.TestCase):
             check_deploy.stream_schema_artifact_name("12.3.1"),
             "schema-stream-v12.3.json",
         )
+        self.assertEqual(
+            check_deploy.input_schema_artifact_name("2.1.0"),
+            "schema-input-v2.1.json",
+        )
+
+    def test_stream_schema_expectations_follow_explicit_artifact_family(self) -> None:
+        self.assertFalse(
+            check_deploy.stream_schema_includes_extract("2.0.0", "schema-stream-v2.0.json")
+        )
+        self.assertTrue(
+            check_deploy.stream_schema_includes_extract("2.0.0", "schema-stream-v2.1.json")
+        )
 
     def test_retry_check_retries_stale_then_fresh(self) -> None:
         attempts = 0
@@ -313,6 +325,26 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.0.json")
 
+    def test_validate_stream_schema_json_accepts_explicit_v2_1_family_for_older_package_version(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSONL stream record",
+            "$defs": {
+                "streamCommand": {
+                    "enum": ["info", "scope", "signal", "value", "change", "property", "extract generic"]
+                },
+                "beginRecord": {
+                    "properties": {
+                        "$schema": {
+                            "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+                        }
+                    }
+                },
+            },
+        }
+
+        check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.1.json")
+
     def test_validate_schema_json_requires_schema_pattern(self) -> None:
         schema = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -327,6 +359,25 @@ class CheckDeployTests(unittest.TestCase):
 
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "reference"):
             check_deploy.validate_schema_json(schema, "0.5.0")
+
+    def test_validate_input_schema_json_checks_contract_shape(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSON input documents",
+            "properties": {
+                "$schema": {
+                    "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
+                },
+                "kind": {"const": "extract.generic.sources"},
+            },
+        }
+
+        check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.1.json")
+
+        broken = json.loads(json.dumps(schema))
+        broken["properties"]["kind"]["const"] = "wrong"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "kind"):
+            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.1.json")
 
     def test_load_pages_site_retries_and_uses_timeout(self) -> None:
         calls = 0

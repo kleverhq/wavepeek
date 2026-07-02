@@ -22,7 +22,7 @@ The primary users are LLM-driven debugging workflows and other automation that n
 
 ## Scope
 
-Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and signal discovery, explicit-point value sampling, bounded time-range inspection, property checks over event-selected timestamps, and stateless CLI execution with deterministic output. FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK; FSDB-enabled builds support the same `info`, `scope`, `signal`, `value`, `change`, and `property` command surface for digital bit-vector/integral signals. FSDB real and string value decoding remain unsupported and fail clearly when a command needs those values.
+Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and signal discovery, explicit-point value sampling, bounded time-range inspection, property checks over event-selected timestamps, extract row generation, and stateless CLI execution with deterministic output. FSDB support is currently Linux x86_64 only and requires installing with the Cargo feature `fsdb` and the Synopsys Verdi FSDB Reader SDK; FSDB-enabled builds support the same waveform command surface for digital bit-vector/integral signals. FSDB real and string value decoding remain unsupported and fail clearly when a command needs those values.
 
 `wavepeek` is not a GUI or TUI waveform viewer. It does not provide real-time waveform streaming, live simulator connections, or waveform diffing and comparison.
 
@@ -34,7 +34,7 @@ Default `wavepeek` builds support VCD and FST waveform dumps, hierarchy and sign
 2. **Human by default, JSON when requested.** Human-readable output is the default user experience. Stable machine-readable output is opt-in with `--json` where supported.
 3. **Composable commands.** Each command does one focused job so scripts and agents can combine commands into repeatable debug recipes.
 4. **Deterministic output.** Identical inputs should produce identical observable output.
-5. **Stable machine contracts.** JSON output is versioned through an explicit schema `$schema` URL such as `schema-output-v2.0.json`, while human-readable output stays intentionally more flexible.
+5. **Stable machine contracts.** JSON output is versioned through an explicit schema `$schema` URL such as `schema-output-v2.1.json`, while human-readable output stays intentionally more flexible.
 6. **Minimal footprint.** `wavepeek` is stateless, fast to start, and does not require a background service.
 
 ## Documentation map

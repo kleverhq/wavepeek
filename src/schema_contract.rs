@@ -4,6 +4,9 @@ pub const CANONICAL_SCHEMA_JSON: &str =
 pub const CANONICAL_STREAM_SCHEMA_JSON: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/schema/stream.json"));
 
+pub const CANONICAL_INPUT_SCHEMA_JSON: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/schema/input.json"));
+
 #[cfg(test)]
 mod tests {
     use serde_json::Value;

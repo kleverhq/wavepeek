@@ -311,7 +311,7 @@ docs-site-check-deploy version=docs_version base_url=docs_pages_url repository=d
         if [ -n "{{ repository }}" ]; then \
             repo_arg=(--repository "{{ repository }}"); \
         fi; \
-        schema_args=($({{ python }} -c 'import json, pathlib, tomllib, urllib.parse; requested="{{ version }}"; package=tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; p=pathlib.Path("schema/catalog.json"); c=json.loads(p.read_text(encoding="utf-8")) if requested == package and p.is_file() else {"families": []}; [print(flag, pathlib.PurePosixPath(urllib.parse.urlparse(e["url"]).path).name) for e in c.get("families", []) for flag in (["--schema-artifact"] if e.get("id") == "wavepeek.output" else (["--stream-schema-artifact"] if e.get("id") == "wavepeek.stream-record" else []))]')); \
+        schema_args=($({{ python }} -c 'import json, pathlib, tomllib, urllib.parse; requested="{{ version }}"; package=tomllib.loads(pathlib.Path("Cargo.toml").read_text(encoding="utf-8"))["package"]["version"]; p=pathlib.Path("schema/catalog.json"); c=json.loads(p.read_text(encoding="utf-8")) if requested == package and p.is_file() else {"families": []}; flags={"wavepeek.output":"--schema-artifact","wavepeek.stream-record":"--stream-schema-artifact","wavepeek.input":"--input-schema-artifact"}; [print(flags[e["id"]], pathlib.PurePosixPath(urllib.parse.urlparse(e["url"]).path).name) for e in c.get("families", []) if e.get("id") in flags]')); \
         {{ python }} tools/docs/check_deploy.py \
             --version "{{ version }}" \
             --base-url "{{ base_url }}" \

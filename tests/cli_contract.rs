@@ -4,8 +4,9 @@ use predicates::prelude::*;
 mod common;
 use common::wavepeek_cmd;
 
-const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 10] = [
-    "info", "scope", "signal", "value", "change", "property", "schema", "docs", "skill", "help",
+const VISIBLE_TOP_LEVEL_COMMANDS: [&str; 11] = [
+    "info", "scope", "signal", "value", "change", "property", "extract", "schema", "docs", "skill",
+    "help",
 ];
 
 #[cfg(feature = "fsdb")]
@@ -151,6 +152,7 @@ fn help_lists_expected_subcommands() {
         .stdout(predicate::str::contains("change"))
         .stdout(predicate::str::contains("\n  changes\n").not())
         .stdout(predicate::str::contains("property"))
+        .stdout(predicate::str::contains("extract"))
         .stdout(predicate::str::contains("schema"))
         .stdout(predicate::str::contains("docs"))
         .stdout(predicate::str::contains("skill"))
@@ -242,12 +244,12 @@ fn help_lists_schema_after_waveform_commands() {
     let schema_index = output
         .find("\n  schema")
         .expect("help output should list schema subcommand");
-    let property_index = output
-        .find("\n  property")
-        .expect("help output should list property subcommand");
+    let extract_index = output
+        .find("\n  extract")
+        .expect("help output should list extract subcommand");
 
     assert!(
-        schema_index > property_index,
+        schema_index > extract_index,
         "schema should appear after waveform commands in top-level help"
     );
 }
@@ -530,6 +532,34 @@ fn property_help_uses_aligned_summary_behavior_and_grouped_option_docs() {
 }
 
 #[test]
+fn extract_command_without_subcommand_prints_help() {
+    let no_args = successful_stdout_text(&["extract"]);
+    let short_help = successful_stdout_text(&["extract", "-h"]);
+    let long_help = successful_stdout_text(&["extract", "--help"]);
+    let alias_help = successful_stdout_text(&["help", "extract"]);
+
+    for help in [&no_args, &short_help, &long_help, &alias_help] {
+        assert_eq!(
+            help.lines().next(),
+            Some("Extract row-oriented waveform data.")
+        );
+        assert!(help.contains("Usage: wavepeek extract"));
+        assert!(help.contains("Commands:"));
+        assert!(help.contains("generic"));
+        assert!(!help.contains("fatal: args:"));
+    }
+
+    assert_eq!(
+        no_args, short_help,
+        "wavepeek extract should show short help"
+    );
+    assert!(
+        short_help.len() < long_help.len(),
+        "extract -h should be materially shorter than extract --help"
+    );
+}
+
+#[test]
 fn docs_command_help_is_direct_and_omits_examples() {
     let no_args = successful_stdout_text(&["docs"]);
     let short_help = successful_stdout_text(&["docs", "-h"]);
@@ -570,7 +600,12 @@ fn schema_help_uses_aligned_summary_and_trimmed_behavior() {
 
     assert!(long_help.contains("Behavior:"));
     assert!(long_help.contains("Prints exactly one deterministic schema document to stdout."));
-    assert!(long_help.contains("source of truth for all `--json` command outputs"));
+    assert!(
+        long_help
+            .contains("Default output is the JSON envelope schema for `--json` command outputs.")
+    );
+    assert!(long_help.contains("`--stream` prints the JSONL record schema for `--jsonl` output."));
+    assert!(long_help.contains("`--input` prints the JSON input document schema"));
     assert!(!long_help.contains("Accepts no command-specific"));
     assert!(!long_help.contains("Output bytes match"));
 }
@@ -921,7 +956,7 @@ fn shipped_commands_help_is_self_descriptive() {
             &[
                 "Print canonical JSON schema contract.",
                 "Prints exactly one deterministic schema document",
-                "source of truth for all `--json` command outputs",
+                "Default output is the JSON envelope schema for `--json` command outputs",
             ],
         ),
         (
@@ -939,6 +974,26 @@ fn shipped_commands_help_is_self_descriptive() {
             );
         }
     }
+}
+
+#[test]
+fn extract_generic_help_is_self_descriptive() {
+    let long_help = successful_stdout_text(&["extract", "generic", "--help"]);
+    for fragment in [
+        "Extract protocol-neutral event rows from waveform signals.",
+        "Selects edge-only event timestamps with --on.",
+        "Always samples --when and --payload at the pre-edge sample point.",
+        "In source-file mode, --source provides one or more sources",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
+        "JSON and JSONL rows include time, sample_time, source, and ordered payload values.",
+        "wavepeek docs show commands/extract",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "extract generic long help should contain `{fragment}`"
+        );
+    }
+    assert!(!long_help.contains("commands/extract-generic"));
 }
 
 #[test]

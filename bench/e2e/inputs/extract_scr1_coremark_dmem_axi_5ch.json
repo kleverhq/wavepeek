@@ -1,0 +1,63 @@
+{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "kind": "extract.generic.sources",
+  "sources": [
+    {
+      "name": "axi_dmem_aw",
+      "on": "posedge clk iff axi_rst_n",
+      "when": "io_axi_dmem_awvalid && io_axi_dmem_awready",
+      "payload": [
+        "io_axi_dmem_awaddr",
+        "io_axi_dmem_awlen",
+        "io_axi_dmem_awsize",
+        "io_axi_dmem_awburst",
+        "io_axi_dmem_awid"
+      ]
+    },
+    {
+      "name": "axi_dmem_w",
+      "on": "posedge clk iff axi_rst_n",
+      "when": "io_axi_dmem_wvalid && io_axi_dmem_wready",
+      "payload": [
+        "io_axi_dmem_wdata",
+        "io_axi_dmem_wstrb",
+        "io_axi_dmem_wlast",
+        "io_axi_dmem_wuser"
+      ]
+    },
+    {
+      "name": "axi_dmem_b",
+      "on": "posedge clk iff axi_rst_n",
+      "when": "io_axi_dmem_bvalid && io_axi_dmem_bready",
+      "payload": [
+        "io_axi_dmem_bresp",
+        "io_axi_dmem_bid",
+        "io_axi_dmem_buser"
+      ]
+    },
+    {
+      "name": "axi_dmem_ar",
+      "on": "posedge clk iff axi_rst_n",
+      "when": "io_axi_dmem_arvalid && io_axi_dmem_arready",
+      "payload": [
+        "io_axi_dmem_araddr",
+        "io_axi_dmem_arlen",
+        "io_axi_dmem_arsize",
+        "io_axi_dmem_arburst",
+        "io_axi_dmem_arid"
+      ]
+    },
+    {
+      "name": "axi_dmem_r",
+      "on": "posedge clk iff axi_rst_n",
+      "when": "io_axi_dmem_rvalid && io_axi_dmem_rready",
+      "payload": [
+        "io_axi_dmem_rdata",
+        "io_axi_dmem_rresp",
+        "io_axi_dmem_rlast",
+        "io_axi_dmem_rid",
+        "io_axi_dmem_ruser"
+      ]
+    }
+  ]
+}

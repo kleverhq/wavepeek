@@ -275,6 +275,16 @@ impl Waveform {
         }
     }
 
+    pub(crate) fn debug_stats(&self) -> Option<serde_json::Value> {
+        match &self.backend {
+            Backend::Wellen(_) => None,
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend
+                .debug_stats_snapshot()
+                .and_then(|snapshot| serde_json::to_value(snapshot).ok()),
+        }
+    }
+
     pub(crate) fn validate_expr_values_supported(
         &self,
         resolved: &[ExprResolvedSignal],

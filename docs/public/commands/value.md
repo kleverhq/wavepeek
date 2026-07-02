@@ -74,7 +74,7 @@ Use this when you plan to paste results into notes, bugs, or follow-up commands.
 
 ## Follow `sample_time` from event-driven commands
 
-`change` and `property` JSON rows include both `time` and `sample_time`. Use `sample_time` for follow-up `value --at` queries when you want to inspect the values that were printed or evaluated by that row.
+`change`, `property`, and `extract` JSON rows include both `time` and `sample_time`. Use `sample_time` for follow-up `value --at` queries when you want to inspect the values that were printed, evaluated, or extracted by that row.
 
 This matters for `--sample-mode pre-edge`: `time` remains the trigger edge, while `sample_time` is the point just before that edge. Querying `value --at <time>` can show the next-cycle payload instead of the values that made the `property` row match.
 
@@ -95,7 +95,7 @@ Use this for spot checks between edges or between visible value changes.
 
 ```text
 $ wavepeek value --waves path/to/dump.vcd --at 5ns,10ns --scope top --signals clk,data --json
-{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.0.json","command":"value","data":[{"time":"5ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h00"}]},{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]}],"diagnostics":[]}
+{"$schema":"https://kleverhq.github.io/wavepeek/schema-output-v2.1.json","command":"value","data":[{"time":"5ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h00"}]},{"time":"10ns","signals":[{"path":"top.clk","value":"1'h1"},{"path":"top.data","value":"8'h0f"}]}],"diagnostics":[]}
 ```
 
 Use this when another tool needs deterministic parsing instead of human formatting.

@@ -51,7 +51,7 @@ Key architectural consequences:
 - Execution is stateless. Every command opens the dump, runs once, and exits.
 - The engine is format-agnostic for waveform commands. VCD/FST Wellen handling and optional FSDB Reader handling stay behind the waveform facade.
 - Docs and skill helper surfaces keep their source of truth in packaged Markdown instead of duplicated Rust string tables.
-- JSON contracts are stabilized through code-generated schema snapshots: `schema/output.json`, `schema/stream.json`, and `schema/catalog.json`.
+- JSON contracts are stabilized through code-generated schema snapshots: `schema/output.json`, `schema/stream.json`, `schema/input.json`, and `schema/catalog.json`.
 
 ### Module Structure
 
@@ -68,6 +68,7 @@ src/
 │   ├── value.rs         # `value` command args + clap help
 │   ├── change.rs        # `change` command args + clap help
 │   ├── property.rs      # `property` command args + clap help
+│   ├── extract.rs       # `extract` command namespace and subcommand args + clap help
 │   ├── schema.rs        # `schema` command args + clap help
 │   ├── docs.rs          # `docs` helper command family args + clap help
 │   └── skill.rs         # `skill` helper command args + clap help
@@ -82,13 +83,14 @@ src/
 │   ├── time.rs          # Shared time token parsing/validation/alignment helpers
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint and capture-mode execution
+│   ├── extract.rs       # Generic event-row extraction runtime
 │   ├── schema.rs        # JSON schema export
 │   ├── docs.rs          # Embedded docs topics/search/show/export runtime
 │   └── skill.rs         # Packaged agent skill print runtime
 ├── docs/                # Embedded docs asset runtime and export helpers
 │   └── mod.rs           # Topic catalog loading, search, export, and packaged skill source
 ├── schema_contract.rs   # Canonical schema URLs and embedded schema artifacts
-├── expr/                # Expression engine shared by `change` and `property`
+├── expr/                # Expression engine shared by `change`, `property`, and `extract`
 │   ├── mod.rs           # Public typed facade for parsing/binding/evaluation
 │   ├── ast.rs           # Spanned expression AST types
 │   ├── diagnostic.rs    # Parse/semantic/runtime diagnostic contract
@@ -139,7 +141,7 @@ Development dependencies include `assert_cmd`, `predicates`, `tempfile`, and `in
 
 ## Expression Engine Architecture
 
-The `change` and `property` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `docs/public/reference/expression-language.md`; this section describes how the implementation is arranged.
+The `change`, `property`, and `extract` commands share a typed expression stack in `src/expr/`. The language contract itself lives in `docs/public/reference/expression-language.md`; this section describes how the implementation is arranged.
 
 The pipeline is:
 
@@ -156,7 +158,7 @@ The current implementation status is:
 
 - typed standalone event and logical runtimes are implemented under `src/expr/`,
 - rich metadata is bridged into those runtimes through the waveform host adapter,
-- production `change` and `property` execution reuses the same typed parser, binder, and evaluator path, and
+- production `change`, `property`, and `extract` execution reuses the same typed parser, binder, and evaluator path, and
 - the older transitional compatibility parser has been retired.
 
 ## Error Handling Strategy
@@ -227,6 +229,6 @@ Runtime test execution does not fetch those larger fixtures dynamically; they ar
 The architectural split matters for docs maintenance:
 
 - `src/cli/`, `wavepeek --help`, and `wavepeek <command> --help` are the exact CLI surface authority.
-- The current schema snapshots, `schema/output.json` and `schema/stream.json`, plus `wavepeek schema` and `wavepeek schema --stream`, are the machine-readable output authorities. `schema/catalog.json` maps schema families to exact published URLs.
+- The current schema snapshots, `schema/output.json`, `schema/stream.json`, and `schema/input.json`, plus `wavepeek schema`, `wavepeek schema --stream`, and `wavepeek schema --input`, are the machine-readable contract authorities. `schema/catalog.json` maps schema families to exact published URLs.
 - `docs/public/reference/` documents the user-visible semantics that code and schema alone do not explain well enough.
 - this file documents internals that help contributors change implementation safely without regrowing a monolithic design doc.

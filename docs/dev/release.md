@@ -25,7 +25,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
        just update-schema
 
-   This updates `schema/output.json`, `schema/stream.json`, and `schema/catalog.json` from Rust contract code.
+   This updates `schema/output.json`, `schema/stream.json`, `schema/input.json`, and `schema/catalog.json` from Rust contract code.
 
 6. Run the release-quality gate:
 
@@ -33,7 +33,7 @@ This runbook covers production releases for `wavepeek`. Use it with `changelog.m
 
 7. Commit release prep:
 
-       git add CHANGELOG.md Cargo.toml Cargo.lock schema/output.json schema/stream.json schema/catalog.json
+       git add CHANGELOG.md Cargo.toml Cargo.lock schema/output.json schema/stream.json schema/input.json schema/catalog.json
        git commit -m "chore(release): prepare vX.Y.Z"
 
 8. Run the manual performance gate before pushing a major or minor release. Use the previous release tag as the baseline and the release-prep commit as the revised ref:

@@ -8,4 +8,4 @@
 
 ## Local Guidance
 
-Regenerate current schema snapshots with `just update-schema` when the Rust contract owns the change, and always validate with `just check-schema`. Current snapshots are `output.json`, `stream.json`, and `catalog.json`; do not edit them manually. Historical schema artifacts remain public contracts through release tags and GitHub Pages; do not duplicate them in the current `schema/` directory.
+Regenerate current schema snapshots with `just update-schema` when the Rust contract owns the change, and always validate with `just check-schema`. Current snapshots are `output.json`, `stream.json`, `input.json`, and `catalog.json`; do not edit them manually. Historical schema artifacts remain public contracts through release tags and GitHub Pages; do not duplicate them in the current `schema/` directory.

@@ -131,6 +131,11 @@ pub fn write_jsonl_result<W: Write>(
                 writer.item(row)?;
             }
         }
+        CommandData::ExtractGeneric(data) => {
+            for row in &data.rows {
+                writer.item(row)?;
+            }
+        }
         CommandData::Schema(_)
         | CommandData::Text(_)
         | CommandData::DocsTopics(_)
@@ -259,6 +264,28 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
                 } else {
                     format!("@{} sample@{} {}", row.time, row.sample_time, row.kind)
                 }
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+        CommandData::ExtractGeneric(data) => data
+            .rows
+            .iter()
+            .map(|row| {
+                let mut parts = Vec::with_capacity(row.payload.len() + 3);
+                parts.push(format!("@{}", row.time));
+                parts.push(format!("sample@{}", row.sample_time));
+                if data.source_count > 1 {
+                    parts.push(format!("[{}]", row.source));
+                }
+                for payload in &row.payload {
+                    let display = if options.signals_abs {
+                        payload.path.as_str()
+                    } else {
+                        payload.display.as_str()
+                    };
+                    parts.push(format!("{display}={}", payload.value));
+                }
+                parts.join(" ")
             })
             .collect::<Vec<_>>()
             .join("\n"),

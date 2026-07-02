@@ -3,6 +3,9 @@
 use std::cell::{Ref, RefCell};
 use std::collections::{BTreeSet, HashMap};
 use std::path::Path;
+use std::time::{Duration, Instant};
+
+use serde::Serialize;
 
 use crate::error::WavepeekError;
 use crate::expr::{ExprType, ExprTypeKind, SampledValue};
@@ -24,6 +27,48 @@ pub(super) struct FsdbBackend {
     loaded_session_idcodes: BTreeSet<u64>,
     expr_sample_cache: HashMap<(SignalId, u64), SampledValue>,
     event_occurrence_cache: HashMap<(SignalId, u64), bool>,
+    debug_stats: Option<FsdbDebugStats>,
+}
+
+#[derive(Debug, Default)]
+struct FsdbDebugStats {
+    expr_sample_cache_hits: usize,
+    expr_sample_cache_misses: usize,
+    expr_sample_uncached_ns: u64,
+    event_occurrence_cache_hits: usize,
+    event_occurrence_cache_misses: usize,
+    event_occurrence_uncached_ns: u64,
+    sample_resolved_calls: usize,
+    sample_resolved_idcodes: usize,
+    sample_resolved_native_ns: u64,
+    collect_change_times_calls: usize,
+    collect_change_times_idcodes: usize,
+    collect_change_times_ns: u64,
+    signal_session_reuses: usize,
+    signal_session_opens: usize,
+    signal_session_open_ns: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct FsdbDebugStatsSnapshot {
+    pub expr_sample_cache_hits: usize,
+    pub expr_sample_cache_misses: usize,
+    pub expr_sample_uncached_ns: u64,
+    pub expr_sample_cache_len: usize,
+    pub event_occurrence_cache_hits: usize,
+    pub event_occurrence_cache_misses: usize,
+    pub event_occurrence_uncached_ns: u64,
+    pub event_occurrence_cache_len: usize,
+    pub sample_resolved_calls: usize,
+    pub sample_resolved_idcodes: usize,
+    pub sample_resolved_native_ns: u64,
+    pub collect_change_times_calls: usize,
+    pub collect_change_times_idcodes: usize,
+    pub collect_change_times_ns: u64,
+    pub signal_session_reuses: usize,
+    pub signal_session_opens: usize,
+    pub signal_session_open_ns: u64,
+    pub loaded_session_idcodes: usize,
 }
 
 impl FsdbBackend {
@@ -36,6 +81,7 @@ impl FsdbBackend {
             loaded_session_idcodes: BTreeSet::new(),
             expr_sample_cache: HashMap::new(),
             event_occurrence_cache: HashMap::new(),
+            debug_stats: fsdb_debug_stats_enabled().then(FsdbDebugStats::default),
         })
     }
 
@@ -149,9 +195,18 @@ impl FsdbBackend {
             .iter()
             .map(|signal| signal.id.as_u64())
             .collect::<Vec<_>>();
-        let samples = self
-            .ensure_signal_session(&idcodes)?
-            .sample_signal_values(&idcodes, query_time_raw)?;
+        let started_at = self.debug_stats.is_some().then(Instant::now);
+        let samples = {
+            let session = self.ensure_signal_session(&idcodes)?;
+            session.sample_signal_values(&idcodes, query_time_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.sample_resolved_calls += 1;
+            stats.sample_resolved_idcodes += idcodes.len();
+            if let Some(started_at) = started_at {
+                stats.sample_resolved_native_ns += duration_ns(started_at.elapsed());
+            }
+        }
         if samples.len() != resolved.len() {
             return Err(WavepeekError::Internal(
                 "FSDB Reader returned the wrong number of sampled values".to_string(),
@@ -193,10 +248,22 @@ impl FsdbBackend {
     ) -> Result<SampledValue, WavepeekError> {
         let cache_key = (resolved.id, query_time_raw);
         if let Some(value) = self.expr_sample_cache.get(&cache_key) {
+            if let Some(stats) = self.debug_stats.as_mut() {
+                stats.expr_sample_cache_hits += 1;
+            }
             return Ok(value.clone());
         }
 
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.expr_sample_cache_misses += 1;
+        }
+        let started_at = self.debug_stats.is_some().then(Instant::now);
         let value = self.sample_expr_value_uncached(resolved, query_time_raw)?;
+        if let Some(stats) = self.debug_stats.as_mut()
+            && let Some(started_at) = started_at
+        {
+            stats.expr_sample_uncached_ns += duration_ns(started_at.elapsed());
+        }
         self.expr_sample_cache.insert(cache_key, value.clone());
         Ok(value)
     }
@@ -215,14 +282,27 @@ impl FsdbBackend {
 
         let cache_key = (resolved.id, query_time_raw);
         if let Some(occurred) = self.event_occurrence_cache.get(&cache_key) {
+            if let Some(stats) = self.debug_stats.as_mut() {
+                stats.event_occurrence_cache_hits += 1;
+            }
             return Ok(*occurred);
         }
 
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.event_occurrence_cache_misses += 1;
+        }
+        let started_at = self.debug_stats.is_some().then(Instant::now);
         self.raw_metadata()?;
         let idcodes = [resolved.id.as_u64()];
-        let occurred = self
-            .ensure_signal_session(&idcodes)?
-            .signal_event_occurred(resolved.id.as_u64(), query_time_raw)?;
+        let occurred = {
+            let session = self.ensure_signal_session(&idcodes)?;
+            session.signal_event_occurred(resolved.id.as_u64(), query_time_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut()
+            && let Some(started_at) = started_at
+        {
+            stats.event_occurrence_uncached_ns += duration_ns(started_at.elapsed());
+        }
         self.event_occurrence_cache.insert(cache_key, occurred);
         Ok(occurred)
     }
@@ -266,8 +346,19 @@ impl FsdbBackend {
         if idcodes.is_empty() || from_raw > to_raw {
             return Ok(Vec::new());
         }
-        self.ensure_signal_session(&idcodes)?
-            .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
+        let started_at = self.debug_stats.is_some().then(Instant::now);
+        let times = {
+            let session = self.ensure_signal_session(&idcodes)?;
+            session.collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.collect_change_times_calls += 1;
+            stats.collect_change_times_idcodes += idcodes.len();
+            if let Some(started_at) = started_at {
+                stats.collect_change_times_ns += duration_ns(started_at.elapsed());
+            }
+        }
+        Ok(times)
     }
 
     pub(super) fn collect_expr_candidate_times_with_mode(
@@ -286,8 +377,19 @@ impl FsdbBackend {
         if idcodes.is_empty() || from_raw > to_raw {
             return Ok(Vec::new());
         }
-        self.ensure_signal_session(&idcodes)?
-            .collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)
+        let started_at = self.debug_stats.is_some().then(Instant::now);
+        let times = {
+            let session = self.ensure_signal_session(&idcodes)?;
+            session.collect_signal_change_times(idcodes.as_slice(), from_raw, to_raw)?
+        };
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.collect_change_times_calls += 1;
+            stats.collect_change_times_idcodes += idcodes.len();
+            if let Some(started_at) = started_at {
+                stats.collect_change_times_ns += duration_ns(started_at.elapsed());
+            }
+        }
+        Ok(times)
     }
 
     pub(super) fn should_use_streaming_candidate_collection(
@@ -314,6 +416,9 @@ impl FsdbBackend {
         let can_reuse =
             self.signal_session.is_some() && requested.is_subset(&self.loaded_session_idcodes);
         if can_reuse {
+            if let Some(stats) = self.debug_stats.as_mut() {
+                stats.signal_session_reuses += 1;
+            }
             return self.signal_session.as_ref().ok_or_else(|| {
                 WavepeekError::Internal("FSDB signal session cache disappeared".to_string())
             });
@@ -325,13 +430,44 @@ impl FsdbBackend {
 
         self.signal_session = None;
         self.loaded_session_idcodes.clear();
+        let started_at = self.debug_stats.is_some().then(Instant::now);
         let session = self.reader.open_signal_session(&new_idcodes)?;
+        if let Some(stats) = self.debug_stats.as_mut() {
+            stats.signal_session_opens += 1;
+            if let Some(started_at) = started_at {
+                stats.signal_session_open_ns += duration_ns(started_at.elapsed());
+            }
+        }
         self.loaded_session_idcodes = new_loaded;
         self.signal_session = Some(session);
         Ok(self
             .signal_session
             .as_ref()
             .expect("FSDB signal session was just opened"))
+    }
+
+    pub(super) fn debug_stats_snapshot(&self) -> Option<FsdbDebugStatsSnapshot> {
+        let stats = self.debug_stats.as_ref()?;
+        Some(FsdbDebugStatsSnapshot {
+            expr_sample_cache_hits: stats.expr_sample_cache_hits,
+            expr_sample_cache_misses: stats.expr_sample_cache_misses,
+            expr_sample_uncached_ns: stats.expr_sample_uncached_ns,
+            expr_sample_cache_len: self.expr_sample_cache.len(),
+            event_occurrence_cache_hits: stats.event_occurrence_cache_hits,
+            event_occurrence_cache_misses: stats.event_occurrence_cache_misses,
+            event_occurrence_uncached_ns: stats.event_occurrence_uncached_ns,
+            event_occurrence_cache_len: self.event_occurrence_cache.len(),
+            sample_resolved_calls: stats.sample_resolved_calls,
+            sample_resolved_idcodes: stats.sample_resolved_idcodes,
+            sample_resolved_native_ns: stats.sample_resolved_native_ns,
+            collect_change_times_calls: stats.collect_change_times_calls,
+            collect_change_times_idcodes: stats.collect_change_times_idcodes,
+            collect_change_times_ns: stats.collect_change_times_ns,
+            signal_session_reuses: stats.signal_session_reuses,
+            signal_session_opens: stats.signal_session_opens,
+            signal_session_open_ns: stats.signal_session_open_ns,
+            loaded_session_idcodes: self.loaded_session_idcodes.len(),
+        })
     }
 
     fn raw_metadata(&self) -> Result<FsdbNativeMetadata, WavepeekError> {
@@ -416,6 +552,14 @@ impl FsdbBackend {
                 .expect("hierarchy was initialized before immutable borrow")
         }))
     }
+}
+
+fn fsdb_debug_stats_enabled() -> bool {
+    std::env::var("DEBUG").as_deref() == Ok("1")
+}
+
+fn duration_ns(duration: Duration) -> u64 {
+    u64::try_from(duration.as_nanos()).unwrap_or(u64::MAX)
 }
 
 pub(super) fn unsupported_value_sampling(path: &str) -> WavepeekError {

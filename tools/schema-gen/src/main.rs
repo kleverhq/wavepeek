@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use serde_json::{Value, json};
 use wavepeek::contract::schema::{
-    OUTPUT_SCHEMA_URL, STREAM_SCHEMA_URL, catalog_json, output_schema_json, stream_schema_json,
+    INPUT_SCHEMA_URL, OUTPUT_SCHEMA_URL, STREAM_SCHEMA_URL, catalog_json, input_schema_json,
+    output_schema_json, stream_schema_json,
 };
 
 fn main() {
@@ -34,6 +35,7 @@ fn write_schemas(out_dir: &Path) -> Result<(), String> {
 
     write_file(out_dir, "output.json", output_schema_json())?;
     write_file(out_dir, "stream.json", stream_schema_json())?;
+    write_file(out_dir, "input.json", input_schema_json())?;
     write_file(out_dir, "catalog.json", catalog_json())?;
     Ok(())
 }
@@ -41,10 +43,13 @@ fn write_schemas(out_dir: &Path) -> Result<(), String> {
 fn validate_schemas(schema_dir: &Path) -> Result<(), String> {
     let output = read_json(&schema_dir.join("output.json"))?;
     let stream = read_json(&schema_dir.join("stream.json"))?;
+    let input = read_json(&schema_dir.join("input.json"))?;
     let output_validator = jsonschema::validator_for(&output)
         .map_err(|error| format!("output schema does not compile: {error}"))?;
     let stream_validator = jsonschema::validator_for(&stream)
         .map_err(|error| format!("stream schema does not compile: {error}"))?;
+    let input_validator = jsonschema::validator_for(&input)
+        .map_err(|error| format!("input schema does not compile: {error}"))?;
 
     let valid_output = json!({
         "$schema": OUTPUT_SCHEMA_URL,
@@ -103,6 +108,28 @@ fn validate_schemas(schema_dir: &Path) -> Result<(), String> {
         &stream_validator,
         &mismatch_stream,
         "stream command/item mismatch must reject",
+    )?;
+
+    let valid_input = json!({
+        "$schema": INPUT_SCHEMA_URL,
+        "kind": "extract.generic.sources",
+        "sources": [{
+            "name": "rx.beat",
+            "on": "posedge clk iff rst_n",
+            "when": "valid && ready",
+            "payload": ["data", "last"]
+        }],
+        "x-extension": true,
+    });
+    input_validator
+        .validate(&valid_input)
+        .map_err(|error| format!("valid input sample failed validation: {error}"))?;
+    let mut invalid_input = valid_input;
+    invalid_input["sources"] = json!([]);
+    expect_invalid(
+        &input_validator,
+        &invalid_input,
+        "input sources must not be empty",
     )?;
     Ok(())
 }

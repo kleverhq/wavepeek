@@ -143,7 +143,7 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Run read-only review of the ExecPlan and incorporate any blocking findings.
 - [x] Capture baseline debug benchmark and DEBUG diagnostic evidence.
 - [x] Commit the baseline report.
-- [ ] Implement native sequential timeline API and Rust FFI wrappers.
+- [x] Implement native sequential timeline API and Rust FFI wrappers.
 - [ ] Implement FSDB timeline cache, preload API, command hooks, and DEBUG counters.
 - [ ] Run focused tests and implementation review.
 - [ ] Capture after-fix benchmark and DEBUG diagnostic evidence.
@@ -157,6 +157,8 @@ The existing DEBUG evidence in issue #47 already isolates the bottleneck: `colle
 The FST path in `src/waveform/wellen_backend.rs` has indexed timestamps and loaded signal offsets, while the FSDB backend currently returns `None` for `indexed_timestamps`. This explains why FST expression sampling can be served from loaded signal data while FSDB expression sampling falls back to native random access.
 
 The baseline reproduced the issue on commit `4b35f03d9f47`: debug FSDB benchmarks measured 60.227s for the two-channel extract workload and 85.989s for the five-channel workload. DEBUG diagnostics recorded 4,390,756 native sample calls for two-channel and 6,284,753 for five-channel, while candidate collection remained about 0.55s. `/usr/bin/time` is not installed in the container, so shell `time` was used for focused diagnostics.
+
+The native timeline API was added in commit `20bde48`. A focused FSDB unit test converts `change_property_events.vcd`, reads `top.armed` over raw time `1..=20`, and verifies that the returned timeline includes the initial value at raw time 0 plus later changes at 10 and 15.
 
 ## Decision Log
 
@@ -176,6 +178,8 @@ Milestone 1 complete. The ExecPlan was committed and a read-only docs/design rev
 
 Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB binary was built, reduced debug benchmarks were run for 1ch/2ch/5ch SCR1 AXI extract workloads, and DEBUG diagnostics were captured for 2ch and 5ch. The baseline report records the bottleneck and remains pending after-fix comparison.
 
+Milestone 3 complete. The native C ABI now exposes a signal-session value-change timeline reader and Rust FFI wrappers. The focused test `CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb fsdb_signal_session_reads_value_changes -- --nocapture` passed.
+
 ## Revision notes
 
 2026-07-02: Initial ExecPlan created from issue #47 and repository context. The plan includes baseline collection, implementation strategy, review gates, after-fix evidence, and final report requirements.
@@ -185,3 +189,5 @@ Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB bina
 2026-07-02: Recorded completion of the read-only ExecPlan review. The reviewer reported no substantive findings.
 
 2026-07-02: Recorded baseline benchmark and DEBUG diagnostic evidence. The baseline report is `docs/tracker/wip/fsdb-random-sampling/perf-report.md`; raw logs are under `tmp/fsdb-random-sampling/baseline/`.
+
+2026-07-02: Recorded native timeline API completion after commit `20bde48`. The native API returns final per-timestamp bit-vector values and includes an initial sample at or before the preload start.

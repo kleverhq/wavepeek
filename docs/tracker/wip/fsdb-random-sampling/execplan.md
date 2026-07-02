@@ -140,7 +140,7 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Read issue #47 and repository context for FSDB sampling, expression hosts, extract workloads, and benchmark fixtures.
 - [x] Draft the self-contained ExecPlan under `docs/tracker/wip/fsdb-random-sampling/execplan.md`.
 - [x] Commit the ExecPlan.
-- [ ] Run read-only review of the ExecPlan and incorporate any blocking findings.
+- [x] Run read-only review of the ExecPlan and incorporate any blocking findings.
 - [ ] Capture baseline debug benchmark and DEBUG diagnostic evidence.
 - [ ] Commit the baseline report.
 - [ ] Implement native sequential timeline API and Rust FFI wrappers.
@@ -168,10 +168,12 @@ Decision: collect baseline and after-fix evidence with debug builds and reduced 
 
 ## Outcomes & Retrospective
 
-No implementation outcome yet. This section will be updated after each major milestone with what changed, which commands passed, and what remains.
+Milestone 1 complete. The ExecPlan was committed and a read-only docs/design review returned no substantive findings. Implementation and performance evidence are still pending.
 
 ## Revision notes
 
 2026-07-02: Initial ExecPlan created from issue #47 and repository context. The plan includes baseline collection, implementation strategy, review gates, after-fix evidence, and final report requirements.
 
 2026-07-02: Marked the plan commit milestone complete immediately before committing the plan, so the committed plan records its own milestone state.
+
+2026-07-02: Recorded completion of the read-only ExecPlan review. The reviewer reported no substantive findings.

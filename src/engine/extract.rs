@@ -336,24 +336,33 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
-    let preload_from_raw = from_raw
-        .checked_sub(1)
-        .filter(|value| *value >= dump_start_raw)
-        .unwrap_or(from_raw);
-    preload_extract_value_changes(
-        &waveform,
-        &bound_sources,
-        &event_groups,
-        preload_from_raw,
-        to_raw,
-    )?;
-    debug.event("value.preload.done", || {
-        serde_json::json!({
-            "from_raw": preload_from_raw,
-            "to_raw": to_raw,
-            "backend_stats": waveform.borrow().debug_stats(),
-        })
-    });
+    if max_entries.is_none() {
+        let preload_from_raw = from_raw
+            .checked_sub(1)
+            .filter(|value| *value >= dump_start_raw)
+            .unwrap_or(from_raw);
+        preload_extract_value_changes(
+            &waveform,
+            &bound_sources,
+            &event_groups,
+            preload_from_raw,
+            to_raw,
+        )?;
+        debug.event("value.preload.done", || {
+            serde_json::json!({
+                "from_raw": preload_from_raw,
+                "to_raw": to_raw,
+                "backend_stats": waveform.borrow().debug_stats(),
+            })
+        });
+    } else {
+        debug.event("value.preload.skipped", || {
+            serde_json::json!({
+                "reason": "bounded_max",
+                "max_entries": max_entries,
+            })
+        });
+    }
 
     sink.start()?;
     debug.event("extract.emit.start", || {

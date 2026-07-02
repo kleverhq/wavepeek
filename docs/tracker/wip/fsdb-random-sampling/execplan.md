@@ -148,7 +148,7 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Run focused tests and implementation review.
 - [x] Capture after-fix benchmark and DEBUG diagnostic evidence.
 - [x] Update and commit the final performance report.
-- [ ] Run final gates and control review.
+- [x] Run final gates and control review.
 
 ## Surprises & Discoveries
 
@@ -182,7 +182,7 @@ Decision: skip full-window timeline preload when `--max` is bounded. Rationale: 
 
 Milestone 1 complete. The ExecPlan was committed and a read-only docs/design review returned no substantive findings.
 
-Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB binary was built, reduced debug benchmarks were run for 1ch/2ch/5ch SCR1 AXI extract workloads, and DEBUG diagnostics were captured for 2ch and 5ch. The baseline report records the bottleneck and remains pending after-fix comparison.
+Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB binary was built, reduced debug benchmarks were run for 1ch/2ch/5ch SCR1 AXI extract workloads, and DEBUG diagnostics were captured for 2ch and 5ch. The baseline report records the bottleneck.
 
 Milestone 3 complete. The native C ABI now exposes a signal-session value-change timeline reader and Rust FFI wrappers. The focused test `CARGO_TARGET_DIR=target/fsdb cargo test --features fsdb fsdb_signal_session_reads_value_changes -- --nocapture` passed.
 
@@ -190,7 +190,9 @@ Milestone 4 complete. The FSDB backend now caches per-signal timelines, serves e
 
 Milestone 5 complete. Read-only review lanes covered native/FFI correctness, Rust backend/command correctness, and performance. Native and Rust lanes returned no substantive findings. The performance lane found that bounded `--max` runs could pay full-window preload cost; commit `380fdc6` skips timeline preload for bounded runs, and a performance follow-up review returned no substantive findings.
 
-Milestone 6 complete. The after-fix debug benchmark and DEBUG diagnostics were run with the same workloads and binary type as baseline. The final performance report now compares before/after timings, DEBUG counters, and byte-for-byte JSONL parity.
+Milestone 6 complete. The after-fix debug benchmark and DEBUG diagnostics were run with the same workloads and binary type as baseline. The final performance report compares before/after timings, DEBUG counters, and byte-for-byte JSONL parity.
+
+Milestone 7 complete. `just check` passed, and an independent final control review over the complete branch diff returned no substantive findings. The feature is ready for handoff, with remaining broader work limited to optional chunked preload support and possible expression evaluator optimization outside issue #47.
 
 ## Revision notes
 
@@ -209,3 +211,5 @@ Milestone 6 complete. The after-fix debug benchmark and DEBUG diagnostics were r
 2026-07-02: Recorded implementation review completion. Commit `380fdc6` addresses the only substantive review finding by keeping bounded `--max` runs on the fallback path instead of preloading complete timelines.
 
 2026-07-02: Recorded final after-fix benchmark and DEBUG diagnostic evidence. The final report shows about 4.7x debug-build speedup and elimination of the native random sampling hot path for the targeted extract workloads.
+
+2026-07-02: Recorded final gate and control-review completion. `just check` passed and the final review returned no substantive findings.

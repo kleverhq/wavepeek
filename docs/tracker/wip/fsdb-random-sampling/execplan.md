@@ -141,8 +141,8 @@ For performance evidence, use the baseline protocol before implementation and th
 - [x] Draft the self-contained ExecPlan under `docs/tracker/wip/fsdb-random-sampling/execplan.md`.
 - [x] Commit the ExecPlan.
 - [x] Run read-only review of the ExecPlan and incorporate any blocking findings.
-- [ ] Capture baseline debug benchmark and DEBUG diagnostic evidence.
-- [ ] Commit the baseline report.
+- [x] Capture baseline debug benchmark and DEBUG diagnostic evidence.
+- [x] Commit the baseline report.
 - [ ] Implement native sequential timeline API and Rust FFI wrappers.
 - [ ] Implement FSDB timeline cache, preload API, command hooks, and DEBUG counters.
 - [ ] Run focused tests and implementation review.
@@ -156,6 +156,8 @@ The existing DEBUG evidence in issue #47 already isolates the bottleneck: `colle
 
 The FST path in `src/waveform/wellen_backend.rs` has indexed timestamps and loaded signal offsets, while the FSDB backend currently returns `None` for `indexed_timestamps`. This explains why FST expression sampling can be served from loaded signal data while FSDB expression sampling falls back to native random access.
 
+The baseline reproduced the issue on commit `4b35f03d9f47`: debug FSDB benchmarks measured 60.227s for the two-channel extract workload and 85.989s for the five-channel workload. DEBUG diagnostics recorded 4,390,756 native sample calls for two-channel and 6,284,753 for five-channel, while candidate collection remained about 0.55s. `/usr/bin/time` is not installed in the container, so shell `time` was used for focused diagnostics.
+
 ## Decision Log
 
 Decision: implement a reusable FSDB timeline cache instead of a command-specific bulk query API. Rationale: issue #47 affects `extract generic`, `property`, and likely future expression-driven commands. A backend cache makes `WaveformExprHost::sample_value` faster without teaching every expression operator about FSDB.
@@ -166,9 +168,13 @@ Decision: store final value per timestamp in the timeline cache. Rationale: the 
 
 Decision: collect baseline and after-fix evidence with debug builds and reduced benchmark repetitions. Rationale: the requested DEBUG counters require debug binaries, and full release benchmark repetition counts would be too slow for iterative development while adding little diagnostic value.
 
+Decision: use shell `time` for focused DEBUG diagnostics in this container. Rationale: `/usr/bin/time` is unavailable, but shell `time` still records real, user, and system durations needed for before/after comparison.
+
 ## Outcomes & Retrospective
 
-Milestone 1 complete. The ExecPlan was committed and a read-only docs/design review returned no substantive findings. Implementation and performance evidence are still pending.
+Milestone 1 complete. The ExecPlan was committed and a read-only docs/design review returned no substantive findings.
+
+Milestone 2 complete. Baseline FSDB artifacts were prepared, the debug FSDB binary was built, reduced debug benchmarks were run for 1ch/2ch/5ch SCR1 AXI extract workloads, and DEBUG diagnostics were captured for 2ch and 5ch. The baseline report records the bottleneck and remains pending after-fix comparison.
 
 ## Revision notes
 
@@ -177,3 +183,5 @@ Milestone 1 complete. The ExecPlan was committed and a read-only docs/design rev
 2026-07-02: Marked the plan commit milestone complete immediately before committing the plan, so the committed plan records its own milestone state.
 
 2026-07-02: Recorded completion of the read-only ExecPlan review. The reviewer reported no substantive findings.
+
+2026-07-02: Recorded baseline benchmark and DEBUG diagnostic evidence. The baseline report is `docs/tracker/wip/fsdb-random-sampling/perf-report.md`; raw logs are under `tmp/fsdb-random-sampling/baseline/`.

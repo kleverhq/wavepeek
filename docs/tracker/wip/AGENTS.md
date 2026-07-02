@@ -1,3 +1,7 @@
+# DO NOT DELETE THIS FILE
+
+This breadcrumb is required for `docs/tracker/wip/`. Do not remove it during WIP cleanup; restore it if it is missing.
+
 # WIP Tracker Guidance
 
 ## Scope

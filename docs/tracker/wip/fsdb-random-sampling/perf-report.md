@@ -92,6 +92,78 @@ The catalog used the standard `bench/e2e/tests_fsdb.json` run counts for these t
 
 Hyperfine reported statistical outliers for all three release runs. The variation is small relative to the means, so these values are suitable as reference numbers rather than formal baselines.
 
+## Full FSDB catalog against main
+
+A full release FSDB catalog comparison was measured after the fix using the current branch binary against `main`.
+
+- Main commit: `d915a0f5d4fa`.
+- Current commit used for the run: `dc10e9944a36`.
+- Test catalog: `bench/e2e/tests_fsdb.json`.
+- Catalog size: 153 tests per binary.
+- Successful benchmark pairs: 141.
+- Symmetric preflight failures: 12 tests failed before timing on both binaries.
+- Raw artifacts: `tmp/fsdb-random-sampling/full-fsdb/bench/`.
+
+Commands:
+
+    git worktree add --detach tmp/fsdb-random-sampling/main-worktree main
+    CARGO_TARGET_DIR=target/fsdb cargo build --release --features fsdb
+    cd tmp/fsdb-random-sampling/main-worktree
+    CARGO_TARGET_DIR=/workspaces/wavepeek/.worktrees/fix-fsdb-random-sampling/target/fsdb-main cargo build --release --features fsdb
+    cd /workspaces/wavepeek/.worktrees/fix-fsdb-random-sampling
+    python3 -B bench/e2e/perf.py run \
+      --binary main=target/fsdb-main/release/wavepeek \
+      --binary current=target/fsdb/release/wavepeek \
+      --tests bench/e2e/tests_fsdb.json \
+      --run-dir tmp/fsdb-random-sampling/full-fsdb/bench \
+      --wavepeek-timeout-seconds 900 \
+      --verbose
+
+Category totals use the sum of per-test hyperfine means for successful pairs. Geometric speedup is the geometric mean of per-test speedups within the category.
+
+| Category | Successful pairs | Main total | Current total | Total speedup | Geomean speedup |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `change` | 105 | 32.433s | 32.907s | 0.99x | 1.00x |
+| `extract` | 3 | 98.017s | 6.339s | 15.46x | 15.39x |
+| `info` | 8 | 0.384s | 0.381s | 1.01x | 1.01x |
+| `property` | 6 | 1.817s | 1.831s | 0.99x | 0.97x |
+| `scope` | 3 | 0.534s | 0.534s | 1.00x | 1.00x |
+| `signal` | 3 | 0.141s | 0.147s | 0.96x | 0.97x |
+| `value` | 13 | 2.722s | 2.741s | 0.99x | 0.99x |
+
+Extract workloads dominate the branch-level improvement:
+
+| Workload | Main mean | Current mean | Speedup |
+| --- | ---: | ---: | ---: |
+| `extract_scr1_coremark_dmem_axi_1ch_cli` | 25.565s | 1.716s | 14.89x |
+| `extract_scr1_coremark_dmem_axi_2ch_source` | 29.841s | 1.928s | 15.47x |
+| `extract_scr1_coremark_dmem_axi_5ch_source` | 42.611s | 2.694s | 15.82x |
+
+The non-extract categories are essentially flat in aggregate. Individual cases with more than 5% apparent slowdown were small or noisy enough to need a focused rerun before treating them as regressions. The largest were:
+
+| Workload | Category | Main mean | Current mean | Change |
+| --- | --- | ---: | ---: | ---: |
+| `property_scr1_coremark_imem_axi_araddr_to_200ps_match_posedge_clk_sample_pre_edge` | `property` | 0.071s | 0.079s | +11.2% |
+| `signal_scr1_top_recursive_filter_valid_json` | `signal` | 0.046s | 0.051s | +10.0% |
+| `change_chipyard_dualrocketconfig_dhrystone_signals_100_window_8us_trigger_posedge_clk` | `change` | 1.251s | 1.346s | +7.7% |
+| `change_chipyard_dualrocketconfig_dhrystone_signals_1_window_32us_trigger_any` | `change` | 0.168s | 0.179s | +6.9% |
+| `change_chipyard_dualrocketconfig_dhrystone_signals_100_window_32us_trigger_posedge_clk` | `change` | 4.478s | 4.769s | +6.5% |
+
+The symmetric preflight failures were:
+
+- `change_scr1_signals_100_pos_50_window_2ns_trigger_any`
+- `change_scr1_signals_100_window_2ns_trigger_posedge_clk`
+- `change_scr1_signals_100_window_2ns_trigger_signal`
+- `change_scr1_signals_100_window_4ns_trigger_any`
+- `change_scr1_signals_100_window_4ns_trigger_posedge_clk`
+- `change_scr1_signals_100_window_4ns_trigger_signal`
+- `change_scr1_signals_100_window_8ns_trigger_any`
+- `change_scr1_signals_100_window_8ns_trigger_posedge_clk`
+- `change_scr1_signals_100_window_8ns_trigger_signal`
+- `value_chipyard_clusteredrocketconfig_dhrystone_signals_1000`
+- `value_chipyard_dualrocketconfig_dhrystone_signals_1000`
+- `value_scr1_signals_1000`
+
 ## DEBUG comparison
 
 | Metric | 2ch baseline | 2ch after | 5ch baseline | 5ch after |

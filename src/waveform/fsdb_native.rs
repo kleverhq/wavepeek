@@ -49,6 +49,19 @@ pub(super) struct FsdbNativeSample {
     pub(super) bits: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct FsdbNativeValueChange {
+    pub(super) time_raw: u64,
+    pub(super) bits: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct FsdbNativeSignalTimeline {
+    pub(super) idcode: u64,
+    pub(super) bit_width: u32,
+    pub(super) changes: Vec<FsdbNativeValueChange>,
+}
+
 impl FsdbReader {
     pub(super) fn open(path: &Path) -> Result<Self, WavepeekError> {
         let path = c_path(path)?;
@@ -301,6 +314,35 @@ impl FsdbSignalSession {
         times.to_vec()
     }
 
+    pub(super) fn read_value_changes(
+        &self,
+        idcodes: &[u64],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<Vec<FsdbNativeSignalTimeline>, WavepeekError> {
+        if idcodes.is_empty() || from_raw > to_raw {
+            return Ok(Vec::new());
+        }
+
+        let mut timelines = NativeSignalTimelineList::default();
+        let mut error_message = ptr::null_mut();
+        let status = unsafe {
+            ffi::wp_fsdb_signal_session_read_value_changes(
+                self.raw.as_ptr(),
+                idcodes.as_ptr(),
+                idcodes.len(),
+                from_raw,
+                to_raw,
+                &mut timelines.raw,
+                &mut error_message,
+            )
+        };
+        if status != WP_FSDB_STATUS_OK {
+            return Err(native_error(error_message));
+        }
+        timelines.to_vec()
+    }
+
     pub(super) fn signal_event_occurred(
         &self,
         idcode: u64,
@@ -357,6 +399,11 @@ struct NativeTimeList {
     raw: ffi::wp_fsdb_time_list,
 }
 
+#[derive(Debug)]
+struct NativeSignalTimelineList {
+    raw: ffi::wp_fsdb_signal_timeline_list,
+}
+
 impl Default for NativeTimeList {
     fn default() -> Self {
         Self {
@@ -411,6 +458,39 @@ impl NativeTimeList {
 impl Drop for NativeTimeList {
     fn drop(&mut self) {
         unsafe { ffi::wp_fsdb_free_time_list(&mut self.raw) };
+    }
+}
+
+impl Default for NativeSignalTimelineList {
+    fn default() -> Self {
+        Self {
+            raw: ffi::wp_fsdb_signal_timeline_list {
+                signals: ptr::null_mut(),
+                count: 0,
+            },
+        }
+    }
+}
+
+impl NativeSignalTimelineList {
+    fn to_vec(&self) -> Result<Vec<FsdbNativeSignalTimeline>, WavepeekError> {
+        if self.raw.count == 0 {
+            return Ok(Vec::new());
+        }
+        if self.raw.signals.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a null signal timeline list".to_string(),
+            ));
+        }
+
+        let raw_timelines = unsafe { slice::from_raw_parts(self.raw.signals, self.raw.count) };
+        raw_timelines.iter().map(signal_timeline_to_rust).collect()
+    }
+}
+
+impl Drop for NativeSignalTimelineList {
+    fn drop(&mut self) {
+        unsafe { ffi::wp_fsdb_free_signal_timelines(&mut self.raw) };
     }
 }
 
@@ -652,6 +732,58 @@ fn sample_record_to_rust(
     })
 }
 
+fn signal_timeline_to_rust(
+    record: &ffi::wp_fsdb_signal_timeline_record,
+) -> Result<FsdbNativeSignalTimeline, WavepeekError> {
+    if record.change_count > 0 && record.changes.is_null() {
+        return Err(WavepeekError::File(
+            "FSDB Reader returned a timeline without value-change records".to_string(),
+        ));
+    }
+
+    let raw_changes = if record.change_count == 0 {
+        &[] as &[ffi::wp_fsdb_value_change_record]
+    } else {
+        unsafe { slice::from_raw_parts(record.changes, record.change_count) }
+    };
+    let mut changes = Vec::with_capacity(raw_changes.len());
+    for raw in raw_changes {
+        if raw.bits.is_null() {
+            return Err(WavepeekError::File(
+                "FSDB Reader returned a value change without bits".to_string(),
+            ));
+        }
+        changes.push(FsdbNativeValueChange {
+            time_raw: raw.time_raw,
+            bits: unsafe { CStr::from_ptr(raw.bits) }
+                .to_string_lossy()
+                .into_owned(),
+        });
+    }
+    if changes
+        .windows(2)
+        .any(|pair| pair[0].time_raw >= pair[1].time_raw)
+    {
+        return Err(WavepeekError::File(
+            "FSDB Reader returned an unsorted or duplicate value-change timeline".to_string(),
+        ));
+    }
+    if changes
+        .iter()
+        .any(|change| change.bits.len() != record.bit_width as usize)
+    {
+        return Err(WavepeekError::File(
+            "FSDB Reader returned a value-change width mismatch".to_string(),
+        ));
+    }
+
+    Ok(FsdbNativeSignalTimeline {
+        idcode: record.idcode,
+        bit_width: record.bit_width,
+        changes,
+    })
+}
+
 fn raw_scope_kind(kind: c_uint) -> RawScopeKind {
     match kind {
         ffi::WP_FSDB_SCOPE_KIND_MODULE => RawScopeKind::Module,
@@ -889,6 +1021,29 @@ mod ffi {
         pub(super) count: usize,
     }
 
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(super) struct wp_fsdb_value_change_record {
+        pub(super) time_raw: u64,
+        pub(super) bits: *mut c_char,
+    }
+
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(super) struct wp_fsdb_signal_timeline_record {
+        pub(super) idcode: u64,
+        pub(super) bit_width: c_uint,
+        pub(super) changes: *mut wp_fsdb_value_change_record,
+        pub(super) change_count: usize,
+    }
+
+    #[derive(Debug)]
+    #[repr(C)]
+    pub(super) struct wp_fsdb_signal_timeline_list {
+        pub(super) signals: *mut wp_fsdb_signal_timeline_record,
+        pub(super) count: usize,
+    }
+
     pub(super) type WpFsdbTreeCallback = Option<
         unsafe extern "C" fn(
             c_uint,
@@ -970,6 +1125,15 @@ mod ffi {
             out: *mut wp_fsdb_time_list,
             error_message: *mut *mut c_char,
         ) -> c_uint;
+        pub(super) fn wp_fsdb_signal_session_read_value_changes(
+            session: *mut wp_fsdb_signal_session,
+            idcodes: *const u64,
+            count: usize,
+            from_raw: u64,
+            to_raw: u64,
+            out: *mut wp_fsdb_signal_timeline_list,
+            error_message: *mut *mut c_char,
+        ) -> c_uint;
         pub(super) fn wp_fsdb_signal_session_event_occurred(
             session: *mut wp_fsdb_signal_session,
             idcode: u64,
@@ -980,6 +1144,7 @@ mod ffi {
         pub(super) fn wp_fsdb_close_signal_session(session: *mut wp_fsdb_signal_session);
         pub(super) fn wp_fsdb_free_samples(samples: *mut wp_fsdb_sample_record, count: usize);
         pub(super) fn wp_fsdb_free_time_list(list: *mut wp_fsdb_time_list);
+        pub(super) fn wp_fsdb_free_signal_timelines(list: *mut wp_fsdb_signal_timeline_list);
         pub(super) fn wp_fsdb_free_string(value: *mut c_char);
         pub(super) fn wp_fsdb_free_error(value: *mut c_char);
     }
@@ -987,7 +1152,8 @@ mod ffi {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+    use std::process::{Command, Stdio};
 
     use super::{FsdbReader, probe};
     use crate::waveform::{STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES};
@@ -1046,6 +1212,72 @@ mod tests {
             if let Some(width) = signal.width {
                 assert!(width > 0);
             }
+        }
+    }
+
+    #[test]
+    fn fsdb_signal_session_reads_value_changes() {
+        let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
+        let reader = FsdbReader::open(fixture.path()).expect("FSDB fixture should open");
+        let hierarchy = reader.read_hierarchy().expect("FSDB hierarchy should load");
+        let armed = hierarchy
+            .resolve_signal("top.armed")
+            .expect("fixture signal should resolve");
+        let idcode = armed.id.as_u64();
+        let session = reader
+            .open_signal_session(&[idcode])
+            .expect("signal session should open");
+
+        let timelines = session
+            .read_value_changes(&[idcode], 1, 20)
+            .expect("timeline read should succeed");
+
+        assert_eq!(timelines.len(), 1);
+        assert_eq!(timelines[0].idcode, idcode);
+        assert_eq!(timelines[0].bit_width, 1);
+        let changes = timelines[0]
+            .changes
+            .iter()
+            .map(|change| (change.time_raw, change.bits.as_str()))
+            .collect::<Vec<_>>();
+        assert_eq!(changes, vec![(0, "0"), (10, "1"), (15, "0")]);
+    }
+
+    struct GeneratedFsdbFixture {
+        _dir: tempfile::TempDir,
+        path: PathBuf,
+    }
+
+    impl GeneratedFsdbFixture {
+        fn from_vcd(name: &str) -> Self {
+            let dir = tempfile::tempdir().expect("tempdir should be created");
+            let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("tests")
+                .join("fixtures")
+                .join("hand")
+                .join(name);
+            let path = dir.path().join(name.replace(".vcd", ".fsdb"));
+            let converter_output = Command::new("vcd2fsdb")
+                .current_dir(dir.path())
+                .arg(&source)
+                .arg("-o")
+                .arg(&path)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .output()
+                .expect("vcd2fsdb should be available from the Verdi environment");
+            assert!(
+                converter_output.status.success(),
+                "vcd2fsdb should convert {}; stdout:\n{}\nstderr:\n{}",
+                source.display(),
+                String::from_utf8_lossy(&converter_output.stdout),
+                String::from_utf8_lossy(&converter_output.stderr)
+            );
+            Self { _dir: dir, path }
+        }
+
+        fn path(&self) -> &Path {
+            &self.path
         }
     }
 

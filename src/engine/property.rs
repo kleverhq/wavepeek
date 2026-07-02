@@ -213,7 +213,7 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
     let mut candidate_sources = if tracked_signal_handles.is_empty() {
         Vec::new()
     } else {
-        eval_sources
+        eval_sources.clone()
     };
     candidate_sources.extend(candidate_sources_for_handles(
         &host,
@@ -245,6 +245,36 @@ fn run_with_sink<S: PropertyRowSink + ?Sized>(
         "candidate.schedule.done",
         || serde_json::json!({"entries": candidate_times.len()}),
     );
+
+    if max_entries.is_none() {
+        let preload_from_raw = from_raw
+            .checked_sub(1)
+            .filter(|value| *value >= dump_start_raw)
+            .unwrap_or(from_raw);
+        let mut preload_sources = candidate_sources.clone();
+        preload_sources.extend(eval_sources.iter().cloned());
+        let mut seen_preload = std::collections::HashSet::new();
+        preload_sources.retain(|signal| seen_preload.insert(signal.id));
+        waveform.borrow_mut().preload_expr_value_changes(
+            preload_sources.as_slice(),
+            preload_from_raw,
+            to_raw,
+        )?;
+        debug.event("value.preload.done", || {
+            serde_json::json!({
+                "from_raw": preload_from_raw,
+                "to_raw": to_raw,
+                "backend_stats": waveform.borrow().debug_stats(),
+            })
+        });
+    } else {
+        debug.event("value.preload.skipped", || {
+            serde_json::json!({
+                "reason": "bounded_max",
+                "max_entries": max_entries,
+            })
+        });
+    }
 
     let mut emitted = 0usize;
     let mut truncated = false;

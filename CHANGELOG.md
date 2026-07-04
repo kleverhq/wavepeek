@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-07-04
+
 ### Added
-- Added `wavepeek extract generic` for protocol-neutral synchronous event extraction with pre-edge payload sampling, source-file mode, and human, JSON, and JSONL output.
+- Added `wavepeek extract generic` for protocol-neutral synchronous event extraction with pre-edge payload sampling, source-file mode, and human, JSON, and JSONL output ([issue #35](https://github.com/kleverhq/wavepeek/issues/35)).
 - Added structured input schema support through `wavepeek schema --input` and the `extract.generic.sources` source-file contract.
 - Added DEBUG trace timing counters for profiling `extract generic` candidate collection and row emission.
 
 ### Changed
+- Improved FSDB expression sampling performance by avoiding per-value random sampling during repeated `change`, `property`, and `extract generic` evaluation ([issue #47](https://github.com/kleverhq/wavepeek/issues/47)).
 - Reworked machine-output schemas into stable `wavepeek.output` and `wavepeek.stream-record` families with current snapshots at `schema/output.json` and `schema/stream.json`; JSON and JSONL outputs now reference exact family artifact URLs.
 - Moved schema generation to the contract DTO layer shared with runtime JSON and JSONL serialization.
 
@@ -150,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/kleverhq/wavepeek/releases/tag/v2.1.0
 [2.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v2.0.0
 [1.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.1
 [1.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v1.0.0

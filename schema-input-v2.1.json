@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "extractGenericSource": {
+      "additionalProperties": true,
+      "properties": {
+        "name": {
+          "description": "Source name emitted in extract rows.",
+          "type": "string"
+        },
+        "on": {
+          "description": "Edge-only event expression that selects row candidate times.",
+          "type": "string"
+        },
+        "payload": {
+          "description": "Ordered payload signal names for this source.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "when": {
+          "description": "Boolean expression evaluated at the pre-edge sample time.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "on",
+        "when",
+        "payload"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "description": "Canonical schema for wavepeek JSON input documents.",
+  "properties": {
+    "$schema": {
+      "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+      "description": "Input schema URL for this source document.",
+      "type": "string"
+    },
+    "kind": {
+      "const": "extract.generic.sources",
+      "description": "Input document kind discriminator.",
+      "type": "string"
+    },
+    "sources": {
+      "description": "Ordered extraction sources.",
+      "items": {
+        "$ref": "#/$defs/extractGenericSource"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "$schema",
+    "kind",
+    "sources"
+  ],
+  "title": "wavepeek JSON input documents",
+  "type": "object"
+}

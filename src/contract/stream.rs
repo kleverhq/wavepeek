@@ -7,15 +7,15 @@ use crate::error::WavepeekError;
 
 use super::common::ContractDiagnostic;
 use super::output::{
-    ChangeSnapshot, ExtractGenericRow, InfoData, PropertyRow, ScopeEntry, SignalEntry,
-    ValueSnapshot,
+    ChangeSnapshot, ExtractAxiMapping, ExtractAxiTransfer, ExtractGenericRow, InfoData,
+    PropertyRow, ScopeEntry, SignalEntry, ValueSnapshot,
 };
 use super::schema::STREAM_SCHEMA_URL;
 
 #[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "beginRecord")]
 #[schemars(extend("additionalProperties" = true))]
-pub struct BeginRecord {
+pub struct BeginRecord<'a> {
     #[serde(rename = "type")]
     #[schemars(schema_with = "begin_record_type_schema")]
     record_type: &'static str,
@@ -26,9 +26,12 @@ pub struct BeginRecord {
     #[serde(rename = "$schema")]
     #[schemars(schema_with = "stream_schema_url_schema")]
     schema: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    context: Option<StreamContextData<'a>>,
 }
 
-impl BeginRecord {
+impl BeginRecord<'static> {
     pub fn new(seq: usize, command: CommandName) -> Result<Self, WavepeekError> {
         require_stream_command(command)?;
         Ok(Self {
@@ -36,6 +39,24 @@ impl BeginRecord {
             seq,
             command: command.as_str(),
             schema: STREAM_SCHEMA_URL,
+            context: None,
+        })
+    }
+}
+
+impl<'a> BeginRecord<'a> {
+    pub fn with_context<T: StreamContext + ?Sized>(
+        seq: usize,
+        command: CommandName,
+        context: &'a T,
+    ) -> Result<Self, WavepeekError> {
+        require_stream_command(command)?;
+        Ok(Self {
+            record_type: "begin",
+            seq,
+            command: command.as_str(),
+            schema: STREAM_SCHEMA_URL,
+            context: Some(context.stream_context(command)?),
         })
     }
 }
@@ -151,6 +172,49 @@ struct StreamSummary {
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "streamContextData")]
+#[serde(untagged)]
+pub enum StreamContextData<'a> {
+    ExtractAxi(ExtractAxiContext<'a>),
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiContext")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiContext<'a> {
+    name: &'a str,
+    profile: &'a str,
+    issue: &'a str,
+    mappings: std::collections::BTreeMap<&'a str, ExtractAxiMapping<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::axi::AxiContext> for ExtractAxiContext<'a> {
+    fn from(context: &'a crate::engine::axi::AxiContext) -> Self {
+        Self {
+            name: context.name.as_str(),
+            profile: context.profile.as_str(),
+            issue: context.issue.as_str(),
+            mappings: context
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractAxiMapping::from(mapping)))
+                .collect(),
+        }
+    }
+}
+
+pub trait StreamContext {
+    fn stream_context(&self, command: CommandName) -> Result<StreamContextData<'_>, WavepeekError>;
+}
+
+impl StreamContext for crate::engine::axi::AxiContext {
+    fn stream_context(&self, command: CommandName) -> Result<StreamContextData<'_>, WavepeekError> {
+        require_item_command(command, CommandName::ExtractAxi)?;
+        Ok(StreamContextData::ExtractAxi(ExtractAxiContext::from(self)))
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "streamItemData")]
 #[serde(untagged)]
 pub enum StreamItemData<'a> {
@@ -160,6 +224,7 @@ pub enum StreamItemData<'a> {
     Value(ValueSnapshot<'a>),
     Change(ChangeSnapshot<'a>),
     Property(PropertyRow<'a>),
+    ExtractAxi(ExtractAxiTransfer<'a>),
     ExtractGeneric(ExtractGenericRow<'a>),
 }
 
@@ -206,6 +271,13 @@ impl StreamItem for crate::engine::property::PropertyCaptureRow {
     fn stream_item(&self, command: CommandName) -> Result<StreamItemData<'_>, WavepeekError> {
         require_item_command(command, CommandName::Property)?;
         Ok(StreamItemData::Property(PropertyRow::from(self)))
+    }
+}
+
+impl StreamItem for crate::engine::axi::AxiTransfer {
+    fn stream_item(&self, command: CommandName) -> Result<StreamItemData<'_>, WavepeekError> {
+        require_item_command(command, CommandName::ExtractAxi)?;
+        Ok(StreamItemData::ExtractAxi(ExtractAxiTransfer::from(self)))
     }
 }
 
@@ -274,6 +346,7 @@ fn require_stream_command(command: CommandName) -> Result<(), WavepeekError> {
         | CommandName::Value
         | CommandName::Change
         | CommandName::Property
+        | CommandName::ExtractAxi
         | CommandName::ExtractGeneric => Ok(()),
         _ => Err(WavepeekError::Args(
             "--jsonl is available only for waveform commands".to_string(),
@@ -299,7 +372,7 @@ mod tests {
         assert_eq!(value["type"], "begin");
         assert_eq!(
             value["$schema"],
-            "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+            "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
         );
     }
 

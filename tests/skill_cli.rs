@@ -60,7 +60,9 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
     assert!(packaged.contains(
         "Event/transaction rows, handshakes, beats, and counts with payload values: `extract`."
     ));
-    assert!(packaged.contains("It does not decode protocol-specific transactions"));
+    assert!(packaged.contains(
+        "`extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state."
+    ));
     assert!(!packaged.contains("protocol transaction enumeration"));
     assert!(!packaged.contains("Event/transaction enumeration and counting: `property --capture match`, then `value --at <sample_time>`"));
     assert!(!packaged.contains("parsed but not executed in `change`"));

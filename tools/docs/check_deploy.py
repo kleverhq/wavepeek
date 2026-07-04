@@ -135,6 +135,20 @@ def stream_schema_includes_extract(version: str, stream_schema_artifact: str) ->
     return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
 
 
+def stream_schema_includes_axi(version: str, stream_schema_artifact: str) -> bool:
+    family = artifact_family_tuple(stream_schema_artifact, "schema-stream-")
+    if family is not None:
+        return family >= (2, 2)
+    return version_tuple(version) >= (2, 2, 0)
+
+
+def input_schema_uses_source_union(version: str, input_schema_artifact: str) -> bool:
+    family = artifact_family_tuple(input_schema_artifact, "schema-input-")
+    if family is not None:
+        return family >= (2, 2)
+    return version_tuple(version) >= (2, 2, 0)
+
+
 def normalize_base_url(base_url: str) -> str:
     value = base_url.strip().rstrip("/")
     parsed = urllib.parse.urlparse(value)
@@ -363,6 +377,8 @@ def validate_stream_schema_json(
         fail("stream schema artifact must define streamCommand")
     expected_commands = ["info", "scope", "signal", "value", "change", "property"]
     stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
+    if stream_schema_includes_axi(version, stream_schema_artifact):
+        expected_commands.append("extract axi")
     if stream_schema_includes_extract(version, stream_schema_artifact):
         expected_commands.append("extract generic")
     if command.get("enum") != expected_commands:
@@ -400,13 +416,59 @@ def validate_input_schema_json(
         fail("input schema artifact must use JSON Schema draft 2020-12")
     if schema.get("title") != INPUT_SCHEMA_TITLE:
         fail(f"input schema artifact title must be {INPUT_SCHEMA_TITLE!r}")
+    input_schema_artifact = input_schema_artifact or input_schema_artifact_name(version)
+    if input_schema_uses_source_union(version, input_schema_artifact):
+        defs = schema.get("$defs")
+        if not isinstance(defs, dict):
+            fail("input schema artifact must define $defs")
+        if schema.get("oneOf") != [
+            {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAxiSourceInput"},
+        ]:
+            fail("input schema artifact root must accept generic and AXI source documents")
+        generic = defs.get("extractGenericSourcesInput")
+        axi = defs.get("extractAxiSourceInput")
+        if not isinstance(generic, dict) or not isinstance(axi, dict):
+            fail("input schema artifact must define generic and AXI source document defs")
+        axi_properties: dict[str, Any] | None = None
+        for label, definition, kind_value in [
+            ("generic", generic, "extract.generic.sources"),
+            ("AXI", axi, "extract.axi.source"),
+        ]:
+            properties = definition.get("properties")
+            if not isinstance(properties, dict):
+                fail(f"input schema artifact {label} properties must be an object")
+            if label == "AXI":
+                axi_properties = properties
+            schema_property = properties.get("$schema")
+            if not isinstance(schema_property, dict):
+                fail(f"input schema artifact {label} $schema property must be an object")
+            if not input_schema_url_references_expected_artifact(
+                schema_property, input_schema_artifact
+            ):
+                fail(
+                    "input schema artifact $schema property must reference "
+                    f"{input_schema_artifact}"
+                )
+            kind = properties.get("kind")
+            if not isinstance(kind, dict) or kind.get("const") != kind_value:
+                fail(f"input schema artifact must require {kind_value} kind")
+        assert axi_properties is not None
+        profile = axi_properties.get("profile")
+        if not isinstance(profile, dict) or profile.get("enum") != [
+            "axi3",
+            "axi4",
+            "axi4-lite",
+        ]:
+            fail("input schema artifact AXI profile enum mismatch")
+        return
+
     properties = schema.get("properties")
     if not isinstance(properties, dict):
         fail("input schema artifact properties must be an object")
     schema_property = properties.get("$schema")
     if not isinstance(schema_property, dict):
         fail("input schema artifact $schema property must be an object")
-    input_schema_artifact = input_schema_artifact or input_schema_artifact_name(version)
     if not input_schema_url_references_expected_artifact(
         schema_property, input_schema_artifact
     ):

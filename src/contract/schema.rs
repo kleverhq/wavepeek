@@ -4,30 +4,31 @@ use serde_json::{Map, Value, json};
 use super::common::{
     CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
 };
-use super::input::{ExtractGenericSource, ExtractGenericSourcesInput};
+use super::input::{ExtractAxiSourceInput, ExtractGenericSource, ExtractGenericSourcesInput};
 use super::output::{
     ChangeSignalValue, ChangeSnapshot, DocsSearchData, DocsSearchMatch, DocsTopicsData,
-    ExtractGenericRow, ExtractPayloadValue, InfoData, PropertyRow, SampledSignalValue, ScopeEntry,
-    SignalEntry, TopicSummary, ValueSnapshot,
+    ExtractAxiData, ExtractAxiMapping, ExtractAxiTransfer, ExtractGenericRow, ExtractPayloadValue,
+    InfoData, PropertyRow, SampledSignalValue, ScopeEntry, SignalEntry, TopicSummary,
+    ValueSnapshot,
 };
-use super::stream::{BeginRecord, DiagnosticRecord, EndRecord};
+use super::stream::{BeginRecord, DiagnosticRecord, EndRecord, ExtractAxiContext};
 
 pub const OUTPUT_SCHEMA_ID: &str = "wavepeek.output";
 pub const STREAM_SCHEMA_ID: &str = "wavepeek.stream-record";
 pub const INPUT_SCHEMA_ID: &str = "wavepeek.input";
-pub const OUTPUT_SCHEMA_VERSION_STR: &str = "2.1";
-pub const STREAM_SCHEMA_VERSION_STR: &str = "2.1";
-pub const INPUT_SCHEMA_VERSION_STR: &str = "2.1";
+pub const OUTPUT_SCHEMA_VERSION_STR: &str = "2.2";
+pub const STREAM_SCHEMA_VERSION_STR: &str = "2.2";
+pub const INPUT_SCHEMA_VERSION_STR: &str = "2.2";
 pub const OUTPUT_SCHEMA_ARTIFACT_PATH: &str = "schema/output.json";
 pub const STREAM_SCHEMA_ARTIFACT_PATH: &str = "schema/stream.json";
 pub const INPUT_SCHEMA_ARTIFACT_PATH: &str = "schema/input.json";
 pub const SCHEMA_CATALOG_PATH: &str = "schema/catalog.json";
-pub const OUTPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-output-v2.1.json";
-pub const STREAM_SCHEMA_ARTIFACT_NAME: &str = "schema-stream-v2.1.json";
-pub const INPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-input-v2.1.json";
-pub const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json";
-pub const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json";
-pub const INPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json";
+pub const OUTPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-output-v2.2.json";
+pub const STREAM_SCHEMA_ARTIFACT_NAME: &str = "schema-stream-v2.2.json";
+pub const INPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-input-v2.2.json";
+pub const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json";
+pub const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json";
+pub const INPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json";
 
 const JSON_SCHEMA_DRAFT: &str = "https://json-schema.org/draft/2020-12/schema";
 
@@ -76,6 +77,7 @@ fn output_schema_value() -> Value {
                     ref_schema("valueData"),
                     ref_schema("changeData"),
                     ref_schema("propertyData"),
+                    ref_schema("extractAxiData"),
                     ref_schema("extractGenericData"),
                     ref_schema("docsTopicsData"),
                     ref_schema("docsSearchData"),
@@ -90,6 +92,7 @@ fn output_schema_value() -> Value {
             command_data_branch("value", "valueData"),
             command_data_branch("change", "changeData"),
             command_data_branch("property", "propertyData"),
+            command_data_branch("extract axi", "extractAxiData"),
             command_data_branch("extract generic", "extractGenericData"),
             command_data_branch("docs topics", "docsTopicsData"),
             command_data_branch("docs search", "docsSearchData"),
@@ -115,23 +118,18 @@ fn stream_schema_value() -> Value {
 }
 
 fn input_schema_value() -> Value {
-    let mut defs = generated_input_payload_defs();
-    let root = defs
-        .remove("extractGenericSourcesInput")
-        .expect("input root definition should be generated");
-    let mut schema = match root {
-        Value::Object(object) => object,
-        _ => Map::new(),
-    };
-    schema.insert("$schema".to_string(), json!(JSON_SCHEMA_DRAFT));
-    schema.insert("$id".to_string(), json!(INPUT_SCHEMA_URL));
-    schema.insert("title".to_string(), json!("wavepeek JSON input documents"));
-    schema.insert(
-        "description".to_string(),
-        json!("Canonical schema for wavepeek JSON input documents."),
-    );
-    schema.insert("$defs".to_string(), Value::Object(defs));
-    Value::Object(schema)
+    let defs = generated_input_payload_defs();
+    json!({
+        "$schema": JSON_SCHEMA_DRAFT,
+        "$id": INPUT_SCHEMA_URL,
+        "title": "wavepeek JSON input documents",
+        "description": "Canonical schema for wavepeek JSON input documents.",
+        "oneOf": [
+            ref_schema("extractGenericSourcesInput"),
+            ref_schema("extractAxiSourceInput"),
+        ],
+        "$defs": Value::Object(defs),
+    })
 }
 
 fn catalog_value() -> Value {
@@ -213,6 +211,7 @@ fn stream_defs() -> Value {
                 ref_schema("valueItemRecord"),
                 ref_schema("changeItemRecord"),
                 ref_schema("propertyItemRecord"),
+                ref_schema("extractAxiItemRecord"),
                 ref_schema("extractGenericItemRecord"),
             ]
         }),
@@ -224,6 +223,7 @@ fn stream_defs() -> Value {
         ("valueItemRecord", "itemRecordForValueSnapshot"),
         ("changeItemRecord", "itemRecordForChangeSnapshot"),
         ("propertyItemRecord", "itemRecordForPropertyRow"),
+        ("extractAxiItemRecord", "itemRecordForExtractAxiTransfer"),
         ("extractGenericItemRecord", "itemRecordForExtractGenericRow"),
     ] {
         object.insert(alias.to_string(), ref_schema(wrapper));
@@ -235,6 +235,11 @@ fn stream_defs() -> Value {
         ("itemRecordForValueSnapshot", "value", "valueSnapshot"),
         ("itemRecordForChangeSnapshot", "change", "changeSnapshot"),
         ("itemRecordForPropertyRow", "property", "propertyRow"),
+        (
+            "itemRecordForExtractAxiTransfer",
+            "extract axi",
+            "extractAxiTransfer",
+        ),
         (
             "itemRecordForExtractGenericRow",
             "extract generic",
@@ -269,6 +274,9 @@ fn generated_waveform_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ChangeSnapshot<'static>>();
     generator.subschema_for::<PropertyRow<'static>>();
     generator.subschema_for::<ExtractPayloadValue<'static>>();
+    generator.subschema_for::<ExtractAxiMapping<'static>>();
+    generator.subschema_for::<ExtractAxiTransfer<'static>>();
+    generator.subschema_for::<ExtractAxiData<'static>>();
     generator.subschema_for::<ExtractGenericRow<'static>>();
     generator.take_definitions(true)
 }
@@ -277,6 +285,7 @@ fn generated_input_payload_defs() -> Map<String, Value> {
     let mut generator = SchemaGenerator::default();
     generator.subschema_for::<ExtractGenericSourcesInput<'static>>();
     generator.subschema_for::<ExtractGenericSource<'static>>();
+    generator.subschema_for::<ExtractAxiSourceInput<'static>>();
     generator.take_definitions(true)
 }
 
@@ -291,7 +300,8 @@ fn generated_docs_payload_defs() -> Map<String, Value> {
 
 fn generated_stream_record_defs() -> Map<String, Value> {
     let mut generator = SchemaGenerator::default();
-    generator.subschema_for::<BeginRecord>();
+    generator.subschema_for::<BeginRecord<'static>>();
+    generator.subschema_for::<ExtractAxiContext<'static>>();
     generator.subschema_for::<DiagnosticRecord<'static>>();
     generator.subschema_for::<EndRecord>();
     generator.take_definitions(true)
@@ -330,6 +340,7 @@ fn output_commands() -> Vec<&'static str> {
         "value",
         "change",
         "property",
+        "extract axi",
         "extract generic",
         "docs topics",
         "docs search",
@@ -344,6 +355,7 @@ fn stream_commands() -> Vec<&'static str> {
         "value",
         "change",
         "property",
+        "extract axi",
         "extract generic",
     ]
 }
@@ -371,17 +383,21 @@ mod tests {
         let output = output_schema_value();
         assert_eq!(
             output["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json"
+            "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json"
         );
         let stream = stream_schema_value();
         assert_eq!(
             stream["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+            "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
         );
         let input = input_schema_value();
         assert_eq!(
-            input["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
+            input["$defs"]["extractGenericSourcesInput"]["properties"]["$schema"]["const"],
+            "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
+        );
+        assert_eq!(
+            input["$defs"]["extractAxiSourceInput"]["properties"]["$schema"]["const"],
+            "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
         );
     }
 }

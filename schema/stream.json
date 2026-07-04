@@ -4,11 +4,21 @@
       "additionalProperties": true,
       "properties": {
         "$schema": {
-          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
+          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
           "type": "string"
         },
         "command": {
           "$ref": "#/$defs/streamCommand"
+        },
+        "context": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/streamContextData"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "seq": {
           "$ref": "#/$defs/sequence"
@@ -214,6 +224,119 @@
       ],
       "type": "object"
     },
+    "extractAxiContext": {
+      "additionalProperties": true,
+      "properties": {
+        "issue": {
+          "type": "string"
+        },
+        "mappings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/extractAxiMapping"
+          },
+          "type": "object"
+        },
+        "name": {
+          "type": "string"
+        },
+        "profile": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings"
+      ],
+      "type": "object"
+    },
+    "extractAxiData": {
+      "additionalProperties": true,
+      "properties": {
+        "issue": {
+          "description": "Arm IHI 0022 issue used for this profile definition.",
+          "type": "string"
+        },
+        "mappings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/extractAxiMapping"
+          },
+          "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+          "type": "object"
+        },
+        "name": {
+          "description": "AXI port name supplied by CLI or source JSON.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "AXI profile name used for standard signal mapping.",
+          "type": "string"
+        },
+        "transfers": {
+          "description": "Extracted AXI ready/valid transfers in event order.",
+          "items": {
+            "$ref": "#/$defs/extractAxiTransfer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings",
+        "transfers"
+      ],
+      "type": "object"
+    },
+    "extractAxiItemRecord": {
+      "$ref": "#/$defs/itemRecordForExtractAxiTransfer"
+    },
+    "extractAxiMapping": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical waveform signal path mapped to this AXI standard signal."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "extractAxiTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "description": "AXI channel name: aw, w, b, ar, or r.",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/sampledValue"
+          },
+          "description": "Payload values keyed by lowercase AXI standard signal name.",
+          "type": "object"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
     "extractGenericItemRecord": {
       "$ref": "#/$defs/itemRecordForExtractGenericRow"
     },
@@ -313,6 +436,9 @@
           "$ref": "#/$defs/propertyItemRecord"
         },
         {
+          "$ref": "#/$defs/extractAxiItemRecord"
+        },
+        {
           "$ref": "#/$defs/extractGenericItemRecord"
         }
       ]
@@ -325,6 +451,30 @@
         },
         "item": {
           "$ref": "#/$defs/changeSnapshot"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForExtractAxiTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "extract axi"
+        },
+        "item": {
+          "$ref": "#/$defs/extractAxiTransfer"
         },
         "seq": {
           "$ref": "#/$defs/sequence"
@@ -669,9 +819,17 @@
         "value",
         "change",
         "property",
+        "extract axi",
         "extract generic"
       ],
       "type": "string"
+    },
+    "streamContextData": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/extractAxiContext"
+        }
+      ]
     },
     "streamSummary": {
       "additionalProperties": true,
@@ -724,7 +882,7 @@
       "type": "object"
     }
   },
-  "$id": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
+  "$id": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "Canonical schema for one wavepeek --jsonl stream record. Validate each JSONL line independently; stream order and summary counts are stateful invariants.",
   "oneOf": [

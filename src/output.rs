@@ -32,6 +32,14 @@ impl<W: Write> JsonlWriter<W> {
         self.write_record(&record)
     }
 
+    pub fn begin_context<T: stream::StreamContext + ?Sized>(
+        &mut self,
+        context: &T,
+    ) -> Result<(), WavepeekError> {
+        let record = stream::BeginRecord::with_context(self.next_seq, self.command, context)?;
+        self.write_record(&record)
+    }
+
     pub fn item<T: stream::StreamItem + ?Sized>(&mut self, item: &T) -> Result<(), WavepeekError> {
         let record = stream::ItemRecord::new(self.next_seq, self.command, item)?;
         self.write_record(&record)?;
@@ -103,7 +111,9 @@ pub fn write_jsonl_result<W: Write>(
     result: CommandResult,
     writer: &mut JsonlWriter<W>,
 ) -> Result<(), WavepeekError> {
-    writer.begin()?;
+    if !matches!(&result.data, CommandData::ExtractAxi(_)) {
+        writer.begin()?;
+    }
     match &result.data {
         CommandData::Info(data) => writer.item(data)?,
         CommandData::Scope(entries) => {
@@ -129,6 +139,12 @@ pub fn write_jsonl_result<W: Write>(
         CommandData::Property(rows) => {
             for row in rows {
                 writer.item(row)?;
+            }
+        }
+        CommandData::ExtractAxi(data) => {
+            writer.begin_context(&data.context())?;
+            for transfer in &data.transfers {
+                writer.item(transfer)?;
             }
         }
         CommandData::ExtractGeneric(data) => {
@@ -267,6 +283,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
+        CommandData::ExtractAxi(data) => render_axi_human(data, options),
         CommandData::ExtractGeneric(data) => data
             .rows
             .iter()
@@ -302,6 +319,39 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             .collect::<Vec<_>>()
             .join("\n"),
     }
+}
+
+fn render_axi_human(data: &crate::engine::axi::AxiData, options: HumanRenderOptions) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!("name: {}", data.name));
+    lines.push(format!("profile: {}", data.profile));
+    lines.push(format!("issue: {}", data.issue));
+    lines.push("mappings:".to_string());
+    for mapping in &data.mappings {
+        let display = if options.signals_abs {
+            mapping.path.as_str()
+        } else {
+            mapping.display.as_str()
+        };
+        lines.push(format!("  {} = {display}", mapping.standard));
+    }
+    lines.push("transfers:".to_string());
+    for transfer in &data.transfers {
+        let mut parts = Vec::with_capacity(transfer.payload.len() + 3);
+        parts.push(format!("@{}", transfer.time));
+        parts.push(format!("sample@{}", transfer.sample_time));
+        parts.push(format!("[{}]", transfer.channel));
+        for payload in &transfer.payload {
+            let display = if options.signals_abs {
+                payload.path.as_str()
+            } else {
+                payload.standard.as_str()
+            };
+            parts.push(format!("{display}={}", payload.value));
+        }
+        lines.push(parts.join(" "));
+    }
+    lines.join("\n")
 }
 
 fn render_scope_tree(scopes: &[crate::engine::scope::ScopeEntry]) -> String {

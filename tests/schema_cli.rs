@@ -548,6 +548,10 @@ fn schema_command_includes_property_and_extract_command_branches() {
         "schema command enum should include property"
     );
     assert!(
+        commands.iter().any(|entry| entry == "extract axi"),
+        "schema command enum should include extract axi"
+    );
+    assert!(
         commands.iter().any(|entry| entry == "extract generic"),
         "schema command enum should include extract generic"
     );
@@ -560,6 +564,12 @@ fn schema_command_includes_property_and_extract_command_branches() {
             .iter()
             .any(|entry| entry["$ref"] == "#/$defs/propertyData"),
         "schema data variants should include propertyData"
+    );
+    assert!(
+        data_variants
+            .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/extractAxiData"),
+        "schema data variants should include extractAxiData"
     );
     assert!(
         data_variants
@@ -771,19 +781,19 @@ fn schema_catalog_points_to_current_family_snapshots() {
     assert_eq!(families.len(), 3);
     assert!(families.iter().any(|entry| {
         entry["id"] == "wavepeek.output"
-            && entry["version"] == "2.1"
+            && entry["version"] == "2.2"
             && entry["path"] == "schema/output.json"
             && entry["url"] == expected_schema_url()
     }));
     assert!(families.iter().any(|entry| {
         entry["id"] == "wavepeek.stream-record"
-            && entry["version"] == "2.1"
+            && entry["version"] == "2.2"
             && entry["path"] == "schema/stream.json"
             && entry["url"] == expected_stream_schema_url()
     }));
     assert!(families.iter().any(|entry| {
         entry["id"] == "wavepeek.input"
-            && entry["version"] == "2.1"
+            && entry["version"] == "2.2"
             && entry["path"] == "schema/input.json"
             && entry["url"] == expected_input_schema_url()
     }));
@@ -800,8 +810,19 @@ fn schema_input_command_output_is_valid_json() {
     assert_eq!(value["$id"], expected_input_schema_url());
     assert_eq!(value["title"], "wavepeek JSON input documents");
     assert_eq!(
-        value["properties"]["kind"]["const"],
+        value["oneOf"],
+        json!([
+            {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAxiSourceInput"}
+        ])
+    );
+    assert_eq!(
+        value["$defs"]["extractGenericSourcesInput"]["properties"]["kind"]["const"],
         "extract.generic.sources"
+    );
+    assert_eq!(
+        value["$defs"]["extractAxiSourceInput"]["properties"]["kind"]["const"],
+        "extract.axi.source"
     );
 }
 
@@ -823,6 +844,19 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         .validate(&valid)
         .unwrap_or_else(|error| panic!("valid input document rejected: {error}\n{valid}"));
 
+    let valid_axi = json!({
+        "$schema": expected_input_schema_url(),
+        "kind": "extract.axi.source",
+        "profile": "axi4-lite",
+        "name": "ctrl",
+        "includes": ["^axi_"],
+        "maps": {"aclk": "clk", "aresetn": "rst_n"},
+        "x-extension": true
+    });
+    validator
+        .validate(&valid_axi)
+        .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
+
     for invalid in [
         json!({
             "$schema": expected_input_schema_url(),
@@ -838,6 +872,11 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
             "$schema": expected_input_schema_url(),
             "kind": "extract.generic.sources",
             "sources": [{"name": "rx", "on": "posedge clk", "when": "1", "payload": []}]
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "axi5"
         }),
     ] {
         assert!(
@@ -873,6 +912,7 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             "value",
             "change",
             "property",
+            "extract axi",
             "extract generic"
         ])
     );
@@ -954,6 +994,29 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             "seq": 1,
             "command": "property",
             "item": {"time": "5ns", "sample_time": "5ns", "kind": "assert"}
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "axi",
+                "profile": "axi4-lite",
+                "issue": "H.c",
+                "mappings": {"aclk": {"path": "top.clk"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "channel": "aw",
+                "payload": {"awaddr": "32'h40"}
+            }
         }),
         json!({
             "type": "item",

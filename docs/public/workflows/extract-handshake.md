@@ -11,9 +11,31 @@ see_also:
 ---
 # Extract handshakes from synchronous bus
 
-Use `extract` commands when you need a compact table of transfer-like events from a waveform. The current extractor for protocol-neutral handshakes is `extract generic`.
+Use `extract` commands when you need a compact table of transfer-like events from a waveform. Use `extract axi` for AXI3, AXI4, and AXI4-Lite ready/valid channels. Use `extract generic` for other protocol-neutral handshakes.
 
-Start by selecting a scope and an edge-only event:
+For AXI, map the clock and let include regexes find standard channel signals:
+
+```text
+$ wavepeek extract axi --waves path/to/dump.vcd \
+    --scope top.dut \
+    --profile axi4-lite \
+    --map aclk=clk \
+    --map aresetn=rst_n \
+    --include '^axi_(aw|w|b|ar|r)_'
+name: axi
+profile: axi4-lite
+issue: H.c
+mappings:
+  aclk = clk
+  aresetn = rst_n
+  awaddr = axi_aw_addr
+  awvalid = axi_aw_valid
+  awready = axi_aw_ready
+transfers:
+@25ns sample@24999ps [aw] awaddr=32'h00000040
+```
+
+For generic handshakes, start by selecting a scope and an edge-only event:
 
 ```text
 $ wavepeek extract generic --waves path/to/dump.vcd \
@@ -37,4 +59,4 @@ $ wavepeek extract generic --waves path/to/dump.vcd \
     --jsonl
 ```
 
-For several source types in one pass, write a source file and pass `--source`. Use `wavepeek schema --input` to fetch the exact input schema for that file.
+For several generic source types, or for a reusable AXI profile/mapping setup, write a source file and pass `--source`. Use `wavepeek schema --input` to fetch the exact input schema for that file.

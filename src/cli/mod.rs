@@ -302,10 +302,13 @@ fn build_cli_command() -> clap::Command {
             *subcommand = with_other_help_options(subcommand.clone());
         }
     }
-    if let Some(extract) = command.find_subcommand_mut("extract")
-        && let Some(generic) = extract.find_subcommand_mut("generic")
-    {
-        *generic = with_other_help_options(generic.clone());
+    if let Some(extract) = command.find_subcommand_mut("extract") {
+        if let Some(axi) = extract.find_subcommand_mut("axi") {
+            *axi = with_other_help_options(axi.clone());
+        }
+        if let Some(generic) = extract.find_subcommand_mut("generic") {
+            *generic = with_other_help_options(generic.clone());
+        }
     }
     command
 }
@@ -458,7 +461,8 @@ fn into_engine_command(command: Command) -> EngineCommand {
             WaveformCommand::Change(args) => EngineCommand::Change(args),
             WaveformCommand::Property(args) => EngineCommand::Property(args),
             WaveformCommand::Extract(command) => match command {
-                extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(args),
+                extract::ExtractCommand::Axi(args) => EngineCommand::ExtractAxi(*args),
+                extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(*args),
             },
         },
         Command::Helper(command) => match command {

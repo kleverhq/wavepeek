@@ -13,9 +13,37 @@ see_also:
 ---
 # Extract command
 
-Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. The current extractor is `extract generic`, a protocol-neutral command for ready/valid handshakes, FIFO pushes and pops, and other clocked transfer-like events.
+Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, and AXI4-Lite ready/valid channels into generic extraction sources for common bus debug.
 
-For exact syntax and flags, run `wavepeek help extract generic`.
+For exact syntax and flags, run `wavepeek help extract axi` or `wavepeek help extract generic`.
+
+## `extract axi`
+
+`extract axi` emits one row per completed AXI transfer on each mapped ready/valid channel. Supported profiles are `axi3`, `axi4`, and `axi4-lite`; the default profile is `axi4`. A completed transfer requires both channel `VALID` and channel `READY` to be true at the pre-edge sample point for `posedge aclk`. If `aresetn` is mapped, it must also be true at that sample point.
+
+Map signals explicitly with repeated `--map standard=waveform` options, auto-map candidates selected by repeated `--include REGEX`, or combine both. Standard signal names are lowercase AXI names such as `awvalid`, `awready`, `wdata`, and `rresp`; explicit mappings override auto-mapping for the same standard signal. With `--scope`, mapped waveform names and include regexes are scope-relative.
+
+```text
+$ wavepeek extract axi --waves path/to/dump.vcd \
+    --scope top.dut \
+    --profile axi4-lite \
+    --map aclk=clk \
+    --map aresetn=rst_n \
+    --include '^axi_(aw|w|b|ar|r)_'
+name: axi
+profile: axi4-lite
+issue: H.c
+mappings:
+  aclk = clk
+  aresetn = rst_n
+  awaddr = axi_aw_addr
+  awvalid = axi_aw_valid
+  awready = axi_aw_ready
+transfers:
+@25ns sample@24999ps [aw] awaddr=32'h00000040
+```
+
+A source file can provide `profile`, `name`, `includes`, and `maps` with `kind: "extract.axi.source"`. Source-file mode conflicts with `--profile`, `--name`, `--map`, and `--include`; time bounds and scope still come from the command line.
 
 ## `extract generic`
 
@@ -46,7 +74,7 @@ Use `--source` when one query should extract several source types from the same 
 
 ```json
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
   "kind": "extract.generic.sources",
   "sources": [
     {
@@ -83,7 +111,11 @@ This matches common RTL debugging expectations: the row describes the values tha
 
 ## Output modes
 
-Human output is compact and row-oriented:
+Human `extract axi` output starts with name, profile, issue, resolved mappings, and then transfer rows. Add `--abs` to print canonical mapping and payload paths in human output.
+
+`extract axi --json` emits the standard envelope with `command: "extract axi"` and a data object containing `name`, `profile`, `issue`, `mappings`, and `transfers`. `extract axi --jsonl` streams a `begin` record with AXI context, one transfer per `item`, optional diagnostics, and an `end` summary.
+
+Human `extract generic` output is compact and row-oriented:
 
 ```text
 @25ns sample@24999ps data=32'hdeadbeef last=1'h1
@@ -97,7 +129,7 @@ For multi-source output, the source name appears after `sample@...`:
 
 Add `--abs` to print canonical payload paths in human output.
 
-`--json` emits the standard envelope with `command: "extract generic"` and an array of rows. `--jsonl` streams `begin`, `item`, `diagnostic`, and `end` records; each item row has `time`, `sample_time`, `source`, and ordered `payload` values.
+`extract generic --json` emits the standard envelope with `command: "extract generic"` and an array of rows. `extract generic --jsonl` streams `begin`, `item`, `diagnostic`, and `end` records; each item row has `time`, `sample_time`, `source`, and ordered `payload` values.
 
 Repeated events are preserved even when payload values do not change. `extract` is not a delta command.
 

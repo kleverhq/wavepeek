@@ -211,6 +211,89 @@
       ],
       "type": "object"
     },
+    "extractAxiData": {
+      "additionalProperties": true,
+      "properties": {
+        "issue": {
+          "description": "Arm IHI 0022 issue used for this profile definition.",
+          "type": "string"
+        },
+        "mappings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/extractAxiMapping"
+          },
+          "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+          "type": "object"
+        },
+        "name": {
+          "description": "AXI port name supplied by CLI or source JSON.",
+          "type": "string"
+        },
+        "profile": {
+          "description": "AXI profile name used for standard signal mapping.",
+          "type": "string"
+        },
+        "transfers": {
+          "description": "Extracted AXI ready/valid transfers in event order.",
+          "items": {
+            "$ref": "#/$defs/extractAxiTransfer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings",
+        "transfers"
+      ],
+      "type": "object"
+    },
+    "extractAxiMapping": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical waveform signal path mapped to this AXI standard signal."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "extractAxiTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "description": "AXI channel name: aw, w, b, ar, or r.",
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/sampledValue"
+          },
+          "description": "Payload values keyed by lowercase AXI standard signal name.",
+          "type": "object"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
     "extractGenericData": {
       "items": {
         "$ref": "#/$defs/extractGenericRow"
@@ -534,7 +617,7 @@
       "type": "object"
     }
   },
-  "$id": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
+  "$id": "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": true,
   "allOf": [
@@ -656,6 +739,25 @@
       "if": {
         "properties": {
           "command": {
+            "const": "extract axi"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/extractAxiData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
             "const": "extract generic"
           }
         },
@@ -713,7 +815,7 @@
   "description": "Canonical schema for wavepeek --json command outputs.",
   "properties": {
     "$schema": {
-      "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
+      "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json",
       "type": "string"
     },
     "command": {
@@ -724,6 +826,7 @@
         "value",
         "change",
         "property",
+        "extract axi",
         "extract generic",
         "docs topics",
         "docs search"
@@ -749,6 +852,9 @@
         },
         {
           "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/extractAxiData"
         },
         {
           "$ref": "#/$defs/extractGenericData"

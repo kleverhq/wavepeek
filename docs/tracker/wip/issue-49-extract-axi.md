@@ -55,6 +55,18 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 - [x] (2026-07-05T12:15Z) Ran final benchmark add-on gate: `just check` passed.
 - [x] (2026-07-05T12:16Z) Committed benchmark add-on round as `baa1440 test(bench): add AXI extract benchmarks`.
 - [x] (2026-07-05T12:17Z) Pushed benchmark add-on round to `origin/feat-extract-axi`.
+- [x] (2026-07-05T12:34Z) Retrieved Codex PR comments. The branch-local WIP note is intentionally ignored per user instruction; the double waveform open in `extract axi` is in scope.
+- [x] (2026-07-05T12:44Z) Refactored AXI planning/execution so `extract axi` reuses the waveform opened for mapping instead of opening/parsing the same file twice.
+- [x] (2026-07-05T12:44Z) Added a DEBUG trace regression test asserting `extract axi` emits exactly one `backend.open.start` and one `backend.open.done` event.
+- [x] (2026-07-05T12:44Z) Ran focused extraction tests and clippy: `cargo test -q --test extract_axi_cli extract_axi_reuses_mapping_waveform_for_execution`, `cargo test -q --test extract_axi_cli`, `cargo test -q --test extract_generic_cli`, and `cargo clippy --all-targets -- -D warnings` passed.
+- [x] (2026-07-05T12:44Z) Reran extract benchmarks after the single-open fix under `tmp/bench-extract-axi-single-open/current`; row counts still match generic peers.
+- [x] (2026-07-05T12:52Z) Ran double-open fix subagent review; it found DEBUG timestamps reset after the first refactor.
+- [x] (2026-07-05T12:52Z) Passed the same `DebugTrace` from AXI open through generic-plan execution, verified monotonic DEBUG timestamps, and reran focused extraction tests plus clippy.
+- [x] (2026-07-05T12:52Z) Ran focused recheck subagent review; it returned no substantive findings.
+- [x] (2026-07-05T12:52Z) Ran final double-open fix gate: `just check` passed.
+- [x] (2026-07-05T12:54Z) Committed the double-open fix as `2ffe24f fix(extract): reuse AXI planning waveform`.
+- [x] (2026-07-05T12:55Z) Pushed the double-open fix to `origin/feat-extract-axi`.
+- [x] (2026-07-05T12:57Z) Replied to and resolved the Codex double-open thread. The Codex WIP-plan thread remains intentionally ignored per user instruction.
 
 ## Surprises & Discoveries
 
@@ -84,6 +96,15 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 
 - Observation: AXI benchmark timing is in the same seconds-scale range as generic but slower when the AXI source captures more payload.
   Evidence: `tmp/bench-extract-axi-minimal/current` hyperfine medians were 1.696726s for generic 2-channel vs. 1.948506s for AXI 2-channel, and 2.450128s for generic 5-channel vs. 3.248818s for AXI 5-channel.
+
+- Observation: The original AXI path opened the waveform twice: once for mapping and once through the generic runner.
+  Evidence: Codex review flagged `src/engine/axi.rs` opening for planning followed by `extract::run_plan_with_sink` opening again. The AXI path now calls `extract::run_plan_with_waveform_sink` with the already-open `SharedWaveform`; `tests/extract_axi_cli.rs` asserts exactly one DEBUG `backend.open.start` and `backend.open.done` event for `extract axi`.
+
+- Observation: The first single-open refactor preserved behavior but reset DEBUG timing after open because the generic helper created a fresh `DebugTrace`.
+  Evidence: Subagent review flagged the timestamp reset. `BuiltAxiPlan` now carries the original `DebugTrace` from mapping open into `extract::run_plan_with_waveform_sink`, and a manual DEBUG run confirmed monotonically increasing `backend.open.start`, `backend.open.done`, and `metadata.load.done` timestamps.
+
+- Observation: Removing the second open did not materially change the SCR1 extract benchmark medians because execution and larger AXI payload sampling dominate these workloads.
+  Evidence: `tmp/bench-extract-axi-single-open/current` medians were 1.698125s for generic 2-channel vs. 1.997716s for AXI 2-channel, and 2.451219s for generic 5-channel vs. 3.248718s for AXI 5-channel, with matching row counts of 9878 and 20242 respectively.
 
 ## Decision Log
 
@@ -180,6 +201,8 @@ The work will proceed in small, verifiable milestones.
 
 Milestone 7 is the benchmark add-on requested after PR review. Add `bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch_axi.json` and `bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch_axi.json` as minimal `extract.axi.source` documents using include regexes for channel auto-mapping and explicit `maps` entries only for `aclk` and `aresetn`. Add matching `extract` category entries to `bench/e2e/tests.json` beside the existing generic 2-channel and 5-channel SCR1 coremark source benchmarks. Validate the catalog, run the extract benchmark subset for current HEAD, and compare generic versus AXI rows and median timings manually. Acceptance is that both AXI benchmark commands succeed, row counts match their generic counterparts, payload counts may be larger for AXI because it captures the full profile channel payload, and timing is in the same rough range without an obvious order-of-magnitude regression.
 
+Milestone 8 is the double-open fix from Codex PR review. `extract axi` currently opens/parses the same waveform once to resolve AXI mappings and include candidates and again when executing the generated generic extraction plan. Refactor the shared generic extraction runner so AXI can pass the already-open `SharedWaveform` into execution. Preserve `extract generic` behavior by keeping its public run path opening the waveform once internally. Acceptance is that `extract axi` tests still pass, benchmarks still emit the same row counts, and review confirms there is no second waveform open on the AXI path.
+
 Milestone 1 is research and plan hardening. Incorporate subagent results into this file. Read the exact generic extraction entrypoints and tests they identify. Verify the AXI signal lists against Arm IHI 0022H.c and cite the relevant section, table, or page identifiers in this plan. Acceptance for this milestone is that this file names the concrete code touchpoints and no longer has unresolved questions about where the feature belongs.
 
 Milestone 2 is the minimal AXI profile and mapping core. Add profile definitions for `axi3`, `axi4`, and `axi4-lite`; parse profile names case-insensitively; normalize standard signal names to lowercase; define per-channel ready/valid signal names and payload signal order; implement token-based auto-mapping and explicit mapping overrides; and validate that `aclk` exists, `aresetn` is optional, at least one complete ready/valid pair exists, partial ready/valid pairs are rejected, and payload signals are only allowed on channels with complete handshakes. Acceptance is focused unit tests for profile parsing, token matching, collision avoidance such as `awvalid` versus `wvalid`, ambiguity rejection, explicit override behavior, and validation failures.
@@ -236,6 +259,14 @@ Benchmark add-on commands completed:
     just check-bench-e2e-fsdb-catalog
     cargo build --release
     python3 -B bench/e2e/perf.py run --binary current=target/release/wavepeek --filter '^extract_scr1_coremark_dmem_axi_' --run-dir tmp/bench-extract-axi-minimal
+    DEBUG=1 cargo run -q -- extract axi --waves /opt/rtl-artifacts/scr1_max_axi_coremark.fst --scope TOP.scr1_top_tb_axi.i_top --source bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch_axi.json --max 1 --json
+    cargo test -q --test extract_axi_cli extract_axi_reuses_mapping_waveform_for_execution
+    cargo test -q --test extract_axi_cli
+    cargo test -q --test extract_generic_cli
+    cargo clippy --all-targets -- -D warnings
+    cargo build --release
+    python3 -B bench/e2e/perf.py run --binary current=target/release/wavepeek --filter '^extract_scr1_coremark_dmem_axi_' --run-dir tmp/bench-extract-axi-single-open
+    just check
     python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'
     python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
     just check
@@ -328,4 +359,7 @@ At the end of the implementation, the codebase should have:
 - 2026-07-05: Updated after adding minimal AXI benchmark source files and benchmark catalog entries, running row/performance comparisons, and completing benchmark-diff subagent review. Remaining work is final gate, commit, and push.
 - 2026-07-05: Updated after final `just check` passed for the benchmark add-on round. Remaining work is commit and push.
 - 2026-07-05: Updated after committing and pushing the benchmark add-on round. The plan now records completed benchmark additions and manual comparison evidence.
+- 2026-07-05: Updated after implementing the Codex double-open fix, adding a DEBUG trace regression test, and rerunning focused tests, clippy, and extract benchmarks. Remaining work is review, final gate, commit, push, and resolving the Codex thread.
+- 2026-07-05: Updated after subagent review found the DEBUG trace timestamp reset, the trace was threaded through the shared runner, focused recheck returned clean, and `just check` passed. Remaining work is commit, push, and resolving the Codex thread.
+- 2026-07-05: Updated after resolving the Codex double-open thread. The WIP-plan thread remains intentionally ignored per user instruction.
 - 2026-07-05: Updated after committing the PR review fix round. Remaining work is push and PR comment resolution.

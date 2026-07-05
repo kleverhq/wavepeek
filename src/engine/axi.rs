@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli::extract::AxiArgs;
 use crate::contract::schema::INPUT_SCHEMA_URL;
+use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
-use crate::engine::expr_runtime::open_shared_waveform;
+use crate::engine::expr_runtime::{SharedWaveform, open_shared_waveform};
 use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractRunStats,
     ExtractSource,
@@ -187,6 +188,8 @@ struct AxiConfig {
 struct BuiltAxiPlan {
     context: AxiContext,
     plan: ExtractPlan,
+    waveform: SharedWaveform,
+    debug: DebugTrace,
     payload_standards: HashMap<String, Vec<String>>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -408,14 +411,20 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
     args: AxiArgs,
     sink: &mut S,
 ) -> Result<AxiOutcome, WavepeekError> {
-    let built = build_axi_plan(&args)?;
-    let context = built.context;
+    let BuiltAxiPlan {
+        context,
+        plan,
+        waveform,
+        debug,
+        payload_standards,
+        diagnostics: build_diagnostics,
+    } = build_axi_plan(&args)?;
     let mut generic_sink = GenericToAxiSink {
         context: &context,
-        payload_standards: &built.payload_standards,
+        payload_standards: &payload_standards,
         sink,
     };
-    let outcome = extract::run_plan_with_sink(
+    let outcome = extract::run_plan_with_waveform_sink(
         ExtractRunArgs {
             command: CommandName::ExtractAxi,
             help_command: HELP,
@@ -425,11 +434,13 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
             scope: args.scope,
             max: args.max,
         },
-        built.plan,
+        plan,
+        waveform,
+        debug,
         &mut generic_sink,
     )?;
 
-    let mut diagnostics = built.diagnostics;
+    let mut diagnostics = build_diagnostics;
     diagnostics.extend(outcome.diagnostics);
     Ok(AxiOutcome {
         context,
@@ -441,7 +452,18 @@ fn run_with_sink<S: AxiTransferSink + ?Sized>(
 fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
     let config = config_from_args(args)?;
     let include_regexes = compile_include_regexes(&config.includes)?;
+    let debug = DebugTrace::for_command(CommandName::ExtractAxi);
+    debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
+    {
+        let waveform_ref = waveform.borrow();
+        debug.event("backend.open.done", || {
+            serde_json::json!({
+                "backend": waveform_ref.backend_name(),
+                "format": waveform_ref.format_name(),
+            })
+        });
+    }
     let candidates =
         collect_include_candidates(&waveform, args.scope.as_deref(), &include_regexes)?;
     let explicit = explicit_mappings(
@@ -484,6 +506,8 @@ fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
             mappings: ordered_mappings,
         },
         plan: ExtractPlan::new(extract_sources),
+        waveform,
+        debug,
         payload_standards,
         diagnostics,
     })

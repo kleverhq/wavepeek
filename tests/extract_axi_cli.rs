@@ -397,6 +397,42 @@ fn extract_axi_profile_flag_accepts_case_insensitive_alias() {
 }
 
 #[test]
+fn extract_axi_reuses_mapping_waveform_for_execution() {
+    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-single-open.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "axi4-lite",
+            "--map",
+            "aclk=clk",
+            "--map",
+            "aresetn=aresetn",
+            "--include",
+            "^axi_(aw|w|b|ar|r)_",
+            "--max",
+            "1",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+
+    let stderr = std::str::from_utf8(&output.stderr).expect("debug stderr should be UTF-8");
+    assert_eq!(stderr.matches("backend.open.start").count(), 1);
+    assert_eq!(stderr.matches("backend.open.done").count(), 1);
+}
+
+#[test]
 fn extract_axi_source_conflicts_with_explicit_profile() {
     let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-source-conflict.vcd");
     let fixture_path = fixture.path().to_string_lossy().into_owned();

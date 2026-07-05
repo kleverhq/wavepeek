@@ -293,15 +293,7 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
     sink: &mut S,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
     let max_entries = max_entries(&args.max)?;
-    let mut diagnostics = Vec::new();
-    if args.max.is_unlimited() {
-        diagnostics.push(Diagnostic::warning(
-            WarningDiagnosticCode::LimitDisabled,
-            "limit disabled: --max=unlimited",
-        ));
-    }
-
-    let source_count = plan.source_count();
+    let diagnostics = initial_diagnostics(&args.max);
 
     let debug = DebugTrace::for_command(args.command);
     debug.event("backend.open.start", || serde_json::json!({}));
@@ -315,6 +307,32 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
             })
         });
     }
+
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, diagnostics, sink)
+}
+
+pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
+    args: ExtractRunArgs,
+    plan: ExtractPlan,
+    waveform: SharedWaveform,
+    debug: DebugTrace,
+    sink: &mut S,
+) -> Result<ExtractCommandOutcome, WavepeekError> {
+    let max_entries = max_entries(&args.max)?;
+    let diagnostics = initial_diagnostics(&args.max);
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, diagnostics, sink)
+}
+
+fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
+    args: ExtractRunArgs,
+    plan: ExtractPlan,
+    waveform: SharedWaveform,
+    debug: DebugTrace,
+    max_entries: Option<usize>,
+    mut diagnostics: Vec<Diagnostic>,
+    sink: &mut S,
+) -> Result<ExtractCommandOutcome, WavepeekError> {
+    let source_count = plan.source_count();
     let metadata = waveform.borrow().metadata()?;
     debug.event("metadata.load.done", || serde_json::json!({}));
     let dump_time = parse_dump_time_context(&metadata)?;
@@ -480,6 +498,17 @@ pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
         diagnostics,
         stats,
     })
+}
+
+fn initial_diagnostics(max: &LimitArg) -> Vec<Diagnostic> {
+    if max.is_unlimited() {
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max=unlimited",
+        )]
+    } else {
+        Vec::new()
+    }
 }
 
 fn max_entries(max: &LimitArg) -> Result<Option<usize>, WavepeekError> {

@@ -45,6 +45,16 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 - [x] (2026-07-05T11:34Z) Ran final validation for the PR review fix round: `just check` passed.
 - [x] (2026-07-05T11:36Z) Committed the PR review fix round as `a98e217 fix(extract): address AXI review feedback`.
 - [x] (2026-07-05T11:46Z) Pushed the PR review fix round, replied to all seven PR review threads, and resolved them in GitHub.
+- [x] (2026-07-05T11:55Z) Started benchmark add-on round requested in PR follow-up: add two `extract axi` source JSON files using include auto-mapping plus explicit maps, add two E2E benchmark catalog entries paired with existing generic 2-channel and 5-channel SCR1 coremark extract tests, then run extract benchmarks and manually compare row counts and median timings.
+- [x] (2026-07-05T12:05Z) Added initial benchmark source/catalog files, then simplified the AXI source JSON after user review so mappings contain only `aclk` and `aresetn` and includes drive AXI auto-mapping.
+- [x] (2026-07-05T12:11Z) Recomputed row-count comparison after source simplification and updated AXI benchmark metadata payload counts to 22 for 2-channel and 34 for 5-channel.
+- [x] (2026-07-05T12:11Z) Ran focused benchmark catalog validation: `just update-bench-e2e-fsdb-catalog` and `just check-bench-e2e-fsdb-catalog` passed.
+- [x] (2026-07-05T12:11Z) Ran extract benchmarks for current release binary and recorded manual row-count/performance evidence under `tmp/bench-extract-axi-minimal/current`.
+- [x] (2026-07-05T12:13Z) Ran benchmark-diff subagent review; the only finding was to ensure the new source JSON files are included in git before committing.
+- [x] (2026-07-05T12:13Z) Ran benchmark tooling unit tests: `python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'` and `python3 -B -m unittest discover -s tools/bench -p 'test_*.py'` passed.
+- [x] (2026-07-05T12:15Z) Ran final benchmark add-on gate: `just check` passed.
+- [x] (2026-07-05T12:16Z) Committed benchmark add-on round as `baa1440 test(bench): add AXI extract benchmarks`.
+- [x] (2026-07-05T12:17Z) Pushed benchmark add-on round to `origin/feat-extract-axi`.
 
 ## Surprises & Discoveries
 
@@ -68,6 +78,12 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 
 - Observation: The docs deploy checker had separate schema-shape assumptions from the schema contract checker.
   Evidence: Final post-commit review flagged stale `tools/docs/check_deploy.py` checks for stream commands and input root shape. `tools/docs/test_check_deploy.py`, `just test-aux`, and `just check` now cover the v2.2 stream/input contracts.
+
+- Observation: Minimal AXI benchmark sources produce the same transfer row counts as the existing generic benchmark sources, while carrying larger full-profile payloads.
+  Evidence: Manual JSON runs showed 2-channel generic and AXI both emit 9878 rows, with payload totals 39512 vs. 108658. Five-channel generic and AXI both emit 20242 rows, with payload totals 99752 vs. 159020.
+
+- Observation: AXI benchmark timing is in the same seconds-scale range as generic but slower when the AXI source captures more payload.
+  Evidence: `tmp/bench-extract-axi-minimal/current` hyperfine medians were 1.696726s for generic 2-channel vs. 1.948506s for AXI 2-channel, and 2.450128s for generic 5-channel vs. 3.248818s for AXI 5-channel.
 
 ## Decision Log
 
@@ -162,6 +178,8 @@ No open design questions remain for the initial implementation. Resolved answers
 
 The work will proceed in small, verifiable milestones.
 
+Milestone 7 is the benchmark add-on requested after PR review. Add `bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch_axi.json` and `bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch_axi.json` as minimal `extract.axi.source` documents using include regexes for channel auto-mapping and explicit `maps` entries only for `aclk` and `aresetn`. Add matching `extract` category entries to `bench/e2e/tests.json` beside the existing generic 2-channel and 5-channel SCR1 coremark source benchmarks. Validate the catalog, run the extract benchmark subset for current HEAD, and compare generic versus AXI rows and median timings manually. Acceptance is that both AXI benchmark commands succeed, row counts match their generic counterparts, payload counts may be larger for AXI because it captures the full profile channel payload, and timing is in the same rough range without an obvious order-of-magnitude regression.
+
 Milestone 1 is research and plan hardening. Incorporate subagent results into this file. Read the exact generic extraction entrypoints and tests they identify. Verify the AXI signal lists against Arm IHI 0022H.c and cite the relevant section, table, or page identifiers in this plan. Acceptance for this milestone is that this file names the concrete code touchpoints and no longer has unresolved questions about where the feature belongs.
 
 Milestone 2 is the minimal AXI profile and mapping core. Add profile definitions for `axi3`, `axi4`, and `axi4-lite`; parse profile names case-insensitively; normalize standard signal names to lowercase; define per-channel ready/valid signal names and payload signal order; implement token-based auto-mapping and explicit mapping overrides; and validate that `aclk` exists, `aresetn` is optional, at least one complete ready/valid pair exists, partial ready/valid pairs are rejected, and payload signals are only allowed on channels with complete handshakes. Acceptance is focused unit tests for profile parsing, token matching, collision avoidance such as `awvalid` versus `wvalid`, ambiguity rejection, explicit override behavior, and validation failures.
@@ -210,6 +228,16 @@ Final validation commands completed before PR review:
 
     just ci
     just test-aux
+    just check
+
+Benchmark add-on commands completed:
+
+    just update-bench-e2e-fsdb-catalog
+    just check-bench-e2e-fsdb-catalog
+    cargo build --release
+    python3 -B bench/e2e/perf.py run --binary current=target/release/wavepeek --filter '^extract_scr1_coremark_dmem_axi_' --run-dir tmp/bench-extract-axi-minimal
+    python3 -B -m unittest discover -s bench/e2e -p 'test_*.py'
+    python3 -B -m unittest discover -s tools/bench -p 'test_*.py'
     just check
 
 PR review fix commands to run after edits:
@@ -297,4 +325,7 @@ At the end of the implementation, the codebase should have:
 - 2026-07-05: Updated after subagent review found the `ValueEnum` case-sensitivity regression and the fix was applied. Remaining work is final validation, commit/push, and PR comment resolution.
 - 2026-07-05: Updated after `just check` passed for the PR review fix round. Remaining work is commit, push, and PR comment resolution.
 - 2026-07-05: Updated after pushing the review-fix commit and resolving all seven GitHub review threads. The plan now records the completed PR-review feedback loop.
+- 2026-07-05: Updated after adding minimal AXI benchmark source files and benchmark catalog entries, running row/performance comparisons, and completing benchmark-diff subagent review. Remaining work is final gate, commit, and push.
+- 2026-07-05: Updated after final `just check` passed for the benchmark add-on round. Remaining work is commit and push.
+- 2026-07-05: Updated after committing and pushing the benchmark add-on round. The plan now records completed benchmark additions and manual comparison evidence.
 - 2026-07-05: Updated after committing the PR review fix round. Remaining work is push and PR comment resolution.

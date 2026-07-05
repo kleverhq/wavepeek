@@ -1523,6 +1523,39 @@
       }
     },
     {
+      "name": "extract_scr1_coremark_dmem_axi_2ch_axi_source",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "axi",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top",
+        "--source",
+        "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch_axi.json",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "scope": "TOP.scr1_top_tb_axi.i_top",
+        "trigger": "posedge clk with axi_rst_n sample predicate",
+        "max": "unlimited",
+        "output": "json",
+        "input": "json",
+        "source": "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_2ch_axi.json",
+        "source_count": 2,
+        "channel_count": 2,
+        "payload_count": 22,
+        "profile": "axi4"
+      }
+    },
+    {
       "name": "extract_scr1_coremark_dmem_axi_5ch_source",
       "category": "extract",
       "runs": 10,
@@ -1552,6 +1585,39 @@
         "source_count": 5,
         "channel_count": 5,
         "payload_count": 22
+      }
+    },
+    {
+      "name": "extract_scr1_coremark_dmem_axi_5ch_axi_source",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "axi",
+        "--waves",
+        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "--scope",
+        "TOP.scr1_top_tb_axi.i_top",
+        "--source",
+        "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch_axi.json",
+        "--max",
+        "unlimited",
+        "--json"
+      ],
+      "meta": {
+        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "scope": "TOP.scr1_top_tb_axi.i_top",
+        "trigger": "posedge clk with axi_rst_n sample predicate",
+        "max": "unlimited",
+        "output": "json",
+        "input": "json",
+        "source": "bench/e2e/inputs/extract_scr1_coremark_dmem_axi_5ch_axi.json",
+        "source_count": 5,
+        "channel_count": 5,
+        "payload_count": 34,
+        "profile": "axi4"
       }
     },
     {

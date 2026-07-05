@@ -33,7 +33,7 @@ pub struct ExtractAxiSourceInput<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(default)]
     #[schemars(schema_with = "axi_profile_schema")]
-    #[schemars(description = "AXI profile: axi3, axi4, or axi4-lite. Defaults to axi4.")]
+    #[schemars(description = "AXI profile. Defaults to axi4.")]
     profile: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(default)]

@@ -366,6 +366,65 @@ fn extract_axi_source_jsonl_includes_begin_context() {
 }
 
 #[test]
+fn extract_axi_profile_flag_accepts_case_insensitive_alias() {
+    let fixture = write_fixture(AXI3_W_VCD, "extract-axi3-profile-case.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "AXI4_LITE",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^axi_w",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let value = parse_json(&output);
+    assert_eq!(value["data"]["profile"], "axi4-lite");
+}
+
+#[test]
+fn extract_axi_source_conflicts_with_explicit_profile() {
+    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-source-conflict.vcd");
+    let fixture_path = fixture.path().to_string_lossy().into_owned();
+    let source = write_source(&format!(
+        r#"{{"$schema":"{}","kind":"extract.axi.source","maps":{{"aclk":"clk"}}}}"#,
+        expected_input_schema_url()
+    ));
+    let source_path = source.path().to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture_path.as_str(),
+            "--scope",
+            "top",
+            "--source",
+            source_path.as_str(),
+            "--profile",
+            "axi3",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("cannot be used with"));
+}
+
+#[test]
 fn extract_axi_warns_for_unmatched_include_candidates() {
     let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-warning.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();

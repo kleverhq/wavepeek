@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Args, Subcommand};
+use clap::{Args, Subcommand, ValueEnum};
 
 use crate::cli::limits::LimitArg;
 
@@ -11,8 +11,8 @@ pub enum ExtractCommand {
         long_about = r#"Extract AXI ready/valid transfer rows.
 
 Behavior:
-- Supports initial profiles: axi3, axi4, and axi4-lite.
-- Defaults to profile axi4 unless --profile or --source selects another profile.
+- Profiles are based on Arm IHI 0022H.c.
+- Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
 - Builds one extraction source per complete ready/valid channel.
 - Samples reset, ready/valid predicates, and payload values at the pre-edge sample point.
 - In source-file mode, --source provides profile, name, includes, and maps and conflicts with --profile, --name, --map, and --include.
@@ -42,14 +42,46 @@ Use this command to extract synchronous handshakes or transfer-like rows without
     Generic(Box<GenericArgs>),
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AxiProfileArg {
+    Axi3,
+    Axi4,
+    #[value(name = "axi4-lite", alias = "axi4_lite")]
+    Axi4Lite,
+}
+
+impl AxiProfileArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Axi3 => "axi3",
+            Self::Axi4 => "axi4",
+            Self::Axi4Lite => "axi4-lite",
+        }
+    }
+}
+
+impl std::fmt::Display for AxiProfileArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Args)]
 pub struct AxiArgs {
     /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// AXI profile: axi3, axi4, or axi4-lite (defaults to axi4)
-    #[arg(long, value_name = "PROFILE", help_heading = "Input options")]
-    pub profile: Option<String>,
+    /// AXI profile based on Arm IHI 0022H.c
+    #[arg(
+        long,
+        value_name = "PROFILE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = AxiProfileArg::Axi4,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub profile: AxiProfileArg,
     /// JSON AXI source file with profile, name, includes, and maps
     #[arg(
         long,
@@ -70,14 +102,14 @@ pub struct AxiArgs {
     /// Canonical scope path for scope-relative AXI signal names and include regexes
     #[arg(long, help_heading = "Selection options")]
     pub scope: Option<String>,
-    /// Explicit AXI mapping STD_NAME=WAVES_NAME; may be repeated
+    /// Explicit AXI mapping STD_NAME=WAVES_NAME, e.g. awvalid=cpu_dmem_awvalid; may be repeated
     #[arg(
         long = "map",
         value_name = "STD=WAVES",
         help_heading = "Signal mapping options"
     )]
     pub maps: Vec<String>,
-    /// Regex selecting waveform signal candidates for AXI auto-mapping; may be repeated
+    /// Regex selecting waveform signal candidates for AXI auto-mapping, e.g. '^axi_(aw|w|b|ar|r)_'; may be repeated
     #[arg(
         long = "include",
         value_name = "REGEX",

@@ -36,7 +36,15 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 - [x] (2026-07-04T22:31Z) Ran focused tests and `just check`. Completed: `cargo check -q`, `cargo test -q --test extract_axi_cli`, full `cargo test -q --test cli_contract`, full `cargo test -q --test schema_cli`, `cargo test -q --test docs_cli`, `cargo test -q --test skill_cli`, `just check-schema`, and `just check`.
 - [x] (2026-07-04T22:33Z) Ran `just ci`; it passed, including FSDB checks in this environment.
 - [x] (2026-07-04T23:06Z) Ran final post-commit control review and fixed deploy-check support for schema v2.2 stream/input contracts.
-- [ ] Commit coherent slices, push `feat/extract-axi`, and open a draft PR for issue 49.
+- [x] (2026-07-04T23:10Z) Committed, pushed `feat/extract-axi`, and opened draft PR #52 for issue 49.
+- [x] (2026-07-05T11:20Z) Retrieved seven inline PR review comments covering CLI profile typing/help, mapping help examples, input schema wording, and AXI H.c source comments.
+- [x] (2026-07-05T11:26Z) Applied PR review fixes for CLI profile enum/help text, map/include examples, input schema description, and H.c source comments.
+- [x] (2026-07-05T11:26Z) Ran focused validation: `cargo test -q --test cli_contract extract_axi_help_is_self_descriptive`, `cargo test -q --test extract_axi_cli extract_axi_source_jsonl_includes_begin_context`, `cargo test -q --test schema_cli schema_input_command_output_is_valid_json`, `cargo test -q --test extract_axi_cli extract_axi_source_conflicts_with_explicit_profile`, and `cargo clippy --all-targets -- -D warnings`.
+- [x] (2026-07-05T11:33Z) Ran subagent review on the review-fix diff; it found the CLI `ValueEnum` needed case-insensitive parsing to preserve the original profile contract.
+- [x] (2026-07-05T11:33Z) Fixed `--profile` with `ignore_case = true`, added regression coverage for `AXI4_LITE`, and reran focused validation plus clippy.
+- [x] (2026-07-05T11:34Z) Ran final validation for the PR review fix round: `just check` passed.
+- [x] (2026-07-05T11:36Z) Committed the PR review fix round as `a98e217 fix(extract): address AXI review feedback`.
+- [ ] Push the PR review fix round and resolve/respond to PR comments.
 
 ## Surprises & Discoveries
 
@@ -93,7 +101,7 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 
 ## Outcomes & Retrospective
 
-Milestones 1 through 6 are implemented in the working tree. `extract axi` can extract AXI4-Lite rows from a hand-written VCD fixture, defaults to `axi4`, extracts AXI3 `wid`, emits JSON and JSONL validated by the current schema artifacts, supports source JSON, rejects ambiguous and partial mappings, and documents the new user-facing command. Review findings have been addressed, `just test-aux`, `just check`, and `just ci` pass. The remaining work is amend/push and draft PR.
+Milestones 1 through 6 are implemented and draft PR #52 is open. `extract axi` can extract AXI4-Lite rows from a hand-written VCD fixture, defaults to `axi4`, extracts AXI3 `wid`, emits JSON and JSONL validated by the current schema artifacts, supports source JSON, rejects ambiguous and partial mappings, and documents the new user-facing command. `just test-aux`, `just check`, and `just ci` passed before PR review. The current work is a PR-review fix round for CLI/help/schema wording and source comments.
 
 ## Context and Orientation
 
@@ -198,10 +206,28 @@ Review lanes completed:
     9eca7249-c438-450: docs/help review lane
     cc754fdb-6b3e-437: final control review lane
 
-Final validation commands completed:
+Final validation commands completed before PR review:
 
     just ci
     just test-aux
+    just check
+
+PR review fix commands to run after edits:
+
+    cargo test -q --test cli_contract extract_axi_help_is_self_descriptive
+    cargo test -q --test extract_axi_cli extract_axi_source_jsonl_includes_begin_context
+    cargo test -q --test schema_cli schema_input_command_output_is_valid_json
+    cargo fmt
+    cargo clippy --all-targets -- -D warnings
+
+PR review fix commands completed:
+
+    cargo test -q --test cli_contract extract_axi_help_is_self_descriptive
+    cargo test -q --test extract_axi_cli extract_axi_source_jsonl_includes_begin_context
+    cargo test -q --test schema_cli schema_input_command_output_is_valid_json
+    cargo test -q --test extract_axi_cli extract_axi_source_conflicts_with_explicit_profile
+    cargo test -q --test extract_axi_cli extract_axi_profile_flag_accepts_case_insensitive_alias
+    cargo clippy --all-targets -- -D warnings
     just check
 
 If the environment and time allow the full test gate, run:
@@ -266,3 +292,8 @@ At the end of the implementation, the codebase should have:
 - 2026-07-04: Updated after implementing the main AXI feature slice, regenerating schemas, adding docs/tests, and launching focused subagent reviews. The update records source citations, resolved design questions, current test evidence, and remaining review/gate work.
 - 2026-07-04: Updated after final review fixes, schema family version bump to 2.2, and successful `just check`/`just ci`. The plan now records completed validation and remaining repository publication work.
 - 2026-07-04: Updated after post-commit control review fixed docs deploy schema validation for the v2.2 stream and input contracts. The plan now records the extra `just test-aux` and repeat `just check` evidence.
+- 2026-07-05: Updated after PR review comments were retrieved. The plan now records the review-fix scope and focused validation commands before implementation resumes.
+- 2026-07-05: Updated after applying the PR review fixes and running focused validation. Remaining work is subagent review, final validation, commit/push, and PR comment resolution.
+- 2026-07-05: Updated after subagent review found the `ValueEnum` case-sensitivity regression and the fix was applied. Remaining work is final validation, commit/push, and PR comment resolution.
+- 2026-07-05: Updated after `just check` passed for the PR review fix round. Remaining work is commit, push, and PR comment resolution.
+- 2026-07-05: Updated after committing the PR review fix round. Remaining work is push and PR comment resolution.

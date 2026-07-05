@@ -218,6 +218,7 @@ struct AxiChannelSpec {
     signals: &'static [&'static str],
 }
 
+// AXI3 signal names are based on Arm IHI 0022H.c Tables A2-2 through A2-6.
 const AXI3_AW: &[&str] = &[
     "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot", "awvalid",
     "awready",
@@ -262,6 +263,7 @@ const AXI3_CHANNELS: &[AxiChannelSpec] = &[
     },
 ];
 
+// AXI4 signal names are based on Arm IHI 0022H.c Tables A2-2 through A2-6.
 const AXI4_AW: &[&str] = &[
     "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot", "awqos",
     "awregion", "awuser", "awvalid", "awready",
@@ -308,6 +310,7 @@ const AXI4_CHANNELS: &[AxiChannelSpec] = &[
     },
 ];
 
+// AXI4-Lite signal names are based on Arm IHI 0022H.c Table B1-1.
 const AXI4_LITE_AW: &[&str] = &["awaddr", "awprot", "awvalid", "awready"];
 const AXI4_LITE_W: &[&str] = &["wdata", "wstrb", "wvalid", "wready"];
 const AXI4_LITE_B: &[&str] = &["bresp", "bvalid", "bready"];
@@ -488,11 +491,7 @@ fn build_axi_plan(args: &AxiArgs) -> Result<BuiltAxiPlan, WavepeekError> {
 
 fn config_from_args(args: &AxiArgs) -> Result<AxiConfig, WavepeekError> {
     if let Some(path) = args.source.as_ref() {
-        if args.profile.is_some()
-            || args.name.is_some()
-            || !args.maps.is_empty()
-            || !args.includes.is_empty()
-        {
+        if args.name.is_some() || !args.maps.is_empty() || !args.includes.is_empty() {
             return Err(WavepeekError::Args(
                 "--source cannot be combined with --profile, --name, --map, or --include. See 'wavepeek extract axi --help'.".to_string(),
             ));
@@ -501,7 +500,7 @@ fn config_from_args(args: &AxiArgs) -> Result<AxiConfig, WavepeekError> {
     }
 
     Ok(AxiConfig {
-        profile: parse_profile(args.profile.as_deref().unwrap_or(DEFAULT_PROFILE))?,
+        profile: parse_profile(args.profile.as_str())?,
         name: args
             .name
             .clone()

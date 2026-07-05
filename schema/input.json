@@ -35,7 +35,7 @@
           ]
         },
         "profile": {
-          "description": "AXI profile: axi3, axi4, or axi4-lite. Defaults to axi4.",
+          "description": "AXI profile. Defaults to axi4.",
           "enum": [
             "axi3",
             "axi4",

@@ -44,7 +44,7 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 - [x] (2026-07-05T11:33Z) Fixed `--profile` with `ignore_case = true`, added regression coverage for `AXI4_LITE`, and reran focused validation plus clippy.
 - [x] (2026-07-05T11:34Z) Ran final validation for the PR review fix round: `just check` passed.
 - [x] (2026-07-05T11:36Z) Committed the PR review fix round as `a98e217 fix(extract): address AXI review feedback`.
-- [ ] Push the PR review fix round and resolve/respond to PR comments.
+- [x] (2026-07-05T11:46Z) Pushed the PR review fix round, replied to all seven PR review threads, and resolved them in GitHub.
 
 ## Surprises & Discoveries
 
@@ -101,7 +101,7 @@ This plan does not add AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, or any credited-tra
 
 ## Outcomes & Retrospective
 
-Milestones 1 through 6 are implemented and draft PR #52 is open. `extract axi` can extract AXI4-Lite rows from a hand-written VCD fixture, defaults to `axi4`, extracts AXI3 `wid`, emits JSON and JSONL validated by the current schema artifacts, supports source JSON, rejects ambiguous and partial mappings, and documents the new user-facing command. `just test-aux`, `just check`, and `just ci` passed before PR review. The current work is a PR-review fix round for CLI/help/schema wording and source comments.
+Milestones 1 through 6 are implemented and draft PR #52 is open. `extract axi` can extract AXI4-Lite rows from a hand-written VCD fixture, defaults to `axi4`, extracts AXI3 `wid`, emits JSON and JSONL validated by the current schema artifacts, supports source JSON, rejects ambiguous and partial mappings, and documents the new user-facing command. `just test-aux`, `just check`, and `just ci` passed before PR review. The PR-review fix round has been implemented, validated with `just check`, pushed, and all review threads have been resolved.
 
 ## Context and Orientation
 
@@ -296,4 +296,5 @@ At the end of the implementation, the codebase should have:
 - 2026-07-05: Updated after applying the PR review fixes and running focused validation. Remaining work is subagent review, final validation, commit/push, and PR comment resolution.
 - 2026-07-05: Updated after subagent review found the `ValueEnum` case-sensitivity regression and the fix was applied. Remaining work is final validation, commit/push, and PR comment resolution.
 - 2026-07-05: Updated after `just check` passed for the PR review fix round. Remaining work is commit, push, and PR comment resolution.
+- 2026-07-05: Updated after pushing the review-fix commit and resolving all seven GitHub review threads. The plan now records the completed PR-review feedback loop.
 - 2026-07-05: Updated after committing the PR review fix round. Remaining work is push and PR comment resolution.

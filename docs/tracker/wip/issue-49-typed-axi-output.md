@@ -28,6 +28,14 @@ This change does not reconstruct AXI bursts, ordering, outstanding state, or com
 - [x] (2026-07-06T06:16Z) Ran focused subagent review for typed AXI schema/output changes; it returned no substantive findings.
 - [x] (2026-07-06T06:17Z) Committed the typed AXI output change as `72b4804 fix(extract): type AXI transfer output`.
 - [x] (2026-07-06T06:18Z) Pushed the typed AXI output commit to `origin/feat-extract-axi`.
+- [x] (2026-07-06T18:35Z) Reviewed maintainability concern: typed AXI schema generation works but leaves too much manual builder code in `src/contract/schema.rs`.
+- [x] (2026-07-06T18:40Z) Moved AXI-specific schema builder code into `src/contract/axi_schema.rs` without changing generated schema output.
+- [x] (2026-07-06T18:40Z) Added a unit test proving AXI transfer schema definitions follow runtime AXI profile/channel metadata.
+- [x] (2026-07-06T18:40Z) Ran focused checks: `cargo test -q axi_schema::tests::transfer_defs_follow_runtime_profiles_and_channels`, `cargo test -q --test schema_cli schema_output_validator_enforces_axi_profile_channel_payloads`, and `just check-schema` passed.
+- [x] (2026-07-06T18:40Z) Ran final gate: `just check` passed.
+- [x] (2026-07-06T18:40Z) Ran focused subagent review for the schema refactor; it returned no substantive findings.
+- [x] (2026-07-06T18:41Z) Committed the cleanup as `6e50560 refactor(contract): isolate AXI schema generation`.
+- [x] (2026-07-06T18:42Z) Pushed the cleanup commit to `origin/feat-extract-axi`.
 
 ## Surprises & Discoveries
 
@@ -55,7 +63,7 @@ This change does not reconstruct AXI bursts, ordering, outstanding state, or com
 
 ## Outcomes & Retrospective
 
-Implementation is complete, committed, and pushed. AXI transfer rows now include `profile`; generated output and stream schemas enumerate profile/channel payload branches; focused schema and AXI CLI tests, `just check-schema`, clippy, `just check`, and focused subagent review passed.
+The typed output behavior and maintainability cleanup are implemented, committed, and pushed. AXI transfer rows include `profile`; generated output and stream schemas enumerate profile/channel payload branches. AXI-specific schema generation is isolated in `src/contract/axi_schema.rs`, generated schema output remains stable, focused schema and AXI CLI tests, `just check-schema`, clippy, `just check`, and focused subagent review passed.
 
 ## Context and Orientation
 
@@ -73,7 +81,11 @@ There are no open product questions. The implementation should keep the current 
 
 ## Plan of Work
 
-First, expose a crate-local read-only view of the AXI profile metadata from `src/engine/axi.rs`. The schema generator should not duplicate the signal lists by hand; it should consume the same runtime tables to avoid drift.
+For the cleanup milestone, move the AXI-specific schema construction helpers from `src/contract/schema.rs` into a new focused module such as `src/contract/axi_schema.rs`. Keep `src/contract/schema.rs` responsible for top-level schema assembly only. The new module should expose small functions that mutate the `$defs` map for output and stream schemas, and it should continue to source profile/channel/payload metadata from `src/engine/axi.rs`. The generated `schema/output.json` and `schema/stream.json` should not change except for ordering if unavoidable; ideally `just check-schema` proves they are byte-stable.
+
+Add a unit test in the AXI schema module that compares emitted transfer branch counts and representative payload properties against `axi::profile_specs()` so future profile-table changes cannot silently desynchronize schema construction. Re-run schema and CLI tests after the refactor.
+
+Original typed-output implementation plan follows for context. First, expose a crate-local read-only view of the AXI profile metadata from `src/engine/axi.rs`. The schema generator should not duplicate the signal lists by hand; it should consume the same runtime tables to avoid drift.
 
 Next, add `profile` to `crate::engine::axi::AxiTransfer` and set it in `GenericToAxiSink::emit` from the current `AxiContext`. Because `src/contract/output.rs::ExtractAxiTransfer` converts from the engine transfer, adding the field there will make both JSON array rows and JSONL item rows include `profile`.
 
@@ -171,3 +183,5 @@ At the end, `crate::engine::axi::AxiTransfer` must contain a `profile: String` f
 ## Revision Notes
 
 - 2026-07-06: Initial plan created after identifying that AXI output schema does not expose profile-dependent channel and payload contracts.
+- 2026-07-06: Added cleanup milestone after code review concern that `src/contract/schema.rs` now contains too much AXI-specific manual schema builder code. The cleanup should preserve output behavior and generated schema artifacts.
+- 2026-07-06: Updated after completing and pushing the schema-generation cleanup.

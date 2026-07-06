@@ -1,8 +1,7 @@
 use schemars::SchemaGenerator;
 use serde_json::{Map, Value, json};
 
-use crate::engine::axi::{self, AxiChannelSpec, AxiProfileSpec};
-
+use super::axi_schema;
 use super::common::{
     CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
 };
@@ -195,7 +194,7 @@ fn output_defs() -> Value {
 fn stream_defs() -> Value {
     let mut object = generated_waveform_payload_defs();
     object.extend(generated_stream_record_defs());
-    apply_axi_stream_context_defs(&mut object);
+    axi_schema::apply_stream_context_defs(&mut object);
     object.insert(
         "streamCommand".to_string(),
         json!({"type": "string", "enum": stream_commands()}),
@@ -282,216 +281,8 @@ fn generated_waveform_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ExtractAxiData<'static>>();
     generator.subschema_for::<ExtractGenericRow<'static>>();
     let mut defs = generator.take_definitions(true);
-    apply_axi_output_defs(&mut defs);
+    axi_schema::apply_output_defs(&mut defs);
     defs
-}
-
-fn apply_axi_output_defs(defs: &mut Map<String, Value>) {
-    defs.insert("axiProfile".to_string(), axi_profile_schema());
-    defs.insert("extractAxiData".to_string(), axi_data_schema());
-    defs.insert("extractAxiTransfer".to_string(), axi_transfer_schema());
-    for profile in axi::profile_specs() {
-        defs.insert(
-            axi_profile_transfer_def_name(profile),
-            axi_profile_transfer_schema(profile),
-        );
-        for channel in profile.channels {
-            defs.insert(
-                axi_channel_transfer_def_name(profile, channel),
-                axi_channel_transfer_schema(profile, channel),
-            );
-        }
-    }
-}
-
-fn apply_axi_stream_context_defs(defs: &mut Map<String, Value>) {
-    defs.insert("extractAxiContext".to_string(), axi_context_schema());
-}
-
-fn axi_profile_schema() -> Value {
-    json!({
-        "type": "string",
-        "description": "AXI profile name: axi3, axi4, or axi4-lite.",
-        "enum": axi_profile_names(),
-    })
-}
-
-fn axi_profile_names() -> Vec<&'static str> {
-    axi::profile_specs()
-        .iter()
-        .map(|profile| profile.name)
-        .collect()
-}
-
-fn axi_data_schema() -> Value {
-    json!({
-        "oneOf": axi::profile_specs()
-            .iter()
-            .map(axi_data_profile_schema)
-            .collect::<Vec<_>>()
-    })
-}
-
-fn axi_context_schema() -> Value {
-    json!({
-        "oneOf": axi::profile_specs()
-            .iter()
-            .map(axi_context_profile_schema)
-            .collect::<Vec<_>>()
-    })
-}
-
-fn axi_data_profile_schema(profile: &AxiProfileSpec) -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["name", "profile", "issue", "mappings", "transfers"],
-        "properties": {
-            "name": {
-                "type": "string",
-                "description": "AXI port name supplied by CLI or source JSON."
-            },
-            "profile": {
-                "const": profile.name,
-                "description": "AXI profile name used for standard signal mapping."
-            },
-            "issue": {
-                "const": profile.issue,
-                "description": "Arm IHI 0022 issue used for this profile definition."
-            },
-            "mappings": axi_mappings_schema(profile),
-            "transfers": {
-                "type": "array",
-                "description": "Extracted AXI ready/valid transfers in event order.",
-                "items": ref_schema(&axi_profile_transfer_def_name(profile))
-            }
-        }
-    })
-}
-
-fn axi_context_profile_schema(profile: &AxiProfileSpec) -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["name", "profile", "issue", "mappings"],
-        "properties": {
-            "name": {
-                "type": "string",
-                "description": "AXI port name supplied by CLI or source JSON."
-            },
-            "profile": {
-                "const": profile.name,
-                "description": "AXI profile name used for standard signal mapping."
-            },
-            "issue": {
-                "const": profile.issue,
-                "description": "Arm IHI 0022 issue used for this profile definition."
-            },
-            "mappings": axi_mappings_schema(profile)
-        }
-    })
-}
-
-fn axi_mappings_schema(profile: &AxiProfileSpec) -> Value {
-    let mut properties = Map::new();
-    for standard in axi::standard_signals(profile) {
-        properties.insert(standard.to_string(), ref_schema("extractAxiMapping"));
-    }
-    json!({
-        "type": "object",
-        "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
-        "additionalProperties": false,
-        "properties": properties,
-    })
-}
-
-fn axi_transfer_schema() -> Value {
-    json!({
-        "oneOf": axi::profile_specs()
-            .iter()
-            .map(|profile| ref_schema(&axi_profile_transfer_def_name(profile)))
-            .collect::<Vec<_>>()
-    })
-}
-
-fn axi_profile_transfer_schema(profile: &AxiProfileSpec) -> Value {
-    json!({
-        "oneOf": profile
-            .channels
-            .iter()
-            .map(|channel| ref_schema(&axi_channel_transfer_def_name(profile, channel)))
-            .collect::<Vec<_>>()
-    })
-}
-
-fn axi_channel_transfer_schema(profile: &AxiProfileSpec, channel: &AxiChannelSpec) -> Value {
-    json!({
-        "type": "object",
-        "additionalProperties": true,
-        "required": ["time", "sample_time", "profile", "channel", "payload"],
-        "properties": {
-            "time": {
-                "$ref": "#/$defs/normalizedTime",
-                "description": "Selected AXI transfer event timestamp."
-            },
-            "sample_time": {
-                "$ref": "#/$defs/normalizedTime",
-                "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
-            },
-            "profile": {
-                "const": profile.name,
-                "description": "AXI profile name for this transfer row."
-            },
-            "channel": {
-                "const": channel.name,
-                "description": "AXI ready/valid channel name."
-            },
-            "payload": axi_payload_schema(channel)
-        }
-    })
-}
-
-fn axi_payload_schema(channel: &AxiChannelSpec) -> Value {
-    let mut properties = Map::new();
-    for standard in axi::channel_payload_signals(channel) {
-        properties.insert(standard.to_string(), ref_schema("sampledValue"));
-    }
-    json!({
-        "type": "object",
-        "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
-        "additionalProperties": false,
-        "properties": properties,
-    })
-}
-
-fn axi_profile_transfer_def_name(profile: &AxiProfileSpec) -> String {
-    format!("extract{}Transfer", schema_suffix(profile.name))
-}
-
-fn axi_channel_transfer_def_name(profile: &AxiProfileSpec, channel: &AxiChannelSpec) -> String {
-    format!(
-        "extract{}{}Transfer",
-        schema_suffix(profile.name),
-        schema_suffix(channel.name)
-    )
-}
-
-fn schema_suffix(name: &str) -> String {
-    let mut suffix = String::new();
-    let mut capitalize = true;
-    for ch in name.chars() {
-        if ch.is_ascii_alphanumeric() {
-            if capitalize {
-                suffix.push(ch.to_ascii_uppercase());
-                capitalize = false;
-            } else {
-                suffix.push(ch);
-            }
-        } else {
-            capitalize = true;
-        }
-    }
-    suffix
 }
 
 fn generated_input_payload_defs() -> Map<String, Value> {

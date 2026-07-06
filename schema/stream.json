@@ -1,5 +1,14 @@
 {
   "$defs": {
+    "axiProfile": {
+      "description": "AXI profile name: axi3, axi4, or axi4-lite.",
+      "enum": [
+        "axi3",
+        "axi4",
+        "axi4-lite"
+      ],
+      "type": "string"
+    },
     "beginRecord": {
       "additionalProperties": true,
       "properties": {
@@ -224,71 +233,1657 @@
       ],
       "type": "object"
     },
-    "extractAxiContext": {
+    "extractAxi3ArTransfer": {
       "additionalProperties": true,
       "properties": {
-        "issue": {
-          "type": "string"
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
         },
-        "mappings": {
-          "additionalProperties": {
-            "$ref": "#/$defs/extractAxiMapping"
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsize": {
+              "$ref": "#/$defs/sampledValue"
+            }
           },
           "type": "object"
         },
-        "name": {
-          "type": "string"
-        },
         "profile": {
-          "type": "string"
+          "const": "axi3",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
         }
       },
       "required": [
-        "name",
+        "time",
+        "sample_time",
         "profile",
-        "issue",
-        "mappings"
+        "channel",
+        "payload"
       ],
       "type": "object"
     },
-    "extractAxiData": {
+    "extractAxi3AwTransfer": {
       "additionalProperties": true,
       "properties": {
-        "issue": {
-          "description": "Arm IHI 0022 issue used for this profile definition.",
-          "type": "string"
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
         },
-        "mappings": {
-          "additionalProperties": {
-            "$ref": "#/$defs/extractAxiMapping"
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsize": {
+              "$ref": "#/$defs/sampledValue"
+            }
           },
-          "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
           "type": "object"
         },
-        "name": {
-          "description": "AXI port name supplied by CLI or source JSON.",
-          "type": "string"
-        },
         "profile": {
-          "description": "AXI profile name used for standard signal mapping.",
-          "type": "string"
+          "const": "axi3",
+          "description": "AXI profile name for this transfer row."
         },
-        "transfers": {
-          "description": "Extracted AXI ready/valid transfers in event order.",
-          "items": {
-            "$ref": "#/$defs/extractAxiTransfer"
-          },
-          "type": "array"
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
         }
       },
       "required": [
-        "name",
+        "time",
+        "sample_time",
         "profile",
-        "issue",
-        "mappings",
-        "transfers"
+        "channel",
+        "payload"
       ],
       "type": "object"
+    },
+    "extractAxi3BTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi3",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi3RTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi3",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi3Transfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAxi3AwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi3WTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi3BTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi3ArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi3RTransfer"
+        }
+      ]
+    },
+    "extractAxi3WTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi3",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4ArTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4AwTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4BTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "buser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4LiteArTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4LiteAwTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4LiteBTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4LiteRTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4LiteTransfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAxi4LiteAwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4LiteWTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4LiteBTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4LiteArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4LiteRTransfer"
+        }
+      ]
+    },
+    "extractAxi4LiteWTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4RTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi4Transfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAxi4AwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4WTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4BTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4ArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi4RTransfer"
+        }
+      ]
+    },
+    "extractAxi4WTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxiContext": {
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi3",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4-lite",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAxiData": {
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi3",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi3Transfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi4Transfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "H.c",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4-lite",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi4LiteTransfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "extractAxiItemRecord": {
       "$ref": "#/$defs/itemRecordForExtractAxiTransfer"
@@ -307,35 +1902,17 @@
       "type": "object"
     },
     "extractAxiTransfer": {
-      "additionalProperties": true,
-      "properties": {
-        "channel": {
-          "description": "AXI channel name: aw, w, b, ar, or r.",
-          "type": "string"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAxi3Transfer"
         },
-        "payload": {
-          "additionalProperties": {
-            "$ref": "#/$defs/sampledValue"
-          },
-          "description": "Payload values keyed by lowercase AXI standard signal name.",
-          "type": "object"
+        {
+          "$ref": "#/$defs/extractAxi4Transfer"
         },
-        "sample_time": {
-          "$ref": "#/$defs/normalizedTime",
-          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
-        },
-        "time": {
-          "$ref": "#/$defs/normalizedTime",
-          "description": "Selected AXI transfer event timestamp."
+        {
+          "$ref": "#/$defs/extractAxi4LiteTransfer"
         }
-      },
-      "required": [
-        "time",
-        "sample_time",
-        "channel",
-        "payload"
-      ],
-      "type": "object"
+      ]
     },
     "extractGenericItemRecord": {
       "$ref": "#/$defs/itemRecordForExtractGenericRow"

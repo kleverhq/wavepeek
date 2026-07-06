@@ -74,7 +74,7 @@ The stable JSON-producing commands currently include the waveform-inspection com
 
 Payload paths are canonical in JSON and JSONL output.
 
-`extract axi` data is an object with AXI context and transfer rows. It has `name`, `profile`, `issue`, `mappings`, and `transfers`. Each transfer has `time`, `sample_time`, `channel`, and a `payload` object keyed by lowercase AXI standard signal name. Mapping paths are canonical.
+`extract axi` data is an object with AXI context and transfer rows. It has `name`, `profile`, `issue`, `mappings`, and `transfers`. Each transfer has `time`, `sample_time`, `profile`, `channel`, and a `payload` object keyed by lowercase AXI standard signal name. The schema enumerates supported profiles, channels, and payload keys per profile/channel; payload keys are optional because rows include only mapped payload signals. Mapping paths are canonical.
 
 ## 3. JSONL Stream for Waveform Commands
 
@@ -96,7 +96,7 @@ Rules for successful JSONL streams:
 - `command` is stable across the stream.
 - `item` records carry the same row payload shape used inside `--json` data arrays for array-producing commands, the transfer row shape for `extract axi`, or the `info` data object for `info`.
 - `change`, `property`, and `extract` rows include both `time` and `sample_time`. `time` is the selected event timestamp; `sample_time` is where values were printed, evaluated, or extracted.
-- `extract axi` streams include AXI context on the `begin` record.
+- `extract axi` streams include AXI context on the `begin` record and repeat `profile` on each transfer item so each JSONL row can be validated independently.
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
 

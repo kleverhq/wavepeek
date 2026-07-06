@@ -245,6 +245,7 @@ fn extract_axi_json_automaps_axi4_lite_and_gates_reset() {
             .collect::<Vec<_>>(),
         vec!["aw", "w", "b", "ar", "r"]
     );
+    assert!(transfers.iter().all(|row| row["profile"] == "axi4-lite"));
     assert_eq!(transfers[0]["time"], "5ns");
     assert_eq!(transfers[0]["sample_time"], "4ns");
     assert_eq!(transfers[0]["payload"]["awaddr"], "8'h12");
@@ -311,6 +312,7 @@ fn extract_axi3_profile_extracts_wid() {
     let value = parse_json(&output);
     assert_eq!(value["data"]["profile"], "axi3");
     assert_eq!(value["data"]["transfers"].as_array().unwrap().len(), 1);
+    assert_eq!(value["data"]["transfers"][0]["profile"], "axi3");
     assert_eq!(value["data"]["transfers"][0]["channel"], "w");
     assert_eq!(value["data"]["transfers"][0]["payload"]["wid"], "4'ha");
     assert_eq!(value["data"]["transfers"][0]["payload"]["wdata"], "8'hcc");
@@ -360,6 +362,7 @@ fn extract_axi_source_jsonl_includes_begin_context() {
     assert_eq!(records.first().unwrap()["context"]["name"], "cfg");
     assert_eq!(records.first().unwrap()["context"]["profile"], "axi4-lite");
     assert_eq!(records[1]["type"], "item");
+    assert_eq!(records[1]["item"]["profile"], "axi4-lite");
     assert_eq!(records[1]["item"]["channel"], "aw");
     assert_eq!(records.last().unwrap()["type"], "end");
     assert_eq!(records.last().unwrap()["summary"]["items"], 5);

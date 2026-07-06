@@ -43,6 +43,7 @@ pub struct AxiTransferPayload {
 pub struct AxiTransfer {
     pub time: String,
     pub sample_time: String,
+    pub profile: String,
     pub channel: String,
     pub payload: Vec<AxiTransferPayload>,
 }
@@ -157,6 +158,7 @@ impl<S: AxiTransferSink + ?Sized> ExtractRowSink for GenericToAxiSink<'_, S> {
         self.sink.emit(AxiTransfer {
             time: row.time,
             sample_time: row.sample_time,
+            profile: self.context.profile.clone(),
             channel: row.source,
             payload,
         })
@@ -207,18 +209,18 @@ struct AxiProfile {
 }
 
 #[derive(Debug)]
-struct AxiProfileSpec {
-    name: &'static str,
-    issue: &'static str,
-    channels: &'static [AxiChannelSpec],
+pub(crate) struct AxiProfileSpec {
+    pub(crate) name: &'static str,
+    pub(crate) issue: &'static str,
+    pub(crate) channels: &'static [AxiChannelSpec],
 }
 
 #[derive(Debug)]
-struct AxiChannelSpec {
-    name: &'static str,
-    valid: &'static str,
-    ready: &'static str,
-    signals: &'static [&'static str],
+pub(crate) struct AxiChannelSpec {
+    pub(crate) name: &'static str,
+    pub(crate) valid: &'static str,
+    pub(crate) ready: &'static str,
+    pub(crate) signals: &'static [&'static str],
 }
 
 // AXI3 signal names are based on Arm IHI 0022H.c Tables A2-2 through A2-6.
@@ -367,6 +369,33 @@ const AXI4_LITE_PROFILE: AxiProfileSpec = AxiProfileSpec {
     issue: "H.c",
     channels: AXI4_LITE_CHANNELS,
 };
+
+pub(crate) fn profile_specs() -> &'static [AxiProfileSpec] {
+    &[AXI3_PROFILE, AXI4_PROFILE, AXI4_LITE_PROFILE]
+}
+
+pub(crate) fn standard_signals(profile: &AxiProfileSpec) -> Vec<&'static str> {
+    COMMON_SIGNALS
+        .iter()
+        .copied()
+        .chain(
+            profile
+                .channels
+                .iter()
+                .flat_map(|channel| channel.signals.iter().copied()),
+        )
+        .collect()
+}
+
+pub(crate) fn channel_payload_signals(
+    channel: &AxiChannelSpec,
+) -> impl Iterator<Item = &'static str> + '_ {
+    channel
+        .signals
+        .iter()
+        .copied()
+        .filter(|standard| *standard != channel.valid && *standard != channel.ready)
+}
 
 pub fn run(args: AxiArgs) -> Result<CommandResult, WavepeekError> {
     let output_mode = crate::output_mode::OutputMode::from_json_flags(args.json, args.jsonl);

@@ -580,6 +580,107 @@ fn schema_command_includes_property_and_extract_command_branches() {
 }
 
 #[test]
+fn schema_output_validator_enforces_axi_profile_channel_payloads() {
+    let validator = output_schema_validator();
+    let axi4_lite_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "awvalid": {"path": "top.awvalid"},
+        "awready": {"path": "top.awready"},
+        "awaddr": {"path": "top.awaddr"},
+        "awprot": {"path": "top.awprot"}
+    });
+    let axi3_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "wvalid": {"path": "top.wvalid"},
+        "wready": {"path": "top.wready"},
+        "wdata": {"path": "top.wdata"},
+        "wid": {"path": "top.wid"}
+    });
+    let axi4_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "wvalid": {"path": "top.wvalid"},
+        "wready": {"path": "top.wready"},
+        "wdata": {"path": "top.wdata"}
+    });
+
+    let valid_axi4_lite_aw = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "axi",
+            "profile": "axi4-lite",
+            "issue": "H.c",
+            "mappings": axi4_lite_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "axi4-lite",
+                "channel": "aw",
+                "payload": {"awaddr": "32'h40", "awprot": "3'h0"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_axi4_lite_aw)
+        .unwrap_or_else(|error| {
+            panic!("valid AXI4-Lite AW output rejected: {error}\n{valid_axi4_lite_aw}")
+        });
+
+    let mut invalid_axi4_lite_aw = valid_axi4_lite_aw.clone();
+    invalid_axi4_lite_aw["data"]["transfers"][0]["payload"]["awlen"] = json!("8'h0");
+    assert!(
+        validator.validate(&invalid_axi4_lite_aw).is_err(),
+        "AXI4-Lite AW output must reject AXI4-only awlen payload: {invalid_axi4_lite_aw}"
+    );
+
+    let valid_axi3_w = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "axi",
+            "profile": "axi3",
+            "issue": "H.c",
+            "mappings": axi3_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "axi3",
+                "channel": "w",
+                "payload": {"wid": "4'h1", "wdata": "8'haa"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_axi3_w)
+        .unwrap_or_else(|error| panic!("valid AXI3 W output rejected: {error}\n{valid_axi3_w}"));
+
+    let invalid_axi4_w = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "axi",
+            "profile": "axi4",
+            "issue": "H.c",
+            "mappings": axi4_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "axi4",
+                "channel": "w",
+                "payload": {"wid": "4'h1", "wdata": "8'haa"}
+            }]
+        },
+        "diagnostics": []
+    });
+    assert!(
+        validator.validate(&invalid_axi4_w).is_err(),
+        "AXI4 W output must reject AXI3-only wid payload: {invalid_axi4_w}"
+    );
+}
+
+#[test]
 fn schema_command_includes_docs_command_branches() {
     let value = schema_json();
 
@@ -1014,6 +1115,7 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             "item": {
                 "time": "5ns",
                 "sample_time": "4ns",
+                "profile": "axi4-lite",
                 "channel": "aw",
                 "payload": {"awaddr": "32'h40"}
             }
@@ -1092,6 +1194,18 @@ fn schema_stream_validator_rejects_command_payload_mismatches() {
             "seq": 1,
             "command": "docs topics",
             "item": {}
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "axi4-lite",
+                "channel": "aw",
+                "payload": {"awlen": "8'h0"}
+            }
         }),
     ];
 

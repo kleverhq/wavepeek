@@ -417,6 +417,8 @@ pub struct ExtractAxiTransfer<'a> {
         description = "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
     )]
     sample_time: NormalizedTime<'a>,
+    #[schemars(description = "AXI profile name for this transfer row: axi3, axi4, or axi4-lite.")]
+    profile: &'a str,
     #[schemars(description = "AXI channel name: aw, w, b, ar, or r.")]
     channel: &'a str,
     #[schemars(description = "Payload values keyed by lowercase AXI standard signal name.")]
@@ -428,6 +430,7 @@ impl<'a> From<&'a crate::engine::axi::AxiTransfer> for ExtractAxiTransfer<'a> {
         Self {
             time: NormalizedTime::new(transfer.time.as_str()),
             sample_time: NormalizedTime::new(transfer.sample_time.as_str()),
+            profile: transfer.profile.as_str(),
             channel: transfer.channel.as_str(),
             payload: transfer
                 .payload

@@ -533,27 +533,10 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertEqual(test["command"], full_by_name[name]["command"])
 
     def test_tests_fsdb_catalog_matches_fst_catalog_except_extension(self) -> None:
-        fst_payload = json.loads((perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8"))
-        fsdb_payload = json.loads(
-            (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
-        )
+        fst_catalog = (perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8")
+        fsdb_catalog = (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
 
-        artifact_prefix = (
-            os.environ.get("RTL_ARTIFACTS_DIR", "/opt/rtl-artifacts").rstrip("/") + "/"
-        )
-
-        def normalize(value: object) -> object:
-            if isinstance(value, str):
-                if value.startswith(artifact_prefix) and value.endswith(".fsdb"):
-                    return value[: -len(".fsdb")] + ".fst"
-                return value
-            if isinstance(value, list):
-                return [normalize(item) for item in value]
-            if isinstance(value, dict):
-                return {key: normalize(item) for key, item in value.items()}
-            return value
-
-        self.assertEqual(normalize(fsdb_payload), normalize(fst_payload))
+        self.assertEqual(fsdb_catalog, fst_catalog.replace(".fst", ".fsdb"))
 
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

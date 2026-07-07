@@ -125,7 +125,7 @@ def generate_source_backed(entry: dict[str, Any]) -> None:
     for output in output_paths:
         ensure_generated_output(output)
 
-    fixture_work_dir = WORK_DIR / name
+    fixture_work_dir = work_dir_for_name(name)
     if fixture_work_dir.exists():
         shutil.rmtree(fixture_work_dir)
     fixture_work_dir.mkdir(parents=True)
@@ -164,7 +164,7 @@ def generate_derived_output(entry: dict[str, Any]) -> None:
             f"derived fixture must convert VCD to FST: {relative(source)} -> {relative(output)}"
         )
 
-    fixture_work_dir = WORK_DIR / output.stem
+    fixture_work_dir = work_dir_for_name(output.stem)
     if fixture_work_dir.exists():
         shutil.rmtree(fixture_work_dir)
     fixture_work_dir.mkdir(parents=True)
@@ -251,6 +251,21 @@ def emit_scope(node: ScopeNode, output: list[str]) -> None:
     for child in node.children:
         emit_scope(child, output)
     output.append("$upscope $end\n")
+
+
+def work_dir_for_name(name: str) -> Path:
+    if not name or not all(
+        char.isascii() and (char.isalnum() or char in "_-") for char in name
+    ):
+        raise FixtureError(
+            f"fixture work directory name must be a simple basename: {name!r}"
+        )
+    path = (WORK_DIR / name).resolve()
+    try:
+        path.relative_to(WORK_DIR.resolve())
+    except ValueError as error:
+        raise FixtureError(f"fixture work directory escapes {relative(WORK_DIR)}: {name}") from error
+    return path
 
 
 def replace_text(path: Path, content: str) -> None:

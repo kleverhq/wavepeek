@@ -92,15 +92,20 @@ fn assert_hand_dumps_are_manifested(root: &Path, policy: &WaveformPolicy) {
         .map(|entry| entry.path.clone())
         .collect::<BTreeSet<_>>();
     let actual = tracked_files(root)
+        .map(|paths| {
+            paths
+                .into_iter()
+                .filter(|path| path.starts_with("tests/fixtures/"))
+                .collect::<Vec<_>>()
+        })
         .unwrap_or_else(|| fixture_filesystem_paths(root.join("tests/fixtures/hand")))
         .into_iter()
-        .filter(|path| path.starts_with("tests/fixtures/hand/"))
         .filter(|path| has_waveform_dump_extension(path))
         .collect::<BTreeSet<_>>();
 
     assert_eq!(
         actual, expected,
-        "tracked hand VCD/FST dumps must match tests/fixtures/waveform_policy.json"
+        "tracked VCD/FST dumps under tests/fixtures must match hand dumps in tests/fixtures/waveform_policy.json"
     );
     for path in expected {
         assert!(

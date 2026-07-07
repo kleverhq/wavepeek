@@ -96,7 +96,9 @@ dev-setup: require-container
     devcontainer --version
     gtkwave --version
     iverilog -V >/dev/null
+    vvp -V >/dev/null
     vcd2fst --help >/dev/null
+    fst2vcd --help >/dev/null
     surfer --version
     mkdocs --version
     mike --version
@@ -189,7 +191,7 @@ prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog prepare-wavefo
 
 # Prepare generated FSDB fixtures from VCD test fixtures only
 prepare-fsdb-test-fixtures: require-verdi prepare-waveform-fixtures
-    bash tools/fsdb/prepare_fsdb_fixtures.sh --hand-only
+    bash tools/fsdb/prepare_fsdb_fixtures.sh --test-vcd-only
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
 check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts

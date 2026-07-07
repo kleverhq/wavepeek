@@ -26,7 +26,7 @@
     },
     {
       "path": "tests/fixtures/hand/value_real.vcd",
-      "reason": "Uses VCD real-value records for value command formatting and FSDB parity."
+      "reason": "Uses VCD real-value records for value formatting and FSDB unsupported-real coverage."
     }
   ],
   "source_backed": [

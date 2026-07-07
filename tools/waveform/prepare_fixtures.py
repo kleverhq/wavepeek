@@ -49,6 +49,7 @@ def main() -> int:
         policy = load_policy()
         GENERATED_DIR.mkdir(parents=True, exist_ok=True)
         WORK_DIR.mkdir(parents=True, exist_ok=True)
+        reconcile_generated_outputs(policy)
         for entry in policy.get("source_backed", []):
             generate_source_backed(entry)
         for entry in policy.get("derived_outputs", []):
@@ -79,6 +80,28 @@ def load_policy() -> dict[str, Any]:
         if not isinstance(policy.get(key), list):
             raise FixtureError(f"{relative(POLICY_PATH)} must contain an array named '{key}'")
     return policy
+
+
+def reconcile_generated_outputs(policy: dict[str, Any]) -> None:
+    expected = expected_generated_outputs(policy)
+    for path in sorted(GENERATED_DIR.rglob("*")):
+        if path.is_file() and path.suffix in {".vcd", ".fst"} and path not in expected:
+            path.unlink()
+            print(f"removed stale generated fixture {relative(path)}")
+
+
+def expected_generated_outputs(policy: dict[str, Any]) -> set[Path]:
+    expected: set[Path] = set()
+    for entry in policy.get("source_backed", []):
+        for output in expect_str_list(entry, "outputs"):
+            path = root_path(output)
+            ensure_generated_output(path)
+            expected.add(path)
+    for entry in policy.get("derived_outputs", []):
+        path = root_path(expect_str(entry, "output"))
+        ensure_generated_output(path)
+        expected.add(path)
+    return expected
 
 
 def generate_source_backed(entry: dict[str, Any]) -> None:

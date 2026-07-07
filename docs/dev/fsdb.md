@@ -57,7 +57,7 @@ just check-fsdb-env
 python3 -B tools/fsdb/check_fsdb_env.py --require
 ```
 
-The devcontainer also exposes selected Verdi FSDB utilities on `PATH` through `.devcontainer/verdi-tool-wrapper.sh`, including tools such as `vcd2fsdb`, `fst2vcd`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`. Use those wrapper commands for local debugging and fixture conversion instead of hard-coding `$VERDI_HOME/bin/...` paths.
+The devcontainer also exposes selected Verdi FSDB utilities on `PATH` through `.devcontainer/verdi-tool-wrapper.sh`, including tools such as `vcd2fsdb`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`. GTKWave conversion tools such as `vcd2fst` and `fst2vcd` come from the base image. Use wrapper commands for local debugging and fixture conversion instead of hard-coding `$VERDI_HOME/bin/...` paths.
 
 ## Quality gates
 

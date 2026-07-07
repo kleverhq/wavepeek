@@ -15,7 +15,7 @@ rtl_filter=""
 
 usage() {
   cat >&2 <<'EOF'
-usage: prepare_fsdb_fixtures.sh [--hand-only | --rtl-only] [--rtl-filter <regex>]
+usage: prepare_fsdb_fixtures.sh [--test-vcd-only | --hand-only | --rtl-only] [--rtl-filter <regex>]
 
 By default, prepare both VCD-derived FSDB test fixtures and RTL FST-derived
 FSDB benchmark artifacts. Use --rtl-filter with --rtl-only, or the default mode,
@@ -26,16 +26,16 @@ EOF
 parse_args() {
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --hand-only)
+      --test-vcd-only | --hand-only)
         if [ "$mode" = "rtl" ]; then
-          printf '%s\n' "error: fsdb fixture: --hand-only and --rtl-only are mutually exclusive" >&2
+          printf '%s\n' "error: fsdb fixture: --test-vcd-only and --rtl-only are mutually exclusive" >&2
           exit 2
         fi
         mode="hand"
         ;;
       --rtl-only)
         if [ "$mode" = "hand" ]; then
-          printf '%s\n' "error: fsdb fixture: --hand-only and --rtl-only are mutually exclusive" >&2
+          printf '%s\n' "error: fsdb fixture: --test-vcd-only and --rtl-only are mutually exclusive" >&2
           exit 2
         fi
         mode="rtl"
@@ -62,7 +62,7 @@ parse_args() {
   done
 
   if [ "$mode" = "hand" ] && [ -n "$rtl_filter" ]; then
-    printf '%s\n' "error: fsdb fixture: --rtl-filter cannot be used with --hand-only" >&2
+    printf '%s\n' "error: fsdb fixture: --rtl-filter cannot be used with --test-vcd-only" >&2
     exit 2
   fi
 }

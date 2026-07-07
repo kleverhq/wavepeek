@@ -7,7 +7,6 @@ import json
 import os
 import pathlib
 import sys
-from typing import Any, NamedTuple
 
 
 DEFAULT_SOURCE = pathlib.Path("bench/e2e/tests.json")
@@ -16,61 +15,27 @@ FST_SUFFIX = ".fst"
 FSDB_SUFFIX = ".fsdb"
 
 
-class Conversion(NamedTuple):
-    value: Any
-    count: int
-
-
 def fail(message: str) -> None:
     print(message, file=sys.stderr)
     raise SystemExit(1)
 
 
-def convert_artifact_paths(value: Any, artifact_dir: str) -> Conversion:
-    artifact_prefix = artifact_dir.rstrip("/") + "/"
-
-    if isinstance(value, str):
-        if value.startswith(artifact_prefix) and value.endswith(FST_SUFFIX):
-            return Conversion(value[: -len(FST_SUFFIX)] + FSDB_SUFFIX, 1)
-        return Conversion(value, 0)
-
-    if isinstance(value, list):
-        converted_items: list[Any] = []
-        count = 0
-        for item in value:
-            converted = convert_artifact_paths(item, artifact_dir)
-            converted_items.append(converted.value)
-            count += converted.count
-        return Conversion(converted_items, count)
-
-    if isinstance(value, dict):
-        converted_items: dict[str, Any] = {}
-        count = 0
-        for key, item in value.items():
-            converted = convert_artifact_paths(item, artifact_dir)
-            converted_items[str(key)] = converted.value
-            count += converted.count
-        return Conversion(converted_items, count)
-
-    return Conversion(value, 0)
-
-
-def generate_catalog(source_path: pathlib.Path, artifact_dir: str) -> tuple[str, int]:
+def generate_catalog(source_path: pathlib.Path) -> tuple[str, int]:
     try:
-        payload = json.loads(source_path.read_text(encoding="utf-8"))
+        source = source_path.read_text(encoding="utf-8")
     except OSError as error:
         fail(f"error: fsdb catalog: failed to read {source_path}: {error}")
+
+    try:
+        json.loads(source)
     except json.JSONDecodeError as error:
         fail(f"error: fsdb catalog: invalid JSON in {source_path}: {error}")
 
-    converted = convert_artifact_paths(payload, artifact_dir)
-    if converted.count == 0:
-        fail(
-            "error: fsdb catalog: no FST artifact paths found under "
-            f"{artifact_dir.rstrip('/')}/ in {source_path}"
-        )
+    count = source.count(FST_SUFFIX)
+    if count == 0:
+        fail(f"error: fsdb catalog: no {FST_SUFFIX} suffixes found in {source_path}")
 
-    return json.dumps(converted.value, indent=2) + "\n", converted.count
+    return source.replace(FST_SUFFIX, FSDB_SUFFIX), count
 
 
 def parse_args() -> argparse.Namespace:
@@ -90,8 +55,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--artifact-dir",
         default=os.environ.get("RTL_ARTIFACTS_DIR", "/opt/rtl-artifacts"),
-        help="RTL artifact directory used in benchmark catalogs "
-        "(default: RTL_ARTIFACTS_DIR or /opt/rtl-artifacts).",
+        help="Compatibility option retained for existing callers; catalog generation "
+        "replaces every .fst suffix in the source text.",
     )
     parser.add_argument(
         "--check",
@@ -105,7 +70,7 @@ def main() -> None:
     args = parse_args()
     source_path = pathlib.Path(args.source)
     output_path = pathlib.Path(args.output)
-    generated, count = generate_catalog(source_path, str(args.artifact_dir))
+    generated, count = generate_catalog(source_path)
 
     if args.check:
         try:
@@ -117,12 +82,12 @@ def main() -> None:
                 "error: fsdb catalog: "
                 f"{output_path} is stale; run `just update-bench-e2e-fsdb-catalog`"
             )
-        print(f"ok: fsdb catalog: {output_path} matches {source_path} ({count} paths)")
+        print(f"ok: fsdb catalog: {output_path} matches {source_path} ({count} suffixes)")
         return
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(generated, encoding="utf-8")
-    print(f"info: fsdb catalog: wrote {output_path} from {source_path} ({count} paths)")
+    print(f"info: fsdb catalog: wrote {output_path} from {source_path} ({count} suffixes)")
 
 
 if __name__ == "__main__":

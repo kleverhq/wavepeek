@@ -1,0 +1,98 @@
+{
+  "hand_dumps": [
+    {
+      "path": "tests/fixtures/hand/change_property_events.vcd",
+      "reason": "Uses a VCD event variable to cover event-signal handling that ordinary HDL-backed dumps do not preserve portably."
+    },
+    {
+      "path": "tests/fixtures/hand/change_property_real_output.vcd",
+      "reason": "Uses VCD real-value records for property output formatting."
+    },
+    {
+      "path": "tests/fixtures/hand/expr_triggered_collision.vcd",
+      "reason": "Combines a VCD event variable with a scope named like the event's triggered suffix."
+    },
+    {
+      "path": "tests/fixtures/hand/same_time_updates.vcd",
+      "reason": "Contains multiple value changes for the same signal at one timestamp to cover VCD event-order semantics."
+    },
+    {
+      "path": "tests/fixtures/hand/scope_mixed_kinds.vcd",
+      "reason": "Uses explicit VCD scope kinds for module, function, and task metadata."
+    },
+    {
+      "path": "tests/fixtures/hand/value_delayed.vcd",
+      "reason": "Declares a signal whose first value appears after time zero to cover missing-initial-value behavior."
+    },
+    {
+      "path": "tests/fixtures/hand/value_real.vcd",
+      "reason": "Uses VCD real-value records for value command formatting and FSDB parity."
+    }
+  ],
+  "source_backed": [
+    {
+      "name": "change_edge_cases",
+      "source": "tests/fixtures/source/change_edge_cases.v",
+      "outputs": ["tests/fixtures/generated/change_edge_cases.vcd"],
+      "reason": "Ordinary edge-trigger behavior fixture generated from HDL."
+    },
+    {
+      "name": "change_from_boundary",
+      "source": "tests/fixtures/source/change_from_boundary.v",
+      "outputs": ["tests/fixtures/generated/change_from_boundary.vcd"],
+      "reason": "Ordinary boundary timestamp fixture generated from HDL."
+    },
+    {
+      "name": "change_many_events",
+      "source": "tests/fixtures/source/change_many_events.v",
+      "outputs": ["tests/fixtures/generated/change_many_events.vcd"],
+      "reason": "Generated stress fixture with more rows than the default change limit."
+    },
+    {
+      "name": "change_property_core",
+      "source": "tests/fixtures/source/change_property_core.v",
+      "outputs": ["tests/fixtures/generated/change_property_core.vcd"],
+      "reason": "Ordinary property signal fixture generated from HDL."
+    },
+    {
+      "name": "change_property_offset_start",
+      "source": "tests/fixtures/source/change_property_offset_start.v",
+      "outputs": ["tests/fixtures/generated/change_property_offset_start.vcd"],
+      "reason": "Generated fixture whose first dumped timestamp is non-zero."
+    },
+    {
+      "name": "change_scope_ambiguous",
+      "source": "tests/fixtures/source/change_scope_ambiguous.v",
+      "outputs": ["tests/fixtures/generated/change_scope_ambiguous.vcd"],
+      "reason": "Ordinary hierarchy-name ambiguity fixture generated from HDL."
+    },
+    {
+      "name": "m2_core",
+      "source": "tests/fixtures/source/m2_core.v",
+      "outputs": [
+        "tests/fixtures/generated/m2_core.vcd",
+        "tests/fixtures/generated/m2_core.fst"
+      ],
+      "reason": "Reusable CLI hierarchy, signal, value, and cross-format parity fixture generated from HDL."
+    },
+    {
+      "name": "signal_recursive_depth",
+      "source": "tests/fixtures/source/signal_recursive_depth.v",
+      "outputs": ["tests/fixtures/generated/signal_recursive_depth.vcd"],
+      "reason": "Ordinary recursive hierarchy fixture generated from HDL."
+    },
+    {
+      "name": "value_vectors",
+      "source": "tests/fixtures/source/value_vectors.v",
+      "outputs": ["tests/fixtures/generated/value_vectors.vcd"],
+      "reason": "Ordinary vector value fixture generated from HDL."
+    }
+  ],
+  "derived_outputs": [
+    {
+      "source": "tests/fixtures/hand/expr_triggered_collision.vcd",
+      "output": "tests/fixtures/generated/expr_triggered_collision.fst",
+      "reason": "FST parity copy derived from the hand VCD event/scope collision fixture."
+    }
+  ]
+}

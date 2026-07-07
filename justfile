@@ -60,12 +60,16 @@ check-rtl-artifacts: require-container
         fi; \
     done
 
+# Regenerate source-backed waveform fixtures under tests/fixtures/generated
+prepare-waveform-fixtures: require-container
+    {{ python }} tools/waveform/prepare_fixtures.py
+
 # Regenerate canonical schema artifacts from Rust contract code
 update-schema: require-container
     cargo run --quiet --manifest-path tools/schema-gen/Cargo.toml -- --out schema
 
 # Validate canonical schema freshness and JSON contract URL
-check-schema: require-container
+check-schema: require-container prepare-waveform-fixtures
     @rm -rf "{{ schema_check_dir }}"
     cargo run --quiet --manifest-path tools/schema-gen/Cargo.toml -- --out "{{ schema_check_dir }}"
     @{{ python }} tools/schema/check_schema_contract.py --schema-dir schema --generated-dir "{{ schema_check_dir }}"
@@ -91,6 +95,8 @@ dev-setup: require-container
     actionlint -version
     devcontainer --version
     gtkwave --version
+    iverilog -V >/dev/null
+    vcd2fst --help >/dev/null
     surfer --version
     mkdocs --version
     mike --version
@@ -137,12 +143,12 @@ check-build: require-container
     cargo check
 
 # Run tests with cargo
-test: require-container check-rtl-artifacts
+test: require-container check-rtl-artifacts prepare-waveform-fixtures
     cargo test -q
     just run-if-verdi test-fsdb
 
 [private]
-coverage-src-data: require-container check-rtl-artifacts
+coverage-src-data: require-container check-rtl-artifacts prepare-waveform-fixtures
     @mkdir -p tmp/coverage
     cargo llvm-cov --workspace --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
 
@@ -178,11 +184,11 @@ lint-fsdb: require-verdi
     CARGO_TARGET_DIR=target/fsdb cargo clippy --features fsdb --all-targets -- -D warnings
 
 # Prepare generated FSDB fixtures from VCD fixtures and RTL FST artifacts
-prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog
+prepare-fsdb-fixtures: require-verdi check-bench-e2e-fsdb-catalog prepare-waveform-fixtures
     bash tools/fsdb/prepare_fsdb_fixtures.sh
 
-# Prepare generated FSDB fixtures from hand-written VCD test fixtures only
-prepare-fsdb-test-fixtures: require-verdi
+# Prepare generated FSDB fixtures from VCD test fixtures only
+prepare-fsdb-test-fixtures: require-verdi prepare-waveform-fixtures
     bash tools/fsdb/prepare_fsdb_fixtures.sh --hand-only
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
@@ -356,7 +362,7 @@ bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-rtl-artifacts build-re
         {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
 
 # Run pre-commit hooks on all files
-pre-commit: require-container check-rtl-artifacts
+pre-commit: require-container check-rtl-artifacts prepare-waveform-fixtures
     pre-commit run --all-files
 
 # Check commit messages

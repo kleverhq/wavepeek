@@ -313,13 +313,13 @@ def validate_runtime(schema_dir: Path) -> None:
         raise ContractError("wavepeek schema --input output differs from schema/input.json")
 
     info_stdout = run_cargo(
-        ["info", "--waves", "tests/fixtures/hand/m2_core.vcd", "--json"]
+        ["info", "--waves", "tests/fixtures/generated/m2_core.vcd", "--json"]
     )
     info = json.loads(info_stdout)
     require(info["$schema"] == EXPECTED_OUTPUT_URL, "runtime JSON envelope uses wrong schema URL")
 
     jsonl_stdout = run_cargo(
-        ["info", "--waves", "tests/fixtures/hand/m2_core.vcd", "--jsonl"]
+        ["info", "--waves", "tests/fixtures/generated/m2_core.vcd", "--jsonl"]
     )
     first = json.loads(jsonl_stdout.splitlines()[0])
     require(

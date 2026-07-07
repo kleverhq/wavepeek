@@ -5,7 +5,7 @@
       "command": "change",
       "args": [
         "--waves",
-        "tests/fixtures/hand/m2_core.vcd",
+        "tests/fixtures/generated/m2_core.vcd",
         "--scope",
         "top",
         "--signals",
@@ -22,7 +22,7 @@
       "command": "property",
       "args": [
         "--waves",
-        "tests/fixtures/hand/m2_core.vcd",
+        "tests/fixtures/generated/m2_core.vcd",
         "--on",
         "posedge top.clk",
         "--eval",
@@ -37,7 +37,7 @@
       "command": "property",
       "args": [
         "--waves",
-        "tests/fixtures/hand/m2_core.vcd",
+        "tests/fixtures/generated/m2_core.vcd",
         "--scope",
         "top",
         "--on",

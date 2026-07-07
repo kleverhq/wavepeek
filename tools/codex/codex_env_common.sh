@@ -252,6 +252,72 @@ ensure_hyperfine() {
     install_hyperfine
 }
 
+install_iverilog_from_deb() {
+    local apt_root
+    local install_root
+    local download_dir
+    local deb
+    local ivl_dir
+
+    command -v apt-get >/dev/null 2>&1 || error "apt-get is required to install Icarus Verilog in Codex setup"
+    command -v dpkg-deb >/dev/null 2>&1 || error "dpkg-deb is required to install Icarus Verilog in Codex setup"
+
+    apt_root="${HOME}/.cache/wavepeek-codex/apt-iverilog"
+    install_root="${HOME}/.local/opt/wavepeek-iverilog"
+    download_dir="$apt_root/download"
+    rm -rf "$apt_root"
+    mkdir -p "$apt_root/lists/partial" "$apt_root/cache/archives/partial" "$download_dir"
+
+    apt-get \
+        -o Dir::State::Lists="$apt_root/lists" \
+        -o Dir::Cache="$apt_root/cache" \
+        -o Dir::State::status=/var/lib/dpkg/status \
+        update >/dev/null
+
+    (
+        cd "$download_dir"
+        apt-get \
+            -o Dir::State::Lists="$apt_root/lists" \
+            -o Dir::Cache="$apt_root/cache" \
+            -o Dir::State::status=/var/lib/dpkg/status \
+            download iverilog >/dev/null
+    )
+
+    deb="$(find "$download_dir" -maxdepth 1 -type f -name 'iverilog_*.deb' | sort | head -n 1)"
+    [ -n "$deb" ] || error "failed to download Icarus Verilog package"
+
+    rm -rf "$install_root"
+    mkdir -p "$install_root"
+    dpkg-deb -x "$deb" "$install_root"
+    ivl_dir="$(find "$install_root/usr/lib" -type d -name ivl | sort | head -n 1)"
+    [ -n "$ivl_dir" ] || error "installed Icarus Verilog package did not contain an ivl directory"
+
+    cat >"$WAVEPEEK_CODEX_BIN_DIR/iverilog" <<EOF
+#!/usr/bin/env bash
+exec "$install_root/usr/bin/iverilog" -B "$ivl_dir" "\$@"
+EOF
+    cat >"$WAVEPEEK_CODEX_BIN_DIR/vvp" <<EOF
+#!/usr/bin/env bash
+exec "$install_root/usr/bin/vvp" -M "$ivl_dir" "\$@"
+EOF
+    chmod 0755 "$WAVEPEEK_CODEX_BIN_DIR/iverilog" "$WAVEPEEK_CODEX_BIN_DIR/vvp"
+}
+
+ensure_iverilog() {
+    if command -v iverilog >/dev/null 2>&1 && command -v vvp >/dev/null 2>&1; then
+        return
+    fi
+
+    log "Installing Icarus Verilog"
+    install_iverilog_from_deb
+}
+
+ensure_waveform_tools() {
+    ensure_iverilog
+    command -v vcd2fst >/dev/null 2>&1 || error "vcd2fst is required for waveform fixture generation; use the devcontainer or install GTKWave tools"
+    command -v fst2vcd >/dev/null 2>&1 || error "fst2vcd is required for FSDB fixture preparation; use the devcontainer or install GTKWave tools"
+}
+
 ensure_pipx_package() {
     local package_name="$1"
     local package_version="$2"
@@ -310,6 +376,7 @@ ensure_codex_tooling() {
     ensure_actionlint
     ensure_gh
     ensure_hyperfine
+    ensure_waveform_tools
     ensure_pipx_package pre-commit "$WAVEPEEK_PRECOMMIT_VERSION" pre-commit --version
     ensure_pipx_package commitizen "$WAVEPEEK_COMMITIZEN_VERSION" cz version
     ensure_rtl_artifacts

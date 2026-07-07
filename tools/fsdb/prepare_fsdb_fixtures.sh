@@ -6,6 +6,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "$repo_root/.devcontainer/env_contract.sh"
 
 hand_fixtures_dir="$repo_root/tests/fixtures/hand"
+generated_fixtures_dir="$repo_root/tests/fixtures/generated"
 fsdb_fixtures_dir="$repo_root/tests/fixtures/fsdb"
 rtl_artifacts_dir="$RTL_ARTIFACTS_DIR"
 tmp_root="$repo_root/tmp/fsdb-fixtures"
@@ -16,9 +17,9 @@ usage() {
   cat >&2 <<'EOF'
 usage: prepare_fsdb_fixtures.sh [--hand-only | --rtl-only] [--rtl-filter <regex>]
 
-By default, prepare both hand-written VCD-derived FSDB test fixtures and RTL
-FST-derived FSDB benchmark artifacts. Use --rtl-filter with --rtl-only, or the
-default mode, to restrict RTL FST basenames matched for benchmark smoke paths.
+By default, prepare both VCD-derived FSDB test fixtures and RTL FST-derived
+FSDB benchmark artifacts. Use --rtl-filter with --rtl-only, or the default mode,
+to restrict RTL FST basenames matched for benchmark smoke paths.
 EOF
 }
 
@@ -189,15 +190,20 @@ convert_vcd_fixtures() {
   local source
   local base
   local output
+  local source_dirs=("$hand_fixtures_dir")
   declare -A seen_outputs=()
+
+  if [ -d "$generated_fixtures_dir" ]; then
+    source_dirs+=("$generated_fixtures_dir")
+  fi
 
   mkdir -p "$fsdb_fixtures_dir"
   while IFS= read -r -d '' source; do
     sources+=("$source")
-  done < <(find "$hand_fixtures_dir" -type f -name '*.vcd' -print0 | sort -z)
+  done < <(find "${source_dirs[@]}" -type f -name '*.vcd' -print0 | sort -z)
 
   if [ "${#sources[@]}" -eq 0 ]; then
-    printf '%s\n' "error: fsdb fixture: no VCD fixtures found under tests/fixtures/hand" >&2
+    printf '%s\n' "error: fsdb fixture: no VCD fixtures found under tests/fixtures/hand or tests/fixtures/generated" >&2
     exit 1
   fi
 

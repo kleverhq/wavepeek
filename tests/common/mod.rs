@@ -27,10 +27,20 @@ pub fn expected_input_schema_url() -> &'static str {
 
 #[allow(dead_code)]
 pub fn fixture_path(filename: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests")
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    for directory in ["generated", "hand"] {
+        let path = root
+            .join("tests")
+            .join("fixtures")
+            .join(directory)
+            .join(filename);
+        if path.exists() {
+            return path;
+        }
+    }
+    root.join("tests")
         .join("fixtures")
-        .join("hand")
+        .join("generated")
         .join(filename)
 }
 

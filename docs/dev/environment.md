@@ -8,7 +8,7 @@ Local interactive work uses `.devcontainer/devcontainer.json`, which targets the
 
 Both devcontainer configs bind-mount only the opened repository at `/workspaces/<repo-name>`. Sibling directories beside the repository on the host are intentionally outside the container workspace.
 
-The shared image includes docs-site tooling from root `requirements-docs.txt`. `mkdocs` and `mike` are available on `PATH` in both the `dev` and `ci` stages.
+The shared image includes docs-site tooling from root `requirements-docs.txt`. `mkdocs` and `mike` are available on `PATH` in both the `dev` and `ci` stages. It also includes Icarus Verilog (`iverilog` and `vvp`) and GTKWave conversion tools (`vcd2fst` and `fst2vcd`) for deterministic waveform fixture generation.
 
 Recipes in `justfile` require `WAVEPEEK_IN_CONTAINER=1`. Set it only inside a wavepeek-managed devcontainer or CI image; outside the container, install or enter the proper environment instead of bypassing the guard.
 
@@ -26,11 +26,13 @@ The devcontainer intentionally does not mount host `~/.config/gh`. Maintainer se
 
 For first-time Codex bootstrap, run `bash tools/codex/codex_setup.sh`. This direct script path exists because the first bootstrap may need to install or repair tools before `just` recipes are safe to assume. After the environment has `just`, use `just codex-resume` for maintenance after cache resume.
 
-Codex setup uses the same RTL fixture location as the devcontainer and may populate missing fixtures under `RTL_ARTIFACTS_DIR`.
+Codex setup uses the same RTL fixture location as the devcontainer and may populate missing fixtures under `RTL_ARTIFACTS_DIR`. It also verifies the waveform fixture toolchain and installs a user-local Icarus Verilog package when the base environment does not provide one.
 
 ## Fixture Location
 
 Large RTL fixtures are baked into the devcontainer and CI image under `RTL_ARTIFACTS_DIR`, which the container sets to `/opt/rtl-artifacts`. That path is the only supported runtime fixture location.
+
+Small source-backed integration fixtures are regenerated inside the repository with `just prepare-waveform-fixtures`. Their checked-in sources live under `tests/fixtures/source/`; generated VCD/FST outputs live under ignored `tests/fixtures/generated/`.
 
 The shared environment contract lives in `.devcontainer/env_contract.sh`. Update that file, container provisioning, and Codex helper behavior together when fixture versions or layout change.
 

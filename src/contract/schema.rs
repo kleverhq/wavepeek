@@ -30,8 +30,16 @@ pub const INPUT_SCHEMA_ARTIFACT_NAME: &str = "schema-input-v2.2.json";
 pub const OUTPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json";
 pub const STREAM_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json";
 pub const INPUT_SCHEMA_URL: &str = "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json";
+pub(crate) const GENERIC_INPUT_SCHEMA_URLS: &[&str] = &[
+    INPUT_SCHEMA_URL,
+    "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+];
 
 const JSON_SCHEMA_DRAFT: &str = "https://json-schema.org/draft/2020-12/schema";
+
+pub(crate) fn is_supported_generic_input_schema_url(schema_url: &str) -> bool {
+    GENERIC_INPUT_SCHEMA_URLS.contains(&schema_url)
+}
 
 pub fn output_schema_json() -> String {
     pretty_json(&output_schema_value())

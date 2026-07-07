@@ -436,6 +436,37 @@ fn extract_axi_reuses_mapping_waveform_for_execution() {
 }
 
 #[test]
+fn extract_axi_source_rejects_legacy_generic_schema_url() {
+    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-legacy-schema.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+    let source = write_source(
+        r#"{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "kind": "extract.axi.source",
+  "profile": "axi4-lite",
+  "maps": {"aclk": "clk"}
+}
+"#,
+    );
+    let source = source.path().to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--source",
+            source.as_str(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("uses unsupported $schema"));
+}
+
+#[test]
 fn extract_axi_source_conflicts_with_explicit_profile() {
     let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-source-conflict.vcd");
     let fixture_path = fixture.path().to_string_lossy().into_owned();

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli::extract::GenericArgs;
 use crate::cli::limits::LimitArg;
-use crate::contract::schema::INPUT_SCHEMA_URL;
+use crate::contract::schema::{GENERIC_INPUT_SCHEMA_URLS, is_supported_generic_input_schema_url};
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
@@ -578,12 +578,12 @@ fn plan_from_source_file(path: &std::path::Path) -> Result<ExtractPlan, Wavepeek
         ))
     })?;
 
-    if input.schema != INPUT_SCHEMA_URL {
+    if !is_supported_generic_input_schema_url(&input.schema) {
         return Err(WavepeekError::Args(format!(
-            "extract source file '{}' uses unsupported $schema {}; expected {}",
+            "extract source file '{}' uses unsupported $schema {}; expected one of {}",
             path.display(),
             input.schema,
-            INPUT_SCHEMA_URL
+            GENERIC_INPUT_SCHEMA_URLS.join(", ")
         )));
     }
     if input.kind != SOURCE_KIND {

@@ -1,5 +1,6 @@
 use serde_json::{Map, Value, json};
 
+use crate::contract::schema::INPUT_SCHEMA_URL;
 use crate::engine::axi::{self, AxiChannelSpec, AxiProfileSpec};
 
 pub(super) fn apply_output_defs(defs: &mut Map<String, Value>) {
@@ -24,6 +25,14 @@ pub(super) fn apply_stream_context_defs(defs: &mut Map<String, Value>) {
     defs.insert("extractAxiContext".to_string(), axi_context_schema());
 }
 
+pub(super) fn apply_input_defs(defs: &mut Map<String, Value>) {
+    defs.insert("axiProfile".to_string(), axi_profile_schema());
+    defs.insert(
+        "extractAxiSourceInput".to_string(),
+        axi_source_input_schema(),
+    );
+}
+
 fn axi_profile_schema() -> Value {
     json!({
         "type": "string",
@@ -37,6 +46,88 @@ fn axi_profile_names() -> Vec<&'static str> {
         .iter()
         .map(|profile| profile.name)
         .collect()
+}
+
+fn axi_source_input_schema() -> Value {
+    let default_profile = axi::profile_specs()
+        .iter()
+        .find(|profile| profile.name == "axi4")
+        .expect("AXI4 profile must exist");
+    let non_default_branches = axi::profile_specs()
+        .iter()
+        .filter(|profile| profile.name != default_profile.name)
+        .map(axi_source_profile_branch);
+    let branches = std::iter::once(axi_source_default_profile_branch(default_profile))
+        .chain(non_default_branches)
+        .collect::<Vec<_>>();
+
+    json!({
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["$schema", "kind"],
+        "properties": {
+            "$schema": {
+                "type": "string",
+                "const": INPUT_SCHEMA_URL,
+                "description": "Input schema URL for this source document."
+            },
+            "kind": {
+                "type": "string",
+                "const": "extract.axi.source",
+                "description": "Input document kind discriminator."
+            },
+            "profile": ref_schema("axiProfile"),
+            "name": {
+                "type": "string",
+                "description": "AXI port name metadata. Defaults to axi."
+            },
+            "includes": {
+                "type": "array",
+                "description": "Regexes selecting waveform signal candidates for AXI auto-mapping.",
+                "items": {"type": "string"}
+            },
+            "maps": {
+                "type": "object",
+                "description": "Explicit mappings from lowercase AXI standard signal names to waveform signal names.",
+                "additionalProperties": {"type": "string"}
+            }
+        },
+        "allOf": [{"oneOf": branches}]
+    })
+}
+
+fn axi_source_default_profile_branch(profile: &AxiProfileSpec) -> Value {
+    json!({
+        "anyOf": [
+            {"not": {"required": ["profile"]}},
+            {"required": ["profile"], "properties": {"profile": {"const": profile.name}}}
+        ],
+        "properties": {
+            "maps": axi_input_maps_schema(profile)
+        }
+    })
+}
+
+fn axi_source_profile_branch(profile: &AxiProfileSpec) -> Value {
+    json!({
+        "required": ["profile"],
+        "properties": {
+            "profile": {"const": profile.name},
+            "maps": axi_input_maps_schema(profile)
+        }
+    })
+}
+
+fn axi_input_maps_schema(profile: &AxiProfileSpec) -> Value {
+    let mut properties = Map::new();
+    for standard in axi::standard_signals(profile) {
+        properties.insert(standard.to_string(), json!({"type": "string"}));
+    }
+    json!({
+        "type": "object",
+        "additionalProperties": false,
+        "properties": properties,
+    })
 }
 
 fn axi_data_schema() -> Value {

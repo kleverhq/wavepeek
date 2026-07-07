@@ -958,6 +958,17 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         .validate(&valid_axi)
         .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
 
+    let valid_default_axi4 = json!({
+        "$schema": expected_input_schema_url(),
+        "kind": "extract.axi.source",
+        "maps": {"awlen": "axi_awlen"}
+    });
+    validator
+        .validate(&valid_default_axi4)
+        .unwrap_or_else(|error| {
+            panic!("valid default AXI4 input document rejected: {error}\n{valid_default_axi4}")
+        });
+
     for invalid in [
         json!({
             "$schema": expected_input_schema_url(),
@@ -978,6 +989,27 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
             "profile": "axi5"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "name": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "axi4-lite",
+            "maps": {"awlen": "axi_awlen"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "maps": {"wid": "axi_wid"}
         }),
     ] {
         assert!(

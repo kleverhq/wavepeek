@@ -298,7 +298,9 @@ fn generated_input_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ExtractGenericSourcesInput<'static>>();
     generator.subschema_for::<ExtractGenericSource<'static>>();
     generator.subschema_for::<ExtractAxiSourceInput<'static>>();
-    generator.take_definitions(true)
+    let mut defs = generator.take_definitions(true);
+    axi_schema::apply_input_defs(&mut defs);
+    defs
 }
 
 fn generated_docs_payload_defs() -> Map<String, Value> {

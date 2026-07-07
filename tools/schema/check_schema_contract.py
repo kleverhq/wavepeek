@@ -264,8 +264,16 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
         "input schema must require exact extract AXI kind",
     )
     require(
-        axi_def["properties"]["profile"].get("enum") == ["axi3", "axi4", "axi4-lite"],
+        schema["$defs"]["axiProfile"].get("enum") == ["axi3", "axi4", "axi4-lite"],
         "AXI input profile enum is not the expected stable list",
+    )
+    require(
+        axi_def["properties"]["profile"] == {"$ref": "#/$defs/axiProfile"},
+        "AXI input profile must reuse the shared profile definition",
+    )
+    require(
+        "allOf" in axi_def,
+        "AXI input source must include profile-aware constraints",
     )
 
 

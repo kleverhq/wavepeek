@@ -183,6 +183,21 @@ const AMBIGUOUS_VCD: &str = concat!(
     "#0\n0!\n0\"\n0#\n"
 );
 
+const MULTI_AMBIGUOUS_VCD: &str = concat!(
+    "$date\n  today\n$end\n",
+    "$version\n  wavepeek-extract-axi-multi-ambiguous\n$end\n",
+    "$timescale 1ns $end\n",
+    "$scope module top $end\n",
+    "$var wire 1 ! clk $end\n",
+    "$var wire 1 \" axi_awvalid_a $end\n",
+    "$var wire 1 # axi_awvalid_b $end\n",
+    "$var wire 1 $ axi_arvalid_a $end\n",
+    "$var wire 1 % axi_arvalid_b $end\n",
+    "$upscope $end\n",
+    "$enddefinitions $end\n",
+    "#0\n0!\n0\"\n0#\n0$\n0%\n"
+);
+
 const MULTI_MATCH_VCD: &str = concat!(
     "$date\n  today\n$end\n",
     "$version\n  wavepeek-extract-axi-multi-match\n$end\n",
@@ -436,6 +451,45 @@ fn extract_axi_reuses_mapping_waveform_for_execution() {
 }
 
 #[test]
+fn extract_axi_source_rejects_explicit_null_strings() {
+    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-null-source-fields.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    for contents in [
+        r#"{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+  "kind": "extract.axi.source",
+  "profile": null
+}
+"#,
+        r#"{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+  "kind": "extract.axi.source",
+  "name": null
+}
+"#,
+    ] {
+        let source = write_source(contents);
+        let source = source.path().to_string_lossy().into_owned();
+
+        wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--source",
+                source.as_str(),
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains("expected string, got null"));
+    }
+}
+
+#[test]
 fn extract_axi_source_rejects_legacy_generic_schema_url() {
     let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-legacy-schema.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();
@@ -604,6 +658,31 @@ fn extract_axi_rejects_ambiguous_auto_mapping() {
             "aclk=clk",
             "--include",
             ".*awvalid.*",
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "ambiguous AXI auto-mapping for 'awvalid'",
+        ));
+}
+
+#[test]
+fn extract_axi_reports_ambiguous_auto_mapping_in_standard_order() {
+    let fixture = write_fixture(MULTI_AMBIGUOUS_VCD, "extract-axi-multi-ambiguous.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--map",
+            "aclk=clk",
+            "--include",
+            ".*valid.*",
         ])
         .assert()
         .failure()

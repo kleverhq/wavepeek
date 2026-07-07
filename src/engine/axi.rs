@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::de::Error as _;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::cli::extract::AxiArgs;
 use crate::contract::schema::INPUT_SCHEMA_URL;
@@ -170,12 +171,25 @@ struct SourceFile {
     #[serde(rename = "$schema")]
     schema: String,
     kind: String,
+    #[serde(default, deserialize_with = "optional_string")]
     profile: Option<String>,
+    #[serde(default, deserialize_with = "optional_string")]
     name: Option<String>,
     #[serde(default)]
     includes: Vec<String>,
     #[serde(default)]
     maps: BTreeMap<String, String>,
+}
+
+fn optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    match serde_json::Value::deserialize(deserializer)? {
+        serde_json::Value::String(value) => Ok(Some(value)),
+        serde_json::Value::Null => Err(D::Error::custom("expected string, got null")),
+        _ => Err(D::Error::custom("expected string")),
+    }
 }
 
 #[derive(Debug)]
@@ -826,7 +840,10 @@ fn auto_mappings(
             .push(candidate);
     }
 
-    for (standard, mut candidates) in auto {
+    for standard in standards {
+        let Some(mut candidates) = auto.remove(standard) else {
+            continue;
+        };
         candidates.sort_by(|left, right| left.path.cmp(&right.path));
         candidates.dedup_by(|left, right| left.path == right.path);
         if candidates.len() > 1 {
@@ -841,9 +858,9 @@ fn auto_mappings(
         }
         let candidate = candidates.remove(0);
         explicit.insert(
-            standard.clone(),
+            standard.to_string(),
             AxiSignalMapping {
-                standard,
+                standard: standard.to_string(),
                 display: candidate.display,
                 path: candidate.path,
             },

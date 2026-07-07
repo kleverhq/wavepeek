@@ -128,7 +128,7 @@ $ wavepeek property --waves path/to/dump.vcd --scope top \
     --on 'posedge clk' --eval 'ready && valid' \
     --capture match --sample-mode pre-edge --json
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json",
   "command": "property",
   "data": [
     {"time":"100ns","sample_time":"99999ps","kind":"match"},

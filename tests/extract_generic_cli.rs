@@ -383,6 +383,49 @@ fn extract_generic_iff_uses_event_time_while_when_uses_sample_time() {
 }
 
 #[test]
+fn extract_generic_source_file_accepts_v2_1_schema_url() {
+    let fixture = write_fixture(HANDSHAKE_VCD, "extract-generic-source-v2-1.vcd");
+    let fixture = fixture.path().to_string_lossy().into_owned();
+    let source = write_source(
+        r#"{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "kind": "extract.generic.sources",
+  "sources": [
+    {"name": "beat", "on": "posedge clk", "when": "valid && ready", "payload": ["data"]}
+  ]
+}
+"#,
+    );
+    let source = source.path().to_string_lossy().into_owned();
+
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "generic",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--source",
+            source.as_str(),
+            "--json",
+        ])
+        .output()
+        .expect("extract should execute");
+
+    assert!(output.status.success());
+    assert_eq!(
+        parse_json(&output.stdout)["data"][0],
+        json!({
+            "time": "5ns",
+            "sample_time": "4ns",
+            "source": "beat",
+            "payload": [{"path": "top.data", "value": "8'haa"}]
+        })
+    );
+}
+
+#[test]
 fn extract_generic_source_file_preserves_declaration_order_in_jsonl() {
     let fixture = write_fixture(HANDSHAKE_VCD, "extract-generic-source.vcd");
     let fixture = fixture.path().to_string_lossy().into_owned();

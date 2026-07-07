@@ -1,0 +1,13 @@
+{
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+  "kind": "extract.axi.source",
+  "profile": "axi4",
+  "name": "axi_dmem_2ch",
+  "includes": [
+    "^io_axi_dmem_(aw|ar)"
+  ],
+  "maps": {
+    "aclk": "clk",
+    "aresetn": "axi_rst_n"
+  }
+}

@@ -18,13 +18,13 @@ EXPECTED_OUTPUT_PATH = "schema/output.json"
 EXPECTED_STREAM_PATH = "schema/stream.json"
 EXPECTED_INPUT_PATH = "schema/input.json"
 EXPECTED_OUTPUT_URL = (
-    "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json"
+    "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json"
 )
 EXPECTED_STREAM_URL = (
-    "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
+    "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
 )
 EXPECTED_INPUT_URL = (
-    "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
+    "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
 )
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -108,21 +108,21 @@ def validate_catalog(catalog: dict[str, Any]) -> dict[str, dict[str, Any]]:
     validate_catalog_entry(
         by_family[OUTPUT_FAMILY],
         family=OUTPUT_FAMILY,
-        version="2.1",
+        version="2.2",
         path=EXPECTED_OUTPUT_PATH,
         url=EXPECTED_OUTPUT_URL,
     )
     validate_catalog_entry(
         by_family[STREAM_FAMILY],
         family=STREAM_FAMILY,
-        version="2.1",
+        version="2.2",
         path=EXPECTED_STREAM_PATH,
         url=EXPECTED_STREAM_URL,
     )
     validate_catalog_entry(
         by_family[INPUT_FAMILY],
         family=INPUT_FAMILY,
-        version="2.1",
+        version="2.2",
         path=EXPECTED_INPUT_PATH,
         url=EXPECTED_INPUT_URL,
     )
@@ -161,6 +161,7 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
             "value",
             "change",
             "property",
+            "extract axi",
             "extract generic",
             "docs topics",
             "docs search",
@@ -197,6 +198,7 @@ def validate_stream_schema(schema: dict[str, Any]) -> None:
             "value",
             "change",
             "property",
+            "extract axi",
             "extract generic",
         ],
         "stream command enum is not the expected stable list",
@@ -227,22 +229,51 @@ def run_cargo(args: list[str]) -> bytes:
 def validate_input_schema(schema: dict[str, Any]) -> None:
     require(schema.get("$id") == EXPECTED_INPUT_URL, "input schema $id must be exact URL")
     require(
-        schema["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
-        "input schema must require exact $schema URL with const",
+        schema.get("oneOf")
+        == [
+            {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAxiSourceInput"},
+        ],
+        "input schema root must accept generic and AXI source documents",
     )
-    require(schema.get("additionalProperties") is True, "input wrapper must allow extensions")
+    generic_def = schema["$defs"]["extractGenericSourcesInput"]
     require(
-        schema["properties"]["kind"].get("const") == "extract.generic.sources",
+        generic_def["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
+        "generic input source must require exact $schema URL with const",
+    )
+    require(
+        generic_def["properties"]["kind"].get("const") == "extract.generic.sources",
         "input schema must require exact extract generic kind",
     )
     require(
-        schema["properties"]["sources"].get("minItems") == 1,
+        generic_def["properties"]["sources"].get("minItems") == 1,
         "input sources must require at least one source",
     )
     source_def = schema["$defs"]["extractGenericSource"]
     require(
         source_def["properties"]["payload"].get("minItems") == 1,
         "input payload must require at least one signal",
+    )
+    axi_def = schema["$defs"]["extractAxiSourceInput"]
+    require(
+        axi_def["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
+        "AXI input source must require exact $schema URL with const",
+    )
+    require(
+        axi_def["properties"]["kind"].get("const") == "extract.axi.source",
+        "input schema must require exact extract AXI kind",
+    )
+    require(
+        schema["$defs"]["axiProfile"].get("enum") == ["axi3", "axi4", "axi4-lite"],
+        "AXI input profile enum is not the expected stable list",
+    )
+    require(
+        axi_def["properties"]["profile"] == {"$ref": "#/$defs/axiProfile"},
+        "AXI input profile must reuse the shared profile definition",
+    )
+    require(
+        "allOf" in axi_def,
+        "AXI input source must include profile-aware constraints",
     )
 
 

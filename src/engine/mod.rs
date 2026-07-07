@@ -1,3 +1,4 @@
+pub mod axi;
 pub mod change;
 pub mod docs;
 mod expr_runtime;
@@ -29,6 +30,7 @@ pub enum Command {
     Value(cli::value::ValueArgs),
     Change(cli::change::ChangeArgs),
     Property(cli::property::PropertyArgs),
+    ExtractAxi(cli::extract::AxiArgs),
     ExtractGeneric(cli::extract::GenericArgs),
     Docs(cli::docs::DocsArgs),
     Skill(cli::skill::SkillArgs),
@@ -44,6 +46,7 @@ pub enum CommandName {
     Value,
     Change,
     Property,
+    ExtractAxi,
     ExtractGeneric,
     Docs,
     DocsTopics,
@@ -63,6 +66,7 @@ impl Command {
             Self::Value(_) => CommandName::Value,
             Self::Change(_) => CommandName::Change,
             Self::Property(_) => CommandName::Property,
+            Self::ExtractAxi(_) => CommandName::ExtractAxi,
             Self::ExtractGeneric(_) => CommandName::ExtractGeneric,
             Self::Docs(_) => CommandName::Docs,
             Self::Skill(_) => CommandName::Skill,
@@ -78,6 +82,7 @@ impl Command {
             Self::Value(args) => OutputMode::from_json_flags(args.json, args.jsonl),
             Self::Change(args) => OutputMode::from_json_flags(args.json, args.jsonl),
             Self::Property(args) => OutputMode::from_json_flags(args.json, args.jsonl),
+            Self::ExtractAxi(args) => OutputMode::from_json_flags(args.json, args.jsonl),
             Self::ExtractGeneric(args) => OutputMode::from_json_flags(args.json, args.jsonl),
             Self::Docs(_) | Self::Skill(_) => OutputMode::Human,
         }
@@ -94,6 +99,7 @@ impl CommandName {
             Self::Value => "value",
             Self::Change => "change",
             Self::Property => "property",
+            Self::ExtractAxi => "extract axi",
             Self::ExtractGeneric => "extract generic",
             Self::Docs => "docs",
             Self::DocsTopics => "docs topics",
@@ -141,6 +147,7 @@ pub enum CommandData {
     Value(value::ValueData),
     Change(Vec<change::ChangeSnapshot>),
     Property(Vec<property::PropertyCaptureRow>),
+    ExtractAxi(axi::AxiData),
     ExtractGeneric(extract::ExtractGenericData),
     DocsTopics(DocsTopicsData),
     DocsSearch(DocsSearchData),
@@ -167,6 +174,7 @@ pub fn run(command: Command) -> Result<CommandResult, WavepeekError> {
         Command::Value(args) => value::run(args),
         Command::Change(args) => change::run(args),
         Command::Property(args) => property::run(args),
+        Command::ExtractAxi(args) => axi::run(args),
         Command::ExtractGeneric(args) => extract::run(args),
         Command::Docs(args) => docs::run(args),
         Command::Skill(args) => skill::run(args),
@@ -180,6 +188,7 @@ pub fn run_jsonl<W: std::io::Write>(
     match command {
         Command::Change(args) => change::run_jsonl(args, writer),
         Command::Property(args) => property::run_jsonl(args, writer),
+        Command::ExtractAxi(args) => axi::run_jsonl(args, writer),
         Command::ExtractGeneric(args) => extract::run_jsonl(args, writer),
         Command::Info(_) | Command::Scope(_) | Command::Signal(_) | Command::Value(_) => {
             let result = run(command)?;
@@ -204,6 +213,7 @@ mod tests {
         assert_eq!(CommandName::Value.as_str(), "value");
         assert_eq!(CommandName::Change.as_str(), "change");
         assert_eq!(CommandName::Property.as_str(), "property");
+        assert_eq!(CommandName::ExtractAxi.as_str(), "extract axi");
         assert_eq!(CommandName::ExtractGeneric.as_str(), "extract generic");
         assert_eq!(CommandName::Docs.as_str(), "docs");
         assert_eq!(CommandName::DocsTopics.as_str(), "docs topics");

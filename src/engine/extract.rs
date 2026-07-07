@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::cli::extract::GenericArgs;
 use crate::cli::limits::LimitArg;
-use crate::contract::schema::INPUT_SCHEMA_URL;
+use crate::contract::schema::{GENERIC_INPUT_SCHEMA_URLS, is_supported_generic_input_schema_url};
 use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
@@ -61,6 +62,16 @@ pub struct ExtractPlan {
     sources: Vec<ExtractSource>,
 }
 
+impl ExtractPlan {
+    pub(crate) fn new(sources: Vec<ExtractSource>) -> Self {
+        Self { sources }
+    }
+
+    pub(crate) fn source_count(&self) -> usize {
+        self.sources.len()
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExtractSource {
     declaration_index: usize,
@@ -68,6 +79,24 @@ pub struct ExtractSource {
     on: String,
     when: String,
     payload: Vec<String>,
+}
+
+impl ExtractSource {
+    pub(crate) fn new(
+        declaration_index: usize,
+        name: impl Into<String>,
+        on: impl Into<String>,
+        when: impl Into<String>,
+        payload: Vec<String>,
+    ) -> Self {
+        Self {
+            declaration_index,
+            name: name.into(),
+            on: on.into(),
+            when: when.into(),
+            payload,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,17 +119,28 @@ struct BoundExtractSource {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ExtractRunStats {
+pub(crate) struct ExtractRunStats {
     candidate_times: usize,
     event_checks: usize,
     event_matches: usize,
     predicate_true: usize,
     skipped_no_sample_time: usize,
-    emitted: usize,
-    truncated: bool,
+    pub(crate) emitted: usize,
+    pub(crate) truncated: bool,
     event_match_ns: u64,
     predicate_eval_ns: u64,
     build_emit_ns: u64,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ExtractRunArgs {
+    pub(crate) command: CommandName,
+    pub(crate) help_command: &'static str,
+    pub(crate) waves: PathBuf,
+    pub(crate) from: Option<String>,
+    pub(crate) to: Option<String>,
+    pub(crate) scope: Option<String>,
+    pub(crate) max: LimitArg,
 }
 
 struct ExtractEmitContext<'a> {
@@ -135,13 +175,13 @@ struct EventGroupCandidateTimes {
 }
 
 #[derive(Debug)]
-struct ExtractCommandOutcome {
-    source_count: usize,
-    diagnostics: Vec<Diagnostic>,
-    stats: ExtractRunStats,
+pub(crate) struct ExtractCommandOutcome {
+    pub(crate) source_count: usize,
+    pub(crate) diagnostics: Vec<Diagnostic>,
+    pub(crate) stats: ExtractRunStats,
 }
 
-trait ExtractRowSink {
+pub(crate) trait ExtractRowSink {
     fn start(&mut self) -> Result<(), WavepeekError> {
         Ok(())
     }
@@ -231,19 +271,31 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
     args: GenericArgs,
     sink: &mut S,
 ) -> Result<ExtractCommandOutcome, WavepeekError> {
-    let max_entries = max_entries(&args.max)?;
-    let mut diagnostics = Vec::new();
-    if args.max.is_unlimited() {
-        diagnostics.push(Diagnostic::warning(
-            WarningDiagnosticCode::LimitDisabled,
-            "limit disabled: --max=unlimited",
-        ));
-    }
-
     let plan = build_plan(&args)?;
-    let source_count = plan.sources.len();
+    run_plan_with_sink(
+        ExtractRunArgs {
+            command: CommandName::ExtractGeneric,
+            help_command: "wavepeek extract generic",
+            waves: args.waves,
+            from: args.from,
+            to: args.to,
+            scope: args.scope,
+            max: args.max,
+        },
+        plan,
+        sink,
+    )
+}
 
-    let debug = DebugTrace::for_command(CommandName::ExtractGeneric);
+pub(crate) fn run_plan_with_sink<S: ExtractRowSink + ?Sized>(
+    args: ExtractRunArgs,
+    plan: ExtractPlan,
+    sink: &mut S,
+) -> Result<ExtractCommandOutcome, WavepeekError> {
+    let max_entries = max_entries(&args.max)?;
+    let diagnostics = initial_diagnostics(&args.max);
+
+    let debug = DebugTrace::for_command(args.command);
     debug.event("backend.open.start", || serde_json::json!({}));
     let waveform = open_shared_waveform(args.waves.as_path())?;
     {
@@ -255,6 +307,32 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
             })
         });
     }
+
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, diagnostics, sink)
+}
+
+pub(crate) fn run_plan_with_waveform_sink<S: ExtractRowSink + ?Sized>(
+    args: ExtractRunArgs,
+    plan: ExtractPlan,
+    waveform: SharedWaveform,
+    debug: DebugTrace,
+    sink: &mut S,
+) -> Result<ExtractCommandOutcome, WavepeekError> {
+    let max_entries = max_entries(&args.max)?;
+    let diagnostics = initial_diagnostics(&args.max);
+    run_open_plan_with_sink(args, plan, waveform, debug, max_entries, diagnostics, sink)
+}
+
+fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
+    args: ExtractRunArgs,
+    plan: ExtractPlan,
+    waveform: SharedWaveform,
+    debug: DebugTrace,
+    max_entries: Option<usize>,
+    mut diagnostics: Vec<Diagnostic>,
+    sink: &mut S,
+) -> Result<ExtractCommandOutcome, WavepeekError> {
+    let source_count = plan.source_count();
     let metadata = waveform.borrow().metadata()?;
     debug.event("metadata.load.done", || serde_json::json!({}));
     let dump_time = parse_dump_time_context(&metadata)?;
@@ -269,17 +347,18 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
         })?;
 
     let from_raw = match args.from.as_deref() {
-        Some(token) => parse_bound_time(token, "--from", dump_time, &metadata)?,
+        Some(token) => parse_bound_time(token, "--from", dump_time, &metadata, args.help_command)?,
         None => dump_start_raw,
     };
     let to_raw = match args.to.as_deref() {
-        Some(token) => parse_bound_time(token, "--to", dump_time, &metadata)?,
+        Some(token) => parse_bound_time(token, "--to", dump_time, &metadata, args.help_command)?,
         None => dump_end_raw,
     };
     if from_raw > to_raw {
-        return Err(WavepeekError::Args(
-            "--from must be less than or equal to --to".to_string(),
-        ));
+        return Err(WavepeekError::Args(format!(
+            "--from must be less than or equal to --to. See '{} --help'.",
+            args.help_command
+        )));
     }
     let (indexed_timestamps, window_timestamps) = {
         let waveform_ref = waveform.borrow();
@@ -421,6 +500,17 @@ fn run_with_sink<S: ExtractRowSink + ?Sized>(
     })
 }
 
+fn initial_diagnostics(max: &LimitArg) -> Vec<Diagnostic> {
+    if max.is_unlimited() {
+        vec![Diagnostic::warning(
+            WarningDiagnosticCode::LimitDisabled,
+            "limit disabled: --max=unlimited",
+        )]
+    } else {
+        Vec::new()
+    }
+}
+
 fn max_entries(max: &LimitArg) -> Result<Option<usize>, WavepeekError> {
     match max {
         LimitArg::Numeric(0) => Err(WavepeekError::Args(
@@ -463,18 +553,15 @@ fn build_plan(args: &GenericArgs) -> Result<ExtractPlan, WavepeekError> {
     let payload = normalize_payload(payload)?;
     require_unique_payloads(&payload)?;
 
-    Ok(ExtractPlan {
-        sources: vec![ExtractSource {
-            declaration_index: 0,
-            name: args
-                .name
-                .clone()
-                .unwrap_or_else(|| DEFAULT_SOURCE_NAME.to_string()),
-            on,
-            when,
-            payload,
-        }],
-    })
+    Ok(ExtractPlan::new(vec![ExtractSource::new(
+        0,
+        args.name
+            .clone()
+            .unwrap_or_else(|| DEFAULT_SOURCE_NAME.to_string()),
+        on,
+        when,
+        payload,
+    )]))
 }
 
 fn plan_from_source_file(path: &std::path::Path) -> Result<ExtractPlan, WavepeekError> {
@@ -491,12 +578,12 @@ fn plan_from_source_file(path: &std::path::Path) -> Result<ExtractPlan, Wavepeek
         ))
     })?;
 
-    if input.schema != INPUT_SCHEMA_URL {
+    if !is_supported_generic_input_schema_url(&input.schema) {
         return Err(WavepeekError::Args(format!(
-            "extract source file '{}' uses unsupported $schema {}; expected {}",
+            "extract source file '{}' uses unsupported $schema {}; expected one of {}",
             path.display(),
             input.schema,
-            INPUT_SCHEMA_URL
+            GENERIC_INPUT_SCHEMA_URLS.join(", ")
         )));
     }
     if input.kind != SOURCE_KIND {
@@ -526,16 +613,16 @@ fn plan_from_source_file(path: &std::path::Path) -> Result<ExtractPlan, Wavepeek
         }
         let payload = normalize_payload(source.payload)?;
         require_unique_payloads(&payload)?;
-        sources.push(ExtractSource {
+        sources.push(ExtractSource::new(
             declaration_index,
-            name: source.name,
-            on: source.on,
-            when: source.when,
+            source.name,
+            source.on,
+            source.when,
             payload,
-        });
+        ));
     }
 
-    Ok(ExtractPlan { sources })
+    Ok(ExtractPlan::new(sources))
 }
 
 fn normalize_payload(payload: Vec<String>) -> Result<Vec<String>, WavepeekError> {
@@ -1027,31 +1114,32 @@ fn parse_bound_time(
     arg_name: &str,
     dump_time: DumpTimeContext,
     metadata: &crate::waveform::WaveformMetadata,
+    help_command: &str,
 ) -> Result<u64, WavepeekError> {
     match validate_time_token_to_raw(token, dump_time, true) {
         Ok(raw) => Ok(raw),
         Err(TimeValidationError::RequiresUnits) => Err(WavepeekError::Args(format!(
-            "time token '{token}' requires units. See 'wavepeek extract generic --help'."
+            "time token '{token}' requires units. See '{help_command} --help'."
         ))),
         Err(TimeValidationError::InvalidToken) => Err(WavepeekError::Args(format!(
-            "invalid time token '{token}': expected <integer><unit> (for example 10ns). See 'wavepeek extract generic --help'."
+            "invalid time token '{token}': expected <integer><unit> (for example 10ns). See '{help_command} --help'."
         ))),
         Err(TimeValidationError::TooLarge) => Err(WavepeekError::Args(format!(
-            "time '{token}' is too large to process safely. See 'wavepeek extract generic --help'."
+            "time '{token}' is too large to process safely. See '{help_command} --help'."
         ))),
         Err(TimeValidationError::OutOfBounds) => Err(WavepeekError::Args(format!(
-            "time '{}' for {} is outside dump bounds [{}, {}]. See 'wavepeek extract generic --help'.",
-            token, arg_name, metadata.time_start, metadata.time_end
+            "time '{}' for {} is outside dump bounds [{}, {}]. See '{} --help'.",
+            token, arg_name, metadata.time_start, metadata.time_end, help_command
         ))),
         Err(TimeValidationError::NotAligned) => {
             let dump_precision = format_raw_timestamp(1, dump_time.dump_tick)?;
             Err(WavepeekError::Args(format!(
-                "time '{token}' cannot be represented exactly in dump precision '{}'. See 'wavepeek extract generic --help'.",
-                dump_precision
+                "time '{token}' cannot be represented exactly in dump precision '{}'. See '{} --help'.",
+                dump_precision, help_command
             )))
         }
         Err(TimeValidationError::RawOutOfRange) => Err(WavepeekError::Args(format!(
-            "time '{token}' exceeds supported raw timestamp range. See 'wavepeek extract generic --help'."
+            "time '{token}' exceeds supported raw timestamp range. See '{help_command} --help'."
         ))),
     }
 }

@@ -345,6 +345,35 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.1.json")
 
+    def test_validate_stream_schema_json_accepts_explicit_v2_2_axi_family_for_older_package_version(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSONL stream record",
+            "$defs": {
+                "streamCommand": {
+                    "enum": [
+                        "info",
+                        "scope",
+                        "signal",
+                        "value",
+                        "change",
+                        "property",
+                        "extract axi",
+                        "extract generic",
+                    ]
+                },
+                "beginRecord": {
+                    "properties": {
+                        "$schema": {
+                            "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
+                        }
+                    }
+                },
+            },
+        }
+
+        check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.2.json")
+
     def test_validate_schema_json_requires_schema_pattern(self) -> None:
         schema = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -360,7 +389,7 @@ class CheckDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "reference"):
             check_deploy.validate_schema_json(schema, "0.5.0")
 
-    def test_validate_input_schema_json_checks_contract_shape(self) -> None:
+    def test_validate_input_schema_json_checks_legacy_contract_shape(self) -> None:
         schema = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
             "title": "wavepeek JSON input documents",
@@ -378,6 +407,42 @@ class CheckDeployTests(unittest.TestCase):
         broken["properties"]["kind"]["const"] = "wrong"
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "kind"):
             check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.1.json")
+
+    def test_validate_input_schema_json_checks_v2_2_union_contract_shape(self) -> None:
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": "wavepeek JSON input documents",
+            "oneOf": [
+                {"$ref": "#/$defs/extractGenericSourcesInput"},
+                {"$ref": "#/$defs/extractAxiSourceInput"},
+            ],
+            "$defs": {
+                "extractGenericSourcesInput": {
+                    "properties": {
+                        "$schema": {
+                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
+                        },
+                        "kind": {"const": "extract.generic.sources"},
+                    }
+                },
+                "extractAxiSourceInput": {
+                    "properties": {
+                        "$schema": {
+                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
+                        },
+                        "kind": {"const": "extract.axi.source"},
+                        "profile": {"enum": ["axi3", "axi4", "axi4-lite"]},
+                    }
+                },
+            },
+        }
+
+        check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.2.json")
+
+        broken = json.loads(json.dumps(schema))
+        broken["$defs"]["extractAxiSourceInput"]["properties"]["profile"]["enum"] = ["axi5"]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile enum"):
+            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.2.json")
 
     def test_load_pages_site_retries_and_uses_timeout(self) -> None:
         calls = 0

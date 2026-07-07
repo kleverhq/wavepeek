@@ -1,5 +1,437 @@
 {
   "$defs": {
+    "axiProfile": {
+      "description": "AXI profile name: axi3, axi4, or axi4-lite.",
+      "enum": [
+        "axi3",
+        "axi4",
+        "axi4-lite"
+      ],
+      "type": "string"
+    },
+    "extractAxiSourceInput": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "required": [
+                      "profile"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "profile": {
+                      "const": "axi4"
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ]
+                }
+              ],
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wid": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "axi3"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "axi4-lite"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+          "description": "Input schema URL for this source document.",
+          "type": "string"
+        },
+        "includes": {
+          "description": "Regexes selecting waveform signal candidates for AXI auto-mapping.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "extract.axi.source",
+          "description": "Input document kind discriminator.",
+          "type": "string"
+        },
+        "maps": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Explicit mappings from lowercase AXI standard signal names to waveform signal names.",
+          "type": "object"
+        },
+        "name": {
+          "description": "AXI port name metadata. Defaults to axi.",
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/axiProfile"
+        }
+      },
+      "required": [
+        "$schema",
+        "kind"
+      ],
+      "type": "object"
+    },
     "extractGenericSource": {
       "additionalProperties": true,
       "properties": {
@@ -31,37 +463,47 @@
         "payload"
       ],
       "type": "object"
-    }
-  },
-  "$id": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": true,
-  "description": "Canonical schema for wavepeek JSON input documents.",
-  "properties": {
-    "$schema": {
-      "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
-      "description": "Input schema URL for this source document.",
-      "type": "string"
     },
-    "kind": {
-      "const": "extract.generic.sources",
-      "description": "Input document kind discriminator.",
-      "type": "string"
-    },
-    "sources": {
-      "description": "Ordered extraction sources.",
-      "items": {
-        "$ref": "#/$defs/extractGenericSource"
+    "extractGenericSourcesInput": {
+      "additionalProperties": true,
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+          "description": "Input schema URL for this source document.",
+          "type": "string"
+        },
+        "kind": {
+          "const": "extract.generic.sources",
+          "description": "Input document kind discriminator.",
+          "type": "string"
+        },
+        "sources": {
+          "description": "Ordered extraction sources.",
+          "items": {
+            "$ref": "#/$defs/extractGenericSource"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
       },
-      "minItems": 1,
-      "type": "array"
+      "required": [
+        "$schema",
+        "kind",
+        "sources"
+      ],
+      "type": "object"
     }
   },
-  "required": [
-    "$schema",
-    "kind",
-    "sources"
+  "$id": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Canonical schema for wavepeek JSON input documents.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/extractGenericSourcesInput"
+    },
+    {
+      "$ref": "#/$defs/extractAxiSourceInput"
+    }
   ],
-  "title": "wavepeek JSON input documents",
-  "type": "object"
+  "title": "wavepeek JSON input documents"
 }

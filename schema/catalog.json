@@ -3,20 +3,20 @@
     {
       "id": "wavepeek.output",
       "path": "schema/output.json",
-      "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
-      "version": "2.1"
+      "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json",
+      "version": "2.2"
     },
     {
       "id": "wavepeek.stream-record",
       "path": "schema/stream.json",
-      "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
-      "version": "2.1"
+      "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
+      "version": "2.2"
     },
     {
       "id": "wavepeek.input",
       "path": "schema/input.json",
-      "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
-      "version": "2.1"
+      "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+      "version": "2.2"
     }
   ]
 }

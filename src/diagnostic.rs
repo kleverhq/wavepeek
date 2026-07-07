@@ -12,6 +12,7 @@ pub enum WarningDiagnosticCode {
     LimitDisabled,
     OutputTruncated,
     EmptyResult,
+    UnmatchedExtractCandidate,
 }
 
 impl WarningDiagnosticCode {
@@ -20,6 +21,7 @@ impl WarningDiagnosticCode {
             Self::LimitDisabled => "WPK-W0001",
             Self::OutputTruncated => "WPK-W0002",
             Self::EmptyResult => "WPK-W0003",
+            Self::UnmatchedExtractCandidate => "WPK-W0004",
         }
     }
 }

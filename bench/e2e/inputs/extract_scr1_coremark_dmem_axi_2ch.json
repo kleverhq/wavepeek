@@ -1,5 +1,5 @@
 {
-  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+  "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
   "kind": "extract.generic.sources",
   "sources": [
     {

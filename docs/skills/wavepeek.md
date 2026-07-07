@@ -93,7 +93,18 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
-Use `extract` on a clocked predicate when payload values are needed. The current protocol-neutral extractor is `extract generic`:
+Use `extract axi` for AXI3, AXI4, and AXI4-Lite ready/valid channels when the user wants channel transfer rows:
+
+    wavepeek extract axi \
+      --waves <FILE> \
+      --scope <SCOPE> \
+      --profile axi4 \
+      --map aclk=<CLK> \
+      --map aresetn=<RESET_N> \
+      --include '<AXI_SIGNAL_REGEX>' \
+      --json
+
+Use `extract generic` on a clocked predicate when payload values are needed for non-AXI or custom handshakes:
 
     wavepeek extract generic \
       --waves <FILE> \
@@ -104,7 +115,7 @@ Use `extract` on a clocked predicate when payload values are needed. The current
       --payload <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. It does not decode protocol-specific transactions, bursts, ordering rules, or outstanding request state; use it as a protocol-neutral row extractor.
+`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. `extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state.
 
 Use `property --capture match` when you only need timestamp rows or when you need property capture modes rather than payload extraction. Use `value --at <sample_time>` as a fallback follow-up when a payload set is decided after the property query.
 

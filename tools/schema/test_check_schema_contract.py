@@ -19,21 +19,21 @@ def current_catalog(path: str = "schema/output.json") -> dict[str, object]:
         "families": [
             {
                 "id": "wavepeek.output",
-                "version": "2.1",
+                "version": "2.2",
                 "path": path,
-                "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.1.json",
+                "url": "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json",
             },
             {
                 "id": "wavepeek.stream-record",
-                "version": "2.1",
+                "version": "2.2",
                 "path": "schema/stream.json",
-                "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json",
+                "url": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
             },
             {
                 "id": "wavepeek.input",
-                "version": "2.1",
+                "version": "2.2",
                 "path": "schema/input.json",
-                "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
+                "url": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
             },
         ],
     }

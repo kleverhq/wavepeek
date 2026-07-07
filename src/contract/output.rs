@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::BTreeMap;
 
 use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema};
 use serde::Serialize;
@@ -52,6 +53,7 @@ pub enum OutputData<'a> {
     Value(Vec<ValueSnapshot<'a>>),
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
+    ExtractAxi(ExtractAxiData<'a>),
     ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
     DocsSearch(DocsSearchData<'a>),
@@ -82,6 +84,9 @@ impl<'a> OutputData<'a> {
             )),
             (CommandName::Property, CommandData::Property(rows)) => {
                 Ok(Self::Property(rows.iter().map(PropertyRow::from).collect()))
+            }
+            (CommandName::ExtractAxi, CommandData::ExtractAxi(data)) => {
+                Ok(Self::ExtractAxi(ExtractAxiData::from(data)))
             }
             (CommandName::ExtractGeneric, CommandData::ExtractGeneric(data)) => Ok(
                 Self::ExtractGeneric(data.rows.iter().map(ExtractGenericRow::from).collect()),
@@ -382,6 +387,99 @@ impl<'a> From<&'a crate::engine::extract::ExtractGenericRow> for ExtractGenericR
             sample_time: NormalizedTime::new(row.sample_time.as_str()),
             source: row.source.as_str(),
             payload: row.payload.iter().map(ExtractPayloadValue::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiMapping")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiMapping<'a> {
+    #[schemars(description = "Canonical waveform signal path mapped to this AXI standard signal.")]
+    path: CanonicalPath<'a>,
+}
+
+impl<'a> From<&'a crate::engine::axi::AxiSignalMapping> for ExtractAxiMapping<'a> {
+    fn from(mapping: &'a crate::engine::axi::AxiSignalMapping) -> Self {
+        Self {
+            path: CanonicalPath::new(mapping.path.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiTransfer")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiTransfer<'a> {
+    #[schemars(description = "Selected AXI transfer event timestamp.")]
+    time: NormalizedTime<'a>,
+    #[schemars(
+        description = "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+    )]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "AXI profile name for this transfer row: axi3, axi4, or axi4-lite.")]
+    profile: &'a str,
+    #[schemars(description = "AXI channel name: aw, w, b, ar, or r.")]
+    channel: &'a str,
+    #[schemars(description = "Payload values keyed by lowercase AXI standard signal name.")]
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::axi::AxiTransfer> for ExtractAxiTransfer<'a> {
+    fn from(transfer: &'a crate::engine::axi::AxiTransfer) -> Self {
+        Self {
+            time: NormalizedTime::new(transfer.time.as_str()),
+            sample_time: NormalizedTime::new(transfer.sample_time.as_str()),
+            profile: transfer.profile.as_str(),
+            channel: transfer.channel.as_str(),
+            payload: transfer
+                .payload
+                .iter()
+                .map(|value| {
+                    (
+                        value.standard.as_str(),
+                        SampledValue::new(value.value.as_str()),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiData")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiData<'a> {
+    #[schemars(description = "AXI port name supplied by CLI or source JSON.")]
+    name: &'a str,
+    #[schemars(description = "AXI profile name used for standard signal mapping.")]
+    profile: &'a str,
+    #[schemars(description = "Arm IHI 0022 issue used for this profile definition.")]
+    issue: &'a str,
+    #[schemars(
+        description = "Resolved waveform mappings keyed by lowercase AXI standard signal name."
+    )]
+    mappings: BTreeMap<&'a str, ExtractAxiMapping<'a>>,
+    #[schemars(description = "Extracted AXI ready/valid transfers in event order.")]
+    transfers: Vec<ExtractAxiTransfer<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::axi::AxiData> for ExtractAxiData<'a> {
+    fn from(data: &'a crate::engine::axi::AxiData) -> Self {
+        Self {
+            name: data.name.as_str(),
+            profile: data.profile.as_str(),
+            issue: data.issue.as_str(),
+            mappings: data
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractAxiMapping::from(mapping)))
+                .collect(),
+            transfers: data
+                .transfers
+                .iter()
+                .map(ExtractAxiTransfer::from)
+                .collect(),
         }
     }
 }

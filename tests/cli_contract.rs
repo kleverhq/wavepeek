@@ -545,6 +545,7 @@ fn extract_command_without_subcommand_prints_help() {
         );
         assert!(help.contains("Usage: wavepeek extract"));
         assert!(help.contains("Commands:"));
+        assert!(help.contains("axi"));
         assert!(help.contains("generic"));
         assert!(!help.contains("fatal: args:"));
     }
@@ -973,6 +974,29 @@ fn shipped_commands_help_is_self_descriptive() {
                 "help for {command_name} must include self-descriptive fragment `{fragment}`"
             );
         }
+    }
+}
+
+#[test]
+fn extract_axi_help_is_self_descriptive() {
+    let long_help = successful_stdout_text(&["extract", "axi", "--help"]);
+    for fragment in [
+        "Extract AXI ready/valid transfer rows.",
+        "Profiles are based on Arm IHI 0022H.c.",
+        "Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.",
+        "[default: axi4]",
+        "[possible values: axi3, axi4, axi4-lite]",
+        "Builds one extraction source per complete ready/valid channel.",
+        "In source-file mode, --source provides profile, name, includes, and maps",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
+        "JSON output includes AXI metadata, mappings, and transfer rows.",
+        "Reports channel transfers only; it does not reconstruct bursts, ordering, or outstanding request state.",
+        "wavepeek docs show commands/extract",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "extract axi long help should contain `{fragment}`"
+        );
     }
 }
 

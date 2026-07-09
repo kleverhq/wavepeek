@@ -68,6 +68,7 @@ RUN apt-get update && \
     openssl libssl-dev pkg-config \
     g++ mold ccache \
     python3 python3-venv \
+    iverilog gtkwave \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean \
@@ -170,7 +171,7 @@ RUN apt-get update && \
     libx11-xcb1 libxkbcommon-x11-0 libegl1 libgl1 libglx-mesa0 libgl1-mesa-dri \
     libxt6t64 libxmu6 libnuma1 \
     jq ripgrep ugrep pdfgrep poppler-utils fd-find tree \
-    perl-doc z3 gtkwave \
+    perl-doc z3 \
     python3 pipx \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

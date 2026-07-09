@@ -7,6 +7,7 @@ Repository automation is exposed through the root `justfile`. Prefer invoking `j
 - `just dev-setup` prepares the local devcontainer and installs hooks.
 - `just codex-setup` and `just codex-resume` prepare Codex cloud sessions.
 - `just check`, `just ci`, and `just pre-commit` are the main quality gates.
+- `just prepare-waveform-fixtures` regenerates ignored VCD/FST fixtures under `tests/fixtures/generated/` from `tests/fixtures/source/` and documented hand-derived outputs.
 - `just update-schema` regenerates `schema/output.json`, `schema/stream.json`, `schema/input.json`, and `schema/catalog.json` from Rust contract code; `just check-schema` validates freshness, runtime embedding, and schema URLs.
 - `just docs-site-build`, `just docs-site-check`, `just docs-site-stage-deploy`, `just docs-site-push-staged`, and `just docs-site-check-deploy` own GitHub Pages docs preparation, publication, and deployed endpoint verification.
 - `just bench-gate`, `just bench-capture`, and `just bench-compare` own manual performance review; generated benchmark runs are ignored and are not committed baselines.
@@ -26,6 +27,6 @@ Pre-commit configuration lives in `.pre-commit-config.yaml`. Hooks should stay d
 
 ## Helper Tool Layout
 
-Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure. Benchmark gate helpers live under `tools/bench/`. Docs-site helpers live under `tools/docs/`; `prepare_mkdocs.py` generates MkDocs staging input from `wavepeek docs export`, `publish_docs.py` separates local check, staged deploy, and push-only verification, and `check_deploy.py` verifies published Pages state after deployment.
+Helper implementation code belongs in grouped root `tools/` directories with short READMEs and local tests when applicable. The stable interface remains the `just` recipe or workflow step, not an undocumented helper path. Keep helper stdout/stderr stable and return explicit non-zero exits on failure. Waveform fixture generation lives under `tools/waveform/`. Benchmark gate helpers live under `tools/bench/`. Docs-site helpers live under `tools/docs/`; `prepare_mkdocs.py` generates MkDocs staging input from `wavepeek docs export`, `publish_docs.py` separates local check, staged deploy, and push-only verification, and `check_deploy.py` verifies published Pages state after deployment.
 
 During path moves, update `justfile`, affected workflow YAML, hooks, docs, and helper tests in the same change.

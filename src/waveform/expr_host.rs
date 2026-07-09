@@ -280,10 +280,20 @@ mod tests {
     }
 
     fn fixture_path(filename: &str) -> std::path::PathBuf {
-        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("tests")
+        let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        for directory in ["generated", "hand"] {
+            let path = root
+                .join("tests")
+                .join("fixtures")
+                .join(directory)
+                .join(filename);
+            if path.exists() {
+                return path;
+            }
+        }
+        root.join("tests")
             .join("fixtures")
-            .join("hand")
+            .join("generated")
             .join(filename)
     }
 

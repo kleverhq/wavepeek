@@ -10,9 +10,13 @@ Auxiliary Python tests cover repository tooling, docs-site helpers, and benchmar
 
 ## Fixtures
 
-Prefer small hand-written `.vcd` fixtures for edge cases. Large representative `.fst` and related RTL artifacts are provisioned by the devcontainer and CI image, not downloaded during tests. Fixture path resolution is documented in `environment.md` and enforced by `just test`, `just ci`, and `just pre-commit`.
+Ordinary reusable waveform fixtures are source-backed. Store their Verilog sources under `tests/fixtures/source/`, declare expected outputs in `tests/fixtures/waveform_policy.json`, and regenerate ignored dumps under `tests/fixtures/generated/` with `just prepare-waveform-fixtures`. The generator uses Icarus Verilog for VCD output and `vcd2fst` for derived FST output.
 
-Optional FSDB tests require Verdi. `just test-fsdb` prepares only the generated FSDB fixtures derived from hand-written VCD test fixtures and runs `tests/fsdb_cli.rs` with `--features fsdb`; RTL benchmark FSDB artifacts are prepared by the benchmark recipes instead. `fsdb.md` owns the detailed SDK and fixture contract.
+Checked-in dumps under `tests/fixtures/hand/` are reserved for cases where raw VCD syntax or metadata is the contract, such as event variables, real values, missing initial values, explicit scope kinds, or same-timestamp update ordering. Every checked-in `.vcd` or `.fst` in that directory must have a reason in `tests/fixtures/waveform_policy.json`. Do not commit generated `.fsdb` fixtures.
+
+Large representative `.fst` and related RTL artifacts are provisioned by the devcontainer and CI image, not downloaded during tests. Fixture path resolution is documented in `environment.md` and enforced by `just test`, `just ci`, and `just pre-commit`.
+
+Optional FSDB tests require Verdi. `just test-fsdb` prepares only the generated FSDB fixtures derived from test VCD fixtures and runs `tests/fsdb_cli.rs` with `--features fsdb`; RTL benchmark FSDB artifacts are prepared by the benchmark recipes instead. `fsdb.md` owns the detailed SDK and fixture contract.
 
 Do not read `.fst` or `.fsdb` dumps as text. Treat binary waveform dumps as binary data and inspect them through `wavepeek`, fixture helpers, Verdi tools, or binary-safe metadata commands.
 

@@ -57,7 +57,7 @@ just check-fsdb-env
 python3 -B tools/fsdb/check_fsdb_env.py --require
 ```
 
-The devcontainer also exposes selected Verdi FSDB utilities on `PATH` through `.devcontainer/verdi-tool-wrapper.sh`, including tools such as `vcd2fsdb`, `fst2vcd`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`. Use those wrapper commands for local debugging and fixture conversion instead of hard-coding `$VERDI_HOME/bin/...` paths.
+The devcontainer also exposes selected Verdi FSDB utilities on `PATH` through `.devcontainer/verdi-tool-wrapper.sh`, including tools such as `vcd2fsdb`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`. GTKWave conversion tools such as `vcd2fst` and `fst2vcd` come from the base image. Use wrapper commands for local debugging and fixture conversion instead of hard-coding `$VERDI_HOME/bin/...` paths.
 
 ## Quality gates
 
@@ -65,7 +65,7 @@ The main gates are FSDB-aware but not Verdi-mandatory:
 
 - `just lint` runs `just lint-fsdb` when Verdi is available.
 - `just check` runs `just check-fsdb-build` when Verdi is available.
-- `just test` and `just ci` run `just test-fsdb` when Verdi is available; this path prepares only hand-written VCD-derived FSDB test fixtures.
+- `just test` and `just ci` run `just test-fsdb` when Verdi is available; this path prepares only FSDB test fixtures derived from the VCD fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`.
 - `just bench-e2e-smoke-commit` runs `just bench-e2e-fsdb-smoke-commit` when Verdi is available; the pre-commit smoke prepares only the filtered RTL FSDB artifacts it executes.
 
 When Verdi is absent, the wrapper prints the `skip: fsdb: ...` message from `tools/fsdb/check_fsdb_env.py` and continues. If Verdi-related environment variables are set but inconsistent, the gates fail instead of silently skipping.
@@ -86,10 +86,10 @@ just bench-e2e-fsdb-smoke-commit
 
 Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates ignored FSDB files from two sources:
 
-- committed hand-written VCD fixtures under `tests/fixtures/hand/`, written to `tests/fixtures/fsdb/`;
+- VCD test fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`, written to `tests/fixtures/fsdb/`;
 - RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity.
 
-`just prepare-fsdb-test-fixtures` limits preparation to the hand-written VCD-derived test fixtures. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
+`just prepare-fsdb-test-fixtures` limits preparation to the VCD-derived test fixtures. Source-backed VCD fixtures are regenerated first by `just prepare-waveform-fixtures`. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 
 `bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths. Update the FST catalog first, then run:
 

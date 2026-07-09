@@ -14,6 +14,12 @@
 - Fixture contract coverage lives in `command_fixture_contract.rs`.
 - Keep command manifests small, explicit, and limited to durable command contracts.
 
+## Waveform Fixture Policy
+
+- Source-backed waveform fixtures live under `fixtures/source/` and generate ignored VCD/FST outputs under `fixtures/generated/` through `just prepare-waveform-fixtures`.
+- Checked-in hand dumps under `fixtures/hand/` must be format-specific and documented in `fixtures/waveform_policy.json`.
+- `waveform_fixture_policy.rs` verifies the manifest, generated outputs, and tracked-dump policy.
+
 ## Expression Integration Policy
 
 - Capability suites stay split by engine surface in `expression_parse.rs`, `expression_event_runtime.rs`, `expression_integral_boolean.rs`, and `expression_rich_types.rs`.

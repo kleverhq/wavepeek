@@ -200,7 +200,7 @@ fn info_json() -> Value {
         &[
             "info",
             "--waves",
-            "tests/fixtures/hand/m2_core.vcd",
+            "tests/fixtures/generated/m2_core.vcd",
             "--json",
         ],
         "info",
@@ -378,7 +378,7 @@ fn runtime_info_envelope_uses_diagnostics_not_warnings() {
 
 #[test]
 fn runtime_metadata_json_outputs_validate_against_schema() {
-    let fixture = "tests/fixtures/hand/m2_core.vcd";
+    let fixture = "tests/fixtures/generated/m2_core.vcd";
 
     let info = run_json_command(&["info", "--waves", fixture, "--json"], "info");
     assert_eq!(info["data"]["time_unit"], "1ns");
@@ -403,7 +403,7 @@ fn runtime_metadata_json_outputs_validate_against_schema() {
 
 #[test]
 fn runtime_waveform_data_json_outputs_validate_against_schema() {
-    let fixture = "tests/fixtures/hand/m2_core.vcd";
+    let fixture = "tests/fixtures/generated/m2_core.vcd";
 
     let value = run_json_command(
         &[

@@ -7,7 +7,8 @@ use tempfile::NamedTempFile;
 
 mod common;
 use common::{
-    expected_input_schema_url, expected_schema_url, expected_stream_schema_url, wavepeek_cmd,
+    expected_input_schema_url, expected_schema_url, expected_stream_schema_url, fixture_path,
+    wavepeek_cmd,
 };
 
 fn output_schema_validator() -> jsonschema::Validator {
@@ -38,10 +39,8 @@ fn parse_json(stdout: &[u8]) -> Value {
     value
 }
 
-fn write_fixture(contents: &str, suffix: &str) -> NamedTempFile {
-    let fixture = NamedTempFile::with_suffix(suffix).expect("temp fixture should create");
-    fs::write(fixture.path(), contents).expect("fixture should write");
-    fixture
+fn waveform_fixture(filename: &str) -> String {
+    fixture_path(filename).to_string_lossy().into_owned()
 }
 
 fn write_source(contents: &str) -> NamedTempFile {
@@ -67,153 +66,9 @@ fn parse_stream(stdout: &[u8]) -> Vec<Value> {
         .collect()
 }
 
-const AXI_LITE_VCD: &str = concat!(
-    "$date\n  today\n$end\n",
-    "$version\n  wavepeek-extract-axi-test\n$end\n",
-    "$timescale 1ns $end\n",
-    "$scope module top $end\n",
-    "$var wire 1 ! clk $end\n",
-    "$var wire 1 \" aresetn $end\n",
-    "$var wire 1 # axi_aw_valid_o $end\n",
-    "$var wire 1 $ axi_aw_ready_i $end\n",
-    "$var wire 8 % axi_aw_addr_o $end\n",
-    "$var wire 3 & axi_aw_prot_o $end\n",
-    "$var wire 1 ' axi_w_valid_o $end\n",
-    "$var wire 1 ( axi_w_ready_i $end\n",
-    "$var wire 8 ) axi_w_data_o $end\n",
-    "$var wire 1 * axi_w_strb_o $end\n",
-    "$var wire 1 + axi_b_valid_i $end\n",
-    "$var wire 1 , axi_b_ready_o $end\n",
-    "$var wire 2 - axi_b_resp_i $end\n",
-    "$var wire 1 . axi_ar_valid_o $end\n",
-    "$var wire 1 / axi_ar_ready_i $end\n",
-    "$var wire 8 : axi_ar_addr_o $end\n",
-    "$var wire 3 ; axi_ar_prot_o $end\n",
-    "$var wire 1 < axi_r_valid_i $end\n",
-    "$var wire 1 = axi_r_ready_o $end\n",
-    "$var wire 8 > axi_r_data_i $end\n",
-    "$var wire 2 ? axi_r_resp_i $end\n",
-    "$var wire 1 @ axi_misc_o $end\n",
-    "$upscope $end\n",
-    "$enddefinitions $end\n",
-    "#0\n",
-    "0!\n",
-    "1\"\n",
-    "0#\n",
-    "1$\n",
-    "b00000000 %\n",
-    "b000 &\n",
-    "0'\n",
-    "1(\n",
-    "b00000000 )\n",
-    "1*\n",
-    "0+\n",
-    "1,\n",
-    "b00 -\n",
-    "0.\n",
-    "1/\n",
-    "b00000000 :\n",
-    "b000 ;\n",
-    "0<\n",
-    "1=\n",
-    "b00000000 >\n",
-    "b00 ?\n",
-    "1@\n",
-    "#4\n",
-    "1#\n",
-    "b00010010 %\n",
-    "b010 &\n",
-    "1'\n",
-    "b10101010 )\n",
-    "1+\n",
-    "b01 -\n",
-    "1.\n",
-    "b00110100 :\n",
-    "b011 ;\n",
-    "1<\n",
-    "b01010101 >\n",
-    "b10 ?\n",
-    "#5\n",
-    "1!\n",
-    "#6\n",
-    "0!\n",
-    "#9\n",
-    "0\"\n",
-    "b11111111 %\n",
-    "#10\n",
-    "1!\n"
-);
-
-const AXI3_W_VCD: &str = concat!(
-    "$date\n  today\n$end\n",
-    "$version\n  wavepeek-extract-axi3-w\n$end\n",
-    "$timescale 1ns $end\n",
-    "$scope module top $end\n",
-    "$var wire 1 ! clk $end\n",
-    "$var wire 1 \" axi_wvalid $end\n",
-    "$var wire 1 # axi_wready $end\n",
-    "$var wire 4 $ axi_wid $end\n",
-    "$var wire 8 % axi_wdata $end\n",
-    "$upscope $end\n",
-    "$enddefinitions $end\n",
-    "#0\n",
-    "0!\n",
-    "0\"\n",
-    "1#\n",
-    "b0000 $\n",
-    "b00000000 %\n",
-    "#4\n",
-    "1\"\n",
-    "b1010 $\n",
-    "b11001100 %\n",
-    "#5\n",
-    "1!\n"
-);
-
-const AMBIGUOUS_VCD: &str = concat!(
-    "$date\n  today\n$end\n",
-    "$version\n  wavepeek-extract-axi-ambiguous\n$end\n",
-    "$timescale 1ns $end\n",
-    "$scope module top $end\n",
-    "$var wire 1 ! clk $end\n",
-    "$var wire 1 \" axi_awvalid_o $end\n",
-    "$var wire 1 # other_awvalid_o $end\n",
-    "$upscope $end\n",
-    "$enddefinitions $end\n",
-    "#0\n0!\n0\"\n0#\n"
-);
-
-const MULTI_AMBIGUOUS_VCD: &str = concat!(
-    "$date\n  today\n$end\n",
-    "$version\n  wavepeek-extract-axi-multi-ambiguous\n$end\n",
-    "$timescale 1ns $end\n",
-    "$scope module top $end\n",
-    "$var wire 1 ! clk $end\n",
-    "$var wire 1 \" axi_awvalid_a $end\n",
-    "$var wire 1 # axi_awvalid_b $end\n",
-    "$var wire 1 $ axi_arvalid_a $end\n",
-    "$var wire 1 % axi_arvalid_b $end\n",
-    "$upscope $end\n",
-    "$enddefinitions $end\n",
-    "#0\n0!\n0\"\n0#\n0$\n0%\n"
-);
-
-const MULTI_MATCH_VCD: &str = concat!(
-    "$date\n  today\n$end\n",
-    "$version\n  wavepeek-extract-axi-multi-match\n$end\n",
-    "$timescale 1ns $end\n",
-    "$scope module top $end\n",
-    "$var wire 1 ! clk $end\n",
-    "$var wire 1 \" axi_awvalid_awready $end\n",
-    "$upscope $end\n",
-    "$enddefinitions $end\n",
-    "#0\n0!\n0\"\n"
-);
-
 #[test]
 fn extract_axi_json_automaps_axi4_lite_and_gates_reset() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-lite.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     let output = wavepeek_cmd()
         .args([
@@ -270,8 +125,7 @@ fn extract_axi_json_automaps_axi4_lite_and_gates_reset() {
 
 #[test]
 fn extract_axi_human_defaults_to_axi4() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-default.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     wavepeek_cmd()
         .args([
@@ -299,8 +153,7 @@ fn extract_axi_human_defaults_to_axi4() {
 
 #[test]
 fn extract_axi3_profile_extracts_wid() {
-    let fixture = write_fixture(AXI3_W_VCD, "extract-axi3-w.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi3_w.vcd");
 
     let output = wavepeek_cmd()
         .args([
@@ -335,8 +188,7 @@ fn extract_axi3_profile_extracts_wid() {
 
 #[test]
 fn extract_axi_source_jsonl_includes_begin_context() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-source.vcd");
-    let fixture_path = fixture.path().to_string_lossy().into_owned();
+    let fixture_path = waveform_fixture("extract_axi_lite.vcd");
     let source = write_source(&format!(
         r#"{{
   "$schema": "{}",
@@ -385,8 +237,7 @@ fn extract_axi_source_jsonl_includes_begin_context() {
 
 #[test]
 fn extract_axi_profile_flag_accepts_case_insensitive_alias() {
-    let fixture = write_fixture(AXI3_W_VCD, "extract-axi3-profile-case.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi3_w.vcd");
 
     let output = wavepeek_cmd()
         .args([
@@ -416,8 +267,7 @@ fn extract_axi_profile_flag_accepts_case_insensitive_alias() {
 
 #[test]
 fn extract_axi_reuses_mapping_waveform_for_execution() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-single-open.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     let output = wavepeek_cmd()
         .env("DEBUG", "1")
@@ -452,8 +302,7 @@ fn extract_axi_reuses_mapping_waveform_for_execution() {
 
 #[test]
 fn extract_axi_source_rejects_explicit_null_strings() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-null-source-fields.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     for contents in [
         r#"{
@@ -491,8 +340,7 @@ fn extract_axi_source_rejects_explicit_null_strings() {
 
 #[test]
 fn extract_axi_source_rejects_legacy_generic_schema_url() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-legacy-schema.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
     let source = write_source(
         r#"{
   "$schema": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json",
@@ -522,8 +370,7 @@ fn extract_axi_source_rejects_legacy_generic_schema_url() {
 
 #[test]
 fn extract_axi_source_conflicts_with_explicit_profile() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-source-conflict.vcd");
-    let fixture_path = fixture.path().to_string_lossy().into_owned();
+    let fixture_path = waveform_fixture("extract_axi_lite.vcd");
     let source = write_source(&format!(
         r#"{{"$schema":"{}","kind":"extract.axi.source","maps":{{"aclk":"clk"}}}}"#,
         expected_input_schema_url()
@@ -550,8 +397,7 @@ fn extract_axi_source_conflicts_with_explicit_profile() {
 
 #[test]
 fn extract_axi_warns_for_unmatched_include_candidates() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-warning.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     let output = wavepeek_cmd()
         .args([
@@ -587,8 +433,7 @@ fn extract_axi_warns_for_unmatched_include_candidates() {
 
 #[test]
 fn extract_axi_does_not_warn_for_explicitly_mapped_include_path() {
-    let fixture = write_fixture(AXI3_W_VCD, "extract-axi-explicit-include.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi3_w.vcd");
 
     let output = wavepeek_cmd()
         .args([
@@ -618,8 +463,7 @@ fn extract_axi_does_not_warn_for_explicitly_mapped_include_path() {
 
 #[test]
 fn extract_axi_rejects_single_candidate_matching_multiple_standards() {
-    let fixture = write_fixture(MULTI_MATCH_VCD, "extract-axi-multi-match.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_multi_match.vcd");
 
     wavepeek_cmd()
         .args([
@@ -643,8 +487,7 @@ fn extract_axi_rejects_single_candidate_matching_multiple_standards() {
 
 #[test]
 fn extract_axi_rejects_ambiguous_auto_mapping() {
-    let fixture = write_fixture(AMBIGUOUS_VCD, "extract-axi-ambiguous.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_ambiguous.vcd");
 
     wavepeek_cmd()
         .args([
@@ -668,8 +511,7 @@ fn extract_axi_rejects_ambiguous_auto_mapping() {
 
 #[test]
 fn extract_axi_reports_ambiguous_auto_mapping_in_standard_order() {
-    let fixture = write_fixture(MULTI_AMBIGUOUS_VCD, "extract-axi-multi-ambiguous.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_multi_ambiguous.vcd");
 
     wavepeek_cmd()
         .args([
@@ -693,8 +535,7 @@ fn extract_axi_reports_ambiguous_auto_mapping_in_standard_order() {
 
 #[test]
 fn extract_axi_rejects_partial_ready_valid_pairs() {
-    let fixture = write_fixture(AXI_LITE_VCD, "extract-axi-partial.vcd");
-    let fixture = fixture.path().to_string_lossy().into_owned();
+    let fixture = waveform_fixture("extract_axi_lite.vcd");
 
     wavepeek_cmd()
         .args([

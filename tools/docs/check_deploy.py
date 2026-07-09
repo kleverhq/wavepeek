@@ -459,6 +459,9 @@ def validate_input_schema_json(
             "axi3",
             "axi4",
             "axi4-lite",
+            "ace",
+            "ace-lite",
+            "ace5",
         ]:
             fail("input schema artifact AXI profile enum mismatch")
         return

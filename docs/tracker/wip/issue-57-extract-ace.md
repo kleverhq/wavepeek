@@ -25,13 +25,13 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
 - [x] (2026-07-09 20:01Z) Read issue #57, the existing AXI extraction implementation, public contracts, test policies, schema generation path, and Arm IHI 0022H.c signal definitions.
 - [x] (2026-07-09 20:01Z) Resolve the ACE-Lite `awunique` omission with the maintainer: include it as a legal optional payload signal.
 - [x] (2026-07-09 20:09Z) Review and correct the initial ExecPlan, including the exact ACE5 whitelist, TDD milestone boundaries, schema source ownership, and executable test commands.
-- [ ] Commit this initial ExecPlan.
-- [ ] Milestone 1 RED: add focused unit and CLI parsing tests plus source-backed ACE-family fixtures and human-output end-to-end tests for profile names, aliases, channel order, whitelists, extraction, source-file aliases, exclusions, token matching, and collision safety; confirm the tests fail because the profiles do not exist.
-- [ ] Milestone 1 GREEN: implement profile metadata, runtime extraction, and auto-mapping tokenization, run focused tests, review the milestone, address findings through tests, and commit it.
-- [ ] Milestone 2 RED: add generated-contract tests for canonical profile enums and exact profile/channel payload branches; confirm they fail while schemas still describe only the original profiles.
-- [ ] Milestone 2 GREEN: update contract sources and generated output/input/stream schema artifacts, run focused tests and schema checks, review the milestone, address findings through tests, and commit it.
-- [ ] Milestone 3 RED: extend help/docs/skill contract tests so stale three-profile wording and missing new profile names fail.
-- [ ] Milestone 3 GREEN: update help, public docs, packaged skill, and changelog, run focused documentation tests, review the milestone, address findings through tests, and commit it.
+- [x] (2026-07-09 20:10Z) Commit the reviewed initial ExecPlan as `2b0fa41`.
+- [x] (2026-07-09 20:17Z) Milestone 1 RED: add focused unit and CLI parsing tests plus source-backed ACE-family fixtures and human-output end-to-end tests; four unit tests and five integration tests fail because the profiles and AC/CR/CD token decomposition do not exist.
+- [x] (2026-07-09 20:26Z) Milestone 1 GREEN: implement profile metadata, runtime extraction, and AC/CR/CD auto-mapping tokenization; focused tests, all 669 library tests, fixture policy, formatting, and lint pass; code and protocol-data reviews plus a fresh control review report no remaining findings. Commit is deferred until Milestone 2 because profile specs immediately own generated schemas checked by mandatory hooks.
+- [x] (2026-07-09 20:29Z) Milestone 2 RED: add JSON, JSONL, and generated-contract tests for canonical profile enums and exact profile/channel payload branches; three integration tests and four schema tests fail against the stale three-profile artifacts.
+- [x] (2026-07-09 20:42Z) Milestone 2 GREEN: update contract sources, schema and deployment checker expectations, and generated output/input/stream artifacts; 28 schema tests, 24 AXI integration tests, schema drift checks, formatting, and lint pass; contract and test reviews plus a fresh control review report no remaining findings. `schema/catalog.json` remained unchanged. Commit is deferred until Milestone 3 because generated CLI help already invalidates the stale help contract test.
+- [x] (2026-07-09 20:42Z) Milestone 3 RED: the existing help contract fails on the expanded clap value list; new packaged-skill and embedded-doc tests fail because ACE-family guidance is absent.
+- [x] (2026-07-09 20:47Z) Milestone 3 GREEN: update help, public docs, packaged skill, changelog, and deployment-checker fixture; 50 CLI contract tests, 25 docs tests, 3 skill tests, 79 docs-tool tests, full auxiliary tests, formatting, and lint pass; docs review and a fresh control review report no findings.
 - [ ] Run `just check`, `just ci`, and any required auxiliary validation; capture concise evidence.
 - [ ] Run parallel final code, contract/schema/test, and docs reviews followed by an independent consolidated control review; resolve every substantive finding.
 - [ ] Complete this plan's retrospective, remove this branch-local WIP plan in a cleanup commit, push `feat/extract_ace`, and open a GitHub pull request closing issue #57.
@@ -46,6 +46,15 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
 
 - Observation: Independent plan review caught an initial draft ACE5 inventory that exceeded issue #57 and identified a milestone dependency between JSON integration tests and generated schemas.
   Evidence: The corrected plan now uses the issue's exact ACE5 lists and moves schema-validating JSON and JSONL tests to Milestone 2.
+
+- Observation: The waveform fixture policy test inventories tracked Verilog sources with `git ls-files`, so a new source-backed fixture must be staged before that test can recognize it.
+  Evidence: The test initially reported all three new source files missing from the tracked-source set, then passed unchanged after staging those files.
+
+- Observation: Milestone review found protocol-invalid field widths in otherwise functional test fixtures.
+  Evidence: `AWSNOOP`, `AxBAR`, `BIDUNQ`, and `AxVMIDEXT` were corrected to their H.c widths; the existing human-output assertions failed after fixture regeneration and were updated only after demonstrating the corrected payloads.
+
+- Observation: The GitHub Pages deployment checker independently hard-coded the AXI input profile enum in addition to the canonical schema checker.
+  Evidence: A repository-wide stale-profile search found `tools/docs/check_deploy.py` and its test fixture after schema review; both now require the six canonical values.
 
 ## Decision Log
 
@@ -65,9 +74,13 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
   Rationale: The change spans protocol data, matching behavior, generated machine contracts, fixtures, and documentation. Focused review at each boundary limits the size of defects carried into later generated artifacts.
   Date/Author: 2026-07-09 / maintainer and coding agent
 
+- Decision: Package reviewed Milestone 1 runtime work with Milestone 2 generated contracts instead of forcing an intermediate commit.
+  Rationale: `profile_specs()` immediately drives the canonical schemas, and mandatory commit hooks reject schema drift. Bypassing hooks is prohibited, so an independently reviewed runtime milestone remains a valid stopping point but not a valid commit boundary.
+  Date/Author: 2026-07-09 / coding agent
+
 ## Outcomes & Retrospective
 
-Implementation has not started. The initial investigation established that the existing profile-driven architecture can support the requested profiles without a new extraction engine and identified one issue correction: ACE-Lite includes optional `awunique`.
+Milestones 1 through 3 are complete. The CLI and runtime recognize all three ACE-family profiles, exact profile data drives extraction without a new engine, AC/CR/CD auto-mapping is collision-tested, and source-backed fixtures demonstrate all profile channels. Exact input/output/stream schema branches validate canonical profiles and profile-specific mappings, channels, and payloads. Help, embedded docs, packaged skill, changelog, and deployment checks describe the expanded support. TDD recorded expected failures before each behavior slice. Milestone reviews corrected fixture widths and strengthened isolated schema rejection coverage; all follow-up and control reviews are clean. Full repository gates and final consolidated review remain.
 
 ## Context and Orientation
 
@@ -201,3 +214,11 @@ Plan revision note (2026-07-09): Corrected the ACE5 whitelist to match issue #57
 Plan revision note (2026-07-09): Moved schema-validating JSON and JSONL tests to the contract milestone, removed a nonexistent `profile_spec()` helper from the implementation instructions, and documented all four generated schema artifacts after plan re-review.
 
 Plan revision note (2026-07-09): Aligned the Progress checklist with the Milestone 1 prose by deferring JSON and JSONL end-to-end tests to the contract milestone after the final plan control review.
+
+Plan revision note (2026-07-09): Recorded Milestone 1 RED/GREEN evidence, the tracked-fixture policy behavior, review-driven field-width corrections, successful focused/static validation, and clean follow-up and control reviews.
+
+Plan revision note (2026-07-09): Deferred the Milestone 1 commit to the generated-contract milestone because mandatory schema hooks make profile data and schema snapshots one commit unit; no hook is bypassed.
+
+Plan revision note (2026-07-09): Recorded Milestone 2 RED/GREEN evidence, isolated schema negative cases added after test review, clean follow-up/control reviews, the deployment-checker enum update, and the help/docs/skill RED state for Milestone 3.
+
+Plan revision note (2026-07-09): Recorded Milestone 3 GREEN validation and clean documentation/control reviews; all feature, contract, and guidance milestones are ready for a coherent commit and final repository gates.

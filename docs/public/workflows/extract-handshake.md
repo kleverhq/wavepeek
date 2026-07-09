@@ -11,7 +11,7 @@ see_also:
 ---
 # Extract handshakes from synchronous bus
 
-Use `extract` commands when you need a compact table of transfer-like events from a waveform. Use `extract axi` for AXI3, AXI4, and AXI4-Lite ready/valid channels. Use `extract generic` for other protocol-neutral handshakes.
+Use `extract` commands when you need a compact table of transfer-like events from a waveform. Use `extract axi` for AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 ready/valid channels. Use `extract generic` for other protocol-neutral handshakes.
 
 For AXI, map the clock and let include regexes find standard channel signals:
 

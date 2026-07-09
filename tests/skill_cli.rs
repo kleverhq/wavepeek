@@ -61,6 +61,9 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
         "Event/transaction rows, handshakes, beats, and counts with payload values: `extract`."
     ));
     assert!(packaged.contains(
+        "`extract axi` supports AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles."
+    ));
+    assert!(packaged.contains(
         "`extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state."
     ));
     assert!(!packaged.contains("protocol transaction enumeration"));

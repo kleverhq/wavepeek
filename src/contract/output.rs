@@ -417,9 +417,13 @@ pub struct ExtractAxiTransfer<'a> {
         description = "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
     )]
     sample_time: NormalizedTime<'a>,
-    #[schemars(description = "AXI profile name for this transfer row: axi3, axi4, or axi4-lite.")]
+    #[schemars(
+        description = "AXI profile name for this transfer row: axi3, axi4, axi4-lite, ace, ace-lite, or ace5."
+    )]
     profile: &'a str,
-    #[schemars(description = "AXI channel name: aw, w, b, ar, or r.")]
+    #[schemars(
+        description = "Profile-specific AXI channel name. ACE and ACE5 add ac, cr, and cd to the base aw, w, b, ar, and r channels."
+    )]
     channel: &'a str,
     #[schemars(description = "Payload values keyed by lowercase AXI standard signal name.")]
     payload: BTreeMap<&'a str, SampledValue<'a>>,

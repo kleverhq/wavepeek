@@ -50,6 +50,19 @@ fn write_source(contents: &str) -> NamedTempFile {
     source
 }
 
+fn human_transfer_channels(output: &str) -> Vec<&str> {
+    output
+        .lines()
+        .filter(|line| line.starts_with('@'))
+        .map(|line| {
+            line.split_once('[')
+                .and_then(|(_, rest)| rest.split_once(']'))
+                .map(|(channel, _)| channel)
+                .expect("transfer row should contain a channel")
+        })
+        .collect()
+}
+
 fn parse_stream(stdout: &[u8]) -> Vec<Value> {
     let output = std::str::from_utf8(stdout).expect("stdout should be UTF-8 JSONL");
     assert!(output.ends_with('\n'));
@@ -64,6 +77,397 @@ fn parse_stream(stdout: &[u8]) -> Vec<Value> {
             record
         })
         .collect()
+}
+
+#[test]
+fn extract_ace_human_automaps_base_and_coherency_channels() {
+    let fixture = waveform_fixture("extract_ace.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace_.*",
+        ])
+        .output()
+        .expect("extract ace should execute");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+    assert!(stdout.contains("profile: ace\nissue: H.c"));
+    assert_eq!(
+        human_transfer_channels(&stdout),
+        ["aw", "w", "b", "ar", "r", "ac", "cr", "cd"]
+    );
+    assert!(stdout.contains("[aw] awdomain=2'h2 awunique=1'h1"));
+    assert!(stdout.contains("[ac] acaddr=16'h1234"));
+    assert!(stdout.contains("[cr] crresp=5'h15"));
+    assert!(stdout.contains("[cd] cddata=8'hc3 cdlast=1'h1"));
+}
+
+#[test]
+fn extract_ace_lite_cli_alias_automaps_address_additions_only() {
+    let fixture = waveform_fixture("extract_ace_lite.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ACE_LITE",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace_lite_.*",
+        ])
+        .output()
+        .expect("extract ace-lite should execute");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+    assert!(stdout.contains("profile: ace-lite\nissue: H.c"));
+    assert_eq!(human_transfer_channels(&stdout), ["aw", "ar"]);
+    assert!(stdout.contains("[aw] awdomain=2'h2 awsnoop=3'h3 awbar=2'h1 awunique=1'h1"));
+    assert!(stdout.contains("[ar] ardomain=2'h1 arsnoop=4'h4 arbar=2'h1"));
+    assert!(!stdout.contains("[ac]"));
+    assert!(!stdout.contains("[cr]"));
+    assert!(!stdout.contains("[cd]"));
+}
+
+#[test]
+fn extract_ace_lite_source_accepts_hyphen_and_underscore_aliases() {
+    let fixture = waveform_fixture("extract_ace_lite.vcd");
+
+    for profile in ["ace-lite", "ACE_LITE", "ace_lite"] {
+        let source = write_source(&format!(
+            r#"{{
+  "$schema": "{}",
+  "kind": "extract.axi.source",
+  "profile": "{profile}",
+  "includes": ["^ace_lite_.*"],
+  "maps": {{"aclk": "clk"}}
+}}"#,
+            expected_input_schema_url()
+        ));
+        let source = source.path().to_string_lossy().into_owned();
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--source",
+                source.as_str(),
+            ])
+            .output()
+            .expect("extract ace-lite source should execute");
+
+        assert!(
+            output.status.success(),
+            "profile {profile}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(output.stderr.is_empty());
+        let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+        assert!(stdout.contains("profile: ace-lite\nissue: H.c"));
+        assert_eq!(human_transfer_channels(&stdout), ["aw", "ar"]);
+    }
+}
+
+#[test]
+fn extract_ace5_human_automaps_representative_optional_payloads() {
+    let fixture = waveform_fixture("extract_ace5.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace5",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace5_.*",
+        ])
+        .output()
+        .expect("extract ace5 should execute");
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(output.stderr.is_empty());
+    let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+    assert!(stdout.contains("profile: ace5\nissue: H.c"));
+    assert_eq!(
+        human_transfer_channels(&stdout),
+        ["aw", "w", "b", "ar", "r", "ac", "cr", "cd"]
+    );
+    for expected in [
+        "[aw] awtrace=1'h1",
+        "[w] wpoison=1'h1",
+        "[b] bidunq=1'h1",
+        "[ar] arvmidext=4'hd",
+        "[r] rpoison=1'h1",
+        "[ac] acvmidext=4'ha",
+        "[cr] crnsaid=4'h7",
+        "[cd] cdpoison=1'h1",
+    ] {
+        assert!(
+            stdout.contains(expected),
+            "missing `{expected}` in:\n{stdout}"
+        );
+    }
+}
+
+#[test]
+fn extract_ace5_rejects_removed_barrier_mappings() {
+    let fixture = waveform_fixture("extract_ace5.vcd");
+
+    for standard in ["awbar", "arbar"] {
+        wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--profile",
+                "ace5",
+                "--map",
+                "aclk=clk",
+                "--map",
+                &format!("{standard}=clk"),
+            ])
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains(format!(
+                "AXI profile ace5 has no standard signal '{standard}'"
+            )));
+    }
+}
+
+#[test]
+fn extract_ace_json_validates_profile_channels_and_payloads() {
+    let fixture = waveform_fixture("extract_ace.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace_.*",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let value = parse_json(&output);
+    assert_eq!(value["data"]["profile"], "ace");
+    assert_eq!(value["data"]["issue"], "H.c");
+    let transfers = value["data"]["transfers"].as_array().unwrap();
+    assert_eq!(
+        transfers
+            .iter()
+            .map(|row| row["channel"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["aw", "w", "b", "ar", "r", "ac", "cr", "cd"]
+    );
+    assert!(transfers.iter().all(|row| row["profile"] == "ace"));
+    assert_eq!(transfers[0]["payload"]["awunique"], "1'h1");
+    assert_eq!(transfers[4]["payload"]["rresp"], "4'hd");
+    assert_eq!(transfers[5]["payload"]["acaddr"], "16'h1234");
+    assert_eq!(transfers[6]["payload"]["crresp"], "5'h15");
+    assert_eq!(transfers[7]["payload"]["cdlast"], "1'h1");
+}
+
+#[test]
+fn extract_ace_lite_json_validates_awunique_without_coherency_channels() {
+    let fixture = waveform_fixture("extract_ace_lite.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace-lite",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace_lite_.*",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let value = parse_json(&output);
+    assert_eq!(value["data"]["profile"], "ace-lite");
+    let transfers = value["data"]["transfers"].as_array().unwrap();
+    assert_eq!(
+        transfers
+            .iter()
+            .map(|row| row["channel"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["aw", "ar"]
+    );
+    assert_eq!(transfers[0]["payload"]["awunique"], "1'h1");
+    assert_eq!(transfers[1]["payload"]["arbar"], "2'h1");
+}
+
+#[test]
+fn extract_ace5_jsonl_validates_context_and_optional_payloads() {
+    let fixture = waveform_fixture("extract_ace5.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace5",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace5_.*",
+            "--jsonl",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let records = parse_stream(&output);
+    assert_eq!(records.first().unwrap()["type"], "begin");
+    assert_eq!(records.first().unwrap()["context"]["profile"], "ace5");
+    let items = records
+        .iter()
+        .filter(|record| record["type"] == "item")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        items
+            .iter()
+            .map(|record| record["item"]["channel"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["aw", "w", "b", "ar", "r", "ac", "cr", "cd"]
+    );
+    assert!(
+        items
+            .iter()
+            .all(|record| record["item"]["profile"] == "ace5")
+    );
+    assert_eq!(items[0]["item"]["payload"]["awtrace"], "1'h1");
+    assert_eq!(items[2]["item"]["payload"]["bidunq"], "1'h1");
+    assert_eq!(items[5]["item"]["payload"]["acvmidext"], "4'ha");
+    assert_eq!(items[7]["item"]["payload"]["cdpoison"], "1'h1");
+    assert_eq!(records.last().unwrap()["type"], "end");
+    assert_eq!(records.last().unwrap()["summary"]["items"], 8);
+}
+
+#[test]
+fn extract_ace_and_ace_lite_jsonl_validate_profile_branches() {
+    for (profile, fixture_name, include, expected_channels) in [
+        (
+            "ace",
+            "extract_ace.vcd",
+            "^ace_.*",
+            &["aw", "w", "b", "ar", "r", "ac", "cr", "cd"][..],
+        ),
+        (
+            "ace-lite",
+            "extract_ace_lite.vcd",
+            "^ace_lite_.*",
+            &["aw", "ar"][..],
+        ),
+    ] {
+        let fixture = waveform_fixture(fixture_name);
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--profile",
+                profile,
+                "--map",
+                "aclk=clk",
+                "--include",
+                include,
+                "--jsonl",
+            ])
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone();
+
+        let records = parse_stream(&output);
+        assert_eq!(records.first().unwrap()["context"]["profile"], profile);
+        let items = records
+            .iter()
+            .filter(|record| record["type"] == "item")
+            .collect::<Vec<_>>();
+        assert_eq!(
+            items
+                .iter()
+                .map(|record| record["item"]["channel"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            expected_channels
+        );
+        assert!(
+            items
+                .iter()
+                .all(|record| record["item"]["profile"] == profile)
+        );
+    }
 }
 
 #[test]

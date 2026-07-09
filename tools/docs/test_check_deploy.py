@@ -431,7 +431,16 @@ class CheckDeployTests(unittest.TestCase):
                             "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
                         },
                         "kind": {"const": "extract.axi.source"},
-                        "profile": {"enum": ["axi3", "axi4", "axi4-lite"]},
+                        "profile": {
+                            "enum": [
+                                "axi3",
+                                "axi4",
+                                "axi4-lite",
+                                "ace",
+                                "ace-lite",
+                                "ace5",
+                            ]
+                        },
                     }
                 },
             },

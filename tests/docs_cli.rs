@@ -313,6 +313,26 @@ fn docs_show_description_prints_only_stored_description_text() {
 }
 
 #[test]
+fn public_extract_docs_cover_ace_family_profiles() {
+    for topic_id in [
+        "commands/extract",
+        "commands/overview",
+        "workflows/extract-handshake",
+        "reference/machine-output",
+    ] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+        assert!(
+            output.contains("ACE5"),
+            "topic {topic_id} should cover ACE-family extraction profiles"
+        );
+    }
+
+    let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
+    assert!(extract.contains("ACE-Lite"));
+    assert!(extract.contains("ready/valid channel transfers"));
+}
+
+#[test]
 fn public_docs_describe_fsdb_target_restriction() {
     for topic_id in ["intro", "reference/command-model"] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);

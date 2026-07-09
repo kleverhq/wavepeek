@@ -22,12 +22,12 @@ module top;
     #4 begin
       ace_lite_aw_valid_o = 1'b1;
       ace_lite_aw_domain_o = 2'b10;
-      ace_lite_aw_snoop_o = 3'b011;
-      ace_lite_aw_bar_o = 2'b01;
+      ace_lite_aw_snoop_o = 3'b000;
+      ace_lite_aw_bar_o = 2'b00;
       ace_lite_aw_unique_o = 1'b1;
       ace_lite_ar_valid_o = 1'b1;
       ace_lite_ar_domain_o = 2'b01;
-      ace_lite_ar_snoop_o = 4'b0100;
+      ace_lite_ar_snoop_o = 4'b0000;
       ace_lite_ar_bar_o = 2'b01;
     end
     #1 clk = 1'b1;

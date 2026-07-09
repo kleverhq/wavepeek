@@ -32,9 +32,9 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
 - [x] (2026-07-09 20:42Z) Milestone 2 GREEN: update contract sources, schema and deployment checker expectations, and generated output/input/stream artifacts; 28 schema tests, 24 AXI integration tests, schema drift checks, formatting, and lint pass; contract and test reviews plus a fresh control review report no remaining findings. `schema/catalog.json` remained unchanged. Commit is deferred until Milestone 3 because generated CLI help already invalidates the stale help contract test.
 - [x] (2026-07-09 20:42Z) Milestone 3 RED: the existing help contract fails on the expanded clap value list; new packaged-skill and embedded-doc tests fail because ACE-family guidance is absent.
 - [x] (2026-07-09 20:47Z) Milestone 3 GREEN: update help, public docs, packaged skill, changelog, and deployment-checker fixture; 50 CLI contract tests, 25 docs tests, 3 skill tests, 79 docs-tool tests, full auxiliary tests, formatting, and lint pass; docs review and a fresh control review report no findings.
-- [ ] Run `just check`, `just ci`, and any required auxiliary validation; capture concise evidence.
-- [ ] Run parallel final code, contract/schema/test, and docs reviews followed by an independent consolidated control review; resolve every substantive finding.
-- [ ] Complete this plan's retrospective, remove this branch-local WIP plan in a cleanup commit, push `feat/extract_ace`, and open a GitHub pull request closing issue #57.
+- [x] (2026-07-09 21:02Z) Run `just check` and `just ci`; rerun both after final-review fixes. All checks pass, including FSDB-enabled tests and the coverage gate at 94.25% regions, 93.66% functions, and 94.66% lines.
+- [x] (2026-07-09 21:02Z) Run parallel final code, contract/schema/test, and docs reviews. Fix the ACE-Lite fixture transaction controls and deployment-checker schema reference handling through failing tests; focused follow-ups and a fresh consolidated control review report no remaining findings.
+- [ ] Remove this completed branch-local WIP plan in a cleanup commit, push `feat/extract_ace`, and open a GitHub pull request closing issue #57.
 
 ## Surprises & Discoveries
 
@@ -55,6 +55,12 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
 
 - Observation: The GitHub Pages deployment checker independently hard-coded the AXI input profile enum in addition to the canonical schema checker.
   Evidence: A repository-wide stale-profile search found `tools/docs/check_deploy.py` and its test fixture after schema review; both now require the six canonical values.
+
+- Observation: Final review showed that the deployment checker test used an inline profile enum while the generated input schema uses a `$ref` to `$defs.axiProfile`.
+  Evidence: The canonical-artifact test failed before the checker was corrected. The checker now validates both the reference and referenced enum, and its test suite loads `schema/input.json` directly.
+
+- Observation: Protocol-realistic field widths do not guarantee a protocol-realistic transaction fixture.
+  Evidence: Final review identified illegal simultaneous ACE-Lite snoop/barrier encodings. The AW row now represents WriteUnique and the AR row represents Barrier according to Arm IHI 0022H.c Tables D11-1 and D11-2.
 
 ## Decision Log
 
@@ -78,9 +84,15 @@ This work does not add ACE-LiteDVM, ACE5-Lite, ACE5-LiteDVM, or ACE5-LiteACP pro
   Rationale: `profile_specs()` immediately drives the canonical schemas, and mandatory commit hooks reject schema drift. Bypassing hooks is prohibited, so an independently reviewed runtime milestone remains a valid stopping point but not a valid commit boundary.
   Date/Author: 2026-07-09 / coding agent
 
+- Decision: Validate the actual canonical input schema in deployment-checker tests in addition to a small synthetic fixture.
+  Rationale: The synthetic fixture drifted from the generated `$ref` shape while all repository gates passed. Loading `schema/input.json` directly prevents that class of false confidence.
+  Date/Author: 2026-07-09 / coding agent
+
 ## Outcomes & Retrospective
 
-Milestones 1 through 3 are complete. The CLI and runtime recognize all three ACE-family profiles, exact profile data drives extraction without a new engine, AC/CR/CD auto-mapping is collision-tested, and source-backed fixtures demonstrate all profile channels. Exact input/output/stream schema branches validate canonical profiles and profile-specific mappings, channels, and payloads. Help, embedded docs, packaged skill, changelog, and deployment checks describe the expanded support. TDD recorded expected failures before each behavior slice. Milestone reviews corrected fixture widths and strengthened isolated schema rejection coverage; all follow-up and control reviews are clean. Full repository gates and final consolidated review remain.
+Implementation and validation are complete. The CLI and runtime recognize all three ACE-family profiles, exact profile data drives extraction without a new engine, AC/CR/CD auto-mapping is collision-tested, and source-backed fixtures demonstrate every profile channel with protocol-valid controls. Exact input/output/stream schema branches validate canonical profiles and profile-specific mappings, channels, and payloads. Help, embedded docs, packaged skill, changelog, schema checks, and deployment checks describe and enforce the expanded support.
+
+TDD recorded expected failures before each behavior slice and before both final-review fixes. Reviews corrected fixture widths and transaction encodings, strengthened isolated schema rejection coverage, and found a synthetic deployment-checker fixture that had drifted from the canonical schema shape. `just check` and `just ci` pass after all fixes, and the final independent control review reports no substantive findings. Only removal of this WIP artifact, branch push, and PR creation remain.
 
 ## Context and Orientation
 
@@ -222,3 +234,5 @@ Plan revision note (2026-07-09): Deferred the Milestone 1 commit to the generate
 Plan revision note (2026-07-09): Recorded Milestone 2 RED/GREEN evidence, isolated schema negative cases added after test review, clean follow-up/control reviews, the deployment-checker enum update, and the help/docs/skill RED state for Milestone 3.
 
 Plan revision note (2026-07-09): Recorded Milestone 3 GREEN validation and clean documentation/control reviews; all feature, contract, and guidance milestones are ready for a coherent commit and final repository gates.
+
+Plan revision note (2026-07-09): Completed the retrospective after two passing full-gate runs, recorded final-review deployment-checker and ACE-Lite fixture fixes, and documented clean focused follow-ups and consolidated control review. The plan is ready for required WIP cleanup before PR creation.

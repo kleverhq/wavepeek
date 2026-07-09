@@ -417,6 +417,16 @@ class CheckDeployTests(unittest.TestCase):
                 {"$ref": "#/$defs/extractAxiSourceInput"},
             ],
             "$defs": {
+                "axiProfile": {
+                    "enum": [
+                        "axi3",
+                        "axi4",
+                        "axi4-lite",
+                        "ace",
+                        "ace-lite",
+                        "ace5",
+                    ]
+                },
                 "extractGenericSourcesInput": {
                     "properties": {
                         "$schema": {
@@ -431,16 +441,7 @@ class CheckDeployTests(unittest.TestCase):
                             "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
                         },
                         "kind": {"const": "extract.axi.source"},
-                        "profile": {
-                            "enum": [
-                                "axi3",
-                                "axi4",
-                                "axi4-lite",
-                                "ace",
-                                "ace-lite",
-                                "ace5",
-                            ]
-                        },
+                        "profile": {"$ref": "#/$defs/axiProfile"},
                     }
                 },
             },
@@ -448,10 +449,26 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.2.json")
 
+        broken_reference = json.loads(json.dumps(schema))
+        broken_reference["$defs"]["extractAxiSourceInput"]["properties"]["profile"][
+            "$ref"
+        ] = "#/$defs/wrong"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile reference"):
+            check_deploy.validate_input_schema_json(
+                broken_reference, "2.1.0", "schema-input-v2.2.json"
+            )
+
         broken = json.loads(json.dumps(schema))
-        broken["$defs"]["extractAxiSourceInput"]["properties"]["profile"]["enum"] = ["axi5"]
+        broken["$defs"]["axiProfile"]["enum"] = ["axi5"]
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile enum"):
             check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.2.json")
+
+    def test_validate_input_schema_json_accepts_current_canonical_artifact(self) -> None:
+        schema_path = TOOLS_DIR.parent.parent / "schema" / "input.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        check_deploy.validate_input_schema_json(
+            schema, "2.1.0", "schema-input-v2.2.json"
+        )
 
     def test_load_pages_site_retries_and_uses_timeout(self) -> None:
         calls = 0

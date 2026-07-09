@@ -455,7 +455,10 @@ def validate_input_schema_json(
                 fail(f"input schema artifact must require {kind_value} kind")
         assert axi_properties is not None
         profile = axi_properties.get("profile")
-        if not isinstance(profile, dict) or profile.get("enum") != [
+        if not isinstance(profile, dict) or profile.get("$ref") != "#/$defs/axiProfile":
+            fail("input schema artifact AXI profile reference mismatch")
+        profile_definition = defs.get("axiProfile")
+        if not isinstance(profile_definition, dict) or profile_definition.get("enum") != [
             "axi3",
             "axi4",
             "axi4-lite",

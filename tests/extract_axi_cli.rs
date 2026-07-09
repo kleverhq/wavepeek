@@ -148,8 +148,8 @@ fn extract_ace_lite_cli_alias_automaps_address_additions_only() {
     let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
     assert!(stdout.contains("profile: ace-lite\nissue: H.c"));
     assert_eq!(human_transfer_channels(&stdout), ["aw", "ar"]);
-    assert!(stdout.contains("[aw] awdomain=2'h2 awsnoop=3'h3 awbar=2'h1 awunique=1'h1"));
-    assert!(stdout.contains("[ar] ardomain=2'h1 arsnoop=4'h4 arbar=2'h1"));
+    assert!(stdout.contains("[aw] awdomain=2'h2 awsnoop=3'h0 awbar=2'h0 awunique=1'h1"));
+    assert!(stdout.contains("[ar] ardomain=2'h1 arsnoop=4'h0 arbar=2'h1"));
     assert!(!stdout.contains("[ac]"));
     assert!(!stdout.contains("[cr]"));
     assert!(!stdout.contains("[cd]"));

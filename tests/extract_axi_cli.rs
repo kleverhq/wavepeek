@@ -223,7 +223,17 @@ fn extract_ace5_human_automaps_representative_optional_payloads() {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    assert!(output.stderr.is_empty());
+    let stderr = String::from_utf8(output.stderr).expect("diagnostics should be UTF-8");
+    for check_signal in [
+        "ace5_ac_valid_chk_i",
+        "ace5_cr_valid_chk_o",
+        "ace5_cd_valid_chk_o",
+    ] {
+        assert!(
+            stderr.contains(&format!("ignored AXI include candidate '{check_signal}'")),
+            "missing check-signal diagnostic for {check_signal}:\n{stderr}"
+        );
+    }
     let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
     assert!(stdout.contains("profile: ace5\nissue: H.c"));
     assert_eq!(
@@ -232,10 +242,13 @@ fn extract_ace5_human_automaps_representative_optional_payloads() {
     );
     for expected in [
         "[aw] awtrace=1'h1",
+        "awidunq=1'h1",
         "[w] wpoison=1'h1",
         "[b] bidunq=1'h1",
         "[ar] arvmidext=4'hd",
+        "aridunq=1'h1",
         "[r] rpoison=1'h1",
+        "ridunq=1'h1",
         "[ac] acvmidext=4'ha",
         "[cr] crnsaid=4'h7",
         "[cd] cdpoison=1'h1",
@@ -243,6 +256,12 @@ fn extract_ace5_human_automaps_representative_optional_payloads() {
         assert!(
             stdout.contains(expected),
             "missing `{expected}` in:\n{stdout}"
+        );
+    }
+    for truncated in [" awid=1'h1", " arid=1'h1", " bid=1'h1", " rid=1'h1"] {
+        assert!(
+            !stdout.contains(truncated),
+            "split unique-ID signal was truncated to `{truncated}` in:\n{stdout}"
         );
     }
 }
@@ -403,9 +422,19 @@ fn extract_ace5_jsonl_validates_context_and_optional_payloads() {
             .all(|record| record["item"]["profile"] == "ace5")
     );
     assert_eq!(items[0]["item"]["payload"]["awtrace"], "1'h1");
+    assert_eq!(items[0]["item"]["payload"]["awidunq"], "1'h1");
     assert_eq!(items[2]["item"]["payload"]["bidunq"], "1'h1");
+    assert_eq!(items[3]["item"]["payload"]["aridunq"], "1'h1");
+    assert_eq!(items[4]["item"]["payload"]["ridunq"], "1'h1");
     assert_eq!(items[5]["item"]["payload"]["acvmidext"], "4'ha");
     assert_eq!(items[7]["item"]["payload"]["cdpoison"], "1'h1");
+    assert_eq!(
+        records
+            .iter()
+            .filter(|record| record["type"] == "diagnostic")
+            .count(),
+        3
+    );
     assert_eq!(records.last().unwrap()["type"], "end");
     assert_eq!(records.last().unwrap()["summary"]["items"], 8);
 }

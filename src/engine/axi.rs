@@ -1071,11 +1071,7 @@ fn auto_mappings(
         if explicit_paths.contains(candidate.path.as_str()) {
             continue;
         }
-        let matched = standards
-            .iter()
-            .filter(|standard| candidate_matches_standard(candidate.name.as_str(), standard))
-            .copied()
-            .collect::<Vec<_>>();
+        let matched = candidate_matching_standards(candidate.name.as_str(), standards.as_slice());
         if matched.len() > 1 {
             let standards = matched.join(", ");
             return Err(WavepeekError::Args(format!(
@@ -1239,16 +1235,52 @@ fn ordered_standard_names(profile: AxiProfile) -> Vec<&'static str> {
         .collect()
 }
 
+fn candidate_matching_standards(
+    candidate_name: &str,
+    standards: &[&'static str],
+) -> Vec<&'static str> {
+    let tokens = candidate_core_tokens(candidate_name);
+    let suffix_matches = standards
+        .iter()
+        .filter_map(|standard| {
+            standard_suffix_start(tokens.as_slice(), standard).map(|start| (*standard, start))
+        })
+        .collect::<Vec<_>>();
+
+    let [(suffix_standard, suffix_start)] = suffix_matches.as_slice() else {
+        return suffix_matches
+            .into_iter()
+            .map(|(standard, _)| standard)
+            .collect();
+    };
+
+    standards
+        .iter()
+        .filter(|standard| {
+            *standard == suffix_standard
+                || (0..*suffix_start).any(|start| {
+                    standard_matches_range(tokens.as_slice(), start, *suffix_start, standard)
+                })
+        })
+        .copied()
+        .collect()
+}
+
+#[cfg(test)]
 fn candidate_matches_standard(candidate_name: &str, standard: &str) -> bool {
-    let tokens = tokenize_candidate(candidate_name);
-    if tokens.iter().any(|token| token == standard) {
-        return true;
+    let tokens = candidate_core_tokens(candidate_name);
+    standard_suffix_start(tokens.as_slice(), standard).is_some()
+}
+
+fn candidate_core_tokens(name: &str) -> Vec<String> {
+    let mut tokens = tokenize_candidate(name);
+    while tokens
+        .last()
+        .is_some_and(|token| is_candidate_suffix_affix(token))
+    {
+        tokens.pop();
     }
-    let parts = standard_parts(standard);
-    parts.len() > 1
-        && tokens
-            .windows(parts.len())
-            .any(|window| window.iter().map(String::as_str).eq(parts.iter().copied()))
+    tokens
 }
 
 fn tokenize_candidate(name: &str) -> Vec<String> {
@@ -1268,23 +1300,25 @@ fn tokenize_candidate(name: &str) -> Vec<String> {
     tokens
 }
 
-fn standard_parts(standard: &str) -> Vec<&str> {
+fn is_candidate_suffix_affix(token: &str) -> bool {
+    matches!(
+        token,
+        "i" | "o" | "in" | "out" | "input" | "output" | "d" | "q" | "r" | "reg"
+    )
+}
+
+fn standard_suffix_start(tokens: &[String], standard: &str) -> Option<usize> {
+    (0..tokens.len()).find(|start| standard_matches_range(tokens, *start, tokens.len(), standard))
+}
+
+fn standard_matches_range(tokens: &[String], start: usize, end: usize, standard: &str) -> bool {
     if COMMON_SIGNALS.contains(&standard) {
-        return vec![standard];
+        return end == start + 1 && tokens[start] == standard;
     }
-    for prefix in ["aw", "ar", "ac", "cr", "cd"] {
-        if let Some(rest) = standard.strip_prefix(prefix) {
-            return vec![prefix, rest];
-        }
-    }
-    for prefix in ["w", "b", "r"] {
-        if let Some(rest) = standard.strip_prefix(prefix)
-            && !rest.is_empty()
-        {
-            return vec![prefix, rest];
-        }
-    }
-    vec![standard]
+    tokens[start..end]
+        .iter()
+        .flat_map(|token| token.chars())
+        .eq(standard.chars())
 }
 
 impl AxiProfile {
@@ -1547,6 +1581,7 @@ mod tests {
         assert!(candidate_matches_standard("aw_valid", "awvalid"));
         assert!(candidate_matches_standard("axi_awvalid_o", "awvalid"));
         assert!(candidate_matches_standard("axi_aw_valid_o", "awvalid"));
+        assert!(candidate_matches_standard("axi_aw_prot_o_r", "awprot"));
         assert!(candidate_matches_standard("ace_acvalid_o", "acvalid"));
         assert!(candidate_matches_standard("ace_ac_valid_o", "acvalid"));
         assert!(candidate_matches_standard("ace_cr_ready_i", "crready"));
@@ -1558,5 +1593,43 @@ mod tests {
         assert!(!candidate_matches_standard("ace_ac_valid_o", "awvalid"));
         assert!(!candidate_matches_standard("ace_ac_valid_o", "aclk"));
         assert!(!candidate_matches_standard("ar_esetn", "aresetn"));
+    }
+
+    #[test]
+    fn check_signal_suffixes_do_not_match_functional_names() {
+        for (candidate, functional) in [
+            ("ace5_ac_valid_chk_i", "acvalid"),
+            ("ace5_ac_ready_chk_o", "acready"),
+            ("ace5_cr_valid_chk_o", "crvalid"),
+            ("ace5_cr_ready_chk_i", "crready"),
+            ("ace5_cd_valid_chk_o", "cdvalid"),
+            ("ace5_cd_ready_chk_i", "cdready"),
+            ("ace5_cd_data_chk_o", "cddata"),
+            ("ace5_acvalidchk_i", "acvalid"),
+        ] {
+            assert!(
+                !candidate_matches_standard(candidate, functional),
+                "{candidate} must not match functional {functional}"
+            );
+        }
+    }
+
+    #[test]
+    fn split_unique_id_names_match_only_complete_standard_names() {
+        for (candidate, complete, shorter) in [
+            ("ace5_aw_id_unq_o", "awidunq", "awid"),
+            ("ace5_ar_id_unq_o", "aridunq", "arid"),
+            ("ace5_b_id_unq_i", "bidunq", "bid"),
+            ("ace5_r_id_unq_i", "ridunq", "rid"),
+        ] {
+            assert!(
+                candidate_matches_standard(candidate, complete),
+                "{candidate} must match {complete}"
+            );
+            assert!(
+                !candidate_matches_standard(candidate, shorter),
+                "{candidate} must not be truncated to {shorter}"
+            );
+        }
     }
 }

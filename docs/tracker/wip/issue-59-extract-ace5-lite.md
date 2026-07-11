@@ -21,7 +21,7 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
 - [x] (2026-07-11 20:31Z) Milestone 0: reviewed the ExecPlan through architecture and protocol-data lanes, incorporated all findings, and prepared the reviewed plan commit.
 - [x] (2026-07-11 20:52Z) Milestone 1 RED: generated and staged three source-backed VCD/FST fixtures; added failing profile, alias, runtime, exact schema, help, docs, skill, and deployment-check tests; captured intended failures under `tmp/issue-59-red/`; resolved all findings from protocol, runtime/fixture, and contract-test review lanes.
 - [x] (2026-07-11 21:14Z) Milestone 2 GREEN: implemented exact profiles and explicit aliases; regenerated output, stream, and input schemas; updated exact deployment checks, help, docs, skill, and changelog; passed focused suites, `just format`, `just lint`, `just check-schema`, and `just test`; resolved all findings from protocol/Rust, runtime/fixture, schema/checker, and docs/help review lanes.
-- [ ] Milestone 3: run full gates, conduct parallel final reviews and a fresh control review, remove this WIP plan, rerun full gates on final `HEAD`, push the branch, and open a PR closing issue #59.
+- [ ] Milestone 3 (completed: `just check` and `just ci` passed on `dbfac60`; fresh protocol/runtime, schema/test, and docs/help reviews completed; exact deployed property-schema validation and alias discoverability findings resolved with clean follow-up reviews; remaining: review-fix commit, fresh control review, WIP cleanup, final-HEAD gates, push, and PR).
 
 ## Surprises & Discoveries
 
@@ -38,7 +38,7 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
   Evidence: Adding exact `AxiProfileSpec` metadata plus CLI/source parsing made all seven new VCD/FST, explicit-map, auto-map, alias, partial-profile, JSON, and JSONL integration tests pass.
 
 - Observation: Representative deployment checks were weaker than local generated-schema tests.
-  Evidence: GREEN schema review showed that a corrupted remote schema could lose legal mappings, add forbidden payloads, or drop input `allOf` isolation while local generation stayed correct. The deployment checker now validates exact new-family mapping and per-channel payload sets for output, stream, and input artifacts.
+  Evidence: GREEN and final schema reviews showed that a corrupted remote schema could lose legal mappings, add forbidden payloads, replace typed properties with `{}`, or drop input `allOf` isolation while local generation stayed correct. The deployment checker now validates exact new-family mapping keys and value schemas plus per-channel payload keys and value schemas for output, stream, and input artifacts.
 
 - Observation: Arm IHI 0022L revised ACE5-LiteDVM relative to Issue H.
   Evidence: section B2.1.3 removes `ACSNOOP`, `ACPROT`, and `CRRESP`; Table B2.4 requires `DVM_Message_Support = Receiver`, making AC and CR channels mandatory at protocol level. Table B2.2 still permits `ARTAGOP` for ACE5-LiteDVM. The extractor follows existing partial-mapping behavior and emits only channels with complete mapped ready/valid pairs.
@@ -224,3 +224,5 @@ Plan revision note (2026-07-11): RED reviews strengthened legal explicit-map evi
 Plan revision note (2026-07-11): Milestone 2 implementation turned all reviewed RED tests green, regenerated all three schema artifacts without changing the catalog, and passed format, lint, schema, full Rust/Python, and available FSDB tests before GREEN review.
 
 Plan revision note (2026-07-11): GREEN reviews reported clean protocol/runtime lanes and identified deployment-check and schema-description gaps. Exact output/stream/input deployment validation, mutation tests, complete schema descriptions, and regenerated artifacts resolved those findings; follow-up reviews reported no substantive findings.
+
+Plan revision note (2026-07-11): Initial full gates passed on `dbfac60`. Fresh final reviews found typed-property validation and alias-discoverability gaps. Exact deployed property-schema checks, `{}` mutation tests, explicit CLI/public alias inventories, and canonical-schema guidance resolved both findings; follow-up reviews reported no substantive findings.

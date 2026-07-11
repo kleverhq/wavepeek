@@ -463,11 +463,17 @@ def expected_mapping_names(profile_name: str) -> set[str]:
     return names
 
 
-def validate_exact_mapping_schema(mapping: Any, profile_name: str, label: str) -> None:
+def validate_exact_mapping_schema(
+    mapping: Any,
+    profile_name: str,
+    label: str,
+    expected_property_schema: dict[str, str],
+) -> None:
     properties = mapping.get("properties") if isinstance(mapping, dict) else None
     if (
         not isinstance(properties, dict)
         or set(properties) != expected_mapping_names(profile_name)
+        or any(value != expected_property_schema for value in properties.values())
         or mapping.get("additionalProperties") is not False
     ):
         fail(f"schema artifact {label} mappings mismatch")
@@ -582,7 +588,10 @@ def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
     for profile_name, channels in ACE5_LITE_PROFILE_PAYLOADS.items():
         branch_properties = branches_by_profile[profile_name]["properties"]
         validate_exact_mapping_schema(
-            branch_properties.get("mappings"), profile_name, profile_name
+            branch_properties.get("mappings"),
+            profile_name,
+            profile_name,
+            {"$ref": "#/$defs/extractAxiMapping"},
         )
         definition_prefix = ACE5_LITE_PROFILE_DEFS[profile_name]
         for channel_name, expected_payloads in channels.items():
@@ -603,6 +612,10 @@ def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
                 or channel.get("const") != channel_name
                 or not isinstance(payload_properties, dict)
                 or set(payload_properties) != expected_payloads
+                or any(
+                    value != {"$ref": "#/$defs/sampledValue"}
+                    for value in payload_properties.values()
+                )
                 or payload.get("additionalProperties") is not False
             ):
                 fail(
@@ -850,7 +863,10 @@ def validate_input_schema_json(
         for profile_name in ACE5_LITE_PROFILE_PAYLOADS:
             branch_properties = explicit_branches[profile_name]["properties"]
             validate_exact_mapping_schema(
-                branch_properties.get("maps"), profile_name, f"input {profile_name}"
+                branch_properties.get("maps"),
+                profile_name,
+                f"input {profile_name}",
+                {"type": "string"},
             )
         return
 

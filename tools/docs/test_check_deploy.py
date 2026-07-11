@@ -329,6 +329,16 @@ class CheckDeployTests(unittest.TestCase):
                 with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
                     check_deploy.validate_v2_2_axi_defs(stale_mapping, branch_name)
 
+                altered_mapping = json.loads(json.dumps(schema))
+                branch = next(
+                    candidate
+                    for candidate in altered_mapping["$defs"][branch_name]["oneOf"]
+                    if candidate["properties"]["profile"]["const"] == profile
+                )
+                branch["properties"]["mappings"]["properties"][required_mapping] = {}
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+                    check_deploy.validate_v2_2_axi_defs(altered_mapping, branch_name)
+
                 widened_mapping = json.loads(json.dumps(schema))
                 branch = next(
                     candidate
@@ -352,6 +362,12 @@ class CheckDeployTests(unittest.TestCase):
                 del payload["properties"][required_payload]
                 with self.assertRaisesRegex(check_deploy.DeployCheckError, "payload"):
                     check_deploy.validate_v2_2_axi_defs(missing_payload, branch_name)
+
+                altered_payload = json.loads(json.dumps(schema))
+                payload = altered_payload["$defs"][channel_def]["properties"]["payload"]
+                payload["properties"][required_payload] = {}
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "payload"):
+                    check_deploy.validate_v2_2_axi_defs(altered_payload, branch_name)
 
                 widened_payload = json.loads(json.dumps(schema))
                 payload = widened_payload["$defs"][channel_def]["properties"]["payload"]
@@ -650,6 +666,14 @@ class CheckDeployTests(unittest.TestCase):
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
             check_deploy.validate_input_schema_json(
                 missing_mapping, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        altered_mapping = json.loads(json.dumps(schema))
+        maps = profile_branch(altered_mapping, "ace5-lite-dvm")["properties"]["maps"]
+        maps["properties"]["artagop"] = {}
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+            check_deploy.validate_input_schema_json(
+                altered_mapping, "2.1.0", "schema-input-v2.2.json"
             )
 
         illegal_mapping = json.loads(json.dumps(schema))

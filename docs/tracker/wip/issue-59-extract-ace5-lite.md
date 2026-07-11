@@ -21,7 +21,7 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
 - [x] (2026-07-11 20:31Z) Milestone 0: reviewed the ExecPlan through architecture and protocol-data lanes, incorporated all findings, and prepared the reviewed plan commit.
 - [x] (2026-07-11 20:52Z) Milestone 1 RED: generated and staged three source-backed VCD/FST fixtures; added failing profile, alias, runtime, exact schema, help, docs, skill, and deployment-check tests; captured intended failures under `tmp/issue-59-red/`; resolved all findings from protocol, runtime/fixture, and contract-test review lanes.
 - [x] (2026-07-11 21:14Z) Milestone 2 GREEN: implemented exact profiles and explicit aliases; regenerated output, stream, and input schemas; updated exact deployment checks, help, docs, skill, and changelog; passed focused suites, `just format`, `just lint`, `just check-schema`, and `just test`; resolved all findings from protocol/Rust, runtime/fixture, schema/checker, and docs/help review lanes.
-- [ ] Milestone 3 (completed: `just check` and `just ci` passed on `dbfac60`; fresh protocol/runtime, schema/test, and docs/help reviews completed; exact deployed property-schema validation and alias discoverability findings resolved with clean follow-up reviews; remaining: review-fix commit, fresh control review, WIP cleanup, final-HEAD gates, push, and PR).
+- [ ] Milestone 3 (completed: `just check` and `just ci` passed on `dbfac60`; fresh protocol/runtime, schema/test, and docs/help reviews completed; exact deployed property-schema validation and alias discoverability findings resolved in `e2c3491` with clean follow-up reviews; a fresh independent control review reported no substantive findings; remaining after this final plan checkpoint: WIP cleanup, final-HEAD gates, push, and PR).
 
 ## Surprises & Discoveries
 
@@ -67,7 +67,7 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
 
 ## Outcomes & Retrospective
 
-Milestones 0-2 completed. Users can select all three Issue L ACE5-Lite profiles through canonical CLI/source names and explicit aliases, extract deterministic ready/valid rows from VCD/FST and available FSDB inputs, and validate JSON, JSONL, or source documents against exact profile-specific schemas. Reviewed tests cover exact signal inventories, legal and forbidden mappings, DVM AC/CR without CD, profile-prefix isolation, aliases, partial profile extraction, generated contracts, deployment drift, help, docs, skill guidance, and changelog. Full handoff gates and final control review remain.
+The implementation is complete. Users can select all three Issue L ACE5-Lite profiles through canonical CLI/source names and explicit documented aliases, extract deterministic ready/valid rows from VCD/FST and available FSDB inputs, and validate JSON, JSONL, or source documents against exact profile-specific schemas. Reviewed tests cover exact signal inventories and typed schemas, legal and forbidden mappings, DVM AC/CR without CD, profile-prefix isolation, aliases, partial profile extraction, generated contracts, deployment drift, help, docs, skill guidance, and changelog. Initial full gates passed, all focused and follow-up review findings were resolved, and a fresh control review found no substantive issues. Only required WIP cleanup, final-HEAD gates, push, and PR creation remain.
 
 ## Context and Orientation
 
@@ -226,3 +226,5 @@ Plan revision note (2026-07-11): Milestone 2 implementation turned all reviewed 
 Plan revision note (2026-07-11): GREEN reviews reported clean protocol/runtime lanes and identified deployment-check and schema-description gaps. Exact output/stream/input deployment validation, mutation tests, complete schema descriptions, and regenerated artifacts resolved those findings; follow-up reviews reported no substantive findings.
 
 Plan revision note (2026-07-11): Initial full gates passed on `dbfac60`. Fresh final reviews found typed-property validation and alias-discoverability gaps. Exact deployed property-schema checks, `{}` mutation tests, explicit CLI/public alias inventories, and canonical-schema guidance resolved both findings; follow-up reviews reported no substantive findings.
+
+Plan revision note (2026-07-11): A fresh independent control review of `origin/main...e2c3491` reported no substantive findings. The implementation outcome is complete; repository policy requires this WIP plan to be checkpointed, removed, and followed by final gates before delivery.

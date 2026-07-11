@@ -80,6 +80,572 @@ fn parse_stream(stdout: &[u8]) -> Vec<Value> {
 }
 
 #[test]
+fn extract_ace5_lite_family_human_automaps_profile_channels() {
+    for (profile, fixture_name, include, expected_channels, payloads, decoys) in [
+        (
+            "ace5-lite",
+            "extract_ace5_lite.vcd",
+            "^ace5_lite_(aw|w|b|ar|r|ac)_.*",
+            &["aw", "w", "b", "ar", "r"][..],
+            &[
+                "awmecid=16'ha55a",
+                "awmmuvalid=1'h1",
+                "wtagupdate=8'h3c",
+                "btagmatch=2'h2",
+                "armecid=16'hb66b",
+                "artagop=2'h1",
+                "rchunknum=5'h07",
+            ][..],
+            &[
+                "ace5_lite_aw_pending_o",
+                "ace5_lite_aw_valid_chk_o",
+                "ace5_lite_aw_actv_o",
+                "ace5_lite_ac_valid_i",
+            ][..],
+        ),
+        (
+            "ace5-lite-dvm",
+            "extract_ace5_lite_dvm.vcd",
+            "^ace5_lite_dvm_(aw|w|b|ar|r|ac|cr|cd)_.*",
+            &["aw", "w", "b", "ar", "r", "ac", "cr"][..],
+            &[
+                "awmecid=16'hc77c",
+                "wtagupdate=8'h5a",
+                "bresp=2'h1",
+                "armecid=16'hd88d",
+                "artagop=2'h3",
+                "rchunknum=5'h09",
+                "acaddr=32'h12345678",
+                "acvmidext=4'ha",
+                "crtrace=1'h1",
+            ][..],
+            &[
+                "ace5_lite_dvm_aw_mmu_valid_o",
+                "ace5_lite_dvm_ar_mmu_valid_o",
+                "ace5_lite_dvm_b_tag_match_i",
+                "ace5_lite_dvm_ac_snoop_i",
+                "ace5_lite_dvm_ac_prot_i",
+                "ace5_lite_dvm_cr_resp_o",
+                "ace5_lite_dvm_cd_valid_o",
+                "ace5_lite_dvm_aw_pending_o",
+                "ace5_lite_dvm_ac_valid_chk_i",
+            ][..],
+        ),
+        (
+            "ace5-lite-acp",
+            "extract_ace5_lite_acp.vcd",
+            "^ace5_lite_acp_(aw|w|b|ar|r|ac)_.*",
+            &["aw", "w", "b", "ar", "r"][..],
+            &[
+                "awlen=8'h03",
+                "awsnoop=4'h1",
+                "wlast=1'h1",
+                "bidunq=1'h1",
+                "arlen=8'h03",
+                "archunken=1'h1",
+                "rlast=1'h1",
+                "rchunknum=5'h0b",
+            ][..],
+            &[
+                "ace5_lite_acp_aw_size_o",
+                "ace5_lite_acp_aw_burst_o",
+                "ace5_lite_acp_w_tag_o",
+                "ace5_lite_acp_b_comp_i",
+                "ace5_lite_acp_ar_size_o",
+                "ace5_lite_acp_r_tag_i",
+                "ace5_lite_acp_ac_valid_i",
+                "ace5_lite_acp_aw_pending_o",
+                "ace5_lite_acp_aw_valid_chk_o",
+            ][..],
+        ),
+    ] {
+        let fixture = waveform_fixture(fixture_name);
+        let output = wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--scope",
+                "top",
+                "--profile",
+                profile,
+                "--map",
+                "aclk=clk",
+                "--include",
+                include,
+            ])
+            .output()
+            .expect("ACE5-Lite family extraction should execute");
+
+        assert!(
+            output.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stderr = String::from_utf8(output.stderr).expect("diagnostics should be UTF-8");
+        for decoy in decoys {
+            assert!(
+                stderr.contains(&format!("ignored AXI include candidate '{decoy}'")),
+                "{profile}: missing decoy diagnostic for {decoy}:\n{stderr}"
+            );
+        }
+        let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+        assert!(stdout.contains(&format!("profile: {profile}\nissue: L")));
+        assert_eq!(
+            human_transfer_channels(&stdout),
+            expected_channels,
+            "{profile}"
+        );
+        for payload in payloads {
+            assert!(
+                stdout.contains(payload),
+                "{profile}: missing {payload}:\n{stdout}"
+            );
+        }
+    }
+}
+
+#[test]
+fn extract_ace5_lite_family_json_and_jsonl_validate_profile_contracts() {
+    let lite_fixture = waveform_fixture("extract_ace5_lite.vcd");
+    let lite_output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            lite_fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace5-lite",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace5_lite_(aw|w|b|ar|r)_.*",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let lite = parse_json(&lite_output);
+    assert_eq!(lite["data"]["profile"], "ace5-lite");
+    assert_eq!(lite["data"]["issue"], "L");
+    assert_eq!(
+        lite["data"]["transfers"][0]["payload"]["awmmuvalid"],
+        "1'h1"
+    );
+    assert_eq!(lite["data"]["transfers"][2]["payload"]["btagmatch"], "2'h2");
+
+    let dvm_fixture = waveform_fixture("extract_ace5_lite_dvm.vcd");
+    let dvm_output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            dvm_fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace5-lite-dvm",
+            "--map",
+            "aclk=clk",
+            "--include",
+            "^ace5_lite_dvm_(aw|w|b|ar|r|ac|cr)_.*",
+            "--jsonl",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let records = parse_stream(&dvm_output);
+    assert_eq!(
+        records.first().unwrap()["context"]["profile"],
+        "ace5-lite-dvm"
+    );
+    assert_eq!(records.first().unwrap()["context"]["issue"], "L");
+    let items = records
+        .iter()
+        .filter(|record| record["type"] == "item")
+        .collect::<Vec<_>>();
+    assert_eq!(
+        items
+            .iter()
+            .map(|record| record["item"]["channel"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["aw", "w", "b", "ar", "r", "ac", "cr"]
+    );
+    assert_eq!(items[3]["item"]["payload"]["artagop"], "2'h3");
+    assert_eq!(items[5]["item"]["payload"]["acaddr"], "32'h12345678");
+}
+
+#[test]
+fn extract_ace5_lite_family_accepts_only_explicit_aliases() {
+    let cases = [
+        (
+            "ace5-lite",
+            "extract_ace5_lite.vcd",
+            "^ace5_lite_(aw|w|b|ar|r)_.*",
+            &["ace5-lite", "ACE5_LITE"][..],
+        ),
+        (
+            "ace5-lite-dvm",
+            "extract_ace5_lite_dvm.vcd",
+            "^ace5_lite_dvm_(aw|w|b|ar|r|ac|cr)_.*",
+            &[
+                "ace5-lite-dvm",
+                "ACE5-LITEDVM",
+                "ace5_litedvm",
+                "ACE5_LITE_DVM",
+            ][..],
+        ),
+        (
+            "ace5-lite-acp",
+            "extract_ace5_lite_acp.vcd",
+            "^ace5_lite_acp_(aw|w|b|ar|r)_.*",
+            &[
+                "ace5-lite-acp",
+                "ACE5-LITEACP",
+                "ace5_liteacp",
+                "ACE5_LITE_ACP",
+            ][..],
+        ),
+    ];
+
+    for (canonical, fixture_name, include, aliases) in cases {
+        let fixture = waveform_fixture(fixture_name);
+        for profile in aliases {
+            wavepeek_cmd()
+                .args([
+                    "extract",
+                    "axi",
+                    "--waves",
+                    fixture.as_str(),
+                    "--scope",
+                    "top",
+                    "--profile",
+                    profile,
+                    "--map",
+                    "aclk=clk",
+                    "--include",
+                    include,
+                ])
+                .assert()
+                .success()
+                .stdout(predicate::str::contains(format!(
+                    "profile: {canonical}\nissue: L"
+                )));
+
+            let source = write_source(&format!(
+                r#"{{
+  "$schema": "{}",
+  "kind": "extract.axi.source",
+  "profile": "{profile}",
+  "includes": ["{include}"],
+  "maps": {{"aclk": "clk"}}
+}}"#,
+                expected_input_schema_url()
+            ));
+            let source = source.path().to_string_lossy().into_owned();
+            wavepeek_cmd()
+                .args([
+                    "extract",
+                    "axi",
+                    "--waves",
+                    fixture.as_str(),
+                    "--scope",
+                    "top",
+                    "--source",
+                    source.as_str(),
+                ])
+                .assert()
+                .success()
+                .stdout(predicate::str::contains(format!(
+                    "profile: {canonical}\nissue: L"
+                )));
+        }
+    }
+
+    let fixture = waveform_fixture("extract_ace5_lite_dvm.vcd");
+    for unsupported in [
+        "ace5_lite-dvm",
+        "ace5-lite_dvm",
+        "ace5_lite-acp",
+        "ace5-lite_acp",
+    ] {
+        wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--profile",
+                unsupported,
+                "--map",
+                "aclk=top.clk",
+                "--map",
+                "awvalid=top.ace5_lite_dvm_aw_valid_o",
+                "--map",
+                "awready=top.ace5_lite_dvm_aw_ready_i",
+            ])
+            .assert()
+            .failure();
+
+        let source = write_source(&format!(
+            r#"{{
+  "$schema": "{}",
+  "kind": "extract.axi.source",
+  "profile": "{unsupported}",
+  "maps": {{
+    "aclk": "top.clk",
+    "awvalid": "top.ace5_lite_dvm_aw_valid_o",
+    "awready": "top.ace5_lite_dvm_aw_ready_i"
+  }}
+}}"#,
+            expected_input_schema_url()
+        ));
+        wavepeek_cmd()
+            .args([
+                "extract",
+                "axi",
+                "--waves",
+                fixture.as_str(),
+                "--source",
+                source.path().to_string_lossy().as_ref(),
+            ])
+            .assert()
+            .failure();
+    }
+}
+
+#[test]
+fn extract_ace5_lite_family_accepts_legal_explicit_maps() {
+    for (profile, fixture_name, mappings, channels, payloads) in [
+        (
+            "ace5-lite",
+            "extract_ace5_lite.vcd",
+            &[
+                "awvalid=ace5_lite_aw_valid_o",
+                "awready=ace5_lite_aw_ready_i",
+                "awmmuflow=ace5_lite_aw_mmu_flow_o",
+            ][..],
+            &["aw"][..],
+            &["awmmuflow=2'h2"][..],
+        ),
+        (
+            "ace5-lite-dvm",
+            "extract_ace5_lite_dvm.vcd",
+            &[
+                "awvalid=ace5_lite_dvm_aw_valid_o",
+                "awready=ace5_lite_dvm_aw_ready_i",
+                "awnsaid=ace5_lite_dvm_aw_nsaid_o",
+                "acvalid=ace5_lite_dvm_ac_valid_i",
+                "acready=ace5_lite_dvm_ac_ready_o",
+                "actrace=ace5_lite_dvm_ac_trace_i",
+            ][..],
+            &["aw", "ac"][..],
+            &["awnsaid=4'h6", "actrace=1'h1"][..],
+        ),
+        (
+            "ace5-lite-acp",
+            "extract_ace5_lite_acp.vcd",
+            &[
+                "awvalid=ace5_lite_acp_aw_valid_o",
+                "awready=ace5_lite_acp_aw_ready_i",
+                "awstashnid=ace5_lite_acp_aw_stash_nid_o",
+                "awmpam=ace5_lite_acp_aw_mpam_o",
+                "arvalid=ace5_lite_acp_ar_valid_o",
+                "arready=ace5_lite_acp_ar_ready_i",
+                "arsnoop=ace5_lite_acp_ar_snoop_o",
+                "rvalid=ace5_lite_acp_r_valid_i",
+                "rready=ace5_lite_acp_r_ready_o",
+                "rchunkstrb=ace5_lite_acp_r_chunk_strb_i",
+            ][..],
+            &["aw", "ar", "r"][..],
+            &[
+                "awstashnid=11'h321",
+                "awmpam=11'h456",
+                "arsnoop=4'h2",
+                "rchunkstrb=16'h5aa5",
+            ][..],
+        ),
+    ] {
+        let fixture = waveform_fixture(fixture_name);
+        let mut args = vec![
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            profile,
+            "--map",
+            "aclk=clk",
+        ];
+        for mapping in mappings {
+            args.extend(["--map", mapping]);
+        }
+        let output = wavepeek_cmd()
+            .args(args)
+            .output()
+            .expect("explicit-map extraction should execute");
+        assert!(
+            output.status.success(),
+            "{profile}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8(output.stdout).expect("human output should be UTF-8");
+        assert!(stdout.contains(&format!("profile: {profile}\nissue: L")));
+        assert_eq!(human_transfer_channels(&stdout), channels, "{profile}");
+        for payload in payloads {
+            assert!(
+                stdout.contains(payload),
+                "{profile}: missing {payload}:\n{stdout}"
+            );
+        }
+    }
+}
+
+#[test]
+fn extract_ace5_lite_family_rejects_out_of_profile_mappings() {
+    for (profile, fixture_name, standards) in [
+        (
+            "ace5-lite",
+            "extract_ace5_lite.vcd",
+            &["awactv", "awpending", "awvalidchk", "acvalid", "cdvalid"][..],
+        ),
+        (
+            "ace5-lite-dvm",
+            "extract_ace5_lite_dvm.vcd",
+            &[
+                "awmmuvalid",
+                "armmuvalid",
+                "btagmatch",
+                "acsnoop",
+                "acprot",
+                "crresp",
+                "cdvalid",
+            ][..],
+        ),
+        (
+            "ace5-lite-acp",
+            "extract_ace5_lite_acp.vcd",
+            &[
+                "awsize", "awburst", "wtag", "bcomp", "arsize", "rtag", "acvalid",
+            ][..],
+        ),
+    ] {
+        let fixture = waveform_fixture(fixture_name);
+        for standard in standards {
+            wavepeek_cmd()
+                .args([
+                    "extract",
+                    "axi",
+                    "--waves",
+                    fixture.as_str(),
+                    "--scope",
+                    "top",
+                    "--profile",
+                    profile,
+                    "--map",
+                    "aclk=clk",
+                    "--map",
+                    &format!("{standard}=clk"),
+                ])
+                .assert()
+                .failure()
+                .stderr(predicate::str::contains(format!(
+                    "AXI profile {profile} has no standard signal '{standard}'"
+                )));
+        }
+    }
+}
+
+#[test]
+fn extract_ace5_lite_dvm_allows_partial_profile_channel_mapping() {
+    let fixture = waveform_fixture("extract_ace5_lite_dvm.vcd");
+    let output = wavepeek_cmd()
+        .args([
+            "extract",
+            "axi",
+            "--waves",
+            fixture.as_str(),
+            "--scope",
+            "top",
+            "--profile",
+            "ace5-lite-dvm",
+            "--map",
+            "aclk=clk",
+            "--map",
+            "awvalid=ace5_lite_dvm_aw_valid_o",
+            "--map",
+            "awready=ace5_lite_dvm_aw_ready_i",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let stdout = String::from_utf8(output).expect("human output should be UTF-8");
+    assert_eq!(human_transfer_channels(&stdout), ["aw"]);
+}
+
+#[test]
+fn extract_ace5_lite_family_matches_between_vcd_and_fst() {
+    for (profile, stem, include) in [
+        (
+            "ace5-lite",
+            "extract_ace5_lite",
+            "^ace5_lite_(aw|w|b|ar|r)_.*",
+        ),
+        (
+            "ace5-lite-dvm",
+            "extract_ace5_lite_dvm",
+            "^ace5_lite_dvm_(aw|w|b|ar|r|ac|cr)_.*",
+        ),
+        (
+            "ace5-lite-acp",
+            "extract_ace5_lite_acp",
+            "^ace5_lite_acp_(aw|w|b|ar|r)_.*",
+        ),
+    ] {
+        let mut outputs = Vec::new();
+        for extension in ["vcd", "fst"] {
+            let fixture = waveform_fixture(&format!("{stem}.{extension}"));
+            outputs.push(
+                wavepeek_cmd()
+                    .args([
+                        "extract",
+                        "axi",
+                        "--waves",
+                        fixture.as_str(),
+                        "--scope",
+                        "top",
+                        "--profile",
+                        profile,
+                        "--map",
+                        "aclk=clk",
+                        "--include",
+                        include,
+                    ])
+                    .output()
+                    .expect("cross-format extraction should execute"),
+            );
+        }
+        assert!(
+            outputs.iter().all(|output| output.status.success()),
+            "{profile}"
+        );
+        assert_eq!(outputs[0].stdout, outputs[1].stdout, "{profile} stdout");
+        assert_eq!(outputs[0].stderr, outputs[1].stderr, "{profile} stderr");
+    }
+}
+
+#[test]
 fn extract_axi5_human_automaps_issue_l_base_and_dvm_channels() {
     let fixture = waveform_fixture("extract_axi5.vcd");
     let output = wavepeek_cmd()

@@ -243,6 +243,139 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_schema_json(schema, "2.0.0", "schema-output-v2.0.json")
 
+    def test_v2_2_axi_contract_includes_ace5_lite_family(self) -> None:
+        expected_profiles = [
+            "axi3",
+            "axi4",
+            "axi4-lite",
+            "axi5",
+            "axi5-lite",
+            "ace",
+            "ace-lite",
+            "ace5",
+            "ace5-lite",
+            "ace5-lite-dvm",
+            "ace5-lite-acp",
+        ]
+        self.assertEqual(check_deploy.AXI_PROFILE_NAMES, expected_profiles)
+
+        for artifact, branch_name in [
+            ("output.json", "extractAxiData"),
+            ("stream.json", "extractAxiContext"),
+        ]:
+            schema_path = TOOLS_DIR.parent.parent / "schema" / artifact
+            schema = json.loads(schema_path.read_text(encoding="utf-8"))
+            check_deploy.validate_v2_2_axi_defs(schema, branch_name)
+            self.assertEqual(schema["$defs"]["axiProfile"]["enum"], expected_profiles)
+            self.assertIn("extractAce5LiteTransfer", schema["$defs"])
+            self.assertIn("extractAce5LiteDvmTransfer", schema["$defs"])
+            self.assertIn("extractAce5LiteAcpTransfer", schema["$defs"])
+
+            for (
+                profile,
+                transfer_def,
+                channel_def,
+                required_mapping,
+                required_payload,
+                rejected_payload,
+            ) in [
+                (
+                    "ace5-lite",
+                    "extractAce5LiteTransfer",
+                    "extractAce5LiteBTransfer",
+                    "awmmuflow",
+                    "btagmatch",
+                    "acaddr",
+                ),
+                (
+                    "ace5-lite-dvm",
+                    "extractAce5LiteDvmTransfer",
+                    "extractAce5LiteDvmAcTransfer",
+                    "crtrace",
+                    "acaddr",
+                    "acsnoop",
+                ),
+                (
+                    "ace5-lite-acp",
+                    "extractAce5LiteAcpTransfer",
+                    "extractAce5LiteAcpAwTransfer",
+                    "rchunkstrb",
+                    "awlen",
+                    "awsize",
+                ),
+            ]:
+                stale_issue = json.loads(json.dumps(schema))
+                branch = next(
+                    candidate
+                    for candidate in stale_issue["$defs"][branch_name]["oneOf"]
+                    if candidate["properties"]["profile"]["const"] == profile
+                )
+                branch["properties"]["issue"]["const"] = "H.c"
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "Issue L"):
+                    check_deploy.validate_v2_2_axi_defs(stale_issue, branch_name)
+
+                stale_channels = json.loads(json.dumps(schema))
+                stale_channels["$defs"][transfer_def]["oneOf"] = []
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "transfer"):
+                    check_deploy.validate_v2_2_axi_defs(stale_channels, branch_name)
+
+                stale_mapping = json.loads(json.dumps(schema))
+                branch = next(
+                    candidate
+                    for candidate in stale_mapping["$defs"][branch_name]["oneOf"]
+                    if candidate["properties"]["profile"]["const"] == profile
+                )
+                del branch["properties"]["mappings"]["properties"][required_mapping]
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+                    check_deploy.validate_v2_2_axi_defs(stale_mapping, branch_name)
+
+                widened_mapping = json.loads(json.dumps(schema))
+                branch = next(
+                    candidate
+                    for candidate in widened_mapping["$defs"][branch_name]["oneOf"]
+                    if candidate["properties"]["profile"]["const"] == profile
+                )
+                branch["properties"]["mappings"]["properties"][rejected_payload] = {
+                    "type": "string"
+                }
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+                    check_deploy.validate_v2_2_axi_defs(widened_mapping, branch_name)
+
+                stale_payload = json.loads(json.dumps(schema))
+                payload = stale_payload["$defs"][channel_def]["properties"]["payload"]
+                payload["properties"][rejected_payload] = {"type": "string"}
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "payload"):
+                    check_deploy.validate_v2_2_axi_defs(stale_payload, branch_name)
+
+                missing_payload = json.loads(json.dumps(schema))
+                payload = missing_payload["$defs"][channel_def]["properties"]["payload"]
+                del payload["properties"][required_payload]
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "payload"):
+                    check_deploy.validate_v2_2_axi_defs(missing_payload, branch_name)
+
+                widened_payload = json.loads(json.dumps(schema))
+                payload = widened_payload["$defs"][channel_def]["properties"]["payload"]
+                payload["additionalProperties"] = True
+                with self.assertRaisesRegex(check_deploy.DeployCheckError, "payload"):
+                    check_deploy.validate_v2_2_axi_defs(widened_payload, branch_name)
+
+                if branch_name == "extractAxiData":
+                    stale_reference = json.loads(json.dumps(schema))
+                    branch = next(
+                        candidate
+                        for candidate in stale_reference["$defs"][branch_name]["oneOf"]
+                        if candidate["properties"]["profile"]["const"] == profile
+                    )
+                    branch["properties"]["transfers"]["items"]["$ref"] = (
+                        "#/$defs/extractAxi4Transfer"
+                    )
+                    with self.assertRaisesRegex(
+                        check_deploy.DeployCheckError, "transfer branch"
+                    ):
+                        check_deploy.validate_v2_2_axi_defs(
+                            stale_reference, branch_name
+                        )
+
     def test_validate_schema_json_rejects_stale_v2_2_axi_profiles(self) -> None:
         schema_path = TOOLS_DIR.parent.parent / "schema" / "output.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
@@ -468,46 +601,8 @@ class CheckDeployTests(unittest.TestCase):
             check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.1.json")
 
     def test_validate_input_schema_json_checks_v2_2_union_contract_shape(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON input documents",
-            "oneOf": [
-                {"$ref": "#/$defs/extractGenericSourcesInput"},
-                {"$ref": "#/$defs/extractAxiSourceInput"},
-            ],
-            "$defs": {
-                "axiProfile": {
-                    "enum": [
-                        "axi3",
-                        "axi4",
-                        "axi4-lite",
-                        "axi5",
-                        "axi5-lite",
-                        "ace",
-                        "ace-lite",
-                        "ace5",
-                    ]
-                },
-                "extractGenericSourcesInput": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
-                        },
-                        "kind": {"const": "extract.generic.sources"},
-                    }
-                },
-                "extractAxiSourceInput": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
-                        },
-                        "kind": {"const": "extract.axi.source"},
-                        "profile": {"$ref": "#/$defs/axiProfile"},
-                    }
-                },
-            },
-        }
-
+        schema_path = TOOLS_DIR.parent.parent / "schema" / "input.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
         check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.2.json")
 
         broken_reference = json.loads(json.dumps(schema))
@@ -519,10 +614,59 @@ class CheckDeployTests(unittest.TestCase):
                 broken_reference, "2.1.0", "schema-input-v2.2.json"
             )
 
-        broken = json.loads(json.dumps(schema))
-        broken["$defs"]["axiProfile"]["enum"] = ["axi5"]
+        stale_enum = json.loads(json.dumps(schema))
+        stale_enum["$defs"]["axiProfile"]["enum"] = check_deploy.AXI_PROFILE_NAMES[:8]
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile enum"):
-            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.2.json")
+            check_deploy.validate_input_schema_json(
+                stale_enum, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        missing_constraints = json.loads(json.dumps(schema))
+        del missing_constraints["$defs"]["extractAxiSourceInput"]["allOf"]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile constraints"):
+            check_deploy.validate_input_schema_json(
+                missing_constraints, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        def profile_branch(document: dict[str, object], profile: str) -> dict[str, object]:
+            branches = document["$defs"]["extractAxiSourceInput"]["allOf"][0]["oneOf"]
+            return next(
+                branch
+                for branch in branches
+                if branch.get("properties", {}).get("profile", {}).get("const") == profile
+            )
+
+        altered_profile = json.loads(json.dumps(schema))
+        branch = profile_branch(altered_profile, "ace5-lite-dvm")
+        branch["properties"]["profile"]["const"] = "ace5-lite-dvm-broken"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "branch order"):
+            check_deploy.validate_input_schema_json(
+                altered_profile, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        missing_mapping = json.loads(json.dumps(schema))
+        maps = profile_branch(missing_mapping, "ace5-lite-dvm")["properties"]["maps"]
+        del maps["properties"]["artagop"]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+            check_deploy.validate_input_schema_json(
+                missing_mapping, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        illegal_mapping = json.loads(json.dumps(schema))
+        maps = profile_branch(illegal_mapping, "ace5-lite-dvm")["properties"]["maps"]
+        maps["properties"]["crresp"] = {"type": "string"}
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+            check_deploy.validate_input_schema_json(
+                illegal_mapping, "2.1.0", "schema-input-v2.2.json"
+            )
+
+        widened_mapping = json.loads(json.dumps(schema))
+        maps = profile_branch(widened_mapping, "ace5-lite-dvm")["properties"]["maps"]
+        maps["additionalProperties"] = True
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "mappings"):
+            check_deploy.validate_input_schema_json(
+                widened_mapping, "2.1.0", "schema-input-v2.2.json"
+            )
 
     def test_validate_input_schema_json_accepts_current_canonical_artifact(self) -> None:
         schema_path = TOOLS_DIR.parent.parent / "schema" / "input.json"

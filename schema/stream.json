@@ -1,7 +1,7 @@
 {
   "$defs": {
     "axiProfile": {
-      "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5.",
+      "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
         "axi3",
         "axi4",
@@ -10,7 +10,10 @@
         "axi5-lite",
         "ace",
         "ace-lite",
-        "ace5"
+        "ace5",
+        "ace5-lite",
+        "ace5-lite-dvm",
+        "ace5-lite-acp"
       ],
       "type": "string"
     },
@@ -632,6 +635,1389 @@
         },
         "profile": {
           "const": "ace5",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAcpArTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "archunken": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ardomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "artrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-acp",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAcpAwTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awdomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpiden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashnid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashniden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-acp",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAcpBTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "btrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "buser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-acp",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAcpRTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rchunknum": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkv": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-acp",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAcpTransfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpAwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpWTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpBTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpRTransfer"
+        }
+      ]
+    },
+    "extractAce5LiteAcpWTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-acp",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteArTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "archunken": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ardomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armecid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmuatst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmuflow": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmusecsid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmusid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmussid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmussidv": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armmuvalid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arnsaid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arnse": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arpbha": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsubsysid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "artagop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "artrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteAwTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awatop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcmo": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awdomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmecid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmuatst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmuflow": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmusecsid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmusid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmussid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmussidv": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmmuvalid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awnsaid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awnse": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awpbha": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpiden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashnid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashniden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsubsysid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awtagop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteBTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bbusy": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bcomp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bpersist": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "btagmatch": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "btrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "buser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmAcTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ac",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "acaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "actrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "acvmidext": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmArTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "ar",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "araddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "archunken": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ardomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armecid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "armpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arnsaid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arnse": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arpbha": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "arsubsysid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "artagop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "artrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "aruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmAwTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "aw",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "awaddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awatop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcache": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awcmo": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awdomain": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlen": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmecid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awmpam": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awnsaid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awnse": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awpbha": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awqos": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awregion": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsnoop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashlpiden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashnid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awstashniden": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awsubsysid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awtagop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "awuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmBTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "b",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "bbusy": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bcomp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bidunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bpersist": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "bresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "btrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "buser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmCrTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "cr",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "crtrace": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmRTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rbusy": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunknum": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkv": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rtag": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteDvmTransfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmAwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmWTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmBTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmRTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmAcTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmCrTransfer"
+        }
+      ]
+    },
+    "extractAce5LiteDvmWTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtag": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtagupdate": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite-dvm",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteRTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "r",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "rbusy": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunknum": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rchunkv": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ridunq": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rloop": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rresp": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rtag": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "rtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "ruser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite",
+          "description": "AXI profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate ready/valid and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAce5LiteTransfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAce5LiteAwTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteWTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteBTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteArTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteRTransfer"
+        }
+      ]
+    },
+    "extractAce5LiteWTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "channel": {
+          "const": "w",
+          "description": "AXI ready/valid channel name."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "wdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wpoison": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtag": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtagupdate": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wtrace": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "wuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "ace5-lite",
           "description": "AXI profile name for this transfer row."
         },
         "sample_time": {
@@ -5055,6 +6441,927 @@
             "mappings"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuatst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuflow": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmusecsid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmusid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmussid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmussidv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awatop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcmo": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuatst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuflow": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmusecsid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmusid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmussid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmussidv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bcomp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bpersist": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btagmatch": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtagupdate": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "acaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "actrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acvmidext": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awatop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcmo": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bcomp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bpersist": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtagupdate": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite-dvm",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite-acp",
+              "description": "AXI profile name used for standard signal mapping."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -6871,6 +9178,951 @@
             "transfers"
           ],
           "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuatst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuflow": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmusecsid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmusid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmussid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmussidv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armmuvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awatop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcmo": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuatst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuflow": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmusecsid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmusid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmussid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmussidv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmmuvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bcomp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bpersist": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btagmatch": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtagupdate": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAce5LiteTransfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "acaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "actrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "acvmidext": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awatop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awburst": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcmo": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlock": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmecid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnsaid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awnse": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awpbha": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awqos": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awregion": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsize": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsubsysid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtagop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bcomp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bpersist": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "crvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rbusy": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rloop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtag": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtagupdate": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite-dvm",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAce5LiteDvmTransfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "L",
+              "description": "Arm IHI 0022 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "araddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "archunken": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ardomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "armpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "artrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "aruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "arvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awaddr": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awcache": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awdomain": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awlen": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awmpam": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awprot": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awsnoop": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashlpiden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashnid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awstashniden": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "awvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bidunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "btrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "buser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "bvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunknum": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rchunkv": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ridunq": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rresp": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "ruser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "rvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wdata": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wlast": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wpoison": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wready": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wstrb": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wtrace": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wuser": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                },
+                "wvalid": {
+                  "$ref": "#/$defs/extractAxiMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "ace5-lite-acp",
+              "description": "AXI profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI ready/valid transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAce5LiteAcpTransfer"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
         }
       ]
     },
@@ -6915,6 +10167,15 @@
         },
         {
           "$ref": "#/$defs/extractAce5Transfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteDvmTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAce5LiteAcpTransfer"
         }
       ]
     },

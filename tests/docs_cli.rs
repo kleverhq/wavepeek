@@ -329,12 +329,16 @@ fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
             output.contains("ACE5"),
             "topic {topic_id} should cover ACE-family extraction profiles"
         );
+        assert!(
+            output.contains("ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP"),
+            "topic {topic_id} should list every ACE5 family profile"
+        );
     }
 
     let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
     assert!(extract.contains("ACE-Lite"));
     assert!(extract.contains("Issue L"));
-    assert!(extract.contains("AXI5 adds the `ac` and `cr`"));
+    assert!(extract.contains("AXI5 and ACE5-LiteDVM add the `ac` and `cr`"));
     assert!(extract.contains("ready/valid channel transfers"));
     assert!(extract.contains("credited transport"));
 

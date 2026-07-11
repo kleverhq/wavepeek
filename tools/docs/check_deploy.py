@@ -335,6 +335,9 @@ AXI_PROFILE_NAMES = [
     "ace",
     "ace-lite",
     "ace5",
+    "ace5-lite",
+    "ace5-lite-dvm",
+    "ace5-lite-acp",
 ]
 
 AXI_TRANSFER_REFS = [
@@ -346,6 +349,9 @@ AXI_TRANSFER_REFS = [
     "#/$defs/extractAceTransfer",
     "#/$defs/extractAceLiteTransfer",
     "#/$defs/extractAce5Transfer",
+    "#/$defs/extractAce5LiteTransfer",
+    "#/$defs/extractAce5LiteDvmTransfer",
+    "#/$defs/extractAce5LiteAcpTransfer",
 ]
 
 AXI5_TRANSFER_REFS = [
@@ -365,6 +371,106 @@ AXI5_LITE_TRANSFER_REFS = [
     "#/$defs/extractAxi5LiteArTransfer",
     "#/$defs/extractAxi5LiteRTransfer",
 ]
+
+ACE5_LITE_TRANSFER_REFS = [
+    "#/$defs/extractAce5LiteAwTransfer",
+    "#/$defs/extractAce5LiteWTransfer",
+    "#/$defs/extractAce5LiteBTransfer",
+    "#/$defs/extractAce5LiteArTransfer",
+    "#/$defs/extractAce5LiteRTransfer",
+]
+
+ACE5_LITE_DVM_TRANSFER_REFS = [
+    "#/$defs/extractAce5LiteDvmAwTransfer",
+    "#/$defs/extractAce5LiteDvmWTransfer",
+    "#/$defs/extractAce5LiteDvmBTransfer",
+    "#/$defs/extractAce5LiteDvmArTransfer",
+    "#/$defs/extractAce5LiteDvmRTransfer",
+    "#/$defs/extractAce5LiteDvmAcTransfer",
+    "#/$defs/extractAce5LiteDvmCrTransfer",
+]
+
+ACE5_LITE_ACP_TRANSFER_REFS = [
+    "#/$defs/extractAce5LiteAcpAwTransfer",
+    "#/$defs/extractAce5LiteAcpWTransfer",
+    "#/$defs/extractAce5LiteAcpBTransfer",
+    "#/$defs/extractAce5LiteAcpArTransfer",
+    "#/$defs/extractAce5LiteAcpRTransfer",
+]
+
+ACE5_LITE_PROFILE_PAYLOADS = {
+    "ace5-lite": {
+        "aw": {
+            "awid", "awaddr", "awregion", "awlen", "awsize", "awburst", "awlock",
+            "awcache", "awprot", "awnse", "awqos", "awuser", "awdomain", "awsnoop",
+            "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace",
+            "awloop", "awmmuvalid", "awmmusecsid", "awmmusid", "awmmussidv",
+            "awmmussid", "awmmuatst", "awmmuflow", "awpbha", "awmecid", "awnsaid",
+            "awsubsysid", "awatop", "awmpam", "awidunq", "awcmo", "awtagop",
+        },
+        "w": {"wdata", "wstrb", "wtag", "wtagupdate", "wlast", "wuser", "wpoison", "wtrace"},
+        "b": {"bid", "bidunq", "bresp", "bcomp", "bpersist", "btagmatch", "buser", "btrace", "bloop", "bbusy"},
+        "ar": {
+            "arid", "araddr", "arregion", "arlen", "arsize", "arburst", "arlock",
+            "arcache", "arprot", "arnse", "arqos", "aruser", "ardomain", "arsnoop",
+            "artrace", "arloop", "armmuvalid", "armmusecsid", "armmusid",
+            "armmussidv", "armmussid", "armmuatst", "armmuflow", "arpbha", "armecid",
+            "arnsaid", "arsubsysid", "armpam", "archunken", "aridunq", "artagop",
+        },
+        "r": {"rid", "ridunq", "rdata", "rtag", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rloop", "rchunkv", "rchunknum", "rchunkstrb", "rbusy"},
+    },
+    "ace5-lite-dvm": {
+        "aw": {
+            "awid", "awaddr", "awregion", "awlen", "awsize", "awburst", "awlock",
+            "awcache", "awprot", "awnse", "awqos", "awuser", "awdomain", "awsnoop",
+            "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace",
+            "awloop", "awpbha", "awmecid", "awnsaid", "awsubsysid", "awatop", "awmpam",
+            "awidunq", "awcmo", "awtagop",
+        },
+        "w": {"wdata", "wstrb", "wtag", "wtagupdate", "wlast", "wuser", "wpoison", "wtrace"},
+        "b": {"bid", "bidunq", "bresp", "bcomp", "bpersist", "buser", "btrace", "bloop", "bbusy"},
+        "ar": {
+            "arid", "araddr", "arregion", "arlen", "arsize", "arburst", "arlock",
+            "arcache", "arprot", "arnse", "arqos", "aruser", "ardomain", "arsnoop",
+            "artrace", "arloop", "arpbha", "armecid", "arnsaid", "arsubsysid", "armpam",
+            "archunken", "aridunq", "artagop",
+        },
+        "r": {"rid", "ridunq", "rdata", "rtag", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rloop", "rchunkv", "rchunknum", "rchunkstrb", "rbusy"},
+        "ac": {"acaddr", "acvmidext", "actrace"},
+        "cr": {"crtrace"},
+    },
+    "ace5-lite-acp": {
+        "aw": {"awid", "awaddr", "awlen", "awcache", "awprot", "awuser", "awdomain", "awsnoop", "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace", "awmpam", "awidunq"},
+        "w": {"wdata", "wstrb", "wlast", "wuser", "wpoison", "wtrace"},
+        "b": {"bid", "bidunq", "bresp", "buser", "btrace"},
+        "ar": {"arid", "araddr", "arlen", "arcache", "arprot", "aruser", "ardomain", "arsnoop", "artrace", "armpam", "archunken", "aridunq"},
+        "r": {"rid", "ridunq", "rdata", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rchunkv", "rchunknum", "rchunkstrb"},
+    },
+}
+
+ACE5_LITE_PROFILE_DEFS = {
+    "ace5-lite": "extractAce5Lite",
+    "ace5-lite-dvm": "extractAce5LiteDvm",
+    "ace5-lite-acp": "extractAce5LiteAcp",
+}
+
+
+def expected_mapping_names(profile_name: str) -> set[str]:
+    names = {"aclk", "aresetn"}
+    for channel, payloads in ACE5_LITE_PROFILE_PAYLOADS[profile_name].items():
+        names.update(payloads)
+        names.update({f"{channel}valid", f"{channel}ready"})
+    return names
+
+
+def validate_exact_mapping_schema(mapping: Any, profile_name: str, label: str) -> None:
+    properties = mapping.get("properties") if isinstance(mapping, dict) else None
+    if (
+        not isinstance(properties, dict)
+        or set(properties) != expected_mapping_names(profile_name)
+        or mapping.get("additionalProperties") is not False
+    ):
+        fail(f"schema artifact {label} mappings mismatch")
 
 
 def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
@@ -397,29 +503,51 @@ def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
     if list(branches_by_profile) != AXI_PROFILE_NAMES:
         fail(f"schema artifact {branch_name} profile branches mismatch")
 
-    for profile_name, transfer_ref in [
-        ("axi5", "#/$defs/extractAxi5Transfer"),
-        ("axi5-lite", "#/$defs/extractAxi5LiteTransfer"),
-    ]:
+    issue_l_profiles = [
+        (
+            "axi5",
+            "#/$defs/extractAxi5Transfer",
+            {"acaddr", "acvalid", "crvalid", "wtagupdate", "rchunknum"},
+            {"acsnoop", "cdvalid", "awpending"},
+        ),
+        (
+            "axi5-lite",
+            "#/$defs/extractAxi5LiteTransfer",
+            {"awidunq", "wpoison", "rpoison"},
+            {"awlen", "wlast", "acvalid"},
+        ),
+        (
+            "ace5-lite",
+            "#/$defs/extractAce5LiteTransfer",
+            {"awmmuflow", "btagmatch", "artagop", "rchunkstrb"},
+            {"acvalid", "cdvalid", "awpending"},
+        ),
+        (
+            "ace5-lite-dvm",
+            "#/$defs/extractAce5LiteDvmTransfer",
+            {"artagop", "acaddr", "acvalid", "crtrace", "crvalid"},
+            {"awmmuvalid", "btagmatch", "acsnoop", "crresp", "cdvalid"},
+        ),
+        (
+            "ace5-lite-acp",
+            "#/$defs/extractAce5LiteAcpTransfer",
+            {"awlen", "awstashnid", "arsnoop", "rchunkstrb"},
+            {"awsize", "wtag", "bcomp", "rtag", "acvalid"},
+        ),
+    ]
+    for profile_name, transfer_ref, required_mappings, rejected_mappings in issue_l_profiles:
         properties = branches_by_profile[profile_name]["properties"]
         issue = properties.get("issue")
         if not isinstance(issue, dict) or issue.get("const") != "L":
             fail(f"schema artifact {profile_name} branch must use Issue L")
         mappings = properties.get("mappings")
         mapping_properties = mappings.get("properties") if isinstance(mappings, dict) else None
-        if not isinstance(mapping_properties, dict):
-            fail(f"schema artifact {profile_name} branch must define mappings")
-        if profile_name == "axi5":
-            if not {"acaddr", "acvalid", "crvalid", "wtagupdate", "rchunknum"} <= set(
-                mapping_properties
-            ) or {"acsnoop", "cdvalid", "awpending"} & set(mapping_properties):
-                fail("schema artifact AXI5 mapping inventory mismatch")
-        elif not {"awidunq", "wpoison", "rpoison"} <= set(mapping_properties) or {
-            "awlen",
-            "wlast",
-            "acvalid",
-        } & set(mapping_properties):
-            fail("schema artifact AXI5-Lite mapping inventory mismatch")
+        if (
+            not isinstance(mapping_properties, dict)
+            or not required_mappings <= set(mapping_properties)
+            or rejected_mappings & set(mapping_properties)
+        ):
+            fail(f"schema artifact {profile_name} mappings inventory mismatch")
         if branch_name == "extractAxiData":
             transfers = properties.get("transfers")
             items = transfers.get("items") if isinstance(transfers, dict) else None
@@ -434,45 +562,111 @@ def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
     for definition_name, expected_refs, label in [
         ("extractAxi5Transfer", AXI5_TRANSFER_REFS, "AXI5"),
         ("extractAxi5LiteTransfer", AXI5_LITE_TRANSFER_REFS, "AXI5-Lite"),
+        ("extractAce5LiteTransfer", ACE5_LITE_TRANSFER_REFS, "ACE5-Lite"),
+        (
+            "extractAce5LiteDvmTransfer",
+            ACE5_LITE_DVM_TRANSFER_REFS,
+            "ACE5-LiteDVM",
+        ),
+        (
+            "extractAce5LiteAcpTransfer",
+            ACE5_LITE_ACP_TRANSFER_REFS,
+            "ACE5-LiteACP",
+        ),
     ]:
         definition = defs.get(definition_name)
         one_of = definition.get("oneOf") if isinstance(definition, dict) else None
         if one_of != [{"$ref": ref} for ref in expected_refs]:
             fail(f"schema artifact {label} transfer channel branches mismatch")
 
-    axi5_ac = defs.get("extractAxi5AcTransfer")
-    ac_properties = axi5_ac.get("properties") if isinstance(axi5_ac, dict) else None
-    ac_profile = ac_properties.get("profile") if isinstance(ac_properties, dict) else None
-    ac_channel = ac_properties.get("channel") if isinstance(ac_properties, dict) else None
-    ac_payload = ac_properties.get("payload") if isinstance(ac_properties, dict) else None
-    ac_payload_properties = ac_payload.get("properties") if isinstance(ac_payload, dict) else None
-    if (
-        not isinstance(ac_profile, dict)
-        or ac_profile.get("const") != "axi5"
-        or not isinstance(ac_channel, dict)
-        or ac_channel.get("const") != "ac"
-        or not isinstance(ac_payload_properties, dict)
-        or not {"acaddr", "acvmidext"} <= set(ac_payload_properties)
-        or "acsnoop" in ac_payload_properties
-    ):
-        fail("schema artifact AXI5 AC transfer payload mismatch")
+    for profile_name, channels in ACE5_LITE_PROFILE_PAYLOADS.items():
+        branch_properties = branches_by_profile[profile_name]["properties"]
+        validate_exact_mapping_schema(
+            branch_properties.get("mappings"), profile_name, profile_name
+        )
+        definition_prefix = ACE5_LITE_PROFILE_DEFS[profile_name]
+        for channel_name, expected_payloads in channels.items():
+            channel_title = channel_name[0].upper() + channel_name[1:]
+            definition_name = f"{definition_prefix}{channel_title}Transfer"
+            definition = defs.get(definition_name)
+            properties = definition.get("properties") if isinstance(definition, dict) else None
+            profile = properties.get("profile") if isinstance(properties, dict) else None
+            channel = properties.get("channel") if isinstance(properties, dict) else None
+            payload = properties.get("payload") if isinstance(properties, dict) else None
+            payload_properties = (
+                payload.get("properties") if isinstance(payload, dict) else None
+            )
+            if (
+                not isinstance(profile, dict)
+                or profile.get("const") != profile_name
+                or not isinstance(channel, dict)
+                or channel.get("const") != channel_name
+                or not isinstance(payload_properties, dict)
+                or set(payload_properties) != expected_payloads
+                or payload.get("additionalProperties") is not False
+            ):
+                fail(
+                    f"schema artifact {profile_name} {channel_name} transfer payload mismatch"
+                )
 
-    axi5_lite_w = defs.get("extractAxi5LiteWTransfer")
-    w_properties = axi5_lite_w.get("properties") if isinstance(axi5_lite_w, dict) else None
-    w_profile = w_properties.get("profile") if isinstance(w_properties, dict) else None
-    w_channel = w_properties.get("channel") if isinstance(w_properties, dict) else None
-    w_payload = w_properties.get("payload") if isinstance(w_properties, dict) else None
-    w_payload_properties = w_payload.get("properties") if isinstance(w_payload, dict) else None
-    if (
-        not isinstance(w_profile, dict)
-        or w_profile.get("const") != "axi5-lite"
-        or not isinstance(w_channel, dict)
-        or w_channel.get("const") != "w"
-        or not isinstance(w_payload_properties, dict)
-        or not {"wdata", "wpoison"} <= set(w_payload_properties)
-        or "wlast" in w_payload_properties
-    ):
-        fail("schema artifact AXI5-Lite W transfer payload mismatch")
+    for definition_name, profile_name, channel_name, required, rejected, label in [
+        (
+            "extractAxi5AcTransfer",
+            "axi5",
+            "ac",
+            {"acaddr", "acvmidext"},
+            {"acsnoop"},
+            "AXI5 AC",
+        ),
+        (
+            "extractAxi5LiteWTransfer",
+            "axi5-lite",
+            "w",
+            {"wdata", "wpoison"},
+            {"wlast"},
+            "AXI5-Lite W",
+        ),
+        (
+            "extractAce5LiteBTransfer",
+            "ace5-lite",
+            "b",
+            {"btagmatch"},
+            {"acaddr"},
+            "ACE5-Lite B",
+        ),
+        (
+            "extractAce5LiteDvmAcTransfer",
+            "ace5-lite-dvm",
+            "ac",
+            {"acaddr", "acvmidext"},
+            {"acsnoop"},
+            "ACE5-LiteDVM AC",
+        ),
+        (
+            "extractAce5LiteAcpAwTransfer",
+            "ace5-lite-acp",
+            "aw",
+            {"awlen", "awsnoop"},
+            {"awsize"},
+            "ACE5-LiteACP AW",
+        ),
+    ]:
+        definition = defs.get(definition_name)
+        properties = definition.get("properties") if isinstance(definition, dict) else None
+        profile = properties.get("profile") if isinstance(properties, dict) else None
+        channel = properties.get("channel") if isinstance(properties, dict) else None
+        payload = properties.get("payload") if isinstance(properties, dict) else None
+        payload_properties = payload.get("properties") if isinstance(payload, dict) else None
+        if (
+            not isinstance(profile, dict)
+            or profile.get("const") != profile_name
+            or not isinstance(channel, dict)
+            or channel.get("const") != channel_name
+            or not isinstance(payload_properties, dict)
+            or not required <= set(payload_properties)
+            or rejected & set(payload_properties)
+        ):
+            fail(f"schema artifact {label} transfer payload mismatch")
 
 
 def validate_schema_json(schema: Any, version: str, schema_artifact: str | None = None) -> None:
@@ -611,17 +805,53 @@ def validate_input_schema_json(
         if not isinstance(profile, dict) or profile.get("$ref") != "#/$defs/axiProfile":
             fail("input schema artifact AXI profile reference mismatch")
         profile_definition = defs.get("axiProfile")
-        if not isinstance(profile_definition, dict) or profile_definition.get("enum") != [
-            "axi3",
-            "axi4",
-            "axi4-lite",
-            "axi5",
-            "axi5-lite",
-            "ace",
-            "ace-lite",
-            "ace5",
-        ]:
+        if not isinstance(profile_definition, dict) or profile_definition.get("enum") != AXI_PROFILE_NAMES:
             fail("input schema artifact AXI profile enum mismatch")
+
+        all_of = axi.get("allOf")
+        profile_union = (
+            all_of[0].get("oneOf")
+            if isinstance(all_of, list)
+            and len(all_of) == 1
+            and isinstance(all_of[0], dict)
+            else None
+        )
+        if not isinstance(profile_union, list) or len(profile_union) != len(AXI_PROFILE_NAMES):
+            fail("input schema artifact AXI profile constraints mismatch")
+        expected_explicit_profiles = [
+            name for name in AXI_PROFILE_NAMES if name != "axi4"
+        ]
+        default_branch = profile_union[0]
+        if default_branch.get("anyOf") != [
+            {"not": {"required": ["profile"]}},
+            {
+                "properties": {"profile": {"const": "axi4"}},
+                "required": ["profile"],
+            },
+        ]:
+            fail("input schema artifact AXI default profile branch mismatch")
+        default_properties = default_branch.get("properties")
+        if not isinstance(default_properties, dict) or "maps" not in default_properties:
+            fail("input schema artifact AXI default mappings mismatch")
+
+        explicit_profiles: list[str] = []
+        explicit_branches: dict[str, dict[str, Any]] = {}
+        for branch in profile_union[1:]:
+            properties = branch.get("properties") if isinstance(branch, dict) else None
+            profile_schema = properties.get("profile") if isinstance(properties, dict) else None
+            profile_name = profile_schema.get("const") if isinstance(profile_schema, dict) else None
+            if not isinstance(profile_name, str) or branch.get("required") != ["profile"]:
+                fail("input schema artifact AXI explicit profile branch mismatch")
+            explicit_profiles.append(profile_name)
+            explicit_branches[profile_name] = branch
+        if explicit_profiles != expected_explicit_profiles:
+            fail("input schema artifact AXI profile branch order mismatch")
+
+        for profile_name in ACE5_LITE_PROFILE_PAYLOADS:
+            branch_properties = explicit_branches[profile_name]["properties"]
+            validate_exact_mapping_schema(
+                branch_properties.get("maps"), profile_name, f"input {profile_name}"
+            )
         return
 
     properties = schema.get("properties")

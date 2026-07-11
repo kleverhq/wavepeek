@@ -19,8 +19,8 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
 - [x] (2026-07-11) Read issue #59, issues #57 and #58, merged PRs #61 and #62, current profile/runtime/schema/docs code, repository workflow, and Arm IHI 0022L sections B2.1-B2.4.
 - [x] (2026-07-11) Fast-forward `feat/extract_ace5_lite` from AXI5 feature commit `d362626` to merged `origin/main` commit `903c4ab`; the worktree was clean before creating this plan.
 - [x] (2026-07-11 20:31Z) Milestone 0: reviewed the ExecPlan through architecture and protocol-data lanes, incorporated all findings, and prepared the reviewed plan commit.
-- [ ] Milestone 1 RED: create source-backed fixtures and add complete failing profile, alias, runtime, schema, help, docs, skill, and checker tests; review the test specification before implementation.
-- [ ] Milestone 2 GREEN: implement exact profiles and explicit aliases, publish generated contracts and guidance, pass all focused tests, review, and commit the coherent feature.
+- [x] (2026-07-11 20:52Z) Milestone 1 RED: generated and staged three source-backed VCD/FST fixtures; added failing profile, alias, runtime, exact schema, help, docs, skill, and deployment-check tests; captured intended failures under `tmp/issue-59-red/`; resolved all findings from protocol, runtime/fixture, and contract-test review lanes.
+- [x] (2026-07-11 21:14Z) Milestone 2 GREEN: implemented exact profiles and explicit aliases; regenerated output, stream, and input schemas; updated exact deployment checks, help, docs, skill, and changelog; passed focused suites, `just format`, `just lint`, `just check-schema`, and `just test`; resolved all findings from protocol/Rust, runtime/fixture, schema/checker, and docs/help review lanes.
 - [ ] Milestone 3: run full gates, conduct parallel final reviews and a fresh control review, remove this WIP plan, rerun full gates on final `HEAD`, push the branch, and open a PR closing issue #59.
 
 ## Surprises & Discoveries
@@ -29,7 +29,16 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
   Evidence: `src/engine/axi.rs` now uses token-based `standard_suffix_start()` and already maps split AC/CR names for AXI5. The new DVM profile can reuse this code without a profile-specific parser.
 
 - Observation: `profile_specs()` drives most exact output and stream schema branches.
-  Evidence: `src/contract/axi_schema.rs` derives profile mappings, issue constants, channel branches, and payload properties from runtime profile metadata. Milestone 1 updates profile metadata and generated schema snapshots in the same coherent slice.
+  Evidence: `src/contract/axi_schema.rs` derives profile mappings, issue constants, channel branches, and payload properties from runtime profile metadata. The RED schema tests reject all three absent profile branches in output and stream contracts.
+
+- Observation: The complete RED suite fails at the intended product boundaries after fixture generation succeeds.
+  Evidence: `tmp/issue-59-red/1.log` through `8.log` show unsupported runtime profiles, absent schema branches/enums, and stale help/docs/skill/deployment contracts; no failure is caused by missing or malformed fixture output.
+
+- Observation: The generic token auto-mapper and extraction engine required no profile-specific runtime branch.
+  Evidence: Adding exact `AxiProfileSpec` metadata plus CLI/source parsing made all seven new VCD/FST, explicit-map, auto-map, alias, partial-profile, JSON, and JSONL integration tests pass.
+
+- Observation: Representative deployment checks were weaker than local generated-schema tests.
+  Evidence: GREEN schema review showed that a corrupted remote schema could lose legal mappings, add forbidden payloads, or drop input `allOf` isolation while local generation stayed correct. The deployment checker now validates exact new-family mapping and per-channel payload sets for output, stream, and input artifacts.
 
 - Observation: Arm IHI 0022L revised ACE5-LiteDVM relative to Issue H.
   Evidence: section B2.1.3 removes `ACSNOOP`, `ACPROT`, and `CRRESP`; Table B2.4 requires `DVM_Message_Support = Receiver`, making AC and CR channels mandatory at protocol level. Table B2.2 still permits `ARTAGOP` for ACE5-LiteDVM. The extractor follows existing partial-mapping behavior and emits only channels with complete mapped ready/valid pairs.
@@ -58,7 +67,7 @@ This work does not implement credited transport. It excludes `*pending`, `*crdt`
 
 ## Outcomes & Retrospective
 
-Milestone 0 completed after independent architecture and protocol-data review plus focused follow-up passes. The final plan has no unresolved findings, uses meaningful RED failures, keeps the GREEN feature commit coherent, and retains DVM `ARTAGOP`. Implementation has not started.
+Milestones 0-2 completed. Users can select all three Issue L ACE5-Lite profiles through canonical CLI/source names and explicit aliases, extract deterministic ready/valid rows from VCD/FST and available FSDB inputs, and validate JSON, JSONL, or source documents against exact profile-specific schemas. Reviewed tests cover exact signal inventories, legal and forbidden mappings, DVM AC/CR without CD, profile-prefix isolation, aliases, partial profile extraction, generated contracts, deployment drift, help, docs, skill guidance, and changelog. Full handoff gates and final control review remain.
 
 ## Context and Orientation
 
@@ -207,3 +216,11 @@ Plan revision note (2026-07-11): Incorporated independent plan and protocol-data
 Plan revision note (2026-07-11): Incorporated follow-up architecture review. Fixtures are generated before runtime tests, the complete reviewed RED specification fails on unsupported behavior rather than missing files, and one coherent GREEN milestone publishes schemas and turns all tests green before the feature commit.
 
 Plan revision note (2026-07-11): Incorporated final feasibility review. New Verilog sources are staged before fixture-policy tests because that contract deliberately enumerates tracked fixture sources through `git ls-files`.
+
+Plan revision note (2026-07-11): Milestone 1 RED generated all fixtures successfully and captured focused failures at each missing runtime and public-contract boundary before implementation.
+
+Plan revision note (2026-07-11): RED reviews strengthened legal explicit-map evidence, profile-prefix collision safety, canonical alias output, exact output/stream schema branches, cross-profile isolation, all-profile stream records, deployment stale-artifact mutations, and documentation profile-list assertions. Follow-up passes reported no substantive findings.
+
+Plan revision note (2026-07-11): Milestone 2 implementation turned all reviewed RED tests green, regenerated all three schema artifacts without changing the catalog, and passed format, lint, schema, full Rust/Python, and available FSDB tests before GREEN review.
+
+Plan revision note (2026-07-11): GREEN reviews reported clean protocol/runtime lanes and identified deployment-check and schema-description gaps. Exact output/stream/input deployment validation, mutation tests, complete schema descriptions, and regenerated artifacts resolved those findings; follow-up reviews reported no substantive findings.

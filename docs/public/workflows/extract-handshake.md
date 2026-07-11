@@ -11,7 +11,7 @@ see_also:
 ---
 # Extract handshakes from synchronous bus
 
-Use `extract` commands when you need a compact table of transfer-like events from a waveform. Use `extract axi` for AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, and ACE5 ready/valid channels. AXI5 can include DVM `ac` and `cr` transfers; AXI5-Lite uses only the five base channels. Use `extract generic` for other protocol-neutral handshakes.
+Use `extract` commands when you need a compact table of transfer-like events from a waveform. Use `extract axi` for AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels. AXI5 and ACE5-LiteDVM can include DVM `ac` and `cr` transfers without `cd`; AXI5-Lite, ACE5-Lite, and ACE5-LiteACP use only the five base channels. Use `extract generic` for other protocol-neutral handshakes.
 
 For AXI, map the clock and let include regexes find standard channel signals:
 

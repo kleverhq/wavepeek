@@ -990,6 +990,566 @@ fn schema_output_validator_enforces_axi5_profile_channels_and_payloads() {
 }
 
 #[test]
+fn schema_artifacts_define_exact_ace5_lite_family_branches() {
+    let schema = schema_json();
+    let defs = schema["$defs"].as_object().expect("schema defs");
+    assert_eq!(
+        defs["axiProfile"]["description"],
+        "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp."
+    );
+    let branches = defs["extractAxiData"]["oneOf"]
+        .as_array()
+        .expect("AXI profile branches");
+
+    let assert_profile = |profile: &str, profile_def: &str, channels: &[(&str, &str, &[&str])]| {
+        let branch = branches
+            .iter()
+            .find(|branch| branch["properties"]["profile"]["const"] == profile)
+            .unwrap_or_else(|| panic!("missing output branch for {profile}"));
+        assert_eq!(branch["properties"]["issue"]["const"], "L");
+
+        let mut expected_mappings = vec!["aclk", "aresetn"];
+        let mut expected_refs = Vec::new();
+        for (channel, channel_def, payloads) in channels {
+            expected_mappings.extend([
+                concat_channel_signal(channel, "valid"),
+                concat_channel_signal(channel, "ready"),
+            ]);
+            expected_mappings.extend(payloads.iter().copied());
+            expected_refs.push(json!({"$ref": format!("#/$defs/{channel_def}")}));
+
+            let definition = &defs[*channel_def];
+            assert_eq!(definition["properties"]["profile"]["const"], profile);
+            assert_eq!(definition["properties"]["channel"]["const"], *channel);
+            let mut actual_payloads = definition["properties"]["payload"]["properties"]
+                .as_object()
+                .expect("payload properties")
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>();
+            actual_payloads.sort_unstable();
+            let mut expected_payloads = payloads.to_vec();
+            expected_payloads.sort_unstable();
+            assert_eq!(
+                actual_payloads, expected_payloads,
+                "payloads for {channel_def}"
+            );
+        }
+        expected_mappings.sort_unstable();
+        let mut actual_mappings = branch["properties"]["mappings"]["properties"]
+            .as_object()
+            .expect("mapping properties")
+            .keys()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        actual_mappings.sort_unstable();
+        assert_eq!(actual_mappings, expected_mappings, "mappings for {profile}");
+        assert_eq!(
+            defs[profile_def]["oneOf"]
+                .as_array()
+                .expect("profile channel branches"),
+            &expected_refs,
+            "channels for {profile}"
+        );
+    };
+
+    assert_profile(
+        "ace5-lite",
+        "extractAce5LiteTransfer",
+        &[
+            (
+                "aw",
+                "extractAce5LiteAwTransfer",
+                &[
+                    "awid",
+                    "awaddr",
+                    "awregion",
+                    "awlen",
+                    "awsize",
+                    "awburst",
+                    "awlock",
+                    "awcache",
+                    "awprot",
+                    "awnse",
+                    "awqos",
+                    "awuser",
+                    "awdomain",
+                    "awsnoop",
+                    "awstashnid",
+                    "awstashniden",
+                    "awstashlpid",
+                    "awstashlpiden",
+                    "awtrace",
+                    "awloop",
+                    "awmmuvalid",
+                    "awmmusecsid",
+                    "awmmusid",
+                    "awmmussidv",
+                    "awmmussid",
+                    "awmmuatst",
+                    "awmmuflow",
+                    "awpbha",
+                    "awmecid",
+                    "awnsaid",
+                    "awsubsysid",
+                    "awatop",
+                    "awmpam",
+                    "awidunq",
+                    "awcmo",
+                    "awtagop",
+                ],
+            ),
+            (
+                "w",
+                "extractAce5LiteWTransfer",
+                &[
+                    "wdata",
+                    "wstrb",
+                    "wtag",
+                    "wtagupdate",
+                    "wlast",
+                    "wuser",
+                    "wpoison",
+                    "wtrace",
+                ],
+            ),
+            (
+                "b",
+                "extractAce5LiteBTransfer",
+                &[
+                    "bid",
+                    "bidunq",
+                    "bresp",
+                    "bcomp",
+                    "bpersist",
+                    "btagmatch",
+                    "buser",
+                    "btrace",
+                    "bloop",
+                    "bbusy",
+                ],
+            ),
+            (
+                "ar",
+                "extractAce5LiteArTransfer",
+                &[
+                    "arid",
+                    "araddr",
+                    "arregion",
+                    "arlen",
+                    "arsize",
+                    "arburst",
+                    "arlock",
+                    "arcache",
+                    "arprot",
+                    "arnse",
+                    "arqos",
+                    "aruser",
+                    "ardomain",
+                    "arsnoop",
+                    "artrace",
+                    "arloop",
+                    "armmuvalid",
+                    "armmusecsid",
+                    "armmusid",
+                    "armmussidv",
+                    "armmussid",
+                    "armmuatst",
+                    "armmuflow",
+                    "arpbha",
+                    "armecid",
+                    "arnsaid",
+                    "arsubsysid",
+                    "armpam",
+                    "archunken",
+                    "aridunq",
+                    "artagop",
+                ],
+            ),
+            (
+                "r",
+                "extractAce5LiteRTransfer",
+                &[
+                    "rid",
+                    "ridunq",
+                    "rdata",
+                    "rtag",
+                    "rresp",
+                    "rlast",
+                    "ruser",
+                    "rpoison",
+                    "rtrace",
+                    "rloop",
+                    "rchunkv",
+                    "rchunknum",
+                    "rchunkstrb",
+                    "rbusy",
+                ],
+            ),
+        ],
+    );
+
+    assert_profile(
+        "ace5-lite-dvm",
+        "extractAce5LiteDvmTransfer",
+        &[
+            (
+                "aw",
+                "extractAce5LiteDvmAwTransfer",
+                &[
+                    "awid",
+                    "awaddr",
+                    "awregion",
+                    "awlen",
+                    "awsize",
+                    "awburst",
+                    "awlock",
+                    "awcache",
+                    "awprot",
+                    "awnse",
+                    "awqos",
+                    "awuser",
+                    "awdomain",
+                    "awsnoop",
+                    "awstashnid",
+                    "awstashniden",
+                    "awstashlpid",
+                    "awstashlpiden",
+                    "awtrace",
+                    "awloop",
+                    "awpbha",
+                    "awmecid",
+                    "awnsaid",
+                    "awsubsysid",
+                    "awatop",
+                    "awmpam",
+                    "awidunq",
+                    "awcmo",
+                    "awtagop",
+                ],
+            ),
+            (
+                "w",
+                "extractAce5LiteDvmWTransfer",
+                &[
+                    "wdata",
+                    "wstrb",
+                    "wtag",
+                    "wtagupdate",
+                    "wlast",
+                    "wuser",
+                    "wpoison",
+                    "wtrace",
+                ],
+            ),
+            (
+                "b",
+                "extractAce5LiteDvmBTransfer",
+                &[
+                    "bid", "bidunq", "bresp", "bcomp", "bpersist", "buser", "btrace", "bloop",
+                    "bbusy",
+                ],
+            ),
+            (
+                "ar",
+                "extractAce5LiteDvmArTransfer",
+                &[
+                    "arid",
+                    "araddr",
+                    "arregion",
+                    "arlen",
+                    "arsize",
+                    "arburst",
+                    "arlock",
+                    "arcache",
+                    "arprot",
+                    "arnse",
+                    "arqos",
+                    "aruser",
+                    "ardomain",
+                    "arsnoop",
+                    "artrace",
+                    "arloop",
+                    "arpbha",
+                    "armecid",
+                    "arnsaid",
+                    "arsubsysid",
+                    "armpam",
+                    "archunken",
+                    "aridunq",
+                    "artagop",
+                ],
+            ),
+            (
+                "r",
+                "extractAce5LiteDvmRTransfer",
+                &[
+                    "rid",
+                    "ridunq",
+                    "rdata",
+                    "rtag",
+                    "rresp",
+                    "rlast",
+                    "ruser",
+                    "rpoison",
+                    "rtrace",
+                    "rloop",
+                    "rchunkv",
+                    "rchunknum",
+                    "rchunkstrb",
+                    "rbusy",
+                ],
+            ),
+            (
+                "ac",
+                "extractAce5LiteDvmAcTransfer",
+                &["acaddr", "acvmidext", "actrace"],
+            ),
+            ("cr", "extractAce5LiteDvmCrTransfer", &["crtrace"]),
+        ],
+    );
+
+    assert_profile(
+        "ace5-lite-acp",
+        "extractAce5LiteAcpTransfer",
+        &[
+            (
+                "aw",
+                "extractAce5LiteAcpAwTransfer",
+                &[
+                    "awid",
+                    "awaddr",
+                    "awlen",
+                    "awcache",
+                    "awprot",
+                    "awuser",
+                    "awdomain",
+                    "awsnoop",
+                    "awstashnid",
+                    "awstashniden",
+                    "awstashlpid",
+                    "awstashlpiden",
+                    "awtrace",
+                    "awmpam",
+                    "awidunq",
+                ],
+            ),
+            (
+                "w",
+                "extractAce5LiteAcpWTransfer",
+                &["wdata", "wstrb", "wlast", "wuser", "wpoison", "wtrace"],
+            ),
+            (
+                "b",
+                "extractAce5LiteAcpBTransfer",
+                &["bid", "bidunq", "bresp", "buser", "btrace"],
+            ),
+            (
+                "ar",
+                "extractAce5LiteAcpArTransfer",
+                &[
+                    "arid",
+                    "araddr",
+                    "arlen",
+                    "arcache",
+                    "arprot",
+                    "aruser",
+                    "ardomain",
+                    "arsnoop",
+                    "artrace",
+                    "armpam",
+                    "archunken",
+                    "aridunq",
+                ],
+            ),
+            (
+                "r",
+                "extractAce5LiteAcpRTransfer",
+                &[
+                    "rid",
+                    "ridunq",
+                    "rdata",
+                    "rresp",
+                    "rlast",
+                    "ruser",
+                    "rpoison",
+                    "rtrace",
+                    "rchunkv",
+                    "rchunknum",
+                    "rchunkstrb",
+                ],
+            ),
+        ],
+    );
+}
+
+fn concat_channel_signal(channel: &str, suffix: &str) -> &'static str {
+    match (channel, suffix) {
+        ("aw", "valid") => "awvalid",
+        ("aw", "ready") => "awready",
+        ("w", "valid") => "wvalid",
+        ("w", "ready") => "wready",
+        ("b", "valid") => "bvalid",
+        ("b", "ready") => "bready",
+        ("ar", "valid") => "arvalid",
+        ("ar", "ready") => "arready",
+        ("r", "valid") => "rvalid",
+        ("r", "ready") => "rready",
+        ("ac", "valid") => "acvalid",
+        ("ac", "ready") => "acready",
+        ("cr", "valid") => "crvalid",
+        ("cr", "ready") => "crready",
+        _ => panic!("unsupported channel signal {channel}{suffix}"),
+    }
+}
+
+#[test]
+fn schema_output_validator_enforces_ace5_lite_family_contracts() {
+    let validator = output_schema_validator();
+
+    let valid_lite = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace5-lite",
+            "profile": "ace5-lite",
+            "issue": "L",
+            "mappings": {
+                "bvalid": {"path": "top.bvalid"},
+                "bready": {"path": "top.bready"},
+                "btagmatch": {"path": "top.btagmatch"}
+            },
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5-lite",
+                "channel": "b",
+                "payload": {"btagmatch": "2'h2"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_lite)
+        .unwrap_or_else(|error| panic!("valid ACE5-Lite output rejected: {error}\n{valid_lite}"));
+
+    let valid_dvm = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace5-lite-dvm",
+            "profile": "ace5-lite-dvm",
+            "issue": "L",
+            "mappings": {
+                "arvalid": {"path": "top.arvalid"},
+                "arready": {"path": "top.arready"},
+                "artagop": {"path": "top.artagop"},
+                "acvalid": {"path": "top.acvalid"},
+                "acready": {"path": "top.acready"},
+                "acaddr": {"path": "top.acaddr"},
+                "crvalid": {"path": "top.crvalid"},
+                "crready": {"path": "top.crready"},
+                "crtrace": {"path": "top.crtrace"}
+            },
+            "transfers": [
+                {
+                    "time": "5ns",
+                    "sample_time": "4ns",
+                    "profile": "ace5-lite-dvm",
+                    "channel": "ar",
+                    "payload": {"artagop": "2'h3"}
+                },
+                {
+                    "time": "5ns",
+                    "sample_time": "4ns",
+                    "profile": "ace5-lite-dvm",
+                    "channel": "ac",
+                    "payload": {"acaddr": "32'h12345678"}
+                },
+                {
+                    "time": "5ns",
+                    "sample_time": "4ns",
+                    "profile": "ace5-lite-dvm",
+                    "channel": "cr",
+                    "payload": {"crtrace": "1'h1"}
+                }
+            ]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_dvm)
+        .unwrap_or_else(|error| panic!("valid ACE5-LiteDVM output rejected: {error}\n{valid_dvm}"));
+
+    for rejected in [
+        "awmmuvalid",
+        "armmuvalid",
+        "btagmatch",
+        "acsnoop",
+        "acprot",
+        "crresp",
+        "cdvalid",
+    ] {
+        let mut invalid = valid_dvm.clone();
+        invalid["data"]["mappings"][rejected] = json!({"path": format!("top.{rejected}")});
+        assert!(
+            validator.validate(&invalid).is_err(),
+            "ACE5-LiteDVM output accepted {rejected}: {invalid}"
+        );
+    }
+
+    let valid_acp = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace5-lite-acp",
+            "profile": "ace5-lite-acp",
+            "issue": "L",
+            "mappings": {
+                "awvalid": {"path": "top.awvalid"},
+                "awready": {"path": "top.awready"},
+                "awlen": {"path": "top.awlen"},
+                "awsnoop": {"path": "top.awsnoop"}
+            },
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5-lite-acp",
+                "channel": "aw",
+                "payload": {"awlen": "8'h03", "awsnoop": "4'h1"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_acp)
+        .unwrap_or_else(|error| panic!("valid ACE5-LiteACP output rejected: {error}\n{valid_acp}"));
+
+    let mut invalid_acp = valid_acp.clone();
+    invalid_acp["data"]["mappings"]["awsize"] = json!({"path": "top.awsize"});
+    assert!(
+        validator.validate(&invalid_acp).is_err(),
+        "ACE5-LiteACP output accepted AWSIZE: {invalid_acp}"
+    );
+
+    let mut invalid_issue = valid_lite.clone();
+    invalid_issue["data"]["issue"] = json!("H.c");
+    assert!(validator.validate(&invalid_issue).is_err());
+
+    let mut invalid_profile = valid_dvm.clone();
+    invalid_profile["data"]["transfers"][0]["profile"] = json!("ace5-lite");
+    assert!(validator.validate(&invalid_profile).is_err());
+
+    let mut invalid_payload_channel = valid_dvm.clone();
+    invalid_payload_channel["data"]["transfers"][0]["payload"]["acaddr"] = json!("32'h12345678");
+    assert!(validator.validate(&invalid_payload_channel).is_err());
+
+    let mut invalid_channel = valid_lite.clone();
+    invalid_channel["data"]["transfers"][0]["channel"] = json!("ac");
+    assert!(validator.validate(&invalid_channel).is_err());
+}
+
+#[test]
 fn schema_command_includes_docs_command_branches() {
     let value = schema_json();
 
@@ -1244,7 +1804,10 @@ fn schema_input_command_output_is_valid_json() {
             "axi5-lite",
             "ace",
             "ace-lite",
-            "ace5"
+            "ace5",
+            "ace5-lite",
+            "ace5-lite-dvm",
+            "ace5-lite-acp"
         ])
     );
 }
@@ -1286,6 +1849,9 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         ("ace", "acvalid"),
         ("ace-lite", "awunique"),
         ("ace5", "cdpoison"),
+        ("ace5-lite", "btagmatch"),
+        ("ace5-lite-dvm", "artagop"),
+        ("ace5-lite-acp", "archunken"),
     ] {
         let valid_axi_family = json!({
             "$schema": expected_input_schema_url(),
@@ -1340,6 +1906,21 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         json!({
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
+            "profile": "ace5_lite"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5-litedvm"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5_lite_acp"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
             "profile": "axi5",
             "maps": {"awpending": "top.awpending"}
         }),
@@ -1372,6 +1953,24 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
             "kind": "extract.axi.source",
             "profile": "ace5",
             "maps": {"arbar": "top.arbar"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5-lite",
+            "maps": {"acvalid": "top.acvalid"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5-lite-dvm",
+            "maps": {"awmmuvalid": "top.awmmuvalid"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5-lite-acp",
+            "maps": {"awsize": "top.awsize"}
         }),
         json!({
             "$schema": expected_input_schema_url(),
@@ -1534,6 +2133,90 @@ fn schema_stream_validator_enforces_axi5_context_and_item_isolation() {
         validator.validate(&invalid_payload).is_err(),
         "AXI5 AC item must reject ACE-only ACSNOOP: {invalid_payload}"
     );
+}
+
+#[test]
+fn schema_stream_validator_enforces_ace5_lite_family_isolation() {
+    let validator = stream_schema_validator();
+    let begins = [
+        json!({
+            "type": "begin", "seq": 0, "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5-lite", "profile": "ace5-lite", "issue": "L",
+                "mappings": {"btagmatch": {"path": "top.btagmatch"}}
+            }
+        }),
+        json!({
+            "type": "begin", "seq": 0, "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5-lite-dvm", "profile": "ace5-lite-dvm", "issue": "L",
+                "mappings": {
+                    "artagop": {"path": "top.artagop"},
+                    "acaddr": {"path": "top.acaddr"},
+                    "crtrace": {"path": "top.crtrace"}
+                }
+            }
+        }),
+        json!({
+            "type": "begin", "seq": 0, "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5-lite-acp", "profile": "ace5-lite-acp", "issue": "L",
+                "mappings": {"rchunkstrb": {"path": "top.rchunkstrb"}}
+            }
+        }),
+    ];
+    for begin in &begins {
+        validator
+            .validate(begin)
+            .unwrap_or_else(|error| panic!("valid ACE5-Lite begin rejected: {error}\n{begin}"));
+    }
+
+    let items = [
+        json!({
+            "type": "item", "seq": 1, "command": "extract axi",
+            "item": {"time": "5ns", "sample_time": "4ns", "profile": "ace5-lite", "channel": "b", "payload": {"btagmatch": "2'h2"}}
+        }),
+        json!({
+            "type": "item", "seq": 1, "command": "extract axi",
+            "item": {"time": "5ns", "sample_time": "4ns", "profile": "ace5-lite-dvm", "channel": "ar", "payload": {"artagop": "2'h3"}}
+        }),
+        json!({
+            "type": "item", "seq": 1, "command": "extract axi",
+            "item": {"time": "5ns", "sample_time": "4ns", "profile": "ace5-lite-dvm", "channel": "ac", "payload": {"acaddr": "32'h12345678"}}
+        }),
+        json!({
+            "type": "item", "seq": 1, "command": "extract axi",
+            "item": {"time": "5ns", "sample_time": "4ns", "profile": "ace5-lite-dvm", "channel": "cr", "payload": {"crtrace": "1'h1"}}
+        }),
+        json!({
+            "type": "item", "seq": 1, "command": "extract axi",
+            "item": {"time": "5ns", "sample_time": "4ns", "profile": "ace5-lite-acp", "channel": "r", "payload": {"rchunkstrb": "16'h5aa5"}}
+        }),
+    ];
+    for item in &items {
+        validator
+            .validate(item)
+            .unwrap_or_else(|error| panic!("valid ACE5-Lite item rejected: {error}\n{item}"));
+    }
+
+    let mut invalid_mapping = begins[1].clone();
+    invalid_mapping["context"]["mappings"]["crresp"] = json!({"path": "top.crresp"});
+    assert!(validator.validate(&invalid_mapping).is_err());
+
+    let mut invalid_profile = items[1].clone();
+    invalid_profile["item"]["profile"] = json!("ace5-lite-acp");
+    assert!(validator.validate(&invalid_profile).is_err());
+
+    let mut invalid_payload = items[1].clone();
+    invalid_payload["item"]["payload"]["acaddr"] = json!("32'h12345678");
+    assert!(validator.validate(&invalid_payload).is_err());
+
+    let mut invalid_channel = items[2].clone();
+    invalid_channel["item"]["channel"] = json!("cd");
+    assert!(validator.validate(&invalid_channel).is_err());
 }
 
 #[test]

@@ -19,10 +19,10 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 - [x] (2026-07-11 12:41Z) Read issue #58, current AXI/ACE extraction implementation, schema ownership, fixture policy, public contracts, repository workflow, and Arm IHI 0022L source sections.
 - [x] (2026-07-11 12:41Z) Confirm the branch is clean at `961155e`, current `main`, after ACE profile support merged.
 - [x] (2026-07-11 12:54Z) Review the initial ExecPlan through independent architecture, protocol-data, follow-up, and control passes; incorporate all findings.
-- [ ] Milestone 1 RED: add focused runtime, parsing, mapping, and source-backed fixture tests that fail because AXI5 profiles do not exist.
-- [ ] Milestone 1 GREEN: add Issue L profile data and runtime-facing CLI support, then review the focused runtime slice without committing intentional schema/help drift.
-- [ ] Milestone 2 RED/GREEN: prove and generate exact input/output/stream machine contracts, update derived CLI expectations, and review the runtime/contract slice without committing stale narrative guidance.
-- [ ] Milestone 3 RED/GREEN: update help, public docs, packaged skill, and changelog, review the complete feature, and commit the coherent runtime/contract/guidance slice.
+- [x] (2026-07-11 13:03Z) Milestone 1 RED: add focused runtime, parsing, mapping, and source-backed fixture tests; observe unit/source failures for unsupported `axi5` and clap failure for the missing profile value.
+- [x] (2026-07-11 13:16Z) Milestone 1 GREEN/review: add Issue L profile data and runtime-facing CLI support; pass 9 focused unit tests, 29 AXI CLI tests, VCD/FST parity, fixture generation/policy, formatting, and lint. Three independent read-only review lanes found fixture width, transfer-size, stalled-payload, timing, and direction issues; fix them and complete three clean follow-up passes.
+- [x] (2026-07-11 13:27Z) Milestone 2 RED/GREEN/review: observe expected failures against stale output, stream, input, and deploy-checker profile contracts; generate exact Issue L profile branches and pass 31 AXI CLI tests, 30 schema CLI tests, 50 CLI contract tests, 32 auxiliary tests, and `just check-schema`. Independent contract/schema review was clean; test review found and resolved parent/row, cross-profile mapping, input, and direct stream isolation gaps, followed by a clean re-review.
+- [x] (2026-07-11 13:33Z) Milestone 3 RED/GREEN/review: observe expected failures against stale help, embedded docs, and packaged skill; publish mixed H.c/L ownership, full profile/channel guidance, ready/valid-only boundaries, and issue #58 changelog linkage. Pass 50 CLI contract tests, 25 docs tests, 3 skill tests, and `just check-schema`; complete a clean independent read-only user-contract review.
 - [ ] Milestone 4: run full gates, conduct parallel final reviews and a fresh control review, remove this WIP plan, push the branch, and open a PR closing issue #58.
 
 ## Surprises & Discoveries
@@ -35,6 +35,15 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 
 - Observation: Profile specs already drive most generated schema detail.
   Evidence: `src/contract/axi_schema.rs` derives profile mappings, issue constants, channel branches, and payload properties from `profile_specs()`, `standard_signals()`, and `channel_payload_signals()`.
+
+- Observation: The waveform fixture policy test discovers source files through the Git index rather than only the filesystem.
+  Evidence: `cargo test --test waveform_fixture_policy` initially omitted the two untracked Verilog sources from its tracked-source set and passed after only those files were staged with `git add`. The files remain staged but uncommitted until the coherent feature commit.
+
+- Observation: A single-edge all-channel fixture was too weak and initially encoded several illegal widths and stalled-payload changes.
+  Evidence: Milestone 1 reviews identified 4-bit MECID, 4-bit BTAGMATCH, undersized ACADDR, illegal AXI5-Lite transfer sizes, and payload changes after VALID assertion. The revised fixtures use legal widths and values, stable payloads, distinct READY windows, ordered request/response transfers at 5ns intervals, exact timestamp assertions, and unit checks for every channel's configured valid/ready names.
+
+- Observation: Output-envelope schemas can couple `data.profile` to each nested transfer profile, but JSONL stream schemas cannot couple independent records.
+  Evidence: A proposed stream test that rejected a valid ACE5 item after an AXI5 begin failed because each JSONL line is validated independently. Parent/row coupling is tested in `schema_output_validator_enforces_axi5_profile_channels_and_payloads`; stream tests instead enforce each record's internal issue, mapping, channel, payload, and profile branch.
 
 ## Decision Log
 
@@ -60,7 +69,7 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 
 ## Outcomes & Retrospective
 
-The initial plan review completed with no unresolved findings after two focused lanes, follow-up checks, and a fresh control pass. Implementation has not started. This section will be updated after every major milestone and at completion.
+The initial plan review completed with no unresolved findings after two focused lanes, follow-up checks, and a fresh control pass. Milestone 1 delivered a focused, reviewed runtime implementation and protocol-realistic generated VCD/FST fixtures. Milestone 2 exposes reviewed exact input/output/stream contracts and checker expectations. Milestone 3 makes help, embedded docs, packaged skill, and changelog coherent and passed independent read-only review. The three implementation milestones are ready for one coherent feature commit. This section will be updated after every major milestone and at completion.
 
 ## Context and Orientation
 
@@ -239,3 +248,15 @@ Plan revision note (2026-07-11): Incorporated independent plan and protocol-data
 Plan revision note (2026-07-11): Incorporated follow-up plan review. Runtime, contracts, narrative guidance, and changelog now form one coherent feature commit after all three reviewed implementation milestones, and delivery creates the PR body explicitly and handles remote divergence without unsafe force-push guidance.
 
 Plan revision note (2026-07-11): Incorporated fresh control review. Every milestone review is explicitly read-only, and any final-review fix must be committed through hooks and pass both full gates before control review, WIP cleanup, push, and PR creation.
+
+Plan revision note (2026-07-11): Recorded Milestone 1 RED/GREEN evidence and the Git-index dependency of fixture-policy validation. Runtime profile and fixture changes remain uncommitted until machine contracts and user guidance are coherent.
+
+Plan revision note (2026-07-11): Recorded Milestone 1 review findings and fixes. The fixture now proves channel-specific staggered transfers with stable legal payloads and passes clean runtime, protocol-data, and test-fixture follow-up reviews.
+
+Plan revision note (2026-07-11): Recorded Milestone 2 RED/GREEN evidence. Canonical schema artifacts now contain exact AXI5 and AXI5-Lite mapping, issue, channel, and payload branches while `schema/catalog.json` remains unchanged.
+
+Plan revision note (2026-07-11): Recorded Milestone 2 reviews and fixes. Contract tests now isolate parent/row profiles, cross-profile mappings, canonical input branches, and AXI5 stream record behavior without claiming cross-record JSONL coupling.
+
+Plan revision note (2026-07-11): Recorded Milestone 3 RED/GREEN evidence. Generated help and embedded guidance now distinguish Issue H.c and Issue L profiles, describe AXI5 DVM channels and ready/valid-only extraction, and link issue #58 in the unreleased changelog.
+
+Plan revision note (2026-07-11): Recorded the clean Milestone 3 documentation/help/changelog review. All user-facing and machine-facing surfaces are coherent for the feature commit.

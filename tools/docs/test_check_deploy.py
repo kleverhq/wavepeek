@@ -422,6 +422,8 @@ class CheckDeployTests(unittest.TestCase):
                         "axi3",
                         "axi4",
                         "axi4-lite",
+                        "axi5",
+                        "axi5-lite",
                         "ace",
                         "ace-lite",
                         "ace5",

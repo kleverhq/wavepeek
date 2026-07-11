@@ -462,6 +462,8 @@ def validate_input_schema_json(
             "axi3",
             "axi4",
             "axi4-lite",
+            "axi5",
+            "axi5-lite",
             "ace",
             "ace-lite",
             "ace5",

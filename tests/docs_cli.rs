@@ -313,7 +313,7 @@ fn docs_show_description_prints_only_stored_description_text() {
 }
 
 #[test]
-fn public_extract_docs_cover_ace_family_profiles() {
+fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
     for topic_id in [
         "commands/extract",
         "commands/overview",
@@ -322,6 +322,10 @@ fn public_extract_docs_cover_ace_family_profiles() {
     ] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);
         assert!(
+            output.contains("AXI5"),
+            "topic {topic_id} should cover AXI5 extraction profiles"
+        );
+        assert!(
             output.contains("ACE5"),
             "topic {topic_id} should cover ACE-family extraction profiles"
         );
@@ -329,7 +333,14 @@ fn public_extract_docs_cover_ace_family_profiles() {
 
     let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
     assert!(extract.contains("ACE-Lite"));
+    assert!(extract.contains("Issue L"));
+    assert!(extract.contains("AXI5 adds the `ac` and `cr`"));
     assert!(extract.contains("ready/valid channel transfers"));
+    assert!(extract.contains("credited transport"));
+
+    let machine_output = successful_stdout_text(&["docs", "show", "reference/machine-output"]);
+    assert!(machine_output.contains("Issue H.c"));
+    assert!(machine_output.contains("Issue L"));
 }
 
 #[test]

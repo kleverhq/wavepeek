@@ -418,11 +418,11 @@ pub struct ExtractAxiTransfer<'a> {
     )]
     sample_time: NormalizedTime<'a>,
     #[schemars(
-        description = "AXI profile name for this transfer row: axi3, axi4, axi4-lite, ace, ace-lite, or ace5."
+        description = "AXI profile name for this transfer row: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5."
     )]
     profile: &'a str,
     #[schemars(
-        description = "Profile-specific AXI channel name. ACE and ACE5 add ac, cr, and cd to the base aw, w, b, ar, and r channels."
+        description = "Profile-specific AXI channel name. AXI5 can add ac and cr; ACE and ACE5 can add ac, cr, and cd to the base aw, w, b, ar, and r channels."
     )]
     channel: &'a str,
     #[schemars(description = "Payload values keyed by lowercase AXI standard signal name.")]

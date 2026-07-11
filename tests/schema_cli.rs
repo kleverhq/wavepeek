@@ -855,6 +855,141 @@ fn schema_output_validator_enforces_axi_profile_channel_payloads() {
 }
 
 #[test]
+fn schema_output_validator_enforces_axi5_profile_channels_and_payloads() {
+    let validator = output_schema_validator();
+    let valid_axi5_ac = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "axi5",
+            "profile": "axi5",
+            "issue": "L",
+            "mappings": {
+                "aclk": {"path": "top.clk"},
+                "acvalid": {"path": "top.acvalid"},
+                "acready": {"path": "top.acready"},
+                "acaddr": {"path": "top.acaddr"}
+            },
+            "transfers": [{
+                "time": "30ns",
+                "sample_time": "29ns",
+                "profile": "axi5",
+                "channel": "ac",
+                "payload": {"acaddr": "32'h12345678", "acvmidext": "4'h9"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_axi5_ac)
+        .unwrap_or_else(|error| panic!("valid AXI5 AC output rejected: {error}\n{valid_axi5_ac}"));
+
+    let mut invalid_axi5_issue = valid_axi5_ac.clone();
+    invalid_axi5_issue["data"]["issue"] = json!("H.c");
+    assert!(
+        validator.validate(&invalid_axi5_issue).is_err(),
+        "AXI5 output must reject Issue H.c metadata: {invalid_axi5_issue}"
+    );
+
+    let mut invalid_axi5_channel = valid_axi5_ac.clone();
+    invalid_axi5_channel["data"]["transfers"][0]["channel"] = json!("cd");
+    assert!(
+        validator.validate(&invalid_axi5_channel).is_err(),
+        "AXI5 output must reject CD channels: {invalid_axi5_channel}"
+    );
+
+    let mut invalid_axi5_transfer_profile = valid_axi5_ac.clone();
+    invalid_axi5_transfer_profile["data"]["transfers"][0]["profile"] = json!("ace5");
+    assert!(
+        validator.validate(&invalid_axi5_transfer_profile).is_err(),
+        "AXI5 data must reject ACE5 transfer rows: {invalid_axi5_transfer_profile}"
+    );
+
+    let mut invalid_axi5_payload = valid_axi5_ac.clone();
+    invalid_axi5_payload["data"]["transfers"][0]["payload"]["acsnoop"] = json!("4'h0");
+    assert!(
+        validator.validate(&invalid_axi5_payload).is_err(),
+        "AXI5 AC output must reject ACE-only ACSNOOP: {invalid_axi5_payload}"
+    );
+
+    let mut invalid_axi5_mapping = valid_axi5_ac.clone();
+    invalid_axi5_mapping["data"]["mappings"]["awpending"] = json!({"path": "top.awpending"});
+    assert!(
+        validator.validate(&invalid_axi5_mapping).is_err(),
+        "AXI5 output must reject credited-transport mappings: {invalid_axi5_mapping}"
+    );
+
+    for standard in ["acsnoop", "cdvalid"] {
+        let mut invalid_mapping = valid_axi5_ac.clone();
+        invalid_mapping["data"]["mappings"][standard] = json!({"path": format!("top.{standard}")});
+        assert!(
+            validator.validate(&invalid_mapping).is_err(),
+            "AXI5 output must reject ACE-only {standard}: {invalid_mapping}"
+        );
+    }
+
+    let valid_axi5_lite_w = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "axi5-lite",
+            "profile": "axi5-lite",
+            "issue": "L",
+            "mappings": {
+                "aclk": {"path": "top.clk"},
+                "wvalid": {"path": "top.wvalid"},
+                "wready": {"path": "top.wready"},
+                "wdata": {"path": "top.wdata"},
+                "wpoison": {"path": "top.wpoison"}
+            },
+            "transfers": [{
+                "time": "10ns",
+                "sample_time": "9ns",
+                "profile": "axi5-lite",
+                "channel": "w",
+                "payload": {"wdata": "8'ha5", "wpoison": "1'h1"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_axi5_lite_w)
+        .unwrap_or_else(|error| {
+            panic!("valid AXI5-Lite W output rejected: {error}\n{valid_axi5_lite_w}")
+        });
+
+    let mut invalid_axi5_lite_transfer_profile = valid_axi5_lite_w.clone();
+    invalid_axi5_lite_transfer_profile["data"]["transfers"][0]["profile"] = json!("axi5");
+    assert!(
+        validator
+            .validate(&invalid_axi5_lite_transfer_profile)
+            .is_err(),
+        "AXI5-Lite data must reject AXI5 transfer rows: {invalid_axi5_lite_transfer_profile}"
+    );
+
+    let mut invalid_axi5_lite_payload = valid_axi5_lite_w.clone();
+    invalid_axi5_lite_payload["data"]["transfers"][0]["payload"]["wlast"] = json!("1'h1");
+    assert!(
+        validator.validate(&invalid_axi5_lite_payload).is_err(),
+        "AXI5-Lite W output must reject WLAST: {invalid_axi5_lite_payload}"
+    );
+
+    let mut invalid_axi5_lite_channel = valid_axi5_lite_w.clone();
+    invalid_axi5_lite_channel["data"]["transfers"][0]["channel"] = json!("ac");
+    assert!(
+        validator.validate(&invalid_axi5_lite_channel).is_err(),
+        "AXI5-Lite output must reject AC channels: {invalid_axi5_lite_channel}"
+    );
+
+    let mut invalid_axi5_lite_mapping = valid_axi5_lite_w.clone();
+    invalid_axi5_lite_mapping["data"]["mappings"]["awlen"] = json!({"path": "top.awlen"});
+    assert!(
+        validator.validate(&invalid_axi5_lite_mapping).is_err(),
+        "AXI5-Lite output must reject AXI5 burst mappings: {invalid_axi5_lite_mapping}"
+    );
+}
+
+#[test]
 fn schema_command_includes_docs_command_branches() {
     let value = schema_json();
 
@@ -1101,7 +1236,16 @@ fn schema_input_command_output_is_valid_json() {
     );
     assert_eq!(
         value["$defs"]["axiProfile"]["enum"],
-        json!(["axi3", "axi4", "axi4-lite", "ace", "ace-lite", "ace5"])
+        json!([
+            "axi3",
+            "axi4",
+            "axi4-lite",
+            "axi5",
+            "axi5-lite",
+            "ace",
+            "ace-lite",
+            "ace5"
+        ])
     );
 }
 
@@ -1137,20 +1281,22 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
 
     for (profile, standard) in [
+        ("axi5", "acaddr"),
+        ("axi5-lite", "awidunq"),
         ("ace", "acvalid"),
         ("ace-lite", "awunique"),
         ("ace5", "cdpoison"),
     ] {
-        let valid_ace_family = json!({
+        let valid_axi_family = json!({
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
             "profile": profile,
             "maps": {"aclk": "clk", (standard): format!("top.{standard}")}
         });
         validator
-            .validate(&valid_ace_family)
+            .validate(&valid_axi_family)
             .unwrap_or_else(|error| {
-                panic!("valid {profile} input document rejected: {error}\n{valid_ace_family}")
+                panic!("valid {profile} input document rejected: {error}\n{valid_axi_family}")
             });
     }
 
@@ -1184,12 +1330,30 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         json!({
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
-            "profile": "axi5"
+            "profile": "AXI5_LITE"
         }),
         json!({
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
             "profile": "ACE_LITE"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "axi5",
+            "maps": {"awpending": "top.awpending"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "axi5",
+            "maps": {"acsnoop": "top.acsnoop"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "axi5-lite",
+            "maps": {"awlen": "top.awlen"}
         }),
         json!({
             "$schema": expected_input_schema_url(),
@@ -1298,6 +1462,77 @@ fn schema_stream_command_exposes_waveform_command_contract() {
         value["$defs"]["beginRecord"]["properties"]["$schema"]
             .get("pattern")
             .is_none()
+    );
+}
+
+#[test]
+fn schema_stream_validator_enforces_axi5_context_and_item_isolation() {
+    let validator = stream_schema_validator();
+    let valid_begin = json!({
+        "type": "begin",
+        "seq": 0,
+        "command": "extract axi",
+        "$schema": expected_stream_schema_url(),
+        "context": {
+            "name": "axi5",
+            "profile": "axi5",
+            "issue": "L",
+            "mappings": {
+                "acvalid": {"path": "top.acvalid"},
+                "acready": {"path": "top.acready"},
+                "acaddr": {"path": "top.acaddr"}
+            }
+        }
+    });
+    validator
+        .validate(&valid_begin)
+        .unwrap_or_else(|error| panic!("valid AXI5 begin rejected: {error}\n{valid_begin}"));
+
+    let valid_item = json!({
+        "type": "item",
+        "seq": 1,
+        "command": "extract axi",
+        "item": {
+            "time": "30ns",
+            "sample_time": "29ns",
+            "profile": "axi5",
+            "channel": "ac",
+            "payload": {"acaddr": "32'h12345678", "acvmidext": "4'h9"}
+        }
+    });
+    validator
+        .validate(&valid_item)
+        .unwrap_or_else(|error| panic!("valid AXI5 item rejected: {error}\n{valid_item}"));
+
+    let mut invalid_issue = valid_begin.clone();
+    invalid_issue["context"]["issue"] = json!("H.c");
+    assert!(
+        validator.validate(&invalid_issue).is_err(),
+        "AXI5 begin must reject Issue H.c metadata: {invalid_issue}"
+    );
+
+    for standard in ["acsnoop", "cdvalid"] {
+        let mut invalid_mapping = valid_begin.clone();
+        invalid_mapping["context"]["mappings"][standard] =
+            json!({"path": format!("top.{standard}")});
+        assert!(
+            validator.validate(&invalid_mapping).is_err(),
+            "AXI5 begin must reject ACE-only {standard}: {invalid_mapping}"
+        );
+    }
+
+    let mut invalid_channel = valid_item.clone();
+    invalid_channel["item"]["channel"] = json!("cd");
+    assert!(
+        validator.validate(&invalid_channel).is_err(),
+        "AXI5 item must reject CD channel: {invalid_channel}"
+    );
+
+    let mut invalid_payload = valid_item.clone();
+    invalid_payload["item"]["payload"]["acsnoop"] = json!("4'h0");
+    assert!(
+        validator.validate(&invalid_payload).is_err(),
+        "AXI5 AC item must reject ACE-only ACSNOOP: {invalid_payload}"
     );
 }
 

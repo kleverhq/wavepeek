@@ -13,7 +13,7 @@ module top;
 
   reg axi5_w_valid_o = 1'b0;
   reg axi5_w_ready_i = 1'b0;
-  reg [3:0] axi5_w_tag_update_o = 4'h0;
+  reg [7:0] axi5_w_tag_update_o = 8'h00;
 
   reg axi5_b_valid_i = 1'b0;
   reg axi5_b_ready_o = 1'b0;
@@ -53,13 +53,13 @@ module top;
     #4 begin
       axi5_aw_valid_o = 1'b1;
       axi5_aw_ready_i = 1'b1;
-      axi5_aw_mmu_valid_o = 1'b1;
+      axi5_aw_mmu_valid_o = 1'b0;
       axi5_aw_mecid_o = 16'ha55a;
-      axi5_aw_actv_o = 1'b1;
+      axi5_aw_actv_o = 1'b0;
       axi5_aw_prot_o = 3'h5;
       axi5_aw_nse_o = 1'b1;
       axi5_w_valid_o = 1'b1;
-      axi5_w_tag_update_o = 4'hc;
+      axi5_w_tag_update_o = 8'h00;
       axi5_b_ready_o = 1'b1;
       axi5_r_ready_o = 1'b1;
       axi5_cr_ready_i = 1'b1;
@@ -91,7 +91,7 @@ module top;
       axi5_w_ready_i = 1'b0;
       axi5_b_valid_i = 1'b1;
       axi5_b_ready_o = 1'b1;
-      axi5_b_tag_match_i = 2'h2;
+      axi5_b_tag_match_i = 2'h0;
     end
     #1 clk = 1'b1;
     #1 clk = 1'b0;

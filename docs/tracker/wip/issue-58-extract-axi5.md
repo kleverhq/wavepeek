@@ -23,7 +23,8 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 - [x] (2026-07-11 13:16Z) Milestone 1 GREEN/review: add Issue L profile data and runtime-facing CLI support; pass 9 focused unit tests, 29 AXI CLI tests, VCD/FST parity, fixture generation/policy, formatting, and lint. Three independent read-only review lanes found fixture width, transfer-size, stalled-payload, timing, and direction issues; fix them and complete three clean follow-up passes.
 - [x] (2026-07-11 13:27Z) Milestone 2 RED/GREEN/review: observe expected failures against stale output, stream, input, and deploy-checker profile contracts; generate exact Issue L profile branches and pass 31 AXI CLI tests, 30 schema CLI tests, 50 CLI contract tests, 32 auxiliary tests, and `just check-schema`. Independent contract/schema review was clean; test review found and resolved parent/row, cross-profile mapping, input, and direct stream isolation gaps, followed by a clean re-review.
 - [x] (2026-07-11 13:33Z) Milestone 3 RED/GREEN/review: observe expected failures against stale help, embedded docs, and packaged skill; publish mixed H.c/L ownership, full profile/channel guidance, ready/valid-only boundaries, and issue #58 changelog linkage. Pass 50 CLI contract tests, 25 docs tests, 3 skill tests, and `just check-schema`; complete a clean independent read-only user-contract review.
-- [ ] Milestone 4: run full gates, conduct parallel final reviews and a fresh control review, remove this WIP plan, push the branch, and open a PR closing issue #58.
+- [x] (2026-07-11 13:34Z) Commit the coherent runtime, fixture, schema, test, help, docs, skill, changelog, and plan slice as `79bae7b` after all installed hooks pass.
+- [ ] Milestone 4 (completed: `just check` and `just ci` pass at `79bae7b`; three parallel final review lanes completed; runtime/protocol and deploy-checker findings fixed through regression tests and clean follow-up reviews; remaining: hooked fix commit, repeat both full gates, control review, WIP cleanup, push, and PR).
 
 ## Surprises & Discoveries
 
@@ -44,6 +45,12 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 
 - Observation: Output-envelope schemas can couple `data.profile` to each nested transfer profile, but JSONL stream schemas cannot couple independent records.
   Evidence: A proposed stream test that rejected a valid ACE5 item after an AXI5 begin failed because each JSONL line is validated independently. Parent/row coupling is tested in `schema_output_validator_enforces_axi5_profile_channels_and_payloads`; stream tests instead enforce each record's internal issue, mapping, channel, payload, and profile branch.
+
+- Observation: Individually legal optional AXI5 payload signals can form an illegal interface/transaction combination in one fixture.
+  Evidence: Final protocol review found that 4-bit WTAGUPDATE and 5-bit RCHUNKNUM implied inconsistent DATA_WIDTH values and that active tag-update, MMU, and ACT attributes conflicted. The fixture now represents a 1024-bit-data configuration with 8-bit WTAGUPDATE and keeps optional conflicting attributes inactive while proving their extraction.
+
+- Observation: Deployment checks validated the new input profile enum but did not initially reject stale output or stream profile branches.
+  Evidence: New auxiliary regressions showed pre-AXI5 profile enums, wrong Issue L constants, and incomplete transfer branches passed `validate_schema_json` and `validate_stream_schema_json`. The v2.2 deploy checker now validates exact AXI profile and representative mapping/channel/payload branches in all three schema artifacts.
 
 ## Decision Log
 
@@ -69,7 +76,7 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 
 ## Outcomes & Retrospective
 
-The initial plan review completed with no unresolved findings after two focused lanes, follow-up checks, and a fresh control pass. Milestone 1 delivered a focused, reviewed runtime implementation and protocol-realistic generated VCD/FST fixtures. Milestone 2 exposes reviewed exact input/output/stream contracts and checker expectations. Milestone 3 makes help, embedded docs, packaged skill, and changelog coherent and passed independent read-only review. The three implementation milestones are ready for one coherent feature commit. This section will be updated after every major milestone and at completion.
+The initial plan review completed with no unresolved findings after two focused lanes, follow-up checks, and a fresh control pass. Milestone 1 delivered a focused, reviewed runtime implementation and protocol-realistic generated VCD/FST fixtures. Milestone 2 exposes reviewed exact input/output/stream contracts and checker expectations. Milestone 3 makes help, embedded docs, packaged skill, and changelog coherent and passed independent read-only review. The three implementation milestones were committed coherently as `79bae7b` after all installed hooks passed. This section will be updated after every major milestone and at completion.
 
 ## Context and Orientation
 
@@ -260,3 +267,9 @@ Plan revision note (2026-07-11): Recorded Milestone 2 reviews and fixes. Contrac
 Plan revision note (2026-07-11): Recorded Milestone 3 RED/GREEN evidence. Generated help and embedded guidance now distinguish Issue H.c and Issue L profiles, describe AXI5 DVM channels and ready/valid-only extraction, and link issue #58 in the unreleased changelog.
 
 Plan revision note (2026-07-11): Recorded the clean Milestone 3 documentation/help/changelog review. All user-facing and machine-facing surfaces are coherent for the feature commit.
+
+Plan revision note (2026-07-11): Recorded the coherent feature commit and successful installed hooks before full handoff gates.
+
+Plan revision note (2026-07-11): Recorded successful `just check` and `just ci` gates at feature commit `79bae7b`; full logs are stored under ignored `tmp/` paths.
+
+Plan revision note (2026-07-11): Recorded parallel final-review findings and clean follow-up reviews. The AXI5 fixture now uses a legal combined optional-feature configuration, and deployment validation rejects stale v2.2 output and stream AXI profile branches.

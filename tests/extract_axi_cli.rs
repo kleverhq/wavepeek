@@ -131,11 +131,11 @@ fn extract_axi5_human_automaps_issue_l_base_and_dvm_channels() {
     for expected in [
         "@5ns sample@4ns [aw] awprot=3'h5",
         "awnse=1'h1",
-        "awmmuvalid=1'h1",
+        "awmmuvalid=1'h0",
         "awmecid=16'ha55a",
-        "awactv=1'h1",
-        "@10ns sample@9ns [w] wtagupdate=4'hc",
-        "@15ns sample@14ns [b] btagmatch=2'h2",
+        "awactv=1'h0",
+        "@10ns sample@9ns [w] wtagupdate=8'h00",
+        "@15ns sample@14ns [b] btagmatch=2'h0",
         "@20ns sample@19ns [ar] armecid=16'hb66b archunken=1'h1",
         "@25ns sample@24ns [r] rchunknum=5'h07",
         "@30ns sample@29ns [ac] acaddr=32'h12345678 acvmidext=4'h9",
@@ -250,7 +250,8 @@ fn extract_axi5_json_validates_issue_l_channels_and_payloads() {
     assert!(transfers.iter().all(|row| row["profile"] == "axi5"));
     assert_eq!(transfers[0]["time"], "5ns");
     assert_eq!(transfers[0]["payload"]["awmecid"], "16'ha55a");
-    assert_eq!(transfers[2]["payload"]["btagmatch"], "2'h2");
+    assert_eq!(transfers[1]["payload"]["wtagupdate"], "8'h00");
+    assert_eq!(transfers[2]["payload"]["btagmatch"], "2'h0");
     assert_eq!(transfers[4]["payload"]["rchunknum"], "5'h07");
     assert_eq!(transfers[5]["payload"]["acaddr"], "32'h12345678");
     assert_eq!(transfers[6]["payload"]["crtrace"], "1'h1");

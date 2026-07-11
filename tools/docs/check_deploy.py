@@ -326,6 +326,155 @@ def input_schema_url_references_expected_artifact(
     return schema_property.get("const") == page_url(DEFAULT_BASE_URL, input_schema_artifact)
 
 
+AXI_PROFILE_NAMES = [
+    "axi3",
+    "axi4",
+    "axi4-lite",
+    "axi5",
+    "axi5-lite",
+    "ace",
+    "ace-lite",
+    "ace5",
+]
+
+AXI_TRANSFER_REFS = [
+    "#/$defs/extractAxi3Transfer",
+    "#/$defs/extractAxi4Transfer",
+    "#/$defs/extractAxi4LiteTransfer",
+    "#/$defs/extractAxi5Transfer",
+    "#/$defs/extractAxi5LiteTransfer",
+    "#/$defs/extractAceTransfer",
+    "#/$defs/extractAceLiteTransfer",
+    "#/$defs/extractAce5Transfer",
+]
+
+AXI5_TRANSFER_REFS = [
+    "#/$defs/extractAxi5AwTransfer",
+    "#/$defs/extractAxi5WTransfer",
+    "#/$defs/extractAxi5BTransfer",
+    "#/$defs/extractAxi5ArTransfer",
+    "#/$defs/extractAxi5RTransfer",
+    "#/$defs/extractAxi5AcTransfer",
+    "#/$defs/extractAxi5CrTransfer",
+]
+
+AXI5_LITE_TRANSFER_REFS = [
+    "#/$defs/extractAxi5LiteAwTransfer",
+    "#/$defs/extractAxi5LiteWTransfer",
+    "#/$defs/extractAxi5LiteBTransfer",
+    "#/$defs/extractAxi5LiteArTransfer",
+    "#/$defs/extractAxi5LiteRTransfer",
+]
+
+
+def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
+    defs = schema.get("$defs")
+    if not isinstance(defs, dict):
+        fail("schema artifact must define AXI $defs")
+
+    profile_definition = defs.get("axiProfile")
+    if (
+        not isinstance(profile_definition, dict)
+        or profile_definition.get("enum") != AXI_PROFILE_NAMES
+    ):
+        fail("schema artifact AXI profile enum mismatch")
+
+    branch_definition = defs.get(branch_name)
+    branches = branch_definition.get("oneOf") if isinstance(branch_definition, dict) else None
+    if not isinstance(branches, list):
+        fail(f"schema artifact must define {branch_name} branches")
+
+    branches_by_profile: dict[str, dict[str, Any]] = {}
+    for branch in branches:
+        if not isinstance(branch, dict):
+            fail(f"schema artifact {branch_name} branch must be an object")
+        properties = branch.get("properties")
+        profile = properties.get("profile") if isinstance(properties, dict) else None
+        profile_name = profile.get("const") if isinstance(profile, dict) else None
+        if not isinstance(profile_name, str) or profile_name in branches_by_profile:
+            fail(f"schema artifact {branch_name} profile branches are invalid")
+        branches_by_profile[profile_name] = branch
+    if list(branches_by_profile) != AXI_PROFILE_NAMES:
+        fail(f"schema artifact {branch_name} profile branches mismatch")
+
+    for profile_name, transfer_ref in [
+        ("axi5", "#/$defs/extractAxi5Transfer"),
+        ("axi5-lite", "#/$defs/extractAxi5LiteTransfer"),
+    ]:
+        properties = branches_by_profile[profile_name]["properties"]
+        issue = properties.get("issue")
+        if not isinstance(issue, dict) or issue.get("const") != "L":
+            fail(f"schema artifact {profile_name} branch must use Issue L")
+        mappings = properties.get("mappings")
+        mapping_properties = mappings.get("properties") if isinstance(mappings, dict) else None
+        if not isinstance(mapping_properties, dict):
+            fail(f"schema artifact {profile_name} branch must define mappings")
+        if profile_name == "axi5":
+            if not {"acaddr", "acvalid", "crvalid", "wtagupdate", "rchunknum"} <= set(
+                mapping_properties
+            ) or {"acsnoop", "cdvalid", "awpending"} & set(mapping_properties):
+                fail("schema artifact AXI5 mapping inventory mismatch")
+        elif not {"awidunq", "wpoison", "rpoison"} <= set(mapping_properties) or {
+            "awlen",
+            "wlast",
+            "acvalid",
+        } & set(mapping_properties):
+            fail("schema artifact AXI5-Lite mapping inventory mismatch")
+        if branch_name == "extractAxiData":
+            transfers = properties.get("transfers")
+            items = transfers.get("items") if isinstance(transfers, dict) else None
+            if not isinstance(items, dict) or items.get("$ref") != transfer_ref:
+                fail(f"schema artifact {profile_name} transfer branch mismatch")
+
+    transfer_union = defs.get("extractAxiTransfer")
+    transfer_branches = transfer_union.get("oneOf") if isinstance(transfer_union, dict) else None
+    if transfer_branches != [{"$ref": ref} for ref in AXI_TRANSFER_REFS]:
+        fail("schema artifact AXI transfer profile branches mismatch")
+
+    for definition_name, expected_refs, label in [
+        ("extractAxi5Transfer", AXI5_TRANSFER_REFS, "AXI5"),
+        ("extractAxi5LiteTransfer", AXI5_LITE_TRANSFER_REFS, "AXI5-Lite"),
+    ]:
+        definition = defs.get(definition_name)
+        one_of = definition.get("oneOf") if isinstance(definition, dict) else None
+        if one_of != [{"$ref": ref} for ref in expected_refs]:
+            fail(f"schema artifact {label} transfer channel branches mismatch")
+
+    axi5_ac = defs.get("extractAxi5AcTransfer")
+    ac_properties = axi5_ac.get("properties") if isinstance(axi5_ac, dict) else None
+    ac_profile = ac_properties.get("profile") if isinstance(ac_properties, dict) else None
+    ac_channel = ac_properties.get("channel") if isinstance(ac_properties, dict) else None
+    ac_payload = ac_properties.get("payload") if isinstance(ac_properties, dict) else None
+    ac_payload_properties = ac_payload.get("properties") if isinstance(ac_payload, dict) else None
+    if (
+        not isinstance(ac_profile, dict)
+        or ac_profile.get("const") != "axi5"
+        or not isinstance(ac_channel, dict)
+        or ac_channel.get("const") != "ac"
+        or not isinstance(ac_payload_properties, dict)
+        or not {"acaddr", "acvmidext"} <= set(ac_payload_properties)
+        or "acsnoop" in ac_payload_properties
+    ):
+        fail("schema artifact AXI5 AC transfer payload mismatch")
+
+    axi5_lite_w = defs.get("extractAxi5LiteWTransfer")
+    w_properties = axi5_lite_w.get("properties") if isinstance(axi5_lite_w, dict) else None
+    w_profile = w_properties.get("profile") if isinstance(w_properties, dict) else None
+    w_channel = w_properties.get("channel") if isinstance(w_properties, dict) else None
+    w_payload = w_properties.get("payload") if isinstance(w_properties, dict) else None
+    w_payload_properties = w_payload.get("properties") if isinstance(w_payload, dict) else None
+    if (
+        not isinstance(w_profile, dict)
+        or w_profile.get("const") != "axi5-lite"
+        or not isinstance(w_channel, dict)
+        or w_channel.get("const") != "w"
+        or not isinstance(w_payload_properties, dict)
+        or not {"wdata", "wpoison"} <= set(w_payload_properties)
+        or "wlast" in w_payload_properties
+    ):
+        fail("schema artifact AXI5-Lite W transfer payload mismatch")
+
+
 def validate_schema_json(schema: Any, version: str, schema_artifact: str | None = None) -> None:
     if not isinstance(schema, dict):
         fail("schema artifact must contain a JSON object")
@@ -350,6 +499,8 @@ def validate_schema_json(schema: Any, version: str, schema_artifact: str | None 
             "schema artifact $schema property must reference "
             f"{schema_artifact}"
         )
+    if schema_artifact == "schema-output-v2.2.json":
+        validate_v2_2_axi_defs(schema, "extractAxiData")
 
 
 def validate_schema_payload(
@@ -397,6 +548,8 @@ def validate_stream_schema_json(
             "stream schema artifact $schema property must reference "
             f"{stream_schema_artifact}"
         )
+    if stream_schema_artifact == "schema-stream-v2.2.json":
+        validate_v2_2_axi_defs(schema, "extractAxiContext")
 
 
 def validate_stream_schema_payload(

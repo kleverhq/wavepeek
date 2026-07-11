@@ -6,7 +6,7 @@ Normal entrypoint:
 
     python3 -B tools/repo/repo_stats.py
 
-`repo_stats.py` prints stable line-count categories for source, tests, collateral helper code, fixtures, docs, and tracked WIP artifacts.
+`repo_stats.py` prints stable line-count categories for source, tests, collateral helper code, JSON fixtures, and docs. `Total code` includes source, tests, benchmarks, and tools. `Total lines` adds JSON fixtures and Markdown docs while excluding disposable, generated, and branch-local tracking content.
 
 Optional one-shot host setup for devcontainer GitHub auth:
 

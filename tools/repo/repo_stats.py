@@ -16,9 +16,11 @@ SKIP_DIR_NAMES = {
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
+    ".worktrees",
     "__pycache__",
     "node_modules",
     "target",
+    "tmp",
     "venv",
 }
 
@@ -127,7 +129,6 @@ def main() -> None:
         if parts[:3] == ("docs", "tracker", "wip"):
             continue
         markdown_files.append(path)
-    wip_tracker_files = iter_files(REPO_ROOT / "docs" / "tracker" / "wip", (".md",))
     test_fixture_json_files = iter_test_fixture_json_files()
 
     tests_rust_count = sum(
@@ -140,7 +141,6 @@ def main() -> None:
     collateral_code_lines = total_lines(collateral_code_files)
     collateral_test_lines = total_lines(collateral_test_files)
     markdown_lines = total_lines(markdown_files)
-    wip_tracker_lines = total_lines(wip_tracker_files)
     test_fixture_json_lines = total_lines(test_fixture_json_files)
     total_code_lines = (
         src_rust_lines
@@ -148,17 +148,21 @@ def main() -> None:
         + collateral_code_lines
         + collateral_test_lines
     )
+    total_lines_to_maintain = (
+        total_code_lines + test_fixture_json_lines + markdown_lines
+    )
 
     print(f"Source Rust code: {src_rust_lines:,} lines")
     print(f"Rust tests: {tests_rust_lines:,} lines, {tests_rust_count:,} tests")
     print(f"Collateral code (bench, tools): {collateral_code_lines:,} lines")
     print(f"Collateral tests (bench, tools): {collateral_test_lines:,} lines")
     print(f"Test fixtures (JSON): {test_fixture_json_lines:,} lines")
-    print(f"Markdown docs (excluding WIP tracker artifacts): {markdown_lines:,} lines")
-    print(f"WIP tracker artifacts: {wip_tracker_lines:,} lines")
+    print(f"Markdown docs: {markdown_lines:,} lines")
     print()
-    print(f"Total code: {total_code_lines:,} lines")
-    print(f"Total documentation: {markdown_lines:,} lines")
+    print(
+        f"Total code (source, tests, bench, tools): {total_code_lines:,} lines"
+    )
+    print(f"Total lines: {total_lines_to_maintain:,} lines")
 
 
 if __name__ == "__main__":

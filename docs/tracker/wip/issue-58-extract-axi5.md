@@ -24,7 +24,8 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 - [x] (2026-07-11 13:27Z) Milestone 2 RED/GREEN/review: observe expected failures against stale output, stream, input, and deploy-checker profile contracts; generate exact Issue L profile branches and pass 31 AXI CLI tests, 30 schema CLI tests, 50 CLI contract tests, 32 auxiliary tests, and `just check-schema`. Independent contract/schema review was clean; test review found and resolved parent/row, cross-profile mapping, input, and direct stream isolation gaps, followed by a clean re-review.
 - [x] (2026-07-11 13:33Z) Milestone 3 RED/GREEN/review: observe expected failures against stale help, embedded docs, and packaged skill; publish mixed H.c/L ownership, full profile/channel guidance, ready/valid-only boundaries, and issue #58 changelog linkage. Pass 50 CLI contract tests, 25 docs tests, 3 skill tests, and `just check-schema`; complete a clean independent read-only user-contract review.
 - [x] (2026-07-11 13:34Z) Commit the coherent runtime, fixture, schema, test, help, docs, skill, changelog, and plan slice as `79bae7b` after all installed hooks pass.
-- [ ] Milestone 4 (completed: `just check` and `just ci` pass at `79bae7b`; three parallel final review lanes completed; runtime/protocol and deploy-checker findings fixed through regression tests and clean follow-up reviews; remaining: hooked fix commit, repeat both full gates, control review, WIP cleanup, push, and PR).
+- [x] (2026-07-11 13:53Z) Milestone 4 validation/review: commit review fixes as `9449cd3`, repeat `just check` and `just ci`, and complete a fresh independent control review with no substantive findings.
+- [ ] Delivery (completed: feature and fix commits, clean worktree, all gates and reviews; remaining: commit this final record, remove the WIP plan, push, open and verify the PR).
 
 ## Surprises & Discoveries
 
@@ -76,7 +77,11 @@ This work does not add credited AXI transport. Signals such as `*pending`, `*crd
 
 ## Outcomes & Retrospective
 
-The initial plan review completed with no unresolved findings after two focused lanes, follow-up checks, and a fresh control pass. Milestone 1 delivered a focused, reviewed runtime implementation and protocol-realistic generated VCD/FST fixtures. Milestone 2 exposes reviewed exact input/output/stream contracts and checker expectations. Milestone 3 makes help, embedded docs, packaged skill, and changelog coherent and passed independent read-only review. The three implementation milestones were committed coherently as `79bae7b` after all installed hooks passed. This section will be updated after every major milestone and at completion.
+The implementation adds canonical `axi5` and `axi5-lite` Issue L profiles while preserving the AXI4 default and all H.c profiles. AXI5 extracts seven ordered ready/valid channels including optional DVM `ac` and `cr`; AXI5-Lite extracts the five base channels. Runtime parsing, split-name auto-mapping, explicit-map validation, human/JSON/JSONL output, VCD/FST parity, exact v2.2 schemas, release deployment checks, embedded guidance, and changelog linkage are covered by tests.
+
+TDD exposed unsupported-profile and stale-schema/help failures before implementation. Milestone reviews improved the result materially: fixtures gained legal widths, stable payloads, distinct channel timing, and legal optional-feature combinations; schema tests gained parent/row and cross-profile isolation; deployment checks now reject stale output and stream artifacts instead of checking only the input enum.
+
+The coherent feature commit is `79bae7b`; final-review fixes are `9449cd3`. All installed hooks passed for both. `just check` and `just ci` passed after the fix commit, including enabled FSDB suites and 94.24% average source coverage. Three parallel final review lanes, two focused follow-up reviews, and one fresh control review completed with no unresolved findings. Only WIP cleanup, push, and PR creation remain. This section will be updated after every major milestone and at completion.
 
 ## Context and Orientation
 
@@ -273,3 +278,5 @@ Plan revision note (2026-07-11): Recorded the coherent feature commit and succes
 Plan revision note (2026-07-11): Recorded successful `just check` and `just ci` gates at feature commit `79bae7b`; full logs are stored under ignored `tmp/` paths.
 
 Plan revision note (2026-07-11): Recorded parallel final-review findings and clean follow-up reviews. The AXI5 fixture now uses a legal combined optional-feature configuration, and deployment validation rejects stale v2.2 output and stream AXI profile branches.
+
+Plan revision note (2026-07-11): Completed the implementation retrospective after post-review full gates and a clean independent control review. The plan is ready for the required branch-local WIP cleanup before delivery.

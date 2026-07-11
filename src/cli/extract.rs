@@ -12,6 +12,7 @@ pub enum ExtractCommand {
 
 Behavior:
 - Profiles are based on Arm IHI 0022H.c.
+- Supports AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles.
 - Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
 - Builds one extraction source per complete ready/valid channel.
 - Samples reset, ready/valid predicates, and payload values at the pre-edge sample point.
@@ -48,6 +49,10 @@ pub enum AxiProfileArg {
     Axi4,
     #[value(name = "axi4-lite", alias = "axi4_lite")]
     Axi4Lite,
+    Ace,
+    #[value(name = "ace-lite", alias = "ace_lite")]
+    AceLite,
+    Ace5,
 }
 
 impl AxiProfileArg {
@@ -56,6 +61,9 @@ impl AxiProfileArg {
             Self::Axi3 => "axi3",
             Self::Axi4 => "axi4",
             Self::Axi4Lite => "axi4-lite",
+            Self::Ace => "ace",
+            Self::AceLite => "ace-lite",
+            Self::Ace5 => "ace5",
         }
     }
 }

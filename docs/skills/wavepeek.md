@@ -93,7 +93,7 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
-Use `extract axi` for AXI3, AXI4, and AXI4-Lite ready/valid channels when the user wants channel transfer rows:
+`extract axi` supports AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles. Use it when the user wants ready/valid channel transfer rows:
 
     wavepeek extract axi \
       --waves <FILE> \

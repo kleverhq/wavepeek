@@ -1,11 +1,14 @@
 {
   "$defs": {
     "axiProfile": {
-      "description": "AXI profile name: axi3, axi4, or axi4-lite.",
+      "description": "AXI profile name: axi3, axi4, axi4-lite, ace, ace-lite, or ace5.",
       "enum": [
         "axi3",
         "axi4",
-        "axi4-lite"
+        "axi4-lite",
+        "ace",
+        "ace-lite",
+        "ace5"
       ],
       "type": "string"
     },
@@ -384,6 +387,705 @@
                 },
                 "profile": {
                   "const": "axi4-lite"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acaddr": {
+                      "type": "string"
+                    },
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "acprot": {
+                      "type": "string"
+                    },
+                    "acready": {
+                      "type": "string"
+                    },
+                    "acsnoop": {
+                      "type": "string"
+                    },
+                    "acvalid": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arbar": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awbar": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awunique": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "cddata": {
+                      "type": "string"
+                    },
+                    "cdlast": {
+                      "type": "string"
+                    },
+                    "cdready": {
+                      "type": "string"
+                    },
+                    "cdvalid": {
+                      "type": "string"
+                    },
+                    "crready": {
+                      "type": "string"
+                    },
+                    "crresp": {
+                      "type": "string"
+                    },
+                    "crvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arbar": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awbar": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awunique": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace-lite"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acaddr": {
+                      "type": "string"
+                    },
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "acprot": {
+                      "type": "string"
+                    },
+                    "acready": {
+                      "type": "string"
+                    },
+                    "acsnoop": {
+                      "type": "string"
+                    },
+                    "actrace": {
+                      "type": "string"
+                    },
+                    "acvalid": {
+                      "type": "string"
+                    },
+                    "acvmidext": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "aridunq": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arloop": {
+                      "type": "string"
+                    },
+                    "armmuatst": {
+                      "type": "string"
+                    },
+                    "armmusecsid": {
+                      "type": "string"
+                    },
+                    "armmusid": {
+                      "type": "string"
+                    },
+                    "armmussid": {
+                      "type": "string"
+                    },
+                    "armmussidv": {
+                      "type": "string"
+                    },
+                    "armpam": {
+                      "type": "string"
+                    },
+                    "arnsaid": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "artrace": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "arvmidext": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awidunq": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awloop": {
+                      "type": "string"
+                    },
+                    "awmmuatst": {
+                      "type": "string"
+                    },
+                    "awmmusecsid": {
+                      "type": "string"
+                    },
+                    "awmmusid": {
+                      "type": "string"
+                    },
+                    "awmmussid": {
+                      "type": "string"
+                    },
+                    "awmmussidv": {
+                      "type": "string"
+                    },
+                    "awmpam": {
+                      "type": "string"
+                    },
+                    "awnsaid": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awtrace": {
+                      "type": "string"
+                    },
+                    "awunique": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bidunq": {
+                      "type": "string"
+                    },
+                    "bloop": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "btrace": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "cddata": {
+                      "type": "string"
+                    },
+                    "cdlast": {
+                      "type": "string"
+                    },
+                    "cdpoison": {
+                      "type": "string"
+                    },
+                    "cdready": {
+                      "type": "string"
+                    },
+                    "cdtrace": {
+                      "type": "string"
+                    },
+                    "cdvalid": {
+                      "type": "string"
+                    },
+                    "crnsaid": {
+                      "type": "string"
+                    },
+                    "crready": {
+                      "type": "string"
+                    },
+                    "crresp": {
+                      "type": "string"
+                    },
+                    "crtrace": {
+                      "type": "string"
+                    },
+                    "crvalid": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "ridunq": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rloop": {
+                      "type": "string"
+                    },
+                    "rpoison": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rtrace": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wpoison": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wtrace": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace5"
                 }
               },
               "required": [

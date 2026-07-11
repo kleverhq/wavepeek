@@ -983,9 +983,10 @@ fn extract_axi_help_is_self_descriptive() {
     for fragment in [
         "Extract AXI ready/valid transfer rows.",
         "Profiles are based on Arm IHI 0022H.c.",
+        "Supports AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles.",
         "Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.",
         "[default: axi4]",
-        "[possible values: axi3, axi4, axi4-lite]",
+        "[possible values: axi3, axi4, axi4-lite, ace, ace-lite, ace5]",
         "Builds one extraction source per complete ready/valid channel.",
         "In source-file mode, --source provides profile, name, includes, and maps",
         "Contract for source-file mode is defined by `wavepeek schema --input`.",

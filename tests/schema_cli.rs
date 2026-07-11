@@ -602,6 +602,24 @@ fn schema_output_validator_enforces_axi_profile_channel_payloads() {
         "wready": {"path": "top.wready"},
         "wdata": {"path": "top.wdata"}
     });
+    let ace_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "acvalid": {"path": "top.acvalid"},
+        "acready": {"path": "top.acready"},
+        "acaddr": {"path": "top.acaddr"}
+    });
+    let ace_lite_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "awvalid": {"path": "top.awvalid"},
+        "awready": {"path": "top.awready"},
+        "awunique": {"path": "top.awunique"}
+    });
+    let ace5_mappings = json!({
+        "aclk": {"path": "top.clk"},
+        "cdvalid": {"path": "top.cdvalid"},
+        "cdready": {"path": "top.cdready"},
+        "cdpoison": {"path": "top.cdpoison"}
+    });
 
     let valid_axi4_lite_aw = json!({
         "$schema": expected_schema_url(),
@@ -678,6 +696,162 @@ fn schema_output_validator_enforces_axi_profile_channel_payloads() {
         validator.validate(&invalid_axi4_w).is_err(),
         "AXI4 W output must reject AXI3-only wid payload: {invalid_axi4_w}"
     );
+
+    let valid_ace_ac = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace",
+            "profile": "ace",
+            "issue": "H.c",
+            "mappings": ace_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace",
+                "channel": "ac",
+                "payload": {"acaddr": "40'h1234"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_ace_ac)
+        .unwrap_or_else(|error| panic!("valid ACE AC output rejected: {error}\n{valid_ace_ac}"));
+
+    let valid_ace_lite_awunique = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace-lite",
+            "profile": "ace-lite",
+            "issue": "H.c",
+            "mappings": ace_lite_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace-lite",
+                "channel": "aw",
+                "payload": {"awunique": "1'h1"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_ace_lite_awunique)
+        .unwrap_or_else(|error| {
+            panic!("valid ACE-Lite AW output rejected: {error}\n{valid_ace_lite_awunique}")
+        });
+
+    let mut valid_ace_lite_empty_aw = valid_ace_lite_awunique.clone();
+    valid_ace_lite_empty_aw["data"]["transfers"][0]["payload"] = json!({});
+    validator
+        .validate(&valid_ace_lite_empty_aw)
+        .unwrap_or_else(|error| {
+            panic!("valid empty ACE-Lite AW payload rejected: {error}\n{valid_ace_lite_empty_aw}")
+        });
+
+    let mut invalid_ace_lite_channel = valid_ace_lite_empty_aw.clone();
+    invalid_ace_lite_channel["data"]["transfers"][0]["channel"] = json!("ac");
+    assert!(
+        validator.validate(&invalid_ace_lite_channel).is_err(),
+        "ACE-Lite output must reject AC channels: {invalid_ace_lite_channel}"
+    );
+
+    let mut invalid_ace_lite_payload = valid_ace_lite_awunique.clone();
+    invalid_ace_lite_payload["data"]["transfers"][0]["payload"] = json!({"acaddr": "40'h1234"});
+    assert!(
+        validator.validate(&invalid_ace_lite_payload).is_err(),
+        "ACE-Lite AW output must reject AC payload keys: {invalid_ace_lite_payload}"
+    );
+
+    let mut invalid_ace_lite_mapping = valid_ace_lite_awunique.clone();
+    invalid_ace_lite_mapping["data"]["mappings"]["acvalid"] = json!({"path": "top.acvalid"});
+    assert!(
+        validator.validate(&invalid_ace_lite_mapping).is_err(),
+        "ACE-Lite output must reject AC mappings: {invalid_ace_lite_mapping}"
+    );
+
+    let mut invalid_ace_lite_transfer_profile = valid_ace_lite_awunique.clone();
+    invalid_ace_lite_transfer_profile["data"]["transfers"][0]["profile"] = json!("ace");
+    assert!(
+        validator
+            .validate(&invalid_ace_lite_transfer_profile)
+            .is_err(),
+        "ACE-Lite data must reject ACE transfer rows: {invalid_ace_lite_transfer_profile}"
+    );
+
+    let valid_ace5_cd = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axi",
+        "data": {
+            "name": "ace5",
+            "profile": "ace5",
+            "issue": "H.c",
+            "mappings": ace5_mappings,
+            "transfers": [{
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5",
+                "channel": "cd",
+                "payload": {"cdpoison": "1'h1"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid_ace5_cd)
+        .unwrap_or_else(|error| panic!("valid ACE5 CD output rejected: {error}\n{valid_ace5_cd}"));
+
+    let mut valid_ace5_empty_cd = valid_ace5_cd.clone();
+    valid_ace5_empty_cd["data"]["transfers"][0]["payload"] = json!({});
+    validator
+        .validate(&valid_ace5_empty_cd)
+        .unwrap_or_else(|error| {
+            panic!("valid empty ACE5 CD payload rejected: {error}\n{valid_ace5_empty_cd}")
+        });
+
+    let mut invalid_ace5_channel = valid_ace5_empty_cd.clone();
+    invalid_ace5_channel["data"]["transfers"][0]["channel"] = json!("snp");
+    assert!(
+        validator.validate(&invalid_ace5_channel).is_err(),
+        "ACE5 output must reject unknown channels: {invalid_ace5_channel}"
+    );
+
+    let mut invalid_ace5_transfer_profile = valid_ace5_cd.clone();
+    invalid_ace5_transfer_profile["data"]["transfers"][0]["profile"] = json!("ace");
+    assert!(
+        validator.validate(&invalid_ace5_transfer_profile).is_err(),
+        "ACE5 data must reject ACE transfer rows: {invalid_ace5_transfer_profile}"
+    );
+
+    for barrier in ["awbar", "arbar"] {
+        let mut invalid_mapping = valid_ace5_cd.clone();
+        invalid_mapping["data"]["mappings"][barrier] = json!({"path": format!("top.{barrier}")});
+        assert!(
+            validator.validate(&invalid_mapping).is_err(),
+            "ACE5 output must reject removed {barrier} mapping: {invalid_mapping}"
+        );
+    }
+
+    for (channel, barrier) in [("aw", "awbar"), ("ar", "arbar")] {
+        let mut valid_empty_channel = valid_ace5_empty_cd.clone();
+        valid_empty_channel["data"]["transfers"][0]["channel"] = json!(channel);
+        validator
+            .validate(&valid_empty_channel)
+            .unwrap_or_else(|error| {
+                panic!(
+                    "valid empty ACE5 {channel} payload rejected: {error}\n{valid_empty_channel}"
+                )
+            });
+
+        let mut invalid_payload = valid_empty_channel;
+        invalid_payload["data"]["transfers"][0]["payload"][barrier] = json!("2'h1");
+        assert!(
+            validator.validate(&invalid_payload).is_err(),
+            "ACE5 {channel} output must reject removed {barrier} payload: {invalid_payload}"
+        );
+    }
 }
 
 #[test]
@@ -925,6 +1099,10 @@ fn schema_input_command_output_is_valid_json() {
         value["$defs"]["extractAxiSourceInput"]["properties"]["kind"]["const"],
         "extract.axi.source"
     );
+    assert_eq!(
+        value["$defs"]["axiProfile"]["enum"],
+        json!(["axi3", "axi4", "axi4-lite", "ace", "ace-lite", "ace5"])
+    );
 }
 
 #[test]
@@ -958,6 +1136,24 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
         .validate(&valid_axi)
         .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
 
+    for (profile, standard) in [
+        ("ace", "acvalid"),
+        ("ace-lite", "awunique"),
+        ("ace5", "cdpoison"),
+    ] {
+        let valid_ace_family = json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": profile,
+            "maps": {"aclk": "clk", (standard): format!("top.{standard}")}
+        });
+        validator
+            .validate(&valid_ace_family)
+            .unwrap_or_else(|error| {
+                panic!("valid {profile} input document rejected: {error}\n{valid_ace_family}")
+            });
+    }
+
     let valid_default_axi4 = json!({
         "$schema": expected_input_schema_url(),
         "kind": "extract.axi.source",
@@ -989,6 +1185,29 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
             "$schema": expected_input_schema_url(),
             "kind": "extract.axi.source",
             "profile": "axi5"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ACE_LITE"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace-lite",
+            "maps": {"acvalid": "top.acvalid"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5",
+            "maps": {"awbar": "top.awbar"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axi.source",
+            "profile": "ace5",
+            "maps": {"arbar": "top.arbar"}
         }),
         json!({
             "$schema": expected_input_schema_url(),
@@ -1153,6 +1372,78 @@ fn schema_stream_validator_accepts_representative_waveform_records() {
             }
         }),
         json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace",
+                "profile": "ace",
+                "issue": "H.c",
+                "mappings": {"acvalid": {"path": "top.acvalid"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace",
+                "channel": "ac",
+                "payload": {"acaddr": "40'h1234"}
+            }
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace-lite",
+                "profile": "ace-lite",
+                "issue": "H.c",
+                "mappings": {"awunique": {"path": "top.awunique"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace-lite",
+                "channel": "aw",
+                "payload": {"awunique": "1'h1"}
+            }
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5",
+                "profile": "ace5",
+                "issue": "H.c",
+                "mappings": {"cdpoison": {"path": "top.cdpoison"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5",
+                "channel": "cd",
+                "payload": {"cdpoison": "1'h1"}
+            }
+        }),
+        json!({
             "type": "item",
             "seq": 1,
             "command": "extract generic",
@@ -1237,6 +1528,78 @@ fn schema_stream_validator_rejects_command_payload_mismatches() {
                 "profile": "axi4-lite",
                 "channel": "aw",
                 "payload": {"awlen": "8'h0"}
+            }
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace-lite",
+                "profile": "ace-lite",
+                "issue": "H.c",
+                "mappings": {"acvalid": {"path": "top.acvalid"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace-lite",
+                "channel": "ac",
+                "payload": {}
+            }
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5",
+                "profile": "ace5",
+                "issue": "H.c",
+                "mappings": {"awbar": {"path": "top.awbar"}}
+            }
+        }),
+        json!({
+            "type": "begin",
+            "seq": 0,
+            "command": "extract axi",
+            "$schema": expected_stream_schema_url(),
+            "context": {
+                "name": "ace5",
+                "profile": "ace5",
+                "issue": "H.c",
+                "mappings": {"arbar": {"path": "top.arbar"}}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5",
+                "channel": "aw",
+                "payload": {"awbar": "2'h1"}
+            }
+        }),
+        json!({
+            "type": "item",
+            "seq": 1,
+            "command": "extract axi",
+            "item": {
+                "time": "5ns",
+                "sample_time": "4ns",
+                "profile": "ace5",
+                "channel": "ar",
+                "payload": {"arbar": "2'h1"}
             }
         }),
     ];

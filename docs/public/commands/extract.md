@@ -13,15 +13,19 @@ see_also:
 ---
 # Extract command
 
-Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, and AXI4-Lite ready/valid channels into generic extraction sources for common bus debug.
+Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 ready/valid channels into generic extraction sources for common bus debug.
 
 For exact syntax and flags, run `wavepeek help extract axi` or `wavepeek help extract generic`.
 
 ## `extract axi`
 
-`extract axi` emits one row per completed AXI transfer on each mapped ready/valid channel. Supported profiles are `axi3`, `axi4`, and `axi4-lite`; the default profile is `axi4`. A completed transfer requires both channel `VALID` and channel `READY` to be true at the pre-edge sample point for `posedge aclk`. If `aresetn` is mapped, it must also be true at that sample point.
+`extract axi` emits one row per completed AXI-family transfer on each mapped ready/valid channel. Supported profiles are `axi3`, `axi4`, `axi4-lite`, `ace`, `ace-lite`, and `ace5`; the default profile is `axi4`. A completed transfer requires both channel `VALID` and channel `READY` to be true at the pre-edge sample point for `posedge aclk`. If `aresetn` is mapped, it must also be true at that sample point.
 
-Map signals explicitly with repeated `--map standard=waveform` options, auto-map candidates selected by repeated `--include REGEX`, or combine both. Standard signal names are lowercase AXI names such as `awvalid`, `awready`, `wdata`, and `rresp`; explicit mappings override auto-mapping for the same standard signal. With `--scope`, mapped waveform names and include regexes are scope-relative.
+Map signals explicitly with repeated `--map standard=waveform` options, auto-map candidates selected by repeated `--include REGEX`, or combine both. Standard signal names are lowercase AXI names such as `awvalid`, `awready`, `wdata`, `rresp`, and `acvalid`; explicit mappings override auto-mapping for the same standard signal. With `--scope`, mapped waveform names and include regexes are scope-relative.
+
+ACE and ACE5 add the `ac`, `cr`, and `cd` coherency channels after the base `aw`, `w`, `b`, `ar`, and `r` channels. ACE-Lite uses only the five base channels and accepts its read/write address additions, including optional `awunique`. ACE5 does not accept the removed `awbar` or `arbar` signals. Optional and conditional payload signals are extracted when mapped and are not required.
+
+ACE-family extraction reports functional ready/valid channel transfers only. It does not extract standalone `rack` or `wack` acknowledgements, interface-level wakeup or coherency-connection signals, QoS-accept controls, check/parity signals, or credited transport. It does not reconstruct bursts, ordering, or coherency state.
 
 ```text
 $ wavepeek extract axi --waves path/to/dump.vcd \

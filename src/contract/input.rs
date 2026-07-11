@@ -83,7 +83,7 @@ fn extract_axi_kind_schema(_: &mut SchemaGenerator) -> Schema {
 fn axi_profile_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({
         "type": "string",
-        "enum": ["axi3", "axi4", "axi4-lite", "ace", "ace-lite", "ace5"]
+        "enum": ["axi3", "axi4", "axi4-lite", "axi5", "axi5-lite", "ace", "ace-lite", "ace5"]
     })
 }
 

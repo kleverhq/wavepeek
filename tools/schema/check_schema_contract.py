@@ -265,7 +265,16 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
     )
     require(
         schema["$defs"]["axiProfile"].get("enum")
-        == ["axi3", "axi4", "axi4-lite", "ace", "ace-lite", "ace5"],
+        == [
+            "axi3",
+            "axi4",
+            "axi4-lite",
+            "axi5",
+            "axi5-lite",
+            "ace",
+            "ace-lite",
+            "ace5",
+        ],
         "AXI input profile enum is not the expected stable list",
     )
     require(

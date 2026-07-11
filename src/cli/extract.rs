@@ -11,10 +11,12 @@ pub enum ExtractCommand {
         long_about = r#"Extract AXI ready/valid transfer rows.
 
 Behavior:
-- Profiles are based on Arm IHI 0022H.c.
-- Supports AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles.
+- AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles use Arm IHI 0022H.c.
+- AXI5 and AXI5-Lite profiles use Arm IHI 0022L ready/valid transport.
+- Supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, and ACE5 profiles.
 - Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
 - Builds one extraction source per complete ready/valid channel.
+- AXI5 optionally adds DVM ac and cr channels but does not add cd.
 - Samples reset, ready/valid predicates, and payload values at the pre-edge sample point.
 - In source-file mode, --source provides profile, name, includes, and maps and conflicts with --profile, --name, --map, and --include.
 - Contract for source-file mode is defined by `wavepeek schema --input`.
@@ -49,6 +51,9 @@ pub enum AxiProfileArg {
     Axi4,
     #[value(name = "axi4-lite", alias = "axi4_lite")]
     Axi4Lite,
+    Axi5,
+    #[value(name = "axi5-lite", alias = "axi5_lite")]
+    Axi5Lite,
     Ace,
     #[value(name = "ace-lite", alias = "ace_lite")]
     AceLite,
@@ -61,6 +66,8 @@ impl AxiProfileArg {
             Self::Axi3 => "axi3",
             Self::Axi4 => "axi4",
             Self::Axi4Lite => "axi4-lite",
+            Self::Axi5 => "axi5",
+            Self::Axi5Lite => "axi5-lite",
             Self::Ace => "ace",
             Self::AceLite => "ace-lite",
             Self::Ace5 => "ace5",
@@ -79,7 +86,7 @@ pub struct AxiArgs {
     /// Path to VCD/FST/FSDB waveform file
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
-    /// AXI profile based on Arm IHI 0022H.c
+    /// AXI profile from Arm IHI 0022H.c or IHI 0022L
     #[arg(
         long,
         value_name = "PROFILE",

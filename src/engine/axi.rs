@@ -368,6 +368,255 @@ const AXI4_LITE_CHANNELS: &[AxiChannelSpec] = &[
     },
 ];
 
+// AXI5 signal names are based on Arm IHI 0022L Tables B1.1 through B1.7 and
+// the ready/valid interface-class presence rules in Table B2.2.
+const AXI5_AW: &[&str] = &[
+    "awid",
+    "awaddr",
+    "awregion",
+    "awlen",
+    "awsize",
+    "awburst",
+    "awlock",
+    "awcache",
+    "awprot",
+    "awnse",
+    "awpas",
+    "awinst",
+    "awpriv",
+    "awqos",
+    "awuser",
+    "awdomain",
+    "awsnoop",
+    "awstashnid",
+    "awstashniden",
+    "awstashlpid",
+    "awstashlpiden",
+    "awtrace",
+    "awloop",
+    "awmmuvalid",
+    "awmmusecsid",
+    "awmmusid",
+    "awmmussidv",
+    "awmmussid",
+    "awmmuatst",
+    "awmmuflow",
+    "awmmupasunknown",
+    "awmmupm",
+    "awpbha",
+    "awmecid",
+    "awnsaid",
+    "awsubsysid",
+    "awatop",
+    "awmpam",
+    "awidunq",
+    "awcmo",
+    "awtagop",
+    "awact",
+    "awactv",
+    "awvalid",
+    "awready",
+];
+const AXI5_W: &[&str] = &[
+    "wdata",
+    "wstrb",
+    "wtag",
+    "wtagupdate",
+    "wlast",
+    "wuser",
+    "wpoison",
+    "wtrace",
+    "wvalid",
+    "wready",
+];
+const AXI5_B: &[&str] = &[
+    "bid",
+    "bidunq",
+    "bresp",
+    "bcomp",
+    "bpersist",
+    "btagmatch",
+    "buser",
+    "btrace",
+    "bloop",
+    "bbusy",
+    "bvalid",
+    "bready",
+];
+const AXI5_AR: &[&str] = &[
+    "arid",
+    "araddr",
+    "arregion",
+    "arlen",
+    "arsize",
+    "arburst",
+    "arlock",
+    "arcache",
+    "arprot",
+    "arnse",
+    "arpas",
+    "arinst",
+    "arpriv",
+    "arqos",
+    "aruser",
+    "ardomain",
+    "arsnoop",
+    "artrace",
+    "arloop",
+    "armmuvalid",
+    "armmusecsid",
+    "armmusid",
+    "armmussidv",
+    "armmussid",
+    "armmuatst",
+    "armmuflow",
+    "armmupasunknown",
+    "armmupm",
+    "arpbha",
+    "armecid",
+    "arnsaid",
+    "arsubsysid",
+    "armpam",
+    "archunken",
+    "aridunq",
+    "artagop",
+    "aract",
+    "aractv",
+    "arvalid",
+    "arready",
+];
+const AXI5_R: &[&str] = &[
+    "rid",
+    "ridunq",
+    "rdata",
+    "rtag",
+    "rresp",
+    "rlast",
+    "ruser",
+    "rpoison",
+    "rtrace",
+    "rloop",
+    "rchunkv",
+    "rchunknum",
+    "rchunkstrb",
+    "rbusy",
+    "rvalid",
+    "rready",
+];
+const AXI5_AC: &[&str] = &["acaddr", "acvmidext", "actrace", "acvalid", "acready"];
+const AXI5_CR: &[&str] = &["crtrace", "crvalid", "crready"];
+const AXI5_CHANNELS: &[AxiChannelSpec] = &[
+    AxiChannelSpec {
+        name: "aw",
+        valid: "awvalid",
+        ready: "awready",
+        signals: AXI5_AW,
+    },
+    AxiChannelSpec {
+        name: "w",
+        valid: "wvalid",
+        ready: "wready",
+        signals: AXI5_W,
+    },
+    AxiChannelSpec {
+        name: "b",
+        valid: "bvalid",
+        ready: "bready",
+        signals: AXI5_B,
+    },
+    AxiChannelSpec {
+        name: "ar",
+        valid: "arvalid",
+        ready: "arready",
+        signals: AXI5_AR,
+    },
+    AxiChannelSpec {
+        name: "r",
+        valid: "rvalid",
+        ready: "rready",
+        signals: AXI5_R,
+    },
+    AxiChannelSpec {
+        name: "ac",
+        valid: "acvalid",
+        ready: "acready",
+        signals: AXI5_AC,
+    },
+    AxiChannelSpec {
+        name: "cr",
+        valid: "crvalid",
+        ready: "crready",
+        signals: AXI5_CR,
+    },
+];
+
+// AXI5-Lite signal names are based on Arm IHI 0022L Table B2.2.
+const AXI5_LITE_AW: &[&str] = &[
+    "awid",
+    "awaddr",
+    "awsize",
+    "awprot",
+    "awuser",
+    "awtrace",
+    "awsubsysid",
+    "awidunq",
+    "awvalid",
+    "awready",
+];
+const AXI5_LITE_W: &[&str] = &[
+    "wdata", "wstrb", "wuser", "wpoison", "wtrace", "wvalid", "wready",
+];
+const AXI5_LITE_B: &[&str] = &[
+    "bid", "bidunq", "bresp", "buser", "btrace", "bvalid", "bready",
+];
+const AXI5_LITE_AR: &[&str] = &[
+    "arid",
+    "araddr",
+    "arsize",
+    "arprot",
+    "aruser",
+    "artrace",
+    "arsubsysid",
+    "aridunq",
+    "arvalid",
+    "arready",
+];
+const AXI5_LITE_R: &[&str] = &[
+    "rid", "ridunq", "rdata", "rresp", "ruser", "rpoison", "rtrace", "rvalid", "rready",
+];
+const AXI5_LITE_CHANNELS: &[AxiChannelSpec] = &[
+    AxiChannelSpec {
+        name: "aw",
+        valid: "awvalid",
+        ready: "awready",
+        signals: AXI5_LITE_AW,
+    },
+    AxiChannelSpec {
+        name: "w",
+        valid: "wvalid",
+        ready: "wready",
+        signals: AXI5_LITE_W,
+    },
+    AxiChannelSpec {
+        name: "b",
+        valid: "bvalid",
+        ready: "bready",
+        signals: AXI5_LITE_B,
+    },
+    AxiChannelSpec {
+        name: "ar",
+        valid: "arvalid",
+        ready: "arready",
+        signals: AXI5_LITE_AR,
+    },
+    AxiChannelSpec {
+        name: "r",
+        valid: "rvalid",
+        ready: "rready",
+        signals: AXI5_LITE_R,
+    },
+];
+
 // ACE signal names are based on Arm IHI 0022H.c Tables D2-1 through D2-6.
 const ACE_AW: &[&str] = &[
     "awid", "awaddr", "awlen", "awsize", "awburst", "awlock", "awcache", "awprot", "awqos",
@@ -621,6 +870,16 @@ const AXI4_LITE_PROFILE: AxiProfileSpec = AxiProfileSpec {
     issue: "H.c",
     channels: AXI4_LITE_CHANNELS,
 };
+const AXI5_PROFILE: AxiProfileSpec = AxiProfileSpec {
+    name: "axi5",
+    issue: "L",
+    channels: AXI5_CHANNELS,
+};
+const AXI5_LITE_PROFILE: AxiProfileSpec = AxiProfileSpec {
+    name: "axi5-lite",
+    issue: "L",
+    channels: AXI5_LITE_CHANNELS,
+};
 const ACE_PROFILE: AxiProfileSpec = AxiProfileSpec {
     name: "ace",
     issue: "H.c",
@@ -642,6 +901,8 @@ pub(crate) fn profile_specs() -> &'static [AxiProfileSpec] {
         AXI3_PROFILE,
         AXI4_PROFILE,
         AXI4_LITE_PROFILE,
+        AXI5_PROFILE,
+        AXI5_LITE_PROFILE,
         ACE_PROFILE,
         ACE_LITE_PROFILE,
         ACE5_PROFILE,
@@ -941,12 +1202,14 @@ fn parse_profile(profile: &str) -> Result<AxiProfile, WavepeekError> {
         "axi3" => &AXI3_PROFILE,
         "axi4" => &AXI4_PROFILE,
         "axi4-lite" => &AXI4_LITE_PROFILE,
+        "axi5" => &AXI5_PROFILE,
+        "axi5-lite" => &AXI5_LITE_PROFILE,
         "ace" => &ACE_PROFILE,
         "ace-lite" => &ACE_LITE_PROFILE,
         "ace5" => &ACE5_PROFILE,
         _ => {
             return Err(WavepeekError::Args(format!(
-                "unsupported AXI profile '{profile}'; expected axi3, axi4, axi4-lite, ace, ace-lite, or ace5. See 'wavepeek extract axi --help'."
+                "unsupported AXI profile '{profile}'; expected axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5. See 'wavepeek extract axi --help'."
             )));
         }
     };
@@ -1352,7 +1615,13 @@ mod tests {
         let actual = profile
             .channels()
             .iter()
-            .map(|channel| (channel.name, channel.signals))
+            .map(|channel| {
+                let expected_valid = format!("{}valid", channel.name);
+                let expected_ready = format!("{}ready", channel.name);
+                assert_eq!(channel.valid, expected_valid);
+                assert_eq!(channel.ready, expected_ready);
+                (channel.name, channel.signals)
+            })
             .collect::<Vec<_>>();
         assert_eq!(actual, expected);
     }
@@ -1364,8 +1633,10 @@ mod tests {
         assert_eq!(parse_profile("ACE").unwrap().name(), "ace");
         assert_eq!(parse_profile("ACE_LITE").unwrap().name(), "ace-lite");
         assert_eq!(parse_profile("ace_lite").unwrap().name(), "ace-lite");
+        assert_eq!(parse_profile("AXI5").unwrap().name(), "axi5");
+        assert_eq!(parse_profile("AXI5_LITE").unwrap().name(), "axi5-lite");
+        assert_eq!(parse_profile("axi5_lite").unwrap().name(), "axi5-lite");
         assert_eq!(parse_profile("ACE5").unwrap().name(), "ace5");
-        assert!(parse_profile("axi5").is_err());
     }
 
     #[test]
@@ -1375,7 +1646,16 @@ mod tests {
                 .iter()
                 .map(|profile| profile.name)
                 .collect::<Vec<_>>(),
-            ["axi3", "axi4", "axi4-lite", "ace", "ace-lite", "ace5"]
+            [
+                "axi3",
+                "axi4",
+                "axi4-lite",
+                "axi5",
+                "axi5-lite",
+                "ace",
+                "ace-lite",
+                "ace5"
+            ]
         );
 
         assert_profile(
@@ -1558,6 +1838,262 @@ mod tests {
     }
 
     #[test]
+    fn axi5_profile_specs_match_issue_l_contract() {
+        assert_profile(
+            "axi5",
+            &[
+                (
+                    "aw",
+                    &[
+                        "awid",
+                        "awaddr",
+                        "awregion",
+                        "awlen",
+                        "awsize",
+                        "awburst",
+                        "awlock",
+                        "awcache",
+                        "awprot",
+                        "awnse",
+                        "awpas",
+                        "awinst",
+                        "awpriv",
+                        "awqos",
+                        "awuser",
+                        "awdomain",
+                        "awsnoop",
+                        "awstashnid",
+                        "awstashniden",
+                        "awstashlpid",
+                        "awstashlpiden",
+                        "awtrace",
+                        "awloop",
+                        "awmmuvalid",
+                        "awmmusecsid",
+                        "awmmusid",
+                        "awmmussidv",
+                        "awmmussid",
+                        "awmmuatst",
+                        "awmmuflow",
+                        "awmmupasunknown",
+                        "awmmupm",
+                        "awpbha",
+                        "awmecid",
+                        "awnsaid",
+                        "awsubsysid",
+                        "awatop",
+                        "awmpam",
+                        "awidunq",
+                        "awcmo",
+                        "awtagop",
+                        "awact",
+                        "awactv",
+                        "awvalid",
+                        "awready",
+                    ],
+                ),
+                (
+                    "w",
+                    &[
+                        "wdata",
+                        "wstrb",
+                        "wtag",
+                        "wtagupdate",
+                        "wlast",
+                        "wuser",
+                        "wpoison",
+                        "wtrace",
+                        "wvalid",
+                        "wready",
+                    ],
+                ),
+                (
+                    "b",
+                    &[
+                        "bid",
+                        "bidunq",
+                        "bresp",
+                        "bcomp",
+                        "bpersist",
+                        "btagmatch",
+                        "buser",
+                        "btrace",
+                        "bloop",
+                        "bbusy",
+                        "bvalid",
+                        "bready",
+                    ],
+                ),
+                (
+                    "ar",
+                    &[
+                        "arid",
+                        "araddr",
+                        "arregion",
+                        "arlen",
+                        "arsize",
+                        "arburst",
+                        "arlock",
+                        "arcache",
+                        "arprot",
+                        "arnse",
+                        "arpas",
+                        "arinst",
+                        "arpriv",
+                        "arqos",
+                        "aruser",
+                        "ardomain",
+                        "arsnoop",
+                        "artrace",
+                        "arloop",
+                        "armmuvalid",
+                        "armmusecsid",
+                        "armmusid",
+                        "armmussidv",
+                        "armmussid",
+                        "armmuatst",
+                        "armmuflow",
+                        "armmupasunknown",
+                        "armmupm",
+                        "arpbha",
+                        "armecid",
+                        "arnsaid",
+                        "arsubsysid",
+                        "armpam",
+                        "archunken",
+                        "aridunq",
+                        "artagop",
+                        "aract",
+                        "aractv",
+                        "arvalid",
+                        "arready",
+                    ],
+                ),
+                (
+                    "r",
+                    &[
+                        "rid",
+                        "ridunq",
+                        "rdata",
+                        "rtag",
+                        "rresp",
+                        "rlast",
+                        "ruser",
+                        "rpoison",
+                        "rtrace",
+                        "rloop",
+                        "rchunkv",
+                        "rchunknum",
+                        "rchunkstrb",
+                        "rbusy",
+                        "rvalid",
+                        "rready",
+                    ],
+                ),
+                (
+                    "ac",
+                    &["acaddr", "acvmidext", "actrace", "acvalid", "acready"],
+                ),
+                ("cr", &["crtrace", "crvalid", "crready"]),
+            ],
+        );
+
+        assert_profile(
+            "axi5-lite",
+            &[
+                (
+                    "aw",
+                    &[
+                        "awid",
+                        "awaddr",
+                        "awsize",
+                        "awprot",
+                        "awuser",
+                        "awtrace",
+                        "awsubsysid",
+                        "awidunq",
+                        "awvalid",
+                        "awready",
+                    ],
+                ),
+                (
+                    "w",
+                    &[
+                        "wdata", "wstrb", "wuser", "wpoison", "wtrace", "wvalid", "wready",
+                    ],
+                ),
+                (
+                    "b",
+                    &[
+                        "bid", "bidunq", "bresp", "buser", "btrace", "bvalid", "bready",
+                    ],
+                ),
+                (
+                    "ar",
+                    &[
+                        "arid",
+                        "araddr",
+                        "arsize",
+                        "arprot",
+                        "aruser",
+                        "artrace",
+                        "arsubsysid",
+                        "aridunq",
+                        "arvalid",
+                        "arready",
+                    ],
+                ),
+                (
+                    "r",
+                    &[
+                        "rid", "ridunq", "rdata", "rresp", "ruser", "rpoison", "rtrace", "rvalid",
+                        "rready",
+                    ],
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn axi5_profiles_reject_nonfunctional_and_cross_profile_names() {
+        let axi5 = parse_profile("axi5").unwrap();
+        for standard in [
+            "awbar",
+            "awunique",
+            "arbar",
+            "cdvalid",
+            "awpending",
+            "awakeup",
+            "varqosaccept",
+            "syscoreq",
+            "broadcastatomic",
+            "activatereq",
+        ] {
+            assert!(
+                !axi5.contains_standard(standard),
+                "AXI5 must reject {standard}"
+            );
+        }
+
+        let axi5_lite = parse_profile("axi5-lite").unwrap();
+        for standard in [
+            "awlen",
+            "awburst",
+            "awcache",
+            "wlast",
+            "rlast",
+            "arsnoop",
+            "acvalid",
+            "awpending",
+        ] {
+            assert!(
+                !axi5_lite.contains_standard(standard),
+                "AXI5-Lite must reject {standard}"
+            );
+        }
+    }
+
+    #[test]
     fn ace5_rejects_removed_barrier_standard_names() {
         let profile = parse_profile("ace5").unwrap();
         assert!(!profile.contains_standard("awbar"));
@@ -1586,6 +2122,14 @@ mod tests {
         assert!(candidate_matches_standard("ace_ac_valid_o", "acvalid"));
         assert!(candidate_matches_standard("ace_cr_ready_i", "crready"));
         assert!(candidate_matches_standard("ace_cd_data_o", "cddata"));
+        assert!(candidate_matches_standard(
+            "axi5_aw_mmu_valid_o",
+            "awmmuvalid"
+        ));
+        assert!(candidate_matches_standard("axi5_aw_actv_o", "awactv"));
+        assert!(candidate_matches_standard("axi5_ar_mecid_o", "armecid"));
+        assert!(candidate_matches_standard("axi5_r_chunknum_i", "rchunknum"));
+        assert!(candidate_matches_standard("axi5_ac_addr_i", "acaddr"));
         assert!(candidate_matches_standard("aclk", "aclk"));
         assert!(!candidate_matches_standard("wvalid", "awvalid"));
         assert!(!candidate_matches_standard("axi_wvalid_o", "awvalid"));
@@ -1606,6 +2150,7 @@ mod tests {
             ("ace5_cd_ready_chk_i", "cdready"),
             ("ace5_cd_data_chk_o", "cddata"),
             ("ace5_acvalidchk_i", "acvalid"),
+            ("axi5_aw_valid_chk_o", "awvalid"),
         ] {
             assert!(
                 !candidate_matches_standard(candidate, functional),

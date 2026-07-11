@@ -103,6 +103,24 @@
       "reason": "ACE-Lite extraction fixture generated from HDL."
     },
     {
+      "name": "extract_axi5",
+      "source": "tests/fixtures/source/extract_axi5.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_axi5.vcd",
+        "tests/fixtures/generated/extract_axi5.fst"
+      ],
+      "reason": "AXI5 extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
+      "name": "extract_axi5_lite",
+      "source": "tests/fixtures/source/extract_axi5_lite.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_axi5_lite.vcd",
+        "tests/fixtures/generated/extract_axi5_lite.fst"
+      ],
+      "reason": "AXI5-Lite extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
       "name": "extract_axi_lite",
       "source": "tests/fixtures/source/extract_axi_lite.v",
       "outputs": [

@@ -243,6 +243,48 @@ class CheckDeployTests(unittest.TestCase):
 
         check_deploy.validate_schema_json(schema, "2.0.0", "schema-output-v2.0.json")
 
+    def test_validate_schema_json_rejects_stale_v2_2_axi_profiles(self) -> None:
+        schema_path = TOOLS_DIR.parent.parent / "schema" / "output.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        check_deploy.validate_schema_json(
+            schema, "2.1.0", "schema-output-v2.2.json"
+        )
+
+        stale_profiles = json.loads(json.dumps(schema))
+        stale_profiles["$defs"]["axiProfile"]["enum"] = [
+            "axi3",
+            "axi4",
+            "axi4-lite",
+            "ace",
+            "ace-lite",
+            "ace5",
+        ]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI profile"):
+            check_deploy.validate_schema_json(
+                stale_profiles, "2.1.0", "schema-output-v2.2.json"
+            )
+
+        stale_issue = json.loads(json.dumps(schema))
+        axi5_branch = next(
+            branch
+            for branch in stale_issue["$defs"]["extractAxiData"]["oneOf"]
+            if branch["properties"]["profile"]["const"] == "axi5"
+        )
+        axi5_branch["properties"]["issue"]["const"] = "H.c"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "Issue L"):
+            check_deploy.validate_schema_json(
+                stale_issue, "2.1.0", "schema-output-v2.2.json"
+            )
+
+        stale_transfers = json.loads(json.dumps(schema))
+        stale_transfers["$defs"]["extractAxi5Transfer"]["oneOf"] = stale_transfers[
+            "$defs"
+        ]["extractAxi5Transfer"]["oneOf"][:5]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI5 transfer"):
+            check_deploy.validate_schema_json(
+                stale_transfers, "2.1.0", "schema-output-v2.2.json"
+            )
+
     def test_validate_schema_json_requires_schema_property_object(self) -> None:
         schema = {
             "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -282,6 +324,46 @@ class CheckDeployTests(unittest.TestCase):
         broken["$defs"]["streamCommand"]["enum"] = ["info"]
         with self.assertRaisesRegex(check_deploy.DeployCheckError, "command enum"):
             check_deploy.validate_stream_schema_json(broken, "1.0.0")
+
+    def test_validate_stream_schema_json_rejects_stale_v2_2_axi_profiles(self) -> None:
+        schema_path = TOOLS_DIR.parent.parent / "schema" / "stream.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        check_deploy.validate_stream_schema_json(
+            schema, "2.1.0", "schema-stream-v2.2.json"
+        )
+
+        stale_profiles = json.loads(json.dumps(schema))
+        stale_profiles["$defs"]["axiProfile"]["enum"] = [
+            "axi3",
+            "axi4",
+            "axi4-lite",
+            "ace",
+            "ace-lite",
+            "ace5",
+        ]
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI profile"):
+            check_deploy.validate_stream_schema_json(
+                stale_profiles, "2.1.0", "schema-stream-v2.2.json"
+            )
+
+        stale_issue = json.loads(json.dumps(schema))
+        axi5_lite_branch = next(
+            branch
+            for branch in stale_issue["$defs"]["extractAxiContext"]["oneOf"]
+            if branch["properties"]["profile"]["const"] == "axi5-lite"
+        )
+        axi5_lite_branch["properties"]["issue"]["const"] = "H.c"
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "Issue L"):
+            check_deploy.validate_stream_schema_json(
+                stale_issue, "2.1.0", "schema-stream-v2.2.json"
+            )
+
+        stale_transfers = json.loads(json.dumps(schema))
+        stale_transfers["$defs"]["extractAxi5LiteTransfer"]["oneOf"] = []
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI5-Lite transfer"):
+            check_deploy.validate_stream_schema_json(
+                stale_transfers, "2.1.0", "schema-stream-v2.2.json"
+            )
 
     def test_validate_stream_schema_json_accepts_legacy_v2_pattern_artifact(self) -> None:
         schema = {
@@ -346,31 +428,8 @@ class CheckDeployTests(unittest.TestCase):
         check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.1.json")
 
     def test_validate_stream_schema_json_accepts_explicit_v2_2_axi_family_for_older_package_version(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSONL stream record",
-            "$defs": {
-                "streamCommand": {
-                    "enum": [
-                        "info",
-                        "scope",
-                        "signal",
-                        "value",
-                        "change",
-                        "property",
-                        "extract axi",
-                        "extract generic",
-                    ]
-                },
-                "beginRecord": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
-                        }
-                    }
-                },
-            },
-        }
+        schema_path = TOOLS_DIR.parent.parent / "schema" / "stream.json"
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
         check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.2.json")
 
@@ -422,6 +481,8 @@ class CheckDeployTests(unittest.TestCase):
                         "axi3",
                         "axi4",
                         "axi4-lite",
+                        "axi5",
+                        "axi5-lite",
                         "ace",
                         "ace-lite",
                         "ace5",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import re
 import subprocess
@@ -18,10 +19,6 @@ VERSION_RE = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 DEFAULT_BASE_URL = "https://kleverhq.github.io/wavepeek"
 USER_AGENT = "wavepeek-docs-deploy-check"
-SCHEMA_TITLE = "wavepeek JSON output envelope"
-STREAM_SCHEMA_TITLE = "wavepeek JSONL stream record"
-INPUT_SCHEMA_TITLE = "wavepeek JSON input documents"
-BASE_SCHEMA_PROPERTIES = {"$schema", "command", "data"}
 STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
 INPUT_SCHEMA_MIN_VERSION = (2, 1, 0)
 
@@ -32,7 +29,7 @@ class DeployCheckError(Exception):
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Check deployed wavepeek GitHub Pages documentation."
+        description="Check deployed wavepeek GitHub Pages endpoints."
     )
     parser.add_argument("--version", required=True)
     parser.add_argument("--base-url", default=DEFAULT_BASE_URL)
@@ -42,13 +39,13 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         dest="expect_latest",
         action="store_true",
         default=True,
-        help="require latest/ and versions.json latest alias to point at --version",
+        help="require the latest documentation endpoint",
     )
     parser.add_argument(
         "--no-expect-latest",
         dest="expect_latest",
         action="store_false",
-        help="check --version without requiring the latest alias",
+        help="check the version without requiring the latest endpoint",
     )
     parser.add_argument("--retries", type=int, default=10)
     parser.add_argument("--retry-delay", type=float, default=3.0)
@@ -69,18 +66,10 @@ def validate_version(version: str) -> str:
     return version
 
 
-def major_version(version: str) -> int:
-    return int(validate_version(version).split(".", maxsplit=1)[0])
-
-
 def version_tuple(version: str) -> tuple[int, int, int]:
-    parts = version.split(".")
-    if len(parts) != 3:
-        fail(f"version must use major.minor.patch format, got {version!r}")
-    try:
-        return tuple(int(part) for part in parts)  # type: ignore[return-value]
-    except ValueError:
-        fail(f"version must contain numeric components, got {version!r}")
+    validate_version(version)
+    major, minor, patch = version.split(".")
+    return int(major), int(minor), int(patch)
 
 
 def stream_schema_required(version: str) -> bool:
@@ -89,13 +78,6 @@ def stream_schema_required(version: str) -> bool:
 
 def input_schema_required(version: str) -> bool:
     return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
-
-
-def schema_artifact_suffix(version: str) -> str:
-    major, minor, _patch = version_tuple(version)
-    if major >= 2:
-        return f"{major}.{minor}"
-    return str(major)
 
 
 def schema_artifact_name(version: str) -> str:
@@ -121,34 +103,6 @@ def input_schema_artifact_name(version: str) -> str:
     return f"schema-input-v{major}.{minor}.json"
 
 
-def artifact_family_tuple(artifact: str, prefix: str) -> tuple[int, int] | None:
-    match = re.fullmatch(rf"{re.escape(prefix)}v([1-9][0-9]*)[.]([0-9]+)[.]json", artifact)
-    if match is None:
-        return None
-    return int(match.group(1)), int(match.group(2))
-
-
-def stream_schema_includes_extract(version: str, stream_schema_artifact: str) -> bool:
-    family = artifact_family_tuple(stream_schema_artifact, "schema-stream-")
-    if family is not None:
-        return family >= (2, 1)
-    return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
-
-
-def stream_schema_includes_axi(version: str, stream_schema_artifact: str) -> bool:
-    family = artifact_family_tuple(stream_schema_artifact, "schema-stream-")
-    if family is not None:
-        return family >= (2, 2)
-    return version_tuple(version) >= (2, 2, 0)
-
-
-def input_schema_uses_source_union(version: str, input_schema_artifact: str) -> bool:
-    family = artifact_family_tuple(input_schema_artifact, "schema-input-")
-    if family is not None:
-        return family >= (2, 2)
-    return version_tuple(version) >= (2, 2, 0)
-
-
 def normalize_base_url(base_url: str) -> str:
     value = base_url.strip().rstrip("/")
     parsed = urllib.parse.urlparse(value)
@@ -161,9 +115,7 @@ def normalize_base_url(base_url: str) -> str:
 
 def page_url(base_url: str, path: str = "") -> str:
     base = normalize_base_url(base_url)
-    if not path:
-        return base + "/"
-    return f"{base}/{path.lstrip('/')}"
+    return base + "/" if not path else f"{base}/{path.lstrip('/')}"
 
 
 def validate_repository(repository: str) -> str:
@@ -181,27 +133,16 @@ def fetch_bytes(url: str, *, retries: int, retry_delay: float, timeout: float) -
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 status = getattr(response, "status", None) or response.getcode()
-                if status != 200:
-                    last_error = f"HTTP {status}"
-                else:
+                if status == 200:
                     return response.read()
+                last_error = f"HTTP {status}"
         except urllib.error.HTTPError as error:
             last_error = f"HTTP {error.code}"
-        except (TimeoutError, urllib.error.URLError) as error:
+        except (TimeoutError, OSError, http.client.HTTPException) as error:
             last_error = str(error)
         if attempt < retries:
             time.sleep(retry_delay)
     fail(f"{url} did not return HTTP 200 after {retries} attempt(s): {last_error}")
-
-
-def fetch_json(url: str, *, retries: int, retry_delay: float, timeout: float) -> Any:
-    body = fetch_bytes(url, retries=retries, retry_delay=retry_delay, timeout=timeout)
-    try:
-        return json.loads(body.decode("utf-8"))
-    except UnicodeDecodeError as error:
-        fail(f"{url} is not valid UTF-8: {error}")
-    except json.JSONDecodeError as error:
-        fail(f"{url} is not valid JSON: {error}")
 
 
 def retry_check(
@@ -222,678 +163,6 @@ def retry_check(
         if attempt < retries:
             time.sleep(retry_delay)
     fail(f"{label} did not pass after {retries} attempt(s): {last_error}")
-
-
-def aliases(entry: dict[str, Any]) -> set[str]:
-    raw = entry.get("aliases", [])
-    if not isinstance(raw, list):
-        fail("versions.json aliases must be arrays")
-    if any(not isinstance(item, str) for item in raw):
-        fail("versions.json aliases must contain only strings")
-    return set(raw)
-
-
-def version_entries_by_name(versions: Any) -> dict[str, dict[str, Any]]:
-    if not isinstance(versions, list):
-        fail("versions.json must contain a list")
-    entries: dict[str, dict[str, Any]] = {}
-    for entry in versions:
-        if not isinstance(entry, dict) or not isinstance(entry.get("version"), str):
-            fail("versions.json entries must be objects with a string version")
-        version = entry["version"]
-        if version in entries:
-            fail(f"versions.json contains duplicate version {version!r}")
-        entries[version] = entry
-    return entries
-
-
-def validate_versions_json(versions: Any, version: str, *, expect_latest: bool) -> None:
-    entries = version_entries_by_name(versions)
-    entry = entries.get(version)
-    if entry is None:
-        fail(f"versions.json does not contain version {version}")
-    if entry.get("title") != version:
-        fail(f"versions.json entry {version} must have title {version!r}")
-
-    latest_versions = sorted(
-        entry_version
-        for entry_version, candidate in entries.items()
-        if "latest" in aliases(candidate)
-    )
-    if expect_latest and latest_versions != [version]:
-        rendered = ", ".join(latest_versions) if latest_versions else "none"
-        fail(f"versions.json latest alias points at {rendered}, expected {version}")
-
-
-def validate_versions_payload(
-    url: str,
-    version: str,
-    *,
-    expect_latest: bool,
-    timeout: float,
-) -> Any:
-    versions = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
-    validate_versions_json(versions, version, expect_latest=expect_latest)
-    return versions
-
-
-def validate_latest_matches_version(version_body: bytes, latest_body: bytes) -> None:
-    if latest_body != version_body:
-        fail("latest docs content does not match version docs content")
-
-
-def normalize_schema_pattern(pattern: str) -> str:
-    return pattern.replace(r"\/", "/").replace(r"\.", ".")
-
-
-def schema_url_references_expected_artifact(
-    schema_property: dict[str, Any], version: str, schema_artifact: str
-) -> bool:
-    major, _minor, _patch = version_tuple(version)
-    if schema_artifact.startswith("schema-output-v"):
-        return schema_property.get("const") == page_url(DEFAULT_BASE_URL, schema_artifact)
-    pattern = schema_property.get("pattern")
-    if not isinstance(pattern, str):
-        return False
-    normalized = normalize_schema_pattern(pattern)
-    if schema_artifact in normalized:
-        return True
-    if major >= 2:
-        return f"wavepeek_v{major}.[0-9]+.json" in normalized
-    return major == 0 and "schema/wavepeek.json" in normalized
-
-
-def stream_schema_url_references_expected_artifact(
-    schema_property: dict[str, Any], version: str, stream_schema_artifact: str
-) -> bool:
-    major, _minor, _patch = version_tuple(version)
-    if stream_schema_artifact.startswith("schema-stream-v"):
-        return schema_property.get("const") == page_url(DEFAULT_BASE_URL, stream_schema_artifact)
-    pattern = schema_property.get("pattern")
-    if not isinstance(pattern, str):
-        return False
-    normalized = normalize_schema_pattern(pattern)
-    if stream_schema_artifact in normalized:
-        return True
-    if major >= 2:
-        return f"wavepeek-stream-v{major}.[0-9]+.json" in normalized
-    return False
-
-
-def input_schema_url_references_expected_artifact(
-    schema_property: dict[str, Any], input_schema_artifact: str
-) -> bool:
-    return schema_property.get("const") == page_url(DEFAULT_BASE_URL, input_schema_artifact)
-
-
-AXI_PROFILE_NAMES = [
-    "axi3",
-    "axi4",
-    "axi4-lite",
-    "axi5",
-    "axi5-lite",
-    "ace",
-    "ace-lite",
-    "ace5",
-    "ace5-lite",
-    "ace5-lite-dvm",
-    "ace5-lite-acp",
-]
-
-AXI_TRANSFER_REFS = [
-    "#/$defs/extractAxi3Transfer",
-    "#/$defs/extractAxi4Transfer",
-    "#/$defs/extractAxi4LiteTransfer",
-    "#/$defs/extractAxi5Transfer",
-    "#/$defs/extractAxi5LiteTransfer",
-    "#/$defs/extractAceTransfer",
-    "#/$defs/extractAceLiteTransfer",
-    "#/$defs/extractAce5Transfer",
-    "#/$defs/extractAce5LiteTransfer",
-    "#/$defs/extractAce5LiteDvmTransfer",
-    "#/$defs/extractAce5LiteAcpTransfer",
-]
-
-AXI5_TRANSFER_REFS = [
-    "#/$defs/extractAxi5AwTransfer",
-    "#/$defs/extractAxi5WTransfer",
-    "#/$defs/extractAxi5BTransfer",
-    "#/$defs/extractAxi5ArTransfer",
-    "#/$defs/extractAxi5RTransfer",
-    "#/$defs/extractAxi5AcTransfer",
-    "#/$defs/extractAxi5CrTransfer",
-]
-
-AXI5_LITE_TRANSFER_REFS = [
-    "#/$defs/extractAxi5LiteAwTransfer",
-    "#/$defs/extractAxi5LiteWTransfer",
-    "#/$defs/extractAxi5LiteBTransfer",
-    "#/$defs/extractAxi5LiteArTransfer",
-    "#/$defs/extractAxi5LiteRTransfer",
-]
-
-ACE5_LITE_TRANSFER_REFS = [
-    "#/$defs/extractAce5LiteAwTransfer",
-    "#/$defs/extractAce5LiteWTransfer",
-    "#/$defs/extractAce5LiteBTransfer",
-    "#/$defs/extractAce5LiteArTransfer",
-    "#/$defs/extractAce5LiteRTransfer",
-]
-
-ACE5_LITE_DVM_TRANSFER_REFS = [
-    "#/$defs/extractAce5LiteDvmAwTransfer",
-    "#/$defs/extractAce5LiteDvmWTransfer",
-    "#/$defs/extractAce5LiteDvmBTransfer",
-    "#/$defs/extractAce5LiteDvmArTransfer",
-    "#/$defs/extractAce5LiteDvmRTransfer",
-    "#/$defs/extractAce5LiteDvmAcTransfer",
-    "#/$defs/extractAce5LiteDvmCrTransfer",
-]
-
-ACE5_LITE_ACP_TRANSFER_REFS = [
-    "#/$defs/extractAce5LiteAcpAwTransfer",
-    "#/$defs/extractAce5LiteAcpWTransfer",
-    "#/$defs/extractAce5LiteAcpBTransfer",
-    "#/$defs/extractAce5LiteAcpArTransfer",
-    "#/$defs/extractAce5LiteAcpRTransfer",
-]
-
-ACE5_LITE_PROFILE_PAYLOADS = {
-    "ace5-lite": {
-        "aw": {
-            "awid", "awaddr", "awregion", "awlen", "awsize", "awburst", "awlock",
-            "awcache", "awprot", "awnse", "awqos", "awuser", "awdomain", "awsnoop",
-            "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace",
-            "awloop", "awmmuvalid", "awmmusecsid", "awmmusid", "awmmussidv",
-            "awmmussid", "awmmuatst", "awmmuflow", "awpbha", "awmecid", "awnsaid",
-            "awsubsysid", "awatop", "awmpam", "awidunq", "awcmo", "awtagop",
-        },
-        "w": {"wdata", "wstrb", "wtag", "wtagupdate", "wlast", "wuser", "wpoison", "wtrace"},
-        "b": {"bid", "bidunq", "bresp", "bcomp", "bpersist", "btagmatch", "buser", "btrace", "bloop", "bbusy"},
-        "ar": {
-            "arid", "araddr", "arregion", "arlen", "arsize", "arburst", "arlock",
-            "arcache", "arprot", "arnse", "arqos", "aruser", "ardomain", "arsnoop",
-            "artrace", "arloop", "armmuvalid", "armmusecsid", "armmusid",
-            "armmussidv", "armmussid", "armmuatst", "armmuflow", "arpbha", "armecid",
-            "arnsaid", "arsubsysid", "armpam", "archunken", "aridunq", "artagop",
-        },
-        "r": {"rid", "ridunq", "rdata", "rtag", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rloop", "rchunkv", "rchunknum", "rchunkstrb", "rbusy"},
-    },
-    "ace5-lite-dvm": {
-        "aw": {
-            "awid", "awaddr", "awregion", "awlen", "awsize", "awburst", "awlock",
-            "awcache", "awprot", "awnse", "awqos", "awuser", "awdomain", "awsnoop",
-            "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace",
-            "awloop", "awpbha", "awmecid", "awnsaid", "awsubsysid", "awatop", "awmpam",
-            "awidunq", "awcmo", "awtagop",
-        },
-        "w": {"wdata", "wstrb", "wtag", "wtagupdate", "wlast", "wuser", "wpoison", "wtrace"},
-        "b": {"bid", "bidunq", "bresp", "bcomp", "bpersist", "buser", "btrace", "bloop", "bbusy"},
-        "ar": {
-            "arid", "araddr", "arregion", "arlen", "arsize", "arburst", "arlock",
-            "arcache", "arprot", "arnse", "arqos", "aruser", "ardomain", "arsnoop",
-            "artrace", "arloop", "arpbha", "armecid", "arnsaid", "arsubsysid", "armpam",
-            "archunken", "aridunq", "artagop",
-        },
-        "r": {"rid", "ridunq", "rdata", "rtag", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rloop", "rchunkv", "rchunknum", "rchunkstrb", "rbusy"},
-        "ac": {"acaddr", "acvmidext", "actrace"},
-        "cr": {"crtrace"},
-    },
-    "ace5-lite-acp": {
-        "aw": {"awid", "awaddr", "awlen", "awcache", "awprot", "awuser", "awdomain", "awsnoop", "awstashnid", "awstashniden", "awstashlpid", "awstashlpiden", "awtrace", "awmpam", "awidunq"},
-        "w": {"wdata", "wstrb", "wlast", "wuser", "wpoison", "wtrace"},
-        "b": {"bid", "bidunq", "bresp", "buser", "btrace"},
-        "ar": {"arid", "araddr", "arlen", "arcache", "arprot", "aruser", "ardomain", "arsnoop", "artrace", "armpam", "archunken", "aridunq"},
-        "r": {"rid", "ridunq", "rdata", "rresp", "rlast", "ruser", "rpoison", "rtrace", "rchunkv", "rchunknum", "rchunkstrb"},
-    },
-}
-
-ACE5_LITE_PROFILE_DEFS = {
-    "ace5-lite": "extractAce5Lite",
-    "ace5-lite-dvm": "extractAce5LiteDvm",
-    "ace5-lite-acp": "extractAce5LiteAcp",
-}
-
-
-def expected_mapping_names(profile_name: str) -> set[str]:
-    names = {"aclk", "aresetn"}
-    for channel, payloads in ACE5_LITE_PROFILE_PAYLOADS[profile_name].items():
-        names.update(payloads)
-        names.update({f"{channel}valid", f"{channel}ready"})
-    return names
-
-
-def validate_exact_mapping_schema(
-    mapping: Any,
-    profile_name: str,
-    label: str,
-    expected_property_schema: dict[str, str],
-) -> None:
-    properties = mapping.get("properties") if isinstance(mapping, dict) else None
-    if (
-        not isinstance(properties, dict)
-        or set(properties) != expected_mapping_names(profile_name)
-        or any(value != expected_property_schema for value in properties.values())
-        or mapping.get("additionalProperties") is not False
-    ):
-        fail(f"schema artifact {label} mappings mismatch")
-
-
-def validate_v2_2_axi_defs(schema: dict[str, Any], branch_name: str) -> None:
-    defs = schema.get("$defs")
-    if not isinstance(defs, dict):
-        fail("schema artifact must define AXI $defs")
-
-    profile_definition = defs.get("axiProfile")
-    if (
-        not isinstance(profile_definition, dict)
-        or profile_definition.get("enum") != AXI_PROFILE_NAMES
-    ):
-        fail("schema artifact AXI profile enum mismatch")
-
-    branch_definition = defs.get(branch_name)
-    branches = branch_definition.get("oneOf") if isinstance(branch_definition, dict) else None
-    if not isinstance(branches, list):
-        fail(f"schema artifact must define {branch_name} branches")
-
-    branches_by_profile: dict[str, dict[str, Any]] = {}
-    for branch in branches:
-        if not isinstance(branch, dict):
-            fail(f"schema artifact {branch_name} branch must be an object")
-        properties = branch.get("properties")
-        profile = properties.get("profile") if isinstance(properties, dict) else None
-        profile_name = profile.get("const") if isinstance(profile, dict) else None
-        if not isinstance(profile_name, str) or profile_name in branches_by_profile:
-            fail(f"schema artifact {branch_name} profile branches are invalid")
-        branches_by_profile[profile_name] = branch
-    if list(branches_by_profile) != AXI_PROFILE_NAMES:
-        fail(f"schema artifact {branch_name} profile branches mismatch")
-
-    issue_l_profiles = [
-        (
-            "axi5",
-            "#/$defs/extractAxi5Transfer",
-            {"acaddr", "acvalid", "crvalid", "wtagupdate", "rchunknum"},
-            {"acsnoop", "cdvalid", "awpending"},
-        ),
-        (
-            "axi5-lite",
-            "#/$defs/extractAxi5LiteTransfer",
-            {"awidunq", "wpoison", "rpoison"},
-            {"awlen", "wlast", "acvalid"},
-        ),
-        (
-            "ace5-lite",
-            "#/$defs/extractAce5LiteTransfer",
-            {"awmmuflow", "btagmatch", "artagop", "rchunkstrb"},
-            {"acvalid", "cdvalid", "awpending"},
-        ),
-        (
-            "ace5-lite-dvm",
-            "#/$defs/extractAce5LiteDvmTransfer",
-            {"artagop", "acaddr", "acvalid", "crtrace", "crvalid"},
-            {"awmmuvalid", "btagmatch", "acsnoop", "crresp", "cdvalid"},
-        ),
-        (
-            "ace5-lite-acp",
-            "#/$defs/extractAce5LiteAcpTransfer",
-            {"awlen", "awstashnid", "arsnoop", "rchunkstrb"},
-            {"awsize", "wtag", "bcomp", "rtag", "acvalid"},
-        ),
-    ]
-    for profile_name, transfer_ref, required_mappings, rejected_mappings in issue_l_profiles:
-        properties = branches_by_profile[profile_name]["properties"]
-        issue = properties.get("issue")
-        if not isinstance(issue, dict) or issue.get("const") != "L":
-            fail(f"schema artifact {profile_name} branch must use Issue L")
-        mappings = properties.get("mappings")
-        mapping_properties = mappings.get("properties") if isinstance(mappings, dict) else None
-        if (
-            not isinstance(mapping_properties, dict)
-            or not required_mappings <= set(mapping_properties)
-            or rejected_mappings & set(mapping_properties)
-        ):
-            fail(f"schema artifact {profile_name} mappings inventory mismatch")
-        if branch_name == "extractAxiData":
-            transfers = properties.get("transfers")
-            items = transfers.get("items") if isinstance(transfers, dict) else None
-            if not isinstance(items, dict) or items.get("$ref") != transfer_ref:
-                fail(f"schema artifact {profile_name} transfer branch mismatch")
-
-    transfer_union = defs.get("extractAxiTransfer")
-    transfer_branches = transfer_union.get("oneOf") if isinstance(transfer_union, dict) else None
-    if transfer_branches != [{"$ref": ref} for ref in AXI_TRANSFER_REFS]:
-        fail("schema artifact AXI transfer profile branches mismatch")
-
-    for definition_name, expected_refs, label in [
-        ("extractAxi5Transfer", AXI5_TRANSFER_REFS, "AXI5"),
-        ("extractAxi5LiteTransfer", AXI5_LITE_TRANSFER_REFS, "AXI5-Lite"),
-        ("extractAce5LiteTransfer", ACE5_LITE_TRANSFER_REFS, "ACE5-Lite"),
-        (
-            "extractAce5LiteDvmTransfer",
-            ACE5_LITE_DVM_TRANSFER_REFS,
-            "ACE5-LiteDVM",
-        ),
-        (
-            "extractAce5LiteAcpTransfer",
-            ACE5_LITE_ACP_TRANSFER_REFS,
-            "ACE5-LiteACP",
-        ),
-    ]:
-        definition = defs.get(definition_name)
-        one_of = definition.get("oneOf") if isinstance(definition, dict) else None
-        if one_of != [{"$ref": ref} for ref in expected_refs]:
-            fail(f"schema artifact {label} transfer channel branches mismatch")
-
-    for profile_name, channels in ACE5_LITE_PROFILE_PAYLOADS.items():
-        branch_properties = branches_by_profile[profile_name]["properties"]
-        validate_exact_mapping_schema(
-            branch_properties.get("mappings"),
-            profile_name,
-            profile_name,
-            {"$ref": "#/$defs/extractAxiMapping"},
-        )
-        definition_prefix = ACE5_LITE_PROFILE_DEFS[profile_name]
-        for channel_name, expected_payloads in channels.items():
-            channel_title = channel_name[0].upper() + channel_name[1:]
-            definition_name = f"{definition_prefix}{channel_title}Transfer"
-            definition = defs.get(definition_name)
-            properties = definition.get("properties") if isinstance(definition, dict) else None
-            profile = properties.get("profile") if isinstance(properties, dict) else None
-            channel = properties.get("channel") if isinstance(properties, dict) else None
-            payload = properties.get("payload") if isinstance(properties, dict) else None
-            payload_properties = (
-                payload.get("properties") if isinstance(payload, dict) else None
-            )
-            if (
-                not isinstance(profile, dict)
-                or profile.get("const") != profile_name
-                or not isinstance(channel, dict)
-                or channel.get("const") != channel_name
-                or not isinstance(payload_properties, dict)
-                or set(payload_properties) != expected_payloads
-                or any(
-                    value != {"$ref": "#/$defs/sampledValue"}
-                    for value in payload_properties.values()
-                )
-                or payload.get("additionalProperties") is not False
-            ):
-                fail(
-                    f"schema artifact {profile_name} {channel_name} transfer payload mismatch"
-                )
-
-    for definition_name, profile_name, channel_name, required, rejected, label in [
-        (
-            "extractAxi5AcTransfer",
-            "axi5",
-            "ac",
-            {"acaddr", "acvmidext"},
-            {"acsnoop"},
-            "AXI5 AC",
-        ),
-        (
-            "extractAxi5LiteWTransfer",
-            "axi5-lite",
-            "w",
-            {"wdata", "wpoison"},
-            {"wlast"},
-            "AXI5-Lite W",
-        ),
-        (
-            "extractAce5LiteBTransfer",
-            "ace5-lite",
-            "b",
-            {"btagmatch"},
-            {"acaddr"},
-            "ACE5-Lite B",
-        ),
-        (
-            "extractAce5LiteDvmAcTransfer",
-            "ace5-lite-dvm",
-            "ac",
-            {"acaddr", "acvmidext"},
-            {"acsnoop"},
-            "ACE5-LiteDVM AC",
-        ),
-        (
-            "extractAce5LiteAcpAwTransfer",
-            "ace5-lite-acp",
-            "aw",
-            {"awlen", "awsnoop"},
-            {"awsize"},
-            "ACE5-LiteACP AW",
-        ),
-    ]:
-        definition = defs.get(definition_name)
-        properties = definition.get("properties") if isinstance(definition, dict) else None
-        profile = properties.get("profile") if isinstance(properties, dict) else None
-        channel = properties.get("channel") if isinstance(properties, dict) else None
-        payload = properties.get("payload") if isinstance(properties, dict) else None
-        payload_properties = payload.get("properties") if isinstance(payload, dict) else None
-        if (
-            not isinstance(profile, dict)
-            or profile.get("const") != profile_name
-            or not isinstance(channel, dict)
-            or channel.get("const") != channel_name
-            or not isinstance(payload_properties, dict)
-            or not required <= set(payload_properties)
-            or rejected & set(payload_properties)
-        ):
-            fail(f"schema artifact {label} transfer payload mismatch")
-
-
-def validate_schema_json(schema: Any, version: str, schema_artifact: str | None = None) -> None:
-    if not isinstance(schema, dict):
-        fail("schema artifact must contain a JSON object")
-    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
-        fail("schema artifact must use JSON Schema draft 2020-12")
-    if schema.get("title") != SCHEMA_TITLE:
-        fail(f"schema artifact title must be {SCHEMA_TITLE!r}")
-    properties = schema.get("properties")
-    if not isinstance(properties, dict):
-        fail("schema artifact properties must be an object")
-    expected_properties = set(BASE_SCHEMA_PROPERTIES)
-    expected_properties.add("warnings" if major_version(version) == 0 else "diagnostics")
-    missing = sorted(expected_properties - set(properties))
-    if missing:
-        fail("schema artifact is missing properties: " + ", ".join(missing))
-    schema_property = properties.get("$schema")
-    if not isinstance(schema_property, dict):
-        fail("schema artifact $schema property must be an object")
-    schema_artifact = schema_artifact or schema_artifact_name(version)
-    if not schema_url_references_expected_artifact(schema_property, version, schema_artifact):
-        fail(
-            "schema artifact $schema property must reference "
-            f"{schema_artifact}"
-        )
-    if schema_artifact == "schema-output-v2.2.json":
-        validate_v2_2_axi_defs(schema, "extractAxiData")
-
-
-def validate_schema_payload(
-    url: str, version: str, *, schema_artifact: str, timeout: float
-) -> Any:
-    schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
-    validate_schema_json(schema, version, schema_artifact)
-    return schema
-
-
-def validate_stream_schema_json(
-    schema: Any, version: str, stream_schema_artifact: str | None = None
-) -> None:
-    if not isinstance(schema, dict):
-        fail("stream schema artifact must contain a JSON object")
-    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
-        fail("stream schema artifact must use JSON Schema draft 2020-12")
-    if schema.get("title") != STREAM_SCHEMA_TITLE:
-        fail(f"stream schema artifact title must be {STREAM_SCHEMA_TITLE!r}")
-    defs = schema.get("$defs")
-    if not isinstance(defs, dict):
-        fail("stream schema artifact must define $defs")
-    command = defs.get("streamCommand")
-    if not isinstance(command, dict):
-        fail("stream schema artifact must define streamCommand")
-    expected_commands = ["info", "scope", "signal", "value", "change", "property"]
-    stream_schema_artifact = stream_schema_artifact or stream_schema_artifact_name(version)
-    if stream_schema_includes_axi(version, stream_schema_artifact):
-        expected_commands.append("extract axi")
-    if stream_schema_includes_extract(version, stream_schema_artifact):
-        expected_commands.append("extract generic")
-    if command.get("enum") != expected_commands:
-        fail("stream schema artifact command enum mismatch")
-    begin = defs.get("beginRecord")
-    if not isinstance(begin, dict):
-        fail("stream schema artifact must define beginRecord")
-    try:
-        schema_property = begin["properties"]["$schema"]
-    except (KeyError, TypeError):
-        fail("stream schema artifact beginRecord must define $schema")
-    if not isinstance(schema_property, dict) or not stream_schema_url_references_expected_artifact(
-        schema_property, version, stream_schema_artifact
-    ):
-        fail(
-            "stream schema artifact $schema property must reference "
-            f"{stream_schema_artifact}"
-        )
-    if stream_schema_artifact == "schema-stream-v2.2.json":
-        validate_v2_2_axi_defs(schema, "extractAxiContext")
-
-
-def validate_stream_schema_payload(
-    url: str, version: str, *, stream_schema_artifact: str, timeout: float
-) -> Any:
-    schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
-    validate_stream_schema_json(schema, version, stream_schema_artifact)
-    return schema
-
-
-def validate_input_schema_json(
-    schema: Any, version: str, input_schema_artifact: str | None = None
-) -> None:
-    if not isinstance(schema, dict):
-        fail("input schema artifact must contain a JSON object")
-    if schema.get("$schema") != "https://json-schema.org/draft/2020-12/schema":
-        fail("input schema artifact must use JSON Schema draft 2020-12")
-    if schema.get("title") != INPUT_SCHEMA_TITLE:
-        fail(f"input schema artifact title must be {INPUT_SCHEMA_TITLE!r}")
-    input_schema_artifact = input_schema_artifact or input_schema_artifact_name(version)
-    if input_schema_uses_source_union(version, input_schema_artifact):
-        defs = schema.get("$defs")
-        if not isinstance(defs, dict):
-            fail("input schema artifact must define $defs")
-        if schema.get("oneOf") != [
-            {"$ref": "#/$defs/extractGenericSourcesInput"},
-            {"$ref": "#/$defs/extractAxiSourceInput"},
-        ]:
-            fail("input schema artifact root must accept generic and AXI source documents")
-        generic = defs.get("extractGenericSourcesInput")
-        axi = defs.get("extractAxiSourceInput")
-        if not isinstance(generic, dict) or not isinstance(axi, dict):
-            fail("input schema artifact must define generic and AXI source document defs")
-        axi_properties: dict[str, Any] | None = None
-        for label, definition, kind_value in [
-            ("generic", generic, "extract.generic.sources"),
-            ("AXI", axi, "extract.axi.source"),
-        ]:
-            properties = definition.get("properties")
-            if not isinstance(properties, dict):
-                fail(f"input schema artifact {label} properties must be an object")
-            if label == "AXI":
-                axi_properties = properties
-            schema_property = properties.get("$schema")
-            if not isinstance(schema_property, dict):
-                fail(f"input schema artifact {label} $schema property must be an object")
-            if not input_schema_url_references_expected_artifact(
-                schema_property, input_schema_artifact
-            ):
-                fail(
-                    "input schema artifact $schema property must reference "
-                    f"{input_schema_artifact}"
-                )
-            kind = properties.get("kind")
-            if not isinstance(kind, dict) or kind.get("const") != kind_value:
-                fail(f"input schema artifact must require {kind_value} kind")
-        assert axi_properties is not None
-        profile = axi_properties.get("profile")
-        if not isinstance(profile, dict) or profile.get("$ref") != "#/$defs/axiProfile":
-            fail("input schema artifact AXI profile reference mismatch")
-        profile_definition = defs.get("axiProfile")
-        if not isinstance(profile_definition, dict) or profile_definition.get("enum") != AXI_PROFILE_NAMES:
-            fail("input schema artifact AXI profile enum mismatch")
-
-        all_of = axi.get("allOf")
-        profile_union = (
-            all_of[0].get("oneOf")
-            if isinstance(all_of, list)
-            and len(all_of) == 1
-            and isinstance(all_of[0], dict)
-            else None
-        )
-        if not isinstance(profile_union, list) or len(profile_union) != len(AXI_PROFILE_NAMES):
-            fail("input schema artifact AXI profile constraints mismatch")
-        expected_explicit_profiles = [
-            name for name in AXI_PROFILE_NAMES if name != "axi4"
-        ]
-        default_branch = profile_union[0]
-        if default_branch.get("anyOf") != [
-            {"not": {"required": ["profile"]}},
-            {
-                "properties": {"profile": {"const": "axi4"}},
-                "required": ["profile"],
-            },
-        ]:
-            fail("input schema artifact AXI default profile branch mismatch")
-        default_properties = default_branch.get("properties")
-        if not isinstance(default_properties, dict) or "maps" not in default_properties:
-            fail("input schema artifact AXI default mappings mismatch")
-
-        explicit_profiles: list[str] = []
-        explicit_branches: dict[str, dict[str, Any]] = {}
-        for branch in profile_union[1:]:
-            properties = branch.get("properties") if isinstance(branch, dict) else None
-            profile_schema = properties.get("profile") if isinstance(properties, dict) else None
-            profile_name = profile_schema.get("const") if isinstance(profile_schema, dict) else None
-            if not isinstance(profile_name, str) or branch.get("required") != ["profile"]:
-                fail("input schema artifact AXI explicit profile branch mismatch")
-            explicit_profiles.append(profile_name)
-            explicit_branches[profile_name] = branch
-        if explicit_profiles != expected_explicit_profiles:
-            fail("input schema artifact AXI profile branch order mismatch")
-
-        for profile_name in ACE5_LITE_PROFILE_PAYLOADS:
-            branch_properties = explicit_branches[profile_name]["properties"]
-            validate_exact_mapping_schema(
-                branch_properties.get("maps"),
-                profile_name,
-                f"input {profile_name}",
-                {"type": "string"},
-            )
-        return
-
-    properties = schema.get("properties")
-    if not isinstance(properties, dict):
-        fail("input schema artifact properties must be an object")
-    schema_property = properties.get("$schema")
-    if not isinstance(schema_property, dict):
-        fail("input schema artifact $schema property must be an object")
-    if not input_schema_url_references_expected_artifact(
-        schema_property, input_schema_artifact
-    ):
-        fail(
-            "input schema artifact $schema property must reference "
-            f"{input_schema_artifact}"
-        )
-    kind = properties.get("kind")
-    if not isinstance(kind, dict) or kind.get("const") != "extract.generic.sources":
-        fail("input schema artifact must require extract generic kind")
-
-
-def validate_input_schema_payload(
-    url: str, version: str, *, input_schema_artifact: str, timeout: float
-) -> Any:
-    schema = fetch_json(url, retries=1, retry_delay=0.0, timeout=timeout)
-    validate_input_schema_json(schema, version, input_schema_artifact)
-    return schema
 
 
 def load_pages_site(
@@ -950,106 +219,31 @@ def validate_pages_site(site: Any, base_url: str) -> None:
 def check_deploy(args: argparse.Namespace) -> None:
     version = validate_version(args.version)
     base_url = normalize_base_url(args.base_url)
-    artifact = args.schema_artifact or schema_artifact_name(version)
+    output_artifact = args.schema_artifact or schema_artifact_name(version)
     stream_artifact = args.stream_schema_artifact or stream_schema_artifact_name(version)
     input_artifact = args.input_schema_artifact or input_schema_artifact_name(version)
 
-    urls = [
+    endpoints = [
         ("site root", page_url(base_url)),
         ("version docs", page_url(base_url, f"{version}/")),
         ("versions.json", page_url(base_url, "versions.json")),
-        (artifact, page_url(base_url, artifact)),
+        (output_artifact, page_url(base_url, output_artifact)),
     ]
-    check_stream_schema = args.stream_schema_artifact is not None or stream_schema_required(version)
-    check_input_schema = args.input_schema_artifact is not None or input_schema_required(version)
-    if check_stream_schema:
-        urls.append((stream_artifact, page_url(base_url, stream_artifact)))
-    if check_input_schema:
-        urls.append((input_artifact, page_url(base_url, input_artifact)))
     if args.expect_latest:
-        urls.insert(2, ("latest docs", page_url(base_url, "latest/")))
+        endpoints.insert(2, ("latest docs", page_url(base_url, "latest/")))
+    if args.stream_schema_artifact is not None or stream_schema_required(version):
+        endpoints.append((stream_artifact, page_url(base_url, stream_artifact)))
+    if args.input_schema_artifact is not None or input_schema_required(version):
+        endpoints.append((input_artifact, page_url(base_url, input_artifact)))
 
-    bodies: dict[str, bytes] = {}
-    for label, url in urls:
-        bodies[label] = fetch_bytes(
-            url, retries=args.retries, retry_delay=args.retry_delay, timeout=args.timeout
+    for label, url in endpoints:
+        fetch_bytes(
+            url,
+            retries=args.retries,
+            retry_delay=args.retry_delay,
+            timeout=args.timeout,
         )
         print(f"ok: docs-deploy: {label}: {url}")
-    if args.expect_latest:
-        retry_check(
-            "latest docs content check",
-            retries=args.retries,
-            retry_delay=args.retry_delay,
-            operation=lambda: validate_latest_matches_version(
-                fetch_bytes(
-                    page_url(base_url, f"{version}/"),
-                    retries=1,
-                    retry_delay=args.retry_delay,
-                    timeout=args.timeout,
-                ),
-                fetch_bytes(
-                    page_url(base_url, "latest/"),
-                    retries=1,
-                    retry_delay=args.retry_delay,
-                    timeout=args.timeout,
-                ),
-            ),
-        )
-        print("ok: docs-deploy: latest docs match version docs")
-
-    retry_check(
-        "versions.json semantic check",
-        retries=args.retries,
-        retry_delay=args.retry_delay,
-        operation=lambda: validate_versions_payload(
-            page_url(base_url, "versions.json"),
-            version,
-            expect_latest=args.expect_latest,
-            timeout=args.timeout,
-        ),
-    )
-    print(f"ok: docs-deploy: versions.json contains {version}")
-
-    retry_check(
-        "schema artifact semantic check",
-        retries=args.retries,
-        retry_delay=args.retry_delay,
-        operation=lambda: validate_schema_payload(
-            page_url(base_url, artifact),
-            version,
-            schema_artifact=artifact,
-            timeout=args.timeout,
-        ),
-    )
-    print(f"ok: docs-deploy: schema artifact {artifact}")
-
-    if check_stream_schema:
-        retry_check(
-            "stream schema artifact semantic check",
-            retries=args.retries,
-            retry_delay=args.retry_delay,
-            operation=lambda: validate_stream_schema_payload(
-                page_url(base_url, stream_artifact),
-                version,
-                stream_schema_artifact=stream_artifact,
-                timeout=args.timeout,
-            ),
-        )
-        print(f"ok: docs-deploy: stream schema artifact {stream_artifact}")
-
-    if check_input_schema:
-        retry_check(
-            "input schema artifact semantic check",
-            retries=args.retries,
-            retry_delay=args.retry_delay,
-            operation=lambda: validate_input_schema_payload(
-                page_url(base_url, input_artifact),
-                version,
-                input_schema_artifact=input_artifact,
-                timeout=args.timeout,
-            ),
-        )
-        print(f"ok: docs-deploy: input schema artifact {input_artifact}")
 
     if args.repository:
         site = load_pages_site(

@@ -36,7 +36,7 @@ pub(super) fn apply_input_defs(defs: &mut Map<String, Value>) {
 fn axi_profile_schema() -> Value {
     json!({
         "type": "string",
-        "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5.",
+        "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
         "enum": axi_profile_names(),
     })
 }

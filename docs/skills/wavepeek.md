@@ -93,7 +93,7 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
-`extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, and ACE5 profiles. AXI5 and AXI5-Lite use Issue L; the other supported profiles use Issue H.c. Use it when the user wants ready/valid channel transfer rows:
+`extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles. AXI5, AXI5-Lite, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP use Issue L; the other supported profiles use Issue H.c. ACE5-LiteDVM adds DVM `ac` and `cr` channels without `cd`. Use it when the user wants ready/valid channel transfer rows:
 
     wavepeek extract axi \
       --waves <FILE> \

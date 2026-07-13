@@ -855,6 +855,317 @@ const ACE5_CHANNELS: &[AxiChannelSpec] = &[
     },
 ];
 
+// ACE5-Lite family signal names are based on Arm IHI 0022L Table B2.2.
+const ACE5_LITE_AW: &[&str] = &[
+    "awid",
+    "awaddr",
+    "awregion",
+    "awlen",
+    "awsize",
+    "awburst",
+    "awlock",
+    "awcache",
+    "awprot",
+    "awnse",
+    "awqos",
+    "awuser",
+    "awdomain",
+    "awsnoop",
+    "awstashnid",
+    "awstashniden",
+    "awstashlpid",
+    "awstashlpiden",
+    "awtrace",
+    "awloop",
+    "awmmuvalid",
+    "awmmusecsid",
+    "awmmusid",
+    "awmmussidv",
+    "awmmussid",
+    "awmmuatst",
+    "awmmuflow",
+    "awpbha",
+    "awmecid",
+    "awnsaid",
+    "awsubsysid",
+    "awatop",
+    "awmpam",
+    "awidunq",
+    "awcmo",
+    "awtagop",
+    "awvalid",
+    "awready",
+];
+const ACE5_LITE_W: &[&str] = AXI5_W;
+const ACE5_LITE_B: &[&str] = AXI5_B;
+const ACE5_LITE_AR: &[&str] = &[
+    "arid",
+    "araddr",
+    "arregion",
+    "arlen",
+    "arsize",
+    "arburst",
+    "arlock",
+    "arcache",
+    "arprot",
+    "arnse",
+    "arqos",
+    "aruser",
+    "ardomain",
+    "arsnoop",
+    "artrace",
+    "arloop",
+    "armmuvalid",
+    "armmusecsid",
+    "armmusid",
+    "armmussidv",
+    "armmussid",
+    "armmuatst",
+    "armmuflow",
+    "arpbha",
+    "armecid",
+    "arnsaid",
+    "arsubsysid",
+    "armpam",
+    "archunken",
+    "aridunq",
+    "artagop",
+    "arvalid",
+    "arready",
+];
+const ACE5_LITE_R: &[&str] = AXI5_R;
+const ACE5_LITE_CHANNELS: &[AxiChannelSpec] = &[
+    AxiChannelSpec {
+        name: "aw",
+        valid: "awvalid",
+        ready: "awready",
+        signals: ACE5_LITE_AW,
+    },
+    AxiChannelSpec {
+        name: "w",
+        valid: "wvalid",
+        ready: "wready",
+        signals: ACE5_LITE_W,
+    },
+    AxiChannelSpec {
+        name: "b",
+        valid: "bvalid",
+        ready: "bready",
+        signals: ACE5_LITE_B,
+    },
+    AxiChannelSpec {
+        name: "ar",
+        valid: "arvalid",
+        ready: "arready",
+        signals: ACE5_LITE_AR,
+    },
+    AxiChannelSpec {
+        name: "r",
+        valid: "rvalid",
+        ready: "rready",
+        signals: ACE5_LITE_R,
+    },
+];
+
+const ACE5_LITE_DVM_AW: &[&str] = &[
+    "awid",
+    "awaddr",
+    "awregion",
+    "awlen",
+    "awsize",
+    "awburst",
+    "awlock",
+    "awcache",
+    "awprot",
+    "awnse",
+    "awqos",
+    "awuser",
+    "awdomain",
+    "awsnoop",
+    "awstashnid",
+    "awstashniden",
+    "awstashlpid",
+    "awstashlpiden",
+    "awtrace",
+    "awloop",
+    "awpbha",
+    "awmecid",
+    "awnsaid",
+    "awsubsysid",
+    "awatop",
+    "awmpam",
+    "awidunq",
+    "awcmo",
+    "awtagop",
+    "awvalid",
+    "awready",
+];
+const ACE5_LITE_DVM_B: &[&str] = &[
+    "bid", "bidunq", "bresp", "bcomp", "bpersist", "buser", "btrace", "bloop", "bbusy", "bvalid",
+    "bready",
+];
+const ACE5_LITE_DVM_AR: &[&str] = &[
+    "arid",
+    "araddr",
+    "arregion",
+    "arlen",
+    "arsize",
+    "arburst",
+    "arlock",
+    "arcache",
+    "arprot",
+    "arnse",
+    "arqos",
+    "aruser",
+    "ardomain",
+    "arsnoop",
+    "artrace",
+    "arloop",
+    "arpbha",
+    "armecid",
+    "arnsaid",
+    "arsubsysid",
+    "armpam",
+    "archunken",
+    "aridunq",
+    "artagop",
+    "arvalid",
+    "arready",
+];
+const ACE5_LITE_DVM_CHANNELS: &[AxiChannelSpec] = &[
+    AxiChannelSpec {
+        name: "aw",
+        valid: "awvalid",
+        ready: "awready",
+        signals: ACE5_LITE_DVM_AW,
+    },
+    AxiChannelSpec {
+        name: "w",
+        valid: "wvalid",
+        ready: "wready",
+        signals: ACE5_LITE_W,
+    },
+    AxiChannelSpec {
+        name: "b",
+        valid: "bvalid",
+        ready: "bready",
+        signals: ACE5_LITE_DVM_B,
+    },
+    AxiChannelSpec {
+        name: "ar",
+        valid: "arvalid",
+        ready: "arready",
+        signals: ACE5_LITE_DVM_AR,
+    },
+    AxiChannelSpec {
+        name: "r",
+        valid: "rvalid",
+        ready: "rready",
+        signals: ACE5_LITE_R,
+    },
+    AxiChannelSpec {
+        name: "ac",
+        valid: "acvalid",
+        ready: "acready",
+        signals: AXI5_AC,
+    },
+    AxiChannelSpec {
+        name: "cr",
+        valid: "crvalid",
+        ready: "crready",
+        signals: AXI5_CR,
+    },
+];
+
+const ACE5_LITE_ACP_AW: &[&str] = &[
+    "awid",
+    "awaddr",
+    "awlen",
+    "awcache",
+    "awprot",
+    "awuser",
+    "awdomain",
+    "awsnoop",
+    "awstashnid",
+    "awstashniden",
+    "awstashlpid",
+    "awstashlpiden",
+    "awtrace",
+    "awmpam",
+    "awidunq",
+    "awvalid",
+    "awready",
+];
+const ACE5_LITE_ACP_W: &[&str] = &[
+    "wdata", "wstrb", "wlast", "wuser", "wpoison", "wtrace", "wvalid", "wready",
+];
+const ACE5_LITE_ACP_B: &[&str] = &[
+    "bid", "bidunq", "bresp", "buser", "btrace", "bvalid", "bready",
+];
+const ACE5_LITE_ACP_AR: &[&str] = &[
+    "arid",
+    "araddr",
+    "arlen",
+    "arcache",
+    "arprot",
+    "aruser",
+    "ardomain",
+    "arsnoop",
+    "artrace",
+    "armpam",
+    "archunken",
+    "aridunq",
+    "arvalid",
+    "arready",
+];
+const ACE5_LITE_ACP_R: &[&str] = &[
+    "rid",
+    "ridunq",
+    "rdata",
+    "rresp",
+    "rlast",
+    "ruser",
+    "rpoison",
+    "rtrace",
+    "rchunkv",
+    "rchunknum",
+    "rchunkstrb",
+    "rvalid",
+    "rready",
+];
+const ACE5_LITE_ACP_CHANNELS: &[AxiChannelSpec] = &[
+    AxiChannelSpec {
+        name: "aw",
+        valid: "awvalid",
+        ready: "awready",
+        signals: ACE5_LITE_ACP_AW,
+    },
+    AxiChannelSpec {
+        name: "w",
+        valid: "wvalid",
+        ready: "wready",
+        signals: ACE5_LITE_ACP_W,
+    },
+    AxiChannelSpec {
+        name: "b",
+        valid: "bvalid",
+        ready: "bready",
+        signals: ACE5_LITE_ACP_B,
+    },
+    AxiChannelSpec {
+        name: "ar",
+        valid: "arvalid",
+        ready: "arready",
+        signals: ACE5_LITE_ACP_AR,
+    },
+    AxiChannelSpec {
+        name: "r",
+        valid: "rvalid",
+        ready: "rready",
+        signals: ACE5_LITE_ACP_R,
+    },
+];
+
 const AXI3_PROFILE: AxiProfileSpec = AxiProfileSpec {
     name: "axi3",
     issue: "H.c",
@@ -895,6 +1206,21 @@ const ACE5_PROFILE: AxiProfileSpec = AxiProfileSpec {
     issue: "H.c",
     channels: ACE5_CHANNELS,
 };
+const ACE5_LITE_PROFILE: AxiProfileSpec = AxiProfileSpec {
+    name: "ace5-lite",
+    issue: "L",
+    channels: ACE5_LITE_CHANNELS,
+};
+const ACE5_LITE_DVM_PROFILE: AxiProfileSpec = AxiProfileSpec {
+    name: "ace5-lite-dvm",
+    issue: "L",
+    channels: ACE5_LITE_DVM_CHANNELS,
+};
+const ACE5_LITE_ACP_PROFILE: AxiProfileSpec = AxiProfileSpec {
+    name: "ace5-lite-acp",
+    issue: "L",
+    channels: ACE5_LITE_ACP_CHANNELS,
+};
 
 pub(crate) fn profile_specs() -> &'static [AxiProfileSpec] {
     &[
@@ -906,6 +1232,9 @@ pub(crate) fn profile_specs() -> &'static [AxiProfileSpec] {
         ACE_PROFILE,
         ACE_LITE_PROFILE,
         ACE5_PROFILE,
+        ACE5_LITE_PROFILE,
+        ACE5_LITE_DVM_PROFILE,
+        ACE5_LITE_ACP_PROFILE,
     ]
 }
 
@@ -1197,19 +1526,26 @@ fn require_unique_map_standards(maps: &[(String, String)]) -> Result<(), Wavepee
 }
 
 fn parse_profile(profile: &str) -> Result<AxiProfile, WavepeekError> {
-    let normalized = profile.trim().to_ascii_lowercase().replace('_', "-");
+    let normalized = profile.trim().to_ascii_lowercase();
     let spec = match normalized.as_str() {
         "axi3" => &AXI3_PROFILE,
         "axi4" => &AXI4_PROFILE,
-        "axi4-lite" => &AXI4_LITE_PROFILE,
+        "axi4-lite" | "axi4_lite" => &AXI4_LITE_PROFILE,
         "axi5" => &AXI5_PROFILE,
-        "axi5-lite" => &AXI5_LITE_PROFILE,
+        "axi5-lite" | "axi5_lite" => &AXI5_LITE_PROFILE,
         "ace" => &ACE_PROFILE,
-        "ace-lite" => &ACE_LITE_PROFILE,
+        "ace-lite" | "ace_lite" => &ACE_LITE_PROFILE,
         "ace5" => &ACE5_PROFILE,
+        "ace5-lite" | "ace5_lite" => &ACE5_LITE_PROFILE,
+        "ace5-lite-dvm" | "ace5-litedvm" | "ace5_litedvm" | "ace5_lite_dvm" => {
+            &ACE5_LITE_DVM_PROFILE
+        }
+        "ace5-lite-acp" | "ace5-liteacp" | "ace5_liteacp" | "ace5_lite_acp" => {
+            &ACE5_LITE_ACP_PROFILE
+        }
         _ => {
             return Err(WavepeekError::Args(format!(
-                "unsupported AXI profile '{profile}'; expected axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5. See 'wavepeek extract axi --help'."
+                "unsupported AXI profile '{profile}'; expected axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp. See 'wavepeek extract axi --help'."
             )));
         }
     };
@@ -1637,6 +1973,34 @@ mod tests {
         assert_eq!(parse_profile("AXI5_LITE").unwrap().name(), "axi5-lite");
         assert_eq!(parse_profile("axi5_lite").unwrap().name(), "axi5-lite");
         assert_eq!(parse_profile("ACE5").unwrap().name(), "ace5");
+        assert_eq!(parse_profile("ACE5_LITE").unwrap().name(), "ace5-lite");
+        for alias in [
+            "ace5-lite-dvm",
+            "ACE5-LITEDVM",
+            "ace5_litedvm",
+            "ACE5_LITE_DVM",
+        ] {
+            assert_eq!(parse_profile(alias).unwrap().name(), "ace5-lite-dvm");
+        }
+        for alias in [
+            "ace5-lite-acp",
+            "ACE5-LITEACP",
+            "ace5_liteacp",
+            "ACE5_LITE_ACP",
+        ] {
+            assert_eq!(parse_profile(alias).unwrap().name(), "ace5-lite-acp");
+        }
+        for unsupported in [
+            "ace5_lite-dvm",
+            "ace5-lite_dvm",
+            "ace5_lite-acp",
+            "ace5-lite_acp",
+        ] {
+            assert!(
+                parse_profile(unsupported).is_err(),
+                "accepted {unsupported}"
+            );
+        }
     }
 
     #[test]
@@ -1654,7 +2018,10 @@ mod tests {
                 "axi5-lite",
                 "ace",
                 "ace-lite",
-                "ace5"
+                "ace5",
+                "ace5-lite",
+                "ace5-lite-dvm",
+                "ace5-lite-acp"
             ]
         );
 
@@ -2052,6 +2419,385 @@ mod tests {
                 ),
             ],
         );
+    }
+
+    #[test]
+    fn ace5_lite_family_profile_specs_match_issue_l_contract() {
+        assert_profile(
+            "ace5-lite",
+            &[
+                (
+                    "aw",
+                    &[
+                        "awid",
+                        "awaddr",
+                        "awregion",
+                        "awlen",
+                        "awsize",
+                        "awburst",
+                        "awlock",
+                        "awcache",
+                        "awprot",
+                        "awnse",
+                        "awqos",
+                        "awuser",
+                        "awdomain",
+                        "awsnoop",
+                        "awstashnid",
+                        "awstashniden",
+                        "awstashlpid",
+                        "awstashlpiden",
+                        "awtrace",
+                        "awloop",
+                        "awmmuvalid",
+                        "awmmusecsid",
+                        "awmmusid",
+                        "awmmussidv",
+                        "awmmussid",
+                        "awmmuatst",
+                        "awmmuflow",
+                        "awpbha",
+                        "awmecid",
+                        "awnsaid",
+                        "awsubsysid",
+                        "awatop",
+                        "awmpam",
+                        "awidunq",
+                        "awcmo",
+                        "awtagop",
+                        "awvalid",
+                        "awready",
+                    ],
+                ),
+                (
+                    "w",
+                    &[
+                        "wdata",
+                        "wstrb",
+                        "wtag",
+                        "wtagupdate",
+                        "wlast",
+                        "wuser",
+                        "wpoison",
+                        "wtrace",
+                        "wvalid",
+                        "wready",
+                    ],
+                ),
+                (
+                    "b",
+                    &[
+                        "bid",
+                        "bidunq",
+                        "bresp",
+                        "bcomp",
+                        "bpersist",
+                        "btagmatch",
+                        "buser",
+                        "btrace",
+                        "bloop",
+                        "bbusy",
+                        "bvalid",
+                        "bready",
+                    ],
+                ),
+                (
+                    "ar",
+                    &[
+                        "arid",
+                        "araddr",
+                        "arregion",
+                        "arlen",
+                        "arsize",
+                        "arburst",
+                        "arlock",
+                        "arcache",
+                        "arprot",
+                        "arnse",
+                        "arqos",
+                        "aruser",
+                        "ardomain",
+                        "arsnoop",
+                        "artrace",
+                        "arloop",
+                        "armmuvalid",
+                        "armmusecsid",
+                        "armmusid",
+                        "armmussidv",
+                        "armmussid",
+                        "armmuatst",
+                        "armmuflow",
+                        "arpbha",
+                        "armecid",
+                        "arnsaid",
+                        "arsubsysid",
+                        "armpam",
+                        "archunken",
+                        "aridunq",
+                        "artagop",
+                        "arvalid",
+                        "arready",
+                    ],
+                ),
+                (
+                    "r",
+                    &[
+                        "rid",
+                        "ridunq",
+                        "rdata",
+                        "rtag",
+                        "rresp",
+                        "rlast",
+                        "ruser",
+                        "rpoison",
+                        "rtrace",
+                        "rloop",
+                        "rchunkv",
+                        "rchunknum",
+                        "rchunkstrb",
+                        "rbusy",
+                        "rvalid",
+                        "rready",
+                    ],
+                ),
+            ],
+        );
+
+        assert_profile(
+            "ace5-lite-dvm",
+            &[
+                (
+                    "aw",
+                    &[
+                        "awid",
+                        "awaddr",
+                        "awregion",
+                        "awlen",
+                        "awsize",
+                        "awburst",
+                        "awlock",
+                        "awcache",
+                        "awprot",
+                        "awnse",
+                        "awqos",
+                        "awuser",
+                        "awdomain",
+                        "awsnoop",
+                        "awstashnid",
+                        "awstashniden",
+                        "awstashlpid",
+                        "awstashlpiden",
+                        "awtrace",
+                        "awloop",
+                        "awpbha",
+                        "awmecid",
+                        "awnsaid",
+                        "awsubsysid",
+                        "awatop",
+                        "awmpam",
+                        "awidunq",
+                        "awcmo",
+                        "awtagop",
+                        "awvalid",
+                        "awready",
+                    ],
+                ),
+                (
+                    "w",
+                    &[
+                        "wdata",
+                        "wstrb",
+                        "wtag",
+                        "wtagupdate",
+                        "wlast",
+                        "wuser",
+                        "wpoison",
+                        "wtrace",
+                        "wvalid",
+                        "wready",
+                    ],
+                ),
+                (
+                    "b",
+                    &[
+                        "bid", "bidunq", "bresp", "bcomp", "bpersist", "buser", "btrace", "bloop",
+                        "bbusy", "bvalid", "bready",
+                    ],
+                ),
+                (
+                    "ar",
+                    &[
+                        "arid",
+                        "araddr",
+                        "arregion",
+                        "arlen",
+                        "arsize",
+                        "arburst",
+                        "arlock",
+                        "arcache",
+                        "arprot",
+                        "arnse",
+                        "arqos",
+                        "aruser",
+                        "ardomain",
+                        "arsnoop",
+                        "artrace",
+                        "arloop",
+                        "arpbha",
+                        "armecid",
+                        "arnsaid",
+                        "arsubsysid",
+                        "armpam",
+                        "archunken",
+                        "aridunq",
+                        "artagop",
+                        "arvalid",
+                        "arready",
+                    ],
+                ),
+                (
+                    "r",
+                    &[
+                        "rid",
+                        "ridunq",
+                        "rdata",
+                        "rtag",
+                        "rresp",
+                        "rlast",
+                        "ruser",
+                        "rpoison",
+                        "rtrace",
+                        "rloop",
+                        "rchunkv",
+                        "rchunknum",
+                        "rchunkstrb",
+                        "rbusy",
+                        "rvalid",
+                        "rready",
+                    ],
+                ),
+                (
+                    "ac",
+                    &["acaddr", "acvmidext", "actrace", "acvalid", "acready"],
+                ),
+                ("cr", &["crtrace", "crvalid", "crready"]),
+            ],
+        );
+
+        assert_profile(
+            "ace5-lite-acp",
+            &[
+                (
+                    "aw",
+                    &[
+                        "awid",
+                        "awaddr",
+                        "awlen",
+                        "awcache",
+                        "awprot",
+                        "awuser",
+                        "awdomain",
+                        "awsnoop",
+                        "awstashnid",
+                        "awstashniden",
+                        "awstashlpid",
+                        "awstashlpiden",
+                        "awtrace",
+                        "awmpam",
+                        "awidunq",
+                        "awvalid",
+                        "awready",
+                    ],
+                ),
+                (
+                    "w",
+                    &[
+                        "wdata", "wstrb", "wlast", "wuser", "wpoison", "wtrace", "wvalid", "wready",
+                    ],
+                ),
+                (
+                    "b",
+                    &[
+                        "bid", "bidunq", "bresp", "buser", "btrace", "bvalid", "bready",
+                    ],
+                ),
+                (
+                    "ar",
+                    &[
+                        "arid",
+                        "araddr",
+                        "arlen",
+                        "arcache",
+                        "arprot",
+                        "aruser",
+                        "ardomain",
+                        "arsnoop",
+                        "artrace",
+                        "armpam",
+                        "archunken",
+                        "aridunq",
+                        "arvalid",
+                        "arready",
+                    ],
+                ),
+                (
+                    "r",
+                    &[
+                        "rid",
+                        "ridunq",
+                        "rdata",
+                        "rresp",
+                        "rlast",
+                        "ruser",
+                        "rpoison",
+                        "rtrace",
+                        "rchunkv",
+                        "rchunknum",
+                        "rchunkstrb",
+                        "rvalid",
+                        "rready",
+                    ],
+                ),
+            ],
+        );
+    }
+
+    #[test]
+    fn ace5_lite_profiles_reject_out_of_profile_names() {
+        let lite = parse_profile("ace5-lite").unwrap();
+        for standard in ["awactv", "awpending", "awvalidchk", "acvalid", "cdvalid"] {
+            assert!(
+                !lite.contains_standard(standard),
+                "ACE5-Lite accepted {standard}"
+            );
+        }
+
+        let dvm = parse_profile("ace5-lite-dvm").unwrap();
+        assert!(dvm.contains_standard("artagop"));
+        for standard in [
+            "awmmuvalid",
+            "armmuvalid",
+            "btagmatch",
+            "acsnoop",
+            "acprot",
+            "crresp",
+            "cdvalid",
+        ] {
+            assert!(
+                !dvm.contains_standard(standard),
+                "ACE5-LiteDVM accepted {standard}"
+            );
+        }
+
+        let acp = parse_profile("ace5-lite-acp").unwrap();
+        for standard in [
+            "awsize", "awburst", "wtag", "bcomp", "arsize", "rtag", "acvalid",
+        ] {
+            assert!(
+                !acp.contains_standard(standard),
+                "ACE5-LiteACP accepted {standard}"
+            );
+        }
     }
 
     #[test]

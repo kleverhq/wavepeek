@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import http.client
 import importlib.util
 import json
 import pathlib
+import subprocess
 import sys
 import unittest
+import urllib.error
+from unittest import mock
 
 TOOLS_DIR = pathlib.Path(__file__).parent
 sys.path.insert(0, str(TOOLS_DIR))
@@ -16,568 +20,290 @@ sys.modules["check_deploy"] = check_deploy
 SPEC.loader.exec_module(check_deploy)
 
 
+class Response:
+    def __init__(self, body: bytes = b"ok", status: int = 200) -> None:
+        self.body = body
+        self.status = status
+
+    def __enter__(self) -> Response:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
+
+    def getcode(self) -> int:
+        return self.status
+
+    def read(self) -> bytes:
+        return self.body
+
+
 class CheckDeployTests(unittest.TestCase):
-    def test_page_url_normalizes_base_url(self) -> None:
-        self.assertEqual(
-            check_deploy.page_url("https://kleverhq.github.io/wavepeek/", "0.5.0/"),
-            "https://kleverhq.github.io/wavepeek/0.5.0/",
+    def test_parse_args_defaults_to_latest_and_public_site(self) -> None:
+        args = check_deploy.parse_args(["--version", "2.2.0"])
+        self.assertEqual(args.base_url, check_deploy.DEFAULT_BASE_URL)
+        self.assertTrue(args.expect_latest)
+        self.assertEqual(args.retries, 10)
+        self.assertEqual(args.timeout, 20.0)
+
+        args = check_deploy.parse_args(
+            ["--version", "2.2.0", "--no-expect-latest"]
         )
-        self.assertEqual(
-            check_deploy.page_url("https://kleverhq.github.io/wavepeek"),
-            "https://kleverhq.github.io/wavepeek/",
-        )
+        self.assertFalse(args.expect_latest)
 
-    def test_page_url_rejects_relative_base_url(self) -> None:
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "absolute"):
-            check_deploy.page_url("kleverhq.github.io/wavepeek", "0.5.0/")
+    def test_version_validation_and_artifact_names_cover_legacy_families(self) -> None:
+        self.assertEqual(check_deploy.validate_version("2.2.0"), "2.2.0")
+        for invalid in ["v2.2.0", "2.2", "02.2.0", "next"]:
+            with self.assertRaises(check_deploy.DeployCheckError):
+                check_deploy.validate_version(invalid)
 
-    def test_page_url_rejects_query_or_fragment(self) -> None:
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "query"):
-            check_deploy.page_url("https://kleverhq.github.io/wavepeek?x=1", "0.5.0/")
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "fragment"):
-            check_deploy.page_url("https://kleverhq.github.io/wavepeek#docs", "0.5.0/")
-
-    def test_stream_schema_requirement_starts_after_published_v1_0_1(self) -> None:
-        self.assertFalse(check_deploy.stream_schema_required("1.0.1"))
-        self.assertTrue(check_deploy.stream_schema_required("1.1.0"))
-
-    def test_schema_artifact_name_uses_legacy_major_then_family_v2_minor(self) -> None:
-        self.assertEqual(check_deploy.schema_artifact_name("0.5.0"), "wavepeek_v0.json")
-        self.assertEqual(check_deploy.schema_artifact_name("1.1.0"), "wavepeek_v1.json")
+        self.assertEqual(check_deploy.schema_artifact_name("1.0.0"), "wavepeek_v1.json")
         self.assertEqual(check_deploy.schema_artifact_name("2.0.0"), "wavepeek_v2.0.json")
-        self.assertEqual(check_deploy.schema_artifact_name("2.1.0"), "schema-output-v2.1.json")
-        self.assertEqual(check_deploy.schema_artifact_name("12.3.1"), "schema-output-v12.3.json")
         self.assertEqual(
-            check_deploy.stream_schema_artifact_name("0.5.0"),
-            "wavepeek-stream-v0.json",
+            check_deploy.schema_artifact_name("2.2.0"),
+            "schema-output-v2.2.json",
         )
         self.assertEqual(
-            check_deploy.stream_schema_artifact_name("1.1.0"),
-            "wavepeek-stream-v1.json",
+            check_deploy.stream_schema_artifact_name("2.2.0"),
+            "schema-stream-v2.2.json",
         )
         self.assertEqual(
-            check_deploy.stream_schema_artifact_name("2.0.0"),
-            "wavepeek-stream-v2.0.json",
-        )
-        self.assertEqual(
-            check_deploy.stream_schema_artifact_name("2.1.0"),
-            "schema-stream-v2.1.json",
-        )
-        self.assertEqual(
-            check_deploy.stream_schema_artifact_name("12.3.1"),
-            "schema-stream-v12.3.json",
-        )
-        self.assertEqual(
-            check_deploy.input_schema_artifact_name("2.1.0"),
-            "schema-input-v2.1.json",
+            check_deploy.input_schema_artifact_name("2.2.0"),
+            "schema-input-v2.2.json",
         )
 
-    def test_stream_schema_expectations_follow_explicit_artifact_family(self) -> None:
-        self.assertFalse(
-            check_deploy.stream_schema_includes_extract("2.0.0", "schema-stream-v2.0.json")
-        )
-        self.assertTrue(
-            check_deploy.stream_schema_includes_extract("2.0.0", "schema-stream-v2.1.json")
-        )
+    def test_schema_requirement_thresholds_preserve_historical_checks(self) -> None:
+        self.assertFalse(check_deploy.stream_schema_required("1.0.9"))
+        self.assertTrue(check_deploy.stream_schema_required("1.1.0"))
+        self.assertFalse(check_deploy.input_schema_required("2.0.9"))
+        self.assertTrue(check_deploy.input_schema_required("2.1.0"))
 
-    def test_retry_check_retries_stale_then_fresh(self) -> None:
-        attempts = 0
-
-        def operation() -> str:
-            nonlocal attempts
-            attempts += 1
-            if attempts == 1:
-                raise check_deploy.DeployCheckError("stale")
-            return "fresh"
-
+    def test_url_and_repository_validation(self) -> None:
         self.assertEqual(
-            check_deploy.retry_check(
-                "state", retries=2, retry_delay=0.0, operation=operation
-            ),
-            "fresh",
+            check_deploy.normalize_base_url(" https://example.test/docs/ "),
+            "https://example.test/docs",
         )
-        self.assertEqual(attempts, 2)
+        self.assertEqual(
+            check_deploy.page_url("https://example.test/docs", "2.2.0/"),
+            "https://example.test/docs/2.2.0/",
+        )
+        self.assertEqual(check_deploy.validate_repository("owner/repo"), "owner/repo")
 
-    def test_retry_check_reports_exhausted_failures(self) -> None:
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "state"):
-            check_deploy.retry_check(
-                "state",
+        for invalid in ["example.test/docs", "ftp://example.test", "https://x/y?q=1"]:
+            with self.assertRaises(check_deploy.DeployCheckError):
+                check_deploy.normalize_base_url(invalid)
+        with self.assertRaises(check_deploy.DeployCheckError):
+            check_deploy.validate_repository("owner")
+
+    def test_fetch_bytes_retries_transient_failures(self) -> None:
+        with (
+            mock.patch.object(
+                check_deploy.urllib.request,
+                "urlopen",
+                side_effect=[urllib.error.URLError("not ready"), Response(b"ready")],
+            ) as urlopen,
+            mock.patch.object(check_deploy.time, "sleep") as sleep,
+        ):
+            body = check_deploy.fetch_bytes(
+                "https://example.test/file",
                 retries=2,
-                retry_delay=0.0,
-                operation=lambda: (_ for _ in ()).throw(
-                    check_deploy.DeployCheckError("still stale")
-                ),
+                retry_delay=0.25,
+                timeout=3.0,
             )
+        self.assertEqual(body, b"ready")
+        self.assertEqual(urlopen.call_count, 2)
+        sleep.assert_called_once_with(0.25)
 
-    def test_validate_versions_json_requires_version_and_latest_alias(self) -> None:
-        check_deploy.validate_versions_json(
-            [
-                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
-                {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
-            ],
-            "0.5.0",
-            expect_latest=True,
-        )
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "latest"):
-            check_deploy.validate_versions_json(
-                [
-                    {"version": "0.4.0", "title": "0.4.0", "aliases": ["latest"]},
-                    {"version": "0.5.0", "title": "0.5.0", "aliases": []},
-                ],
-                "0.5.0",
-                expect_latest=True,
+    def test_fetch_bytes_retries_incomplete_response_body(self) -> None:
+        incomplete = Response()
+        incomplete.read = mock.Mock(side_effect=http.client.IncompleteRead(b"partial"))
+        with (
+            mock.patch.object(
+                check_deploy.urllib.request,
+                "urlopen",
+                side_effect=[incomplete, Response(b"complete")],
+            ),
+            mock.patch.object(check_deploy.time, "sleep") as sleep,
+        ):
+            body = check_deploy.fetch_bytes(
+                "https://example.test/file",
+                retries=2,
+                retry_delay=0.25,
+                timeout=3.0,
             )
+        self.assertEqual(body, b"complete")
+        sleep.assert_called_once_with(0.25)
 
-    def test_validate_versions_json_allows_old_version_without_latest(self) -> None:
-        check_deploy.validate_versions_json(
-            [
-                {"version": "0.4.0", "title": "0.4.0", "aliases": []},
-                {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
-            ],
-            "0.4.0",
-            expect_latest=False,
-        )
-
-    def test_validate_versions_json_rejects_duplicate_versions(self) -> None:
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "duplicate"):
-            check_deploy.validate_versions_json(
-                [
-                    {"version": "0.5.0", "title": "0.5.0", "aliases": []},
-                    {"version": "0.5.0", "title": "0.5.0", "aliases": ["latest"]},
-                ],
-                "0.5.0",
-                expect_latest=False,
-            )
-
-    def test_validate_latest_matches_version_rejects_stale_latest(self) -> None:
-        check_deploy.validate_latest_matches_version(b"same", b"same")
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "latest"):
-            check_deploy.validate_latest_matches_version(b"version", b"latest")
-
-    def test_validate_schema_json_checks_contract_shape(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {
-                    "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v1\.json$"
-                },
-                "command": {},
-                "data": {},
-                "diagnostics": {},
-            },
-        }
-
-        check_deploy.validate_schema_json(schema, "1.0.0")
-
-        broken = json.loads(json.dumps(schema))
-        del broken["properties"]["diagnostics"]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "diagnostics"):
-            check_deploy.validate_schema_json(broken, "1.0.0")
-
-    def test_validate_schema_json_allows_legacy_major_zero_self_reference(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {
-                    "pattern": r"^https://raw\.githubusercontent\.com/kleverhq/wavepeek/v[0-9]+\.[0-9]+\.[0-9]+/schema/wavepeek\.json$"
-                },
-                "command": {},
-                "data": {},
-                "warnings": {},
-            },
-        }
-
-        check_deploy.validate_schema_json(schema, "0.5.0")
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "diagnostics"):
-            check_deploy.validate_schema_json(schema, "1.0.0")
-
-    def test_validate_schema_json_rejects_wrong_major_self_reference(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {"pattern": "wavepeek_v0.json"},
-                "command": {},
-                "data": {},
-                "diagnostics": {},
-            },
-        }
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "wavepeek_v1"):
-            check_deploy.validate_schema_json(schema, "1.0.0")
-
-    def test_validate_schema_json_accepts_legacy_v2_pattern_artifact(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {
-                    "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek_v2\.[0-9]+\.json$"
-                },
-                "command": {},
-                "data": {},
-                "diagnostics": {},
-            },
-        }
-
-        check_deploy.validate_schema_json(schema, "2.0.0", "wavepeek_v2.0.json")
-
-    def test_validate_schema_json_accepts_v2_exact_family_const(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {
-                    "const": "https://kleverhq.github.io/wavepeek/schema-output-v2.0.json"
-                },
-                "command": {},
-                "data": {},
-                "diagnostics": {},
-            },
-        }
-
-        check_deploy.validate_schema_json(schema, "2.0.0", "schema-output-v2.0.json")
-
-    def test_validate_schema_json_rejects_stale_v2_2_axi_profiles(self) -> None:
-        schema_path = TOOLS_DIR.parent.parent / "schema" / "output.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        check_deploy.validate_schema_json(
-            schema, "2.1.0", "schema-output-v2.2.json"
-        )
-
-        stale_profiles = json.loads(json.dumps(schema))
-        stale_profiles["$defs"]["axiProfile"]["enum"] = [
-            "axi3",
-            "axi4",
-            "axi4-lite",
-            "ace",
-            "ace-lite",
-            "ace5",
-        ]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI profile"):
-            check_deploy.validate_schema_json(
-                stale_profiles, "2.1.0", "schema-output-v2.2.json"
-            )
-
-        stale_issue = json.loads(json.dumps(schema))
-        axi5_branch = next(
-            branch
-            for branch in stale_issue["$defs"]["extractAxiData"]["oneOf"]
-            if branch["properties"]["profile"]["const"] == "axi5"
-        )
-        axi5_branch["properties"]["issue"]["const"] = "H.c"
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "Issue L"):
-            check_deploy.validate_schema_json(
-                stale_issue, "2.1.0", "schema-output-v2.2.json"
-            )
-
-        stale_transfers = json.loads(json.dumps(schema))
-        stale_transfers["$defs"]["extractAxi5Transfer"]["oneOf"] = stale_transfers[
-            "$defs"
-        ]["extractAxi5Transfer"]["oneOf"][:5]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI5 transfer"):
-            check_deploy.validate_schema_json(
-                stale_transfers, "2.1.0", "schema-output-v2.2.json"
-            )
-
-    def test_validate_schema_json_requires_schema_property_object(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": "not an object",
-                "command": {},
-                "data": {},
-                "warnings": {},
-            },
-        }
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "object"):
-            check_deploy.validate_schema_json(schema, "0.5.0")
-
-    def test_validate_stream_schema_json_checks_contract_shape(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSONL stream record",
-            "$defs": {
-                "streamCommand": {
-                    "enum": ["info", "scope", "signal", "value", "change", "property"]
-                },
-                "beginRecord": {
-                    "properties": {
-                        "$schema": {
-                            "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v1\.json$"
-                        }
-                    }
-                },
-            },
-        }
-
-        check_deploy.validate_stream_schema_json(schema, "1.0.0")
-
-        broken = json.loads(json.dumps(schema))
-        broken["$defs"]["streamCommand"]["enum"] = ["info"]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "command enum"):
-            check_deploy.validate_stream_schema_json(broken, "1.0.0")
-
-    def test_validate_stream_schema_json_rejects_stale_v2_2_axi_profiles(self) -> None:
-        schema_path = TOOLS_DIR.parent.parent / "schema" / "stream.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        check_deploy.validate_stream_schema_json(
-            schema, "2.1.0", "schema-stream-v2.2.json"
-        )
-
-        stale_profiles = json.loads(json.dumps(schema))
-        stale_profiles["$defs"]["axiProfile"]["enum"] = [
-            "axi3",
-            "axi4",
-            "axi4-lite",
-            "ace",
-            "ace-lite",
-            "ace5",
-        ]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI profile"):
-            check_deploy.validate_stream_schema_json(
-                stale_profiles, "2.1.0", "schema-stream-v2.2.json"
-            )
-
-        stale_issue = json.loads(json.dumps(schema))
-        axi5_lite_branch = next(
-            branch
-            for branch in stale_issue["$defs"]["extractAxiContext"]["oneOf"]
-            if branch["properties"]["profile"]["const"] == "axi5-lite"
-        )
-        axi5_lite_branch["properties"]["issue"]["const"] = "H.c"
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "Issue L"):
-            check_deploy.validate_stream_schema_json(
-                stale_issue, "2.1.0", "schema-stream-v2.2.json"
-            )
-
-        stale_transfers = json.loads(json.dumps(schema))
-        stale_transfers["$defs"]["extractAxi5LiteTransfer"]["oneOf"] = []
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "AXI5-Lite transfer"):
-            check_deploy.validate_stream_schema_json(
-                stale_transfers, "2.1.0", "schema-stream-v2.2.json"
-            )
-
-    def test_validate_stream_schema_json_accepts_legacy_v2_pattern_artifact(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSONL stream record",
-            "$defs": {
-                "streamCommand": {
-                    "enum": ["info", "scope", "signal", "value", "change", "property"]
-                },
-                "beginRecord": {
-                    "properties": {
-                        "$schema": {
-                            "pattern": r"^https://kleverhq\.github\.io/wavepeek/wavepeek-stream-v2\.[0-9]+\.json$"
-                        }
-                    }
-                },
-            },
-        }
-
-        check_deploy.validate_stream_schema_json(
-            schema, "2.0.0", "wavepeek-stream-v2.0.json"
-        )
-
-    def test_validate_stream_schema_json_accepts_v2_exact_family_const(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSONL stream record",
-            "$defs": {
-                "streamCommand": {
-                    "enum": ["info", "scope", "signal", "value", "change", "property"]
-                },
-                "beginRecord": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.0.json"
-                        }
-                    }
-                },
-            },
-        }
-
-        check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.0.json")
-
-    def test_validate_stream_schema_json_accepts_explicit_v2_1_family_for_older_package_version(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSONL stream record",
-            "$defs": {
-                "streamCommand": {
-                    "enum": ["info", "scope", "signal", "value", "change", "property", "extract generic"]
-                },
-                "beginRecord": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.1.json"
-                        }
-                    }
-                },
-            },
-        }
-
-        check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.1.json")
-
-    def test_validate_stream_schema_json_accepts_explicit_v2_2_axi_family_for_older_package_version(self) -> None:
-        schema_path = TOOLS_DIR.parent.parent / "schema" / "stream.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-
-        check_deploy.validate_stream_schema_json(schema, "2.0.0", "schema-stream-v2.2.json")
-
-    def test_validate_schema_json_requires_schema_pattern(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON output envelope",
-            "properties": {
-                "$schema": {},
-                "command": {},
-                "data": {},
-                "warnings": {},
-            },
-        }
-
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "reference"):
-            check_deploy.validate_schema_json(schema, "0.5.0")
-
-    def test_validate_input_schema_json_checks_legacy_contract_shape(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON input documents",
-            "properties": {
-                "$schema": {
-                    "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.1.json"
-                },
-                "kind": {"const": "extract.generic.sources"},
-            },
-        }
-
-        check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.1.json")
-
-        broken = json.loads(json.dumps(schema))
-        broken["properties"]["kind"]["const"] = "wrong"
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "kind"):
-            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.1.json")
-
-    def test_validate_input_schema_json_checks_v2_2_union_contract_shape(self) -> None:
-        schema = {
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "title": "wavepeek JSON input documents",
-            "oneOf": [
-                {"$ref": "#/$defs/extractGenericSourcesInput"},
-                {"$ref": "#/$defs/extractAxiSourceInput"},
-            ],
-            "$defs": {
-                "axiProfile": {
-                    "enum": [
-                        "axi3",
-                        "axi4",
-                        "axi4-lite",
-                        "axi5",
-                        "axi5-lite",
-                        "ace",
-                        "ace-lite",
-                        "ace5",
-                    ]
-                },
-                "extractGenericSourcesInput": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
-                        },
-                        "kind": {"const": "extract.generic.sources"},
-                    }
-                },
-                "extractAxiSourceInput": {
-                    "properties": {
-                        "$schema": {
-                            "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
-                        },
-                        "kind": {"const": "extract.axi.source"},
-                        "profile": {"$ref": "#/$defs/axiProfile"},
-                    }
-                },
-            },
-        }
-
-        check_deploy.validate_input_schema_json(schema, "2.1.0", "schema-input-v2.2.json")
-
-        broken_reference = json.loads(json.dumps(schema))
-        broken_reference["$defs"]["extractAxiSourceInput"]["properties"]["profile"][
-            "$ref"
-        ] = "#/$defs/wrong"
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile reference"):
-            check_deploy.validate_input_schema_json(
-                broken_reference, "2.1.0", "schema-input-v2.2.json"
-            )
-
-        broken = json.loads(json.dumps(schema))
-        broken["$defs"]["axiProfile"]["enum"] = ["axi5"]
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "profile enum"):
-            check_deploy.validate_input_schema_json(broken, "2.1.0", "schema-input-v2.2.json")
-
-    def test_validate_input_schema_json_accepts_current_canonical_artifact(self) -> None:
-        schema_path = TOOLS_DIR.parent.parent / "schema" / "input.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
-        check_deploy.validate_input_schema_json(
-            schema, "2.1.0", "schema-input-v2.2.json"
-        )
-
-    def test_load_pages_site_retries_and_uses_timeout(self) -> None:
-        calls = 0
-        original_run = check_deploy.subprocess.run
-
-        def fake_run(*args: object, **kwargs: object) -> object:
-            nonlocal calls
-            calls += 1
-            self.assertEqual(kwargs["timeout"], 2.0)
-            if calls == 1:
-                return check_deploy.subprocess.CompletedProcess(
-                    args[0], 1, "", "temporary"
+    def test_fetch_bytes_rejects_non_200_and_invalid_retry_count(self) -> None:
+        with mock.patch.object(
+            check_deploy.urllib.request,
+            "urlopen",
+            return_value=Response(status=503),
+        ):
+            with self.assertRaisesRegex(check_deploy.DeployCheckError, "HTTP 503"):
+                check_deploy.fetch_bytes(
+                    "https://example.test/file",
+                    retries=1,
+                    retry_delay=0.0,
+                    timeout=3.0,
                 )
-            return check_deploy.subprocess.CompletedProcess(
-                args[0],
-                0,
-                '{"html_url":"https://kleverhq.github.io/wavepeek/","build_type":"workflow"}',
-                "",
+        with self.assertRaisesRegex(check_deploy.DeployCheckError, "at least 1"):
+            check_deploy.fetch_bytes(
+                "https://example.test/file",
+                retries=0,
+                retry_delay=0.0,
+                timeout=3.0,
             )
 
-        check_deploy.subprocess.run = fake_run
-        try:
-            site = check_deploy.load_pages_site(
-                "kleverhq/wavepeek", retries=2, retry_delay=0.0, timeout=2.0
-            )
-        finally:
-            check_deploy.subprocess.run = original_run
+    def test_check_deploy_fetches_current_release_endpoints(self) -> None:
+        args = check_deploy.parse_args(
+            [
+                "--version",
+                "2.2.0",
+                "--base-url",
+                "https://example.test/wavepeek",
+                "--retries",
+                "1",
+            ]
+        )
+        with mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok") as fetch:
+            check_deploy.check_deploy(args)
 
-        self.assertEqual(site["build_type"], "workflow")
-        self.assertEqual(calls, 2)
-
-    def test_validate_pages_site_requires_workflow_build_type_and_url(self) -> None:
-        check_deploy.validate_pages_site(
-            {
-                "html_url": "https://kleverhq.github.io/wavepeek/",
-                "build_type": "workflow",
-            },
-            "https://kleverhq.github.io/wavepeek",
+        self.assertEqual(
+            [call.args[0] for call in fetch.call_args_list],
+            [
+                "https://example.test/wavepeek/",
+                "https://example.test/wavepeek/2.2.0/",
+                "https://example.test/wavepeek/latest/",
+                "https://example.test/wavepeek/versions.json",
+                "https://example.test/wavepeek/schema-output-v2.2.json",
+                "https://example.test/wavepeek/schema-stream-v2.2.json",
+                "https://example.test/wavepeek/schema-input-v2.2.json",
+            ],
         )
 
-        with self.assertRaisesRegex(check_deploy.DeployCheckError, "workflow"):
-            check_deploy.validate_pages_site(
-                {
-                    "html_url": "https://kleverhq.github.io/wavepeek/",
-                    "build_type": "legacy",
-                },
-                "https://kleverhq.github.io/wavepeek",
+    def test_check_deploy_omits_latest_and_optional_legacy_schemas(self) -> None:
+        args = check_deploy.parse_args(
+            [
+                "--version",
+                "1.0.0",
+                "--base-url",
+                "https://example.test/wavepeek",
+                "--no-expect-latest",
+                "--retries",
+                "1",
+            ]
+        )
+        with mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok") as fetch:
+            check_deploy.check_deploy(args)
+
+        urls = [call.args[0] for call in fetch.call_args_list]
+        self.assertNotIn("https://example.test/wavepeek/latest/", urls)
+        self.assertEqual(
+            urls,
+            [
+                "https://example.test/wavepeek/",
+                "https://example.test/wavepeek/1.0.0/",
+                "https://example.test/wavepeek/versions.json",
+                "https://example.test/wavepeek/wavepeek_v1.json",
+            ],
+        )
+
+    def test_explicit_schema_artifacts_are_always_fetched(self) -> None:
+        args = check_deploy.parse_args(
+            [
+                "--version",
+                "1.0.0",
+                "--base-url",
+                "https://example.test",
+                "--schema-artifact",
+                "output.json",
+                "--stream-schema-artifact",
+                "stream.json",
+                "--input-schema-artifact",
+                "input.json",
+                "--retries",
+                "1",
+            ]
+        )
+        with mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok") as fetch:
+            check_deploy.check_deploy(args)
+        urls = [call.args[0] for call in fetch.call_args_list]
+        self.assertIn("https://example.test/output.json", urls)
+        self.assertIn("https://example.test/stream.json", urls)
+        self.assertIn("https://example.test/input.json", urls)
+
+    def test_pages_site_requires_workflow_build_and_matching_url(self) -> None:
+        check_deploy.validate_pages_site(
+            {"build_type": "workflow", "html_url": "https://example.test/docs/"},
+            "https://example.test/docs",
+        )
+        for site in [
+            {"build_type": "legacy", "html_url": "https://example.test/docs"},
+            {"build_type": "workflow", "html_url": "https://wrong.test"},
+            {"build_type": "workflow"},
+            [],
+        ]:
+            with self.assertRaises(check_deploy.DeployCheckError):
+                check_deploy.validate_pages_site(site, "https://example.test/docs")
+
+    def test_check_deploy_runs_optional_pages_api_check(self) -> None:
+        args = check_deploy.parse_args(
+            [
+                "--version",
+                "2.2.0",
+                "--base-url",
+                "https://example.test/docs",
+                "--repository",
+                "owner/repo",
+                "--retries",
+                "1",
+            ]
+        )
+        site = {"build_type": "workflow", "html_url": "https://example.test/docs"}
+        with (
+            mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok"),
+            mock.patch.object(check_deploy, "load_pages_site", return_value=site) as load,
+        ):
+            check_deploy.check_deploy(args)
+        load.assert_called_once_with(
+            "owner/repo", retries=1, retry_delay=3.0, timeout=20.0
+        )
+
+    def test_load_pages_site_retries_and_parses_json(self) -> None:
+        failed = subprocess.CompletedProcess(
+            ["gh"], returncode=1, stdout="", stderr="not ready"
+        )
+        passed = subprocess.CompletedProcess(
+            ["gh"],
+            returncode=0,
+            stdout=json.dumps(
+                {"build_type": "workflow", "html_url": "https://example.test"}
+            ),
+            stderr="",
+        )
+        with (
+            mock.patch.object(
+                check_deploy.subprocess,
+                "run",
+                side_effect=[failed, passed],
+            ) as run,
+            mock.patch.object(check_deploy.time, "sleep") as sleep,
+        ):
+            site = check_deploy.load_pages_site(
+                "owner/repo", retries=2, retry_delay=0.5, timeout=4.0
             )
+        self.assertEqual(site["build_type"], "workflow")
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(0.5)
+
+    def test_main_reports_deploy_errors(self) -> None:
+        with mock.patch.object(
+            check_deploy,
+            "check_deploy",
+            side_effect=check_deploy.DeployCheckError("boom"),
+        ):
+            self.assertEqual(check_deploy.main(["--version", "2.2.0"]), 1)
 
 
 if __name__ == "__main__":

@@ -95,6 +95,33 @@
       "reason": "ACE5 extraction fixture generated from HDL."
     },
     {
+      "name": "extract_ace5_lite",
+      "source": "tests/fixtures/source/extract_ace5_lite.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_ace5_lite.vcd",
+        "tests/fixtures/generated/extract_ace5_lite.fst"
+      ],
+      "reason": "ACE5-Lite extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
+      "name": "extract_ace5_lite_acp",
+      "source": "tests/fixtures/source/extract_ace5_lite_acp.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_ace5_lite_acp.vcd",
+        "tests/fixtures/generated/extract_ace5_lite_acp.fst"
+      ],
+      "reason": "ACE5-LiteACP extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
+      "name": "extract_ace5_lite_dvm",
+      "source": "tests/fixtures/source/extract_ace5_lite_dvm.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_ace5_lite_dvm.vcd",
+        "tests/fixtures/generated/extract_ace5_lite_dvm.fst"
+      ],
+      "reason": "ACE5-LiteDVM extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
       "name": "extract_ace_lite",
       "source": "tests/fixtures/source/extract_ace_lite.v",
       "outputs": [

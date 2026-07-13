@@ -1,7 +1,7 @@
 {
   "$defs": {
     "axiProfile": {
-      "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, or ace5.",
+      "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
         "axi3",
         "axi4",
@@ -10,7 +10,10 @@
         "axi5-lite",
         "ace",
         "ace-lite",
-        "ace5"
+        "ace5",
+        "ace5-lite",
+        "ace5-lite-dvm",
+        "ace5-lite-acp"
       ],
       "type": "string"
     },
@@ -1654,6 +1657,882 @@
                 },
                 "profile": {
                   "const": "ace5"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "archunken": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "aridunq": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arloop": {
+                      "type": "string"
+                    },
+                    "armecid": {
+                      "type": "string"
+                    },
+                    "armmuatst": {
+                      "type": "string"
+                    },
+                    "armmuflow": {
+                      "type": "string"
+                    },
+                    "armmusecsid": {
+                      "type": "string"
+                    },
+                    "armmusid": {
+                      "type": "string"
+                    },
+                    "armmussid": {
+                      "type": "string"
+                    },
+                    "armmussidv": {
+                      "type": "string"
+                    },
+                    "armmuvalid": {
+                      "type": "string"
+                    },
+                    "armpam": {
+                      "type": "string"
+                    },
+                    "arnsaid": {
+                      "type": "string"
+                    },
+                    "arnse": {
+                      "type": "string"
+                    },
+                    "arpbha": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "arsubsysid": {
+                      "type": "string"
+                    },
+                    "artagop": {
+                      "type": "string"
+                    },
+                    "artrace": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awatop": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awcmo": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awidunq": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awloop": {
+                      "type": "string"
+                    },
+                    "awmecid": {
+                      "type": "string"
+                    },
+                    "awmmuatst": {
+                      "type": "string"
+                    },
+                    "awmmuflow": {
+                      "type": "string"
+                    },
+                    "awmmusecsid": {
+                      "type": "string"
+                    },
+                    "awmmusid": {
+                      "type": "string"
+                    },
+                    "awmmussid": {
+                      "type": "string"
+                    },
+                    "awmmussidv": {
+                      "type": "string"
+                    },
+                    "awmmuvalid": {
+                      "type": "string"
+                    },
+                    "awmpam": {
+                      "type": "string"
+                    },
+                    "awnsaid": {
+                      "type": "string"
+                    },
+                    "awnse": {
+                      "type": "string"
+                    },
+                    "awpbha": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awstashlpid": {
+                      "type": "string"
+                    },
+                    "awstashlpiden": {
+                      "type": "string"
+                    },
+                    "awstashnid": {
+                      "type": "string"
+                    },
+                    "awstashniden": {
+                      "type": "string"
+                    },
+                    "awsubsysid": {
+                      "type": "string"
+                    },
+                    "awtagop": {
+                      "type": "string"
+                    },
+                    "awtrace": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bbusy": {
+                      "type": "string"
+                    },
+                    "bcomp": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bidunq": {
+                      "type": "string"
+                    },
+                    "bloop": {
+                      "type": "string"
+                    },
+                    "bpersist": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "btagmatch": {
+                      "type": "string"
+                    },
+                    "btrace": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rbusy": {
+                      "type": "string"
+                    },
+                    "rchunknum": {
+                      "type": "string"
+                    },
+                    "rchunkstrb": {
+                      "type": "string"
+                    },
+                    "rchunkv": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "ridunq": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rloop": {
+                      "type": "string"
+                    },
+                    "rpoison": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rtag": {
+                      "type": "string"
+                    },
+                    "rtrace": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wpoison": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wtag": {
+                      "type": "string"
+                    },
+                    "wtagupdate": {
+                      "type": "string"
+                    },
+                    "wtrace": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace5-lite"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "acaddr": {
+                      "type": "string"
+                    },
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "acready": {
+                      "type": "string"
+                    },
+                    "actrace": {
+                      "type": "string"
+                    },
+                    "acvalid": {
+                      "type": "string"
+                    },
+                    "acvmidext": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arburst": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "archunken": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "aridunq": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "arlock": {
+                      "type": "string"
+                    },
+                    "arloop": {
+                      "type": "string"
+                    },
+                    "armecid": {
+                      "type": "string"
+                    },
+                    "armpam": {
+                      "type": "string"
+                    },
+                    "arnsaid": {
+                      "type": "string"
+                    },
+                    "arnse": {
+                      "type": "string"
+                    },
+                    "arpbha": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arqos": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arregion": {
+                      "type": "string"
+                    },
+                    "arsize": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "arsubsysid": {
+                      "type": "string"
+                    },
+                    "artagop": {
+                      "type": "string"
+                    },
+                    "artrace": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awatop": {
+                      "type": "string"
+                    },
+                    "awburst": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awcmo": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awidunq": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awlock": {
+                      "type": "string"
+                    },
+                    "awloop": {
+                      "type": "string"
+                    },
+                    "awmecid": {
+                      "type": "string"
+                    },
+                    "awmpam": {
+                      "type": "string"
+                    },
+                    "awnsaid": {
+                      "type": "string"
+                    },
+                    "awnse": {
+                      "type": "string"
+                    },
+                    "awpbha": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awqos": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awregion": {
+                      "type": "string"
+                    },
+                    "awsize": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awstashlpid": {
+                      "type": "string"
+                    },
+                    "awstashlpiden": {
+                      "type": "string"
+                    },
+                    "awstashnid": {
+                      "type": "string"
+                    },
+                    "awstashniden": {
+                      "type": "string"
+                    },
+                    "awsubsysid": {
+                      "type": "string"
+                    },
+                    "awtagop": {
+                      "type": "string"
+                    },
+                    "awtrace": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bbusy": {
+                      "type": "string"
+                    },
+                    "bcomp": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bidunq": {
+                      "type": "string"
+                    },
+                    "bloop": {
+                      "type": "string"
+                    },
+                    "bpersist": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "btrace": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "crready": {
+                      "type": "string"
+                    },
+                    "crtrace": {
+                      "type": "string"
+                    },
+                    "crvalid": {
+                      "type": "string"
+                    },
+                    "rbusy": {
+                      "type": "string"
+                    },
+                    "rchunknum": {
+                      "type": "string"
+                    },
+                    "rchunkstrb": {
+                      "type": "string"
+                    },
+                    "rchunkv": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "ridunq": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rloop": {
+                      "type": "string"
+                    },
+                    "rpoison": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rtag": {
+                      "type": "string"
+                    },
+                    "rtrace": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wpoison": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wtag": {
+                      "type": "string"
+                    },
+                    "wtagupdate": {
+                      "type": "string"
+                    },
+                    "wtrace": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace5-lite-dvm"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "araddr": {
+                      "type": "string"
+                    },
+                    "arcache": {
+                      "type": "string"
+                    },
+                    "archunken": {
+                      "type": "string"
+                    },
+                    "ardomain": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "arid": {
+                      "type": "string"
+                    },
+                    "aridunq": {
+                      "type": "string"
+                    },
+                    "arlen": {
+                      "type": "string"
+                    },
+                    "armpam": {
+                      "type": "string"
+                    },
+                    "arprot": {
+                      "type": "string"
+                    },
+                    "arready": {
+                      "type": "string"
+                    },
+                    "arsnoop": {
+                      "type": "string"
+                    },
+                    "artrace": {
+                      "type": "string"
+                    },
+                    "aruser": {
+                      "type": "string"
+                    },
+                    "arvalid": {
+                      "type": "string"
+                    },
+                    "awaddr": {
+                      "type": "string"
+                    },
+                    "awcache": {
+                      "type": "string"
+                    },
+                    "awdomain": {
+                      "type": "string"
+                    },
+                    "awid": {
+                      "type": "string"
+                    },
+                    "awidunq": {
+                      "type": "string"
+                    },
+                    "awlen": {
+                      "type": "string"
+                    },
+                    "awmpam": {
+                      "type": "string"
+                    },
+                    "awprot": {
+                      "type": "string"
+                    },
+                    "awready": {
+                      "type": "string"
+                    },
+                    "awsnoop": {
+                      "type": "string"
+                    },
+                    "awstashlpid": {
+                      "type": "string"
+                    },
+                    "awstashlpiden": {
+                      "type": "string"
+                    },
+                    "awstashnid": {
+                      "type": "string"
+                    },
+                    "awstashniden": {
+                      "type": "string"
+                    },
+                    "awtrace": {
+                      "type": "string"
+                    },
+                    "awuser": {
+                      "type": "string"
+                    },
+                    "awvalid": {
+                      "type": "string"
+                    },
+                    "bid": {
+                      "type": "string"
+                    },
+                    "bidunq": {
+                      "type": "string"
+                    },
+                    "bready": {
+                      "type": "string"
+                    },
+                    "bresp": {
+                      "type": "string"
+                    },
+                    "btrace": {
+                      "type": "string"
+                    },
+                    "buser": {
+                      "type": "string"
+                    },
+                    "bvalid": {
+                      "type": "string"
+                    },
+                    "rchunknum": {
+                      "type": "string"
+                    },
+                    "rchunkstrb": {
+                      "type": "string"
+                    },
+                    "rchunkv": {
+                      "type": "string"
+                    },
+                    "rdata": {
+                      "type": "string"
+                    },
+                    "rid": {
+                      "type": "string"
+                    },
+                    "ridunq": {
+                      "type": "string"
+                    },
+                    "rlast": {
+                      "type": "string"
+                    },
+                    "rpoison": {
+                      "type": "string"
+                    },
+                    "rready": {
+                      "type": "string"
+                    },
+                    "rresp": {
+                      "type": "string"
+                    },
+                    "rtrace": {
+                      "type": "string"
+                    },
+                    "ruser": {
+                      "type": "string"
+                    },
+                    "rvalid": {
+                      "type": "string"
+                    },
+                    "wdata": {
+                      "type": "string"
+                    },
+                    "wlast": {
+                      "type": "string"
+                    },
+                    "wpoison": {
+                      "type": "string"
+                    },
+                    "wready": {
+                      "type": "string"
+                    },
+                    "wstrb": {
+                      "type": "string"
+                    },
+                    "wtrace": {
+                      "type": "string"
+                    },
+                    "wuser": {
+                      "type": "string"
+                    },
+                    "wvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ace5-lite-acp"
                 }
               },
               "required": [

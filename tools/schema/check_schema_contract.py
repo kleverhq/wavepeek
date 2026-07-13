@@ -274,6 +274,9 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
             "ace",
             "ace-lite",
             "ace5",
+            "ace5-lite",
+            "ace5-lite-dvm",
+            "ace5-lite-acp",
         ],
         "AXI input profile enum is not the expected stable list",
     )

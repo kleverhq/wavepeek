@@ -12,11 +12,13 @@ pub enum ExtractCommand {
 
 Behavior:
 - AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 profiles use Arm IHI 0022H.c.
-- AXI5 and AXI5-Lite profiles use Arm IHI 0022L ready/valid transport.
-- Supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, and ACE5 profiles.
+- AXI5, AXI5-Lite, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles use Arm IHI 0022L ready/valid transport.
+- Supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles.
+- ACE5-Lite aliases are ace5_lite; ACE5-LiteDVM aliases are ace5-litedvm, ace5_litedvm, and ace5_lite_dvm; ACE5-LiteACP aliases are ace5-liteacp, ace5_liteacp, and ace5_lite_acp.
+- Generated schemas accept canonical hyphenated profile names only.
 - Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
 - Builds one extraction source per complete ready/valid channel.
-- AXI5 optionally adds DVM ac and cr channels but does not add cd.
+- AXI5 and ACE5-LiteDVM can add DVM ac and cr channels but do not add cd.
 - Samples reset, ready/valid predicates, and payload values at the pre-edge sample point.
 - In source-file mode, --source provides profile, name, includes, and maps and conflicts with --profile, --name, --map, and --include.
 - Contract for source-file mode is defined by `wavepeek schema --input`.
@@ -58,6 +60,18 @@ pub enum AxiProfileArg {
     #[value(name = "ace-lite", alias = "ace_lite")]
     AceLite,
     Ace5,
+    #[value(name = "ace5-lite", alias = "ace5_lite")]
+    Ace5Lite,
+    #[value(
+        name = "ace5-lite-dvm",
+        aliases = ["ace5-litedvm", "ace5_litedvm", "ace5_lite_dvm"]
+    )]
+    Ace5LiteDvm,
+    #[value(
+        name = "ace5-lite-acp",
+        aliases = ["ace5-liteacp", "ace5_liteacp", "ace5_lite_acp"]
+    )]
+    Ace5LiteAcp,
 }
 
 impl AxiProfileArg {
@@ -71,6 +85,9 @@ impl AxiProfileArg {
             Self::Ace => "ace",
             Self::AceLite => "ace-lite",
             Self::Ace5 => "ace5",
+            Self::Ace5Lite => "ace5-lite",
+            Self::Ace5LiteDvm => "ace5-lite-dvm",
+            Self::Ace5LiteAcp => "ace5-lite-acp",
         }
     }
 }

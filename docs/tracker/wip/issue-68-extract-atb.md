@@ -23,8 +23,8 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 - [x] (2026-07-20 08:58Z) Implement exact output, stream, input, and command-enum schema branches; regenerate artifacts; add focused schema validators; update the schema contract checker.
 - [x] (2026-07-20 08:58Z) Add one source-backed ATB fixture with VCD/FST outputs and end-to-end tests for profiles, aliases, mapping, output modes, source files, ordering, reset, windows/limits, parity, independent channels, optional payload, and negative cases.
 - [x] (2026-07-20 08:58Z) Update embedded public docs, packaged skill routing, architecture module map, and `CHANGELOG.md`; documentation commit remains.
-- [ ] Run focused tests, `just test`, `just check`, and `just ci`; repair all failures without weakening gates or coverage.
-- [ ] Run multi-lane read-only review and an independent control review; fix all substantive findings and rerun affected gates.
+- [x] (2026-07-20 09:02Z) Run focused suites, commit hooks, `just check`, and `just ci`; all pass with source coverage at 94.27% regions, 93.66% functions, and 94.73% lines.
+- [ ] (2026-07-20 09:04Z) Run multi-lane read-only review and an independent control review (completed: code, contract/docs, architecture, and performance lanes launched; remaining: collect, fix, recheck, and control pass).
 - [ ] Update this plan with evidence and retrospective, then remove it in a cleanup commit before handoff.
 - [ ] Push `feat/extract-atb` to `origin`, open a pull request against `main` whose body closes issue #68, and verify the remote PR metadata.
 
@@ -65,7 +65,7 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 ## Outcomes & Retrospective
 
-The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused ATB, CLI-help, docs, schema, clippy, and schema-contract checks pass. Full repository gates and external review remain.
+The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused suites, commit hooks, `just check`, and `just ci` pass. CI coverage is 94.27% regions, 93.66% functions, and 94.73% lines. Multi-lane review is running; review fixes, control review, plan cleanup, push, and PR remain.
 
 ## Context and Orientation
 
@@ -181,3 +181,5 @@ Revision note: 2026-07-20 initial ExecPlan created after repository and protocol
 Revision note: 2026-07-20 corrected the profile, payload, handshake-channel, alias, and clause details after preserving and line-reading the full issue body locally. The initial summary had incorrectly treated conditional `ATWAKEUP` as an extraction field and transfer payload as required; issue #68 explicitly excludes wake-up mappings and permits handshake-only transfers.
 
 Revision note: 2026-07-20 updated milestone progress, test evidence, and discoveries after implementing the complete local feature slice. The next boundary is the implementation commit, followed by full gates and review.
+
+Revision note: 2026-07-20 recorded successful `just check` and `just ci` evidence and the start of four focused read-only review lanes. The plan remains active until findings, control review, cleanup, and publication complete.

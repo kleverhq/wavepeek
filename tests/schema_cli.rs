@@ -548,6 +548,10 @@ fn schema_command_includes_property_and_extract_command_branches() {
         "schema command enum should include property"
     );
     assert!(
+        commands.iter().any(|entry| entry == "extract atb"),
+        "schema command enum should include extract atb"
+    );
+    assert!(
         commands.iter().any(|entry| entry == "extract axi"),
         "schema command enum should include extract axi"
     );
@@ -568,6 +572,12 @@ fn schema_command_includes_property_and_extract_command_branches() {
     assert!(
         data_variants
             .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/extractAtbData"),
+        "schema data variants should include extractAtbData"
+    );
+    assert!(
+        data_variants
+            .iter()
             .any(|entry| entry["$ref"] == "#/$defs/extractAxiData"),
         "schema data variants should include extractAxiData"
     );
@@ -577,6 +587,139 @@ fn schema_command_includes_property_and_extract_command_branches() {
             .any(|entry| entry["$ref"] == "#/$defs/extractGenericData"),
         "schema data variants should include extractGenericData"
     );
+}
+
+#[test]
+fn schema_output_validator_enforces_atb_profiles_mappings_and_events() {
+    let validator = output_schema_validator();
+    let valid = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract atb",
+        "data": {
+            "name": "etm_trace",
+            "profile": "atb-c",
+            "issue": "C",
+            "mappings": {
+                "atclk": {"path": "top.atclk"},
+                "atresetn": {"path": "top.atresetn"},
+                "atvalid": {"path": "top.atvalid"},
+                "atready": {"path": "top.atready"},
+                "atbytes": {"path": "top.atbytes"},
+                "atdata": {"path": "top.atdata"},
+                "atid": {"path": "top.atid"},
+                "afvalid": {"path": "top.afvalid"},
+                "afready": {"path": "top.afready"},
+                "syncreq": {"path": "top.syncreq"}
+            },
+            "events": [
+                {
+                    "time": "20ns", "sample_time": "19ns", "profile": "atb-c",
+                    "event": "transfer",
+                    "payload": {"atbytes": "2'h3", "atdata": "32'h44332211", "atid": "7'h10"}
+                },
+                {
+                    "time": "40ns", "sample_time": "39ns", "profile": "atb-c",
+                    "event": "flush", "payload": {}
+                },
+                {
+                    "time": "60ns", "sample_time": "59ns", "profile": "atb-c",
+                    "event": "sync-request", "payload": {}
+                }
+            ],
+            "x-extension": true
+        },
+        "diagnostics": []
+    });
+    validator
+        .validate(&valid)
+        .unwrap_or_else(|error| panic!("valid ATB-C output rejected: {error}\n{valid}"));
+
+    let mut handshake_only = valid.clone();
+    handshake_only["data"]["mappings"] = json!({
+        "atclk": {"path": "top.atclk"},
+        "atvalid": {"path": "top.atvalid"},
+        "atready": {"path": "top.atready"}
+    });
+    handshake_only["data"]["events"] = json!([{
+        "time": "20ns", "sample_time": "19ns", "profile": "atb-c",
+        "event": "transfer", "payload": {}
+    }]);
+    validator.validate(&handshake_only).unwrap_or_else(|error| {
+        panic!("valid ATB handshake-only output rejected: {error}\n{handshake_only}")
+    });
+
+    let mut invalid_cases = Vec::new();
+    let mut invalid = valid.clone();
+    invalid["data"]["issue"] = json!("B");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("atclk");
+    invalid_cases.push(invalid);
+    let mut invalid = handshake_only.clone();
+    invalid["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("atready");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"] = json!({
+        "atclk": {"path": "top.atclk"},
+        "atdata": {"path": "top.atdata"},
+        "afvalid": {"path": "top.afvalid"},
+        "afready": {"path": "top.afready"}
+    });
+    invalid["data"]["events"] = json!([]);
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"] = json!({
+        "atclk": {"path": "top.atclk"},
+        "syncreq": {"path": "top.syncreq"}
+    });
+    invalid["data"]["events"] = json!([]);
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("syncreq");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("atdata");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["mappings"]["atwakeup"] = json!({"path": "top.atwakeup"});
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["events"][1]["payload"] = json!({"atid": "7'h10"});
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["events"][0]["payload"]["atwakeup"] = json!("1'h1");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
+    invalid["data"]["events"][0]["profile"] = json!("atb-b");
+    invalid_cases.push(invalid);
+
+    for invalid in invalid_cases {
+        assert!(
+            validator.validate(&invalid).is_err(),
+            "invalid ATB output should fail validation: {invalid}"
+        );
+    }
+
+    let mut atb_a = handshake_only;
+    atb_a["data"]["profile"] = json!("atb-a");
+    atb_a["data"]["events"][0]["profile"] = json!("atb-a");
+    validator
+        .validate(&atb_a)
+        .unwrap_or_else(|error| panic!("valid ATB-A output rejected: {error}\n{atb_a}"));
+    atb_a["data"]["mappings"]["syncreq"] = json!({"path": "top.syncreq"});
+    assert!(validator.validate(&atb_a).is_err());
 }
 
 #[test]
@@ -1783,12 +1926,21 @@ fn schema_input_command_output_is_valid_json() {
         value["oneOf"],
         json!([
             {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAtbSourceInput"},
             {"$ref": "#/$defs/extractAxiSourceInput"}
         ])
     );
     assert_eq!(
         value["$defs"]["extractGenericSourcesInput"]["properties"]["kind"]["const"],
         "extract.generic.sources"
+    );
+    assert_eq!(
+        value["$defs"]["extractAtbSourceInput"]["properties"]["kind"]["const"],
+        "extract.atb.source"
+    );
+    assert_eq!(
+        value["$defs"]["atbProfile"]["enum"],
+        json!(["atb-a", "atb-b", "atb-c"])
     );
     assert_eq!(
         value["$defs"]["extractAxiSourceInput"]["properties"]["kind"]["const"],
@@ -1842,6 +1994,87 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
     validator
         .validate(&valid_axi)
         .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
+
+    for (profile, standard) in [
+        ("atb-a", "atid"),
+        ("atb-b", "syncreq"),
+        ("atb-c", "syncreq"),
+    ] {
+        let valid_atb = json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": profile,
+            "name": "etm_trace",
+            "includes": ["^trace_"],
+            "maps": {"atclk": "clk", (standard): format!("trace_{standard}")},
+            "x-extension": true
+        });
+        validator.validate(&valid_atb).unwrap_or_else(|error| {
+            panic!("valid {profile} input document rejected: {error}\n{valid_atb}")
+        });
+    }
+
+    let valid_default_atb_c = json!({
+        "$schema": expected_input_schema_url(),
+        "kind": "extract.atb.source",
+        "maps": {"syncreq": "trace_syncreq"}
+    });
+    validator
+        .validate(&valid_default_atb_c)
+        .unwrap_or_else(|error| {
+            panic!("valid default ATB-C input document rejected: {error}\n{valid_default_atb_c}")
+        });
+
+    for invalid_atb in [
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": "ATB_C"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": "atbv1.1"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": "atb-a",
+            "maps": {"syncreq": "trace_syncreq"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": "atb-c",
+            "maps": {"atclken": "trace_atclken"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": "atb-c",
+            "maps": {"atwakeup": "trace_atwakeup"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "profile": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "includes": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.atb.source",
+            "maps": null
+        }),
+    ] {
+        assert!(
+            validator.validate(&invalid_atb).is_err(),
+            "invalid ATB input should fail validation: {invalid_atb}"
+        );
+    }
 
     for (profile, standard) in [
         ("axi5", "acaddr"),
@@ -2027,6 +2260,7 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             "value",
             "change",
             "property",
+            "extract atb",
             "extract axi",
             "extract generic"
         ])
@@ -2062,6 +2296,111 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             .get("pattern")
             .is_none()
     );
+}
+
+#[test]
+fn schema_stream_validator_enforces_atb_context_and_item_branches() {
+    let validator = stream_schema_validator();
+    let valid_begin = json!({
+        "type": "begin",
+        "seq": 0,
+        "command": "extract atb",
+        "$schema": expected_stream_schema_url(),
+        "context": {
+            "name": "etm_trace",
+            "profile": "atb-c",
+            "issue": "C",
+            "mappings": {
+                "atclk": {"path": "top.atclk"},
+                "atvalid": {"path": "top.atvalid"},
+                "atready": {"path": "top.atready"},
+                "syncreq": {"path": "top.syncreq"}
+            }
+        }
+    });
+    validator
+        .validate(&valid_begin)
+        .unwrap_or_else(|error| panic!("valid ATB begin rejected: {error}\n{valid_begin}"));
+
+    let valid_sync_item = json!({
+        "type": "item",
+        "seq": 1,
+        "command": "extract atb",
+        "item": {
+            "time": "20ns", "sample_time": "19ns", "profile": "atb-c",
+            "event": "sync-request", "payload": {}
+        }
+    });
+    validator
+        .validate(&valid_sync_item)
+        .unwrap_or_else(|error| {
+            panic!("valid independent ATB sync item rejected: {error}\n{valid_sync_item}")
+        });
+
+    let valid_transfer_item = json!({
+        "type": "item",
+        "seq": 1,
+        "command": "extract atb",
+        "item": {
+            "time": "20ns", "sample_time": "19ns", "profile": "atb-a",
+            "event": "transfer", "payload": {"atdata": "8'ha5"}
+        }
+    });
+    validator
+        .validate(&valid_transfer_item)
+        .unwrap_or_else(|error| {
+            panic!("valid ATB-A transfer item rejected: {error}\n{valid_transfer_item}")
+        });
+
+    let mut invalid_cases = Vec::new();
+    let mut invalid = valid_begin.clone();
+    invalid.as_object_mut().unwrap().remove("context");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"] = Value::Null;
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["command"] = json!("change");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"] = json!({
+        "name": "axi", "profile": "axi4-lite", "issue": "H.c", "mappings": {}
+    });
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("atready");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"]["mappings"] = json!({
+        "atclk": {"path": "top.atclk"},
+        "syncreq": {"path": "top.syncreq"}
+    });
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"]["mappings"]["atwakeup"] = json!({"path": "top.atwakeup"});
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"]["profile"] = json!("atb-a");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_sync_item.clone();
+    invalid["item"]["profile"] = json!("atb-a");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_sync_item.clone();
+    invalid["item"]["payload"] = json!({"atid": "7'h10"});
+    invalid_cases.push(invalid);
+    let mut invalid = valid_transfer_item.clone();
+    invalid["item"]["payload"]["atwakeup"] = json!("1'h1");
+    invalid_cases.push(invalid);
+
+    for invalid in invalid_cases {
+        assert!(
+            validator.validate(&invalid).is_err(),
+            "invalid ATB stream record should fail validation: {invalid}"
+        );
+    }
 }
 
 #[test]

@@ -7,6 +7,28 @@ use crate::cli::limits::LimitArg;
 #[derive(Debug, Subcommand)]
 pub enum ExtractCommand {
     #[command(
+        about = "Extract ATB transfer, flush, and synchronization-request events.",
+        long_about = r#"Extract ATB transfer, flush, and synchronization-request events.
+
+Behavior:
+- Supports ATB-A, ATB-B, and ATB-C profiles from Arm IHI 0032C Issue C; ATB-C is the default.
+- Profile aliases are atb_a, atb_b, atb_c, atbv1.0, and atbv1.1; generated schemas accept canonical hyphenated profile names only.
+- Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
+- Builds independent sources for complete ATVALID/ATREADY and AFVALID/AFREADY handshakes.
+- Mapping SYNCREQ on ATB-B or ATB-C automatically adds a synchronization-request source.
+- Samples reset, predicates, and mapped transfer payload at the pre-edge sample point.
+- Emits same-edge events in transfer, flush, then sync-request order.
+- Preserves raw mapped ATBYTES, ATDATA, and ATID values without trace decoding.
+- In source-file mode, --source provides profile, name, includes, and maps and conflicts with --profile, --name, --map, and --include.
+- Contract for source-file mode is defined by `wavepeek schema --input`.
+- JSON output includes ATB metadata, mappings, and event rows.
+- Reports stateless sampled events only; it does not reconstruct packets, stalls, flush episodes, or synchronization episodes.
+
+Use this command to inspect one ATB interface without writing separate generic extraction sources."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/extract"
+    )]
+    Atb(Box<AtbArgs>),
+    #[command(
         about = "Extract AXI ready/valid transfer rows.",
         long_about = r#"Extract AXI ready/valid transfer rows.
 
@@ -45,6 +67,96 @@ Use this command to extract synchronous handshakes or transfer-like rows without
         after_long_help = "See also:\n  wavepeek docs show commands/extract"
     )]
     Generic(Box<GenericArgs>),
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AtbProfileArg {
+    #[value(name = "atb-a", aliases = ["atb_a", "atbv1.0"])]
+    AtbA,
+    #[value(name = "atb-b", aliases = ["atb_b", "atbv1.1"])]
+    AtbB,
+    #[value(name = "atb-c", alias = "atb_c")]
+    AtbC,
+}
+
+impl AtbProfileArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AtbA => "atb-a",
+            Self::AtbB => "atb-b",
+            Self::AtbC => "atb-c",
+        }
+    }
+}
+
+impl std::fmt::Display for AtbProfileArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Args)]
+pub struct AtbArgs {
+    /// Path to VCD/FST/FSDB waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    pub waves: PathBuf,
+    /// ATB profile from Arm IHI 0032C Issue C
+    #[arg(
+        long,
+        value_name = "PROFILE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = AtbProfileArg::AtbC,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub profile: AtbProfileArg,
+    /// JSON ATB source file with profile, name, includes, and maps
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with_all = ["profile", "name", "maps", "includes"],
+        help_heading = "Input options"
+    )]
+    pub source: Option<PathBuf>,
+    /// ATB interface name metadata for output (defaults to atb)
+    #[arg(long, help_heading = "Input options")]
+    pub name: Option<String>,
+    /// Start of inclusive event time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
+    pub from: Option<String>,
+    /// End of inclusive event time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
+    pub to: Option<String>,
+    /// Canonical scope path for scope-relative ATB signal names and include regexes
+    #[arg(long, help_heading = "Selection options")]
+    pub scope: Option<String>,
+    /// Explicit ATB mapping STD_NAME=WAVES_NAME, e.g. atvalid=etm_atvalid; may be repeated
+    #[arg(
+        long = "map",
+        value_name = "STD=WAVES",
+        help_heading = "Signal mapping options"
+    )]
+    pub maps: Vec<String>,
+    /// Regex selecting waveform signal candidates for ATB auto-mapping, e.g. '^etm_(at|af)'; may be repeated
+    #[arg(
+        long = "include",
+        value_name = "REGEX",
+        help_heading = "Signal mapping options"
+    )]
+    pub includes: Vec<String>,
+    /// Maximum number of extracted event rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
+    pub max: LimitArg,
+    /// Print canonical mapping and payload paths in human output
+    #[arg(long, help_heading = "Output options")]
+    pub abs: bool,
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
+    pub json: bool,
+    /// Stream newline-delimited JSON output
+    #[arg(long, conflicts_with = "json", help_heading = "Output options")]
+    pub jsonl: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

@@ -355,6 +355,35 @@ fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
 }
 
 #[test]
+fn public_extract_docs_cover_atb_profiles_and_stateless_boundaries() {
+    let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
+    for fragment in [
+        "`extract atb` emits stateless AMBA ATB interface events",
+        "`atb-a`, `atb-b`, and `atb-c`",
+        "Arm IHI 0032C Issue C",
+        "atbv1.0",
+        "atbv1.1",
+        "atclken",
+        "atwakeup",
+        "`atvalid && atready`",
+        "`afvalid && afready`",
+        "`ATBYTES + 1` is the number of valid low-order `ATDATA` bytes",
+        "`transfer`, `flush`, then `sync-request` order",
+        "does not reconstruct trace packets",
+        "Appendix A Table A-1",
+    ] {
+        assert!(
+            extract.contains(fragment),
+            "extract docs should contain `{fragment}`"
+        );
+    }
+
+    let machine_output = successful_stdout_text(&["docs", "show", "reference/machine-output"]);
+    assert!(machine_output.contains("`extract atb` data is an object"));
+    assert!(machine_output.contains("`extract.atb.source`"));
+}
+
+#[test]
 fn public_docs_describe_fsdb_target_restriction() {
     for topic_id in ["intro", "reference/command-model"] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);

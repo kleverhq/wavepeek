@@ -7,8 +7,8 @@ use crate::error::WavepeekError;
 
 use super::common::ContractDiagnostic;
 use super::output::{
-    ChangeSnapshot, ExtractAxiMapping, ExtractAxiTransfer, ExtractGenericRow, InfoData,
-    PropertyRow, ScopeEntry, SignalEntry, ValueSnapshot,
+    ChangeSnapshot, ExtractAtbEvent, ExtractAtbMapping, ExtractAxiMapping, ExtractAxiTransfer,
+    ExtractGenericRow, InfoData, PropertyRow, ScopeEntry, SignalEntry, ValueSnapshot,
 };
 use super::schema::STREAM_SCHEMA_URL;
 
@@ -175,7 +175,33 @@ struct StreamSummary {
 #[schemars(rename = "streamContextData")]
 #[serde(untagged)]
 pub enum StreamContextData<'a> {
+    ExtractAtb(ExtractAtbContext<'a>),
     ExtractAxi(ExtractAxiContext<'a>),
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAtbContext")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAtbContext<'a> {
+    name: &'a str,
+    profile: &'a str,
+    issue: &'a str,
+    mappings: std::collections::BTreeMap<&'a str, ExtractAtbMapping<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::atb::AtbContext> for ExtractAtbContext<'a> {
+    fn from(context: &'a crate::engine::atb::AtbContext) -> Self {
+        Self {
+            name: context.name.as_str(),
+            profile: context.profile.as_str(),
+            issue: context.issue.as_str(),
+            mappings: context
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractAtbMapping::from(mapping)))
+                .collect(),
+        }
+    }
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
@@ -207,6 +233,13 @@ pub trait StreamContext {
     fn stream_context(&self, command: CommandName) -> Result<StreamContextData<'_>, WavepeekError>;
 }
 
+impl StreamContext for crate::engine::atb::AtbContext {
+    fn stream_context(&self, command: CommandName) -> Result<StreamContextData<'_>, WavepeekError> {
+        require_item_command(command, CommandName::ExtractAtb)?;
+        Ok(StreamContextData::ExtractAtb(ExtractAtbContext::from(self)))
+    }
+}
+
 impl StreamContext for crate::engine::axi::AxiContext {
     fn stream_context(&self, command: CommandName) -> Result<StreamContextData<'_>, WavepeekError> {
         require_item_command(command, CommandName::ExtractAxi)?;
@@ -224,6 +257,7 @@ pub enum StreamItemData<'a> {
     Value(ValueSnapshot<'a>),
     Change(ChangeSnapshot<'a>),
     Property(PropertyRow<'a>),
+    ExtractAtb(ExtractAtbEvent<'a>),
     ExtractAxi(ExtractAxiTransfer<'a>),
     ExtractGeneric(ExtractGenericRow<'a>),
 }
@@ -271,6 +305,13 @@ impl StreamItem for crate::engine::property::PropertyCaptureRow {
     fn stream_item(&self, command: CommandName) -> Result<StreamItemData<'_>, WavepeekError> {
         require_item_command(command, CommandName::Property)?;
         Ok(StreamItemData::Property(PropertyRow::from(self)))
+    }
+}
+
+impl StreamItem for crate::engine::atb::AtbEvent {
+    fn stream_item(&self, command: CommandName) -> Result<StreamItemData<'_>, WavepeekError> {
+        require_item_command(command, CommandName::ExtractAtb)?;
+        Ok(StreamItemData::ExtractAtb(ExtractAtbEvent::from(self)))
     }
 }
 
@@ -346,6 +387,7 @@ fn require_stream_command(command: CommandName) -> Result<(), WavepeekError> {
         | CommandName::Value
         | CommandName::Change
         | CommandName::Property
+        | CommandName::ExtractAtb
         | CommandName::ExtractAxi
         | CommandName::ExtractGeneric => Ok(()),
         _ => Err(WavepeekError::Args(

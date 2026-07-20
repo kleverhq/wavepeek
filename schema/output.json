@@ -1,5 +1,14 @@
 {
   "$defs": {
+    "atbProfile": {
+      "description": "ATB profile name: atb-a, atb-b, or atb-c.",
+      "enum": [
+        "atb-a",
+        "atb-b",
+        "atb-c"
+      ],
+      "type": "string"
+    },
     "axiProfile": {
       "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
@@ -2946,6 +2955,1274 @@
         "profile",
         "channel",
         "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbAData": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atvalid",
+                  "atready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "flush"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "afvalid",
+                  "afready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "events": {
+          "description": "Extracted stateless ATB events in deterministic source order.",
+          "items": {
+            "$ref": "#/$defs/extractAtbAEvent"
+          },
+          "type": "array"
+        },
+        "issue": {
+          "const": "C",
+          "description": "Arm IHI 0032 issue used for this profile definition."
+        },
+        "mappings": {
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "atvalid",
+                "atready"
+              ]
+            },
+            {
+              "required": [
+                "afvalid",
+                "afready"
+              ]
+            }
+          ],
+          "dependentRequired": {
+            "afready": [
+              "afvalid"
+            ],
+            "afvalid": [
+              "afready"
+            ],
+            "atbytes": [
+              "atvalid",
+              "atready"
+            ],
+            "atdata": [
+              "atvalid",
+              "atready"
+            ],
+            "atid": [
+              "atvalid",
+              "atready"
+            ],
+            "atready": [
+              "atvalid"
+            ],
+            "atvalid": [
+              "atready"
+            ]
+          },
+          "description": "Resolved waveform mappings keyed by lowercase ATB standard signal name.",
+          "properties": {
+            "afready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "afvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atbytes": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atclk": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atdata": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atresetn": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            }
+          },
+          "required": [
+            "atclk"
+          ],
+          "type": "object"
+        },
+        "name": {
+          "description": "ATB interface name supplied by CLI or source JSON.",
+          "type": "string"
+        },
+        "profile": {
+          "const": "atb-a",
+          "description": "ATB profile name used for standard signal mapping."
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings",
+        "events"
+      ],
+      "type": "object"
+    },
+    "extractAtbAEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAtbATransferEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbAFlushEvent"
+        }
+      ]
+    },
+    "extractAtbAFlushEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "flush",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Empty payload for a control event whose kind records the complete sampled condition.",
+          "properties": {},
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-a",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbATransferEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "transfer",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Optional raw ATBYTES, ATDATA, and ATID observations keyed by lowercase standard signal name.",
+          "properties": {
+            "atbytes": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atid": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-a",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbBData": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atvalid",
+                  "atready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "flush"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "afvalid",
+                  "afready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "sync-request"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "syncreq"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "events": {
+          "description": "Extracted stateless ATB events in deterministic source order.",
+          "items": {
+            "$ref": "#/$defs/extractAtbBEvent"
+          },
+          "type": "array"
+        },
+        "issue": {
+          "const": "C",
+          "description": "Arm IHI 0032 issue used for this profile definition."
+        },
+        "mappings": {
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "atvalid",
+                "atready"
+              ]
+            },
+            {
+              "required": [
+                "afvalid",
+                "afready"
+              ]
+            }
+          ],
+          "dependentRequired": {
+            "afready": [
+              "afvalid"
+            ],
+            "afvalid": [
+              "afready"
+            ],
+            "atbytes": [
+              "atvalid",
+              "atready"
+            ],
+            "atdata": [
+              "atvalid",
+              "atready"
+            ],
+            "atid": [
+              "atvalid",
+              "atready"
+            ],
+            "atready": [
+              "atvalid"
+            ],
+            "atvalid": [
+              "atready"
+            ]
+          },
+          "description": "Resolved waveform mappings keyed by lowercase ATB standard signal name.",
+          "properties": {
+            "afready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "afvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atbytes": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atclk": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atdata": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atresetn": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "syncreq": {
+              "$ref": "#/$defs/extractAtbMapping"
+            }
+          },
+          "required": [
+            "atclk"
+          ],
+          "type": "object"
+        },
+        "name": {
+          "description": "ATB interface name supplied by CLI or source JSON.",
+          "type": "string"
+        },
+        "profile": {
+          "const": "atb-b",
+          "description": "ATB profile name used for standard signal mapping."
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings",
+        "events"
+      ],
+      "type": "object"
+    },
+    "extractAtbBEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAtbBTransferEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbBFlushEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbBSyncRequestEvent"
+        }
+      ]
+    },
+    "extractAtbBFlushEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "flush",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Empty payload for a control event whose kind records the complete sampled condition.",
+          "properties": {},
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-b",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbBSyncRequestEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "sync-request",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Empty payload for a control event whose kind records the complete sampled condition.",
+          "properties": {},
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-b",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbBTransferEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "transfer",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Optional raw ATBYTES, ATDATA, and ATID observations keyed by lowercase standard signal name.",
+          "properties": {
+            "atbytes": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atid": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-b",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbCData": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atvalid",
+                  "atready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "flush"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "afvalid",
+                  "afready"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "sync-request"
+                    }
+                  },
+                  "required": [
+                    "event"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "syncreq"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "properties": {
+        "events": {
+          "description": "Extracted stateless ATB events in deterministic source order.",
+          "items": {
+            "$ref": "#/$defs/extractAtbCEvent"
+          },
+          "type": "array"
+        },
+        "issue": {
+          "const": "C",
+          "description": "Arm IHI 0032 issue used for this profile definition."
+        },
+        "mappings": {
+          "additionalProperties": false,
+          "anyOf": [
+            {
+              "required": [
+                "atvalid",
+                "atready"
+              ]
+            },
+            {
+              "required": [
+                "afvalid",
+                "afready"
+              ]
+            }
+          ],
+          "dependentRequired": {
+            "afready": [
+              "afvalid"
+            ],
+            "afvalid": [
+              "afready"
+            ],
+            "atbytes": [
+              "atvalid",
+              "atready"
+            ],
+            "atdata": [
+              "atvalid",
+              "atready"
+            ],
+            "atid": [
+              "atvalid",
+              "atready"
+            ],
+            "atready": [
+              "atvalid"
+            ],
+            "atvalid": [
+              "atready"
+            ]
+          },
+          "description": "Resolved waveform mappings keyed by lowercase ATB standard signal name.",
+          "properties": {
+            "afready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "afvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atbytes": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atclk": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atdata": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atready": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atresetn": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "atvalid": {
+              "$ref": "#/$defs/extractAtbMapping"
+            },
+            "syncreq": {
+              "$ref": "#/$defs/extractAtbMapping"
+            }
+          },
+          "required": [
+            "atclk"
+          ],
+          "type": "object"
+        },
+        "name": {
+          "description": "ATB interface name supplied by CLI or source JSON.",
+          "type": "string"
+        },
+        "profile": {
+          "const": "atb-c",
+          "description": "ATB profile name used for standard signal mapping."
+        }
+      },
+      "required": [
+        "name",
+        "profile",
+        "issue",
+        "mappings",
+        "events"
+      ],
+      "type": "object"
+    },
+    "extractAtbCEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAtbCTransferEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbCFlushEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbCSyncRequestEvent"
+        }
+      ]
+    },
+    "extractAtbCFlushEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "flush",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Empty payload for a control event whose kind records the complete sampled condition.",
+          "properties": {},
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-c",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbCSyncRequestEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "sync-request",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Empty payload for a control event whose kind records the complete sampled condition.",
+          "properties": {},
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-c",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbCTransferEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "event": {
+          "const": "transfer",
+          "description": "Stateless ATB event kind."
+        },
+        "payload": {
+          "additionalProperties": false,
+          "description": "Optional raw ATBYTES, ATDATA, and ATID observations keyed by lowercase standard signal name.",
+          "properties": {
+            "atbytes": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "atid": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "atb-c",
+          "description": "ATB profile name for this event row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected ATB event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAtbData": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAtbAData"
+        },
+        {
+          "$ref": "#/$defs/extractAtbBData"
+        },
+        {
+          "$ref": "#/$defs/extractAtbCData"
+        }
+      ]
+    },
+    "extractAtbEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAtbAEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbBEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAtbCEvent"
+        }
+      ]
+    },
+    "extractAtbEventKind": {
+      "enum": [
+        "transfer",
+        "flush",
+        "sync-request"
+      ],
+      "type": "string"
+    },
+    "extractAtbMapping": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical waveform signal path mapped to this ATB standard signal."
+        }
+      },
+      "required": [
+        "path"
       ],
       "type": "object"
     },
@@ -7935,6 +9212,25 @@
       "if": {
         "properties": {
           "command": {
+            "const": "extract atb"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/extractAtbData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
             "const": "extract axi"
           }
         },
@@ -8022,6 +9318,7 @@
         "value",
         "change",
         "property",
+        "extract atb",
         "extract axi",
         "extract generic",
         "docs topics",
@@ -8048,6 +9345,9 @@
         },
         {
           "$ref": "#/$defs/propertyData"
+        },
+        {
+          "$ref": "#/$defs/extractAtbData"
         },
         {
           "$ref": "#/$defs/extractAxiData"

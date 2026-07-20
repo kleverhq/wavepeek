@@ -978,6 +978,30 @@ fn shipped_commands_help_is_self_descriptive() {
 }
 
 #[test]
+fn extract_atb_help_is_self_descriptive() {
+    let long_help = successful_stdout_text(&["extract", "atb", "--help"]);
+    for fragment in [
+        "Extract ATB transfer, flush, and synchronization-request events.",
+        "Supports ATB-A, ATB-B, and ATB-C profiles from Arm IHI 0032C Issue C; ATB-C is the default.",
+        "Profile aliases are atb_a, atb_b, atb_c, atbv1.0, and atbv1.1; generated schemas accept canonical hyphenated profile names only.",
+        "Builds independent sources for complete ATVALID/ATREADY and AFVALID/AFREADY handshakes.",
+        "Mapping SYNCREQ on ATB-B or ATB-C automatically adds a synchronization-request source.",
+        "Emits same-edge events in transfer, flush, then sync-request order.",
+        "Preserves raw mapped ATBYTES, ATDATA, and ATID values without trace decoding.",
+        "[default: atb-c]",
+        "[possible values: atb-a, atb-b, atb-c]",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
+        "Reports stateless sampled events only; it does not reconstruct packets, stalls, flush episodes, or synchronization episodes.",
+        "wavepeek docs show commands/extract",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "extract atb long help should contain `{fragment}`"
+        );
+    }
+}
+
+#[test]
 fn extract_axi_help_is_self_descriptive() {
     let long_help = successful_stdout_text(&["extract", "axi", "--help"]);
     for fragment in [

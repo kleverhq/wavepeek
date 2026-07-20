@@ -461,6 +461,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
             WaveformCommand::Change(args) => EngineCommand::Change(args),
             WaveformCommand::Property(args) => EngineCommand::Property(args),
             WaveformCommand::Extract(command) => match command {
+                extract::ExtractCommand::Atb(args) => EngineCommand::ExtractAtb(*args),
                 extract::ExtractCommand::Axi(args) => EngineCommand::ExtractAxi(*args),
                 extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(*args),
             },

@@ -84,6 +84,8 @@ src/
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint and capture-mode execution
 │   ├── extract.rs       # Generic event-row extraction runtime
+│   ├── atb.rs           # ATB profile mapping and stateless event extraction adapter
+│   ├── axi.rs           # AXI-family profile mapping and transfer extraction adapter
 │   ├── schema.rs        # JSON schema export
 │   ├── docs.rs          # Embedded docs topics/search/show/export runtime
 │   └── skill.rs         # Packaged agent skill print runtime

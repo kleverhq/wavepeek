@@ -20,6 +20,40 @@ pub struct ExtractGenericSourcesInput<'a> {
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAtbSourceInput")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAtbSourceInput<'a> {
+    #[serde(rename = "$schema")]
+    #[schemars(schema_with = "input_schema_url_schema")]
+    #[schemars(description = "Input schema URL for this source document.")]
+    schema: &'a str,
+    #[schemars(schema_with = "extract_atb_kind_schema")]
+    #[schemars(description = "Input document kind discriminator.")]
+    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "atb_profile_schema")]
+    #[schemars(description = "ATB profile. Defaults to atb-c.")]
+    profile: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(description = "ATB interface name metadata. Defaults to atb.")]
+    name: Option<&'a str>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "includes_schema")]
+    #[schemars(description = "Regexes selecting waveform signal candidates for ATB auto-mapping.")]
+    includes: Vec<&'a str>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "maps_schema")]
+    #[schemars(
+        description = "Explicit mappings from lowercase ATB standard signal names to waveform signal names."
+    )]
+    maps: BTreeMap<&'a str, &'a str>,
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "extractAxiSourceInput")]
 #[schemars(extend("additionalProperties" = true))]
 pub struct ExtractAxiSourceInput<'a> {
@@ -76,8 +110,19 @@ fn extract_generic_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.generic.sources"})
 }
 
+fn extract_atb_kind_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "const": "extract.atb.source"})
+}
+
 fn extract_axi_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.axi.source"})
+}
+
+fn atb_profile_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "string",
+        "enum": ["atb-a", "atb-b", "atb-c"]
+    })
 }
 
 fn axi_profile_schema(_: &mut SchemaGenerator) -> Schema {

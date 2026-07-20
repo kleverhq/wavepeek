@@ -13,9 +13,56 @@ see_also:
 ---
 # Extract command
 
-Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels into generic extraction sources for common bus debug.
+Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract atb` expands AMBA ATB transfer, flush, and synchronization-request conditions into generic extraction sources. `extract axi` expands AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels for common bus debug.
 
-For exact syntax and flags, run `wavepeek help extract axi` or `wavepeek help extract generic`.
+For exact syntax and flags, run `wavepeek help extract atb`, `wavepeek help extract axi`, or `wavepeek help extract generic`.
+
+## `extract atb`
+
+`extract atb` emits stateless AMBA ATB interface events using Arm IHI 0032C Issue C definitions. The supported profiles are `atb-a`, `atb-b`, and `atb-c`; the default is `atb-c`. The CLI and source parser also accept underscore aliases, and accept legacy `atbv1.0` and `atbv1.1` as aliases for ATB-A and ATB-B. Generated schemas accept only the canonical hyphenated profile names.
+
+Every configuration maps `atclk` and at least one complete handshake pair. A transfer event requires known-true `atvalid && atready`; a flush event requires known-true `afvalid && afready`. Mapping `syncreq` on ATB-B or ATB-C adds a synchronization-request source whose predicate is known-true `syncreq`, but does not replace the required transfer or flush pair. `atresetn` is optional; when mapped, each predicate is additionally gated by known-true `atresetn` at the pre-edge sample point. Unknown control or reset values do not produce the affected event.
+
+Transfer payload mappings are optional and stay raw. A transfer row can include mapped `atbytes`, `atdata`, and `atid` values in that order. `ATBYTES + 1` is the number of valid low-order `ATDATA` bytes, but the command preserves the complete observed vectors without trimming or masking; upper bytes outside that count are observations and are not claimed as protocol-valid trace bytes. This permits handshake-only extraction and 8-bit `ATDATA` interfaces where `ATBYTES` is absent. Flush and synchronization-request rows have empty payloads. `ATID` values are observations rather than decoded trigger or protocol semantics.
+
+The extraction profiles deliberately exclude `atclken` and `atwakeup`. ATB-A also excludes `syncreq`; ATB-B and ATB-C accept it. The initial ATB-B and ATB-C extraction signal sets are otherwise identical.
+
+Map signals explicitly or select automatic candidates with include regexes. Matching is case-insensitive after separator normalization, accepts leading interface prefixes and common direction suffixes, and requires a complete standard-signal suffix. Explicit mappings win. With `--scope`, waveform mapping names and include candidates are relative to that scope.
+
+```text
+$ wavepeek extract atb --waves path/to/dump.vcd \
+    --scope top.etm \
+    --profile atb-c \
+    --map atclk=trace_clk \
+    --map atresetn=trace_reset_n \
+    --include '^trace_(at|af|sync)'
+name: atb
+profile: atb-c
+issue: C
+mappings:
+  atclk = trace_clk
+  atresetn = trace_reset_n
+  atvalid = trace_at_valid
+  atready = trace_at_ready
+  atbytes = trace_at_bytes
+  atdata = trace_at_data
+  atid = trace_at_id
+  afvalid = trace_af_valid
+  afready = trace_af_ready
+  syncreq = trace_sync_req
+events:
+@25ns sample@24999ps [transfer] atbytes=2'h3 atdata=32'h44332211 atid=7'h10
+@25ns sample@24999ps [flush]
+@25ns sample@24999ps [sync-request]
+```
+
+When several event conditions are true at one edge, rows appear in `transfer`, `flush`, then `sync-request` order. Every sampled high `syncreq` produces a row independently, and repeated transfer or flush handshakes are preserved even when values do not change.
+
+A source file can provide `profile`, `name`, `includes`, and `maps` with `kind: "extract.atb.source"`. Source-file mode conflicts with the corresponding command-line configuration options; time bounds and scope remain command-line settings.
+
+ATB extraction does not reconstruct trace packets, derive byte counts, decode trace triggers, verify legal encodings, or infer cross-cycle transfer, flush, synchronization, or wake-up episodes. Use the raw event rows as evidence tied to their sampled edge.
+
+Arm IHI 0032C sections 3.1-3.2 define ATB transfer sampling and the `ATVALID`/`ATREADY` handshake. Section 4.2 defines the flush handshake, section 4.4 defines synchronization requests, and Appendix A Table A-1 defines the interface signal matrix.
 
 ## `extract axi`
 
@@ -118,6 +165,8 @@ This matches common RTL debugging expectations: the row describes the values tha
 `--from` and `--to` bound event `time` values. A row at `--from` can still use a `sample_time` before `--from` if that sample point is inside the dump.
 
 ## Output modes
+
+Human `extract atb` output starts with name, profile, issue, resolved mappings, and then event rows. `extract atb --json` emits `command: "extract atb"` with `name`, `profile`, `issue`, `mappings`, and `events`. JSONL puts ATB context on the `begin` record and streams one event per `item`. Add `--abs` to print canonical mapping and payload paths in human output.
 
 Human `extract axi` output starts with name, profile, issue, resolved mappings, and then transfer rows. Add `--abs` to print canonical mapping and payload paths in human output.
 

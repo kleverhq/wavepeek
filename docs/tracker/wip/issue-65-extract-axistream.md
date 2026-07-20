@@ -21,7 +21,7 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 - [x] (2026-07-20 09:10Z) Milestone 1: added a failing CLI test, dedicated AXI-Stream runtime adapter, CLI, shared standard-name matching helper, output DTOs, human/JSONL rendering, and source-backed VCD/FST fixture.
 - [x] (2026-07-20 09:24Z) Milestone 2: added exact input/output/stream contracts, regenerated schemas, and updated schema and deployed-endpoint checks.
 - [x] (2026-07-20 09:38Z) Milestone 3: updated help, public docs, packaged skill, architecture, changelog, and executable documentation contracts.
-- [ ] Milestone 4 (completed: feature and focused-review fixes committed; pre- and post-review `just check` and `just ci` passed; four focused lanes completed; the first fresh control pass found one medium exact-schema gap and its focused fix passes; remaining: commit the control fix, rerun full gates, run the second clean control pass, clean the WIP plan, push, and open the issue-closing PR).
+- [ ] Milestone 4 (completed: implementation and all review fixes committed; final `just check` and `just ci` passed; four focused lanes and two fresh control passes completed, with the second control pass clean; remaining: remove this WIP plan, push, and open the issue-closing PR).
 
 ## Surprises & Discoveries
 
@@ -81,7 +81,9 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 ## Outcomes & Retrospective
 
-The command, runtime adapter, exact contracts, fixtures, schemas, checks, help, docs, skill, architecture, and changelog are implemented. Runtime/protocol and docs/architecture reviews found no issues. Contract and performance reviews found two medium issues; command-aware JSONL begin schemas and lightweight scope validation resolved them, and both reviewers rechecked clean. Post-review `just check` and `just ci` pass, including FSDB gates and source coverage of 94.17% regions, 93.53% functions, and 94.65% lines. A fresh control review, WIP cleanup, push, and PR creation remain.
+The command, runtime adapter, exact contracts, fixtures, schemas, checks, help, docs, skill, architecture, and changelog are complete. Runtime/protocol and docs/architecture reviews found no issues. Contract and performance reviews found two medium issues; command-aware JSONL begin schemas and lightweight scope validation resolved them and both reviewers rechecked clean. The first fresh control pass found one medium exact-schema issue; requiring resolved handshake mappings fixed it. The second fresh control pass found no substantive issues.
+
+Final `just check` and `just ci` both pass after every review fix, including FSDB gates and source coverage of 94.18% regions, 93.53% functions, and 94.65% lines. All local acceptance criteria are met. Only mechanical delivery remains: remove this WIP file, push the branch, and create the PR with `Closes #65`.
 
 ## Context and Orientation
 
@@ -216,3 +218,5 @@ Plan revision note (2026-07-20 09:40Z): Marked implementation, contracts, fixtur
 Plan revision note (2026-07-20 10:02Z): Recorded four independent review lanes, the two medium findings and fixes, clean focused rechecks, and passing post-review `just check`/`just ci`. Only the control pass and delivery cleanup remain.
 
 Plan revision note (2026-07-20 10:12Z): Recorded the first control pass's required-mapping schema finding and its mode-specific fix. Focused output/stream schema tests and `just check-schema` pass; full gates and the second control pass remain.
+
+Plan revision note (2026-07-20 10:22Z): Recorded passing final full gates and a clean second control review. The implementation is complete and locally audited; this plan is ready for required WIP cleanup before branch delivery.

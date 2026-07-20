@@ -31,8 +31,8 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 - [x] (2026-07-20 09:00Z) Add source-backed AHB-Lite/AHB5 VCD/FST fixtures and focused unit/integration/schema tests.
 - [x] (2026-07-20 09:09Z) Update public docs, packaged skill guidance, architecture notes, and changelog.
 - [x] (2026-07-20 09:14Z) Run focused tests, `just check`, and `just ci`; resolve every failure.
-- [ ] Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review (completed: three focused lanes, clarification passes, performance/stream-contract fixes, and focused rechecks; remaining: repository gates and fresh control pass).
-- [ ] Remove this WIP plan, make final conventional commits, push `feat/extract-ahb`, and open a PR that closes issue #67.
+- [x] (2026-07-20 09:45Z) Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review.
+- [ ] Remove this WIP plan, push `feat/extract-ahb`, and open a PR that closes issue #67 (completed: conventional implementation/docs/review-fix commits; remaining: plan cleanup, push, and PR).
 
 ## Surprises & Discoveries
 
@@ -93,7 +93,11 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 
 ## Outcomes & Retrospective
 
-Implementation and documentation are complete. Focused tests, `just check`, and `just ci` pass, including VCD/FST parity, schema semantics, documentation publication, coverage, and FSDB-enabled checks. Review, final WIP cleanup, push, and PR creation remain before handoff.
+The complete `extract ahb` feature is implemented and documented. AHB-Lite and AHB5 emit manager-facing Issue C address/data pipeline events with exact reset, unknown-history, warm-up, payload-validity, source, mapping, limit, and output behavior. Generated input/output/stream schemas, source-backed VCD/FST fixtures, public docs, architecture guidance, packaged skill routing, and changelog all cover the new command.
+
+Focused correctness, architecture/performance, and docs/contracts review lanes ran read-only. Their substantive findings led to bounded candidate/timeline processing, lazy payload materialization, exact command-specific JSONL begin contexts, and clearer stream/observation documentation. Two protocol-validity concerns were withdrawn after comparison with the explicit issue requirement to preserve unknown `hresp` and read-ERROR `hrdata` as observations. Focused rechecks and a fresh independent control review reported no substantive findings.
+
+Final `just check` and `just ci` pass. The final CI run reported 94.18% regions, 93.69% functions, and 94.68% lines over `src/**`; default, VCD/FST, schema, docs, coverage, and FSDB-enabled gates passed. A direct FSDB-enabled AHB fixture run also produced the expected 13-event sequence. Only removal of this branch-local plan, remote push, and PR creation remain.
 
 ## Context and Orientation
 
@@ -246,3 +250,5 @@ Engine output must include an AHB context type, an AHB data type with `events`, 
 The JSON command name is exactly `extract ahb`; source kind is exactly `extract.ahb.source`; default name is exactly `ahb`; default profile is exactly `ahb-lite`; both profiles report exact issue `C`.
 
 Revision note: 2026-07-20 initial plan created after repository and protocol-source investigation. It records the complete issue #67 behavior and the implementation, validation, review, push, and PR workflow requested by the user.
+
+Revision note: 2026-07-20 final implementation update records completed behavior, gate evidence, review findings and resolutions, and the clean independent control pass before branch-local plan removal.

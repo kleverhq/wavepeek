@@ -313,6 +313,39 @@ fn docs_show_description_prints_only_stored_description_text() {
 }
 
 #[test]
+fn public_extract_docs_cover_ahb_pipeline_semantics() {
+    for topic_id in [
+        "commands/extract",
+        "commands/overview",
+        "workflows/extract-handshake",
+        "reference/machine-output",
+    ] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+        assert!(
+            output.contains("AHB-Lite") && output.contains("AHB5"),
+            "topic {topic_id} should cover AHB profiles"
+        );
+    }
+
+    let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
+    for expected in [
+        "Arm IHI 0033C, Issue C",
+        "data-complete",
+        "completion and a new address occur on the same edge",
+        "manager-facing selected `HREADY`",
+        "does not accept subordinate-local `HREADYOUT`",
+        "initial_data_phase",
+        "hruser`, `hbuser`, and AHB5 `hexokay` appear only when mapped `hresp` is known low",
+        "Only emitted public events count toward `--max`",
+    ] {
+        assert!(
+            extract.contains(expected),
+            "extract docs should contain {expected:?}"
+        );
+    }
+}
+
+#[test]
 fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
     for topic_id in [
         "commands/extract",

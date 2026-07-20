@@ -93,6 +93,19 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
+`extract ahb` supports manager-facing AHB-Lite and AHB5 pipeline events from Arm IHI 0033C, Issue C. Use it when the user needs accepted address phases, real data completions, reset/synchronization boundaries, or optional stall/IDLE/BUSY cycles:
+
+    wavepeek extract ahb \
+      --waves <FILE> \
+      --scope <SCOPE> \
+      --profile ahb-lite \
+      --map hclk=<CLK> \
+      --map hresetn=<RESET_N> \
+      --include '<AHB_SIGNAL_REGEX>' \
+      --json
+
+Map selected manager-facing `HREADY`; do not substitute subordinate-local `HREADYOUT` or `HSELx`. AHB output separates address and data-complete events, orders an old completion before a same-edge new address, and warms pipeline state before `--from`. Do not join those rows into a transaction or infer a completion while context is desynchronized.
+
 `extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles. AXI5, AXI5-Lite, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP use Issue L; the other supported profiles use Issue H.c. ACE5-LiteDVM adds DVM `ac` and `cr` channels without `cd`. Use it when the user wants ready/valid channel transfer rows:
 
     wavepeek extract axi \
@@ -104,7 +117,7 @@ When the user asks for every occurrence, count, timestamp list, handshake, reque
       --include '<AXI_SIGNAL_REGEX>' \
       --json
 
-Use `extract generic` on a clocked predicate when payload values are needed for non-AXI or custom handshakes:
+Use `extract generic` on a clocked predicate when payload values are needed for custom handshakes without a dedicated extractor:
 
     wavepeek extract generic \
       --waves <FILE> \
@@ -115,7 +128,7 @@ Use `extract generic` on a clocked predicate when payload values are needed for 
       --payload <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. `extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state.
+`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. `extract ahb` reports pipeline events without transaction joining or burst reconstruction. `extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state.
 
 Use `property --capture match` when you only need timestamp rows or when you need property capture modes rather than payload extraction. Use `value --at <sample_time>` as a fallback follow-up when a payload set is decided after the property query.
 

@@ -41,7 +41,7 @@ Use `change` to inspect value transitions across a bounded time range. Trigger s
 
 Use `property` when you want to evaluate a logical expression on event-selected timestamps instead of printing raw signal snapshots. Capture modes control whether you keep every match or only state transitions such as asserts and deasserts.
 
-Use `extract` commands when you want one row per matching synchronous event with ordered payload values sampled at the pre-edge point. `extract axi` covers AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channel transfers. `extract generic` covers custom handshakes, FIFO pushes and pops, and other transfer-like rows.
+Use `extract` commands for synchronous protocol and event rows sampled at the pre-edge point. `extract ahb` tracks manager-facing AHB-Lite or AHB5 address/data pipeline events, including delayed completions and synchronization boundaries. `extract axi` covers AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channel transfers. `extract generic` covers custom handshakes, FIFO pushes and pops, and other transfer-like rows.
 
 When choosing between VCD, FST, and FSDB input or diagnosing unexpectedly slow queries, use `reference/waveform-performance` for format-level performance guidance.
 

@@ -978,6 +978,30 @@ fn shipped_commands_help_is_self_descriptive() {
 }
 
 #[test]
+fn extract_ahb_help_is_self_descriptive() {
+    let long_help = successful_stdout_text(&["extract", "ahb", "--help"]);
+    for fragment in [
+        "Extract manager-facing AHB pipeline events.",
+        "Supports AHB-Lite and AHB5 profiles from Arm IHI 0033C, Issue C.",
+        "Tracks one accepted address phase so real data completions remain distinct from idle clocks.",
+        "--include-stall, --include-idle, and --include-busy independently expose cycle-level events.",
+        "Uses manager-facing HREADY; HREADYOUT, HSELx, and parity/check signals are outside this interface.",
+        "Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.",
+        "[default: ahb-lite]",
+        "[possible values: ahb-lite, ahb5]",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
+        "JSON output includes Issue C context, initial pipeline state, mappings, and ordered event rows.",
+        "Does not reconstruct bursts, aggregate transactions, or join address and data phases.",
+        "wavepeek docs show commands/extract",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "extract ahb long help should contain `{fragment}`"
+        );
+    }
+}
+
+#[test]
 fn extract_axi_help_is_self_descriptive() {
     let long_help = successful_stdout_text(&["extract", "axi", "--help"]);
     for fragment in [

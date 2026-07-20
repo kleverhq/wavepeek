@@ -29,8 +29,8 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 - [x] (2026-07-20 09:00Z) Add human, JSON, and JSONL runtime output.
 - [x] (2026-07-20 09:00Z) Add exact input, output, and stream contract branches and regenerate schema artifacts.
 - [x] (2026-07-20 09:00Z) Add source-backed AHB-Lite/AHB5 VCD/FST fixtures and focused unit/integration/schema tests.
-- [ ] Update public docs, packaged skill guidance, architecture notes if boundaries change, and changelog.
-- [ ] Run focused tests, `just check`, and `just ci`; resolve every failure.
+- [x] (2026-07-20 09:09Z) Update public docs, packaged skill guidance, architecture notes, and changelog.
+- [ ] Run focused tests, `just check`, and `just ci`; resolve every failure (completed: focused engine, CLI, schema, fixture, docs, help, and skill tests; remaining: both repository gates).
 - [ ] Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review.
 - [ ] Remove this WIP plan, make final conventional commits, push `feat/extract-ahb`, and open a PR that closes issue #67.
 

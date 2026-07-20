@@ -13,9 +13,61 @@ see_also:
 ---
 # Extract command
 
-Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels into generic extraction sources for common bus debug.
+Use `extract` commands when you need row output that combines event selection, protocol state, predicate evaluation, or payload sampling. `extract ahb` follows the pipelined AHB address/data relationship. `extract axi` reports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channel transfers. `extract generic` is protocol-neutral.
 
-For exact syntax and flags, run `wavepeek help extract axi` or `wavepeek help extract generic`.
+For exact syntax and flags, run `wavepeek help extract ahb`, `wavepeek help extract axi`, or `wavepeek help extract generic`.
+
+## `extract ahb`
+
+`extract ahb` emits deterministic manager-facing AHB pipeline events using Arm IHI 0033C, Issue C. The supported profiles are `ahb-lite` and `ahb5`; the default is `ahb-lite`. The CLI and source parser also accept `ahb_lite`, while generated schemas accept canonical profile names only.
+
+AHB overlaps each transfer's address phase with the previous transfer's data phase. The extractor therefore keeps one pipeline slot instead of treating every high-`HREADY` clock as a completed transfer. At each rising `HCLK` edge it samples mapped values one dump tick before the edge, then:
+
+1. if `HREADY` is high, completes a previously accepted data phase;
+2. on that same edge, accepts current `HTRANS=NONSEQ` or `SEQ` into the next data-phase slot;
+3. treats `IDLE` and `BUSY` as slots without a following data phase.
+
+When a completion and a new address occur on the same edge, the `data-complete` row appears before the `address` row. A low `HREADY` extends a pending data phase; `--include-stall` emits one `data-stall` row for each such sampled cycle. `--include-idle` and `--include-busy` independently add address-slot rows. These optional rows are disabled by default.
+
+```text
+$ wavepeek extract ahb --waves path/to/dump.vcd \
+    --scope top.dut \
+    --profile ahb-lite \
+    --map hclk=clk \
+    --map hresetn=rst_n \
+    --include '^ahb_'
+name: ahb
+profile: ahb-lite
+issue: C
+include_stall: false
+include_idle: false
+include_busy: false
+initial_data_phase: desynchronized
+mappings:
+  hclk = clk
+  hresetn = rst_n
+  htrans = ahb_htrans
+  hready = ahb_hready
+events:
+@25ns sample@24999ps [address nonseq read] htrans=2'h2 hwrite=1'h0 haddr=32'h00000040
+@35ns sample@34999ps [data-complete read] hresp=1'h0 hrdata=32'hdeadbeef
+```
+
+The required standard mappings are `hclk`, `htrans`, `hready`, and `hwrite`. Optional AHB-Lite mappings are `hresetn`, `haddr`, `hburst`, `hmastlock`, `hprot`, `hsize`, `hauser`, `hwdata`, `hwstrb`, `hwuser`, `hrdata`, `hruser`, `hbuser`, and `hresp`. AHB5 additionally accepts `hnonsec`, `hexcl`, `hmaster`, and `hexokay`. Standard keys are lowercase.
+
+Map signals explicitly with repeated `--map standard=waveform` options, auto-map candidates selected by repeated `--include REGEX`, or combine both. Explicit mappings override auto-mapping. Normalized full-suffix matching accepts common forms such as `haddr`, `h_addr`, `ahb_haddr_i`, and `ahb_h_addr_i`. It does not map `hreadyout` to `hready`, and it ignores parity/check lookalikes. With `--scope`, mapped waveform names and include regexes are scope-relative.
+
+The command uses the manager-facing selected `HREADY`. It does not accept subordinate-local `HREADYOUT`, `HSELx`, or parity/check signals as standard mappings. It also does not reconstruct bursts, join address and data rows, assign transaction IDs, count stalls, mask byte lanes, validate protocol rules, or infer completions hidden by unknown history.
+
+Mapped active-low `HRESETn` clears pending state. A consecutive known-low reset episode emits one `reset` boundary. Unknown reset, unknown `HREADY`, or unknown accepted `HTRANS` history moves the walker to `desynchronized`; one boundary is emitted when that state is entered. A later known-high `HREADY` edge establishes the next slot from current `HTRANS` without inventing an old completion. Unknown `HWRITE` preserves an accepted phase with `direction: "unknown"` rather than discarding it.
+
+Before an inclusive `--from` bound, the walker warms from dump start without emitting or counting rows. Machine context records the resulting `initial_data_phase` as `empty`, `desynchronized`, or `pending`. A pending state retains the earlier accepted address snapshot so a later in-range completion has explicit provenance.
+
+Address and BUSY rows contain mapped address/control observations. IDLE rows contain only signals valid for IDLE. A write stall or completion can contain write data, strobes, and write user data. A known-direction read stall does not claim read data validity. Read completion preserves mapped `hrdata`, including on ERROR. `hruser`, `hbuser`, and AHB5 `hexokay` appear only when mapped `hresp` is known low. Unknown direction preserves both mapped data sides as observations. X/Z values remain sized Verilog literals.
+
+A source file can provide canonical or aliased `profile`, `name`, `include_stall`, `include_idle`, `include_busy`, `includes`, and `maps` with `kind: "extract.ahb.source"`. Source-file mode conflicts with the matching CLI configuration flags; time bounds and scope remain command-line options. The exact source contract comes from `wavepeek schema --input`.
+
+Machine-readable AHB output is typed by profile and event. JSON uses `command: "extract ahb"` and carries Issue C context, inclusion flags, initial pipeline state, canonical mappings, and ordered `events`. JSONL begins with the same context, emits one event per `item`, then diagnostics and an `end` summary. Only emitted public events count toward `--max`, so a limit can stop between a same-edge completion/address pair.
 
 ## `extract axi`
 
@@ -111,13 +163,15 @@ Source names must be unique within the file. Payload names must be unique within
 
 ## Pre-edge sampling
 
-`extract` rows use `time` for the selected event timestamp and `sample_time` for the point where predicate and payload values are read. For `extract generic`, `sample_time` is one dump tick before the selected edge.
+`extract` rows use `time` for the selected event timestamp and `sample_time` for the point where predicate and payload values are read. For `extract ahb` and `extract generic`, `sample_time` is one dump tick before the selected edge. `extract axi` uses the generic pre-edge engine and follows the same sampling rule.
 
 This matches common RTL debugging expectations: the row describes the values that caused the edge to be interesting, not values updated on the edge itself.
 
 `--from` and `--to` bound event `time` values. A row at `--from` can still use a `sample_time` before `--from` if that sample point is inside the dump.
 
 ## Output modes
+
+Human `extract ahb` output starts with name, profile, issue, inclusion flags, initial data-phase state, resolved mappings, and then event rows. Add `--abs` to print canonical mapping and payload paths. JSON and JSONL carry the full retained pending-address snapshot when `initial_data_phase` is `pending`.
 
 Human `extract axi` output starts with name, profile, issue, resolved mappings, and then transfer rows. Add `--abs` to print canonical mapping and payload paths in human output.
 
@@ -143,4 +197,4 @@ Repeated events are preserved even when payload values do not change. `extract` 
 
 ## Limits and diagnostics
 
-`--max` limits emitted rows across all sources after sorting by event time and source declaration order. `--max unlimited` disables truncation and emits a warning diagnostic. Empty results and truncation use the same coded diagnostic model as other waveform commands.
+For `extract generic`, `--max` limits emitted rows across all sources after sorting by event time and source declaration order. For `extract ahb`, it limits public event rows after warm-up and completion-before-address ordering. For `extract axi`, it limits ready/valid transfer rows. `--max unlimited` disables truncation and emits a warning diagnostic. Empty results and truncation use the same coded diagnostic model as other waveform commands.

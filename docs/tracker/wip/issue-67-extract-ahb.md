@@ -23,12 +23,12 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 
 - [x] (2026-07-20 08:30Z) Read issue #67, repository guidance, current extract engines, contracts, schemas, output paths, test policy, and Arm IHI 0033C source sections.
 - [x] (2026-07-20 08:30Z) Create this branch-local executable plan.
-- [ ] Add CLI and engine dispatch for `extract ahb`.
-- [ ] Implement profile parsing, source loading, signal mapping, deterministic auto-mapping, and manager-facing validation.
-- [ ] Implement the one-slot AHB clock walker, warm-up, reset/desynchronization handling, event payload validity, bounds, limits, and diagnostics.
-- [ ] Add human, JSON, and JSONL runtime output.
-- [ ] Add exact input, output, and stream contract branches and regenerate schema artifacts.
-- [ ] Add source-backed AHB-Lite/AHB5 VCD/FST fixtures and focused unit/integration/schema tests.
+- [x] (2026-07-20 09:00Z) Add CLI and engine dispatch for `extract ahb`.
+- [x] (2026-07-20 09:00Z) Implement profile parsing, source loading, signal mapping, deterministic auto-mapping, and manager-facing validation.
+- [x] (2026-07-20 09:00Z) Implement the one-slot AHB clock walker, warm-up, reset/desynchronization handling, event payload validity, bounds, limits, and diagnostics.
+- [x] (2026-07-20 09:00Z) Add human, JSON, and JSONL runtime output.
+- [x] (2026-07-20 09:00Z) Add exact input, output, and stream contract branches and regenerate schema artifacts.
+- [x] (2026-07-20 09:00Z) Add source-backed AHB-Lite/AHB5 VCD/FST fixtures and focused unit/integration/schema tests.
 - [ ] Update public docs, packaged skill guidance, architecture notes if boundaries change, and changelog.
 - [ ] Run focused tests, `just check`, and `just ci`; resolve every failure.
 - [ ] Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review.
@@ -41,6 +41,12 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 
 - Observation: The generic extractor cannot be reused as the event engine because it counts emitted generic rows one-for-one with matching predicates and starts candidate collection at `--from`; AHB needs pre-bound warm-up and zero-to-two public rows per clock edge.
   Evidence: `src/engine/extract.rs::emit_rows` applies the limit immediately before each generic row and `run_open_plan_with_sink` binds candidate collection to the requested range.
+
+- Observation: Source-profile aliases are a runtime convenience but current generated schemas intentionally accept canonical profile names only.
+  Evidence: `ahb_lite` executes successfully through CLI/source parsing, while `schema/input.json` exposes only `ahb-lite` and `ahb5`, matching issue #67.
+
+- Observation: JSON output carries auto-mapping warnings inside `diagnostics`; human output sends the same warnings to stderr.
+  Evidence: the AHB5 fixture's `hreadyout`, `hsel`, and check decoys validate as `WPK-W0004` JSON diagnostics and as human warnings.
 
 ## Decision Log
 
@@ -58,6 +64,10 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 
 - Decision: Reuse existing engine, contract, output, and fixture infrastructure directly, extracting only a small shared mapping helper if both AXI and AHB can use it without protocol-specific branching.
   Rationale: The repository requires the smallest correct solution. A speculative generic protocol framework would add abstractions without another concrete stateful protocol consumer.
+  Date/Author: 2026-07-20 / pi
+
+- Decision: Keep AHB mapping and schema specialization in sibling modules rather than modifying AXI internals.
+  Rationale: AHB suffix decoy rules and pipeline event contracts are protocol-specific, while only three small time/limit helpers are genuinely shared with generic extraction.
   Date/Author: 2026-07-20 / pi
 
 ## Outcomes & Retrospective

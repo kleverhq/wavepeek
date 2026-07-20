@@ -79,6 +79,24 @@
       "reason": "Ordinary hierarchy-name ambiguity fixture generated from HDL."
     },
     {
+      "name": "extract_ahb_lite",
+      "source": "tests/fixtures/source/extract_ahb_lite.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_ahb_lite.vcd",
+        "tests/fixtures/generated/extract_ahb_lite.fst"
+      ],
+      "reason": "AHB-Lite pipeline extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
+      "name": "extract_ahb5",
+      "source": "tests/fixtures/source/extract_ahb5.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_ahb5.vcd",
+        "tests/fixtures/generated/extract_ahb5.fst"
+      ],
+      "reason": "AHB5 pipeline extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
       "name": "extract_ace",
       "source": "tests/fixtures/source/extract_ace.v",
       "outputs": [

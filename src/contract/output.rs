@@ -53,6 +53,7 @@ pub enum OutputData<'a> {
     Value(Vec<ValueSnapshot<'a>>),
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
+    ExtractAhb(ExtractAhbData<'a>),
     ExtractAxi(ExtractAxiData<'a>),
     ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
@@ -84,6 +85,9 @@ impl<'a> OutputData<'a> {
             )),
             (CommandName::Property, CommandData::Property(rows)) => {
                 Ok(Self::Property(rows.iter().map(PropertyRow::from).collect()))
+            }
+            (CommandName::ExtractAhb, CommandData::ExtractAhb(data)) => {
+                Ok(Self::ExtractAhb(ExtractAhbData::from(data)))
             }
             (CommandName::ExtractAxi, CommandData::ExtractAxi(data)) => {
                 Ok(Self::ExtractAxi(ExtractAxiData::from(data)))
@@ -389,6 +393,144 @@ impl<'a> From<&'a crate::engine::extract::ExtractGenericRow> for ExtractGenericR
             payload: row.payload.iter().map(ExtractPayloadValue::from).collect(),
         }
     }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbMapping")]
+pub struct ExtractAhbMapping<'a> {
+    #[schemars(description = "Canonical waveform signal path mapped to this AHB standard signal.")]
+    path: CanonicalPath<'a>,
+}
+
+impl<'a> From<&'a crate::engine::ahb::AhbSignalMapping> for ExtractAhbMapping<'a> {
+    fn from(mapping: &'a crate::engine::ahb::AhbSignalMapping) -> Self {
+        Self {
+            path: CanonicalPath::new(mapping.path.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbAddressSnapshot")]
+pub struct ExtractAhbAddressSnapshot<'a> {
+    time: NormalizedTime<'a>,
+    sample_time: NormalizedTime<'a>,
+    transfer: &'a str,
+    direction: &'a str,
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::ahb::AhbAddressSnapshot> for ExtractAhbAddressSnapshot<'a> {
+    fn from(address: &'a crate::engine::ahb::AhbAddressSnapshot) -> Self {
+        Self {
+            time: NormalizedTime::new(address.time.as_str()),
+            sample_time: NormalizedTime::new(address.sample_time.as_str()),
+            transfer: address.transfer.as_str(),
+            direction: address.direction.as_str(),
+            payload: ahb_payload(&address.payload),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbInitialDataPhase")]
+pub struct ExtractAhbInitialDataPhase<'a> {
+    state: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    address: Option<ExtractAhbAddressSnapshot<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::ahb::AhbInitialDataPhase> for ExtractAhbInitialDataPhase<'a> {
+    fn from(initial: &'a crate::engine::ahb::AhbInitialDataPhase) -> Self {
+        Self {
+            state: initial.state.as_str(),
+            address: initial
+                .address
+                .as_ref()
+                .map(ExtractAhbAddressSnapshot::from),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbEvent")]
+pub struct ExtractAhbEvent<'a> {
+    time: NormalizedTime<'a>,
+    sample_time: NormalizedTime<'a>,
+    profile: &'a str,
+    event: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    transfer: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    direction: Option<&'a str>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    #[schemars(default)]
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::ahb::AhbEvent> for ExtractAhbEvent<'a> {
+    fn from(event: &'a crate::engine::ahb::AhbEvent) -> Self {
+        Self {
+            time: NormalizedTime::new(event.time.as_str()),
+            sample_time: NormalizedTime::new(event.sample_time.as_str()),
+            profile: event.profile.as_str(),
+            event: event.event.as_str(),
+            transfer: event.transfer.as_deref(),
+            direction: event.direction.as_deref(),
+            payload: ahb_payload(&event.payload),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbData")]
+pub struct ExtractAhbData<'a> {
+    name: &'a str,
+    profile: &'a str,
+    issue: &'a str,
+    include_stall: bool,
+    include_idle: bool,
+    include_busy: bool,
+    initial_data_phase: ExtractAhbInitialDataPhase<'a>,
+    mappings: BTreeMap<&'a str, ExtractAhbMapping<'a>>,
+    events: Vec<ExtractAhbEvent<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::ahb::AhbData> for ExtractAhbData<'a> {
+    fn from(data: &'a crate::engine::ahb::AhbData) -> Self {
+        Self {
+            name: data.name.as_str(),
+            profile: data.profile.as_str(),
+            issue: data.issue.as_str(),
+            include_stall: data.include_stall,
+            include_idle: data.include_idle,
+            include_busy: data.include_busy,
+            initial_data_phase: ExtractAhbInitialDataPhase::from(&data.initial_data_phase),
+            mappings: data
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractAhbMapping::from(mapping)))
+                .collect(),
+            events: data.events.iter().map(ExtractAhbEvent::from).collect(),
+        }
+    }
+}
+
+fn ahb_payload<'a>(
+    payload: &'a [crate::engine::ahb::AhbPayloadValue],
+) -> BTreeMap<&'a str, SampledValue<'a>> {
+    payload
+        .iter()
+        .map(|value| {
+            (
+                value.standard.as_str(),
+                SampledValue::new(value.value.as_str()),
+            )
+        })
+        .collect()
 }
 
 #[derive(Debug, JsonSchema, Serialize)]

@@ -1783,12 +1783,21 @@ fn schema_input_command_output_is_valid_json() {
         value["oneOf"],
         json!([
             {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAhbSourceInput"},
             {"$ref": "#/$defs/extractAxiSourceInput"}
         ])
     );
     assert_eq!(
         value["$defs"]["extractGenericSourcesInput"]["properties"]["kind"]["const"],
         "extract.generic.sources"
+    );
+    assert_eq!(
+        value["$defs"]["extractAhbSourceInput"]["properties"]["kind"]["const"],
+        "extract.ahb.source"
+    );
+    assert_eq!(
+        value["$defs"]["ahbProfile"]["enum"],
+        json!(["ahb-lite", "ahb5"])
     );
     assert_eq!(
         value["$defs"]["extractAxiSourceInput"]["properties"]["kind"]["const"],
@@ -2027,6 +2036,7 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             "value",
             "change",
             "property",
+            "extract ahb",
             "extract axi",
             "extract generic"
         ])

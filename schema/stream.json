@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "ahbProfile": {
+      "description": "AHB profile name: ahb-lite or ahb5.",
+      "enum": [
+        "ahb-lite",
+        "ahb5"
+      ],
+      "type": "string"
+    },
     "axiProfile": {
       "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
@@ -2959,6 +2967,2911 @@
         "profile",
         "channel",
         "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhb5AddressEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "read",
+            "write",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "event": {
+          "const": "address"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hauser": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hexcl": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmaster": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hnonsec": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hwrite": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans",
+            "hwrite"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb5"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "enum": [
+            "nonseq",
+            "seq"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "direction",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhb5BusyEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "read",
+            "write",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "event": {
+          "const": "busy"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hauser": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hexcl": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmaster": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hnonsec": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hwrite": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans",
+            "hwrite"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb5"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "const": "busy"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "payload",
+        "direction"
+      ],
+      "type": "object"
+    },
+    "extractAhb5DataCompleteEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "read"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hruser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hexokay"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hexokay": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "write"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hexokay"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hexokay": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "unknown"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hruser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hexokay"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hexokay": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhb5DataStallEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "read"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "write"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "unknown"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb5"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhb5DesynchronizedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "desynchronized"
+        },
+        "profile": {
+          "const": "ahb5"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event"
+      ],
+      "type": "object"
+    },
+    "extractAhb5Event": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAhb5AddressEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5ResetEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5DataStallEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5IdleEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5BusyEvent"
+        }
+      ]
+    },
+    "extractAhb5IdleEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "idle"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb5"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "const": "idle"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhb5InitialDataPhase": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "empty"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "desynchronized"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "read",
+                    "write",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                "payload": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "haddr": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hauser": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hburst": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hexcl": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hmaster": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hmastlock": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hnonsec": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hprot": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hsize": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "htrans": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hwrite": {
+                      "$ref": "#/$defs/sampledValue"
+                    }
+                  },
+                  "required": [
+                    "htrans",
+                    "hwrite"
+                  ],
+                  "type": "object"
+                },
+                "sample_time": {
+                  "$ref": "#/$defs/normalizedTime"
+                },
+                "time": {
+                  "$ref": "#/$defs/normalizedTime"
+                },
+                "transfer": {
+                  "enum": [
+                    "nonseq",
+                    "seq"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "time",
+                "sample_time",
+                "transfer",
+                "direction",
+                "payload"
+              ],
+              "type": "object"
+            },
+            "state": {
+              "const": "pending"
+            }
+          },
+          "required": [
+            "state",
+            "address"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhb5ResetEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "reset"
+        },
+        "profile": {
+          "const": "ahb5"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event"
+      ],
+      "type": "object"
+    },
+    "extractAhbAddressSnapshot": {
+      "properties": {
+        "direction": {
+          "type": "string"
+        },
+        "payload": {
+          "additionalProperties": {
+            "$ref": "#/$defs/sampledValue"
+          },
+          "type": "object"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "transfer",
+        "direction",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhbContext": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "include_busy": {
+              "type": "boolean"
+            },
+            "include_idle": {
+              "type": "boolean"
+            },
+            "include_stall": {
+              "type": "boolean"
+            },
+            "initial_data_phase": {
+              "$ref": "#/$defs/extractAhbLiteInitialDataPhase"
+            },
+            "issue": {
+              "const": "C"
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "properties": {
+                "haddr": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hauser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hburst": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hbuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hclk": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmastlock": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hprot": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hready": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresetn": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hsize": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "htrans": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwrite": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                }
+              },
+              "required": [
+                "hclk",
+                "htrans",
+                "hready",
+                "hwrite"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "type": "string"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "include_stall",
+            "include_idle",
+            "include_busy",
+            "initial_data_phase",
+            "mappings"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "include_busy": {
+              "type": "boolean"
+            },
+            "include_idle": {
+              "type": "boolean"
+            },
+            "include_stall": {
+              "type": "boolean"
+            },
+            "initial_data_phase": {
+              "$ref": "#/$defs/extractAhb5InitialDataPhase"
+            },
+            "issue": {
+              "const": "C"
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "properties": {
+                "haddr": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hauser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hburst": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hbuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hclk": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hexcl": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hexokay": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmaster": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmastlock": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hnonsec": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hprot": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hready": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresetn": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hsize": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "htrans": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwrite": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                }
+              },
+              "required": [
+                "hclk",
+                "htrans",
+                "hready",
+                "hwrite"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "type": "string"
+            },
+            "profile": {
+              "const": "ahb5"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "include_stall",
+            "include_idle",
+            "include_busy",
+            "initial_data_phase",
+            "mappings"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhbData": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteBusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteIdleEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteIdleEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteBusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataStallEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteBusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteIdleEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteDataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteIdleEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhbLiteBusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "events": {
+              "description": "Ordered public AHB pipeline events.",
+              "items": {
+                "$ref": "#/$defs/extractAhbLiteEvent"
+              },
+              "type": "array"
+            },
+            "include_busy": {
+              "type": "boolean"
+            },
+            "include_idle": {
+              "type": "boolean"
+            },
+            "include_stall": {
+              "type": "boolean"
+            },
+            "initial_data_phase": {
+              "$ref": "#/$defs/extractAhbLiteInitialDataPhase"
+            },
+            "issue": {
+              "const": "C"
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "properties": {
+                "haddr": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hauser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hburst": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hbuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hclk": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmastlock": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hprot": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hready": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresetn": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hsize": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "htrans": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwrite": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                }
+              },
+              "required": [
+                "hclk",
+                "htrans",
+                "hready",
+                "hwrite"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "type": "string"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "include_stall",
+            "include_idle",
+            "include_busy",
+            "initial_data_phase",
+            "mappings",
+            "events"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5BusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5IdleEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": false
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5IdleEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5BusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataStallEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": false
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5BusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": false
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5IdleEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "include_busy": {
+                    "const": true
+                  },
+                  "include_idle": {
+                    "const": true
+                  },
+                  "include_stall": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "include_stall",
+                  "include_idle",
+                  "include_busy"
+                ]
+              },
+              "then": {
+                "properties": {
+                  "events": {
+                    "items": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/$defs/extractAhb5AddressEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataCompleteEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5ResetEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DesynchronizedEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5DataStallEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5IdleEvent"
+                        },
+                        {
+                          "$ref": "#/$defs/extractAhb5BusyEvent"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          ],
+          "properties": {
+            "events": {
+              "description": "Ordered public AHB pipeline events.",
+              "items": {
+                "$ref": "#/$defs/extractAhb5Event"
+              },
+              "type": "array"
+            },
+            "include_busy": {
+              "type": "boolean"
+            },
+            "include_idle": {
+              "type": "boolean"
+            },
+            "include_stall": {
+              "type": "boolean"
+            },
+            "initial_data_phase": {
+              "$ref": "#/$defs/extractAhb5InitialDataPhase"
+            },
+            "issue": {
+              "const": "C"
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "properties": {
+                "haddr": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hauser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hburst": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hbuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hclk": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hexcl": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hexokay": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmaster": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hmastlock": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hnonsec": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hprot": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hready": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresetn": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hsize": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "htrans": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwrite": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/extractAhbMapping"
+                }
+              },
+              "required": [
+                "hclk",
+                "htrans",
+                "hready",
+                "hwrite"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "type": "string"
+            },
+            "profile": {
+              "const": "ahb5"
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "include_stall",
+            "include_idle",
+            "include_busy",
+            "initial_data_phase",
+            "mappings",
+            "events"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhbEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAhbLiteEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhb5Event"
+        }
+      ]
+    },
+    "extractAhbInitialDataPhase": {
+      "properties": {
+        "address": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/extractAhbAddressSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "state": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "type": "object"
+    },
+    "extractAhbItemRecord": {
+      "$ref": "#/$defs/itemRecordForExtractAhbEvent"
+    },
+    "extractAhbLiteAddressEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "read",
+            "write",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "event": {
+          "const": "address"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hauser": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hwrite": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans",
+            "hwrite"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb-lite"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "enum": [
+            "nonseq",
+            "seq"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "direction",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhbLiteBusyEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "direction": {
+          "enum": [
+            "read",
+            "write",
+            "unknown"
+          ],
+          "type": "string"
+        },
+        "event": {
+          "const": "busy"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hauser": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hburst": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hprot": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hsize": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hwrite": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans",
+            "hwrite"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb-lite"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "const": "busy"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "payload",
+        "direction"
+      ],
+      "type": "object"
+    },
+    "extractAhbLiteDataCompleteEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "read"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hruser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "write"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "unknown"
+            },
+            "event": {
+              "const": "data-complete"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "allOf": [
+                {
+                  "if": {
+                    "required": [
+                      "hruser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                },
+                {
+                  "if": {
+                    "required": [
+                      "hbuser"
+                    ]
+                  },
+                  "then": {
+                    "properties": {
+                      "hresp": {
+                        "const": "1'h0"
+                      }
+                    },
+                    "required": [
+                      "hresp"
+                    ]
+                  }
+                }
+              ],
+              "properties": {
+                "hbuser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hruser": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhbLiteDataStallEvent": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "read"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "write"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "const": "unknown"
+            },
+            "event": {
+              "const": "data-stall"
+            },
+            "payload": {
+              "additionalProperties": false,
+              "properties": {
+                "hrdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hresp": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwdata": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwstrb": {
+                  "$ref": "#/$defs/sampledValue"
+                },
+                "hwuser": {
+                  "$ref": "#/$defs/sampledValue"
+                }
+              },
+              "required": [],
+              "type": "object"
+            },
+            "profile": {
+              "const": "ahb-lite"
+            },
+            "sample_time": {
+              "$ref": "#/$defs/normalizedTime"
+            },
+            "time": {
+              "$ref": "#/$defs/normalizedTime"
+            }
+          },
+          "required": [
+            "time",
+            "sample_time",
+            "profile",
+            "event",
+            "direction"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhbLiteDesynchronizedEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "desynchronized"
+        },
+        "profile": {
+          "const": "ahb-lite"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event"
+      ],
+      "type": "object"
+    },
+    "extractAhbLiteEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAhbLiteAddressEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteDataCompleteEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteResetEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteDesynchronizedEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteDataStallEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteIdleEvent"
+        },
+        {
+          "$ref": "#/$defs/extractAhbLiteBusyEvent"
+        }
+      ]
+    },
+    "extractAhbLiteIdleEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "idle"
+        },
+        "payload": {
+          "additionalProperties": false,
+          "properties": {
+            "haddr": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "hmastlock": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "htrans": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "required": [
+            "htrans"
+          ],
+          "type": "object"
+        },
+        "profile": {
+          "const": "ahb-lite"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "transfer": {
+          "const": "idle"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event",
+        "transfer",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAhbLiteInitialDataPhase": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "empty"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "const": "desynchronized"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "additionalProperties": false,
+              "properties": {
+                "direction": {
+                  "enum": [
+                    "read",
+                    "write",
+                    "unknown"
+                  ],
+                  "type": "string"
+                },
+                "payload": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "haddr": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hauser": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hburst": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hmastlock": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hprot": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hsize": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "htrans": {
+                      "$ref": "#/$defs/sampledValue"
+                    },
+                    "hwrite": {
+                      "$ref": "#/$defs/sampledValue"
+                    }
+                  },
+                  "required": [
+                    "htrans",
+                    "hwrite"
+                  ],
+                  "type": "object"
+                },
+                "sample_time": {
+                  "$ref": "#/$defs/normalizedTime"
+                },
+                "time": {
+                  "$ref": "#/$defs/normalizedTime"
+                },
+                "transfer": {
+                  "enum": [
+                    "nonseq",
+                    "seq"
+                  ],
+                  "type": "string"
+                }
+              },
+              "required": [
+                "time",
+                "sample_time",
+                "transfer",
+                "direction",
+                "payload"
+              ],
+              "type": "object"
+            },
+            "state": {
+              "const": "pending"
+            }
+          },
+          "required": [
+            "state",
+            "address"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAhbLiteResetEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "const": "reset"
+        },
+        "profile": {
+          "const": "ahb-lite"
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime"
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime"
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "event"
+      ],
+      "type": "object"
+    },
+    "extractAhbMapping": {
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical waveform signal path mapped to this AHB standard signal."
+        }
+      },
+      "required": [
+        "path"
       ],
       "type": "object"
     },
@@ -10278,6 +13191,9 @@
           "$ref": "#/$defs/propertyItemRecord"
         },
         {
+          "$ref": "#/$defs/extractAhbItemRecord"
+        },
+        {
           "$ref": "#/$defs/extractAxiItemRecord"
         },
         {
@@ -10293,6 +13209,30 @@
         },
         "item": {
           "$ref": "#/$defs/changeSnapshot"
+        },
+        "seq": {
+          "$ref": "#/$defs/sequence"
+        },
+        "type": {
+          "const": "item"
+        }
+      },
+      "required": [
+        "type",
+        "seq",
+        "command",
+        "item"
+      ],
+      "type": "object"
+    },
+    "itemRecordForExtractAhbEvent": {
+      "additionalProperties": true,
+      "properties": {
+        "command": {
+          "const": "extract ahb"
+        },
+        "item": {
+          "$ref": "#/$defs/extractAhbEvent"
         },
         "seq": {
           "$ref": "#/$defs/sequence"
@@ -10661,6 +13601,7 @@
         "value",
         "change",
         "property",
+        "extract ahb",
         "extract axi",
         "extract generic"
       ],
@@ -10668,6 +13609,9 @@
     },
     "streamContextData": {
       "anyOf": [
+        {
+          "$ref": "#/$defs/extractAhbContext"
+        },
         {
           "$ref": "#/$defs/extractAxiContext"
         }

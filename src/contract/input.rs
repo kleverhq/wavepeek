@@ -20,6 +20,38 @@ pub struct ExtractGenericSourcesInput<'a> {
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAhbSourceInput")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAhbSourceInput<'a> {
+    #[serde(rename = "$schema")]
+    #[schemars(schema_with = "input_schema_url_schema")]
+    schema: &'a str,
+    #[schemars(schema_with = "extract_ahb_kind_schema")]
+    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    profile: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    include_stall: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    include_idle: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    include_busy: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    name: Option<&'a str>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    includes: Vec<&'a str>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[schemars(default)]
+    maps: BTreeMap<&'a str, &'a str>,
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "extractAxiSourceInput")]
 #[schemars(extend("additionalProperties" = true))]
 pub struct ExtractAxiSourceInput<'a> {
@@ -74,6 +106,10 @@ fn input_schema_url_schema(_: &mut SchemaGenerator) -> Schema {
 
 fn extract_generic_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.generic.sources"})
+}
+
+fn extract_ahb_kind_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "const": "extract.ahb.source"})
 }
 
 fn extract_axi_kind_schema(_: &mut SchemaGenerator) -> Schema {

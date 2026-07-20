@@ -51,7 +51,8 @@ The commands that depend on this model are:
 - `signal`, which requires an exact scope path and can optionally traverse child scopes.
 - `value`, which accepts either canonical paths or scope-relative signal names depending on whether `--scope` is set.
 - `change` and `property`, which apply the same scope-relative resolution model to sampled signals, trigger names, and expression references.
-- `extract`, which applies the same scope-relative model to `--on`, `--when`, and payload signal names from CLI flags or source JSON.
+- `extract generic`, which applies the same scope-relative model to `--on`, `--when`, and payload signal names from CLI flags or source JSON.
+- `extract apb` and `extract axi`, which resolve mapped waveform names and include candidates relative to `--scope` while keeping protocol standard names independent of waveform hierarchy.
 
 Unresolved names are errors. In scoped `change`, `property`, and `extract` mode, canonical full-path tokens are rejected in places where the command contract expects names to stay relative to the selected scope, preventing mixed-resolution queries.
 

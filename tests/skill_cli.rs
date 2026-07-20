@@ -60,6 +60,16 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
     assert!(packaged.contains(
         "Event/transaction rows, handshakes, beats, and counts with payload values: `extract`."
     ));
+    assert!(
+        packaged
+            .contains("`extract apb` supports APB3, APB4, and APB5 from Arm IHI 0024E Issue E.")
+    );
+    assert!(packaged.contains(
+        "Use implicit-HIGH mode only when PREADY is physically absent; it forbids both a `pready` mapping and wait capture."
+    ));
+    assert!(packaged.contains(
+        "APB rows are sampled events, not assembled or protocol-validated transactions."
+    ));
     assert!(packaged.contains(
         "`extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles."
     ));

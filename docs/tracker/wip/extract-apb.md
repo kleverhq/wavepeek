@@ -21,8 +21,8 @@ APB2 support is out of scope. This command will not assemble events into transac
 - [x] (2026-07-20 08:59Z) Add CLI, dispatch, APB engine adapter, mapping, event payload filtering, human output, and focused unit/integration tests.
 - [x] (2026-07-20 08:59Z) Add exact input/output/stream contract branches and regenerate schema artifacts.
 - [x] (2026-07-20 08:59Z) Add APB3/APB4/APB5 source-backed VCD/FST fixtures and parity/behavior tests.
-- [ ] Update public docs, packaged skill guidance, architecture notes if needed, and changelog.
-- [ ] Run focused tests and `just check`, commit coherent milestones, and resolve all failures. (Completed: 13 APB integration tests, 35 schema tests, focused help test, and `just check-schema`; remaining: full local gate.)
+- [x] (2026-07-20 09:05Z) Update public docs, packaged skill guidance, architecture module map, and changelog.
+- [ ] Run focused tests and `just check`, commit coherent milestones, and resolve all failures. (Completed: 13 APB integration tests, 35 schema tests, focused help/docs/skill tests, `just check-schema`, and the runtime milestone commit; remaining: full local gate.)
 - [ ] Perform a strict self-review against issue #66, run `just ci`, remove this WIP plan, and commit review fixes.
 - [ ] Push `feat/extract-apb`, open a GitHub PR that closes issue #66, and verify the remote PR state.
 
@@ -171,11 +171,16 @@ Focused evidence at the runtime milestone:
     cargo test --test extract_apb_cli: 13 passed
     cargo test --test schema_cli: 35 passed
     cargo test --test cli_contract extract_apb_help_is_self_descriptive: 1 passed
+    cargo test --test docs_cli public_extract_docs: 2 passed
+    cargo test --test skill_cli: 3 passed
     just check-schema: schema contract OK
+    7308b55 feat(extract): add APB event extraction
 
 At completion, replace this evidence with final gate output, commit hashes, and the PR URL before removing the WIP file in the final cleanup commit; the committed history will retain the completed plan.
 
 Revision note (2026-07-20): Marked runtime, contracts, and fixtures complete after focused tests and schema contract validation; recorded schema and regex discoveries.
+
+Revision note (2026-07-20): Marked documentation complete after embedded docs and packaged skill contract tests passed; recorded the runtime milestone commit.
 
 ### Interfaces and Dependencies
 

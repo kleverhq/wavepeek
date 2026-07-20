@@ -23,7 +23,8 @@ APB2 support is out of scope. This command will not assemble events into transac
 - [x] (2026-07-20 08:59Z) Add APB3/APB4/APB5 source-backed VCD/FST fixtures and parity/behavior tests.
 - [x] (2026-07-20 09:05Z) Update public docs, packaged skill guidance, architecture module map, and changelog.
 - [x] (2026-07-20 09:11Z) Run focused tests and `just check`, commit coherent milestones, and resolve all failures.
-- [ ] Perform a strict self-review against issue #66, run `just ci`, remove this WIP plan, and commit review fixes.
+- [x] (2026-07-20 09:17Z) Perform a strict self-review against every issue #66 requirement, add edge coverage and duplicate-source-key hardening, and run `just ci` successfully.
+- [ ] Remove this WIP plan in a final cleanup commit.
 - [ ] Push `feat/extract-apb`, open a GitHub PR that closes issue #66, and verify the remote PR state.
 
 ## Surprises & Discoveries
@@ -63,7 +64,11 @@ APB2 support is out of scope. This command will not assemble events into transac
 
 ## Outcomes & Retrospective
 
-The runtime and contract milestones are complete. The command now classifies sampled APB events through the generic runtime, profile/mode-aware schemas validate machine output, and three source-backed fixtures prove VCD/FST parity. Documentation, full gates, self-review, and remote delivery remain.
+Issue #66 is implemented and locally PR-ready. Users can extract APB3, APB4, and APB5 Setup, waited Access, and completed Access rows in mapped or implicit-HIGH PREADY mode through human, JSON, or JSONL output. The implementation remains a stateless adapter over generic extraction; no transaction reducer, warm-up scan, or AXI behavior change was introduced.
+
+The command, strict source loader, generated schema branches, source-backed VCD/FST fixtures, embedded docs, packaged skill, architecture map, changelog, schema checker, and integration contracts are complete. Review found and fixed one concrete source-contract gap: ordinary map deserialization hid duplicate literal JSON keys. Additional review coverage now proves source defaults and mode/profile failures, unknown-direction completion payload preservation, indexed-select explicit mapping, explicit-map precedence, unresolved paths, excluded APB5 signals, and wait-aware row limits.
+
+Both required repository gates pass. `just ci` reports 682 unit tests plus all integration suites passing, source coverage at 94.22% regions, 93.51% functions, and 94.68% lines, successful docs/schema/fixture checks, and successful FSDB-enabled checks including 20 FSDB integration tests. Only WIP-plan cleanup and remote PR delivery remain.
 
 ## Context and Orientation
 
@@ -169,7 +174,7 @@ Fixture generation, schema generation, formatting, and tests are idempotent. Gen
 
 The issue contract is available during implementation in ignored scratch file `tmp/issue-66.txt`. The source-of-truth protocol document inspected was `/home/ubuntu/.pi/agent/skills/amba-apb/references/IHI0024E_amba_apb_architecture_spec.pdf`.
 
-Focused evidence at the runtime milestone:
+Final local evidence:
 
     cargo test --test extract_apb_cli: 13 passed
     cargo test --test schema_cli: 35 passed
@@ -178,13 +183,22 @@ Focused evidence at the runtime milestone:
     cargo test --test skill_cli: 3 passed
     just check-schema: schema contract OK
     just check: passed, including default and FSDB clippy, schema, docs, and FSDB smoke checks
-    7308b55 feat(extract): add APB event extraction
+    just ci: passed; 682 unit tests; all integration suites; src coverage 94.14% average
 
-At completion, replace this evidence with final gate output, commit hashes, and the PR URL before removing the WIP file in the final cleanup commit; the committed history will retain the completed plan.
+Implementation commits:
+
+    7308b55 feat(extract): add APB event extraction
+    868f33e docs(extract): document APB event rows
+    51b3aa4 fix(extract): reject duplicate APB source maps
+    42db154 test(extract): strengthen APB edge coverage
+
+The PR URL remains pending until after the completed plan is committed and removed from the branch tip.
 
 Revision note (2026-07-20): Marked runtime, contracts, and fixtures complete after focused tests and schema contract validation; recorded schema and regex discoveries.
 
 Revision note (2026-07-20): Marked documentation complete after embedded docs and packaged skill contract tests passed; recorded the runtime milestone commit.
+
+Revision note (2026-07-20): Recorded the completed requirement audit, review fix, `just check`, and `just ci` evidence before WIP cleanup and remote delivery.
 
 ### Interfaces and Dependencies
 

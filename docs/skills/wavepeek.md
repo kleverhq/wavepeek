@@ -93,6 +93,17 @@ Avoid `--on "*" --sample-mode native` for synchronous protocol counts unless you
 
 When the user asks for every occurrence, count, timestamp list, handshake, request, response, beat, or transaction, do not use `change` on payload signals as the primary counter.
 
+`extract atb` supports ATB-A, ATB-B, and ATB-C Issue C profiles. Use it for accepted trace transfers, completed flush handshakes, and sampled synchronization requests. Its rows are stateless observations: do not present them as reconstructed trace packets, trigger decoding, legality checks, or cross-cycle episodes. Read `wavepeek help extract atb` and `wavepeek docs show commands/extract` before choosing mappings.
+
+    wavepeek extract atb \
+      --waves <FILE> \
+      --scope <SCOPE> \
+      --profile atb-c \
+      --map atclk=<CLK> \
+      --map atresetn=<RESET_N> \
+      --include '<ATB_SIGNAL_REGEX>' \
+      --json
+
 `extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles. AXI5, AXI5-Lite, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP use Issue L; the other supported profiles use Issue H.c. ACE5-LiteDVM adds DVM `ac` and `cr` channels without `cd`. Use it when the user wants ready/valid channel transfer rows:
 
     wavepeek extract axi \
@@ -104,7 +115,7 @@ When the user asks for every occurrence, count, timestamp list, handshake, reque
       --include '<AXI_SIGNAL_REGEX>' \
       --json
 
-Use `extract generic` on a clocked predicate when payload values are needed for non-AXI or custom handshakes:
+Use `extract generic` on a clocked predicate when payload values are needed for unsupported protocols or custom handshakes:
 
     wavepeek extract generic \
       --waves <FILE> \

@@ -61,6 +61,15 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
         "Event/transaction rows, handshakes, beats, and counts with payload values: `extract`."
     ));
     assert!(packaged.contains(
+        "`extract ahb` supports manager-facing AHB-Lite and AHB5 pipeline events from Arm IHI 0033C, Issue C."
+    ));
+    assert!(packaged.contains(
+        "Map selected manager-facing `HREADY`; do not substitute subordinate-local `HREADYOUT` or `HSELx`."
+    ));
+    assert!(packaged.contains(
+        "`extract ahb` reports pipeline events without transaction joining or burst reconstruction."
+    ));
+    assert!(packaged.contains(
         "`extract axi` supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP profiles."
     ));
     assert!(

@@ -161,6 +161,7 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
             "value",
             "change",
             "property",
+            "extract ahb",
             "extract axi",
             "extract generic",
             "docs topics",
@@ -184,9 +185,13 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
 
 def validate_stream_schema(schema: dict[str, Any]) -> None:
     require(schema.get("$id") == EXPECTED_STREAM_URL, "stream schema $id must be exact URL")
+    begin_branches = schema["$defs"]["beginRecord"].get("oneOf", [])
+    require(len(begin_branches) == 3, "stream begin record must use three command branches")
     require(
-        schema["$defs"]["beginRecord"]["properties"]["$schema"].get("const")
-        == EXPECTED_STREAM_URL,
+        all(
+            branch["properties"]["$schema"].get("const") == EXPECTED_STREAM_URL
+            for branch in begin_branches
+        ),
         "stream begin record must require exact $schema URL with const",
     )
     require(
@@ -198,6 +203,7 @@ def validate_stream_schema(schema: dict[str, Any]) -> None:
             "value",
             "change",
             "property",
+            "extract ahb",
             "extract axi",
             "extract generic",
         ],
@@ -232,9 +238,10 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
         schema.get("oneOf")
         == [
             {"$ref": "#/$defs/extractGenericSourcesInput"},
+            {"$ref": "#/$defs/extractAhbSourceInput"},
             {"$ref": "#/$defs/extractAxiSourceInput"},
         ],
-        "input schema root must accept generic and AXI source documents",
+        "input schema root must accept generic, AHB, and AXI source documents",
     )
     generic_def = schema["$defs"]["extractGenericSourcesInput"]
     require(
@@ -253,6 +260,27 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
     require(
         source_def["properties"]["payload"].get("minItems") == 1,
         "input payload must require at least one signal",
+    )
+    ahb_def = schema["$defs"]["extractAhbSourceInput"]
+    require(
+        ahb_def["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
+        "AHB input source must require exact $schema URL with const",
+    )
+    require(
+        ahb_def["properties"]["kind"].get("const") == "extract.ahb.source",
+        "input schema must require exact extract AHB kind",
+    )
+    require(
+        schema["$defs"]["ahbProfile"].get("enum") == ["ahb-lite", "ahb5"],
+        "AHB input profile enum is not the expected stable list",
+    )
+    require(
+        ahb_def["properties"]["profile"] == {"$ref": "#/$defs/ahbProfile"},
+        "AHB input profile must reuse the shared profile definition",
+    )
+    require(
+        "allOf" in ahb_def,
+        "AHB input source must include profile-aware constraints",
     )
     axi_def = schema["$defs"]["extractAxiSourceInput"]
     require(

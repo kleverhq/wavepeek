@@ -461,6 +461,7 @@ fn into_engine_command(command: Command) -> EngineCommand {
             WaveformCommand::Change(args) => EngineCommand::Change(args),
             WaveformCommand::Property(args) => EngineCommand::Property(args),
             WaveformCommand::Extract(command) => match command {
+                extract::ExtractCommand::Ahb(args) => EngineCommand::ExtractAhb(*args),
                 extract::ExtractCommand::Axi(args) => EngineCommand::ExtractAxi(*args),
                 extract::ExtractCommand::Generic(args) => EngineCommand::ExtractGeneric(*args),
             },
@@ -717,6 +718,53 @@ mod tests {
                 assert_eq!(args.max, LimitArg::Unlimited);
             }
             other => panic!("expected property command, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn extract_ahb_dispatch_keeps_pipeline_args() {
+        let cli = Cli::parse_from([
+            "wavepeek",
+            "extract",
+            "ahb",
+            "--waves",
+            "fixtures/sample.vcd",
+            "--profile",
+            "ahb5",
+            "--scope",
+            "top",
+            "--name",
+            "dmem",
+            "--map",
+            "hclk=clk",
+            "--include",
+            "^dmem_",
+            "--include-stall",
+            "--include-idle",
+            "--include-busy",
+            "--max",
+            "unlimited",
+            "--abs",
+            "--jsonl",
+        ]);
+
+        let command = into_engine_command(cli.command.expect("parsed command"));
+        match command {
+            EngineCommand::ExtractAhb(args) => {
+                assert_eq!(args.waves, PathBuf::from("fixtures/sample.vcd"));
+                assert_eq!(args.profile.as_str(), "ahb5");
+                assert_eq!(args.scope.as_deref(), Some("top"));
+                assert_eq!(args.name.as_deref(), Some("dmem"));
+                assert_eq!(args.maps, ["hclk=clk"]);
+                assert_eq!(args.includes, ["^dmem_"]);
+                assert!(args.include_stall);
+                assert!(args.include_idle);
+                assert!(args.include_busy);
+                assert_eq!(args.max, LimitArg::Unlimited);
+                assert!(args.abs);
+                assert!(args.jsonl);
+            }
+            other => panic!("expected extract ahb command, got {other:?}"),
         }
     }
 

@@ -1,5 +1,13 @@
 {
   "$defs": {
+    "ahbProfile": {
+      "description": "AHB profile name: ahb-lite or ahb5.",
+      "enum": [
+        "ahb-lite",
+        "ahb5"
+      ],
+      "type": "string"
+    },
     "axiProfile": {
       "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
@@ -16,6 +24,227 @@
         "ace5-lite-acp"
       ],
       "type": "string"
+    },
+    "extractAhbSourceInput": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "required": [
+                      "profile"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "profile": {
+                      "const": "ahb-lite"
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ]
+                }
+              ],
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "haddr": {
+                      "type": "string"
+                    },
+                    "hauser": {
+                      "type": "string"
+                    },
+                    "hburst": {
+                      "type": "string"
+                    },
+                    "hbuser": {
+                      "type": "string"
+                    },
+                    "hclk": {
+                      "type": "string"
+                    },
+                    "hmastlock": {
+                      "type": "string"
+                    },
+                    "hprot": {
+                      "type": "string"
+                    },
+                    "hrdata": {
+                      "type": "string"
+                    },
+                    "hready": {
+                      "type": "string"
+                    },
+                    "hresetn": {
+                      "type": "string"
+                    },
+                    "hresp": {
+                      "type": "string"
+                    },
+                    "hruser": {
+                      "type": "string"
+                    },
+                    "hsize": {
+                      "type": "string"
+                    },
+                    "htrans": {
+                      "type": "string"
+                    },
+                    "hwdata": {
+                      "type": "string"
+                    },
+                    "hwrite": {
+                      "type": "string"
+                    },
+                    "hwstrb": {
+                      "type": "string"
+                    },
+                    "hwuser": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "haddr": {
+                      "type": "string"
+                    },
+                    "hauser": {
+                      "type": "string"
+                    },
+                    "hburst": {
+                      "type": "string"
+                    },
+                    "hbuser": {
+                      "type": "string"
+                    },
+                    "hclk": {
+                      "type": "string"
+                    },
+                    "hexcl": {
+                      "type": "string"
+                    },
+                    "hexokay": {
+                      "type": "string"
+                    },
+                    "hmaster": {
+                      "type": "string"
+                    },
+                    "hmastlock": {
+                      "type": "string"
+                    },
+                    "hnonsec": {
+                      "type": "string"
+                    },
+                    "hprot": {
+                      "type": "string"
+                    },
+                    "hrdata": {
+                      "type": "string"
+                    },
+                    "hready": {
+                      "type": "string"
+                    },
+                    "hresetn": {
+                      "type": "string"
+                    },
+                    "hresp": {
+                      "type": "string"
+                    },
+                    "hruser": {
+                      "type": "string"
+                    },
+                    "hsize": {
+                      "type": "string"
+                    },
+                    "htrans": {
+                      "type": "string"
+                    },
+                    "hwdata": {
+                      "type": "string"
+                    },
+                    "hwrite": {
+                      "type": "string"
+                    },
+                    "hwstrb": {
+                      "type": "string"
+                    },
+                    "hwuser": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "ahb5"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+          "description": "Input schema URL for this source document.",
+          "type": "string"
+        },
+        "include_busy": {
+          "default": false,
+          "type": "boolean"
+        },
+        "include_idle": {
+          "default": false,
+          "type": "boolean"
+        },
+        "include_stall": {
+          "default": false,
+          "type": "boolean"
+        },
+        "includes": {
+          "description": "Regexes selecting waveform signal candidates for AHB auto-mapping.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "extract.ahb.source",
+          "description": "Input document kind discriminator.",
+          "type": "string"
+        },
+        "maps": {
+          "description": "Explicit mappings from lowercase AHB standard signal names to waveform signal names.",
+          "type": "object"
+        },
+        "name": {
+          "description": "AHB interface name metadata. Defaults to ahb.",
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/ahbProfile"
+        }
+      },
+      "required": [
+        "$schema",
+        "kind"
+      ],
+      "type": "object"
     },
     "extractAxiSourceInput": {
       "additionalProperties": true,
@@ -2649,6 +2878,9 @@
   "oneOf": [
     {
       "$ref": "#/$defs/extractGenericSourcesInput"
+    },
+    {
+      "$ref": "#/$defs/extractAhbSourceInput"
     },
     {
       "$ref": "#/$defs/extractAxiSourceInput"

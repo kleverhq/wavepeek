@@ -84,6 +84,8 @@ src/
 │   ├── value_format.rs  # Shared Verilog literal formatting helpers
 │   ├── property.rs      # Property runtime entrypoint and capture-mode execution
 │   ├── extract.rs       # Generic event-row extraction runtime
+│   ├── ahb.rs           # Stateful AHB address/data pipeline extraction
+│   ├── axi.rs           # AXI-family profile mapping over generic extraction
 │   ├── schema.rs        # JSON schema export
 │   ├── docs.rs          # Embedded docs topics/search/show/export runtime
 │   └── skill.rs         # Packaged agent skill print runtime
@@ -192,6 +194,12 @@ Execution engines:
 The dispatcher chooses between those engines from internal workload estimates such as window size, candidate density, requested signal count, and trigger shape. This policy is intentionally internal and may evolve without changing the user contract.
 
 The reason for the multi-engine design is simple: a single internal strategy could not keep latency consistently low across both tiny and large-window scenarios.
+
+## Protocol Extraction Architecture
+
+`src/engine/axi.rs` maps supported AXI-family profiles and ready/valid channels into the protocol-neutral runtime in `src/engine/extract.rs`. `src/engine/ahb.rs` is a dedicated stateful walker because an accepted AHB address phase completes on a later edge, can remain pending across wait states, and requires warm-up before a lower time bound. Both engines use the shared waveform facade, pre-edge sampling model, time/limit helpers, contract DTOs, and output sinks; they do not share a speculative protocol framework.
+
+AHB machine contracts are specialized in `src/contract/ahb_schema.rs`. Profile/event payload objects are closed and signal-validity-aware, while the top-level envelope and structured source object retain the extension policy used by the existing schema families.
 
 For `--jsonl`, `change` emits snapshots through a sink while the selected engine runs instead of collecting the complete result set solely for output. The human and `--json` paths use the same sink interface with a collector so they preserve the existing complete-result behavior. `property` uses the same pattern for captured rows.
 

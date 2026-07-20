@@ -55,7 +55,7 @@ A diagnostic object has `kind`, `message`, and sometimes `code`:
 
 `kind` is one of `info`, `warning`, or `error`. `warning` and `error` diagnostics always include a stable `code` matching `WPK-W####` or `WPK-E####`. `info` diagnostics omit `code`.
 
-The exact JSON shapes for every command are defined by the current schema artifact such as `schema/output.json` and by `wavepeek schema`. Current v2 schemas are extension-friendly: consumers should ignore unknown object fields unless they intentionally pin to a stricter historical contract.
+The exact JSON shapes for every command are defined by the current schema artifact such as `schema/output.json` and by `wavepeek schema`. Current v2 outer envelopes, stream records, and structured source objects are extension-friendly. Nested command data follows its generated schema; in particular, AHB profile, context, event, mapping, initial-state, and payload objects are closed.
 
 The stable JSON-producing commands currently include the waveform-inspection commands plus `docs topics --json` and `docs search --json`. Human-only helper surfaces such as `skill` and human-only docs subcommands such as `docs show` and `docs export` do not silently change output modes; unsupported `--json` combinations fail as argument errors and leave stdout empty.
 
@@ -73,6 +73,8 @@ The stable JSON-producing commands currently include the waveform-inspection com
 ```
 
 Payload paths are canonical in JSON and JSONL output.
+
+`extract ahb` data is an object with AHB context and ordered pipeline events. It has `name`, canonical `profile`, `issue: "C"`, `include_stall`, `include_idle`, `include_busy`, `initial_data_phase`, `mappings`, and `events`. Supported profiles are AHB-Lite (`ahb-lite`) and AHB5 (`ahb5`). `initial_data_phase` is a closed state object: `empty`, `desynchronized`, or `pending` with the pre-window accepted address snapshot. Each event has `time`, `sample_time`, `profile`, an `event` discriminator, and event-specific optional `transfer`, `direction`, and `payload` fields. Payload is an object keyed by lowercase AHB standard signal name. Closed profile/event shapes reject unsupported fields, but payload values remain observations: read ERROR completion preserves mapped `hrdata`, and unknown direction can preserve both read and write data sides without claiming protocol validity.
 
 `extract axi` data is an object with AXI context and transfer rows. It has `name`, `profile`, `issue`, `mappings`, and `transfers`. Each transfer has `time`, `sample_time`, `profile`, `channel`, and a `payload` object keyed by lowercase AXI standard signal name. Supported profiles are AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP. AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 use Issue H.c metadata; AXI5, AXI5-Lite, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP use Issue L metadata. AXI5 and ACE5-LiteDVM can include `ac` and `cr` DVM channels but not `cd`. ACE and ACE5 include `ac`, `cr`, and `cd` coherency channels in addition to the five base AXI channels. The schema enumerates supported profiles, channels, and payload keys per profile/channel; payload keys are optional because rows include only mapped payload signals. Mapping paths are canonical.
 
@@ -94,8 +96,11 @@ Rules for successful JSONL streams:
 - `begin` is first and has `seq: 0`.
 - `seq` increases by one for every record.
 - `command` is stable across the stream.
+- AHB and AXI `begin` records require their matching context; other commands do not carry protocol context.
+- For `extract ahb`, every item `profile` must equal the begin-context profile. `data-stall`, `idle`, and `busy` items are valid only when the corresponding begin-context inclusion flag is true. These are stream-level invariants because the schema validates one record at a time.
 - `item` records carry the same row payload shape used inside `--json` data arrays for array-producing commands, the transfer row shape for `extract axi`, or the `info` data object for `info`.
 - `change`, `property`, and `extract` rows include both `time` and `sample_time`. `time` is the selected event timestamp; `sample_time` is where values were printed, evaluated, or extracted.
+- `extract ahb` streams include Issue C profile, inclusion flags, initial pipeline state, and mappings on the `begin` record. Each event item repeats `profile` so it can be validated independently. Optional stall, IDLE, and BUSY events are gated by the begin-context flags in envelope output; the stream item schema accepts every event kind because each record validates independently.
 - `extract axi` streams include AXI context on the `begin` record and repeat `profile` on each transfer item so each JSONL row can be validated independently.
 - `diagnostic` records carry the same diagnostic object shape used by `--json`.
 - `end` is last on successful completion and reports `summary.status: "ok"`, item count, diagnostic count, and whether output was truncated.
@@ -104,7 +109,7 @@ The checked-in stream schema, such as `schema/stream.json`, validates one JSONL 
 
 If the process exits non-zero or a stream lacks a final `end` record, treat the stream as incomplete. A consumer that intentionally closes stdout early, for example by piping to `head`, may stop the producer without a fatal error.
 
-`--json` and `--jsonl` are mutually exclusive. `--jsonl` is available only on waveform-inspection commands: `info`, `scope`, `signal`, `value`, `change`, `property`, `extract axi`, and `extract generic`.
+`--json` and `--jsonl` are mutually exclusive. `--jsonl` is available only on waveform-inspection commands: `info`, `scope`, `signal`, `value`, `change`, `property`, `extract ahb`, `extract axi`, and `extract generic`.
 
 ## 4. `schema` Command Behavior
 
@@ -120,7 +125,7 @@ Its behavior is special and fixed:
 
 `wavepeek schema --stream` prints the canonical JSONL record schema snapshot, `schema/stream.json`. That schema describes one stream record, not a whole JSONL stream.
 
-`wavepeek schema --input` prints the canonical JSON input document schema snapshot, `schema/input.json`. Current input document kinds are `extract.generic.sources`, used by `wavepeek extract generic --source`, and `extract.axi.source`, used by `wavepeek extract axi --source`.
+`wavepeek schema --input` prints the canonical JSON input document schema snapshot, `schema/input.json`. Current input document kinds are `extract.generic.sources`, used by `wavepeek extract generic --source`; `extract.ahb.source`, used by `wavepeek extract ahb --source`; and `extract.axi.source`, used by `wavepeek extract axi --source`.
 
 ## 5. Diagnostic Behavior
 

@@ -7,6 +7,27 @@ use crate::cli::limits::LimitArg;
 #[derive(Debug, Subcommand)]
 pub enum ExtractCommand {
     #[command(
+        about = "Extract manager-facing AHB pipeline events.",
+        long_about = r#"Extract manager-facing AHB pipeline events.
+
+Behavior:
+- Supports AHB-Lite and AHB5 profiles from Arm IHI 0033C, Issue C.
+- Tracks one accepted address phase so real data completions remain distinct from idle clocks.
+- Emits address, data-complete, reset, and desynchronized events by default.
+- --include-stall, --include-idle, and --include-busy independently expose cycle-level events.
+- Samples control and payload values one dump tick before each rising HCLK edge.
+- Uses manager-facing HREADY; HREADYOUT, HSELx, and parity/check signals are outside this interface.
+- Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
+- In source-file mode, --source provides profile, name, inclusion flags, includes, and maps.
+- Contract for source-file mode is defined by `wavepeek schema --input`.
+- JSON output includes Issue C context, initial pipeline state, mappings, and ordered event rows.
+- Does not reconstruct bursts, aggregate transactions, or join address and data phases.
+
+Use this command to inspect accepted AHB transfers and their pipeline completion timing."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/extract"
+    )]
+    Ahb(Box<AhbArgs>),
+    #[command(
         about = "Extract AXI ready/valid transfer rows.",
         long_about = r#"Extract AXI ready/valid transfer rows.
 
@@ -45,6 +66,109 @@ Use this command to extract synchronous handshakes or transfer-like rows without
         after_long_help = "See also:\n  wavepeek docs show commands/extract"
     )]
     Generic(Box<GenericArgs>),
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AhbProfileArg {
+    #[value(name = "ahb-lite", alias = "ahb_lite")]
+    AhbLite,
+    Ahb5,
+}
+
+impl AhbProfileArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AhbLite => "ahb-lite",
+            Self::Ahb5 => "ahb5",
+        }
+    }
+}
+
+impl std::fmt::Display for AhbProfileArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Args)]
+pub struct AhbArgs {
+    /// Path to VCD/FST/FSDB waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    pub waves: PathBuf,
+    /// AHB profile from Arm IHI 0033C
+    #[arg(
+        long,
+        value_name = "PROFILE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = AhbProfileArg::AhbLite,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub profile: AhbProfileArg,
+    /// JSON AHB source file with profile, inclusion flags, name, includes, and maps
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with_all = [
+            "profile",
+            "name",
+            "maps",
+            "includes",
+            "include_stall",
+            "include_idle",
+            "include_busy"
+        ],
+        help_heading = "Input options"
+    )]
+    pub source: Option<PathBuf>,
+    /// AHB interface name metadata for output (defaults to ahb)
+    #[arg(long, help_heading = "Input options")]
+    pub name: Option<String>,
+    /// Start of inclusive event time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
+    pub from: Option<String>,
+    /// End of inclusive event time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
+    pub to: Option<String>,
+    /// Canonical scope path for scope-relative AHB signal names and include regexes
+    #[arg(long, help_heading = "Selection options")]
+    pub scope: Option<String>,
+    /// Explicit AHB mapping STD_NAME=WAVES_NAME, e.g. haddr=dmem_haddr; may be repeated
+    #[arg(
+        long = "map",
+        value_name = "STD=WAVES",
+        help_heading = "Signal mapping options"
+    )]
+    pub maps: Vec<String>,
+    /// Regex selecting waveform signal candidates for AHB auto-mapping; may be repeated
+    #[arg(
+        long = "include",
+        value_name = "REGEX",
+        help_heading = "Signal mapping options"
+    )]
+    pub includes: Vec<String>,
+    /// Emit one data-stall event for each active low-HREADY cycle
+    #[arg(long, help_heading = "Event options")]
+    pub include_stall: bool,
+    /// Emit one idle event for each known-ready IDLE slot
+    #[arg(long, help_heading = "Event options")]
+    pub include_idle: bool,
+    /// Emit one busy event for each known-ready BUSY slot
+    #[arg(long, help_heading = "Event options")]
+    pub include_busy: bool,
+    /// Maximum number of public AHB event rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
+    pub max: LimitArg,
+    /// Print canonical mapping paths in human output
+    #[arg(long, help_heading = "Output options")]
+    pub abs: bool,
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
+    pub json: bool,
+    /// Stream newline-delimited JSON output
+    #[arg(long, conflicts_with = "json", help_heading = "Output options")]
+    pub jsonl: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

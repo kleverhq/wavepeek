@@ -500,7 +500,7 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
     })
 }
 
-fn initial_diagnostics(max: &LimitArg) -> Vec<Diagnostic> {
+pub(crate) fn initial_diagnostics(max: &LimitArg) -> Vec<Diagnostic> {
     if max.is_unlimited() {
         vec![Diagnostic::warning(
             WarningDiagnosticCode::LimitDisabled,
@@ -511,7 +511,7 @@ fn initial_diagnostics(max: &LimitArg) -> Vec<Diagnostic> {
     }
 }
 
-fn max_entries(max: &LimitArg) -> Result<Option<usize>, WavepeekError> {
+pub(crate) fn max_entries(max: &LimitArg) -> Result<Option<usize>, WavepeekError> {
     match max {
         LimitArg::Numeric(0) => Err(WavepeekError::Args(
             "--max must be greater than 0.".to_string(),
@@ -1109,7 +1109,7 @@ fn build_payload_value(
     })
 }
 
-fn parse_bound_time(
+pub(crate) fn parse_bound_time(
     token: &str,
     arg_name: &str,
     dump_time: DumpTimeContext,

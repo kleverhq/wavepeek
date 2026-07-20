@@ -21,9 +21,9 @@ For exact syntax and flags, run `wavepeek help extract atb`, `wavepeek help extr
 
 `extract atb` emits stateless AMBA ATB interface events using Arm IHI 0032C Issue C definitions. The supported profiles are `atb-a`, `atb-b`, and `atb-c`; the default is `atb-c`. The CLI and source parser also accept underscore aliases, and accept legacy `atbv1.0` and `atbv1.1` as aliases for ATB-A and ATB-B. Generated schemas accept only the canonical hyphenated profile names.
 
-Every configuration maps `atclk` and at least one complete handshake pair. A transfer event requires mapped `atvalid` and `atready`; a flush event requires mapped `afvalid` and `afready`. Mapping `syncreq` on ATB-B or ATB-C adds a synchronization-request event source, but does not replace the required transfer or flush pair. `atresetn` is optional; when mapped, an event requires reset to be true at the pre-edge sample point. Unknown control or reset values do not produce an event.
+Every configuration maps `atclk` and at least one complete handshake pair. A transfer event requires known-true `atvalid && atready`; a flush event requires known-true `afvalid && afready`. Mapping `syncreq` on ATB-B or ATB-C adds a synchronization-request source whose predicate is known-true `syncreq`, but does not replace the required transfer or flush pair. `atresetn` is optional; when mapped, each predicate is additionally gated by known-true `atresetn` at the pre-edge sample point. Unknown control or reset values do not produce the affected event.
 
-Transfer payload mappings are optional and stay raw. A transfer row can include mapped `atbytes`, `atdata`, and `atid` values in that order. This permits handshake-only extraction and 8-bit `ATDATA` interfaces where `ATBYTES` is absent. Flush and synchronization-request rows have empty payloads. `ATID` values are observations rather than decoded trigger or protocol semantics.
+Transfer payload mappings are optional and stay raw. A transfer row can include mapped `atbytes`, `atdata`, and `atid` values in that order. `ATBYTES + 1` is the number of valid low-order `ATDATA` bytes, but the command preserves the complete observed vectors without trimming or masking; upper bytes outside that count are observations and are not claimed as protocol-valid trace bytes. This permits handshake-only extraction and 8-bit `ATDATA` interfaces where `ATBYTES` is absent. Flush and synchronization-request rows have empty payloads. `ATID` values are observations rather than decoded trigger or protocol semantics.
 
 The extraction profiles deliberately exclude `atclken` and `atwakeup`. ATB-A also excludes `syncreq`; ATB-B and ATB-C accept it. The initial ATB-B and ATB-C extraction signal sets are otherwise identical.
 
@@ -44,6 +44,12 @@ mappings:
   atresetn = trace_reset_n
   atvalid = trace_at_valid
   atready = trace_at_ready
+  atbytes = trace_at_bytes
+  atdata = trace_at_data
+  atid = trace_at_id
+  afvalid = trace_af_valid
+  afready = trace_af_ready
+  syncreq = trace_sync_req
 events:
 @25ns sample@24999ps [transfer] atbytes=2'h3 atdata=32'h44332211 atid=7'h10
 @25ns sample@24999ps [flush]

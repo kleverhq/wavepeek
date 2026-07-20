@@ -185,6 +185,9 @@ fn atb_data_profile_schema(profile: AtbProfile) -> Value {
             }
         },
         "allOf": event_mapping_constraints(profile)
+            .into_iter()
+            .chain(payload_mapping_constraints())
+            .collect::<Vec<_>>()
     })
 }
 
@@ -263,6 +266,32 @@ fn event_mapping_constraints(profile: AtbProfile) -> Vec<Value> {
             })
         })
         .collect()
+}
+
+fn payload_mapping_constraints() -> impl Iterator<Item = Value> {
+    TRANSFER_PAYLOAD_SIGNALS.iter().map(|standard| {
+        json!({
+            "if": {
+                "properties": {
+                    "events": {
+                        "contains": {
+                            "type": "object",
+                            "required": ["event", "payload"],
+                            "properties": {
+                                "event": {"const": "transfer"},
+                                "payload": {"required": [standard]}
+                            }
+                        }
+                    }
+                }
+            },
+            "then": {
+                "properties": {
+                    "mappings": {"required": [standard]}
+                }
+            }
+        })
+    })
 }
 
 fn required_event_mappings(event: &str) -> &'static [&'static str] {

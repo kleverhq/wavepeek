@@ -28,6 +28,58 @@
     },
     "beginRecord": {
       "additionalProperties": true,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "properties": {
+                "command": {
+                  "const": "extract atb"
+                },
+                "context": {
+                  "$ref": "#/$defs/extractAtbContext"
+                }
+              },
+              "required": [
+                "context"
+              ]
+            },
+            {
+              "properties": {
+                "command": {
+                  "const": "extract axi"
+                },
+                "context": {
+                  "$ref": "#/$defs/extractAxiContext"
+                }
+              },
+              "required": [
+                "context"
+              ]
+            },
+            {
+              "not": {
+                "required": [
+                  "context"
+                ]
+              },
+              "properties": {
+                "command": {
+                  "enum": [
+                    "info",
+                    "scope",
+                    "signal",
+                    "value",
+                    "change",
+                    "property",
+                    "extract generic"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ],
       "properties": {
         "$schema": {
           "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
@@ -37,12 +89,12 @@
           "$ref": "#/$defs/streamCommand"
         },
         "context": {
-          "anyOf": [
+          "oneOf": [
             {
-              "$ref": "#/$defs/streamContextData"
+              "$ref": "#/$defs/extractAtbContext"
             },
             {
-              "type": "null"
+              "$ref": "#/$defs/extractAxiContext"
             }
           ]
         },
@@ -3132,6 +3184,108 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
+                ]
+              }
+            }
+          }
         }
       ],
       "properties": {
@@ -3519,6 +3673,108 @@
               "mappings": {
                 "required": [
                   "syncreq"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
                 ]
               }
             }
@@ -3951,6 +4207,108 @@
               "mappings": {
                 "required": [
                   "syncreq"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atbytes"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atbytes"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atdata"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atdata"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "events": {
+                "contains": {
+                  "properties": {
+                    "event": {
+                      "const": "transfer"
+                    },
+                    "payload": {
+                      "required": [
+                        "atid"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "event",
+                    "payload"
+                  ],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "mappings": {
+                "required": [
+                  "atid"
                 ]
               }
             }

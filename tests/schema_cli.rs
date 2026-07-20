@@ -687,6 +687,12 @@ fn schema_output_validator_enforces_atb_profiles_mappings_and_events() {
         .remove("syncreq");
     invalid_cases.push(invalid);
     let mut invalid = valid.clone();
+    invalid["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("atdata");
+    invalid_cases.push(invalid);
+    let mut invalid = valid.clone();
     invalid["data"]["mappings"]["atwakeup"] = json!({"path": "top.atwakeup"});
     invalid_cases.push(invalid);
     let mut invalid = valid.clone();
@@ -2347,6 +2353,20 @@ fn schema_stream_validator_enforces_atb_context_and_item_branches() {
         });
 
     let mut invalid_cases = Vec::new();
+    let mut invalid = valid_begin.clone();
+    invalid.as_object_mut().unwrap().remove("context");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"] = Value::Null;
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["command"] = json!("change");
+    invalid_cases.push(invalid);
+    let mut invalid = valid_begin.clone();
+    invalid["context"] = json!({
+        "name": "axi", "profile": "axi4-lite", "issue": "H.c", "mappings": {}
+    });
+    invalid_cases.push(invalid);
     let mut invalid = valid_begin.clone();
     invalid["context"]["mappings"]
         .as_object_mut()

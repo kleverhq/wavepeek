@@ -24,7 +24,7 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 - [x] (2026-07-20 08:58Z) Add one source-backed ATB fixture with VCD/FST outputs and end-to-end tests for profiles, aliases, mapping, output modes, source files, ordering, reset, windows/limits, parity, independent channels, optional payload, and negative cases.
 - [x] (2026-07-20 08:58Z) Update embedded public docs, packaged skill routing, architecture module map, and `CHANGELOG.md`; documentation commit remains.
 - [x] (2026-07-20 09:02Z) Run focused suites, commit hooks, `just check`, and `just ci`; all pass with source coverage at 94.27% regions, 93.66% functions, and 94.73% lines.
-- [ ] (2026-07-20 09:04Z) Run multi-lane read-only review and an independent control review (completed: code, contract/docs, architecture, and performance lanes launched; remaining: collect, fix, recheck, and control pass).
+- [ ] (2026-07-20 09:13Z) Run multi-lane read-only review and an independent control review (completed: four lanes; code and performance clean; contract/docs and architecture found four issues; all fixed and both impacted lanes rechecked clean; remaining: commit fixes and run fresh control pass).
 - [ ] Update this plan with evidence and retrospective, then remove it in a cleanup commit before handoff.
 - [ ] Push `feat/extract-atb` to `origin`, open a pull request against `main` whose body closes issue #68, and verify the remote PR metadata.
 
@@ -44,6 +44,12 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 - Observation: Include-selected malformed and excluded names can be retained in one fixture without affecting mapping because normalized matching requires an exact standard suffix.
   Evidence: `trace_at_valid_chk_o`, `trace_at_ready_check_o`, `trace_at_clken_o`, and `trace_at_wakeup_o` all produce deterministic `WPK-W0004` diagnostics while canonical signals map successfully.
+
+- Observation: The generated untagged stream-context union did not couple context shape to the begin record's command, so it was too permissive even though runtime output was correct.
+  Evidence: Review found that missing/null context and cross-command contexts validated. `beginRecord` now has exact command-coupled context branches, and new negative schema cases reject those records.
+
+- Observation: Event-kind mapping constraints did not by themselves prove that every emitted transfer payload key had a corresponding resolved mapping.
+  Evidence: Review constructed an envelope with `payload.atdata` and no `mappings.atdata`. Per-key conditional constraints and a negative validator case now reject it.
 
 ## Decision Log
 
@@ -65,7 +71,7 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 ## Outcomes & Retrospective
 
-The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused suites, commit hooks, `just check`, and `just ci` pass. CI coverage is 94.27% regions, 93.66% functions, and 94.73% lines. Multi-lane review is running; review fixes, control review, plan cleanup, push, and PR remain.
+The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused suites, commit hooks, `just check`, and `just ci` pass. CI coverage is 94.27% regions, 93.66% functions, and 94.73% lines. Four review lanes completed; two were clean and two reported four findings, all fixed and rechecked clean. Fix commit, fresh control review, final gates, plan cleanup, push, and PR remain.
 
 ## Context and Orientation
 
@@ -183,3 +189,5 @@ Revision note: 2026-07-20 corrected the profile, payload, handshake-channel, ali
 Revision note: 2026-07-20 updated milestone progress, test evidence, and discoveries after implementing the complete local feature slice. The next boundary is the implementation commit, followed by full gates and review.
 
 Revision note: 2026-07-20 recorded successful `just check` and `just ci` evidence and the start of four focused read-only review lanes. The plan remains active until findings, control review, cleanup, and publication complete.
+
+Revision note: 2026-07-20 recorded the four review findings, corresponding schema/docs fixes, passing focused validation, and clean impacted-lane rechecks. A fresh independent control review is still required.

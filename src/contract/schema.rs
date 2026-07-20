@@ -219,6 +219,7 @@ fn stream_defs() -> Value {
         "sequence".to_string(),
         json!({"type": "integer", "minimum": 0}),
     );
+    object.insert("beginRecord".to_string(), begin_record_schema());
     object.insert(
         "itemRecord".to_string(),
         json!({
@@ -347,6 +348,54 @@ fn command_data_branch(command: &str, data_def: &str) -> Value {
     json!({
         "if": {"properties": {"command": {"const": command}}, "required": ["command"]},
         "then": {"properties": {"data": ref_schema(data_def)}},
+    })
+}
+
+fn begin_record_schema() -> Value {
+    let context_free_commands = stream_commands()
+        .into_iter()
+        .filter(|command| !matches!(*command, "extract atb" | "extract axi"))
+        .collect::<Vec<_>>();
+    json!({
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["type", "seq", "command", "$schema"],
+        "properties": {
+            "type": {"const": "begin"},
+            "seq": ref_schema("sequence"),
+            "command": ref_schema("streamCommand"),
+            "$schema": {"type": "string", "const": STREAM_SCHEMA_URL},
+            "context": {
+                "oneOf": [
+                    ref_schema("extractAtbContext"),
+                    ref_schema("extractAxiContext")
+                ]
+            }
+        },
+        "allOf": [{
+            "oneOf": [
+                {
+                    "required": ["context"],
+                    "properties": {
+                        "command": {"const": "extract atb"},
+                        "context": ref_schema("extractAtbContext")
+                    }
+                },
+                {
+                    "required": ["context"],
+                    "properties": {
+                        "command": {"const": "extract axi"},
+                        "context": ref_schema("extractAxiContext")
+                    }
+                },
+                {
+                    "not": {"required": ["context"]},
+                    "properties": {
+                        "command": {"enum": context_free_commands}
+                    }
+                }
+            ]
+        }]
     })
 }
 

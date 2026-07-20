@@ -355,6 +355,48 @@ fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
 }
 
 #[test]
+fn public_extract_docs_cover_apb_profiles_modes_and_stateless_scope() {
+    for topic_id in [
+        "commands/extract",
+        "commands/overview",
+        "workflows/extract-handshake",
+        "reference/machine-output",
+    ] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+        assert!(
+            output.contains("APB3") && output.contains("APB4") && output.contains("APB5"),
+            "topic {topic_id} should cover every APB profile"
+        );
+        assert!(
+            output.contains("Issue E"),
+            "topic {topic_id} should identify Arm IHI 0024E Issue E"
+        );
+    }
+
+    let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
+    for fragment in [
+        "`extract apb` emits independent sampled APB events",
+        "a Setup event is `psel && !penable`",
+        "Add `--include-wait` in mapped mode",
+        "Implicit-HIGH mode forbids both a `pready` mapping and `--include-wait`",
+        "Map one concrete Completer select",
+        "`paddrchk`, `psel0`, and `pselx` do not",
+        "Read data, error response, and response-user fields appear only on completion",
+        "does not assemble transactions",
+        "generated schemas accept canonical lowercase values only",
+    ] {
+        assert!(
+            extract.contains(fragment),
+            "extract docs should contain `{fragment}`"
+        );
+    }
+
+    let machine_output = successful_stdout_text(&["docs", "show", "reference/machine-output"]);
+    assert!(machine_output.contains("`extract.apb.source`"));
+    assert!(machine_output.contains("Profile, mode, wait setting, event, direction"));
+}
+
+#[test]
 fn public_docs_describe_fsdb_target_restriction() {
     for topic_id in ["intro", "reference/command-model"] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);

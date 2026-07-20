@@ -618,6 +618,17 @@ fn schema_output_validator_enforces_axistream_profiles_modes_and_keys() {
     validator.validate(&valid_mapped).unwrap_or_else(|error| {
         panic!("valid AXI4-Stream output rejected: {error}\n{valid_mapped}")
     });
+    for required in ["aclk", "tvalid", "tready"] {
+        let mut missing = valid_mapped.clone();
+        missing["data"]["mappings"]
+            .as_object_mut()
+            .unwrap()
+            .remove(required);
+        assert!(
+            validator.validate(&missing).is_err(),
+            "mapped output must require {required}: {missing}"
+        );
+    }
 
     let mut valid_implicit = valid_mapped.clone();
     valid_implicit["data"]["profile"] = json!("axi5-stream");
@@ -630,6 +641,17 @@ fn schema_output_validator_enforces_axistream_profiles_modes_and_keys() {
     validator.validate(&valid_implicit).unwrap_or_else(|error| {
         panic!("valid AXI5-Stream implicit-high output rejected: {error}\n{valid_implicit}")
     });
+    for required in ["aclk", "tvalid"] {
+        let mut missing = valid_implicit.clone();
+        missing["data"]["mappings"]
+            .as_object_mut()
+            .unwrap()
+            .remove(required);
+        assert!(
+            validator.validate(&missing).is_err(),
+            "implicit-high output must require {required}: {missing}"
+        );
+    }
 
     let mut invalid_issue = valid_mapped.clone();
     invalid_issue["data"]["issue"] = json!("A");
@@ -2246,6 +2268,17 @@ fn schema_stream_validator_enforces_axistream_context_and_item_isolation() {
     validator
         .validate(&valid_begin)
         .unwrap_or_else(|error| panic!("valid AXI-Stream begin rejected: {error}\n{valid_begin}"));
+    for required in ["aclk", "tvalid"] {
+        let mut missing = valid_begin.clone();
+        missing["context"]["mappings"]
+            .as_object_mut()
+            .unwrap()
+            .remove(required);
+        assert!(
+            validator.validate(&missing).is_err(),
+            "AXI-Stream begin must require {required}: {missing}"
+        );
+    }
     let valid_item = json!({
         "type": "item",
         "seq": 1,

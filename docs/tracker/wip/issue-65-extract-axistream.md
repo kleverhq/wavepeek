@@ -21,7 +21,7 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 - [x] (2026-07-20 09:10Z) Milestone 1: added a failing CLI test, dedicated AXI-Stream runtime adapter, CLI, shared standard-name matching helper, output DTOs, human/JSONL rendering, and source-backed VCD/FST fixture.
 - [x] (2026-07-20 09:24Z) Milestone 2: added exact input/output/stream contracts, regenerated schemas, and updated schema and deployed-endpoint checks.
 - [x] (2026-07-20 09:38Z) Milestone 3: updated help, public docs, packaged skill, architecture, changelog, and executable documentation contracts.
-- [ ] Milestone 4 (completed: feature committed; pre- and post-review `just check` and `just ci` passed; four focused review lanes completed; two medium findings were fixed and rechecked clean; remaining: commit review fixes, run the fresh control pass, clean the WIP plan, push, and open the issue-closing PR).
+- [ ] Milestone 4 (completed: feature and focused-review fixes committed; pre- and post-review `just check` and `just ci` passed; four focused lanes completed; the first fresh control pass found one medium exact-schema gap and its focused fix passes; remaining: commit the control fix, rerun full gates, run the second clean control pass, clean the WIP plan, push, and open the issue-closing PR).
 
 ## Surprises & Discoveries
 
@@ -45,6 +45,9 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 - Observation: generic source binding validated a scope by enumerating and sorting every direct signal even when the protocol adapter had already enumerated include candidates.
   Evidence: the performance review identified the duplicate scan in `bind_extract_sources`; a lightweight backend `validate_scope` path now preserves the same missing-scope error without allocating signal entries.
+
+- Observation: exact AXI-Stream output mapping schemas listed allowed names but initially did not require the resolved handshake keys that runtime always emits.
+  Evidence: the fresh control review showed impossible mapped contexts without `aclk`, `tvalid`, or `tready` validating successfully; mode-specific mapping schemas now require `aclk`/`tvalid` and additionally require `tready` in mapped mode.
 
 ## Decision Log
 
@@ -71,6 +74,10 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 - Decision: Add `Waveform::validate_scope` rather than retaining signal enumeration as an existence check.
   Rationale: both backends already index scopes directly, so validation can preserve diagnostics while avoiding a second hierarchy scan and allocation in protocol extraction.
   Date/Author: 2026-07-20 / coding agent after performance review
+
+- Decision: Require runtime-mandatory handshake mappings in resolved output and JSONL context schemas, but not in source-input `maps`.
+  Rationale: output contexts are post-resolution and always contain the required keys, while source documents can supply them through include-based auto-mapping rather than explicit `maps`.
+  Date/Author: 2026-07-20 / coding agent after control review
 
 ## Outcomes & Retrospective
 
@@ -207,3 +214,5 @@ Plan revision note (2026-07-20): Created the initial self-contained plan after r
 Plan revision note (2026-07-20 09:40Z): Marked implementation, contracts, fixtures, generated schemas, checks, and documentation complete after focused tests and `just check`. Recorded the extension-field and deployed-schema-check discoveries; delivery work remains in Milestone 4.
 
 Plan revision note (2026-07-20 10:02Z): Recorded four independent review lanes, the two medium findings and fixes, clean focused rechecks, and passing post-review `just check`/`just ci`. Only the control pass and delivery cleanup remain.
+
+Plan revision note (2026-07-20 10:12Z): Recorded the first control pass's required-mapping schema finding and its mode-specific fix. Focused output/stream schema tests and `just check-schema` pass; full gates and the second control pass remain.

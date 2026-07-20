@@ -233,10 +233,16 @@ fn mappings_schema(include_tready: bool) -> Value {
             properties.insert(standard.to_string(), ref_schema("extractAxiStreamMapping"));
         }
     }
+    let required = if include_tready {
+        vec!["aclk", "tvalid", "tready"]
+    } else {
+        vec!["aclk", "tvalid"]
+    };
     json!({
         "type": "object",
         "description": "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name.",
         "additionalProperties": false,
+        "required": required,
         "properties": properties,
     })
 }

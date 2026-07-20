@@ -10345,6 +10345,11 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid",
+                "tready"
+              ],
               "type": "object"
             },
             "name": {
@@ -10411,6 +10416,10 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid"
+              ],
               "type": "object"
             },
             "name": {
@@ -10480,6 +10489,11 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid",
+                "tready"
+              ],
               "type": "object"
             },
             "name": {
@@ -10546,6 +10560,10 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid"
+              ],
               "type": "object"
             },
             "name": {
@@ -10619,6 +10637,11 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid",
+                "tready"
+              ],
               "type": "object"
             },
             "name": {
@@ -10693,6 +10716,10 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid"
+              ],
               "type": "object"
             },
             "name": {
@@ -10770,6 +10797,11 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid",
+                "tready"
+              ],
               "type": "object"
             },
             "name": {
@@ -10844,6 +10876,10 @@
                   "$ref": "#/$defs/extractAxiStreamMapping"
                 }
               },
+              "required": [
+                "aclk",
+                "tvalid"
+              ],
               "type": "object"
             },
             "name": {

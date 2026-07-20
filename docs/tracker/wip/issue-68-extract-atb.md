@@ -19,10 +19,10 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 - [x] (2026-07-20 08:30Z) Read issue #68, repository guidance, current AXI and generic extraction paths, CLI dispatch, output contracts, schema generation, docs, fixtures, tests, and quality gates.
 - [x] (2026-07-20 08:30Z) Verify the protocol facts used by the issue against Arm IHI 0032C Issue C, especially sections 3.2, 4.3, 5.1, 6.2, and Appendix A Table A-1.
 - [x] (2026-07-20 08:30Z) Add the branch-local ExecPlan; commit is the next command.
-- [ ] Implement the ATB CLI, engine planning/runtime adapter, output models, and human/JSON/JSONL dispatch; add focused unit tests and commit the runtime slice.
-- [ ] Implement output, stream, input, and catalog schema branches; regenerate schema artifacts; add focused schema tests and commit the contract slice.
-- [ ] Add source-backed ATB fixtures and end-to-end CLI tests for profile semantics, aliases, mapping, output modes, source files, ordering, reset, window/limit behavior, VCD/FST parity, and negative cases; commit the test slice.
-- [ ] Update embedded public docs, packaged skill routing, architecture notes if module ownership changes, and `CHANGELOG.md`; commit the documentation slice.
+- [x] (2026-07-20 08:58Z) Implement the ATB CLI, dedicated engine planning/runtime adapter, output models, and human/JSON/JSONL dispatch with focused unit tests; commit is the next milestone boundary.
+- [x] (2026-07-20 08:58Z) Implement exact output, stream, input, and command-enum schema branches; regenerate artifacts; add focused schema validators; update the schema contract checker.
+- [x] (2026-07-20 08:58Z) Add one source-backed ATB fixture with VCD/FST outputs and end-to-end tests for profiles, aliases, mapping, output modes, source files, ordering, reset, windows/limits, parity, independent channels, optional payload, and negative cases.
+- [x] (2026-07-20 08:58Z) Update embedded public docs, packaged skill routing, architecture module map, and `CHANGELOG.md`; documentation commit remains.
 - [ ] Run focused tests, `just test`, `just check`, and `just ci`; repair all failures without weakening gates or coverage.
 - [ ] Run multi-lane read-only review and an independent control review; fix all substantive findings and rerun affected gates.
 - [ ] Update this plan with evidence and retrospective, then remove it in a cleanup commit before handoff.
@@ -38,6 +38,12 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 - Observation: Arm IHI 0032C defines `ATWAKEUP` only for ATB-C when the `Wakeup_Signal` property applies, but issue #68 deliberately excludes wake-up extraction and mappings from every initial profile. `SYNCREQ` is optional for ATB-B and ATB-C and absent from ATB-A.
   Evidence: Appendix A Table A-1 marks `ATWAKEUP` as conditional for C only and `SYNCREQ` as optional for B/C and not present for A; issue #68 lines 109-123 explicitly keeps the ATB-B and ATB-C extraction-name sets identical and rejects `atwakeup`.
+
+- Observation: The full issue contract permits transfer extraction without `ATBYTES`, `ATDATA`, or `ATID`, and requires a complete transfer or flush pair even when `SYNCREQ` is mapped.
+  Evidence: The source-backed fixture passes handshake-only and 8-bit-`ATDATA`-without-`ATBYTES` integration tests; a synchronization-only configuration fails with the required handshake-channel diagnostic.
+
+- Observation: Include-selected malformed and excluded names can be retained in one fixture without affecting mapping because normalized matching requires an exact standard suffix.
+  Evidence: `trace_at_valid_chk_o`, `trace_at_ready_check_o`, `trace_at_clken_o`, and `trace_at_wakeup_o` all produce deterministic `WPK-W0004` diagnostics while canonical signals map successfully.
 
 ## Decision Log
 
@@ -59,7 +65,7 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 ## Outcomes & Retrospective
 
-Implementation has not started. The completed research confirms that the feature can be added locally using the existing generic extraction runtime and protocol-specific contracts, without a new dependency or stateful abstraction.
+The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused ATB, CLI-help, docs, schema, clippy, and schema-contract checks pass. Full repository gates and external review remain.
 
 ## Context and Orientation
 
@@ -173,3 +179,5 @@ The contract layer must serialize JSON command data under `extract atb`, seriali
 Revision note: 2026-07-20 initial ExecPlan created after repository and protocol research. It resolves the implementation path, acceptance behavior, commit boundaries, validation gates, review workflow, and PR linkage required by issue #68. The progress entry was updated immediately before the plan commit so a fresh checkout starts from an accurate milestone boundary.
 
 Revision note: 2026-07-20 corrected the profile, payload, handshake-channel, alias, and clause details after preserving and line-reading the full issue body locally. The initial summary had incorrectly treated conditional `ATWAKEUP` as an extraction field and transfer payload as required; issue #68 explicitly excludes wake-up mappings and permits handshake-only transfers.
+
+Revision note: 2026-07-20 updated milestone progress, test evidence, and discoveries after implementing the complete local feature slice. The next boundary is the implementation commit, followed by full gates and review.

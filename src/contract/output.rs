@@ -53,6 +53,7 @@ pub enum OutputData<'a> {
     Value(Vec<ValueSnapshot<'a>>),
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
+    ExtractAtb(ExtractAtbData<'a>),
     ExtractAxi(ExtractAxiData<'a>),
     ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
@@ -84,6 +85,9 @@ impl<'a> OutputData<'a> {
             )),
             (CommandName::Property, CommandData::Property(rows)) => {
                 Ok(Self::Property(rows.iter().map(PropertyRow::from).collect()))
+            }
+            (CommandName::ExtractAtb, CommandData::ExtractAtb(data)) => {
+                Ok(Self::ExtractAtb(ExtractAtbData::from(data)))
             }
             (CommandName::ExtractAxi, CommandData::ExtractAxi(data)) => {
                 Ok(Self::ExtractAxi(ExtractAxiData::from(data)))
@@ -387,6 +391,116 @@ impl<'a> From<&'a crate::engine::extract::ExtractGenericRow> for ExtractGenericR
             sample_time: NormalizedTime::new(row.sample_time.as_str()),
             source: row.source.as_str(),
             payload: row.payload.iter().map(ExtractPayloadValue::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAtbMapping")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAtbMapping<'a> {
+    #[schemars(description = "Canonical waveform signal path mapped to this ATB standard signal.")]
+    path: CanonicalPath<'a>,
+}
+
+impl<'a> From<&'a crate::engine::atb::AtbSignalMapping> for ExtractAtbMapping<'a> {
+    fn from(mapping: &'a crate::engine::atb::AtbSignalMapping) -> Self {
+        Self {
+            path: CanonicalPath::new(mapping.path.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[serde(rename_all = "kebab-case")]
+#[schemars(rename = "extractAtbEventKind")]
+pub enum ExtractAtbEventKind {
+    Transfer,
+    Flush,
+    SyncRequest,
+}
+
+impl From<crate::engine::atb::AtbEventKind> for ExtractAtbEventKind {
+    fn from(kind: crate::engine::atb::AtbEventKind) -> Self {
+        match kind {
+            crate::engine::atb::AtbEventKind::Transfer => Self::Transfer,
+            crate::engine::atb::AtbEventKind::Flush => Self::Flush,
+            crate::engine::atb::AtbEventKind::SyncRequest => Self::SyncRequest,
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAtbEvent")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAtbEvent<'a> {
+    #[schemars(description = "Selected ATB event timestamp.")]
+    time: NormalizedTime<'a>,
+    #[schemars(
+        description = "Pre-edge timestamp used to evaluate the ATB predicate and sample payload values."
+    )]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "ATB profile name for this event row: atb-a, atb-b, or atb-c.")]
+    profile: &'a str,
+    #[schemars(description = "Stateless ATB event kind.")]
+    event: ExtractAtbEventKind,
+    #[schemars(
+        description = "Raw transfer observations keyed by lowercase ATB standard signal name; empty for flush and sync-request events."
+    )]
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::atb::AtbEvent> for ExtractAtbEvent<'a> {
+    fn from(event: &'a crate::engine::atb::AtbEvent) -> Self {
+        Self {
+            time: NormalizedTime::new(event.time.as_str()),
+            sample_time: NormalizedTime::new(event.sample_time.as_str()),
+            profile: event.profile.as_str(),
+            event: event.event.into(),
+            payload: event
+                .payload
+                .iter()
+                .map(|value| {
+                    (
+                        value.standard.as_str(),
+                        SampledValue::new(value.value.as_str()),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAtbData")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAtbData<'a> {
+    #[schemars(description = "ATB interface name supplied by CLI or source JSON.")]
+    name: &'a str,
+    #[schemars(description = "ATB profile name used for standard signal mapping.")]
+    profile: &'a str,
+    #[schemars(description = "Arm IHI 0032 issue used for this profile definition.")]
+    issue: &'a str,
+    #[schemars(
+        description = "Resolved waveform mappings keyed by lowercase ATB standard signal name."
+    )]
+    mappings: BTreeMap<&'a str, ExtractAtbMapping<'a>>,
+    #[schemars(description = "Extracted stateless ATB events in deterministic source order.")]
+    events: Vec<ExtractAtbEvent<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::atb::AtbData> for ExtractAtbData<'a> {
+    fn from(data: &'a crate::engine::atb::AtbData) -> Self {
+        Self {
+            name: data.name.as_str(),
+            profile: data.profile.as_str(),
+            issue: data.issue.as_str(),
+            mappings: data
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractAtbMapping::from(mapping)))
+                .collect(),
+            events: data.events.iter().map(ExtractAtbEvent::from).collect(),
         }
     }
 }

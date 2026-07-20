@@ -130,6 +130,15 @@
       "reason": "ACE-Lite extraction fixture generated from HDL."
     },
     {
+      "name": "extract_atb",
+      "source": "tests/fixtures/source/extract_atb.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_atb.vcd",
+        "tests/fixtures/generated/extract_atb.fst"
+      ],
+      "reason": "ATB-A, ATB-B, and ATB-C stateless event extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
       "name": "extract_axi5",
       "source": "tests/fixtures/source/extract_axi5.v",
       "outputs": [

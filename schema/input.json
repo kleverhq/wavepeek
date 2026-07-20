@@ -1,5 +1,14 @@
 {
   "$defs": {
+    "atbProfile": {
+      "description": "ATB profile name: atb-a, atb-b, or atb-c.",
+      "enum": [
+        "atb-a",
+        "atb-b",
+        "atb-c"
+      ],
+      "type": "string"
+    },
     "axiProfile": {
       "description": "AXI profile name: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, or ace5-lite-acp.",
       "enum": [
@@ -16,6 +25,201 @@
         "ace5-lite-acp"
       ],
       "type": "string"
+    },
+    "extractAtbSourceInput": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "required": [
+                      "profile"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "profile": {
+                      "const": "atb-c"
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ]
+                }
+              ],
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "afready": {
+                      "type": "string"
+                    },
+                    "afvalid": {
+                      "type": "string"
+                    },
+                    "atbytes": {
+                      "type": "string"
+                    },
+                    "atclk": {
+                      "type": "string"
+                    },
+                    "atdata": {
+                      "type": "string"
+                    },
+                    "atid": {
+                      "type": "string"
+                    },
+                    "atready": {
+                      "type": "string"
+                    },
+                    "atresetn": {
+                      "type": "string"
+                    },
+                    "atvalid": {
+                      "type": "string"
+                    },
+                    "syncreq": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "afready": {
+                      "type": "string"
+                    },
+                    "afvalid": {
+                      "type": "string"
+                    },
+                    "atbytes": {
+                      "type": "string"
+                    },
+                    "atclk": {
+                      "type": "string"
+                    },
+                    "atdata": {
+                      "type": "string"
+                    },
+                    "atid": {
+                      "type": "string"
+                    },
+                    "atready": {
+                      "type": "string"
+                    },
+                    "atresetn": {
+                      "type": "string"
+                    },
+                    "atvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "atb-a"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "afready": {
+                      "type": "string"
+                    },
+                    "afvalid": {
+                      "type": "string"
+                    },
+                    "atbytes": {
+                      "type": "string"
+                    },
+                    "atclk": {
+                      "type": "string"
+                    },
+                    "atdata": {
+                      "type": "string"
+                    },
+                    "atid": {
+                      "type": "string"
+                    },
+                    "atready": {
+                      "type": "string"
+                    },
+                    "atresetn": {
+                      "type": "string"
+                    },
+                    "atvalid": {
+                      "type": "string"
+                    },
+                    "syncreq": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "profile": {
+                  "const": "atb-b"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+          "description": "Input schema URL for this source document.",
+          "type": "string"
+        },
+        "includes": {
+          "description": "Regexes selecting waveform signal candidates for ATB auto-mapping.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "extract.atb.source",
+          "description": "Input document kind discriminator.",
+          "type": "string"
+        },
+        "maps": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Explicit mappings from lowercase ATB standard signal names to waveform signal names.",
+          "type": "object"
+        },
+        "name": {
+          "description": "ATB interface name metadata. Defaults to atb.",
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/atbProfile"
+        }
+      },
+      "required": [
+        "$schema",
+        "kind"
+      ],
+      "type": "object"
     },
     "extractAxiSourceInput": {
       "additionalProperties": true,
@@ -2649,6 +2853,9 @@
   "oneOf": [
     {
       "$ref": "#/$defs/extractGenericSourcesInput"
+    },
+    {
+      "$ref": "#/$defs/extractAtbSourceInput"
     },
     {
       "$ref": "#/$defs/extractAxiSourceInput"

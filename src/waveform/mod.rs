@@ -143,6 +143,14 @@ impl Waveform {
         }
     }
 
+    pub(crate) fn validate_scope(&self, scope_path: &str) -> Result<(), WavepeekError> {
+        match &self.backend {
+            Backend::Wellen(backend) => backend.validate_scope(scope_path),
+            #[cfg(feature = "fsdb")]
+            Backend::Fsdb(backend) => backend.validate_scope(scope_path),
+        }
+    }
+
     pub fn signals_in_scope(&self, scope_path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
         match &self.backend {
             Backend::Wellen(backend) => backend.signals_in_scope(scope_path),

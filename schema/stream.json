@@ -27,6 +27,50 @@
     },
     "beginRecord": {
       "additionalProperties": true,
+      "oneOf": [
+        {
+          "properties": {
+            "command": {
+              "const": "extract axi"
+            },
+            "context": {
+              "$ref": "#/$defs/extractAxiContext"
+            }
+          },
+          "required": [
+            "context"
+          ]
+        },
+        {
+          "properties": {
+            "command": {
+              "const": "extract axistream"
+            },
+            "context": {
+              "$ref": "#/$defs/extractAxiStreamContext"
+            }
+          },
+          "required": [
+            "context"
+          ]
+        },
+        {
+          "properties": {
+            "command": {
+              "enum": [
+                "info",
+                "scope",
+                "signal",
+                "value",
+                "change",
+                "property",
+                "extract generic"
+              ]
+            },
+            "context": false
+          }
+        }
+      ],
       "properties": {
         "$schema": {
           "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",

@@ -216,6 +216,7 @@ fn stream_defs() -> Value {
         "streamCommand".to_string(),
         json!({"type": "string", "enum": stream_commands()}),
     );
+    apply_begin_context_constraints(&mut object);
     object.insert(
         "sequence".to_string(),
         json!({"type": "integer", "minimum": 0}),
@@ -278,6 +279,42 @@ fn stream_defs() -> Value {
         object.insert(name.to_string(), item_record_for(command, item_ref));
     }
     Value::Object(object)
+}
+
+fn apply_begin_context_constraints(defs: &mut Map<String, Value>) {
+    let commands_without_context = stream_commands()
+        .into_iter()
+        .filter(|command| !matches!(*command, "extract axi" | "extract axistream"))
+        .collect::<Vec<_>>();
+    let begin = defs
+        .get_mut("beginRecord")
+        .and_then(Value::as_object_mut)
+        .expect("generated beginRecord definition should be an object");
+    begin.insert(
+        "oneOf".to_string(),
+        json!([
+            {
+                "required": ["context"],
+                "properties": {
+                    "command": {"const": "extract axi"},
+                    "context": ref_schema("extractAxiContext")
+                }
+            },
+            {
+                "required": ["context"],
+                "properties": {
+                    "command": {"const": "extract axistream"},
+                    "context": ref_schema("extractAxiStreamContext")
+                }
+            },
+            {
+                "properties": {
+                    "command": {"enum": commands_without_context},
+                    "context": false
+                }
+            }
+        ]),
+    );
 }
 
 fn generated_output_payload_defs() -> Map<String, Value> {

@@ -507,6 +507,10 @@ impl FsdbHierarchyIndex {
         entries
     }
 
+    pub(super) fn validate_scope(&self, scope_path: &str) -> Result<(), WavepeekError> {
+        self.scope_index(scope_path).map(|_| ())
+    }
+
     pub(super) fn signals_in_scope(
         &self,
         scope_path: &str,

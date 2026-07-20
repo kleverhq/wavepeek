@@ -21,7 +21,7 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 - [x] (2026-07-20 09:10Z) Milestone 1: added a failing CLI test, dedicated AXI-Stream runtime adapter, CLI, shared standard-name matching helper, output DTOs, human/JSONL rendering, and source-backed VCD/FST fixture.
 - [x] (2026-07-20 09:24Z) Milestone 2: added exact input/output/stream contracts, regenerated schemas, and updated schema and deployed-endpoint checks.
 - [x] (2026-07-20 09:38Z) Milestone 3: updated help, public docs, packaged skill, architecture, changelog, and executable documentation contracts.
-- [ ] Milestone 4 (completed: pre-review `just check` passed; remaining: commit the feature, run `just ci`, complete independent review and control pass, clean the WIP plan, push, and open the issue-closing PR).
+- [ ] Milestone 4 (completed: feature committed; pre- and post-review `just check` and `just ci` passed; four focused review lanes completed; two medium findings were fixed and rechecked clean; remaining: commit review fixes, run the fresh control pass, clean the WIP plan, push, and open the issue-closing PR).
 
 ## Surprises & Discoveries
 
@@ -39,6 +39,12 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 - Observation: deployed schema checks previously verified endpoint availability but not feature content.
   Evidence: `tools/docs/check_deploy.py` discarded fetched schema bodies. The v2.2 check now parses all three schema families and requires the AXI-Stream command and source kind.
+
+- Observation: generated JSONL begin records originally allowed an absent, null, or cross-command protocol context because the derived `command` and optional `context` properties were independent.
+  Evidence: the contract review reproduced invalid `extract axistream` begins accepted by `schema/stream.json`; command-aware begin branches now require the matching AXI or AXI-Stream context and reject context on other commands.
+
+- Observation: generic source binding validated a scope by enumerating and sorting every direct signal even when the protocol adapter had already enumerated include candidates.
+  Evidence: the performance review identified the duplicate scan in `bind_extract_sources`; a lightweight backend `validate_scope` path now preserves the same missing-scope error without allocating signal entries.
 
 ## Decision Log
 
@@ -58,9 +64,17 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
   Rationale: Arm IHI 0051B defines HIGH as the default for a physically omitted TREADY, while an absent waveform mapping alone cannot prove physical omission.
   Date/Author: 2026-07-20 / coding agent
 
+- Decision: Make JSONL begin context constraints command-aware for all stream commands.
+  Rationale: exact protocol branch isolation requires AXI and AXI-Stream begin records to carry their own matching context; non-protocol runtime begins carry no context and should not validate with one.
+  Date/Author: 2026-07-20 / coding agent after contract review
+
+- Decision: Add `Waveform::validate_scope` rather than retaining signal enumeration as an existence check.
+  Rationale: both backends already index scopes directly, so validation can preserve diagnostics while avoiding a second hierarchy scan and allocation in protocol extraction.
+  Date/Author: 2026-07-20 / coding agent after performance review
+
 ## Outcomes & Retrospective
 
-The command, runtime adapter, exact contracts, fixtures, schemas, checks, help, docs, skill, architecture, and changelog are implemented. Focused runtime, schema, docs, skill, checker, VCD/FST parity, and FSDB-aware `just check` validation pass. Independent review, final `just ci`, WIP cleanup, push, and PR creation remain.
+The command, runtime adapter, exact contracts, fixtures, schemas, checks, help, docs, skill, architecture, and changelog are implemented. Runtime/protocol and docs/architecture reviews found no issues. Contract and performance reviews found two medium issues; command-aware JSONL begin schemas and lightweight scope validation resolved them, and both reviewers rechecked clean. Post-review `just check` and `just ci` pass, including FSDB gates and source coverage of 94.17% regions, 93.53% functions, and 94.65% lines. A fresh control review, WIP cleanup, push, and PR creation remain.
 
 ## Context and Orientation
 
@@ -191,3 +205,5 @@ At completion, `src/engine/axistream.rs` must expose the dispatch types/function
 Plan revision note (2026-07-20): Created the initial self-contained plan after repository and protocol investigation. It records the one-channel extraction model, explicit TREADY omission contract, module boundaries, exact schema scope, fixture strategy, review requirements, and PR delivery linked to issue #65.
 
 Plan revision note (2026-07-20 09:40Z): Marked implementation, contracts, fixtures, generated schemas, checks, and documentation complete after focused tests and `just check`. Recorded the extension-field and deployed-schema-check discoveries; delivery work remains in Milestone 4.
+
+Plan revision note (2026-07-20 10:02Z): Recorded four independent review lanes, the two medium findings and fixes, clean focused rechecks, and passing post-review `just check`/`just ci`. Only the control pass and delivery cleanup remain.

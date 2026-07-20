@@ -2261,6 +2261,31 @@ fn schema_stream_validator_enforces_axistream_context_and_item_isolation() {
         .validate(&valid_item)
         .unwrap_or_else(|error| panic!("valid AXI-Stream item rejected: {error}\n{valid_item}"));
 
+    let mut missing_context = valid_begin.clone();
+    missing_context.as_object_mut().unwrap().remove("context");
+    assert!(validator.validate(&missing_context).is_err());
+
+    let mut null_context = valid_begin.clone();
+    null_context["context"] = Value::Null;
+    assert!(validator.validate(&null_context).is_err());
+
+    let mut axi_context = valid_begin.clone();
+    axi_context["context"] = json!({
+        "name": "axi",
+        "profile": "axi4",
+        "issue": "H.c",
+        "mappings": {"aclk": {"path": "top.clk"}}
+    });
+    assert!(validator.validate(&axi_context).is_err());
+
+    let mut wrong_command = valid_begin.clone();
+    wrong_command["command"] = json!("extract axi");
+    assert!(validator.validate(&wrong_command).is_err());
+
+    let mut unexpected_context = valid_begin.clone();
+    unexpected_context["command"] = json!("change");
+    assert!(validator.validate(&unexpected_context).is_err());
+
     let mut invalid_ready = valid_begin.clone();
     invalid_ready["context"]["mappings"]["tready"] = json!({"path": "top.tready"});
     assert!(validator.validate(&invalid_ready).is_err());

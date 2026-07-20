@@ -355,6 +355,38 @@ fn public_extract_docs_cover_axi5_and_ace_family_profiles() {
 }
 
 #[test]
+fn public_extract_docs_cover_axistream_profiles_and_tready_modes() {
+    for topic_id in [
+        "commands/extract",
+        "commands/overview",
+        "workflows/extract-handshake",
+        "reference/machine-output",
+    ] {
+        let output = successful_stdout_text(&["docs", "show", topic_id]);
+        assert!(
+            output.contains("AXI4-Stream") && output.contains("AXI5-Stream"),
+            "topic {topic_id} should cover both AXI-Stream profiles"
+        );
+    }
+
+    let extract = successful_stdout_text(&["docs", "show", "commands/extract"]);
+    for fragment in [
+        "Arm IHI 0051B Issue B",
+        "`--tready-mode mapped`",
+        "`--tready-mode implicit-high`",
+        "`extract.axistream.source`",
+        "Rows do not contain a synthetic channel field",
+        "`twakeup` and check/parity signals are not part of transfer extraction",
+    ] {
+        assert!(extract.contains(fragment), "missing {fragment:?}");
+    }
+
+    let machine_output = successful_stdout_text(&["docs", "show", "reference/machine-output"]);
+    assert!(machine_output.contains("`extract axistream` data has"));
+    assert!(machine_output.contains("`extract.axistream.source`"));
+}
+
+#[test]
 fn public_docs_describe_fsdb_target_restriction() {
     for topic_id in ["intro", "reference/command-model"] {
         let output = successful_stdout_text(&["docs", "show", topic_id]);

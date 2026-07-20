@@ -666,7 +666,7 @@ fn bind_extract_sources(
     sources: Vec<ExtractSource>,
 ) -> Result<Vec<BoundExtractSource>, WavepeekError> {
     if let Some(scope) = scope {
-        waveform.borrow().signals_in_scope(scope)?;
+        waveform.borrow().validate_scope(scope)?;
     }
 
     let mut bound_sources = Vec::with_capacity(sources.len());

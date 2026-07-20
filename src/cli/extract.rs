@@ -30,6 +30,26 @@ Use this command to inspect AXI-family handshakes without writing one generic so
     )]
     Axi(Box<AxiArgs>),
     #[command(
+        name = "axistream",
+        about = "Extract AXI-Stream transfer rows.",
+        long_about = r#"Extract AXI-Stream transfer rows.
+
+Behavior:
+- Supports AXI4-Stream and AXI5-Stream profiles from Arm IHI 0051B Issue B.
+- The default profile is AXI4-Stream.
+- Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
+- Mapped TREADY mode requires tvalid and tready; implicit-high mode explicitly declares that physical TREADY is omitted.
+- Samples reset, handshake predicates, and payload values at the pre-edge sample point for posedge aclk.
+- One invocation maps one stream interface and emits one row per completed transfer without a synthetic channel.
+- AXI5-Stream wake-up and parity/check signals are outside this transfer extractor.
+- In source-file mode, --source provides profile, TREADY mode, name, includes, and maps and conflicts with --profile, --tready-mode, --name, --map, and --include.
+- Contract for source-file mode is defined by `wavepeek schema --input`.
+
+Use this command to inspect AXI-Stream transfers without writing a generic extraction source."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/extract"
+    )]
+    AxiStream(Box<AxiStreamArgs>),
+    #[command(
         about = "Extract protocol-neutral event rows from waveform signals.",
         long_about = r#"Extract protocol-neutral event rows from waveform signals.
 
@@ -98,6 +118,51 @@ impl std::fmt::Display for AxiProfileArg {
     }
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum AxiStreamProfileArg {
+    #[value(name = "axi4-stream", alias = "axi4_stream")]
+    Axi4Stream,
+    #[value(name = "axi5-stream", alias = "axi5_stream")]
+    Axi5Stream,
+}
+
+impl AxiStreamProfileArg {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Axi4Stream => "axi4-stream",
+            Self::Axi5Stream => "axi5-stream",
+        }
+    }
+}
+
+impl std::fmt::Display for AxiStreamProfileArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum TreadyModeArg {
+    Mapped,
+    #[value(name = "implicit-high", alias = "implicit_high")]
+    ImplicitHigh,
+}
+
+impl TreadyModeArg {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Mapped => "mapped",
+            Self::ImplicitHigh => "implicit-high",
+        }
+    }
+}
+
+impl std::fmt::Display for TreadyModeArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Args)]
 pub struct AxiArgs {
     /// Path to VCD/FST/FSDB waveform file
@@ -142,6 +207,81 @@ pub struct AxiArgs {
     )]
     pub maps: Vec<String>,
     /// Regex selecting waveform signal candidates for AXI auto-mapping, e.g. '^axi_(aw|w|b|ar|r)_'; may be repeated
+    #[arg(
+        long = "include",
+        value_name = "REGEX",
+        help_heading = "Signal mapping options"
+    )]
+    pub includes: Vec<String>,
+    /// Maximum number of extracted transfer rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
+    pub max: LimitArg,
+    /// Print canonical mapping and payload paths in human output
+    #[arg(long, help_heading = "Output options")]
+    pub abs: bool,
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
+    pub json: bool,
+    /// Stream newline-delimited JSON output
+    #[arg(long, conflicts_with = "json", help_heading = "Output options")]
+    pub jsonl: bool,
+}
+
+#[derive(Debug, Args)]
+pub struct AxiStreamArgs {
+    /// Path to VCD/FST/FSDB waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    pub waves: PathBuf,
+    /// AXI-Stream profile from Arm IHI 0051B Issue B
+    #[arg(
+        long,
+        value_name = "PROFILE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = AxiStreamProfileArg::Axi4Stream,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub profile: AxiStreamProfileArg,
+    /// Whether TREADY is mapped or physically omitted and implicitly HIGH
+    #[arg(
+        long,
+        value_name = "MODE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = TreadyModeArg::Mapped,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub tready_mode: TreadyModeArg,
+    /// JSON AXI-Stream source file with profile, TREADY mode, name, includes, and maps
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with_all = ["profile", "tready_mode", "name", "maps", "includes"],
+        help_heading = "Input options"
+    )]
+    pub source: Option<PathBuf>,
+    /// Stream-port name metadata for output (defaults to axistream)
+    #[arg(long, help_heading = "Input options")]
+    pub name: Option<String>,
+    /// Start of inclusive event time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
+    pub from: Option<String>,
+    /// End of inclusive event time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
+    pub to: Option<String>,
+    /// Canonical scope path for scope-relative AXI-Stream signal names and include regexes
+    #[arg(long, help_heading = "Selection options")]
+    pub scope: Option<String>,
+    /// Explicit AXI-Stream mapping STD_NAME=WAVES_NAME, e.g. tvalid=video_tvalid; may be repeated
+    #[arg(
+        long = "map",
+        value_name = "STD=WAVES",
+        help_heading = "Signal mapping options"
+    )]
+    pub maps: Vec<String>,
+    /// Regex selecting waveform signal candidates for AXI-Stream auto-mapping; may be repeated
     #[arg(
         long = "include",
         value_name = "REGEX",

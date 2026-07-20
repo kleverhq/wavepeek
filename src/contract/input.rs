@@ -54,6 +54,47 @@ pub struct ExtractAxiSourceInput<'a> {
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiStreamSourceInput")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiStreamSourceInput<'a> {
+    #[serde(rename = "$schema")]
+    #[schemars(schema_with = "input_schema_url_schema")]
+    #[schemars(description = "Input schema URL for this source document.")]
+    schema: &'a str,
+    #[schemars(schema_with = "extract_axistream_kind_schema")]
+    #[schemars(description = "Input document kind discriminator.")]
+    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "axistream_profile_schema")]
+    #[schemars(description = "AXI-Stream profile. Defaults to axi4-stream.")]
+    profile: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "tready_mode_schema")]
+    #[schemars(description = "TREADY mapping mode. Defaults to mapped.")]
+    tready_mode: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(description = "AXI-Stream port name metadata. Defaults to axistream.")]
+    name: Option<&'a str>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "includes_schema")]
+    #[schemars(
+        description = "Regexes selecting waveform signal candidates for AXI-Stream auto-mapping."
+    )]
+    includes: Vec<&'a str>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "maps_schema")]
+    #[schemars(
+        description = "Explicit mappings from lowercase AXI-Stream standard signal names to waveform signal names."
+    )]
+    maps: BTreeMap<&'a str, &'a str>,
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "extractGenericSource")]
 #[schemars(extend("additionalProperties" = true))]
 pub struct ExtractGenericSource<'a> {
@@ -80,6 +121,10 @@ fn extract_axi_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.axi.source"})
 }
 
+fn extract_axistream_kind_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "const": "extract.axistream.source"})
+}
+
 fn axi_profile_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({
         "type": "string",
@@ -87,6 +132,20 @@ fn axi_profile_schema(_: &mut SchemaGenerator) -> Schema {
             "axi3", "axi4", "axi4-lite", "axi5", "axi5-lite", "ace", "ace-lite", "ace5",
             "ace5-lite", "ace5-lite-dvm", "ace5-lite-acp"
         ]
+    })
+}
+
+fn axistream_profile_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "string",
+        "enum": ["axi4-stream", "axi5-stream"]
+    })
+}
+
+fn tready_mode_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({
+        "type": "string",
+        "enum": ["mapped", "implicit-high"]
     })
 }
 

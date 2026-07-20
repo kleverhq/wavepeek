@@ -14,6 +14,7 @@ use crate::engine::extract::{
     self, ExtractGenericRow, ExtractPlan, ExtractRowSink, ExtractRunArgs, ExtractRunStats,
     ExtractSource,
 };
+use crate::engine::signal_mapping::candidate_matching_standards;
 use crate::engine::{CommandData, CommandName, CommandResult, HumanRenderOptions};
 use crate::error::WavepeekError;
 
@@ -1670,7 +1671,11 @@ fn auto_mappings(
         if explicit_paths.contains(candidate.path.as_str()) {
             continue;
         }
-        let matched = candidate_matching_standards(candidate.name.as_str(), standards.as_slice());
+        let matched = candidate_matching_standards(
+            candidate.name.as_str(),
+            standards.as_slice(),
+            COMMON_SIGNALS,
+        );
         if matched.len() > 1 {
             let standards = matched.join(", ");
             return Err(WavepeekError::Args(format!(
@@ -1834,90 +1839,9 @@ fn ordered_standard_names(profile: AxiProfile) -> Vec<&'static str> {
         .collect()
 }
 
-fn candidate_matching_standards(
-    candidate_name: &str,
-    standards: &[&'static str],
-) -> Vec<&'static str> {
-    let tokens = candidate_core_tokens(candidate_name);
-    let suffix_matches = standards
-        .iter()
-        .filter_map(|standard| {
-            standard_suffix_start(tokens.as_slice(), standard).map(|start| (*standard, start))
-        })
-        .collect::<Vec<_>>();
-
-    let [(suffix_standard, suffix_start)] = suffix_matches.as_slice() else {
-        return suffix_matches
-            .into_iter()
-            .map(|(standard, _)| standard)
-            .collect();
-    };
-
-    standards
-        .iter()
-        .filter(|standard| {
-            *standard == suffix_standard
-                || (0..*suffix_start).any(|start| {
-                    standard_matches_range(tokens.as_slice(), start, *suffix_start, standard)
-                })
-        })
-        .copied()
-        .collect()
-}
-
 #[cfg(test)]
 fn candidate_matches_standard(candidate_name: &str, standard: &str) -> bool {
-    let tokens = candidate_core_tokens(candidate_name);
-    standard_suffix_start(tokens.as_slice(), standard).is_some()
-}
-
-fn candidate_core_tokens(name: &str) -> Vec<String> {
-    let mut tokens = tokenize_candidate(name);
-    while tokens
-        .last()
-        .is_some_and(|token| is_candidate_suffix_affix(token))
-    {
-        tokens.pop();
-    }
-    tokens
-}
-
-fn tokenize_candidate(name: &str) -> Vec<String> {
-    let base = name.rsplit('.').next().unwrap_or(name);
-    let mut tokens = Vec::new();
-    let mut current = String::new();
-    for ch in base.chars() {
-        if ch.is_ascii_alphanumeric() {
-            current.push(ch.to_ascii_lowercase());
-        } else if !current.is_empty() {
-            tokens.push(std::mem::take(&mut current));
-        }
-    }
-    if !current.is_empty() {
-        tokens.push(current);
-    }
-    tokens
-}
-
-fn is_candidate_suffix_affix(token: &str) -> bool {
-    matches!(
-        token,
-        "i" | "o" | "in" | "out" | "input" | "output" | "d" | "q" | "r" | "reg"
-    )
-}
-
-fn standard_suffix_start(tokens: &[String], standard: &str) -> Option<usize> {
-    (0..tokens.len()).find(|start| standard_matches_range(tokens, *start, tokens.len(), standard))
-}
-
-fn standard_matches_range(tokens: &[String], start: usize, end: usize, standard: &str) -> bool {
-    if COMMON_SIGNALS.contains(&standard) {
-        return end == start + 1 && tokens[start] == standard;
-    }
-    tokens[start..end]
-        .iter()
-        .flat_map(|token| token.chars())
-        .eq(standard.chars())
+    !candidate_matching_standards(candidate_name, &[standard], COMMON_SIGNALS).is_empty()
 }
 
 impl AxiProfile {

@@ -104,7 +104,21 @@ When the user asks for every occurrence, count, timestamp list, handshake, reque
       --include '<AXI_SIGNAL_REGEX>' \
       --json
 
-Use `extract generic` on a clocked predicate when payload values are needed for non-AXI or custom handshakes:
+Use `extract axistream` for AXI4-Stream or AXI5-Stream transfer rows from one interface. The default `mapped` TREADY mode requires a mapped `tready`; use `implicit-high` only when the physical interface omits `TREADY`:
+
+    wavepeek extract axistream \
+      --waves <FILE> \
+      --scope <SCOPE> \
+      --profile axi4-stream \
+      --tready-mode mapped \
+      --map aclk=<CLK> \
+      --map aresetn=<RESET_N> \
+      --include '<AXISTREAM_SIGNAL_REGEX>' \
+      --json
+
+The AXI-Stream profiles both use Arm IHI 0051B Issue B. The adapter extracts mapped functional payload values but does not reconstruct packets or include AXI5-Stream wake-up/check signals.
+
+Use `extract generic` on a clocked predicate when payload values are needed for other custom handshakes:
 
     wavepeek extract generic \
       --waves <FILE> \
@@ -115,7 +129,7 @@ Use `extract generic` on a clocked predicate when payload values are needed for 
       --payload <PAYLOAD_AND_CONTEXT_SIGNALS> \
       --json
 
-`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. `extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state.
+`extract` emits every matching row, including repeated transfers with identical payload values. The row `time` is the event edge and `sample_time` is where the predicate and payload were sampled. `extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state. `extract axistream` reports one-interface transfer rows without a synthetic channel and does not reconstruct packets from `tlast`.
 
 Use `property --capture match` when you only need timestamp rows or when you need property capture modes rather than payload extraction. Use `value --at <sample_time>` as a fallback follow-up when a payload set is decided after the property query.
 

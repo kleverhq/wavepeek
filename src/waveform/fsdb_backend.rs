@@ -155,6 +155,10 @@ impl FsdbBackend {
         Ok(self.hierarchy()?.scopes_depth_first(max_depth))
     }
 
+    pub(super) fn validate_scope(&self, scope_path: &str) -> Result<(), WavepeekError> {
+        self.hierarchy()?.validate_scope(scope_path)
+    }
+
     pub(super) fn signals_in_scope(
         &self,
         scope_path: &str,

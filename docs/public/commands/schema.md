@@ -53,6 +53,8 @@ $ wavepeek schema | jq '.properties.command.enum'
   "value",
   "change",
   "property",
+  "extract axi",
+  "extract axistream",
   "extract generic",
   "docs topics",
   "docs search"
@@ -74,6 +76,8 @@ $ wavepeek schema | jq '.properties.data.anyOf | map(.["$ref"])'
   "#/$defs/valueData",
   "#/$defs/changeData",
   "#/$defs/propertyData",
+  "#/$defs/extractAxiData",
+  "#/$defs/extractAxiStreamData",
   "#/$defs/extractGenericData",
   "#/$defs/docsTopicsData",
   "#/$defs/docsSearchData"
@@ -109,7 +113,7 @@ This build prints the same bytes as `schema/stream.json`. Stream consumers shoul
 
 ## Fetch the JSON input document schema
 
-Some commands accept structured JSON input. Source-file extraction with `extract generic --source` uses the `extract.generic.sources` input document kind.
+Some commands accept structured JSON input. Source-file extraction uses `extract.generic.sources` for `extract generic`, `extract.axi.source` for `extract axi`, and `extract.axistream.source` for `extract axistream`.
 
 Use `--input` to print the input schema:
 

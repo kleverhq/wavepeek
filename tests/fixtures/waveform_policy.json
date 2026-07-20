@@ -156,6 +156,15 @@
       "reason": "AXI4-Lite extraction fixture generated from HDL."
     },
     {
+      "name": "extract_axistream",
+      "source": "tests/fixtures/source/extract_axistream.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_axistream.vcd",
+        "tests/fixtures/generated/extract_axistream.fst"
+      ],
+      "reason": "AXI-Stream extraction and VCD/FST parity fixture generated from HDL."
+    },
+    {
       "name": "extract_axi3_w",
       "source": "tests/fixtures/source/extract_axi3_w.v",
       "outputs": [

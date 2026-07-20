@@ -101,6 +101,15 @@ impl WellenBackend {
         Ok(entries)
     }
 
+    pub fn validate_scope(&self, scope_path: &str) -> Result<(), WavepeekError> {
+        let names: Vec<&str> = scope_path.split('.').collect();
+        self.inner
+            .hierarchy()
+            .lookup_scope(&names)
+            .map(|_| ())
+            .ok_or_else(|| WavepeekError::Scope(format!("scope '{scope_path}' not found in dump")))
+    }
+
     pub fn signals_in_scope(&self, scope_path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
         let hierarchy = self.inner.hierarchy();
         let names: Vec<&str> = scope_path.split('.').collect();

@@ -546,6 +546,7 @@ fn extract_command_without_subcommand_prints_help() {
         assert!(help.contains("Usage: wavepeek extract"));
         assert!(help.contains("Commands:"));
         assert!(help.contains("axi"));
+        assert!(help.contains("axistream"));
         assert!(help.contains("generic"));
         assert!(!help.contains("fatal: args:"));
     }
@@ -1001,6 +1002,32 @@ fn extract_axi_help_is_self_descriptive() {
         assert!(
             long_help.contains(fragment),
             "extract axi long help should contain `{fragment}`"
+        );
+    }
+}
+
+#[test]
+fn extract_axistream_help_is_self_descriptive() {
+    let long_help = successful_stdout_text(&["extract", "axistream", "--help"]);
+    for fragment in [
+        "Extract AXI-Stream transfer rows.",
+        "Supports AXI4-Stream and AXI5-Stream profiles from Arm IHI 0051B Issue B.",
+        "The default profile is AXI4-Stream.",
+        "Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.",
+        "Mapped TREADY mode requires tvalid and tready; implicit-high mode explicitly declares that physical TREADY is omitted.",
+        "Samples reset, handshake predicates, and payload values at the pre-edge sample point for posedge aclk.",
+        "One invocation maps one stream interface and emits one row per completed transfer without a synthetic channel.",
+        "AXI5-Stream wake-up and parity/check signals are outside this transfer extractor.",
+        "[default: axi4-stream]",
+        "[possible values: axi4-stream, axi5-stream]",
+        "[default: mapped]",
+        "[possible values: mapped, implicit-high]",
+        "Contract for source-file mode is defined by `wavepeek schema --input`.",
+        "wavepeek docs show commands/extract",
+    ] {
+        assert!(
+            long_help.contains(fragment),
+            "extract axistream long help should contain `{fragment}`"
         );
     }
 }

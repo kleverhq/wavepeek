@@ -13,9 +13,9 @@ see_also:
 ---
 # Extract command
 
-Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels into generic extraction sources for common bus debug.
+Use `extract` commands when you need row output that combines event selection, predicate evaluation, and payload sampling. `extract generic` is protocol-neutral. `extract axi` expands AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP ready/valid channels into generic extraction sources. `extract axistream` does the same for one AXI4-Stream or AXI5-Stream interface.
 
-For exact syntax and flags, run `wavepeek help extract axi` or `wavepeek help extract generic`.
+For exact syntax and flags, run `wavepeek help extract axi`, `wavepeek help extract axistream`, or `wavepeek help extract generic`.
 
 ## `extract axi`
 
@@ -52,6 +52,40 @@ transfers:
 A source file can provide `profile`, `name`, `includes`, and `maps` with `kind: "extract.axi.source"`. Source-file mode conflicts with `--profile`, `--name`, `--map`, and `--include`; time bounds and scope still come from the command line.
 
 Machine-readable AXI output is typed by profile and channel. JSON transfer rows and JSONL item rows include `profile`; the schemas enumerate allowed payload keys for each profile/channel pair while allowing omitted keys for unmapped signals.
+
+## `extract axistream`
+
+`extract axistream` emits one row per completed transfer on one mapped stream interface. Its profiles are `axi4-stream` and `axi5-stream`; both use Arm IHI 0051B Issue B and the default is `axi4-stream`. The CLI and source parser accept profile names case-insensitively and accept the underscore aliases `axi4_stream` and `axi5_stream`. Generated schemas accept canonical hyphenated profile names only.
+
+Map `aclk`, optional `aresetn`, handshake signals, and any payload signals with `--map`, `--include`, or both. Accepted payload standard names are `tdata`, `tstrb`, `tkeep`, `tlast`, `tid`, `tdest`, and `tuser`. Payload signals are optional and omitted from mappings and rows when unmapped. `twakeup` and check/parity signals are not part of transfer extraction.
+
+The default `--tready-mode mapped` requires a `tready` mapping and recognizes a transfer when `tvalid && tready` is true at the pre-edge sample point for `posedge aclk`. Use `--tready-mode implicit-high` only when the physical interface omits `TREADY`; this mode forbids a `tready` mapping and recognizes transfers from `tvalid`. If `aresetn` is mapped, it gates either predicate. `aclk` and `tvalid` are always required.
+
+```text
+$ wavepeek extract axistream --waves path/to/dump.vcd \
+    --scope top.dut \
+    --profile axi4-stream \
+    --map aclk=clk \
+    --map aresetn=rst_n \
+    --include '^video_out_'
+name: axistream
+profile: axi4-stream
+issue: B
+tready_mode: mapped
+mappings:
+  aclk = clk
+  aresetn = rst_n
+  tvalid = video_out_tvalid
+  tready = video_out_tready
+  tdata = video_out_tdata
+  tlast = video_out_tlast
+transfers:
+@25ns sample@24999ps tdata=32'hdeadbeef tlast=1'h1
+```
+
+One invocation maps one interface. Rows do not contain a synthetic channel field, and a handshake-only transfer still emits its event and sample timestamps. The command does not reconstruct packets, interpret byte qualifiers, check protocol timing, or validate AXI5-Stream wake-up or parity.
+
+A source file uses singular kind `extract.axistream.source` and can provide `profile`, `tready_mode`, `name`, `includes`, and `maps`. The defaults are `axi4-stream`, `mapped`, and `axistream`. Source-file mode conflicts with those CLI mapping/configuration options; time bounds and scope remain command-line options.
 
 ## `extract generic`
 
@@ -122,6 +156,8 @@ This matches common RTL debugging expectations: the row describes the values tha
 Human `extract axi` output starts with name, profile, issue, resolved mappings, and then transfer rows. Add `--abs` to print canonical mapping and payload paths in human output.
 
 `extract axi --json` emits the standard envelope with `command: "extract axi"` and a data object containing `name`, `profile`, `issue`, `mappings`, and `transfers`. `extract axi --jsonl` streams a `begin` record with AXI context, one transfer per `item`, optional diagnostics, and an `end` summary.
+
+`extract axistream` uses the same context-first layout plus `tready_mode`, but its rows have no `channel`. JSON uses `command: "extract axistream"`; JSONL puts name, profile, Issue B, TREADY mode, and mappings in the `begin` context and emits one independently profile-typed transfer per `item`.
 
 Human `extract generic` output is compact and row-oriented:
 

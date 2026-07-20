@@ -7,6 +7,27 @@ use crate::cli::limits::LimitArg;
 #[derive(Debug, Subcommand)]
 pub enum ExtractCommand {
     #[command(
+        about = "Extract APB Setup and Access event rows.",
+        long_about = r#"Extract APB Setup and Access event rows.
+
+Behavior:
+- Supports APB3, APB4, and APB5 profiles from Arm IHI 0024E; APB4 is the default.
+- Generated schemas accept canonical lowercase profile and PREADY-mode values only.
+- Emits setup and access-complete rows by default; --include-wait adds one access-wait row per waited Access cycle.
+- Mapped PREADY mode requires pready; implicit-high mode forbids pready and wait capture.
+- Signal mapping combines explicit STD_NAME=WAVES_NAME maps with include-regex auto-mapping; explicit maps win.
+- Maps one concrete Completer PSELx as canonical psel.
+- Samples reset, event predicates, direction, and payload values at the pre-edge sample point.
+- In source-file mode, --source provides profile, PREADY mode, wait capture, name, includes, and maps and conflicts with their CLI flags.
+- Contract for source-file mode is defined by `wavepeek schema --input`.
+- JSON output includes APB metadata, mappings, and event rows.
+- Reports independent sampled events only; it does not correlate or validate transactions.
+
+Use this command to inspect APB activity without writing generic Setup and Access predicates."#,
+        after_long_help = "See also:\n  wavepeek docs show commands/extract"
+    )]
+    Apb(Box<ApbArgs>),
+    #[command(
         about = "Extract AXI ready/valid transfer rows.",
         long_about = r#"Extract AXI ready/valid transfer rows.
 
@@ -45,6 +66,136 @@ Use this command to extract synchronous handshakes or transfer-like rows without
         after_long_help = "See also:\n  wavepeek docs show commands/extract"
     )]
     Generic(Box<GenericArgs>),
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ApbProfileArg {
+    Apb3,
+    Apb4,
+    Apb5,
+}
+
+impl ApbProfileArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Apb3 => "apb3",
+            Self::Apb4 => "apb4",
+            Self::Apb5 => "apb5",
+        }
+    }
+}
+
+impl std::fmt::Display for ApbProfileArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum PreadyModeArg {
+    Mapped,
+    #[value(name = "implicit-high", alias = "implicit_high")]
+    ImplicitHigh,
+}
+
+impl PreadyModeArg {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Mapped => "mapped",
+            Self::ImplicitHigh => "implicit-high",
+        }
+    }
+}
+
+impl std::fmt::Display for PreadyModeArg {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Args)]
+pub struct ApbArgs {
+    /// Path to VCD/FST/FSDB waveform file
+    #[arg(long, value_name = "FILE", help_heading = "Input options")]
+    pub waves: PathBuf,
+    /// APB profile from Arm IHI 0024E
+    #[arg(
+        long,
+        value_name = "PROFILE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = ApbProfileArg::Apb4,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub profile: ApbProfileArg,
+    /// PREADY handling mode
+    #[arg(
+        long,
+        value_name = "MODE",
+        value_enum,
+        ignore_case = true,
+        default_value_t = PreadyModeArg::Mapped,
+        conflicts_with = "source",
+        help_heading = "Input options"
+    )]
+    pub pready_mode: PreadyModeArg,
+    /// Emit one access-wait row per waited Access cycle
+    #[arg(long, conflicts_with = "source", help_heading = "Input options")]
+    pub include_wait: bool,
+    /// JSON APB source file with profile, mode, wait capture, name, includes, and maps
+    #[arg(
+        long,
+        value_name = "FILE",
+        conflicts_with_all = [
+            "profile",
+            "pready_mode",
+            "include_wait",
+            "name",
+            "maps",
+            "includes"
+        ],
+        help_heading = "Input options"
+    )]
+    pub source: Option<PathBuf>,
+    /// APB port name metadata for output (defaults to apb)
+    #[arg(long, help_heading = "Input options")]
+    pub name: Option<String>,
+    /// Start of inclusive event time range (e.g. 1234ns; omitted means dump start)
+    #[arg(long, help_heading = "Selection options")]
+    pub from: Option<String>,
+    /// End of inclusive event time range (e.g. 1234ns; omitted means dump end)
+    #[arg(long, help_heading = "Selection options")]
+    pub to: Option<String>,
+    /// Canonical scope path for scope-relative APB signal names and include regexes
+    #[arg(long, help_heading = "Selection options")]
+    pub scope: Option<String>,
+    /// Explicit APB mapping STD_NAME=WAVES_NAME, e.g. psel=uart_psel; may be repeated
+    #[arg(
+        long = "map",
+        value_name = "STD=WAVES",
+        help_heading = "Signal mapping options"
+    )]
+    pub maps: Vec<String>,
+    /// Regex selecting waveform signal candidates for APB auto-mapping, e.g. '^uart_apb_'; may be repeated
+    #[arg(
+        long = "include",
+        value_name = "REGEX",
+        help_heading = "Signal mapping options"
+    )]
+    pub includes: Vec<String>,
+    /// Maximum number of extracted event rows (`unlimited` disables truncation, value must be > 0)
+    #[arg(long, default_value = "50", help_heading = "Output options")]
+    pub max: LimitArg,
+    /// Print canonical mapping and payload paths in human output
+    #[arg(long, help_heading = "Output options")]
+    pub abs: bool,
+    /// Machine-readable JSON output
+    #[arg(long, help_heading = "Output options")]
+    pub json: bool,
+    /// Stream newline-delimited JSON output
+    #[arg(long, conflicts_with = "json", help_heading = "Output options")]
+    pub jsonl: bool,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]

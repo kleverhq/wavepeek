@@ -20,6 +20,49 @@ pub struct ExtractGenericSourcesInput<'a> {
 }
 
 #[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractApbSourceInput")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractApbSourceInput<'a> {
+    #[serde(rename = "$schema")]
+    #[schemars(schema_with = "input_schema_url_schema")]
+    #[schemars(description = "Input schema URL for this source document.")]
+    schema: &'a str,
+    #[schemars(schema_with = "extract_apb_kind_schema")]
+    #[schemars(description = "Input document kind discriminator.")]
+    kind: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "apb_profile_schema")]
+    #[schemars(description = "APB profile. Defaults to apb4.")]
+    profile: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(schema_with = "apb_pready_mode_schema")]
+    #[schemars(description = "PREADY handling mode. Defaults to mapped.")]
+    pready_mode: Option<&'a str>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(description = "Whether to emit waited Access cycles. Defaults to false.")]
+    include_wait: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(default)]
+    #[schemars(description = "APB port name metadata. Defaults to apb.")]
+    name: Option<&'a str>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "includes_schema")]
+    #[schemars(description = "Regexes selecting waveform signal candidates for APB auto-mapping.")]
+    includes: Vec<&'a str>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    #[schemars(default)]
+    #[schemars(schema_with = "maps_schema")]
+    #[schemars(
+        description = "Explicit mappings from lowercase APB standard signal names to waveform signal names."
+    )]
+    maps: BTreeMap<&'a str, &'a str>,
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
 #[schemars(rename = "extractAxiSourceInput")]
 #[schemars(extend("additionalProperties" = true))]
 pub struct ExtractAxiSourceInput<'a> {
@@ -76,8 +119,20 @@ fn extract_generic_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.generic.sources"})
 }
 
+fn extract_apb_kind_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "const": "extract.apb.source"})
+}
+
 fn extract_axi_kind_schema(_: &mut SchemaGenerator) -> Schema {
     json_schema!({"type": "string", "const": "extract.axi.source"})
+}
+
+fn apb_profile_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "enum": ["apb3", "apb4", "apb5"]})
+}
+
+fn apb_pready_mode_schema(_: &mut SchemaGenerator) -> Schema {
+    json_schema!({"type": "string", "enum": ["mapped", "implicit-high"]})
 }
 
 fn axi_profile_schema(_: &mut SchemaGenerator) -> Schema {

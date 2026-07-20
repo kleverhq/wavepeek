@@ -111,7 +111,10 @@ pub fn write_jsonl_result<W: Write>(
     result: CommandResult,
     writer: &mut JsonlWriter<W>,
 ) -> Result<(), WavepeekError> {
-    if !matches!(&result.data, CommandData::ExtractAxi(_)) {
+    if !matches!(
+        &result.data,
+        CommandData::ExtractApb(_) | CommandData::ExtractAxi(_)
+    ) {
         writer.begin()?;
     }
     match &result.data {
@@ -139,6 +142,12 @@ pub fn write_jsonl_result<W: Write>(
         CommandData::Property(rows) => {
             for row in rows {
                 writer.item(row)?;
+            }
+        }
+        CommandData::ExtractApb(data) => {
+            writer.begin_context(&data.context())?;
+            for event in &data.events {
+                writer.item(event)?;
             }
         }
         CommandData::ExtractAxi(data) => {
@@ -283,6 +292,7 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             })
             .collect::<Vec<_>>()
             .join("\n"),
+        CommandData::ExtractApb(data) => render_apb_human(data, options),
         CommandData::ExtractAxi(data) => render_axi_human(data, options),
         CommandData::ExtractGeneric(data) => data
             .rows
@@ -319,6 +329,41 @@ fn render_human(data: &CommandData, options: HumanRenderOptions) -> String {
             .collect::<Vec<_>>()
             .join("\n"),
     }
+}
+
+fn render_apb_human(data: &crate::engine::apb::ApbData, options: HumanRenderOptions) -> String {
+    let mut lines = Vec::new();
+    lines.push(format!("name: {}", data.name));
+    lines.push(format!("profile: {}", data.profile));
+    lines.push(format!("issue: {}", data.issue));
+    lines.push(format!("pready_mode: {}", data.pready_mode));
+    lines.push(format!("include_wait: {}", data.include_wait));
+    lines.push("mappings:".to_string());
+    for mapping in &data.mappings {
+        let display = if options.signals_abs {
+            mapping.path.as_str()
+        } else {
+            mapping.display.as_str()
+        };
+        lines.push(format!("  {} = {display}", mapping.standard));
+    }
+    lines.push("events:".to_string());
+    for event in &data.events {
+        let mut parts = Vec::with_capacity(event.payload.len() + 3);
+        parts.push(format!("@{}", event.time));
+        parts.push(format!("sample@{}", event.sample_time));
+        parts.push(format!("[{} {}]", event.event, event.direction));
+        for payload in &event.payload {
+            let display = if options.signals_abs {
+                payload.path.as_str()
+            } else {
+                payload.standard.as_str()
+            };
+            parts.push(format!("{display}={}", payload.value));
+        }
+        lines.push(parts.join(" "));
+    }
+    lines.join("\n")
 }
 
 fn render_axi_human(data: &crate::engine::axi::AxiData, options: HumanRenderOptions) -> String {

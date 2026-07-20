@@ -53,6 +53,7 @@ pub enum OutputData<'a> {
     Value(Vec<ValueSnapshot<'a>>),
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
+    ExtractApb(ExtractApbData<'a>),
     ExtractAxi(ExtractAxiData<'a>),
     ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
@@ -84,6 +85,9 @@ impl<'a> OutputData<'a> {
             )),
             (CommandName::Property, CommandData::Property(rows)) => {
                 Ok(Self::Property(rows.iter().map(PropertyRow::from).collect()))
+            }
+            (CommandName::ExtractApb, CommandData::ExtractApb(data)) => {
+                Ok(Self::ExtractApb(ExtractApbData::from(data)))
             }
             (CommandName::ExtractAxi, CommandData::ExtractAxi(data)) => {
                 Ok(Self::ExtractAxi(ExtractAxiData::from(data)))
@@ -387,6 +391,102 @@ impl<'a> From<&'a crate::engine::extract::ExtractGenericRow> for ExtractGenericR
             sample_time: NormalizedTime::new(row.sample_time.as_str()),
             source: row.source.as_str(),
             payload: row.payload.iter().map(ExtractPayloadValue::from).collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractApbMapping")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractApbMapping<'a> {
+    #[schemars(description = "Canonical waveform signal path mapped to this APB standard signal.")]
+    path: CanonicalPath<'a>,
+}
+
+impl<'a> From<&'a crate::engine::apb::ApbSignalMapping> for ExtractApbMapping<'a> {
+    fn from(mapping: &'a crate::engine::apb::ApbSignalMapping) -> Self {
+        Self {
+            path: CanonicalPath::new(mapping.path.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractApbEvent")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractApbEvent<'a> {
+    #[schemars(description = "Selected APB event timestamp.")]
+    time: NormalizedTime<'a>,
+    #[schemars(description = "Pre-edge timestamp used to classify and sample the APB event.")]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "APB profile name for this event row.")]
+    profile: &'a str,
+    #[schemars(description = "Sampled APB event kind.")]
+    event: &'a str,
+    #[schemars(description = "Direction derived from the sampled pwrite value.")]
+    direction: &'a str,
+    #[schemars(description = "Observed values keyed by lowercase APB standard signal name.")]
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::apb::ApbEvent> for ExtractApbEvent<'a> {
+    fn from(event: &'a crate::engine::apb::ApbEvent) -> Self {
+        Self {
+            time: NormalizedTime::new(event.time.as_str()),
+            sample_time: NormalizedTime::new(event.sample_time.as_str()),
+            profile: event.profile.as_str(),
+            event: event.event.as_str(),
+            direction: event.direction.as_str(),
+            payload: event
+                .payload
+                .iter()
+                .map(|value| {
+                    (
+                        value.standard.as_str(),
+                        SampledValue::new(value.value.as_str()),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractApbData")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractApbData<'a> {
+    #[schemars(description = "APB port name supplied by CLI or source JSON.")]
+    name: &'a str,
+    #[schemars(description = "APB profile name used for standard signal mapping.")]
+    profile: &'a str,
+    #[schemars(description = "Arm IHI 0024 issue used for this profile definition.")]
+    issue: &'a str,
+    #[schemars(description = "PREADY handling mode.")]
+    pready_mode: &'a str,
+    #[schemars(description = "Whether waited Access cycles are emitted.")]
+    include_wait: bool,
+    #[schemars(
+        description = "Resolved waveform mappings keyed by lowercase APB standard signal name."
+    )]
+    mappings: BTreeMap<&'a str, ExtractApbMapping<'a>>,
+    #[schemars(description = "Extracted APB sampled events in event order.")]
+    events: Vec<ExtractApbEvent<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::apb::ApbData> for ExtractApbData<'a> {
+    fn from(data: &'a crate::engine::apb::ApbData) -> Self {
+        Self {
+            name: data.name.as_str(),
+            profile: data.profile.as_str(),
+            issue: data.issue.as_str(),
+            pready_mode: data.pready_mode.as_str(),
+            include_wait: data.include_wait,
+            mappings: data
+                .mappings
+                .iter()
+                .map(|mapping| (mapping.standard.as_str(), ExtractApbMapping::from(mapping)))
+                .collect(),
+            events: data.events.iter().map(ExtractApbEvent::from).collect(),
         }
     }
 }

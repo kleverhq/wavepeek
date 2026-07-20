@@ -18,11 +18,11 @@ APB2 support is out of scope. This command will not assemble events into transac
 
 - [x] (2026-07-20 08:30Z) Read issue #66, repository guidance, APB source material, existing generic extraction runtime, AXI adapter, contracts, docs, fixture policy, and quality workflow.
 - [x] (2026-07-20 08:30Z) Create this branch-local ExecPlan with the implementation path and acceptance evidence.
-- [ ] Add CLI, dispatch, APB engine adapter, mapping, event payload filtering, human output, and focused unit/integration tests.
-- [ ] Add exact input/output/stream contract branches and regenerate schema artifacts.
-- [ ] Add APB3/APB4/APB5 source-backed VCD/FST fixtures and parity/behavior tests.
+- [x] (2026-07-20 08:59Z) Add CLI, dispatch, APB engine adapter, mapping, event payload filtering, human output, and focused unit/integration tests.
+- [x] (2026-07-20 08:59Z) Add exact input/output/stream contract branches and regenerate schema artifacts.
+- [x] (2026-07-20 08:59Z) Add APB3/APB4/APB5 source-backed VCD/FST fixtures and parity/behavior tests.
 - [ ] Update public docs, packaged skill guidance, architecture notes if needed, and changelog.
-- [ ] Run focused tests and `just check`, commit coherent milestones, and resolve all failures.
+- [ ] Run focused tests and `just check`, commit coherent milestones, and resolve all failures. (Completed: 13 APB integration tests, 35 schema tests, focused help test, and `just check-schema`; remaining: full local gate.)
 - [ ] Perform a strict self-review against issue #66, run `just ci`, remove this WIP plan, and commit review fixes.
 - [ ] Push `feat/extract-apb`, open a GitHub PR that closes issue #66, and verify the remote PR state.
 
@@ -34,6 +34,12 @@ APB2 support is out of scope. This command will not assemble events into transac
 - Observation: The existing AXI adapter already opens the waveform once, builds generic `ExtractSource` values, and adapts generic rows into typed protocol rows, which exactly matches the requested stateless APB design.
   Evidence: `src/engine/axi.rs::build_axi_plan`, `GenericToAxiSink`, and `extract::run_plan_with_waveform_sink`.
 
+- Observation: Exact profile, mode, wait-setting, event, and direction cross-products substantially expand generated output and stream schemas, but localized generation keeps each branch machine-checkable and source code small.
+  Evidence: `just check-schema` passes after `src/contract/apb_schema.rs` generates closed APB mapping and payload branches; focused output and stream validators reject cross-profile and event-inappropriate keys.
+
+- Observation: Rust regex intentionally lacks look-around, so fixture include expressions must enumerate valid candidates when decoys share a broad prefix.
+  Evidence: the APB5 and APB4 parity tests use anchored alternations; explicit broad-prefix tests still exercise warnings and ambiguity diagnostics.
+
 ## Decision Log
 
 - Decision: Implement APB as `src/engine/apb.rs` over `src/engine/extract.rs`, with no stateful reducer and no changes to generic event ordering or sampling.
@@ -44,8 +50,8 @@ APB2 support is out of scope. This command will not assemble events into transac
   Rationale: Issue E provides the current APB3/APB4/APB5 compatibility matrix. Transfers and waits are in sections 3.1–3.3, response validity in 3.4, optional APB5 signaling in 3.6–3.8, state behavior in 4.1, validity in Appendix A, and profile signal presence in Tables B-1–B-3.
   Date/Author: 2026-07-20 / pi
 
-- Decision: Preserve AXI behavior while reusing only narrowly protocol-neutral mapping helpers if that reduces duplication without broad refactoring; otherwise keep APB-local mapping code.
-  Rationale: The current AXI implementation has AXI-specific errors and matching rules embedded together. The smallest safe solution must not perturb a released command merely to create an abstraction.
+- Decision: Keep APB mapping code local and leave AXI code unchanged.
+  Rationale: The current AXI implementation has AXI-specific errors and channel assumptions embedded with matching. Extracting shared helpers would widen the risk and diff without changing required APB behavior.
   Date/Author: 2026-07-20 / pi
 
 - Decision: Keep this ExecPlan committed during implementation and remove it before the final PR-ready commit.
@@ -54,7 +60,7 @@ APB2 support is out of scope. This command will not assemble events into transac
 
 ## Outcomes & Retrospective
 
-Implementation is not yet complete. The expected outcome is a PR-ready command with exact machine contracts, source-backed cross-format fixtures, complete documentation, and both repository gates passing.
+The runtime and contract milestones are complete. The command now classifies sampled APB events through the generic runtime, profile/mode-aware schemas validate machine output, and three source-backed fixtures prove VCD/FST parity. Documentation, full gates, self-review, and remote delivery remain.
 
 ## Context and Orientation
 
@@ -160,7 +166,16 @@ Fixture generation, schema generation, formatting, and tests are idempotent. Gen
 
 The issue contract is available during implementation in ignored scratch file `tmp/issue-66.txt`. The source-of-truth protocol document inspected was `/home/ubuntu/.pi/agent/skills/amba-apb/references/IHI0024E_amba_apb_architecture_spec.pdf`.
 
-At completion, replace this paragraph with concise gate output, commit hashes, and the PR URL before removing the WIP file in the final cleanup commit; the committed history will retain the completed plan.
+Focused evidence at the runtime milestone:
+
+    cargo test --test extract_apb_cli: 13 passed
+    cargo test --test schema_cli: 35 passed
+    cargo test --test cli_contract extract_apb_help_is_self_descriptive: 1 passed
+    just check-schema: schema contract OK
+
+At completion, replace this evidence with final gate output, commit hashes, and the PR URL before removing the WIP file in the final cleanup commit; the committed history will retain the completed plan.
+
+Revision note (2026-07-20): Marked runtime, contracts, and fixtures complete after focused tests and schema contract validation; recorded schema and regex discoveries.
 
 ### Interfaces and Dependencies
 

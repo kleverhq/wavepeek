@@ -229,6 +229,7 @@ fn extract_apb_json_emits_waits_and_filters_payload_by_event_and_direction() {
     let complete_read = &json_events(&value)[5];
     assert_eq!(complete_read["payload"]["prdata"], "8'ha5");
     assert_eq!(complete_read["payload"]["pslverr"], "1'h1");
+    assert_eq!(complete_read["payload"]["pstrb"], "1'h0");
     assert!(complete_read["payload"].get("pwdata").is_none());
     let setup_unknown = &json_events(&value)[7];
     assert_eq!(setup_unknown["direction"], "unknown");
@@ -321,6 +322,14 @@ fn extract_apb_implicit_high_forbids_pready_and_classifies_every_access() {
             .iter()
             .all(|event| event["event"] != "access-wait")
     );
+    let unknown_complete = json_events(&value)
+        .iter()
+        .find(|event| event["time"] == "45ns")
+        .expect("implicit-high mode should classify the unknown-PREADY Access");
+    assert_eq!(unknown_complete["direction"], "unknown");
+    assert_eq!(unknown_complete["payload"]["pwrite"], "1'hx");
+    assert_eq!(unknown_complete["payload"]["pwdata"], "8'hcc");
+    assert_eq!(unknown_complete["payload"]["prdata"], "8'ha5");
 }
 
 #[test]
@@ -520,6 +529,41 @@ fn extract_apb_source_mode_applies_defaults_wait_setting_and_strict_metadata() {
         2
     );
 
+    let defaults_source = write_source(
+        &json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.apb.source",
+            "maps": {
+                "pclk": "uart_apb_p_clk_i",
+                "psel": "uart_apb_psel_o",
+                "penable": "uart_apb_penable_o",
+                "pwrite": "uart_apb_pwrite_o",
+                "pready": "uart_apb_pready_i"
+            }
+        })
+        .to_string(),
+    );
+    let defaults_output = wavepeek_cmd()
+        .args([
+            "extract",
+            "apb",
+            "--waves",
+            fixture("extract_apb4.vcd").as_str(),
+            "--scope",
+            "top",
+            "--source",
+            defaults_source.path().to_str().unwrap(),
+            "--json",
+        ])
+        .output()
+        .expect("defaulted source extraction should execute");
+    assert!(defaults_output.status.success());
+    let defaults = parse_json(&defaults_output.stdout);
+    assert_eq!(defaults["data"]["name"], "apb");
+    assert_eq!(defaults["data"]["profile"], "apb4");
+    assert_eq!(defaults["data"]["pready_mode"], "mapped");
+    assert_eq!(defaults["data"]["include_wait"], false);
+
     for (field, field_value, error_fragment) in [
         (
             "$schema",
@@ -556,6 +600,23 @@ fn extract_apb_source_mode_applies_defaults_wait_setting_and_strict_metadata() {
             .failure()
             .stderr(predicate::str::contains(error_fragment));
     }
+
+    let duplicate_source = write_source(&format!(
+        r#"{{"$schema":"{}","kind":"extract.apb.source","maps":{{"pclk":"clk_a","pclk":"clk_b"}}}}"#,
+        expected_input_schema_url()
+    ));
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "apb",
+            "--waves",
+            fixture("extract_apb4.vcd").as_str(),
+            "--source",
+            duplicate_source.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("duplicate APB mapping key 'pclk'"));
 }
 
 #[test]
@@ -739,6 +800,40 @@ fn extract_apb_mapping_validation_is_deterministic() {
         .stderr(predicate::str::contains(
             "ambiguous APB auto-mapping for 'uart_apb_paddr_pwrite_o'",
         ));
+
+    let mut explicit_wins = base_apb4_args();
+    explicit_wins.extend(apb4_explicit_maps(true, true));
+    explicit_wins.extend([
+        "--include".to_string(),
+        "^uart_apb_shadow_paddr_o$".to_string(),
+        "--max".to_string(),
+        "1".to_string(),
+        "--json".to_string(),
+    ]);
+    let output = wavepeek_cmd().args(explicit_wins).output().unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let value = parse_json(&output.stdout);
+    assert_eq!(
+        value["data"]["mappings"]["paddr"]["path"],
+        "top.uart_apb_p_addr_o"
+    );
+
+    let mut unresolved = base_apb4_args();
+    unresolved.extend(apb4_explicit_maps(true, true));
+    let missing_index = unresolved
+        .iter()
+        .position(|arg| arg == "paddr=uart_apb_p_addr_o")
+        .expect("paddr map should exist");
+    unresolved[missing_index] = "paddr=missing_paddr".to_string();
+    wavepeek_cmd()
+        .args(unresolved)
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("missing_paddr"));
 
     let mut duplicate = base_apb4_args();
     duplicate.extend(apb4_explicit_maps(true, true));

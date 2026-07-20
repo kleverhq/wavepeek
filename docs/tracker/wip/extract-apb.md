@@ -22,7 +22,7 @@ APB2 support is out of scope. This command will not assemble events into transac
 - [x] (2026-07-20 08:59Z) Add exact input/output/stream contract branches and regenerate schema artifacts.
 - [x] (2026-07-20 08:59Z) Add APB3/APB4/APB5 source-backed VCD/FST fixtures and parity/behavior tests.
 - [x] (2026-07-20 09:05Z) Update public docs, packaged skill guidance, architecture module map, and changelog.
-- [ ] Run focused tests and `just check`, commit coherent milestones, and resolve all failures. (Completed: 13 APB integration tests, 35 schema tests, focused help/docs/skill tests, `just check-schema`, and the runtime milestone commit; remaining: full local gate.)
+- [x] (2026-07-20 09:11Z) Run focused tests and `just check`, commit coherent milestones, and resolve all failures.
 - [ ] Perform a strict self-review against issue #66, run `just ci`, remove this WIP plan, and commit review fixes.
 - [ ] Push `feat/extract-apb`, open a GitHub PR that closes issue #66, and verify the remote PR state.
 
@@ -39,6 +39,9 @@ APB2 support is out of scope. This command will not assemble events into transac
 
 - Observation: Rust regex intentionally lacks look-around, so fixture include expressions must enumerate valid candidates when decoys share a broad prefix.
   Evidence: the APB5 and APB4 parity tests use anchored alternations; explicit broad-prefix tests still exercise warnings and ambiguity diagnostics.
+
+- Observation: Deserializing source mappings directly into a map silently overwrites duplicate literal JSON keys before semantic validation can see them.
+  Evidence: review replaced map deserialization with a Serde visitor that preserves entries and rejects repeated keys; the APB source integration test now exercises a raw JSON object with duplicate `pclk` keys.
 
 ## Decision Log
 
@@ -174,6 +177,7 @@ Focused evidence at the runtime milestone:
     cargo test --test docs_cli public_extract_docs: 2 passed
     cargo test --test skill_cli: 3 passed
     just check-schema: schema contract OK
+    just check: passed, including default and FSDB clippy, schema, docs, and FSDB smoke checks
     7308b55 feat(extract): add APB event extraction
 
 At completion, replace this evidence with final gate output, commit hashes, and the PR URL before removing the WIP file in the final cleanup commit; the committed history will retain the completed plan.

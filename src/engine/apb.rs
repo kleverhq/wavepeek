@@ -1,8 +1,8 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 
 use regex::Regex;
-use serde::de::Error as _;
+use serde::de::{Error as _, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::cli::extract::ApbArgs;
@@ -253,8 +253,8 @@ struct SourceFile {
     name: Option<String>,
     #[serde(default)]
     includes: Vec<String>,
-    #[serde(default)]
-    maps: BTreeMap<String, String>,
+    #[serde(default, deserialize_with = "source_maps")]
+    maps: Vec<(String, String)>,
 }
 
 fn optional_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -277,6 +277,40 @@ where
         serde_json::Value::Null => Err(D::Error::custom("expected boolean, got null")),
         _ => Err(D::Error::custom("expected boolean")),
     }
+}
+
+fn source_maps<'de, D>(deserializer: D) -> Result<Vec<(String, String)>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct SourceMapsVisitor;
+
+    impl<'de> Visitor<'de> for SourceMapsVisitor {
+        type Value = Vec<(String, String)>;
+
+        fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            formatter.write_str("an object of APB standard-to-waveform signal mappings")
+        }
+
+        fn visit_map<A>(self, mut access: A) -> Result<Self::Value, A::Error>
+        where
+            A: MapAccess<'de>,
+        {
+            let mut maps = Vec::with_capacity(access.size_hint().unwrap_or(0));
+            let mut seen = HashSet::new();
+            while let Some((standard, waves)) = access.next_entry::<String, String>()? {
+                if !seen.insert(standard.clone()) {
+                    return Err(A::Error::custom(format!(
+                        "duplicate APB mapping key '{standard}'"
+                    )));
+                }
+                maps.push((standard, waves));
+            }
+            Ok(maps)
+        }
+    }
+
+    deserializer.deserialize_map(SourceMapsVisitor)
 }
 
 #[derive(Debug)]

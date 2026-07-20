@@ -26,39 +26,105 @@
       "type": "string"
     },
     "beginRecord": {
-      "additionalProperties": true,
-      "properties": {
-        "$schema": {
-          "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
-          "type": "string"
-        },
-        "command": {
-          "$ref": "#/$defs/streamCommand"
-        },
-        "context": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/streamContextData"
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "not": {
+            "required": [
+              "context"
+            ]
+          },
+          "properties": {
+            "$schema": {
+              "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
+              "type": "string"
             },
-            {
-              "type": "null"
+            "command": {
+              "enum": [
+                "info",
+                "scope",
+                "signal",
+                "value",
+                "change",
+                "property",
+                "extract generic"
+              ],
+              "type": "string"
+            },
+            "seq": {
+              "$ref": "#/$defs/sequence"
+            },
+            "type": {
+              "const": "begin"
             }
-          ]
+          },
+          "required": [
+            "type",
+            "seq",
+            "command",
+            "$schema"
+          ],
+          "type": "object"
         },
-        "seq": {
-          "$ref": "#/$defs/sequence"
+        {
+          "additionalProperties": true,
+          "properties": {
+            "$schema": {
+              "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
+              "type": "string"
+            },
+            "command": {
+              "const": "extract ahb"
+            },
+            "context": {
+              "$ref": "#/$defs/extractAhbContext"
+            },
+            "seq": {
+              "$ref": "#/$defs/sequence"
+            },
+            "type": {
+              "const": "begin"
+            }
+          },
+          "required": [
+            "type",
+            "seq",
+            "command",
+            "$schema",
+            "context"
+          ],
+          "type": "object"
         },
-        "type": {
-          "const": "begin"
+        {
+          "additionalProperties": true,
+          "properties": {
+            "$schema": {
+              "const": "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json",
+              "type": "string"
+            },
+            "command": {
+              "const": "extract axi"
+            },
+            "context": {
+              "$ref": "#/$defs/extractAxiContext"
+            },
+            "seq": {
+              "$ref": "#/$defs/sequence"
+            },
+            "type": {
+              "const": "begin"
+            }
+          },
+          "required": [
+            "type",
+            "seq",
+            "command",
+            "$schema",
+            "context"
+          ],
+          "type": "object"
         }
-      },
-      "required": [
-        "type",
-        "seq",
-        "command",
-        "$schema"
-      ],
-      "type": "object"
+      ]
     },
     "canonicalPath": {
       "description": "Canonical dot-separated hierarchy path emitted by wavepeek for a scope or signal.",

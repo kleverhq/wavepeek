@@ -30,8 +30,8 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 - [x] (2026-07-20 09:00Z) Add exact input, output, and stream contract branches and regenerate schema artifacts.
 - [x] (2026-07-20 09:00Z) Add source-backed AHB-Lite/AHB5 VCD/FST fixtures and focused unit/integration/schema tests.
 - [x] (2026-07-20 09:09Z) Update public docs, packaged skill guidance, architecture notes, and changelog.
-- [ ] Run focused tests, `just check`, and `just ci`; resolve every failure (completed: focused engine, CLI, schema, fixture, docs, help, and skill tests; remaining: both repository gates).
-- [ ] Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review.
+- [x] (2026-07-20 09:14Z) Run focused tests, `just check`, and `just ci`; resolve every failure.
+- [ ] Run focused read-only reviews, apply findings, rerun affected gates, and complete an independent control review (completed: three focused lanes, clarification passes, performance/stream-contract fixes, and focused rechecks; remaining: repository gates and fresh control pass).
 - [ ] Remove this WIP plan, make final conventional commits, push `feat/extract-ahb`, and open a PR that closes issue #67.
 
 ## Surprises & Discoveries
@@ -47,6 +47,15 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
 
 - Observation: JSON output carries auto-mapping warnings inside `diagnostics`; human output sends the same warnings to stderr.
   Evidence: the AHB5 fixture's `hreadyout`, `hsel`, and check decoys validate as `WPK-W0004` JSON diagnostics and as human warnings.
+
+- Observation: The full gate has enough direct AHB coverage to remain above every repository threshold without exemptions.
+  Evidence: `just ci` reported 94.18% regions, 93.63% functions, and 94.69% lines over `src/**`; all default and FSDB-enabled tests passed.
+
+- Observation: Chunking candidate vectors alone is insufficient for FSDB because uncached event evaluation retains one expression sample per timestamp.
+  Evidence: focused architecture review traced `FsdbBackend::sample_expr_value` into `expr_sample_cache`; chunk-local timeline preloading now routes clock and payload samples through replaceable bounded timeline caches instead.
+
+- Observation: Generic derived JSONL begin schemas did not encode runtime command/context pairing.
+  Evidence: before review fixes, `extract ahb` begin records without context or with AXI context validated; `beginRecord` now has command-specific branches and negative schema coverage.
 
 ## Decision Log
 
@@ -70,9 +79,21 @@ This work does not support legacy full AHB split, retry, or arbitration behavior
   Rationale: AHB suffix decoy rules and pipeline event contracts are protocol-specific, while only three small time/limit helpers are genuinely shared with generic extraction.
   Date/Author: 2026-07-20 / pi
 
+- Decision: Process clock candidates and waveform timelines in bounded chunks, with a 4,000,000 raw-tick maximum, and materialize payload literals only for retained or emitted rows.
+  Rationale: This lets finite limits stop waveform work early, bounds candidate vectors and FSDB timeline caches, avoids indefinite expression-sample cache growth, and removes per-edge mapping/formatting allocation without changing event order.
+  Date/Author: 2026-07-20 / pi
+
+- Decision: Require command-specific context on AHB/AXI JSONL begin records and no protocol context on other command begins.
+  Rationale: Runtime already enforces this pairing; exact stream schema branches must reject command/context mismatches rather than expose a broader contract than runtime.
+  Date/Author: 2026-07-20 / pi
+
+- Decision: Preserve unknown mapped `hresp` and read-ERROR `hrdata` observations instead of desynchronizing or success-gating `hrdata`.
+  Rationale: Issue #67 explicitly says payload X/Z does not suppress known events, unknown `hresp` remains observed, and read ERROR preserves `hrdata` without claiming protocol validity. Reviewer concerns based solely on normative signal validity were resolved after the product requirement was quoted.
+  Date/Author: 2026-07-20 / pi
+
 ## Outcomes & Retrospective
 
-Implementation has not started. The intended outcome is a complete, reviewed, pushed feature with a GitHub PR closing issue #67. This section will record the final behavior, gate evidence, review results, and any remaining gaps.
+Implementation and documentation are complete. Focused tests, `just check`, and `just ci` pass, including VCD/FST parity, schema semantics, documentation publication, coverage, and FSDB-enabled checks. Review, final WIP cleanup, push, and PR creation remain before handoff.
 
 ## Context and Orientation
 

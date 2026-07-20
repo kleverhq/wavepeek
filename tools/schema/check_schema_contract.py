@@ -185,9 +185,13 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
 
 def validate_stream_schema(schema: dict[str, Any]) -> None:
     require(schema.get("$id") == EXPECTED_STREAM_URL, "stream schema $id must be exact URL")
+    begin_branches = schema["$defs"]["beginRecord"].get("oneOf", [])
+    require(len(begin_branches) == 3, "stream begin record must use three command branches")
     require(
-        schema["$defs"]["beginRecord"]["properties"]["$schema"].get("const")
-        == EXPECTED_STREAM_URL,
+        all(
+            branch["properties"]["$schema"].get("const") == EXPECTED_STREAM_URL
+            for branch in begin_branches
+        ),
         "stream begin record must require exact $schema URL with const",
     )
     require(

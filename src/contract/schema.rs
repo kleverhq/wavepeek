@@ -220,6 +220,7 @@ fn stream_defs() -> Value {
         "sequence".to_string(),
         json!({"type": "integer", "minimum": 0}),
     );
+    object.insert("beginRecord".to_string(), begin_record_schema());
     object.insert(
         "itemRecord".to_string(),
         json!({
@@ -353,6 +354,59 @@ fn command_data_branch(command: &str, data_def: &str) -> Value {
     })
 }
 
+fn begin_record_schema() -> Value {
+    let common_properties = || {
+        json!({
+            "type": {"const": "begin"},
+            "seq": ref_schema("sequence"),
+            "command": ref_schema("streamCommand"),
+            "$schema": {"type": "string", "const": STREAM_SCHEMA_URL}
+        })
+    };
+    let begin_branch = |command: Value, context: Option<Value>| {
+        let mut properties = common_properties()
+            .as_object()
+            .expect("begin properties object")
+            .clone();
+        properties.insert("command".to_string(), command);
+        let mut required = vec!["type", "seq", "command", "$schema"];
+        let mut branch = json!({
+            "type": "object",
+            "additionalProperties": true,
+            "required": required,
+            "properties": properties,
+        });
+        if let Some(context) = context {
+            branch["properties"]["context"] = context;
+            required.push("context");
+            branch["required"] = json!(required);
+        } else {
+            branch["not"] = json!({"required": ["context"]});
+        }
+        branch
+    };
+
+    json!({
+        "oneOf": [
+            begin_branch(
+                json!({
+                    "type": "string",
+                    "enum": ["info", "scope", "signal", "value", "change", "property", "extract generic"]
+                }),
+                None,
+            ),
+            begin_branch(
+                json!({"const": "extract ahb"}),
+                Some(ref_schema("extractAhbContext")),
+            ),
+            begin_branch(
+                json!({"const": "extract axi"}),
+                Some(ref_schema("extractAxiContext")),
+            ),
+        ]
+    })
+}
+
 fn item_record_for(command: &str, item_def: &str) -> Value {
     json!({
         "type": "object",
@@ -427,10 +481,15 @@ mod tests {
             "https://kleverhq.github.io/wavepeek/schema-output-v2.2.json"
         );
         let stream = stream_schema_value();
-        assert_eq!(
-            stream["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
-            "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
-        );
+        for branch in stream["$defs"]["beginRecord"]["oneOf"]
+            .as_array()
+            .expect("begin record branches")
+        {
+            assert_eq!(
+                branch["properties"]["$schema"]["const"],
+                "https://kleverhq.github.io/wavepeek/schema-stream-v2.2.json"
+            );
+        }
         let input = input_schema_value();
         assert_eq!(
             input["$defs"]["extractGenericSourcesInput"]["properties"]["$schema"]["const"],

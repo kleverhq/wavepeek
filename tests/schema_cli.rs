@@ -2062,16 +2062,61 @@ fn schema_stream_command_exposes_waveform_command_contract() {
         .into_iter()
         .collect::<std::collections::BTreeSet<_>>()
     );
-    assert_eq!(
-        value["$defs"]["beginRecord"]["properties"]["$schema"]["const"],
-        expected_stream_schema_url()
-    );
+    for branch in value["$defs"]["beginRecord"]["oneOf"]
+        .as_array()
+        .expect("begin record should use command-specific branches")
+    {
+        assert_eq!(
+            branch["properties"]["$schema"]["const"],
+            expected_stream_schema_url()
+        );
+        assert!(branch["properties"]["$schema"].get("pattern").is_none());
+    }
     assert_eq!(value["$id"], expected_stream_schema_url());
-    assert!(
-        value["$defs"]["beginRecord"]["properties"]["$schema"]
-            .get("pattern")
-            .is_none()
-    );
+}
+
+#[test]
+fn schema_stream_validator_requires_command_specific_begin_context() {
+    let validator = stream_schema_validator();
+    let valid_ahb = json!({
+        "type": "begin",
+        "seq": 0,
+        "command": "extract ahb",
+        "$schema": expected_stream_schema_url(),
+        "context": {
+            "name": "ahb",
+            "profile": "ahb-lite",
+            "issue": "C",
+            "include_stall": false,
+            "include_idle": false,
+            "include_busy": false,
+            "initial_data_phase": {"state": "desynchronized"},
+            "mappings": {
+                "hclk": {"path": "top.hclk"},
+                "htrans": {"path": "top.htrans"},
+                "hready": {"path": "top.hready"},
+                "hwrite": {"path": "top.hwrite"}
+            }
+        }
+    });
+    validator
+        .validate(&valid_ahb)
+        .unwrap_or_else(|error| panic!("valid AHB begin rejected: {error}\n{valid_ahb}"));
+
+    let mut missing_context = valid_ahb.clone();
+    missing_context
+        .as_object_mut()
+        .expect("begin object")
+        .remove("context");
+    assert!(validator.validate(&missing_context).is_err());
+
+    let mut mismatched_context = valid_ahb.clone();
+    mismatched_context["command"] = json!("extract axi");
+    assert!(validator.validate(&mismatched_context).is_err());
+
+    let mut unrelated_context = valid_ahb.clone();
+    unrelated_context["command"] = json!("info");
+    assert!(validator.validate(&unrelated_context).is_err());
 }
 
 #[test]

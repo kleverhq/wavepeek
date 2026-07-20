@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
+use std::sync::Arc;
 
 use regex::Regex;
 use serde::de::Error as _;
@@ -28,6 +29,8 @@ const DEFAULT_PROFILE: &str = "ahb-lite";
 const DEFAULT_NAME: &str = "ahb";
 const SOURCE_KIND: &str = "extract.ahb.source";
 const HELP: &str = "wavepeek extract ahb";
+const CANDIDATE_CHUNK_RAW: u64 = 1_000_000;
+const MAX_CANDIDATE_CHUNK_RAW: u64 = 4_000_000;
 const REQUIRED_SIGNALS: &[&str] = &["hclk", "htrans", "hready", "hwrite"];
 const AHB_LITE_SIGNALS: &[&str] = &[
     "hclk",
@@ -292,6 +295,32 @@ struct ResolvedMapping {
 }
 
 #[derive(Debug)]
+struct SamplePlan {
+    mappings: Vec<ResolvedMapping>,
+    resolved: Vec<ResolvedSignal>,
+    by_standard: HashMap<String, usize>,
+}
+
+impl SamplePlan {
+    fn new(mappings: Vec<ResolvedMapping>) -> Self {
+        let resolved = mappings
+            .iter()
+            .map(|mapping| mapping.resolved.clone())
+            .collect();
+        let by_standard = mappings
+            .iter()
+            .enumerate()
+            .map(|(index, mapping)| (mapping.mapping.standard.clone(), index))
+            .collect();
+        Self {
+            mappings,
+            resolved,
+            by_standard,
+        }
+    }
+}
+
+#[derive(Debug)]
 struct BoundClock {
     source: String,
     host: WaveformExprHost,
@@ -420,24 +449,27 @@ impl PipelineState {
     }
 }
 
-#[derive(Debug, Clone)]
-struct EdgeSample {
-    payload: AhbPayloadValue,
-    bits: String,
-}
-
 #[derive(Debug)]
 struct EdgeSamples {
-    by_standard: HashMap<String, EdgeSample>,
+    plan: Arc<SamplePlan>,
+    sampled: Vec<SampledSignalState>,
 }
 
 impl EdgeSamples {
-    fn get(&self, standard: &str) -> Option<&EdgeSample> {
-        self.by_standard.get(standard)
+    fn index(&self, standard: &str) -> Option<usize> {
+        self.plan.by_standard.get(standard).copied()
+    }
+
+    fn bits(&self, standard: &str) -> Option<&str> {
+        self.sampled.get(self.index(standard)?)?.bits.as_deref()
+    }
+
+    fn has(&self, standard: &str) -> bool {
+        self.index(standard).is_some()
     }
 
     fn known_bit(&self, standard: &str) -> Option<bool> {
-        match self.get(standard)?.bits.as_str() {
+        match self.bits(standard)? {
             "0" => Some(false),
             "1" => Some(true),
             _ => None,
@@ -445,7 +477,7 @@ impl EdgeSamples {
     }
 
     fn transfer(&self) -> Transfer {
-        match self.get("htrans").map(|sample| sample.bits.as_str()) {
+        match self.bits("htrans") {
             Some("00") => Transfer::Idle,
             Some("01") => Transfer::Busy,
             Some("10") => Transfer::Nonseq,
@@ -465,8 +497,48 @@ impl EdgeSamples {
     fn payload(&self, standards: &[&str]) -> Vec<AhbPayloadValue> {
         standards
             .iter()
-            .filter_map(|standard| self.get(standard).map(|sample| sample.payload.clone()))
+            .filter_map(|standard| {
+                let index = self.index(standard)?;
+                Some(payload_value(
+                    &self.plan.mappings[index].mapping,
+                    &self.sampled[index],
+                ))
+            })
             .collect()
+    }
+
+    #[cfg(test)]
+    fn for_test(values: &[(&str, &str)]) -> Self {
+        use crate::waveform::SignalId;
+
+        let mappings = values
+            .iter()
+            .enumerate()
+            .map(|(index, (standard, bits))| ResolvedMapping {
+                mapping: AhbSignalMapping {
+                    standard: (*standard).to_string(),
+                    display: (*standard).to_string(),
+                    path: format!("top.{standard}"),
+                },
+                resolved: ResolvedSignal {
+                    path: format!("top.{standard}"),
+                    id: SignalId::from_test_index(index as u64),
+                    width: bits.len() as u32,
+                },
+            })
+            .collect::<Vec<_>>();
+        let sampled = values
+            .iter()
+            .map(|(standard, bits)| SampledSignalState {
+                path: format!("top.{standard}"),
+                width: bits.len() as u32,
+                bits: Some((*bits).to_string()),
+            })
+            .collect();
+        Self {
+            plan: Arc::new(SamplePlan::new(mappings)),
+            sampled,
+        }
     }
 }
 
@@ -501,9 +573,9 @@ impl Walker {
         samples: &EdgeSamples,
         collect_events: bool,
     ) -> Vec<AhbEvent> {
-        let mut events = Vec::with_capacity(2);
-        if let Some(reset) = samples.get("hresetn") {
-            match reset.bits.as_str() {
+        let mut events = Vec::new();
+        if samples.has("hresetn") {
+            match samples.bits("hresetn").expect("sample values checked") {
                 "0" => {
                     self.state = PipelineState::Empty;
                     if !self.in_reset && collect_events {
@@ -792,77 +864,72 @@ fn run_with_sink<S: AhbEventSink + ?Sized>(
             "to_raw": to_raw,
         })
     });
-    let candidate_times = waveform
-        .borrow_mut()
-        .collect_expr_candidate_times_with_mode(
-            bound_clock.candidates.as_slice(),
-            dump_start_raw,
-            to_raw,
-            ChangeCandidateCollectionMode::Auto,
-        )?;
-    let all_resolved = resolved_mappings
-        .iter()
-        .map(|mapping| mapping.resolved.clone())
-        .collect::<Vec<_>>();
-    waveform.borrow_mut().preload_expr_value_changes(
-        bound_clock.candidates.as_slice(),
-        dump_start_raw,
-        to_raw,
-    )?;
-    waveform.borrow_mut().preload_resolved_value_changes(
-        all_resolved.as_slice(),
-        dump_start_raw,
-        to_raw,
-    )?;
-
+    let sample_plan = Arc::new(SamplePlan::new(resolved_mappings));
     let inclusion = Inclusion {
         stall: context.include_stall,
         idle: context.include_idle,
         busy: context.include_busy,
     };
     let mut walker = Walker::new(context.profile.as_str(), inclusion);
-    let public_start = candidate_times.partition_point(|timestamp| *timestamp < from_raw);
-    for timestamp in &candidate_times[..public_start] {
-        if let Some((time, sample_time, samples)) = sample_rising_edge(
+    if from_raw > dump_start_raw {
+        visit_candidate_chunks(
             &waveform,
-            &resolved_mappings,
             &bound_clock,
-            *timestamp,
+            &sample_plan,
             dump_start_raw,
-            dump_end_raw,
-            dump_time.dump_tick,
-        )? {
-            walker.process_edge(time.as_str(), sample_time.as_str(), &samples, false);
-        }
+            from_raw - 1,
+            |timestamp| {
+                if let Some((time, sample_time, samples)) = sample_rising_edge(
+                    &waveform,
+                    &sample_plan,
+                    &bound_clock,
+                    timestamp,
+                    dump_start_raw,
+                    dump_end_raw,
+                    dump_time.dump_tick,
+                )? {
+                    walker.process_edge(time.as_str(), sample_time.as_str(), &samples, false);
+                }
+                Ok(std::ops::ControlFlow::Continue(()))
+            },
+        )?;
     }
 
     context.initial_data_phase = walker.state.initial_context();
     sink.start(&context)?;
     let mut emitted = 0usize;
     let mut truncated = false;
-    'edges: for timestamp in &candidate_times[public_start..] {
-        let Some((time, sample_time, samples)) = sample_rising_edge(
-            &waveform,
-            &resolved_mappings,
-            &bound_clock,
-            *timestamp,
-            dump_start_raw,
-            dump_end_raw,
-            dump_time.dump_tick,
-        )?
-        else {
-            continue;
-        };
-        let events = walker.process_edge(time.as_str(), sample_time.as_str(), &samples, true);
-        for event in events {
-            if max.is_some_and(|limit| emitted == limit) {
-                truncated = true;
-                break 'edges;
+    visit_candidate_chunks(
+        &waveform,
+        &bound_clock,
+        &sample_plan,
+        from_raw,
+        to_raw,
+        |timestamp| {
+            let Some((time, sample_time, samples)) = sample_rising_edge(
+                &waveform,
+                &sample_plan,
+                &bound_clock,
+                timestamp,
+                dump_start_raw,
+                dump_end_raw,
+                dump_time.dump_tick,
+            )?
+            else {
+                return Ok(std::ops::ControlFlow::Continue(()));
+            };
+            let events = walker.process_edge(time.as_str(), sample_time.as_str(), &samples, true);
+            for event in events {
+                if max.is_some_and(|limit| emitted == limit) {
+                    truncated = true;
+                    return Ok(std::ops::ControlFlow::Break(()));
+                }
+                sink.emit(event)?;
+                emitted += 1;
             }
-            sink.emit(event)?;
-            emitted += 1;
-        }
-    }
+            Ok(std::ops::ControlFlow::Continue(()))
+        },
+    )?;
 
     if emitted == 0 {
         diagnostics.push(Diagnostic::warning(
@@ -982,9 +1049,67 @@ fn build_ahb(args: &AhbArgs) -> Result<BuiltAhb, WavepeekError> {
     })
 }
 
+fn visit_candidate_chunks<F>(
+    waveform: &SharedWaveform,
+    clock: &BoundClock,
+    plan: &SamplePlan,
+    from_raw: u64,
+    to_raw: u64,
+    mut visit: F,
+) -> Result<(), WavepeekError>
+where
+    F: FnMut(u64) -> Result<std::ops::ControlFlow<()>, WavepeekError>,
+{
+    if from_raw > to_raw {
+        return Ok(());
+    }
+    let mut cursor = from_raw;
+    let mut span = CANDIDATE_CHUNK_RAW;
+    loop {
+        let chunk_end = cursor.saturating_add(span - 1).min(to_raw);
+        let candidates = waveform
+            .borrow_mut()
+            .collect_expr_candidate_times_with_mode(
+                clock.candidates.as_slice(),
+                cursor,
+                chunk_end,
+                ChangeCandidateCollectionMode::Random,
+            )?;
+        let empty = candidates.is_empty();
+        if !empty {
+            let preload_from = cursor.saturating_sub(1);
+            waveform.borrow_mut().preload_expr_value_changes(
+                clock.candidates.as_slice(),
+                preload_from,
+                chunk_end,
+            )?;
+            waveform.borrow_mut().preload_resolved_value_changes(
+                plan.resolved.as_slice(),
+                preload_from,
+                chunk_end,
+            )?;
+        }
+        for timestamp in candidates {
+            if visit(timestamp)?.is_break() {
+                return Ok(());
+            }
+        }
+        if chunk_end == to_raw {
+            return Ok(());
+        }
+        cursor = chunk_end + 1;
+        span = if empty {
+            span.saturating_mul(2)
+                .clamp(CANDIDATE_CHUNK_RAW, MAX_CANDIDATE_CHUNK_RAW)
+        } else {
+            CANDIDATE_CHUNK_RAW
+        };
+    }
+}
+
 fn sample_rising_edge(
     waveform: &SharedWaveform,
-    mappings: &[ResolvedMapping],
+    plan: &Arc<SamplePlan>,
     clock: &BoundClock,
     timestamp: u64,
     dump_start_raw: u64,
@@ -1009,52 +1134,40 @@ fn sample_rising_edge(
     Ok(Some((
         format_raw_timestamp(timestamp, dump_tick)?,
         format_raw_timestamp(sample_timestamp, dump_tick)?,
-        sample_edge(waveform, mappings, sample_timestamp)?,
+        sample_edge(waveform, plan, sample_timestamp)?,
     )))
 }
 
 fn sample_edge(
     waveform: &SharedWaveform,
-    mappings: &[ResolvedMapping],
+    plan: &Arc<SamplePlan>,
     sample_timestamp: u64,
 ) -> Result<EdgeSamples, WavepeekError> {
-    let resolved = mappings
-        .iter()
-        .map(|mapping| mapping.resolved.clone())
-        .collect::<Vec<_>>();
     let sampled = waveform
         .borrow_mut()
-        .sample_resolved_optional(resolved.as_slice(), sample_timestamp)?;
-    let by_standard = mappings
-        .iter()
-        .zip(sampled.iter())
-        .map(|(mapping, sample)| {
-            let value = build_sample_value(mapping, sample)?;
-            Ok((mapping.mapping.standard.clone(), value))
-        })
-        .collect::<Result<HashMap<_, _>, WavepeekError>>()?;
-    Ok(EdgeSamples { by_standard })
+        .sample_resolved_optional(plan.resolved.as_slice(), sample_timestamp)?;
+    for (mapping, sample) in plan.mappings.iter().zip(&sampled) {
+        if sample.bits.is_none() {
+            return Err(WavepeekError::Signal(format!(
+                "signal '{}' has no value at or before requested time",
+                mapping.mapping.path
+            )));
+        }
+    }
+    Ok(EdgeSamples {
+        plan: Arc::clone(plan),
+        sampled,
+    })
 }
 
-fn build_sample_value(
-    mapping: &ResolvedMapping,
-    sampled: &SampledSignalState,
-) -> Result<EdgeSample, WavepeekError> {
-    let bits = sampled.bits.as_ref().ok_or_else(|| {
-        WavepeekError::Signal(format!(
-            "signal '{}' has no value at or before requested time",
-            mapping.mapping.path
-        ))
-    })?;
-    Ok(EdgeSample {
-        payload: AhbPayloadValue {
-            standard: mapping.mapping.standard.clone(),
-            display: mapping.mapping.display.clone(),
-            path: mapping.mapping.path.clone(),
-            value: format_verilog_literal(sampled.width, bits.as_str()),
-        },
-        bits: bits.clone(),
-    })
+fn payload_value(mapping: &AhbSignalMapping, sampled: &SampledSignalState) -> AhbPayloadValue {
+    let bits = sampled.bits.as_deref().expect("sample values checked");
+    AhbPayloadValue {
+        standard: mapping.standard.clone(),
+        display: mapping.display.clone(),
+        path: mapping.path.clone(),
+        value: format_verilog_literal(sampled.width, bits),
+    }
 }
 
 fn config_from_args(args: &AhbArgs) -> Result<AhbConfig, WavepeekError> {
@@ -1493,32 +1606,14 @@ fn is_candidate_suffix_affix(token: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        AHB_LITE_SIGNALS, AHB5_SIGNALS, AhbPayloadValue, AhbSignalMapping, Direction, EdgeSample,
-        EdgeSamples, Inclusion, PipelineState, SignalCandidate, Walker, auto_mappings,
-        candidate_matching_standards, is_mapping_decoy, parse_cli_maps, parse_profile,
-        profile_specs,
+        AHB_LITE_SIGNALS, AHB5_SIGNALS, AhbSignalMapping, Direction, EdgeSamples, Inclusion,
+        PipelineState, SignalCandidate, Walker, auto_mappings, candidate_matching_standards,
+        is_mapping_decoy, parse_cli_maps, parse_profile, profile_specs,
     };
     use std::collections::HashMap;
 
-    fn sample(standard: &str, bits: &str) -> EdgeSample {
-        EdgeSample {
-            payload: AhbPayloadValue {
-                standard: standard.to_string(),
-                display: standard.to_string(),
-                path: format!("top.{standard}"),
-                value: format!("{}'h0", bits.len()),
-            },
-            bits: bits.to_string(),
-        }
-    }
-
     fn edge(values: &[(&str, &str)]) -> EdgeSamples {
-        EdgeSamples {
-            by_standard: values
-                .iter()
-                .map(|(standard, bits)| ((*standard).to_string(), sample(standard, bits)))
-                .collect::<HashMap<_, _>>(),
-        }
+        EdgeSamples::for_test(values)
     }
 
     #[test]

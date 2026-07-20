@@ -579,6 +579,8 @@ fn extract_apb_source_mode_applies_defaults_wait_setting_and_strict_metadata() {
         ("pready_mode", Value::Null, "expected string, got null"),
         ("include_wait", Value::Null, "expected boolean, got null"),
         ("name", Value::Null, "expected string, got null"),
+        ("includes", Value::Null, "invalid type: null"),
+        ("maps", Value::Null, "invalid type: null"),
     ] {
         let mut invalid = json!({
             "$schema": expected_input_schema_url(),
@@ -617,6 +619,55 @@ fn extract_apb_source_mode_applies_defaults_wait_setting_and_strict_metadata() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("duplicate APB mapping key 'pclk'"));
+
+    let implicit_wait_source = write_source(
+        &json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.apb.source",
+            "pready_mode": "implicit-high",
+            "include_wait": true,
+            "maps": {}
+        })
+        .to_string(),
+    );
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "apb",
+            "--waves",
+            fixture("extract_apb4.vcd").as_str(),
+            "--source",
+            implicit_wait_source.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "--include-wait cannot be used with --pready-mode implicit-high",
+        ));
+
+    let outside_profile_source = write_source(
+        &json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.apb.source",
+            "profile": "apb3",
+            "maps": {"pprot": "top.uart_apb_pprot_o"}
+        })
+        .to_string(),
+    );
+    wavepeek_cmd()
+        .args([
+            "extract",
+            "apb",
+            "--waves",
+            fixture("extract_apb4.vcd").as_str(),
+            "--source",
+            outside_profile_source.path().to_str().unwrap(),
+        ])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains(
+            "APB profile apb3 has no standard signal 'pprot'",
+        ));
 }
 
 #[test]
@@ -706,6 +757,20 @@ fn extract_apb_source_conflicts_with_profile_mapping_and_wait_flags() {
 
 #[test]
 fn extract_apb_bounds_limits_empty_diagnostics_and_reset_gate_are_row_based() {
+    let mut default_limit = base_apb4_args();
+    default_limit.extend(apb4_explicit_maps(true, true));
+    default_limit.extend(["--max".to_string(), "2".to_string(), "--json".to_string()]);
+    let output = wavepeek_cmd().args(default_limit).output().unwrap();
+    let value = parse_json(&output.stdout);
+    assert_eq!(
+        json_events(&value)
+            .iter()
+            .map(|event| event["time"].as_str().unwrap())
+            .collect::<Vec<_>>(),
+        ["5ns", "20ns"]
+    );
+    assert_eq!(value["diagnostics"][0]["code"], "WPK-W0002");
+
     let mut bounded = base_apb4_args();
     bounded.extend(apb4_explicit_maps(true, true));
     bounded.extend([
@@ -767,6 +832,26 @@ fn extract_apb_mapping_validation_is_deterministic() {
         .assert()
         .failure()
         .stderr(predicate::str::contains("APB extraction requires psel"));
+
+    let mut explicit_indexed_select = base_apb4_args();
+    explicit_indexed_select.extend(apb4_explicit_maps(true, true));
+    let psel_index = explicit_indexed_select
+        .iter()
+        .position(|arg| arg == "psel=uart_apb_psel_o")
+        .expect("psel map should exist");
+    explicit_indexed_select[psel_index] = "psel=uart_apb_psel0_o".to_string();
+    explicit_indexed_select.push("--json".to_string());
+    let output = wavepeek_cmd()
+        .args(explicit_indexed_select)
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    let value = parse_json(&output.stdout);
+    assert_eq!(
+        value["data"]["mappings"]["psel"]["path"],
+        "top.uart_apb_psel0_o"
+    );
+    assert!(json_events(&value).is_empty());
 
     let mut ambiguous = base_apb4_args();
     ambiguous.extend(apb4_explicit_maps(true, true));
@@ -856,6 +941,23 @@ fn extract_apb_mapping_validation_is_deterministic() {
         .stderr(predicate::str::contains(
             "APB profile apb4 has no standard signal 'pnse'",
         ));
+
+    for excluded in ["pwakeup", "paddrchk"] {
+        let mut args = base_apb4_args();
+        args.extend([
+            "--profile".to_string(),
+            "apb5".to_string(),
+            "--map".to_string(),
+            format!("{excluded}=uart_apb_psel_o"),
+        ]);
+        wavepeek_cmd()
+            .args(args)
+            .assert()
+            .failure()
+            .stderr(predicate::str::contains(format!(
+                "APB profile apb5 has no standard signal '{excluded}'"
+            )));
+    }
 }
 
 #[test]

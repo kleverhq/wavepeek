@@ -18,10 +18,10 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 - [x] (2026-07-20 08:30Z) Read issue #65, repository guidance, current generic and AXI extraction paths, schema ownership, fixture policy, public contracts, prior feature plans, and Arm IHI 0051B source clauses.
 - [x] (2026-07-20 08:30Z) Confirm the clean branch `feat/extract-axistream` is at `caea6c3`, identical to `main` and `origin/main`.
-- [ ] Milestone 1: add failing focused tests and the dedicated AXI-Stream runtime adapter, CLI, output DTOs, and source-backed fixture.
-- [ ] Milestone 2: add exact input/output/stream contracts, regenerate schemas, and update schema/deployment checks.
-- [ ] Milestone 3: update help, public docs, packaged skill, architecture, and changelog; commit the coherent feature.
-- [ ] Milestone 4: run `just check` and `just ci`, complete focused independent review and a clean control pass, remove this WIP plan, push the branch, and open a PR that closes issue #65.
+- [x] (2026-07-20 09:10Z) Milestone 1: added a failing CLI test, dedicated AXI-Stream runtime adapter, CLI, shared standard-name matching helper, output DTOs, human/JSONL rendering, and source-backed VCD/FST fixture.
+- [x] (2026-07-20 09:24Z) Milestone 2: added exact input/output/stream contracts, regenerated schemas, and updated schema and deployed-endpoint checks.
+- [x] (2026-07-20 09:38Z) Milestone 3: updated help, public docs, packaged skill, architecture, changelog, and executable documentation contracts.
+- [ ] Milestone 4 (completed: pre-review `just check` passed; remaining: commit the feature, run `just ci`, complete independent review and control pass, clean the WIP plan, push, and open the issue-closing PR).
 
 ## Surprises & Discoveries
 
@@ -33,6 +33,12 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 - Observation: both requested profiles intentionally share the same functional transfer signals.
   Evidence: Arm IHI 0051B Table B-1 lists common functional signals; AXI5-only `TWAKEUP` and Table B-2 check signals do not define transfer completion and are excluded.
+
+- Observation: the current schema family preserves extension fields on transfer objects, so the exact AXI-Stream contract can close mapping and payload key sets but cannot reject an arbitrary extension field named `channel`.
+  Evidence: output and stream schema tests accept outer transfer extensions while runtime DTOs never emit `channel`; this preserves the documented v2 additive extension contract.
+
+- Observation: deployed schema checks previously verified endpoint availability but not feature content.
+  Evidence: `tools/docs/check_deploy.py` discarded fetched schema bodies. The v2.2 check now parses all three schema families and requires the AXI-Stream command and source kind.
 
 ## Decision Log
 
@@ -54,7 +60,7 @@ This work does not reconstruct packets or interleaved streams, interpret `tkeep`
 
 ## Outcomes & Retrospective
 
-Planning is complete. No implementation or validation has run yet. This section will record each completed milestone and final delivery evidence.
+The command, runtime adapter, exact contracts, fixtures, schemas, checks, help, docs, skill, architecture, and changelog are implemented. Focused runtime, schema, docs, skill, checker, VCD/FST parity, and FSDB-aware `just check` validation pass. Independent review, final `just ci`, WIP cleanup, push, and PR creation remain.
 
 ## Context and Orientation
 
@@ -183,3 +189,5 @@ No new dependency is required. Continue using clap for CLI parsing, serde for ru
 At completion, `src/engine/axistream.rs` must expose the dispatch types/functions needed by `src/engine/mod.rs`, construct one generic `ExtractSource`, and return AXI-Stream-specific context and rows. `src/contract/output.rs` must define AXI-Stream context and transfer DTOs. `src/contract/stream.rs` must define AXI-Stream begin context. `src/contract/input.rs` must define the singular source DTO. `src/contract/axistream_schema.rs` must derive exact branches from one runtime profile source of truth rather than duplicate profile signal inventories across several modules.
 
 Plan revision note (2026-07-20): Created the initial self-contained plan after repository and protocol investigation. It records the one-channel extraction model, explicit TREADY omission contract, module boundaries, exact schema scope, fixture strategy, review requirements, and PR delivery linked to issue #65.
+
+Plan revision note (2026-07-20 09:40Z): Marked implementation, contracts, fixtures, generated schemas, checks, and documentation complete after focused tests and `just check`. Recorded the extension-field and deployed-schema-check discoveries; delivery work remains in Milestone 4.

@@ -77,6 +77,8 @@ class CheckDeployTests(unittest.TestCase):
         self.assertTrue(check_deploy.stream_schema_required("1.1.0"))
         self.assertFalse(check_deploy.input_schema_required("2.0.9"))
         self.assertTrue(check_deploy.input_schema_required("2.1.0"))
+        self.assertFalse(check_deploy.axistream_schema_required("2.1.9"))
+        self.assertTrue(check_deploy.axistream_schema_required("2.2.0"))
 
     def test_url_and_repository_validation(self) -> None:
         self.assertEqual(
@@ -166,9 +168,15 @@ class CheckDeployTests(unittest.TestCase):
                 "1",
             ]
         )
-        with mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok") as fetch:
+        with (
+            mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok") as fetch,
+            mock.patch.object(
+                check_deploy, "validate_axistream_deployed_schemas"
+            ) as validate,
+        ):
             check_deploy.check_deploy(args)
 
+        validate.assert_called_once_with(b"ok", b"ok", b"ok")
         self.assertEqual(
             [call.args[0] for call in fetch.call_args_list],
             [
@@ -233,6 +241,38 @@ class CheckDeployTests(unittest.TestCase):
         self.assertIn("https://example.test/stream.json", urls)
         self.assertIn("https://example.test/input.json", urls)
 
+    def test_axistream_schema_validation_checks_command_and_source_kind(self) -> None:
+        output = json.dumps(
+            {"properties": {"command": {"enum": ["extract axistream"]}}}
+        ).encode()
+        stream = json.dumps(
+            {"$defs": {"streamCommand": {"enum": ["extract axistream"]}}}
+        ).encode()
+        input_schema = json.dumps(
+            {
+                "oneOf": [{"$ref": "#/$defs/extractAxiStreamSourceInput"}],
+                "$defs": {
+                    "extractAxiStreamSourceInput": {
+                        "properties": {
+                            "kind": {"const": "extract.axistream.source"}
+                        }
+                    }
+                },
+            }
+        ).encode()
+        check_deploy.validate_axistream_deployed_schemas(
+            output, stream, input_schema
+        )
+
+        for invalid in [
+            (b"{}", stream, input_schema),
+            (output, b"{}", input_schema),
+            (output, stream, b"{}"),
+            (output, stream, b"not-json"),
+        ]:
+            with self.assertRaises(check_deploy.DeployCheckError):
+                check_deploy.validate_axistream_deployed_schemas(*invalid)
+
     def test_pages_site_requires_workflow_build_and_matching_url(self) -> None:
         check_deploy.validate_pages_site(
             {"build_type": "workflow", "html_url": "https://example.test/docs/"},
@@ -263,6 +303,7 @@ class CheckDeployTests(unittest.TestCase):
         site = {"build_type": "workflow", "html_url": "https://example.test/docs"}
         with (
             mock.patch.object(check_deploy, "fetch_bytes", return_value=b"ok"),
+            mock.patch.object(check_deploy, "validate_axistream_deployed_schemas"),
             mock.patch.object(check_deploy, "load_pages_site", return_value=site) as load,
         ):
             check_deploy.check_deploy(args)

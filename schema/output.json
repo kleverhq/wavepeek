@@ -17,6 +17,14 @@
       ],
       "type": "string"
     },
+    "axiStreamProfile": {
+      "description": "AXI-Stream profile name: axi4-stream or axi5-stream.",
+      "enum": [
+        "axi4-stream",
+        "axi5-stream"
+      ],
+      "type": "string"
+    },
     "canonicalPath": {
       "description": "Canonical dot-separated hierarchy path emitted by wavepeek for a scope or signal.",
       "type": "string"
@@ -3686,6 +3694,58 @@
       ],
       "type": "object"
     },
+    "extractAxi4StreamTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI-Stream standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "tdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tdest": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tkeep": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi4-stream",
+          "description": "AXI-Stream profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the handshake and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI-Stream transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
+        "payload"
+      ],
+      "type": "object"
+    },
     "extractAxi4Transfer": {
       "oneOf": [
         {
@@ -4590,6 +4650,58 @@
         "sample_time",
         "profile",
         "channel",
+        "payload"
+      ],
+      "type": "object"
+    },
+    "extractAxi5StreamTransfer": {
+      "additionalProperties": true,
+      "properties": {
+        "payload": {
+          "additionalProperties": false,
+          "description": "Payload values keyed by lowercase AXI-Stream standard signal name. Keys are optional because extraction emits only mapped payload signals.",
+          "properties": {
+            "tdata": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tdest": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tid": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tkeep": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tlast": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tstrb": {
+              "$ref": "#/$defs/sampledValue"
+            },
+            "tuser": {
+              "$ref": "#/$defs/sampledValue"
+            }
+          },
+          "type": "object"
+        },
+        "profile": {
+          "const": "axi5-stream",
+          "description": "AXI-Stream profile name for this transfer row."
+        },
+        "sample_time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Pre-edge timestamp used to evaluate the handshake and sample payload values."
+        },
+        "time": {
+          "$ref": "#/$defs/normalizedTime",
+          "description": "Selected AXI-Stream transfer event timestamp."
+        }
+      },
+      "required": [
+        "time",
+        "sample_time",
+        "profile",
         "payload"
       ],
       "type": "object"
@@ -7453,6 +7565,335 @@
       ],
       "type": "object"
     },
+    "extractAxiStreamData": {
+      "oneOf": [
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "B",
+              "description": "Arm IHI 0051 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdata": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdest": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tkeep": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tlast": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tready": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tstrb": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tuser": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tvalid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI-Stream port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4-stream",
+              "description": "AXI-Stream profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI-Stream transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi4StreamTransfer"
+              },
+              "type": "array"
+            },
+            "tready_mode": {
+              "const": "mapped",
+              "description": "Effective TREADY mapping mode."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "tready_mode",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "B",
+              "description": "Arm IHI 0051 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdata": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdest": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tkeep": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tlast": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tstrb": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tuser": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tvalid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI-Stream port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi4-stream",
+              "description": "AXI-Stream profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI-Stream transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi4StreamTransfer"
+              },
+              "type": "array"
+            },
+            "tready_mode": {
+              "const": "implicit-high",
+              "description": "Effective TREADY mapping mode."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "tready_mode",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "B",
+              "description": "Arm IHI 0051 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdata": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdest": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tkeep": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tlast": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tready": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tstrb": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tuser": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tvalid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI-Stream port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi5-stream",
+              "description": "AXI-Stream profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI-Stream transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi5StreamTransfer"
+              },
+              "type": "array"
+            },
+            "tready_mode": {
+              "const": "mapped",
+              "description": "Effective TREADY mapping mode."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "tready_mode",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": true,
+          "properties": {
+            "issue": {
+              "const": "B",
+              "description": "Arm IHI 0051 issue used for this profile definition."
+            },
+            "mappings": {
+              "additionalProperties": false,
+              "description": "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name.",
+              "properties": {
+                "aclk": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "aresetn": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdata": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tdest": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tkeep": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tlast": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tstrb": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tuser": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                },
+                "tvalid": {
+                  "$ref": "#/$defs/extractAxiStreamMapping"
+                }
+              },
+              "type": "object"
+            },
+            "name": {
+              "description": "AXI-Stream port name supplied by CLI or source JSON.",
+              "type": "string"
+            },
+            "profile": {
+              "const": "axi5-stream",
+              "description": "AXI-Stream profile name used for standard signal mapping."
+            },
+            "transfers": {
+              "description": "Extracted AXI-Stream transfers in event order.",
+              "items": {
+                "$ref": "#/$defs/extractAxi5StreamTransfer"
+              },
+              "type": "array"
+            },
+            "tready_mode": {
+              "const": "implicit-high",
+              "description": "Effective TREADY mapping mode."
+            }
+          },
+          "required": [
+            "name",
+            "profile",
+            "issue",
+            "tready_mode",
+            "mappings",
+            "transfers"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "extractAxiStreamMapping": {
+      "additionalProperties": true,
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/canonicalPath",
+          "description": "Canonical waveform signal path mapped to this AXI-Stream standard signal."
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "extractAxiStreamTransfer": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/extractAxi4StreamTransfer"
+        },
+        {
+          "$ref": "#/$defs/extractAxi5StreamTransfer"
+        }
+      ]
+    },
     "extractAxiTransfer": {
       "oneOf": [
         {
@@ -7784,6 +8225,14 @@
       ],
       "type": "object"
     },
+    "treadyMode": {
+      "description": "Whether TREADY is mapped or physically omitted and implicitly HIGH.",
+      "enum": [
+        "mapped",
+        "implicit-high"
+      ],
+      "type": "string"
+    },
     "valueData": {
       "description": "Ordered snapshots sampled by the value command.",
       "items": {
@@ -7954,6 +8403,25 @@
       "if": {
         "properties": {
           "command": {
+            "const": "extract axistream"
+          }
+        },
+        "required": [
+          "command"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "$ref": "#/$defs/extractAxiStreamData"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "command": {
             "const": "extract generic"
           }
         },
@@ -8023,6 +8491,7 @@
         "change",
         "property",
         "extract axi",
+        "extract axistream",
         "extract generic",
         "docs topics",
         "docs search"
@@ -8051,6 +8520,9 @@
         },
         {
           "$ref": "#/$defs/extractAxiData"
+        },
+        {
+          "$ref": "#/$defs/extractAxiStreamData"
         },
         {
           "$ref": "#/$defs/extractGenericData"

@@ -54,6 +54,7 @@ pub enum OutputData<'a> {
     Change(Vec<ChangeSnapshot<'a>>),
     Property(Vec<PropertyRow<'a>>),
     ExtractAxi(ExtractAxiData<'a>),
+    ExtractAxiStream(ExtractAxiStreamData<'a>),
     ExtractGeneric(Vec<ExtractGenericRow<'a>>),
     DocsTopics(DocsTopicsData<'a>),
     DocsSearch(DocsSearchData<'a>),
@@ -87,6 +88,9 @@ impl<'a> OutputData<'a> {
             }
             (CommandName::ExtractAxi, CommandData::ExtractAxi(data)) => {
                 Ok(Self::ExtractAxi(ExtractAxiData::from(data)))
+            }
+            (CommandName::ExtractAxiStream, CommandData::ExtractAxiStream(data)) => {
+                Ok(Self::ExtractAxiStream(ExtractAxiStreamData::from(data)))
             }
             (CommandName::ExtractGeneric, CommandData::ExtractGeneric(data)) => Ok(
                 Self::ExtractGeneric(data.rows.iter().map(ExtractGenericRow::from).collect()),
@@ -483,6 +487,108 @@ impl<'a> From<&'a crate::engine::axi::AxiData> for ExtractAxiData<'a> {
                 .transfers
                 .iter()
                 .map(ExtractAxiTransfer::from)
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiStreamMapping")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiStreamMapping<'a> {
+    #[schemars(
+        description = "Canonical waveform signal path mapped to this AXI-Stream standard signal."
+    )]
+    path: CanonicalPath<'a>,
+}
+
+impl<'a> From<&'a crate::engine::axistream::AxiStreamSignalMapping>
+    for ExtractAxiStreamMapping<'a>
+{
+    fn from(mapping: &'a crate::engine::axistream::AxiStreamSignalMapping) -> Self {
+        Self {
+            path: CanonicalPath::new(mapping.path.as_str()),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiStreamTransfer")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiStreamTransfer<'a> {
+    #[schemars(description = "Selected AXI-Stream transfer event timestamp.")]
+    time: NormalizedTime<'a>,
+    #[schemars(
+        description = "Pre-edge timestamp used to evaluate the handshake and sample payload values."
+    )]
+    sample_time: NormalizedTime<'a>,
+    #[schemars(description = "AXI-Stream profile name for this transfer row.")]
+    profile: &'a str,
+    #[schemars(description = "Payload values keyed by lowercase AXI-Stream standard signal name.")]
+    payload: BTreeMap<&'a str, SampledValue<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::axistream::AxiStreamTransfer> for ExtractAxiStreamTransfer<'a> {
+    fn from(transfer: &'a crate::engine::axistream::AxiStreamTransfer) -> Self {
+        Self {
+            time: NormalizedTime::new(transfer.time.as_str()),
+            sample_time: NormalizedTime::new(transfer.sample_time.as_str()),
+            profile: transfer.profile.as_str(),
+            payload: transfer
+                .payload
+                .iter()
+                .map(|value| {
+                    (
+                        value.standard.as_str(),
+                        SampledValue::new(value.value.as_str()),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[derive(Debug, JsonSchema, Serialize)]
+#[schemars(rename = "extractAxiStreamData")]
+#[schemars(extend("additionalProperties" = true))]
+pub struct ExtractAxiStreamData<'a> {
+    #[schemars(description = "AXI-Stream port name supplied by CLI or source JSON.")]
+    name: &'a str,
+    #[schemars(description = "AXI-Stream profile name used for standard signal mapping.")]
+    profile: &'a str,
+    #[schemars(description = "Arm IHI 0051 issue used for this profile definition.")]
+    issue: &'a str,
+    #[schemars(description = "Effective TREADY mapping mode.")]
+    tready_mode: &'a str,
+    #[schemars(
+        description = "Resolved waveform mappings keyed by lowercase AXI-Stream standard signal name."
+    )]
+    mappings: BTreeMap<&'a str, ExtractAxiStreamMapping<'a>>,
+    #[schemars(description = "Extracted AXI-Stream transfers in event order.")]
+    transfers: Vec<ExtractAxiStreamTransfer<'a>>,
+}
+
+impl<'a> From<&'a crate::engine::axistream::AxiStreamData> for ExtractAxiStreamData<'a> {
+    fn from(data: &'a crate::engine::axistream::AxiStreamData) -> Self {
+        Self {
+            name: data.name.as_str(),
+            profile: data.profile.as_str(),
+            issue: data.issue.as_str(),
+            tready_mode: data.tready_mode.as_str(),
+            mappings: data
+                .mappings
+                .iter()
+                .map(|mapping| {
+                    (
+                        mapping.standard.as_str(),
+                        ExtractAxiStreamMapping::from(mapping),
+                    )
+                })
+                .collect(),
+            transfers: data
+                .transfers
+                .iter()
+                .map(ExtractAxiStreamTransfer::from)
                 .collect(),
         }
     }

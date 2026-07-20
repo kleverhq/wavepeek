@@ -17,6 +17,14 @@
       ],
       "type": "string"
     },
+    "axiStreamProfile": {
+      "description": "AXI-Stream profile name: axi4-stream or axi5-stream.",
+      "enum": [
+        "axi4-stream",
+        "axi5-stream"
+      ],
+      "type": "string"
+    },
     "extractAxiSourceInput": {
       "additionalProperties": true,
       "allOf": [
@@ -2581,6 +2589,199 @@
       ],
       "type": "object"
     },
+    "extractAxiStreamSourceInput": {
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "required": [
+                      "profile"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "profile": {
+                      "const": "axi4-stream"
+                    }
+                  },
+                  "required": [
+                    "profile"
+                  ]
+                }
+              ]
+            },
+            {
+              "properties": {
+                "profile": {
+                  "const": "axi5-stream"
+                }
+              },
+              "required": [
+                "profile"
+              ]
+            }
+          ]
+        },
+        {
+          "oneOf": [
+            {
+              "anyOf": [
+                {
+                  "not": {
+                    "required": [
+                      "tready_mode"
+                    ]
+                  }
+                },
+                {
+                  "properties": {
+                    "tready_mode": {
+                      "const": "mapped"
+                    }
+                  },
+                  "required": [
+                    "tready_mode"
+                  ]
+                }
+              ],
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "tdata": {
+                      "type": "string"
+                    },
+                    "tdest": {
+                      "type": "string"
+                    },
+                    "tid": {
+                      "type": "string"
+                    },
+                    "tkeep": {
+                      "type": "string"
+                    },
+                    "tlast": {
+                      "type": "string"
+                    },
+                    "tready": {
+                      "type": "string"
+                    },
+                    "tstrb": {
+                      "type": "string"
+                    },
+                    "tuser": {
+                      "type": "string"
+                    },
+                    "tvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            {
+              "properties": {
+                "maps": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "aclk": {
+                      "type": "string"
+                    },
+                    "aresetn": {
+                      "type": "string"
+                    },
+                    "tdata": {
+                      "type": "string"
+                    },
+                    "tdest": {
+                      "type": "string"
+                    },
+                    "tid": {
+                      "type": "string"
+                    },
+                    "tkeep": {
+                      "type": "string"
+                    },
+                    "tlast": {
+                      "type": "string"
+                    },
+                    "tstrb": {
+                      "type": "string"
+                    },
+                    "tuser": {
+                      "type": "string"
+                    },
+                    "tvalid": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                },
+                "tready_mode": {
+                  "const": "implicit-high"
+                }
+              },
+              "required": [
+                "tready_mode"
+              ]
+            }
+          ]
+        }
+      ],
+      "properties": {
+        "$schema": {
+          "const": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
+          "description": "Input schema URL for this source document.",
+          "type": "string"
+        },
+        "includes": {
+          "description": "Regexes selecting waveform signal candidates for AXI-Stream auto-mapping.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "const": "extract.axistream.source",
+          "description": "Input document kind discriminator.",
+          "type": "string"
+        },
+        "maps": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Explicit mappings from lowercase AXI-Stream standard signal names to waveform signal names.",
+          "type": "object"
+        },
+        "name": {
+          "description": "AXI-Stream port name metadata. Defaults to axistream.",
+          "type": "string"
+        },
+        "profile": {
+          "$ref": "#/$defs/axiStreamProfile"
+        },
+        "tready_mode": {
+          "$ref": "#/$defs/treadyMode"
+        }
+      },
+      "required": [
+        "$schema",
+        "kind"
+      ],
+      "type": "object"
+    },
     "extractGenericSource": {
       "additionalProperties": true,
       "properties": {
@@ -2641,6 +2842,14 @@
         "sources"
       ],
       "type": "object"
+    },
+    "treadyMode": {
+      "description": "Whether TREADY is mapped or physically omitted and implicitly HIGH.",
+      "enum": [
+        "mapped",
+        "implicit-high"
+      ],
+      "type": "string"
     }
   },
   "$id": "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json",
@@ -2652,6 +2861,9 @@
     },
     {
       "$ref": "#/$defs/extractAxiSourceInput"
+    },
+    {
+      "$ref": "#/$defs/extractAxiStreamSourceInput"
     }
   ],
   "title": "wavepeek JSON input documents"

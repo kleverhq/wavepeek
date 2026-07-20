@@ -162,6 +162,7 @@ def validate_output_schema(schema: dict[str, Any]) -> None:
             "change",
             "property",
             "extract axi",
+            "extract axistream",
             "extract generic",
             "docs topics",
             "docs search",
@@ -199,6 +200,7 @@ def validate_stream_schema(schema: dict[str, Any]) -> None:
             "change",
             "property",
             "extract axi",
+            "extract axistream",
             "extract generic",
         ],
         "stream command enum is not the expected stable list",
@@ -233,8 +235,9 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
         == [
             {"$ref": "#/$defs/extractGenericSourcesInput"},
             {"$ref": "#/$defs/extractAxiSourceInput"},
+            {"$ref": "#/$defs/extractAxiStreamSourceInput"},
         ],
-        "input schema root must accept generic and AXI source documents",
+        "input schema root must accept generic, AXI, and AXI-Stream source documents",
     )
     generic_def = schema["$defs"]["extractGenericSourcesInput"]
     require(
@@ -287,6 +290,40 @@ def validate_input_schema(schema: dict[str, Any]) -> None:
     require(
         "allOf" in axi_def,
         "AXI input source must include profile-aware constraints",
+    )
+    axistream_def = schema["$defs"]["extractAxiStreamSourceInput"]
+    require(
+        axistream_def["properties"]["$schema"].get("const") == EXPECTED_INPUT_URL,
+        "AXI-Stream input source must require exact $schema URL with const",
+    )
+    require(
+        axistream_def["properties"]["kind"].get("const")
+        == "extract.axistream.source",
+        "input schema must require exact extract AXI-Stream kind",
+    )
+    require(
+        schema["$defs"]["axiStreamProfile"].get("enum")
+        == ["axi4-stream", "axi5-stream"],
+        "AXI-Stream input profile enum is not the expected stable list",
+    )
+    require(
+        schema["$defs"]["treadyMode"].get("enum")
+        == ["mapped", "implicit-high"],
+        "AXI-Stream input TREADY mode enum is not the expected stable list",
+    )
+    require(
+        axistream_def["properties"]["profile"]
+        == {"$ref": "#/$defs/axiStreamProfile"},
+        "AXI-Stream input profile must reuse the shared profile definition",
+    )
+    require(
+        axistream_def["properties"]["tready_mode"]
+        == {"$ref": "#/$defs/treadyMode"},
+        "AXI-Stream input TREADY mode must reuse the shared mode definition",
+    )
+    require(
+        "allOf" in axistream_def,
+        "AXI-Stream input source must include profile- and mode-aware constraints",
     )
 
 

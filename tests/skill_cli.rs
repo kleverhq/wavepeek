@@ -72,6 +72,12 @@ fn packaged_skill_guidance_matches_current_runtime_capabilities() {
     assert!(packaged.contains(
         "`extract axi` reports channel transfers only; it does not reconstruct bursts, ordering rules, or outstanding request state."
     ));
+    assert!(packaged.contains("Use `extract axistream` for AXI4-Stream or AXI5-Stream"));
+    assert!(packaged.contains("--tready-mode mapped"));
+    assert!(packaged.contains("The AXI-Stream profiles both use Arm IHI 0051B Issue B."));
+    assert!(packaged.contains(
+        "`extract axistream` reports one-interface transfer rows without a synthetic channel"
+    ));
     assert!(!packaged.contains("protocol transaction enumeration"));
     assert!(!packaged.contains("Event/transaction enumeration and counting: `property --capture match`, then `value --at <sample_time>`"));
     assert!(!packaged.contains("parsed but not executed in `change`"));

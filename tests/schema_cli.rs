@@ -552,6 +552,10 @@ fn schema_command_includes_property_and_extract_command_branches() {
         "schema command enum should include extract axi"
     );
     assert!(
+        commands.iter().any(|entry| entry == "extract axistream"),
+        "schema command enum should include extract axistream"
+    );
+    assert!(
         commands.iter().any(|entry| entry == "extract generic"),
         "schema command enum should include extract generic"
     );
@@ -574,9 +578,85 @@ fn schema_command_includes_property_and_extract_command_branches() {
     assert!(
         data_variants
             .iter()
+            .any(|entry| entry["$ref"] == "#/$defs/extractAxiStreamData"),
+        "schema data variants should include extractAxiStreamData"
+    );
+    assert!(
+        data_variants
+            .iter()
             .any(|entry| entry["$ref"] == "#/$defs/extractGenericData"),
         "schema data variants should include extractGenericData"
     );
+}
+
+#[test]
+fn schema_output_validator_enforces_axistream_profiles_modes_and_keys() {
+    let validator = output_schema_validator();
+    let valid_mapped = json!({
+        "$schema": expected_schema_url(),
+        "command": "extract axistream",
+        "data": {
+            "name": "video",
+            "profile": "axi4-stream",
+            "issue": "B",
+            "tready_mode": "mapped",
+            "mappings": {
+                "aclk": {"path": "top.clk"},
+                "tvalid": {"path": "top.tvalid"},
+                "tready": {"path": "top.tready"},
+                "tdata": {"path": "top.tdata"}
+            },
+            "transfers": [{
+                "time": "10ns",
+                "sample_time": "9ns",
+                "profile": "axi4-stream",
+                "payload": {"tdata": "32'hdeadbeef", "tlast": "1'h1"}
+            }]
+        },
+        "diagnostics": []
+    });
+    validator.validate(&valid_mapped).unwrap_or_else(|error| {
+        panic!("valid AXI4-Stream output rejected: {error}\n{valid_mapped}")
+    });
+
+    let mut valid_implicit = valid_mapped.clone();
+    valid_implicit["data"]["profile"] = json!("axi5-stream");
+    valid_implicit["data"]["tready_mode"] = json!("implicit-high");
+    valid_implicit["data"]["mappings"]
+        .as_object_mut()
+        .unwrap()
+        .remove("tready");
+    valid_implicit["data"]["transfers"][0]["profile"] = json!("axi5-stream");
+    validator.validate(&valid_implicit).unwrap_or_else(|error| {
+        panic!("valid AXI5-Stream implicit-high output rejected: {error}\n{valid_implicit}")
+    });
+
+    let mut invalid_issue = valid_mapped.clone();
+    invalid_issue["data"]["issue"] = json!("A");
+    assert!(validator.validate(&invalid_issue).is_err());
+
+    let mut invalid_profile = valid_mapped.clone();
+    invalid_profile["data"]["transfers"][0]["profile"] = json!("axi5-stream");
+    assert!(validator.validate(&invalid_profile).is_err());
+
+    let mut invalid_mapping = valid_mapped.clone();
+    invalid_mapping["data"]["mappings"]["twakeup"] = json!({"path": "top.twakeup"});
+    assert!(validator.validate(&invalid_mapping).is_err());
+
+    let mut invalid_payload = valid_mapped.clone();
+    invalid_payload["data"]["transfers"][0]["payload"]["tdatachk"] = json!("1'h0");
+    assert!(validator.validate(&invalid_payload).is_err());
+
+    let mut invalid_channel = valid_mapped.clone();
+    invalid_channel["data"]["transfers"][0]["channel"] = json!("stream");
+    assert!(
+        validator.validate(&invalid_channel).is_ok(),
+        "outer transfer objects intentionally preserve extension compatibility"
+    );
+
+    let mut invalid_mode_mapping = valid_implicit;
+    invalid_mode_mapping["data"]["mappings"]["tready"] = json!({"path": "top.tready"});
+    assert!(validator.validate(&invalid_mode_mapping).is_err());
 }
 
 #[test]
@@ -1783,7 +1863,8 @@ fn schema_input_command_output_is_valid_json() {
         value["oneOf"],
         json!([
             {"$ref": "#/$defs/extractGenericSourcesInput"},
-            {"$ref": "#/$defs/extractAxiSourceInput"}
+            {"$ref": "#/$defs/extractAxiSourceInput"},
+            {"$ref": "#/$defs/extractAxiStreamSourceInput"}
         ])
     );
     assert_eq!(
@@ -1809,6 +1890,18 @@ fn schema_input_command_output_is_valid_json() {
             "ace5-lite-dvm",
             "ace5-lite-acp"
         ])
+    );
+    assert_eq!(
+        value["$defs"]["extractAxiStreamSourceInput"]["properties"]["kind"]["const"],
+        "extract.axistream.source"
+    );
+    assert_eq!(
+        value["$defs"]["axiStreamProfile"]["enum"],
+        json!(["axi4-stream", "axi5-stream"])
+    );
+    assert_eq!(
+        value["$defs"]["treadyMode"]["enum"],
+        json!(["mapped", "implicit-high"])
     );
 }
 
@@ -1842,6 +1935,30 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
     validator
         .validate(&valid_axi)
         .unwrap_or_else(|error| panic!("valid AXI input document rejected: {error}\n{valid_axi}"));
+
+    for valid_axistream in [
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "maps": {"aclk": "clk", "tready": "ready"},
+            "x-extension": true
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "profile": "axi5-stream",
+            "tready_mode": "implicit-high",
+            "name": "video",
+            "includes": ["^video_"],
+            "maps": {"aclk": "clk", "tvalid": "valid", "tdata": "data"}
+        }),
+    ] {
+        validator
+            .validate(&valid_axistream)
+            .unwrap_or_else(|error| {
+                panic!("valid AXI-Stream input document rejected: {error}\n{valid_axistream}")
+            });
+    }
 
     for (profile, standard) in [
         ("axi5", "acaddr"),
@@ -1993,6 +2110,47 @@ fn schema_input_validator_accepts_and_rejects_source_documents() {
             "kind": "extract.axi.source",
             "maps": {"wid": "axi_wid"}
         }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "profile": "AXI5_STREAM"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "profile": "axi4_stream"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "tready_mode": "implicit_high"
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "profile": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "tready_mode": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "name": null
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "maps": {"twakeup": "wake"}
+        }),
+        json!({
+            "$schema": expected_input_schema_url(),
+            "kind": "extract.axistream.source",
+            "tready_mode": "implicit-high",
+            "maps": {"tready": "ready"}
+        }),
     ] {
         assert!(
             validator.validate(&invalid).is_err(),
@@ -2028,6 +2186,7 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             "change",
             "property",
             "extract axi",
+            "extract axistream",
             "extract generic"
         ])
     );
@@ -2062,6 +2221,64 @@ fn schema_stream_command_exposes_waveform_command_contract() {
             .get("pattern")
             .is_none()
     );
+}
+
+#[test]
+fn schema_stream_validator_enforces_axistream_context_and_item_isolation() {
+    let validator = stream_schema_validator();
+    let valid_begin = json!({
+        "type": "begin",
+        "seq": 0,
+        "command": "extract axistream",
+        "$schema": expected_stream_schema_url(),
+        "context": {
+            "name": "video",
+            "profile": "axi5-stream",
+            "issue": "B",
+            "tready_mode": "implicit-high",
+            "mappings": {
+                "aclk": {"path": "top.clk"},
+                "tvalid": {"path": "top.tvalid"},
+                "tdata": {"path": "top.tdata"}
+            }
+        }
+    });
+    validator
+        .validate(&valid_begin)
+        .unwrap_or_else(|error| panic!("valid AXI-Stream begin rejected: {error}\n{valid_begin}"));
+    let valid_item = json!({
+        "type": "item",
+        "seq": 1,
+        "command": "extract axistream",
+        "item": {
+            "time": "10ns",
+            "sample_time": "9ns",
+            "profile": "axi5-stream",
+            "payload": {"tdata": "32'hdeadbeef"}
+        }
+    });
+    validator
+        .validate(&valid_item)
+        .unwrap_or_else(|error| panic!("valid AXI-Stream item rejected: {error}\n{valid_item}"));
+
+    let mut invalid_ready = valid_begin.clone();
+    invalid_ready["context"]["mappings"]["tready"] = json!({"path": "top.tready"});
+    assert!(validator.validate(&invalid_ready).is_err());
+
+    let mut invalid_mapping = valid_begin.clone();
+    invalid_mapping["context"]["mappings"]["twakeup"] = json!({"path": "top.twakeup"});
+    assert!(validator.validate(&invalid_mapping).is_err());
+
+    let mut invalid_profile = valid_item.clone();
+    invalid_profile["item"]["profile"] = json!("axi4-stream");
+    assert!(
+        validator.validate(&invalid_profile).is_ok(),
+        "items are independently profile-typed and are correlated with begin records by consumers"
+    );
+
+    let mut invalid_payload = valid_item;
+    invalid_payload["item"]["payload"]["twakeup"] = json!("1'h1");
+    assert!(validator.validate(&invalid_payload).is_err());
 }
 
 #[test]

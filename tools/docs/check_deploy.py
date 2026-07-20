@@ -21,6 +21,7 @@ DEFAULT_BASE_URL = "https://kleverhq.github.io/wavepeek"
 USER_AGENT = "wavepeek-docs-deploy-check"
 STREAM_SCHEMA_MIN_VERSION = (1, 1, 0)
 INPUT_SCHEMA_MIN_VERSION = (2, 1, 0)
+AXISTREAM_SCHEMA_MIN_VERSION = (2, 2, 0)
 
 
 class DeployCheckError(Exception):
@@ -78,6 +79,10 @@ def stream_schema_required(version: str) -> bool:
 
 def input_schema_required(version: str) -> bool:
     return version_tuple(version) >= INPUT_SCHEMA_MIN_VERSION
+
+
+def axistream_schema_required(version: str) -> bool:
+    return version_tuple(version) >= AXISTREAM_SCHEMA_MIN_VERSION
 
 
 def schema_artifact_name(version: str) -> str:
@@ -216,6 +221,36 @@ def validate_pages_site(site: Any, base_url: str) -> None:
         fail(f"GitHub Pages html_url {html_url!r} does not match {base_url!r}")
 
 
+def parse_schema_document(body: bytes, label: str) -> dict[str, Any]:
+    try:
+        document = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as error:
+        fail(f"{label} is not valid JSON: {error}")
+    if not isinstance(document, dict):
+        fail(f"{label} must contain a JSON object")
+    return document
+
+
+def validate_axistream_deployed_schemas(
+    output_body: bytes, stream_body: bytes, input_body: bytes
+) -> None:
+    output = parse_schema_document(output_body, "output schema")
+    stream = parse_schema_document(stream_body, "stream schema")
+    input_schema = parse_schema_document(input_body, "input schema")
+
+    if "extract axistream" not in output.get("properties", {}).get("command", {}).get("enum", []):
+        fail("output schema must expose extract axistream")
+    if "extract axistream" not in stream.get("$defs", {}).get("streamCommand", {}).get("enum", []):
+        fail("stream schema must expose extract axistream")
+    source_ref = {"$ref": "#/$defs/extractAxiStreamSourceInput"}
+    if source_ref not in input_schema.get("oneOf", []):
+        fail("input schema must expose extractAxiStreamSourceInput")
+    source = input_schema.get("$defs", {}).get("extractAxiStreamSourceInput", {})
+    kind = source.get("properties", {}).get("kind", {}).get("const")
+    if kind != "extract.axistream.source":
+        fail("input schema must expose extract.axistream.source kind")
+
+
 def check_deploy(args: argparse.Namespace) -> None:
     version = validate_version(args.version)
     base_url = normalize_base_url(args.base_url)
@@ -236,14 +271,21 @@ def check_deploy(args: argparse.Namespace) -> None:
     if args.input_schema_artifact is not None or input_schema_required(version):
         endpoints.append((input_artifact, page_url(base_url, input_artifact)))
 
+    fetched: dict[str, bytes] = {}
     for label, url in endpoints:
-        fetch_bytes(
+        fetched[label] = fetch_bytes(
             url,
             retries=args.retries,
             retry_delay=args.retry_delay,
             timeout=args.timeout,
         )
         print(f"ok: docs-deploy: {label}: {url}")
+
+    if axistream_schema_required(version):
+        validate_axistream_deployed_schemas(
+            fetched[output_artifact], fetched[stream_artifact], fetched[input_artifact]
+        )
+        print("ok: docs-deploy: AXI-Stream schema contracts")
 
     if args.repository:
         site = load_pages_site(

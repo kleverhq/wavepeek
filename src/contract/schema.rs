@@ -1,18 +1,23 @@
 use schemars::SchemaGenerator;
 use serde_json::{Map, Value, json};
 
-use super::axi_schema;
 use super::common::{
     CanonicalPath, ContractDiagnostic, NormalizedTime, SampledValue, ScopeKind, SignalKind,
 };
-use super::input::{ExtractAxiSourceInput, ExtractGenericSource, ExtractGenericSourcesInput};
+use super::input::{
+    ExtractAxiSourceInput, ExtractAxiStreamSourceInput, ExtractGenericSource,
+    ExtractGenericSourcesInput,
+};
 use super::output::{
     ChangeSignalValue, ChangeSnapshot, DocsSearchData, DocsSearchMatch, DocsTopicsData,
-    ExtractAxiData, ExtractAxiMapping, ExtractAxiTransfer, ExtractGenericRow, ExtractPayloadValue,
-    InfoData, PropertyRow, SampledSignalValue, ScopeEntry, SignalEntry, TopicSummary,
-    ValueSnapshot,
+    ExtractAxiData, ExtractAxiMapping, ExtractAxiStreamData, ExtractAxiStreamMapping,
+    ExtractAxiStreamTransfer, ExtractAxiTransfer, ExtractGenericRow, ExtractPayloadValue, InfoData,
+    PropertyRow, SampledSignalValue, ScopeEntry, SignalEntry, TopicSummary, ValueSnapshot,
 };
-use super::stream::{BeginRecord, DiagnosticRecord, EndRecord, ExtractAxiContext};
+use super::stream::{
+    BeginRecord, DiagnosticRecord, EndRecord, ExtractAxiContext, ExtractAxiStreamContext,
+};
+use super::{axi_schema, axistream_schema};
 
 pub const OUTPUT_SCHEMA_ID: &str = "wavepeek.output";
 pub const STREAM_SCHEMA_ID: &str = "wavepeek.stream-record";
@@ -87,6 +92,7 @@ fn output_schema_value() -> Value {
                     ref_schema("changeData"),
                     ref_schema("propertyData"),
                     ref_schema("extractAxiData"),
+                    ref_schema("extractAxiStreamData"),
                     ref_schema("extractGenericData"),
                     ref_schema("docsTopicsData"),
                     ref_schema("docsSearchData"),
@@ -102,6 +108,7 @@ fn output_schema_value() -> Value {
             command_data_branch("change", "changeData"),
             command_data_branch("property", "propertyData"),
             command_data_branch("extract axi", "extractAxiData"),
+            command_data_branch("extract axistream", "extractAxiStreamData"),
             command_data_branch("extract generic", "extractGenericData"),
             command_data_branch("docs topics", "docsTopicsData"),
             command_data_branch("docs search", "docsSearchData"),
@@ -136,6 +143,7 @@ fn input_schema_value() -> Value {
         "oneOf": [
             ref_schema("extractGenericSourcesInput"),
             ref_schema("extractAxiSourceInput"),
+            ref_schema("extractAxiStreamSourceInput"),
         ],
         "$defs": Value::Object(defs),
     })
@@ -203,6 +211,7 @@ fn stream_defs() -> Value {
     let mut object = generated_waveform_payload_defs();
     object.extend(generated_stream_record_defs());
     axi_schema::apply_stream_context_defs(&mut object);
+    axistream_schema::apply_stream_context_defs(&mut object);
     object.insert(
         "streamCommand".to_string(),
         json!({"type": "string", "enum": stream_commands()}),
@@ -222,6 +231,7 @@ fn stream_defs() -> Value {
                 ref_schema("changeItemRecord"),
                 ref_schema("propertyItemRecord"),
                 ref_schema("extractAxiItemRecord"),
+                ref_schema("extractAxiStreamItemRecord"),
                 ref_schema("extractGenericItemRecord"),
             ]
         }),
@@ -234,6 +244,10 @@ fn stream_defs() -> Value {
         ("changeItemRecord", "itemRecordForChangeSnapshot"),
         ("propertyItemRecord", "itemRecordForPropertyRow"),
         ("extractAxiItemRecord", "itemRecordForExtractAxiTransfer"),
+        (
+            "extractAxiStreamItemRecord",
+            "itemRecordForExtractAxiStreamTransfer",
+        ),
         ("extractGenericItemRecord", "itemRecordForExtractGenericRow"),
     ] {
         object.insert(alias.to_string(), ref_schema(wrapper));
@@ -249,6 +263,11 @@ fn stream_defs() -> Value {
             "itemRecordForExtractAxiTransfer",
             "extract axi",
             "extractAxiTransfer",
+        ),
+        (
+            "itemRecordForExtractAxiStreamTransfer",
+            "extract axistream",
+            "extractAxiStreamTransfer",
         ),
         (
             "itemRecordForExtractGenericRow",
@@ -287,9 +306,13 @@ fn generated_waveform_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ExtractAxiMapping<'static>>();
     generator.subschema_for::<ExtractAxiTransfer<'static>>();
     generator.subschema_for::<ExtractAxiData<'static>>();
+    generator.subschema_for::<ExtractAxiStreamMapping<'static>>();
+    generator.subschema_for::<ExtractAxiStreamTransfer<'static>>();
+    generator.subschema_for::<ExtractAxiStreamData<'static>>();
     generator.subschema_for::<ExtractGenericRow<'static>>();
     let mut defs = generator.take_definitions(true);
     axi_schema::apply_output_defs(&mut defs);
+    axistream_schema::apply_output_defs(&mut defs);
     defs
 }
 
@@ -298,8 +321,10 @@ fn generated_input_payload_defs() -> Map<String, Value> {
     generator.subschema_for::<ExtractGenericSourcesInput<'static>>();
     generator.subschema_for::<ExtractGenericSource<'static>>();
     generator.subschema_for::<ExtractAxiSourceInput<'static>>();
+    generator.subschema_for::<ExtractAxiStreamSourceInput<'static>>();
     let mut defs = generator.take_definitions(true);
     axi_schema::apply_input_defs(&mut defs);
+    axistream_schema::apply_input_defs(&mut defs);
     defs
 }
 
@@ -316,6 +341,7 @@ fn generated_stream_record_defs() -> Map<String, Value> {
     let mut generator = SchemaGenerator::default();
     generator.subschema_for::<BeginRecord<'static>>();
     generator.subschema_for::<ExtractAxiContext<'static>>();
+    generator.subschema_for::<ExtractAxiStreamContext<'static>>();
     generator.subschema_for::<DiagnosticRecord<'static>>();
     generator.subschema_for::<EndRecord>();
     generator.take_definitions(true)
@@ -355,6 +381,7 @@ fn output_commands() -> Vec<&'static str> {
         "change",
         "property",
         "extract axi",
+        "extract axistream",
         "extract generic",
         "docs topics",
         "docs search",
@@ -370,6 +397,7 @@ fn stream_commands() -> Vec<&'static str> {
         "change",
         "property",
         "extract axi",
+        "extract axistream",
         "extract generic",
     ]
 }
@@ -411,6 +439,10 @@ mod tests {
         );
         assert_eq!(
             input["$defs"]["extractAxiSourceInput"]["properties"]["$schema"]["const"],
+            "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
+        );
+        assert_eq!(
+            input["$defs"]["extractAxiStreamSourceInput"]["properties"]["$schema"]["const"],
             "https://kleverhq.github.io/wavepeek/schema-input-v2.2.json"
         );
     }

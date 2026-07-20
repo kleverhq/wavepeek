@@ -24,8 +24,9 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 - [x] (2026-07-20 08:58Z) Add one source-backed ATB fixture with VCD/FST outputs and end-to-end tests for profiles, aliases, mapping, output modes, source files, ordering, reset, windows/limits, parity, independent channels, optional payload, and negative cases.
 - [x] (2026-07-20 08:58Z) Update embedded public docs, packaged skill routing, architecture module map, and `CHANGELOG.md`; documentation commit remains.
 - [x] (2026-07-20 09:02Z) Run focused suites, commit hooks, `just check`, and `just ci`; all pass with source coverage at 94.27% regions, 93.66% functions, and 94.73% lines.
-- [ ] (2026-07-20 09:13Z) Run multi-lane read-only review and an independent control review (completed: four lanes; code and performance clean; contract/docs and architecture found four issues; all fixed and both impacted lanes rechecked clean; remaining: commit fixes and run fresh control pass).
-- [ ] Update this plan with evidence and retrospective, then remove it in a cleanup commit before handoff.
+- [x] (2026-07-20 09:17Z) Complete four focused review lanes, fix all four findings, recheck both impacted lanes clean, and complete a fresh independent control review with no findings.
+- [x] (2026-07-20 09:20Z) Rerun final `just check` and `just ci`; both pass after review fixes with 94.28% regions, 93.68% functions, and 94.74% lines coverage.
+- [ ] Update this plan with evidence and retrospective, then remove it in a cleanup commit before handoff (completed: final state written; remaining: commit final state and remove plan).
 - [ ] Push `feat/extract-atb` to `origin`, open a pull request against `main` whose body closes issue #68, and verify the remote PR metadata.
 
 ## Surprises & Discoveries
@@ -71,7 +72,11 @@ This work does not reconstruct CoreSight trace packets, infer trigger encodings,
 
 ## Outcomes & Retrospective
 
-The command, runtime adapter, exact schemas, fixture, integration tests, and documentation are implemented without a new dependency or generic-runtime change. Focused suites, commit hooks, `just check`, and `just ci` pass. CI coverage is 94.27% regions, 93.66% functions, and 94.73% lines. Four review lanes completed; two were clean and two reported four findings, all fixed and rechecked clean. Fix commit, fresh control review, final gates, plan cleanup, push, and PR remain.
+Issue #68 is implemented end-to-end. Users can extract deterministic ATB-A, ATB-B, and ATB-C transfer, flush, and synchronization-request events from VCD/FST waveforms with explicit or automatic mappings, source JSON, and human/JSON/JSONL output. Exact generated schemas, source-backed parity fixtures, embedded docs, skill routing, and changelog coverage ship in the same slice.
+
+The implementation adds no dependency and leaves the generic and AXI extraction behavior unchanged. Four focused review lanes ran: code correctness and performance returned no findings; contract/docs and architecture reported four findings covering stream begin context coupling, payload-to-mapping schema coupling, exact predicate/byte-count documentation, and example consistency. All were fixed, both impacted lanes rechecked clean, and a fresh independent control review returned no findings.
+
+Final `just check` and `just ci` pass after the review fixes. Final source coverage is 94.28% regions, 93.68% functions, and 94.74% lines. Only plan cleanup, remote push, and PR publication remain.
 
 ## Context and Orientation
 
@@ -172,7 +177,9 @@ Fixture and schema generation recipes are deterministic and safe to rerun. Do no
 
 Normative protocol evidence comes from Arm IHI 0032C Issue C. Sections 3.1-3.2 state that transfer occurs only when `ATVALID` and `ATREADY` are both high and that signals are sampled on the rising edge of `ATCLK`. Section 4.2 describes the `AFVALID`/`AFREADY` flush handshake. Section 4.4 states that `SYNCREQ` is a single-`ATCLK` synchronization request pulse independent of other ATB signals. Section 6.2 defines conditional ATB-C `ATWAKEUP`, which this initial command excludes. Appendix A Table A-1 gives the profile signal matrix.
 
-The starting commit is `caea6c3` on branch `feat/extract-atb`, with a clean worktree. The nearest runtime model is `src/engine/axi.rs`; the nearest generic evaluator is `src/engine/extract.rs`.
+The starting commit is `caea6c3` on branch `feat/extract-atb`. The nearest runtime model is `src/engine/axi.rs`; the reused generic evaluator is `src/engine/extract.rs`.
+
+Final validation evidence is stored in ignored logs `tmp/issue-68-final-check.log` and `tmp/issue-68-final-ci.log`. The latter reports `coverage ok: scope=src/** regions=94.28% functions=93.68% lines=94.74% average=94.23% minimum=93.68%`. Review-fix commit `9d3af97` passed all repository commit hooks, and the independent control reviewer returned `No substantive findings.`
 
 ### Interfaces and Dependencies
 
@@ -191,3 +198,5 @@ Revision note: 2026-07-20 updated milestone progress, test evidence, and discove
 Revision note: 2026-07-20 recorded successful `just check` and `just ci` evidence and the start of four focused read-only review lanes. The plan remains active until findings, control review, cleanup, and publication complete.
 
 Revision note: 2026-07-20 recorded the four review findings, corresponding schema/docs fixes, passing focused validation, and clean impacted-lane rechecks. A fresh independent control review is still required.
+
+Revision note: 2026-07-20 finalized the retrospective after a clean independent control review and successful post-review `just check` and `just ci`. This is the plan's final retained state before the required WIP cleanup commit and publication.

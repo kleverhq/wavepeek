@@ -17,6 +17,7 @@ REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
 TARGET_LABELS = {
     "x86_64-unknown-linux-gnu": "Linux x86_64",
+    "x86_64-unknown-linux-musl": "Linux x86_64 (static musl, older glibc)",
     "aarch64-unknown-linux-gnu": "Linux arm64",
     "x86_64-apple-darwin": "macOS Intel",
     "aarch64-apple-darwin": "macOS Apple Silicon",
@@ -24,6 +25,7 @@ TARGET_LABELS = {
 }
 TARGET_ORDER = [
     "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
     "aarch64-unknown-linux-gnu",
     "x86_64-apple-darwin",
     "aarch64-apple-darwin",
@@ -31,6 +33,7 @@ TARGET_ORDER = [
 ]
 STATIC_ARCHIVES = {
     "x86_64-unknown-linux-gnu": "wavepeek-x86_64-unknown-linux-gnu.tar.gz",
+    "x86_64-unknown-linux-musl": "wavepeek-x86_64-unknown-linux-musl.tar.gz",
     "aarch64-unknown-linux-gnu": "wavepeek-aarch64-unknown-linux-gnu.tar.gz",
     "x86_64-apple-darwin": "wavepeek-x86_64-apple-darwin.tar.gz",
     "aarch64-apple-darwin": "wavepeek-aarch64-apple-darwin.tar.gz",

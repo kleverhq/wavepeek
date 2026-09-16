@@ -44,6 +44,7 @@ class RenderReleaseBodyCliTest(unittest.TestCase):
         }
         for target, archive in {
             "x86_64-unknown-linux-gnu": "wavepeek-x86_64-unknown-linux-gnu.tar.gz",
+            "x86_64-unknown-linux-musl": "wavepeek-x86_64-unknown-linux-musl.tar.gz",
             "aarch64-unknown-linux-gnu": "wavepeek-aarch64-unknown-linux-gnu.tar.gz",
             "x86_64-apple-darwin": "wavepeek-x86_64-apple-darwin.tar.gz",
             "aarch64-apple-darwin": "wavepeek-aarch64-apple-darwin.tar.gz",
@@ -107,6 +108,11 @@ class RenderReleaseBodyCliTest(unittest.TestCase):
             result.stdout,
         )
         self.assertIn("| Linux x86_64 | [`wavepeek-x86_64-unknown-linux-gnu.tar.gz`]", result.stdout)
+        self.assertIn(
+            "| Linux x86_64 (static musl, older glibc) | [`wavepeek-x86_64-unknown-linux-musl.tar.gz`]",
+            result.stdout,
+        )
+        self.assertIn("wavepeek-x86_64-unknown-linux-musl.tar.gz.sha256", result.stdout)
         self.assertIn("| Linux arm64 | [`wavepeek-aarch64-unknown-linux-gnu.tar.gz`]", result.stdout)
         self.assertIn("| macOS Intel | [`wavepeek-x86_64-apple-darwin.tar.gz`]", result.stdout)
         self.assertIn("| macOS Apple Silicon | [`wavepeek-aarch64-apple-darwin.tar.gz`]", result.stdout)
@@ -126,6 +132,10 @@ class RenderReleaseBodyCliTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("wavepeek-aarch64-apple-darwin.tar.gz", result.stdout)
+        self.assertIn(
+            "| Linux x86_64 (static musl, older glibc) | [`wavepeek-x86_64-unknown-linux-musl.tar.gz`]",
+            result.stdout,
+        )
         self.assertIn("wavepeek-x86_64-pc-windows-msvc.zip", result.stdout)
 
     def test_renders_sha256_sum_link_when_archives_have_no_own_checksum(self) -> None:

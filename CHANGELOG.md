@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added a statically linked x86_64 Linux musl release archive for systems with older glibc, including Rocky Linux 8.
+
 ## [3.0.0] - 2026-08-23
 
 ### Added

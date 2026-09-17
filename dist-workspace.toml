@@ -16,7 +16,7 @@ unix-archive = ".tar.gz"
 # The archive format to use for windows builds (defaults .zip)
 windows-archive = ".zip"
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-unknown-linux-musl", "x86_64-pc-windows-msvc"]
 # Whether dist should create a Github Release or use an existing draft
 create-release = true
 # Whether CI should trigger releases with dispatches instead of tag pushes

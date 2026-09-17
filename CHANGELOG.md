@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-09-17
+
 ### Added
 - Added a statically linked x86_64 Linux musl release archive for systems with older glibc, including Rocky Linux 8.
 
@@ -215,7 +217,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v3.0.1
 [3.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v3.0.0
 [2.2.3]: https://github.com/kleverhq/wavepeek/releases/tag/v2.2.3
 [2.2.2]: https://github.com/kleverhq/wavepeek/releases/tag/v2.2.2

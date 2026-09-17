@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "wavepeek"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "assert_cmd",
  "cc",

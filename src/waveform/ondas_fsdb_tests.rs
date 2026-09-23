@@ -318,6 +318,10 @@ fn fsdb_scope_slashes_use_public_dots_and_reject_collisions() {
         error.to_string(),
         "fatal: file: FSDB hierarchy contains ambiguous canonical scope path '\\top.a'"
     );
+    // Metadata-only info does not load or validate the declaration hierarchy.
+    let metadata = crate::waveform::Waveform::read_metadata(fixture.path()).unwrap();
+    assert_eq!(metadata.time_unit, "1ns");
+    assert_eq!(metadata.time_end, "0ns");
 }
 
 #[test]

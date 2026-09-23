@@ -15,14 +15,18 @@ pub struct InfoData {
 pub fn run(args: InfoArgs) -> Result<CommandResult, WavepeekError> {
     let debug = DebugTrace::for_command(CommandName::Info);
     debug.event("backend.open.start", || serde_json::json!({}));
-    let waveform = Waveform::open(args.waves.as_path())?;
-    debug.event("backend.open.done", || {
-        serde_json::json!({
-            "backend": waveform.backend_name(),
-            "format": waveform.format_name(),
-        })
-    });
-    let metadata = waveform.metadata()?;
+    let metadata = if debug.is_enabled() {
+        let waveform = Waveform::open(args.waves.as_path())?;
+        debug.event("backend.open.done", || {
+            serde_json::json!({
+                "backend": waveform.backend_name(),
+                "format": waveform.format_name(),
+            })
+        });
+        waveform.metadata()?
+    } else {
+        Waveform::read_metadata(args.waves.as_path())?
+    };
     debug.event("metadata.load.done", || serde_json::json!({}));
 
     Ok(CommandResult {

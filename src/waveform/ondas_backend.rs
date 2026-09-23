@@ -29,6 +29,7 @@ use super::types::{
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
     index: OnceCell<HierarchyIndex>,
+    direct: OnceCell<(String, ondas::Signal, u32)>,
     traces: HashMap<SignalId, Trace>,
     sampling_window: Option<(u64, u64)>,
     indexed_times: Option<Vec<u64>>,
@@ -110,6 +111,7 @@ impl OndasBackend {
         Self {
             inner,
             index: OnceCell::new(),
+            direct: OnceCell::new(),
             traces: HashMap::new(),
             sampling_window: None,
             indexed_times: None,
@@ -130,7 +132,19 @@ impl OndasBackend {
     }
 
     pub fn metadata(&self) -> Result<WaveformMetadata, WavepeekError> {
-        let metadata = self.inner.metadata();
+        Self::format_metadata(self.inner.metadata())
+    }
+
+    pub fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
+        #[cfg(feature = "fsdb")]
+        let result = super::fsdb_output::quiet(|| ondas::read_metadata(path))?;
+        #[cfg(not(feature = "fsdb"))]
+        let result = ondas::read_metadata(path);
+        let metadata = result.map_err(|error| open_error(path, error))?;
+        Self::format_metadata(&metadata)
+    }
+
+    fn format_metadata(metadata: &ondas::Metadata) -> Result<WaveformMetadata, WavepeekError> {
         let scale = metadata
             .timescale()
             .ok_or_else(|| WavepeekError::File("waveform is missing timescale metadata".into()))?;
@@ -244,6 +258,11 @@ impl OndasBackend {
     }
 
     pub fn resolve_signals(&self, paths: &[String]) -> Result<Vec<ResolvedSignal>, WavepeekError> {
+        if let [path] = paths
+            && let Some(resolved) = self.direct_fst_signal(path)
+        {
+            return Ok(vec![resolved]);
+        }
         paths
             .iter()
             .map(|path| {
@@ -282,12 +301,79 @@ impl OndasBackend {
             .collect()
     }
 
+    fn direct_fst_signal(&self, path: &str) -> Option<ResolvedSignal> {
+        if self.inner.format() != Format::Fst {
+            return None;
+        }
+        if let Some((existing, _, width)) = self.direct.get() {
+            return (existing == path).then(|| ResolvedSignal {
+                path: path.to_owned(),
+                id: SignalId::from_backend_index(u64::MAX),
+                width: *width,
+            });
+        }
+        if self.index.get().is_some() || path.contains(['[', ']', '\\', '/']) {
+            return None;
+        }
+        let hierarchy = self.inner.hierarchy();
+        let variable = hierarchy.variable(path).ok()?;
+        if variable
+            .parent()
+            .is_some_and(|parent| !visible_scope(&parent))
+        {
+            return None;
+        }
+        let signal = variable.signal()?;
+        let width = match signal.encoding() {
+            Encoding::Bits { width } => width,
+            Encoding::Event => 0,
+            _ => return None,
+        };
+        let parent = variable
+            .parent()
+            .map(|scope| scope_path(&scope, Format::Fst))
+            .unwrap_or_default();
+        let name = public_component(variable.name(), Format::Fst, variable.name_was_escaped());
+        let canonical = if parent.is_empty() {
+            name.into_owned()
+        } else {
+            format!("{parent}.{name}")
+        };
+        if canonical != path {
+            return None;
+        }
+        // Packed FST fragments can have a different SDK name but the same public path.
+        let prefix = format!("{}[", variable.name());
+        let parent_path = variable.parent().map(|scope| scope.path());
+        if hierarchy.variables().any(|other| {
+            other.name().starts_with(&prefix)
+                && other.parent().map(|scope| scope.path()) == parent_path
+        }) {
+            return None;
+        }
+        self.direct.set((path.to_owned(), signal, width)).ok()?;
+        Some(ResolvedSignal {
+            path: path.to_owned(),
+            id: SignalId::from_backend_index(u64::MAX),
+            width,
+        })
+    }
+
     pub fn previous_sample_time(&self, time: u64) -> Option<u64> {
         let first = self.inner.metadata().time_span()?.first().ticks();
         (time > first).then(|| time - 1)
     }
 
     fn signal(&self, id: SignalId) -> Result<ondas::Signal, WavepeekError> {
+        if id.as_u64() == u64::MAX {
+            return self
+                .direct
+                .get()
+                .map(|(_, signal, _)| *signal)
+                .ok_or_else(|| {
+                    WavepeekError::Internal("invalid direct waveform signal handle".into())
+                });
+        }
         match self.index().signals.get(id.as_u64() as usize) {
             Some(SignalSource::Signal(signal)) => Ok(*signal),
             _ => Err(WavepeekError::Internal(
@@ -298,9 +384,14 @@ impl OndasBackend {
 
     fn physical_ids(&self, ids: &[SignalId]) -> Vec<SignalId> {
         ids.iter()
-            .flat_map(|id| match self.index().signals.get(id.as_u64() as usize) {
-                Some(SignalSource::Split(parts)) => parts.iter().map(|part| part.id).collect(),
-                _ => vec![*id],
+            .flat_map(|id| {
+                if id.as_u64() == u64::MAX {
+                    return vec![*id];
+                }
+                match self.index().signals.get(id.as_u64() as usize) {
+                    Some(SignalSource::Split(parts)) => parts.iter().map(|part| part.id).collect(),
+                    _ => vec![*id],
+                }
             })
             .collect()
     }
@@ -384,10 +475,11 @@ impl OndasBackend {
         }
         let ids = resolved.iter().map(|signal| signal.id).collect::<Vec<_>>();
         if ids.iter().any(|id| {
-            matches!(
-                self.index().signals.get(id.as_u64() as usize),
-                Some(SignalSource::Split(_))
-            )
+            id.as_u64() != u64::MAX
+                && matches!(
+                    self.index().signals.get(id.as_u64() as usize),
+                    Some(SignalSource::Split(_))
+                )
         }) {
             let physical = self.physical_ids(&ids);
             let values = self.values(&physical, time)?;
@@ -395,8 +487,8 @@ impl OndasBackend {
             return resolved
                 .iter()
                 .map(|signal| {
-                    let bits = match &self.index().signals[signal.id.as_u64() as usize] {
-                        SignalSource::Split(parts) => {
+                    let bits = match self.index().signals.get(signal.id.as_u64() as usize) {
+                        Some(SignalSource::Split(parts)) => {
                             let mut bits = vec![b'x'; signal.width as usize];
                             let mut present = false;
                             for part in parts {
@@ -410,13 +502,11 @@ impl OndasBackend {
                             present
                                 .then(|| String::from_utf8(bits).expect("logic values are ASCII"))
                         }
-                        SignalSource::Signal(_) => {
-                            match by_id.get(&signal.id).and_then(Option::as_ref) {
-                                Some(Value::Bits(value)) => Some(value.as_ref().to_string()),
-                                None => None,
-                                _ => return Err(unsupported(&signal.path)),
-                            }
-                        }
+                        _ => match by_id.get(&signal.id).and_then(Option::as_ref) {
+                            Some(Value::Bits(value)) => Some(value.as_ref().to_string()),
+                            None => None,
+                            _ => return Err(unsupported(&signal.path)),
+                        },
                     };
                     Ok(SampledSignalState {
                         path: signal.path.clone(),

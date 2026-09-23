@@ -117,6 +117,21 @@ impl Waveform {
         self.backend.metadata()
     }
 
+    pub(crate) fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
+        if invocation_waveform(path).is_some() {
+            return Self::open(path)?.metadata();
+        }
+        let result = ondas_backend::OndasBackend::read_metadata(path);
+        #[cfg(not(feature = "fsdb"))]
+        let result = result.map_err(|error| {
+            if fsdb_disabled::should_report_disabled_support(path, &error) {
+                return fsdb_disabled::disabled_support_error();
+            }
+            error
+        });
+        result
+    }
+
     pub fn scopes_depth_first(
         &self,
         max_depth: Option<usize>,

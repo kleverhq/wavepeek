@@ -1,5 +1,6 @@
 use std::io::Write;
 use std::path::Path;
+use std::process::Command;
 
 use tempfile::NamedTempFile;
 
@@ -634,6 +635,73 @@ fn fst_single_exact_signal_does_not_build_full_index() {
     assert_eq!(
         backend.sample_resolved_optional(&selected, 10).unwrap(),
         both
+    );
+}
+
+#[test]
+fn fst_batch_value_selection_keeps_full_index_lazy() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
+    let mut backend = OndasBackend::open(&path).unwrap();
+    let paths = ["top.clk".to_string(), "top.data".to_string()];
+    backend.prepare_value_signals(&paths);
+    let resolved = backend.resolve_signals(&paths).unwrap();
+    assert!(backend.index.get().is_none());
+    let sampled = backend.sample_resolved_optional(&resolved, 10).unwrap();
+    backend.signals_in_scope("top").unwrap();
+    assert_eq!(
+        backend.sample_resolved_optional(&resolved, 10).unwrap(),
+        sampled
+    );
+
+    let mut full = OndasBackend::open(&path).unwrap();
+    full.signals_in_scope("top").unwrap();
+    let expected = full.sample_resolved_optional(&full.resolve_signals(&paths).unwrap(), 10);
+    assert_eq!(sampled, expected.unwrap());
+}
+
+#[test]
+fn fst_array_path_uses_full_index_spelling() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\n",
+        "array.vcd",
+    );
+    let wave = ondas::open(fixture.path()).unwrap();
+    let variable = wave.hierarchy().variables().next().unwrap();
+    let direct = super::public_fst_variable_path(&variable);
+    let full = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fst, false);
+    assert_eq!(direct.as_deref(), Some("top.memory.[0]"));
+    assert!(full.by_path.contains_key(direct.as_deref().unwrap()));
+}
+
+#[test]
+fn fst_batch_array_alias_remains_ambiguous() {
+    let source = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$scope module memory $end\n$var wire 8 \" [0] [7:0] $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\nb00000010 \"\n",
+        "collision.vcd",
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("collision.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(source.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let path = "top.memory.[0]";
+    let single = OndasBackend::open(&fst)
+        .unwrap()
+        .resolve_signals(&[path.into()])
+        .unwrap_err();
+    let batch = OndasBackend::open(&fst).unwrap();
+    batch.prepare_value_signals(&[path.into(), path.into()]);
+    assert_eq!(
+        batch
+            .resolve_signals(&[path.into()])
+            .unwrap_err()
+            .to_string(),
+        single.to_string()
     );
 }
 

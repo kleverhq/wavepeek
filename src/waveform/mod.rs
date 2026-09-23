@@ -213,6 +213,10 @@ impl Waveform {
         self.backend.resolve_signals(canonical_paths)
     }
 
+    pub(crate) fn prepare_value_signals(&self, canonical_paths: &[String]) {
+        self.backend.prepare_value_signals(canonical_paths);
+    }
+
     pub(crate) fn resolve_signals_with_diagnostics(
         &self,
         canonical_paths: &[String],

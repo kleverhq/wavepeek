@@ -1852,6 +1852,13 @@ fn resolve_requested_signals(
 ) -> Result<Vec<RequestedSignal>, WavepeekError> {
     if let Some(scope) = scope {
         waveform.signals_in_scope(scope)?;
+    } else if args.signals.len() > 1 {
+        let paths = args
+            .signals
+            .iter()
+            .map(|token| crate::engine::scoped_signal_path(token.trim(), None))
+            .collect::<Vec<_>>();
+        waveform.prepare_value_signals(&paths);
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());

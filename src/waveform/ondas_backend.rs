@@ -9,7 +9,7 @@ mod tests;
 
 use std::borrow::Cow;
 use std::cell::{OnceCell, RefCell};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::path::Path;
 use std::sync::Arc;
@@ -25,6 +25,9 @@ use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
     ScopeEntry, SignalEntry, SignalId, SignalListing, SignalOffsetData, WaveformMetadata,
 };
+
+const MAX_DIRECT_SIGNALS: usize = 128;
+const MAX_DIRECT_FST_BATCH: usize = 1024;
 
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
@@ -267,7 +270,10 @@ impl OndasBackend {
         paths
             .iter()
             .map(|path| {
-                if let Some(resolved) = self.direct_fst_signal(path) {
+                if let Some(resolved) = self
+                    .direct_fst_signal(path)
+                    .or_else(|| self.direct_fsdb_signal(path))
+                {
                     return Ok(resolved);
                 }
                 self.validate_direct_value_supported(path)?;
@@ -284,7 +290,10 @@ impl OndasBackend {
     }
 
     pub fn resolve_expr_signal(&self, path: &str) -> Result<ExprResolvedSignal, WavepeekError> {
-        if let Some(resolved) = self.direct_fst_signal(path) {
+        if let Some(resolved) = self
+            .direct_fst_signal(path)
+            .or_else(|| self.direct_fsdb_signal(path))
+        {
             let offset = (u64::MAX - resolved.id.as_u64()) as usize;
             if let Some(expr_type) = self.direct.borrow()[offset].expr_type.clone() {
                 return Ok(ExprResolvedSignal {
@@ -334,7 +343,7 @@ impl OndasBackend {
         }
         // ponytail: cap repeated scans at 128 paths; batch indexed lookup if larger scans matter.
         if self.index.get().is_some()
-            || self.direct.borrow().len() >= 128
+            || self.direct.borrow().len() >= MAX_DIRECT_SIGNALS
             || path.contains(['[', ']', '\\', '/'])
         {
             return None;
@@ -396,6 +405,229 @@ impl OndasBackend {
             id,
             width,
         })
+    }
+
+    fn direct_fsdb_signal(&self, path: &str) -> Option<ResolvedSignal> {
+        if self.inner.format() != Format::Fsdb {
+            return None;
+        }
+        if let Some((offset, width)) = self
+            .direct
+            .borrow()
+            .iter()
+            .enumerate()
+            .find_map(|(offset, direct)| (direct.path == path).then_some((offset, direct.width)))
+        {
+            return Some(ResolvedSignal {
+                path: path.to_owned(),
+                id: SignalId::from_backend_index(u64::MAX - offset as u64),
+                width,
+            });
+        }
+        if self.index.get().is_some() || self.direct.borrow().len() >= MAX_DIRECT_SIGNALS {
+            return None;
+        }
+        let leaf = path.rsplit('.').next().filter(|leaf| !leaf.is_empty())?;
+        let mut matched = None;
+        for variable in self.inner.hierarchy().variables() {
+            if variable
+                .parent()
+                .is_some_and(|parent| !visible_scope(&parent))
+            {
+                continue;
+            }
+            let raw_name = variable.reader_name().unwrap_or(variable.name()).trim();
+            // The terminal public component survives FSDB spelling normalization.
+            if !raw_name.contains(leaf) {
+                continue;
+            }
+            let public_path = public_fsdb_variable_path(&variable);
+            if public_path == path {
+                if matched.is_some() {
+                    return None;
+                }
+                matched = Some(variable);
+            }
+        }
+        let variable = matched?;
+        let signal = variable.signal()?;
+        let Encoding::Bits { width } = signal.encoding() else {
+            return None;
+        };
+        let mut direct = self.direct.borrow_mut();
+        let id = SignalId::from_backend_index(u64::MAX - direct.len() as u64);
+        direct.push(DirectSignal {
+            path: path.to_owned(),
+            signal,
+            width,
+            expr_type: expression_type(&variable, signal),
+        });
+        Some(ResolvedSignal {
+            path: path.to_owned(),
+            id,
+            width,
+        })
+    }
+
+    pub fn prepare_value_signals(&self, paths: &[String]) {
+        if self.index.get().is_some() || !matches!(self.inner.format(), Format::Fst | Format::Fsdb)
+        {
+            return;
+        }
+        let batch_limit = if self.inner.format() == Format::Fst {
+            MAX_DIRECT_FST_BATCH
+        } else {
+            MAX_DIRECT_SIGNALS
+        };
+        if paths.len() > batch_limit {
+            self.index();
+            return;
+        }
+        if paths.len() < 2 {
+            return;
+        }
+        if self.inner.format() == Format::Fst {
+            self.prepare_fst_signals(paths);
+            return;
+        }
+        let targets = paths.iter().map(String::as_str).collect::<HashSet<_>>();
+        let leaves = paths
+            .iter()
+            .filter_map(|path| path.rsplit('.').next().filter(|leaf| !leaf.is_empty()))
+            .collect::<HashSet<_>>();
+        let mut matches = HashMap::<String, Option<ondas::Variable<'_>>>::new();
+        for variable in self.inner.hierarchy().variables() {
+            if variable
+                .parent()
+                .is_some_and(|parent| !visible_scope(&parent))
+            {
+                continue;
+            }
+            let raw_name = variable.reader_name().unwrap_or(variable.name()).trim();
+            if !leaves.iter().any(|leaf| raw_name.contains(leaf)) {
+                continue;
+            }
+            let public_path = public_fsdb_variable_path(&variable);
+            if targets.contains(public_path.as_str()) {
+                matches
+                    .entry(public_path)
+                    .and_modify(|matched| *matched = None)
+                    .or_insert(Some(variable));
+            }
+        }
+        let mut direct = self.direct.borrow_mut();
+        for path in paths {
+            if direct.iter().any(|entry| entry.path == *path) {
+                continue;
+            }
+            let Some(Some(variable)) = matches.remove(path) else {
+                continue;
+            };
+            let Some(signal) = variable.signal() else {
+                continue;
+            };
+            let Encoding::Bits { width } = signal.encoding() else {
+                continue;
+            };
+            direct.push(DirectSignal {
+                path: path.clone(),
+                signal,
+                width,
+                expr_type: expression_type(&variable, signal),
+            });
+        }
+    }
+
+    fn prepare_fst_signals(&self, paths: &[String]) {
+        let targets = paths
+            .iter()
+            .filter(|path| {
+                !path.contains(['\\', '/']) && (!path.contains(['[', ']']) || path.contains(".["))
+            })
+            .filter_map(|path| {
+                let sdk_path = path.replace(".[", "[");
+                ondas::HierarchyPath::parse(&sdk_path)
+                    .ok()
+                    .map(|key| (key, path.as_str()))
+            })
+            .collect::<HashMap<_, _>>();
+        let leaves = targets
+            .keys()
+            .filter_map(ondas::HierarchyPath::name)
+            .collect::<HashSet<_>>();
+        let array_targets = paths
+            .iter()
+            .filter(|path| path.contains(".[") && !path.contains(['\\', '/']))
+            .map(String::as_str)
+            .collect::<HashSet<_>>();
+        let array_leaves = array_targets
+            .iter()
+            .filter_map(|path| path.rsplit('.').next())
+            .collect::<HashSet<_>>();
+        let mut matches = HashMap::<&str, Option<ondas::Variable<'_>>>::new();
+        let mut fragments = HashSet::new();
+        for variable in self.inner.hierarchy().variables() {
+            let name = variable.name();
+            if let Some((base, _)) = name.split_once('[')
+                && leaves.contains(base)
+            {
+                fragments.insert((variable.parent().map(|scope| scope.path()), base.to_owned()));
+            }
+            let array_path = if array_leaves.iter().any(|leaf| name.ends_with(leaf)) {
+                public_fst_variable_path(&variable)
+                    .and_then(|public| array_targets.get(public.as_str()).copied())
+            } else {
+                None
+            };
+            let path = array_path.or_else(|| {
+                leaves
+                    .contains(name)
+                    .then(|| targets.get(&variable.path()).copied())
+                    .flatten()
+            });
+            if let Some(path) = path {
+                matches
+                    .entry(path)
+                    .and_modify(|matched| *matched = None)
+                    .or_insert(Some(variable));
+            }
+        }
+        let mut direct = self.direct.borrow_mut();
+        for path in paths {
+            if direct.iter().any(|entry| entry.path == *path) {
+                continue;
+            }
+            let Some(Some(variable)) = matches.remove(path.as_str()) else {
+                continue;
+            };
+            if variable
+                .parent()
+                .is_some_and(|parent| !visible_scope(&parent))
+                || fragments.contains(&(
+                    variable.parent().map(|scope| scope.path()),
+                    variable.name().to_owned(),
+                ))
+            {
+                continue;
+            }
+            let Some(signal) = variable.signal() else {
+                continue;
+            };
+            let width = match signal.encoding() {
+                Encoding::Bits { width } => width,
+                Encoding::Event => 0,
+                _ => continue,
+            };
+            if public_fst_variable_path(&variable).as_deref() != Some(path) {
+                continue;
+            }
+            direct.push(DirectSignal {
+                path: path.clone(),
+                signal,
+                width,
+                expr_type: expression_type(&variable, signal),
+            });
+        }
     }
 
     pub fn previous_sample_time(&self, time: u64) -> Option<u64> {
@@ -957,6 +1189,131 @@ fn public_component(name: &str, format: Format, escaped: bool) -> Cow<'_, str> {
     }
 }
 
+fn public_fst_variable_path(variable: &ondas::Variable<'_>) -> Option<String> {
+    with_public_variable(
+        variable,
+        Format::Fst,
+        variable.signal(),
+        |mut parent, synthetic_scopes, name, _| {
+            if synthetic_scopes.is_empty() && name != variable.name() {
+                return None;
+            }
+            for component in synthetic_scopes {
+                if !parent.is_empty() {
+                    parent.push('.');
+                }
+                parent.push_str(&public_component(component, Format::Fst, false));
+            }
+            if !parent.is_empty() {
+                parent.push('.');
+            }
+            parent.push_str(&public_component(
+                name,
+                Format::Fst,
+                variable.name_was_escaped(),
+            ));
+            Some(parent)
+        },
+    )
+}
+
+fn public_fsdb_variable_path(variable: &ondas::Variable<'_>) -> String {
+    with_public_variable(
+        variable,
+        Format::Fsdb,
+        variable.signal(),
+        |mut parent, synthetic_scopes, name, _| {
+            for component in synthetic_scopes {
+                if !parent.is_empty() {
+                    parent.push('.');
+                }
+                parent.push_str(&public_component(component, Format::Fsdb, false));
+            }
+            if !parent.is_empty() {
+                parent.push('.');
+            }
+            parent.push_str(&public_component(
+                name,
+                Format::Fsdb,
+                variable.name_was_escaped(),
+            ));
+            parent
+        },
+    )
+}
+
+fn with_public_variable<R>(
+    variable: &ondas::Variable<'_>,
+    format: Format,
+    signal: Option<ondas::Signal>,
+    use_name: impl FnOnce(String, &[&str], &str, Option<ondas::BitRange>) -> R,
+) -> R {
+    let parent = variable
+        .parent()
+        .map(|scope| scope_path(&scope, format))
+        .unwrap_or_default();
+    let mut range = variable.range();
+    let raw_name = variable.reader_name().unwrap_or(variable.name()).trim();
+    let escaped_fsdb_name = format == Format::Fsdb && raw_name.starts_with('\\');
+    let fsdb_name = if format == Format::Fsdb {
+        let mut name = raw_name.strip_prefix('\\').unwrap_or(raw_name);
+        if !escaped_fsdb_name
+            && let Some(bit_range) = range
+            && bit_range.msb() != bit_range.lsb()
+        {
+            let suffix = format!("[{}:{}]", bit_range.msb(), bit_range.lsb());
+            name = name
+                .strip_suffix(&suffix)
+                .filter(|base| !base.is_empty())
+                .unwrap_or(name);
+        }
+        Some(if !escaped_fsdb_name && name.contains('/') {
+            Cow::Owned(name.replace('/', "."))
+        } else {
+            Cow::Borrowed(name)
+        })
+    } else {
+        None
+    };
+    let mut name = fsdb_name.as_deref().unwrap_or_else(|| variable.name());
+    if format == Format::Fst
+        && range.is_none()
+        && let Some(Encoding::Bits { width }) = signal.map(|signal| signal.encoding())
+        && let Some((base, packed_range)) = packed_name_range(name, width)
+    {
+        name = base;
+        range = Some(packed_range);
+    }
+    let mut synthetic_scopes = Vec::new();
+    if matches!(format, Format::Vcd | Format::Fst) && name.ends_with(']') {
+        let parts = array_name_parts(name);
+        synthetic_scopes.extend(parts[..parts.len() - 1].iter().copied());
+        name = parts[parts.len() - 1];
+    } else if format == Format::Fsdb {
+        if range.is_some_and(|bit_range| bit_range.msb() != bit_range.lsb()) {
+            let parts = array_name_parts(name);
+            if parts.len() == 2
+                && !parts[0].contains(['[', ']'])
+                && (!escaped_fsdb_name || !parts[0].contains(['.', '/']))
+            {
+                synthetic_scopes.extend(parts[0].split('.'));
+                name = parts[1];
+            }
+        }
+        if !escaped_fsdb_name
+            && synthetic_scopes.is_empty()
+            && let Some((prefix, local)) = name.rsplit_once('.')
+            && !prefix.is_empty()
+            && !local.is_empty()
+            && prefix.split('.').all(|part| !part.is_empty())
+        {
+            synthetic_scopes.extend(prefix.split('.'));
+            name = local;
+        }
+    }
+    use_name(parent, &synthetic_scopes, name, range)
+}
+
 // The previous FSDB reader ignored SDK struct/union begin/end callbacks.
 fn skipped_fsdb_scope(scope: &ondas::Scope<'_>, format: Format) -> bool {
     format == Format::Fsdb
@@ -1052,121 +1409,65 @@ impl HierarchyIndex {
                     })
                 })
             };
-            let mut parent = variable
-                .parent()
-                .map(|scope| scope_path(&scope, format))
-                .unwrap_or_default();
-            let mut range = variable.range();
-            let raw_name = variable.reader_name().unwrap_or(variable.name()).trim();
-            let escaped_fsdb_name = format == Format::Fsdb && raw_name.starts_with('\\');
-            let fsdb_name = if format == Format::Fsdb {
-                let mut name = raw_name.strip_prefix('\\').unwrap_or(raw_name);
-                if !escaped_fsdb_name
-                    && let Some(bit_range) = range
-                    && bit_range.msb() != bit_range.lsb()
-                {
-                    let suffix = format!("[{}:{}]", bit_range.msb(), bit_range.lsb());
-                    name = name
-                        .strip_suffix(&suffix)
-                        .filter(|base| !base.is_empty())
-                        .unwrap_or(name);
-                }
-                Some(if !escaped_fsdb_name && name.contains('/') {
-                    Cow::Owned(name.replace('/', "."))
-                } else {
-                    Cow::Borrowed(name)
-                })
-            } else {
-                None
-            };
-            let mut name = fsdb_name.as_deref().unwrap_or_else(|| variable.name());
-            if format == Format::Fst
-                && range.is_none()
-                && let Some(Encoding::Bits { width }) = signal.map(|signal| signal.encoding())
-                && let Some((base, packed_range)) = packed_name_range(name, width)
-            {
-                name = base;
-                range = Some(packed_range);
-            }
-            let mut synthetic_scopes = Vec::new();
-            if matches!(format, Format::Vcd | Format::Fst) && name.ends_with(']') {
-                let parts = array_name_parts(name);
-                synthetic_scopes.extend(parts[..parts.len() - 1].iter().copied());
-                name = parts[parts.len() - 1];
-            } else if format == Format::Fsdb {
-                if range.is_some_and(|bit_range| bit_range.msb() != bit_range.lsb()) {
-                    let parts = array_name_parts(name);
-                    if parts.len() == 2
-                        && !parts[0].contains(['[', ']'])
-                        && (!escaped_fsdb_name || !parts[0].contains(['.', '/']))
-                    {
-                        synthetic_scopes.extend(parts[0].split('.'));
-                        name = parts[1];
+            with_public_variable(
+                &variable,
+                format,
+                signal,
+                |mut parent, synthetic_scopes, name, range| {
+                    let mut components = scope_keys.get(&parent).cloned().unwrap_or_default();
+                    let mut depth = components.len();
+                    for component in synthetic_scopes {
+                        let component = public_component(component, format, false);
+                        components.push(component.to_string());
+                        parent = if parent.is_empty() {
+                            component.into_owned()
+                        } else {
+                            format!("{parent}.{component}")
+                        };
+                        if scope_paths.insert(parent.clone()) {
+                            scope_keys.insert(parent.clone(), components.clone());
+                            scopes.push(ScopeEntry {
+                                path: parent.clone(),
+                                depth,
+                                kind: "unknown".into(),
+                            });
+                        }
+                        depth += 1;
                     }
-                }
-                if !escaped_fsdb_name
-                    && synthetic_scopes.is_empty()
-                    && let Some((prefix, local)) = name.rsplit_once('.')
-                    && !prefix.is_empty()
-                    && !local.is_empty()
-                    && prefix.split('.').all(|part| !part.is_empty())
-                {
-                    synthetic_scopes.extend(prefix.split('.'));
-                    name = local;
-                }
-            }
-            let mut components = scope_keys.get(&parent).cloned().unwrap_or_default();
-            let mut depth = components.len();
-            for component in synthetic_scopes {
-                let component = public_component(component, format, false);
-                components.push(component.to_string());
-                parent = if parent.is_empty() {
-                    component.into_owned()
-                } else {
-                    format!("{parent}.{component}")
-                };
-                if scope_paths.insert(parent.clone()) {
-                    scope_keys.insert(parent.clone(), components.clone());
-                    scopes.push(ScopeEntry {
-                        path: parent.clone(),
-                        depth,
-                        kind: "unknown".into(),
+                    if scopes_only {
+                        return;
+                    }
+                    let public_name = public_component(name, format, variable.name_was_escaped());
+                    let name = public_name.as_ref();
+                    let path = if parent.is_empty() {
+                        name.to_owned()
+                    } else {
+                        format!("{parent}.{name}")
+                    };
+                    let width = signal.and_then(|signal| match signal.encoding() {
+                        Encoding::Bits { width } => Some(width),
+                        Encoding::Event => Some(if format == Format::Fsdb { 1 } else { 0 }),
+                        _ => None,
                     });
-                }
-                depth += 1;
-            }
-            if scopes_only {
-                continue;
-            }
-            let public_name = public_component(name, format, variable.name_was_escaped());
-            let name = public_name.as_ref();
-            let path = if parent.is_empty() {
-                name.to_owned()
-            } else {
-                format!("{parent}.{name}")
-            };
-            let width = signal.and_then(|signal| match signal.encoding() {
-                Encoding::Bits { width } => Some(width),
-                Encoding::Event => Some(if format == Format::Fsdb { 1 } else { 0 }),
-                _ => None,
-            });
-            let expr_type = signal.and_then(|signal| expression_type(&variable, signal));
-            let entry = SignalEntry {
-                name: name.to_owned(),
-                path: path.clone(),
-                kind: var_type_alias(variable.kind()),
-                width,
-            };
-            by_path.entry(path).or_default().push(declarations.len());
-            declarations.push(Declaration {
-                entry,
-                parent,
-                parent_order: 0,
-                id,
-                expr_type,
-                range,
-                visible: true,
-            });
+                    let expr_type = signal.and_then(|signal| expression_type(&variable, signal));
+                    let entry = SignalEntry {
+                        name: name.to_owned(),
+                        path: path.clone(),
+                        kind: var_type_alias(variable.kind()),
+                        width,
+                    };
+                    by_path.entry(path).or_default().push(declarations.len());
+                    declarations.push(Declaration {
+                        entry,
+                        parent,
+                        parent_order: 0,
+                        id,
+                        expr_type,
+                        range,
+                        visible: true,
+                    });
+                },
+            );
         }
         scopes.sort_by(|left, right| scope_keys[&left.path].cmp(&scope_keys[&right.path]));
         if !scopes_only {

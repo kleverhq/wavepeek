@@ -8,7 +8,7 @@ mod fsdb_tests;
 mod tests;
 
 use std::borrow::Cow;
-use std::cell::OnceCell;
+use std::cell::{OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::path::Path;
@@ -29,7 +29,7 @@ use super::types::{
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
     index: OnceCell<HierarchyIndex>,
-    direct: OnceCell<(String, ondas::Signal, u32)>,
+    direct: RefCell<Vec<DirectSignal>>,
     traces: HashMap<SignalId, Trace>,
     sampling_window: Option<(u64, u64)>,
     indexed_times: Option<Vec<u64>>,
@@ -57,6 +57,13 @@ struct BitPart {
     id: SignalId,
     lsb: usize,
     width: usize,
+}
+
+struct DirectSignal {
+    path: String,
+    signal: ondas::Signal,
+    width: u32,
+    expr_type: Option<ExprType>,
 }
 
 enum SignalSource {
@@ -111,7 +118,7 @@ impl OndasBackend {
         Self {
             inner,
             index: OnceCell::new(),
-            direct: OnceCell::new(),
+            direct: RefCell::new(Vec::new()),
             traces: HashMap::new(),
             sampling_window: None,
             indexed_times: None,
@@ -167,20 +174,19 @@ impl OndasBackend {
 
     fn index(&self) -> &HierarchyIndex {
         self.index
-            .get_or_init(|| HierarchyIndex::new(self.inner.hierarchy(), self.inner.format()))
+            .get_or_init(|| HierarchyIndex::new(self.inner.hierarchy(), self.inner.format(), false))
     }
 
     pub fn scopes_depth_first(
         &self,
         max_depth: Option<usize>,
     ) -> Result<Vec<ScopeEntry>, WavepeekError> {
-        Ok(self
-            .index()
-            .scopes
-            .iter()
-            .filter(|scope| max_depth.is_none_or(|max| scope.depth <= max))
-            .cloned()
-            .collect())
+        let mut scopes = self.index.get().map_or_else(
+            || HierarchyIndex::new(self.inner.hierarchy(), self.inner.format(), true).scopes,
+            |index| index.scopes.clone(),
+        );
+        scopes.retain(|scope| max_depth.is_none_or(|max| scope.depth <= max));
+        Ok(scopes)
     }
 
     pub fn signals_in_scope(&self, path: &str) -> Result<Vec<SignalEntry>, WavepeekError> {
@@ -258,14 +264,12 @@ impl OndasBackend {
     }
 
     pub fn resolve_signals(&self, paths: &[String]) -> Result<Vec<ResolvedSignal>, WavepeekError> {
-        if let [path] = paths
-            && let Some(resolved) = self.direct_fst_signal(path)
-        {
-            return Ok(vec![resolved]);
-        }
         paths
             .iter()
             .map(|path| {
+                if let Some(resolved) = self.direct_fst_signal(path) {
+                    return Ok(resolved);
+                }
                 self.validate_direct_value_supported(path)?;
                 let declaration = self.declaration(path)?;
                 let width = declaration.entry.width.ok_or_else(|| unsupported(path))?;
@@ -280,6 +284,16 @@ impl OndasBackend {
     }
 
     pub fn resolve_expr_signal(&self, path: &str) -> Result<ExprResolvedSignal, WavepeekError> {
+        if let Some(resolved) = self.direct_fst_signal(path) {
+            let offset = (u64::MAX - resolved.id.as_u64()) as usize;
+            if let Some(expr_type) = self.direct.borrow()[offset].expr_type.clone() {
+                return Ok(ExprResolvedSignal {
+                    path: path.to_owned(),
+                    id: resolved.id,
+                    expr_type,
+                });
+            }
+        }
         let declaration = self.declaration(path)?;
         Ok(ExprResolvedSignal {
             path: path.to_owned(),
@@ -305,18 +319,36 @@ impl OndasBackend {
         if self.inner.format() != Format::Fst {
             return None;
         }
-        if let Some((existing, _, width)) = self.direct.get() {
-            return (existing == path).then(|| ResolvedSignal {
+        if let Some((offset, width)) = self
+            .direct
+            .borrow()
+            .iter()
+            .enumerate()
+            .find_map(|(offset, direct)| (direct.path == path).then_some((offset, direct.width)))
+        {
+            return Some(ResolvedSignal {
                 path: path.to_owned(),
-                id: SignalId::from_backend_index(u64::MAX),
-                width: *width,
+                id: SignalId::from_backend_index(u64::MAX - offset as u64),
+                width,
             });
         }
-        if self.index.get().is_some() || path.contains(['[', ']', '\\', '/']) {
+        // ponytail: cap repeated scans at 128 paths; batch indexed lookup if larger scans matter.
+        if self.index.get().is_some()
+            || self.direct.borrow().len() >= 128
+            || path.contains(['[', ']', '\\', '/'])
+        {
             return None;
         }
         let hierarchy = self.inner.hierarchy();
-        let variable = hierarchy.variable(path).ok()?;
+        let selector = ondas::HierarchyPath::parse(path).ok()?;
+        let leaf = selector.name()?;
+        let mut matches = hierarchy
+            .variables()
+            .filter(|variable| variable.name() == leaf && variable.path() == selector);
+        let variable = matches.next()?;
+        if matches.next().is_some() {
+            return None;
+        }
         if variable
             .parent()
             .is_some_and(|parent| !visible_scope(&parent))
@@ -351,10 +383,17 @@ impl OndasBackend {
         }) {
             return None;
         }
-        self.direct.set((path.to_owned(), signal, width)).ok()?;
+        let mut direct = self.direct.borrow_mut();
+        let id = SignalId::from_backend_index(u64::MAX - direct.len() as u64);
+        direct.push(DirectSignal {
+            path: path.to_owned(),
+            signal,
+            width,
+            expr_type: expression_type(&variable, signal),
+        });
         Some(ResolvedSignal {
             path: path.to_owned(),
-            id: SignalId::from_backend_index(u64::MAX),
+            id,
             width,
         })
     }
@@ -365,11 +404,12 @@ impl OndasBackend {
     }
 
     fn signal(&self, id: SignalId) -> Result<ondas::Signal, WavepeekError> {
-        if id.as_u64() == u64::MAX {
+        if id.as_u64() & (1 << 63) != 0 {
             return self
                 .direct
-                .get()
-                .map(|(_, signal, _)| *signal)
+                .borrow()
+                .get((u64::MAX - id.as_u64()) as usize)
+                .map(|direct| direct.signal)
                 .ok_or_else(|| {
                     WavepeekError::Internal("invalid direct waveform signal handle".into())
                 });
@@ -385,7 +425,7 @@ impl OndasBackend {
     fn physical_ids(&self, ids: &[SignalId]) -> Vec<SignalId> {
         ids.iter()
             .flat_map(|id| {
-                if id.as_u64() == u64::MAX {
+                if id.as_u64() & (1 << 63) != 0 {
                     return vec![*id];
                 }
                 match self.index().signals.get(id.as_u64() as usize) {
@@ -475,7 +515,7 @@ impl OndasBackend {
         }
         let ids = resolved.iter().map(|signal| signal.id).collect::<Vec<_>>();
         if ids.iter().any(|id| {
-            id.as_u64() != u64::MAX
+            id.as_u64() & (1 << 63) == 0
                 && matches!(
                     self.index().signals.get(id.as_u64() as usize),
                     Some(SignalSource::Split(_))
@@ -548,10 +588,12 @@ impl OndasBackend {
             )));
         }
         self.validate_expr_values_supported(std::slice::from_ref(resolved))?;
-        if matches!(
-            self.index().signals.get(resolved.id.as_u64() as usize),
-            Some(SignalSource::Split(_))
-        ) {
+        if resolved.id.as_u64() & (1 << 63) == 0
+            && matches!(
+                self.index().signals.get(resolved.id.as_u64() as usize),
+                Some(SignalSource::Split(_))
+            )
+        {
             let signal = ResolvedSignal {
                 path: resolved.path.clone(),
                 id: resolved.id,
@@ -966,7 +1008,7 @@ fn visible_scope(scope: &ondas::Scope<'_>) -> bool {
 }
 
 impl HierarchyIndex {
-    fn new(hierarchy: &ondas::Hierarchy, format: Format) -> Self {
+    fn new(hierarchy: &ondas::Hierarchy, format: Format, scopes_only: bool) -> Self {
         let mut scope_keys = HashMap::new();
         let mut scopes = hierarchy
             .scopes()
@@ -999,13 +1041,17 @@ impl HierarchyIndex {
                 continue;
             }
             let signal = variable.signal();
-            let id = signal.map(|signal| {
-                *ids.entry(signal).or_insert_with(|| {
-                    let id = SignalId::from_backend_index(signals.len() as u64);
-                    signals.push(SignalSource::Signal(signal));
-                    id
+            let id = if scopes_only {
+                None
+            } else {
+                signal.map(|signal| {
+                    *ids.entry(signal).or_insert_with(|| {
+                        let id = SignalId::from_backend_index(signals.len() as u64);
+                        signals.push(SignalSource::Signal(signal));
+                        id
+                    })
                 })
-            });
+            };
             let mut parent = variable
                 .parent()
                 .map(|scope| scope_path(&scope, format))
@@ -1089,6 +1135,9 @@ impl HierarchyIndex {
                 }
                 depth += 1;
             }
+            if scopes_only {
+                continue;
+            }
             let public_name = public_component(name, format, variable.name_was_escaped());
             let name = public_name.as_ref();
             let path = if parent.is_empty() {
@@ -1120,7 +1169,7 @@ impl HierarchyIndex {
             });
         }
         scopes.sort_by(|left, right| scope_keys[&left.path].cmp(&scope_keys[&right.path]));
-        {
+        if !scopes_only {
             let order = scopes
                 .iter()
                 .enumerate()
@@ -1137,7 +1186,7 @@ impl HierarchyIndex {
             by_path,
             signals,
         };
-        if matches!(format, Format::Vcd | Format::Fst) {
+        if !scopes_only && matches!(format, Format::Vcd | Format::Fst) {
             index.join_split_vectors();
         }
         index

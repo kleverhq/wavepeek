@@ -40,7 +40,7 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
 fn fsdb_scope_escape_markers_are_not_public_path_components() {
     let source: std::sync::Arc<[u8]> = b"$timescale 1ns $end\n$scope module top $end\n$scope module \\block[0] $end\n$var wire 1 ! flag $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n".as_slice().into();
     let wave = ondas::open_bytes("scope.vcd", source).unwrap();
-    let index = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fsdb);
+    let index = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fsdb, false);
     assert!(
         index
             .scopes

@@ -601,6 +601,15 @@ fn fst_queries_share_file_and_byte_loading() {
 }
 
 #[test]
+fn fst_scope_only_does_not_build_full_index() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
+    let backend = OndasBackend::open(&path).unwrap();
+    let scopes = backend.scopes_depth_first(None).unwrap();
+    assert!(backend.index.get().is_none());
+    assert_eq!(scopes, backend.index().scopes);
+}
+
+#[test]
 fn fst_single_exact_signal_does_not_build_full_index() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
     let mut backend = OndasBackend::open(&path).unwrap();
@@ -615,12 +624,32 @@ fn fst_single_exact_signal_does_not_build_full_index() {
     let expected = full.sample_resolved_optional(&full.resolve_signals(&paths).unwrap(), 10);
     assert_eq!(sampled, expected.unwrap());
 
-    backend.resolve_signals(&["top.data".to_string()]).unwrap();
+    let mut selected = selected;
+    selected.extend(backend.resolve_signals(&["top.data".to_string()]).unwrap());
+    assert!(backend.index.get().is_none());
+    let both = backend.sample_resolved_optional(&selected, 10).unwrap();
+    assert!(backend.index.get().is_none());
+    backend.signals_in_scope("top").unwrap();
     assert!(backend.index.get().is_some());
     assert_eq!(
         backend.sample_resolved_optional(&selected, 10).unwrap(),
-        sampled
+        both
     );
+}
+
+#[test]
+fn fst_expression_signal_does_not_build_full_index() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
+    let mut backend = OndasBackend::open(&path).unwrap();
+    let signal = backend.resolve_expr_signal("top.clk").unwrap();
+    assert!(backend.index.get().is_none());
+    let sampled = backend.sample_expr_value(&signal, 10).unwrap();
+    assert!(backend.index.get().is_none());
+
+    let mut full = OndasBackend::open(&path).unwrap();
+    full.signals_in_scope("top").unwrap();
+    let expected = full.sample_expr_value(&full.resolve_expr_signal("top.clk").unwrap(), 10);
+    assert_eq!(sampled, expected.unwrap());
 }
 
 #[test]

@@ -30,7 +30,7 @@ The repository ships agent-facing workflow assets plus deterministic `--json` an
 |-----------|--------|-----------|
 | Language | Rust stable (MSRV 1.93) | Performance, memory safety, and predictable resource use on large dumps |
 | CLI framework | `clap` derive API | Self-documenting command definitions with compile-time validation |
-| Waveform parsing | `wellen` | Unified VCD/FST interface used successfully by existing waveform tooling |
+| Waveform parsing | `ondas` | Unified VCD/FST access and optional SDK-backed FSDB access |
 | Serialization | `serde` + `serde_json` | Standard JSON and JSONL rendering for machine output |
 | Pattern matching | `regex` | Shared filtering surface for hierarchy and signal discovery |
 | Error handling | `thiserror` | Typed error enums without runtime boxing |
@@ -43,7 +43,7 @@ wavepeek is organized as three execution layers plus two shared support modules.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
-3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Default builds dispatch VCD/FST work to the Wellen backend; feature-enabled FSDB builds can dispatch `.fsdb` inputs to the FSDB backend and native shim. FSDB-specific build and SDK details live in `fsdb.md`.
+3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB access when the `fsdb` feature is enabled. FSDB-specific build and SDK details live in `fsdb.md`.
 4. **Embedded skill runtime** (`src/skill.rs`) extracts the packaged agent skill from repository assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode, strict JSON result and fatal values, and JSONL stream records.
 6. **Browser adapter** (`src/browser.rs`) supplies explicit argv, output buffers, and one invocation-scoped VCD/FST byte source to the same CLI and waveform layers. It rejects FSDB, `skill`, and extraction `--source` before dispatch.
@@ -52,7 +52,7 @@ Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
-- The engine is format-agnostic for waveform commands. VCD/FST Wellen handling and optional FSDB Reader handling stay behind the waveform facade.
+- The engine is format-agnostic for waveform commands. Ondas format handling and optional FSDB Reader access stay behind the waveform facade.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 
@@ -110,12 +110,11 @@ src/
 ├── waveform/            # Backend-neutral waveform facade plus concrete backends
 │   ├── mod.rs           # Public facade, backend dispatch, and query helpers
 │   ├── types.rs         # Shared waveform metadata, signal, sample, and backend-facing types
-│   ├── wellen_backend.rs # Default VCD/FST backend using `wellen`
+│   ├── ondas_backend.rs # Ondas hierarchy adaptation, batched samples, and cached traces
+│   ├── ondas_tests.rs   # Waveform facade regression tests
+│   ├── ondas_fsdb_tests.rs # Feature-gated SDK-backed regression tests
 │   ├── fsdb_disabled.rs # Default-build diagnostics for FSDB-looking inputs
-│   ├── fsdb_backend.rs  # Feature-gated FSDB backend over the native Reader shim
-│   ├── fsdb_native.rs   # Feature-gated Rust FFI wrapper for the native shim
-│   ├── fsdb_hierarchy.rs # FSDB hierarchy normalization and kind/value mapping
-│   ├── fsdb_time.rs     # FSDB time-unit parsing and conversion helpers
+│   ├── fsdb_output.rs   # SDK startup output suppression
 │   └── expr_host.rs     # Waveform-backed expression host bridge
 ├── output.rs            # Shared output formatting (human, JSON envelope, JSONL)
 └── error.rs             # `WavepeekError` enum and exit mapping
@@ -127,8 +126,8 @@ src/
 |--------|-------------|---------------------|
 | `cli/` | clap, dispatch, help text | waveform parsing internals, output serialization details |
 | `engine/` | domain logic, waveform API, shared semantics helpers | clap parsing flow |
-| `expr/` | expression AST, types, evaluation | CLI, output formatting, `wellen` |
-| `waveform/` | backend dispatch, Wellen VCD/FST access, optional FSDB Reader access | CLI behavior, output formatting |
+| `expr/` | expression AST, types, evaluation | CLI, output formatting, `ondas` |
+| `waveform/` | Ondas access, public hierarchy normalization, query caching | CLI behavior, output formatting |
 | `output` | JSON and human rendering | waveform access, clap parsing |
 | `error` | all stable error variants | everything else |
 
@@ -136,13 +135,12 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `wellen` | ~0.20 | VCD and FST parsing | Core default waveform dependency |
+| `ondas` | Git SHA in `Cargo.toml` | VCD/FST parsing and optional FSDB access | FSDB forwards to `ondas/fsdb-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |
 | `regex` | ~1 | Pattern matching | Shared filter support |
 | `thiserror` | ~2 | Error derivation | Typed errors with explicit exit mapping |
-| `cc` | ~1 | Native build integration | Build dependency used only when compiling optional FSDB support |
 
 Development dependencies include `assert_cmd`, `predicates`, `tempfile`, and `insta` to cover integration tests, fixture handling, and snapshots.
 

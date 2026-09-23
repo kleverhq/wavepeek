@@ -27,7 +27,7 @@ RUN apt-get update && \
     ca-certificates curl git libatomic1 g++ \
     python3 python3-venv \
     iverilog gtkwave \
-    libxt6t64 libxmu6 libnuma1 \
+    libxt6t64 libxmu6 libnuma1 zlib1g-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

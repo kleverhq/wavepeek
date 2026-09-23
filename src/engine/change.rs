@@ -1098,35 +1098,6 @@ fn run_edge_fast_emit<S: ChangeSnapshotSink + ?Sized>(
         );
     }
 
-    if waveform.borrow().indexed_timestamps().is_none() {
-        return run_baseline_fallback_emit(
-            waveform,
-            host,
-            event_expr_source,
-            bound_event,
-            tracked_signal_handles,
-            requested_signals,
-            requested_resolved,
-            candidate_sources,
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            Some(candidate_times),
-            row_mode,
-            row_values,
-            sink,
-        );
-    }
-
-    let candidate_indices = {
-        let waveform_ref = waveform.borrow();
-        let time_table = indexed_timestamps(&waveform_ref)?;
-        candidate_times_to_indices(time_table, candidate_times.as_slice())?
-    };
-
     let mut loaded_signal_ids = requested_resolved
         .iter()
         .map(|signal| signal.id)
@@ -1160,6 +1131,11 @@ fn run_edge_fast_emit<S: ChangeSnapshotSink + ?Sized>(
             sink,
         );
     }
+    let candidate_indices = {
+        let waveform_ref = waveform.borrow();
+        let time_table = indexed_timestamps(&waveform_ref)?;
+        candidate_times_to_indices(time_table, candidate_times.as_slice())?
+    };
     let cached_sources = cached_event_sources(
         host,
         cached_event_handles(bound_event, tracked_signal_handles).as_slice(),
@@ -1318,29 +1294,6 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
     row_values: RowValues,
     sink: &mut S,
 ) -> Result<ChangeRunStats, WavepeekError> {
-    if waveform.borrow().indexed_timestamps().is_none() {
-        return run_baseline_fallback_emit(
-            waveform,
-            host,
-            event_expr_source,
-            bound_event,
-            tracked_signal_handles,
-            requested_signals,
-            requested_resolved,
-            candidate_sources,
-            from_raw,
-            to_raw,
-            baseline_raw,
-            dump_tick,
-            max_entries,
-            candidate_mode,
-            None,
-            row_mode,
-            row_values,
-            sink,
-        );
-    }
-
     let mut tracked_resolved = Vec::new();
     let mut tracked_seen = HashSet::new();
     for signal in requested_resolved {
@@ -1386,6 +1339,11 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
+    waveform.borrow_mut().preload_resolved_value_changes(
+        &tracked_resolved,
+        from_raw.saturating_sub(1),
+        to_raw,
+    )?;
     let all_signal_ids = tracked_resolved
         .iter()
         .map(|signal| signal.id)
@@ -2243,7 +2201,7 @@ mod tests {
         let waveform = Waveform::open(fixture.path()).expect("waveform should open");
         assert_eq!(
             build_candidate_schedule(&waveform, &[5, 10]).expect("schedule"),
-            vec![(5, Some(0)), (10, Some(5))]
+            vec![(5, Some(4)), (10, Some(9))]
         );
         assert!(
             candidate_times_to_indices(&[0, 5], &[1])
@@ -2592,6 +2550,11 @@ mod tests {
             .sample_requested_batch(&waveform, &resolved, 5)
             .expect("cached sample should work");
         assert_eq!(first, second);
+        assert!(
+            waveform
+                .borrow_mut()
+                .ensure_indexed_signals_loaded(&[resolved[0].id])
+        );
 
         let mut decode_cache = IndexDecodeCache::default();
         let waveform_ref = waveform.borrow();
@@ -2607,7 +2570,7 @@ mod tests {
         let waveform_ref = waveform.borrow();
         assert_eq!(
             build_candidate_schedule(&waveform_ref, &[0, 5]).expect("schedule should build"),
-            vec![(0, None), (5, Some(0))]
+            vec![(0, None), (5, Some(4))]
         );
     }
 

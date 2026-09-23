@@ -65,25 +65,18 @@ class CheckFsdbEnvTest(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertEqual(result.stdout, "")
-        self.assertIn("error: fsdb: VERDI_HOME is required", result.stderr)
+        self.assertIn("WAVEPEEK_FSDB_READER_LIBDIR is not supported by Ondas", result.stderr)
         self.assertNotIn(temp_dir, result.stderr)
 
-    def test_explicit_bad_library_directory_fails(self) -> None:
+    def test_incomplete_library_directory_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             reader_root = root / "share" / "FsdbReader"
             reader_root.mkdir(parents=True)
             for header in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
                 (reader_root / header).write_text("", encoding="utf-8")
-            bad_libdir = root / "bad-libdir"
-            bad_libdir.mkdir()
-
-            result = self.run_script(
-                {
-                    "VERDI_HOME": str(root),
-                    "WAVEPEEK_FSDB_READER_LIBDIR": str(bad_libdir),
-                }
-            )
+            (reader_root / "linux64").mkdir()
+            result = self.run_script({"VERDI_HOME": str(root)})
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("error: fsdb: selected FSDB Reader library directory is incomplete", result.stderr)
@@ -112,7 +105,7 @@ class CheckFsdbEnvTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)
             reader_root = root / "share" / "FsdbReader"
-            libdir = reader_root / "linux64_gcc950"
+            libdir = reader_root / "LINUX64"
             libdir.mkdir(parents=True)
             for header in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
                 (reader_root / header).write_text("", encoding="utf-8")
@@ -120,7 +113,7 @@ class CheckFsdbEnvTest(unittest.TestCase):
                 (libdir / library).write_text("", encoding="utf-8")
 
             result = self.run_script(
-                {"VERDI_HOME": str(root), "WAVEPEEK_FSDB_ABI": "linux64_gcc950"},
+                {"VERDI_HOME": str(root)},
                 args=["--print-libdir"],
             )
 

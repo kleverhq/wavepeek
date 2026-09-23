@@ -925,7 +925,7 @@ fn value_debug_trace_writes_json_events_to_human_stderr() {
     );
     assert!(events.iter().any(|event| {
         event["message"] == "backend.open.done"
-            && event["details"]["backend"] == "wellen"
+            && event["details"]["backend"] == "ondas"
             && event["details"]["format"] == "vcd"
     }));
     assert!(

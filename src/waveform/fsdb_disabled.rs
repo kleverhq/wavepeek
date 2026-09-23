@@ -27,7 +27,7 @@ pub(crate) fn should_report_disabled_support(path: &Path, error: &WavepeekError)
         return false;
     };
 
-    // Wellen open errors currently preserve the public file category as plain text.
+    // Reader parse errors preserve the public file category as plain text.
     // Keep this narrow so missing files, permission failures, directories, and other
     // read/open failures remain ordinary file errors instead of FSDB feature guidance.
     let parse_prefix = format!("cannot parse '{}': ", path.display());
@@ -86,8 +86,7 @@ mod tests {
     fn report_only_parse_failures_for_fsdb_looking_paths() {
         let path = Path::new("dump.fsdb");
         let parse_error = WavepeekError::File(
-            "cannot parse 'dump.fsdb': unknown file format, only GHW, FST and VCD are supported"
-                .to_string(),
+            "cannot parse 'dump.fsdb': unsupported waveform format".to_string(),
         );
         let open_error =
             WavepeekError::File("cannot open 'dump.fsdb': No such file or directory".to_string());

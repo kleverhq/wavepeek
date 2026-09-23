@@ -57,15 +57,13 @@ common_dir="$(git rev-parse --path-format=absolute --git-common-dir)"
 common_dir="$(cd "$common_dir" && pwd -P)"
 
 mount_args=()
-remote_env_args=()
 expected_mounts=("$root"$'\t'"$workspace")
 if [ "$common_dir" != "$root/.git" ]; then
     mount_args+=(--mount "type=bind,source=$common_dir,target=$common_dir")
     expected_mounts+=("$common_dir"$'\t'"$common_dir")
 fi
-if [ -n "${WAVEPEEK_FSDB_ABI-}${WAVEPEEK_FSDB_READER_LIBDIR-}" ] && [ -z "${VERDI_HOME-}" ]; then
-    printf '%s\n' "error: dev: VERDI_HOME is required when FSDB Reader overrides are set" >&2
-    exit 1
+if [ -n "${WAVEPEEK_FSDB_ABI-}${WAVEPEEK_FSDB_READER_LIBDIR-}${WAVEPEEK_FSDB_EMBED_RPATH-}" ]; then
+    python3 -B "$root/tools/fsdb/check_fsdb_env.py" --require >/dev/null
 fi
 if [ -n "${VERDI_HOME-}" ]; then
     if [ ! -d "$VERDI_HOME" ]; then
@@ -76,17 +74,6 @@ if [ -n "${VERDI_HOME-}" ]; then
     VERDI_HOME="$verdi_home" python3 -B "$root/tools/fsdb/check_fsdb_env.py" --require >/dev/null
     mount_args+=(--mount "type=bind,source=$verdi_home,target=/opt/verdi")
     expected_mounts+=("$verdi_home"$'\t'/opt/verdi)
-    if [ -n "${WAVEPEEK_FSDB_ABI-}" ]; then
-        remote_env_args+=(--remote-env "WAVEPEEK_FSDB_ABI=$WAVEPEEK_FSDB_ABI")
-    fi
-    if [ -n "${WAVEPEEK_FSDB_READER_LIBDIR-}" ]; then
-        reader_libdir="$(cd "$WAVEPEEK_FSDB_READER_LIBDIR" && pwd -P)"
-        if [[ "$reader_libdir" != "$verdi_home"/* ]]; then
-            printf '%s\n' "error: dev: WAVEPEEK_FSDB_READER_LIBDIR must be inside VERDI_HOME" >&2
-            exit 1
-        fi
-        remote_env_args+=(--remote-env "WAVEPEEK_FSDB_READER_LIBDIR=/opt/verdi/${reader_libdir#"$verdi_home"/}")
-    fi
 fi
 
 mapfile -t containers < <(docker ps -aq --filter "label=devcontainer.local_folder=$root")
@@ -101,14 +88,14 @@ if [ -n "$container_id" ]; then
     if [ "$(printf '%s\n' "${expected_mounts[@]}" | sort)" != "$(printf '%s\n' "${actual_mounts[@]}" | sort)" ]; then
         printf '%s\n' "error: dev: existing container has stale worktree, Git common-directory, or Verdi mounts" >&2
         printf 'recreate with:' >&2
-        printf ' %q' devcontainer up --workspace-folder "$root" "${mount_args[@]}" "${remote_env_args[@]}" --remove-existing-container >&2
+        printf ' %q' devcontainer up --workspace-folder "$root" "${mount_args[@]}" --remove-existing-container >&2
         printf '\n' >&2
         exit 1
     fi
 fi
 
 if [ "$exec_only" -eq 0 ]; then
-    devcontainer up --workspace-folder "$root" "${mount_args[@]}" "${remote_env_args[@]}"
+    devcontainer up --workspace-folder "$root" "${mount_args[@]}"
     mapfile -t containers < <(docker ps -q --filter "label=devcontainer.local_folder=$root")
     if [ "${#containers[@]}" -ne 1 ]; then
         printf '%s\n' "error: dev: expected one running container for $root" >&2
@@ -151,7 +138,7 @@ runner=(python3)
 if [ ! -t 0 ]; then
     runner=(setsid --wait python3)
 fi
-devcontainer exec --container-id "$container_id" "${remote_env_args[@]}" -- \
+devcontainer exec --container-id "$container_id" -- \
     "${runner[@]}" "$workspace/tools/repo/dev_exec.py" \
     "$token" "$pidfile" "$statusfile" "$container_dir" "$@" <&0 &
 exec_pid=$!

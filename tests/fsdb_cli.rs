@@ -1334,7 +1334,7 @@ fn fsdb_file_failures_are_clean_file_errors() {
 }
 
 #[test]
-fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_wellen_path() {
+fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_ondas_path() {
     let mut file = NamedTempFile::with_suffix(".fsdb").expect("temp file should be created");
     file.write_all(
         b"$date\n  test\n$end\n$version wavepeek test $end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n#10\n1!\n",

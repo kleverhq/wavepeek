@@ -6,6 +6,35 @@ mod common;
 use common::{fixture_path, rtl_fixture_path, wavepeek_cmd};
 
 #[test]
+fn signal_fst_packed_suffix_keeps_vector_in_owning_scope() {
+    let fixture = rtl_fixture_path("scr1_max_axi_riscv_compliance.fst");
+    let output = wavepeek_cmd()
+        .args([
+            "signal",
+            "--waves",
+            fixture.to_str().unwrap(),
+            "--scope",
+            "TOP.scr1_top_tb_axi.i_top.i_core_top.i_pipe_top.i_pipe_ifu",
+            "--max",
+            "unlimited",
+            "--json",
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let payload: Value = serde_json::from_slice(&output).unwrap();
+    let signal = payload["data"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|signal| signal["name"] == "q_err")
+        .expect("packed q_err[3:0] must remain a signal, not an array scope");
+    assert_eq!(signal["width"], 4);
+}
+
+#[test]
 fn signal_human_mode_uses_short_names_by_default() {
     let fixture = fixture_path("m2_core.vcd");
     let fixture = fixture.to_string_lossy().into_owned();

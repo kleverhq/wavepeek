@@ -43,7 +43,7 @@ The container environment contract lives in `.devcontainer/env_contract.sh`. Upd
 
 When host `VERDI_HOME` is unset, `./dev` starts the container without `/opt/verdi`; FSDB gates report a skip and default VCD/FST development remains available.
 
-When `VERDI_HOME` points to a valid Verdi installation containing the FSDB Reader SDK, `./dev` validates it and mounts only that directory at `/opt/verdi`. FSDB ABI and reader-library overrides are forwarded; an explicit reader library directory must be inside `VERDI_HOME`. Invalid paths or incomplete SDKs are rejected before container startup. Use `./dev just check-fsdb-env` to distinguish available, skipped, and broken SDK states.
+When `VERDI_HOME` points to a valid Verdi installation containing the FSDB Reader SDK, `./dev` validates it and mounts only that directory at `/opt/verdi`. Reader library selection and absolute-path linking follow Ondas's FSDB contract. Invalid paths, incomplete SDKs, and unsupported Reader overrides are rejected before container startup. Use `./dev just check-fsdb-env` to distinguish available, skipped, and broken SDK states.
 
 The full FSDB build, fixture, benchmark, and repository-safety contract lives in `fsdb.md`.
 

@@ -203,16 +203,15 @@ check-fsdb-build: require-verdi
     cargo check --features fsdb; \
     cargo build --features fsdb; \
     readelf_output="$(readelf -d target/fsdb/debug/wavepeek)"; \
-    if printf '%s\n' "$readelf_output" | grep -Eq '\(NEEDED\).*Shared library: \[/'; then \
-        printf '%s\n' "error: fsdb: built binary must not contain an absolute DT_NEEDED path" >&2; \
-        exit 1; \
-    fi; \
+    for library in libnffr.so libnsys.so; do \
+        library_path="$(readlink -f "$fsdb_libdir/$library")"; \
+        if ! printf '%s\n' "$readelf_output" | grep -F "Shared library: [$library_path]" >/dev/null; then \
+            printf '%s\n' "error: fsdb: built binary must link the Ondas-selected SDK library $library_path" >&2; \
+            exit 1; \
+        fi; \
+    done; \
     if ! printf '%s\n' "$readelf_output" | grep -Eq '\(NEEDED\).*Shared library: \[libz\.so(\.[^]]*)?\]'; then \
         printf '%s\n' "error: fsdb: built binary must contain a libz DT_NEEDED entry" >&2; \
-        exit 1; \
-    fi; \
-    if ! printf '%s\n' "$readelf_output" | grep -E '\((RPATH|RUNPATH)\)' | grep -F -- "$fsdb_libdir" >/dev/null; then \
-        printf '%s\n' "error: fsdb: built binary must contain an ELF RPATH/RUNPATH for $fsdb_libdir" >&2; \
         exit 1; \
     fi; \
     cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture; \
@@ -221,7 +220,7 @@ check-fsdb-build: require-verdi
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
     @export CARGO_TARGET_DIR=target/fsdb; \
-    cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
+    cargo test --features fsdb --lib && \
     cargo test --features fsdb --test fsdb_cli
 
 # Run auxiliary Python/unit test suites

@@ -382,7 +382,11 @@ fn fsdb_conflicting_scope_kinds_remain_file_errors() {
     assert!(matches!(error, crate::error::WavepeekError::File(_)));
     assert_eq!(error.fatal_code(), Some("WPK-F0002"));
     assert_eq!(error.exit_code(), 2);
-    assert!(error.to_string().contains("conflicting FSDB scopes"));
+    assert!(
+        error
+            .to_string()
+            .contains("conflicting FSDB scope top: kind \"module\" vs \"task\"")
+    );
 }
 
 #[test]

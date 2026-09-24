@@ -1437,6 +1437,12 @@ impl HierarchyIndex {
         let mut declarations = Vec::new();
         let mut by_path: HashMap<String, Vec<usize>> = HashMap::new();
         for variable in hierarchy.variables() {
+            if scopes_only && format == Format::Fsdb {
+                let name = variable.reader_name().unwrap_or(variable.name()).trim();
+                if !name.contains(['.', '/', '[']) {
+                    continue;
+                }
+            }
             if variable
                 .parent()
                 .is_some_and(|scope| !visible_scope(&scope))

@@ -1147,7 +1147,7 @@ impl OndasBackend {
         let sample_from = from.saturating_sub(1);
         self.sampling_window = Some((sample_from, to));
         self.preload(ids, sample_from, to)?;
-        let mut times = BTreeSet::new();
+        let mut times = Vec::new();
         for id in &self.physical_ids(ids) {
             if let Some(cached) = self.traces.get(id) {
                 times.extend(
@@ -1160,7 +1160,9 @@ impl OndasBackend {
                 );
             }
         }
-        Ok(times.into_iter().collect())
+        times.sort_unstable();
+        times.dedup();
+        Ok(times)
     }
 
     pub fn collect_change_times_with_mode(

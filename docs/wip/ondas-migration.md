@@ -21,6 +21,8 @@ Replace Wellen and the project-owned FSDB reader with Ondas from `release/1.0.0-
 - [x] Run Sol/high implementation lanes, independent control review, and targeted recheck.
 - [ ] Audit final acceptance after all upstream fixes and gates.
 
+At `f28b0dd`, `just check` and `just ci` pass. The unchanged clean-ref gate (`tmp/bench-gate/gates/20260924T071317Z-883f96de05e3..f28b0dd99581/`) matches all 155 FST and 143 comparable FSDB outputs with zero integrity errors. FST has no median timing failures after caching trace positions and narrowing batched selection; all four previously slow `extract` cases also pass a focused best-sample confirmation. FSDB retains 94 confirmed best-sample slowdowns, so the combined gate fails. The Chipyard FST `value` case at 1,000 selectors has variable baseline timing: the full gate medians pass, but forcing a best-sample comparison on that run's 740/790 ms pair would fail. Direct same-fixture probes found 394 unique handles, with Wellen loading them in 641–661 ms and Ondas sampling in 662–677 ms; no isolated Ondas defect is established for this case.
+
 ## Implementation
 
 Baseline: `883f96d` (`v3.0.1`). Ondas checkout: `/home/esynr3z/projects/ondas/ondas-lib`. The public facade remains in `src/waveform/mod.rs`; `ondas_backend.rs` owns hierarchy adaptation, expression metadata, batched sampling, cached range traces, and indexed trace offsets. The preceding raw tick replaces the private global-timestamp predecessor; external event/change/property tests pass. No exact global timestamp table is claimed.

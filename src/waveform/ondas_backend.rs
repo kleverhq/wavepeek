@@ -500,6 +500,7 @@ impl OndasBackend {
             .iter()
             .filter_map(|path| path.rsplit('.').next().filter(|leaf| !leaf.is_empty()))
             .collect::<HashSet<_>>();
+        let has_array_leaf = leaves.iter().any(|leaf| leaf.contains('['));
         let mut matches = HashMap::<String, Option<ondas::Variable<'_>>>::new();
         for variable in self.inner.hierarchy().variables() {
             if variable
@@ -509,7 +510,14 @@ impl OndasBackend {
                 continue;
             }
             let raw_name = variable.reader_name().unwrap_or(variable.name()).trim();
-            if !leaves.iter().any(|leaf| raw_name.contains(leaf)) {
+            // Only qualified or indexed names need a substring match beyond their leaf/base.
+            let name = raw_name.strip_prefix('\\').unwrap_or(raw_name);
+            let base = name.rsplit_once('[').map(|(base, _)| base);
+            let needs_partial = name.contains(['.', '/']) || (has_array_leaf && name.contains('['));
+            if !leaves.contains(name)
+                && !base.is_some_and(|base| leaves.contains(base))
+                && (!needs_partial || !leaves.iter().any(|leaf| raw_name.contains(leaf)))
+            {
                 continue;
             }
             let public_path = public_fsdb_variable_path(&variable);

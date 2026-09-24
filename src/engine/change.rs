@@ -863,6 +863,21 @@ fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
     row_values: RowValues,
     sink: &mut S,
 ) -> Result<ChangeRunStats, WavepeekError> {
+    // FST loads histories per query; fetch the candidate with its requested payload once.
+    if waveform.borrow().format_name() == "fst"
+        && !candidate_sources.is_empty()
+        && candidate_sources.iter().all(|candidate| {
+            requested_resolved
+                .iter()
+                .any(|requested| requested.id == candidate.id)
+        })
+    {
+        waveform.borrow_mut().preload_resolved_value_changes(
+            requested_resolved,
+            from_raw.saturating_sub(1),
+            to_raw,
+        )?;
+    }
     let candidate_times = waveform
         .borrow_mut()
         .collect_expr_candidate_times_with_mode(

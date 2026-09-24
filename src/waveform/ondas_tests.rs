@@ -660,6 +660,65 @@ fn fst_batch_value_selection_keeps_full_index_lazy() {
 }
 
 #[test]
+fn fst_batch_selects_same_leaf_under_distinct_parents() {
+    let source = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$scope module left $end\n$var wire 1 ! bit $end\n$upscope $end\n$scope module right $end\n$var wire 1 \" bit $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
+        "siblings.vcd",
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("siblings.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(source.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+
+    let paths = ["top.left.bit".into(), "top.right.bit".into()];
+    let mut batch = OndasBackend::open(&fst).unwrap();
+    batch.prepare_value_signals(&paths);
+    let selected = batch.resolve_signals(&paths).unwrap();
+    assert!(batch.index.get().is_none());
+    assert_ne!(selected[0].id, selected[1].id);
+    let actual = batch.sample_resolved_optional(&selected, 0).unwrap();
+
+    let mut full = OndasBackend::open(&fst).unwrap();
+    full.signals_in_scope("top").unwrap();
+    let expected = full.sample_resolved_optional(&full.resolve_signals(&paths).unwrap(), 0);
+    assert_eq!(actual, expected.unwrap());
+}
+
+#[test]
+fn fst_cached_trace_handles_reverse_and_repeated_times() {
+    let source = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! bit $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n#5\n1!\n#5\n0!\n#5\n1!\n#10\n0!\n",
+        "same-tick.vcd",
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("same-tick.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(source.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+
+    let mut backend = OndasBackend::open(&fst).unwrap();
+    let resolved = backend.resolve_signals(&["top.bit".into()]).unwrap();
+    backend
+        .preload_resolved_value_changes(&resolved, 0, 10)
+        .unwrap();
+    for (time, expected) in [(5, "1"), (5, "1"), (4, "0"), (10, "0"), (0, "0"), (5, "1")] {
+        let sampled = backend.sample_resolved_optional(&resolved, time).unwrap();
+        assert_eq!(sampled[0].bits.as_deref(), Some(expected), "at tick {time}");
+    }
+}
+
+#[test]
 fn fst_array_path_uses_full_index_spelling() {
     let fixture = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\n",

@@ -610,7 +610,7 @@ fn fsdb_signal_session_reads_value_changes() {
         .unwrap();
     assert_eq!(reader.traces.len(), 1);
     assert_eq!(signal[0].width, 1);
-    let trace = &reader.traces[&signal[0].id];
+    let trace = &reader.traces[&signal[0].id].trace;
     let ondas::ValueRef::Bits(initial) = trace.initial().unwrap().value() else {
         panic!("expected integral initial value")
     };

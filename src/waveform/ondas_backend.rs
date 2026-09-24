@@ -8,7 +8,7 @@ mod fsdb_tests;
 mod tests;
 
 use std::borrow::Cow;
-use std::cell::{OnceCell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
 use std::path::Path;
@@ -33,7 +33,7 @@ pub(super) struct OndasBackend {
     inner: ondas::Waveform,
     index: OnceCell<HierarchyIndex>,
     direct: RefCell<Vec<DirectSignal>>,
-    traces: HashMap<SignalId, Trace>,
+    traces: HashMap<SignalId, CachedTrace>,
     sampling_window: Option<(u64, u64)>,
     indexed_times: Option<Vec<u64>>,
 }
@@ -67,6 +67,11 @@ struct DirectSignal {
     signal: ondas::Signal,
     width: u32,
     expr_type: Option<ExprType>,
+}
+
+struct CachedTrace {
+    trace: Trace,
+    cursor: Cell<usize>,
 }
 
 enum SignalSource {
@@ -551,10 +556,17 @@ impl OndasBackend {
                     .map(|key| (key, path.as_str()))
             })
             .collect::<HashMap<_, _>>();
-        let leaves = targets
-            .keys()
-            .filter_map(ondas::HierarchyPath::name)
-            .collect::<HashSet<_>>();
+        let mut parent_names = HashMap::<&str, HashSet<Option<String>>>::new();
+        for target in targets.keys() {
+            if let Some(name) = target.name() {
+                parent_names.entry(name).or_default().insert(
+                    target
+                        .parent()
+                        .and_then(|parent| parent.name().map(str::to_owned)),
+                );
+            }
+        }
+        let leaves = parent_names.keys().copied().collect::<HashSet<_>>();
         let array_targets = paths
             .iter()
             .filter(|path| path.contains(".[") && !path.contains(['\\', '/']))
@@ -580,10 +592,14 @@ impl OndasBackend {
                 None
             };
             let path = array_path.or_else(|| {
-                leaves
-                    .contains(name)
-                    .then(|| targets.get(&variable.path()).copied())
-                    .flatten()
+                parent_names.get(name).and_then(|parents| {
+                    let parent_name = variable.parent().map(|parent| parent.name());
+                    parents
+                        .iter()
+                        .any(|candidate| candidate.as_deref() == parent_name)
+                        .then(|| targets.get(&variable.path()).copied())
+                        .flatten()
+                })
             });
             if let Some(path) = path {
                 matches
@@ -669,23 +685,45 @@ impl OndasBackend {
     }
 
     fn cached_value(&self, id: SignalId, time: u64) -> Option<Option<ValueRef<'_>>> {
-        let trace = self.traces.get(&id)?;
+        let cached = self.traces.get(&id)?;
+        let trace = &cached.trace;
         if !covers(trace, time, time) {
             return None;
         }
-        let index = trace
-            .changes()
-            .partition_point(|change| change.time().ticks() <= time);
+        let changes = trace.changes();
+        let cursor = cached.cursor.get();
+        let index = if changes
+            .get(cursor)
+            .is_some_and(|next| next.time().ticks() <= time)
+        {
+            if changes
+                .get(cursor + 1)
+                .is_some_and(|next| next.time().ticks() <= time)
+            {
+                cursor + changes[cursor..].partition_point(|change| change.time().ticks() <= time)
+            } else {
+                cursor + 1
+            }
+        } else if cursor > 0 && changes[cursor - 1].time().ticks() > time {
+            if cursor > 1 && changes[cursor - 2].time().ticks() > time {
+                changes[..cursor].partition_point(|change| change.time().ticks() <= time)
+            } else {
+                cursor - 1
+            }
+        } else {
+            cursor
+        };
+        cached.cursor.set(index);
         if matches!(trace.signal().encoding(), Encoding::Event) {
             return Some(index.checked_sub(1).and_then(|index| {
-                let change = &trace.changes()[index];
+                let change = &changes[index];
                 (change.time().ticks() == time).then(|| change.value())
             }));
         }
         Some(
             index
                 .checked_sub(1)
-                .map(|index| trace.changes()[index].value())
+                .map(|index| changes[index].value())
                 .or_else(|| trace.initial().map(|initial| initial.value())),
         )
     }
@@ -929,7 +967,7 @@ impl OndasBackend {
                 && !self
                     .traces
                     .get(id)
-                    .is_some_and(|trace| covers(trace, from, to))
+                    .is_some_and(|cached| covers(&cached.trace, from, to))
             {
                 missing.push((*id, self.signal(*id)?));
             }
@@ -949,7 +987,13 @@ impl OndasBackend {
             )
             .map_err(query_error)?;
         for ((id, _), trace) in missing.into_iter().zip(traces) {
-            self.traces.insert(id, trace);
+            self.traces.insert(
+                id,
+                CachedTrace {
+                    trace,
+                    cursor: Cell::new(0),
+                },
+            );
         }
         Ok(())
     }
@@ -1013,9 +1057,10 @@ impl OndasBackend {
             .map_or(from, |span| span.first().ticks());
         let mut times = BTreeSet::from([from.max(first)]);
         for id in ids {
-            if let Some(trace) = self.traces.get(id) {
+            if let Some(cached) = self.traces.get(id) {
                 times.extend(
-                    trace
+                    cached
+                        .trace
                         .changes()
                         .iter()
                         .map(|change| change.time().ticks())
@@ -1033,7 +1078,7 @@ impl OndasBackend {
 
     pub fn indexed_signal_offset_at(&self, id: SignalId, index: u32) -> Option<SignalOffsetData> {
         let time = *self.indexed_times.as_ref()?.get(index as usize)?;
-        let trace = self.traces.get(&id)?;
+        let trace = &self.traces.get(&id)?.trace;
         let position = trace
             .changes()
             .partition_point(|change| change.time().ticks() <= time);
@@ -1096,9 +1141,10 @@ impl OndasBackend {
         self.preload(ids, sample_from, to)?;
         let mut times = BTreeSet::new();
         for id in &self.physical_ids(ids) {
-            if let Some(trace) = self.traces.get(id) {
+            if let Some(cached) = self.traces.get(id) {
                 times.extend(
-                    trace
+                    cached
+                        .trace
                         .changes()
                         .iter()
                         .map(|change| change.time().ticks())

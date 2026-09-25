@@ -83,6 +83,43 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             generated_fixture = repo / "tests" / "fixtures" / "fsdb" / "tiny.fsdb"
             self.assertTrue(generated_fixture.is_file())
 
+    def test_rtl_reuses_persistent_vcd_when_available(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = pathlib.Path(temp_dir) / "repo"
+            script = repo / "tools/fsdb/prepare_fsdb_fixtures.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text(SCRIPT_PATH.read_text(encoding="utf-8"), encoding="utf-8")
+            (repo / ".devcontainer").mkdir()
+            artifacts = repo / "artifacts"
+            artifacts.mkdir()
+            (repo / ".devcontainer/env_contract.sh").write_text(
+                f'RTL_ARTIFACTS_DIR="{artifacts}"\n', encoding="utf-8"
+            )
+            source = artifacts / "sample.fst"
+            source.write_text("fst", encoding="utf-8")
+            vcd = artifacts / "sample.vcd"
+            vcd.write_text("persistent vcd", encoding="utf-8")
+            os.utime(vcd, (source.stat().st_mtime + 2,) * 2)
+            bin_dir = repo / "bin"
+            bin_dir.mkdir()
+            converter = bin_dir / "vcd2fsdb"
+            converter.write_text(
+                '#!/bin/sh\n[ "$1" = "' + str(vcd) + '" ] || exit 1\n'
+                'printf "fsdb" > "$3"\n',
+                encoding="utf-8",
+            )
+            converter.chmod(0o755)
+            result = subprocess.run(
+                ["bash", str(script), "--rtl-only"],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+                env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual((artifacts / "sample.fsdb").read_text(), "fsdb")
+            self.assertEqual(vcd.read_text(), "persistent vcd")
+
     def test_rtl_filter_limits_converted_artifacts(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             sandbox = pathlib.Path(temp_dir)

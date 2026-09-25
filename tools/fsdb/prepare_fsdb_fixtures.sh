@@ -169,7 +169,9 @@ convert_fst_to_fsdb() {
   vcd_stderr_log="$tmp_dir/vcd2fsdb.stderr.log"
 
   rm -f "$tmp_fsdb"
-  if ! run_converter "$source" "$fst_stdout_log" "$fst_stderr_log" fst2vcd -f "$source" -o "$tmp_vcd"; then
+  if [ -s "${source%.fst}.vcd" ] && [ "${source%.fst}.vcd" -nt "$source" ]; then
+    tmp_vcd="${source%.fst}.vcd"
+  elif ! run_converter "$source" "$fst_stdout_log" "$fst_stderr_log" fst2vcd -f "$source" -o "$tmp_vcd"; then
     rm -rf "$tmp_dir"
     rm -f "$tmp_fsdb"
     exit 1

@@ -82,7 +82,7 @@ just bench-e2e-fsdb-smoke-commit
 Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates ignored FSDB files from two sources:
 
 - VCD test fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`, written to `tests/fixtures/fsdb/`;
-- RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity.
+- RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity. If a current persistent VCD benchmark artifact already exists beside the FST, the converter reuses it; otherwise it creates and removes a temporary VCD.
 
 `just prepare-fsdb-test-fixtures` limits preparation to the VCD-derived test fixtures. Source-backed VCD fixtures are regenerated first by `just prepare-waveform-fixtures`. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 

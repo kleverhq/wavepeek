@@ -75,6 +75,28 @@ update-bench-e2e-fsdb-catalog: require-container
 check-bench-e2e-fsdb-catalog: require-container
     @{{ python }} tools/fsdb/generate_bench_catalog.py --check
 
+# Generate and validate the VCD benchmark catalog from the FST catalog
+update-bench-e2e-vcd-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd
+
+check-bench-e2e-vcd-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd --check
+
+# Keep converted RTL VCD files beside their FST sources for benchmark runs
+prepare-vcd-rtl-artifacts: check-rtl-artifacts check-bench-e2e-vcd-catalog
+    @. ./.devcontainer/env_contract.sh; \
+    for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
+        source="${RTL_ARTIFACTS_DIR}/$fixture"; output="${source%.fst}.vcd"; \
+        if [ -s "$output" ] && [ "$output" -nt "$source" ]; then \
+            printf '%s\n' "info: vcd fixture: up to date $output"; \
+            continue; \
+        fi; \
+        temp="$(mktemp "${output}.tmp.XXXXXXXX")"; \
+        if ! fst2vcd -f "$source" -o "$temp"; then rm -f "$temp"; exit 1; fi; \
+        mv "$temp" "$output"; \
+        printf '%s\n' "info: vcd fixture: converted $source -> $output"; \
+    done
+
 # Verify the local devcontainer environment
 dev-setup: require-container
     rustup show >/dev/null
@@ -359,12 +381,12 @@ build-release: require-container
     cargo build --release
 
 # Run the manual performance gate for two source refs
-bench-gate baseline_ref revised_ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}"
+bench-gate baseline_ref revised_ref="HEAD" fsdb="auto" vcd="never": require-container
+    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
 
 # Capture benchmark artifacts for one source ref
-bench-capture ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}"
+bench-capture ref="HEAD" fsdb="auto" vcd="never": require-container
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
 
 # Compare two benchmark capture directories
 bench-compare golden_dir revised_dir: require-container
@@ -373,6 +395,10 @@ bench-compare golden_dir revised_dir: require-container
 [private]
 bench-e2e-run: check-rtl-artifacts build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
+
+[private]
+bench-e2e-vcd-run: prepare-vcd-rtl-artifacts build-release
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
 
 [private]
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
@@ -400,11 +426,11 @@ check-commit message=`git rev-parse --git-path COMMIT_EDITMSG`: require-containe
     cz check --commit-msg-file {{ quote(message) }}
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-build docs-site-check playground-test check-commit
+check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-build docs-site-check playground-test check-commit
     @just run-if-verdi check-fsdb-build
 
 # CI quality gate (no commit-msg hook)
-ci: format-check lint check-actions test-aux coverage-src-check check-build docs-site-check playground-test
+ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test
     @just run-if-verdi test-fsdb
 
 # Fix everything

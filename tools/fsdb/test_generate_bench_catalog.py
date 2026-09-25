@@ -75,6 +75,23 @@ class GenerateBenchCatalogCliTest(unittest.TestCase):
             self.assertIn("rewrite sample.fsdb text consistently", generated)
             self.assertIn("top.fsdbfile,top.trace_file", generated)
 
+    def test_generates_vcd_catalog_and_checks_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            source, _ = self.write_source_catalog(root)
+            output = root / "tests_vcd.json"
+            args = ["--source", str(source), "--output", str(output), "--target", "vcd"]
+
+            generated = self.run_script(args, root)
+            checked = self.run_script([*args, "--check"], root)
+
+            self.assertEqual(generated.returncode, 0, generated.stderr)
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertEqual(
+                output.read_text(encoding="utf-8"),
+                source.read_text(encoding="utf-8").replace(".fst", ".vcd"),
+            )
+
     def test_artifact_dir_option_is_accepted_for_compatibility(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = pathlib.Path(temp_dir)

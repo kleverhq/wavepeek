@@ -456,31 +456,32 @@ def compare_captures(
         if suite_result.get("status") != "passed":
             failures.append(name)
 
-    golden_fsdb = suite_dir(golden_dir, "e2e-fsdb")
-    revised_fsdb = suite_dir(revised_dir, "e2e-fsdb")
-    if golden_fsdb.is_dir() or revised_fsdb.is_dir():
-        if not golden_fsdb.is_dir() or not revised_fsdb.is_dir():
-            suites["e2e-fsdb"] = {"status": "failed", "reason": "suite exists in only one capture"}
-            failures.append("e2e-fsdb")
-        else:
-            try:
-                suite_result = run_e2e_compare(
-                    name="e2e-fsdb",
-                    golden=golden_fsdb,
-                    revised=revised_fsdb,
-                    compare_dir=compare_dir,
-                    tooling_root=tooling_root,
-                    threshold_pct=timing_threshold_pct,
-                    threshold_seconds=timing_threshold_seconds,
-                    functional_only=False,
-                )
-            except BenchGateError as error:
-                suite_result = {"status": "failed", "reason": str(error)}
-            suites["e2e-fsdb"] = suite_result
-            if suite_result.get("status") != "passed":
-                failures.append("e2e-fsdb")
-    else:
-        suites["e2e-fsdb"] = {"status": "skipped", "reason": "optional suite missing from both captures"}
+    for name in ("e2e-vcd", "e2e-fsdb"):
+        golden = suite_dir(golden_dir, name)
+        revised = suite_dir(revised_dir, name)
+        if not golden.is_dir() and not revised.is_dir():
+            suites[name] = {"status": "skipped", "reason": "optional suite missing from both captures"}
+            continue
+        if not golden.is_dir() or not revised.is_dir():
+            suites[name] = {"status": "failed", "reason": "suite exists in only one capture"}
+            failures.append(name)
+            continue
+        try:
+            suite_result = run_e2e_compare(
+                name=name,
+                golden=golden,
+                revised=revised,
+                compare_dir=compare_dir,
+                tooling_root=tooling_root,
+                threshold_pct=timing_threshold_pct,
+                threshold_seconds=timing_threshold_seconds,
+                functional_only=False,
+            )
+        except BenchGateError as error:
+            suite_result = {"status": "failed", "reason": str(error)}
+        suites[name] = suite_result
+        if suite_result.get("status") != "passed":
+            failures.append(name)
 
     cross_checks = {
         "cross-golden-fst-fsdb": golden_dir,

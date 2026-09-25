@@ -382,6 +382,41 @@ def run_e2e_many(
         }
 
 
+def prepare_vcd(session: CaptureSession) -> None:
+    session.commands.append(
+        run_command(
+            "vcd-prepare-fixtures",
+            ["just", "prepare-vcd-rtl-artifacts"],
+            cwd=session.tooling_root,
+            log_path=session.logs_dir / "vcd-prepare-fixtures.log",
+        )
+    )
+
+
+def run_e2e_vcd_many(
+    sessions: Sequence[CaptureSession],
+    *,
+    run_dir: pathlib.Path,
+    log_path: pathlib.Path,
+) -> None:
+    run_e2e_many(
+        name="e2e-vcd",
+        sessions=sessions,
+        run_dir=run_dir,
+        log_path=log_path,
+        binary_path="target/release/wavepeek",
+        tests_path=sessions[0].tooling_root / "bench/e2e/tests_vcd.json",
+    )
+
+
+def run_e2e_vcd(session: CaptureSession) -> None:
+    run_e2e_vcd_many(
+        [session],
+        run_dir=session.capture_dir / "e2e-vcd",
+        log_path=session.logs_dir / "bench-e2e-vcd.log",
+    )
+
+
 def run_e2e_fst_many(
     sessions: Sequence[CaptureSession],
     *,
@@ -489,6 +524,7 @@ def capture_checkout(
     source_sha: str,
     fsdb_mode: str,
     fsdb_plan: FsdbPlan | None = None,
+    vcd_mode: str = "never",
     environment_note: str,
 ) -> CaptureResult:
     ensure_empty_dir(capture_dir)
@@ -516,10 +552,14 @@ def capture_checkout(
         suites={},
     )
     build_release(session)
+    if vcd_mode == "always":
+        prepare_vcd(session)
     if effective_fsdb_plan.capture:
         build_release_fsdb(session)
         prepare_fsdb(session)
     run_e2e_fst(session)
+    if vcd_mode == "always":
+        run_e2e_vcd(session)
     if effective_fsdb_plan.capture:
         run_e2e_fsdb(session)
     return finalize_capture(session)
@@ -546,6 +586,7 @@ def capture_ref(args: argparse.Namespace) -> int:
         source_ref=args.ref,
         source_sha=source_sha,
         fsdb_mode=args.fsdb,
+        vcd_mode=args.vcd,
         environment_note=args.environment_note,
     )
     print(f"capture written to {out_dir / 'run'}")
@@ -558,6 +599,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-root", type=pathlib.Path, default=REPO_ROOT)
     parser.add_argument("--out-dir", type=pathlib.Path)
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
+    parser.add_argument("--vcd", choices=("always", "never"), default="never")
     parser.add_argument(
         "--environment-note",
         default="wavepeek manual performance gate",

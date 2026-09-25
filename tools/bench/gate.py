@@ -20,6 +20,8 @@ from capture import (
     write_fsdb_capture_catalog,
     run_e2e_fsdb_many,
     run_e2e_fst_many,
+    run_e2e_vcd_many,
+    prepare_vcd,
 )
 from common import (
     DEFAULT_TIMING_THRESHOLD_PCT,
@@ -178,10 +180,12 @@ def gate_command(args: argparse.Namespace) -> int:
     )
 
     # Keep preparation work out of the measured section. Build both refs first,
-    # then prepare current FSDB fixtures when needed, then run each measured
-    # suite for baseline and revised in same-format pairs before comparing artifacts.
+    # then prepare waveforms, then run each measured suite for baseline and revised
+    # in same-format pairs before comparing artifacts.
     build_release(baseline)
     build_release(revised)
+    if args.vcd == "always":
+        prepare_vcd(baseline)
     if gate_fsdb_plan.capture:
         build_release_fsdb(baseline)
         build_release_fsdb(revised)
@@ -193,6 +197,12 @@ def gate_command(args: argparse.Namespace) -> int:
         run_dir=out_dir / "e2e-fst",
         log_path=out_dir / "logs" / "bench-e2e-fst.log",
     )
+    if args.vcd == "always":
+        run_e2e_vcd_many(
+            [baseline, revised],
+            run_dir=out_dir / "e2e-vcd",
+            log_path=out_dir / "logs" / "bench-e2e-vcd.log",
+        )
     if gate_fsdb_plan.capture:
         run_e2e_fsdb_many(
             [baseline, revised],
@@ -225,6 +235,7 @@ def gate_command(args: argparse.Namespace) -> int:
         "source_root": str(source_root),
         "tooling_sha": tooling_sha,
         "fsdb_mode": args.fsdb,
+        "vcd_mode": args.vcd,
         "fsdb_plan": dataclasses.asdict(gate_fsdb_plan),
         "timing_threshold_pct": args.max_negative_delta_pct,
         "timing_threshold_seconds": args.max_negative_delta_seconds,
@@ -233,11 +244,13 @@ def gate_command(args: argparse.Namespace) -> int:
         "execution_order": [
             "build baseline release",
             "build revised release",
+            *(["prepare persistent RTL VCD fixtures"] if args.vcd == "always" else []),
             "build baseline fsdb release if enabled",
             "build revised fsdb release if enabled",
             "prepare current fsdb fixtures if enabled",
             "write revised fsdb runnable catalog if enabled",
             "run FST e2e with labeled round-robin binaries",
+            *(["run VCD e2e with labeled round-robin binaries"] if args.vcd == "always" else []),
             "run FSDB e2e with labeled round-robin binaries if enabled",
             "compare artifacts",
             "confirm same-format timing outliers with best samples if needed",
@@ -256,6 +269,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--source-root", type=pathlib.Path, default=REPO_ROOT)
     parser.add_argument("--out-dir", type=pathlib.Path)
     parser.add_argument("--fsdb", choices=("auto", "always", "never"), default="auto")
+    parser.add_argument("--vcd", choices=("always", "never"), default="never")
     parser.add_argument(
         "--max-negative-delta-pct",
         type=float,

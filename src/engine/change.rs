@@ -863,8 +863,8 @@ fn run_pre_edge_emit<S: ChangeSnapshotSink + ?Sized>(
     row_values: RowValues,
     sink: &mut S,
 ) -> Result<ChangeRunStats, WavepeekError> {
-    // FST loads histories per query; fetch the candidate with its requested payload once.
-    if waveform.borrow().format_name() == "fst"
+    // VCD and FST load histories per query; fetch the candidate with its payload once.
+    if matches!(waveform.borrow().format_name(), "vcd" | "fst")
         && !candidate_sources.is_empty()
         && candidate_sources.iter().all(|candidate| {
             requested_resolved

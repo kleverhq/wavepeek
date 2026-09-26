@@ -493,6 +493,15 @@ impl Waveform {
         self.backend.validate_expr_values_supported(resolved)
     }
 
+    pub(crate) fn preload_signal_ids(
+        &mut self,
+        ids: &[SignalId],
+        from_raw: u64,
+        to_raw: u64,
+    ) -> Result<(), WavepeekError> {
+        self.backend.preload_signal_ids(ids, from_raw, to_raw)
+    }
+
     pub(crate) fn preload_expr_value_changes(
         &mut self,
         resolved: &[ExprResolvedSignal],

@@ -1006,6 +1006,16 @@ impl OndasBackend {
         Ok(())
     }
 
+    pub fn preload_signal_ids(
+        &mut self,
+        ids: &[SignalId],
+        from: u64,
+        to: u64,
+    ) -> Result<(), WavepeekError> {
+        self.sampling_window = Some((from, to));
+        self.preload(ids, from, to)
+    }
+
     pub fn preload_expr_value_changes(
         &mut self,
         resolved: &[ExprResolvedSignal],
@@ -1013,8 +1023,7 @@ impl OndasBackend {
         to: u64,
     ) -> Result<(), WavepeekError> {
         self.validate_expr_values_supported(resolved)?;
-        self.sampling_window = Some((from, to));
-        self.preload(
+        self.preload_signal_ids(
             &resolved.iter().map(|signal| signal.id).collect::<Vec<_>>(),
             from,
             to,
@@ -1027,8 +1036,7 @@ impl OndasBackend {
         from: u64,
         to: u64,
     ) -> Result<(), WavepeekError> {
-        self.sampling_window = Some((from, to));
-        self.preload(
+        self.preload_signal_ids(
             &resolved.iter().map(|signal| signal.id).collect::<Vec<_>>(),
             from,
             to,

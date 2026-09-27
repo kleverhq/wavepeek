@@ -967,6 +967,14 @@ impl OndasBackend {
         if from > to {
             return Ok(());
         }
+        // Range sampling revisits cached handles at every candidate tick.
+        if ids.iter().all(|id| {
+            self.traces
+                .get(id)
+                .is_some_and(|cached| covers(&cached.trace, from, to))
+        }) {
+            return Ok(());
+        }
         let ids = self.physical_ids(ids);
         let mut missing = Vec::new();
         let mut seen = BTreeSet::new();

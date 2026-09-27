@@ -460,6 +460,17 @@ fn run_with_sink<S: ChangeSnapshotSink + ?Sized>(
         || serde_json::json!({"selected_engine": selected_engine_name}),
     );
     sink.start(args.scope.as_deref())?;
+    // Native VCD triggers and payloads share one cold history pass.
+    if args.sample_mode == SampleMode::Native && waveform.borrow().format_name() == "vcd" {
+        let ids = candidate_sources
+            .iter()
+            .map(|signal| signal.id)
+            .chain(requested_resolved.iter().map(|signal| signal.id))
+            .collect::<Vec<_>>();
+        waveform
+            .borrow_mut()
+            .preload_signal_ids(&ids, from_raw.saturating_sub(1), to_raw)?;
+    }
     let stats = if args.sample_mode == SampleMode::PreEdge {
         run_pre_edge_emit(
             &waveform,

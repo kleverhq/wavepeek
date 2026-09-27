@@ -133,6 +133,18 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
             "--on",
             "posedge clk",
         ],
+        vec![
+            "--from",
+            "0ns",
+            "--to",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+            "--on",
+            "data",
+        ],
     ] {
         let vcd_json = run_change_json(vcd_fixture.as_str(), args.as_slice());
         let fst_json = run_change_json(fst_fixture.as_str(), args.as_slice());

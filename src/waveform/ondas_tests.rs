@@ -582,6 +582,31 @@ fn streaming_candidate_collection_rejects_derived_signals() {
 }
 
 #[test]
+fn vcd_inline_scalar_indices_form_packed_vector() {
+    let vcd = DERIVED_SPLIT_VCD.replace("split [", "split[");
+    let fixture = write_fixture(&vcd, "inline-split.vcd");
+    let mut waveform = Waveform::open(fixture.path()).unwrap();
+    let signals = waveform.signals_in_scope("top").unwrap();
+    assert_eq!(signals.len(), 1);
+    assert_eq!(signals[0].path, "top.split");
+    assert_eq!(signals[0].width, Some(2));
+    assert!(
+        !waveform
+            .scopes_depth_first(None)
+            .unwrap()
+            .iter()
+            .any(|scope| scope.path == "top.split")
+    );
+    let resolved = waveform.resolve_signals(&["top.split".into()]).unwrap();
+    assert_eq!(
+        waveform.sample_resolved_optional(&resolved, 10).unwrap()[0]
+            .bits
+            .as_deref(),
+        Some("11")
+    );
+}
+
+#[test]
 fn fst_queries_share_file_and_byte_loading() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/generated/m2_core.fst");
     let mut file = OndasBackend::open(&path).expect("FST opens");

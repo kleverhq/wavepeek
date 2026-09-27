@@ -1348,7 +1348,7 @@ fn with_public_variable<R>(
         None
     };
     let mut name = fsdb_name.as_deref().unwrap_or_else(|| variable.name());
-    if format == Format::Fst
+    if matches!(format, Format::Vcd | Format::Fst)
         && range.is_none()
         && let Some(Encoding::Bits { width }) = signal.map(|signal| signal.encoding())
         && let Some((base, packed_range)) = packed_name_range(name, width)

@@ -412,7 +412,7 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 [[package]]
 name = "ondas"
 version = "1.0.0"
-source = "git+https://github.com/kleverhq/ondas?rev=37082ba50232710bac8da10a549566c557dcf13c#37082ba50232710bac8da10a549566c557dcf13c"
+source = "git+https://github.com/kleverhq/ondas?rev=42273a4bb34143fd4e1cee86a7af5277f8e2aad4#42273a4bb34143fd4e1cee86a7af5277f8e2aad4"
 dependencies = [
  "cc",
  "fst-reader",

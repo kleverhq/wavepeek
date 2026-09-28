@@ -140,26 +140,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             (rtl_artifacts / "needed.fst").write_text("needed\n", encoding="utf-8")
             (rtl_artifacts / "ignored.fst").write_text("ignored\n", encoding="utf-8")
             (bin_dir / "fst2vcd").write_text(
-                textwrap.dedent(
-                    """\
-                    #!/usr/bin/env sh
-                    set -eu
-                    output=""
-                    while [ "$#" -gt 0 ]; do
-                        if [ "$1" = "-o" ]; then
-                            shift
-                            output="$1"
-                        fi
-                        shift || true
-                    done
-                    if [ -z "$output" ]; then
-                        printf '%s\n' 'missing -o' >&2
-                        exit 2
-                    fi
-                    mkdir -p "$(dirname "$output")"
-                    printf '%s\n' vcd > "$output"
-                    """
-                ),
+                "#!/usr/bin/env sh\nset -eu\nprintf '%s\\n' vcd\n",
                 encoding="utf-8",
             )
             (bin_dir / "vcd2fsdb").write_text(

@@ -92,7 +92,7 @@ prepare-vcd-rtl-artifacts: check-rtl-artifacts check-bench-e2e-vcd-catalog
             continue; \
         fi; \
         temp="$(mktemp "${output}.tmp.XXXXXXXX")"; \
-        if ! fst2vcd -f "$source" -o "$temp"; then rm -f "$temp"; exit 1; fi; \
+        if ! fst2vcd -f "$source" | cat > "$temp"; then rm -f "$temp"; exit 1; fi; \
         mv "$temp" "$output"; \
         printf '%s\n' "info: vcd fixture: converted $source -> $output"; \
     done

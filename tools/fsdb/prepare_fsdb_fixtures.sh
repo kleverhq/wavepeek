@@ -171,7 +171,8 @@ convert_fst_to_fsdb() {
   rm -f "$tmp_fsdb"
   if [ -s "${source%.fst}.vcd" ] && [ "${source%.fst}.vcd" -nt "$source" ]; then
     tmp_vcd="${source%.fst}.vcd"
-  elif ! run_converter "$source" "$fst_stdout_log" "$fst_stderr_log" fst2vcd -f "$source" -o "$tmp_vcd"; then
+  elif ! run_converter "$source" "$fst_stdout_log" "$fst_stderr_log" \
+    bash -o pipefail -c 'fst2vcd -f "$1" | cat > "$2"' _ "$source" "$tmp_vcd"; then
     rm -rf "$tmp_dir"
     rm -f "$tmp_fsdb"
     exit 1

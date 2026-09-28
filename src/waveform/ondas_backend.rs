@@ -723,10 +723,15 @@ impl OndasBackend {
         };
         cached.cursor.set(index);
         if matches!(trace.signal().encoding(), Encoding::Event) {
-            return Some(index.checked_sub(1).and_then(|index| {
-                let change = &changes[index];
-                (change.time().ticks() == time).then(|| change.value())
-            }));
+            return Some(Some(
+                index
+                    .checked_sub(1)
+                    .and_then(|index| {
+                        let change = &changes[index];
+                        (change.time().ticks() == time).then(|| change.value())
+                    })
+                    .unwrap_or(ValueRef::Event { occurrences: 0 }),
+            ));
         }
         Some(
             index
@@ -741,6 +746,7 @@ impl OndasBackend {
         // selections do not retain FST histories between queries; load each new
         // signal batch once for this command's window instead of replaying it.
         if let Some((from, to)) = self.sampling_window
+            && self.inner.format() != Format::Fsdb
             && (from..=to).contains(&time)
         {
             self.preload(ids, from, to)?;
@@ -822,6 +828,7 @@ impl OndasBackend {
                         }
                         _ => match by_id.get(&signal.id).and_then(Option::as_ref) {
                             Some(Value::Bits(value)) => Some(value.as_ref().to_string()),
+                            Some(Value::Event { .. }) => Some(String::new()),
                             None => None,
                             _ => return Err(unsupported(&signal.path)),
                         },
@@ -872,6 +879,17 @@ impl OndasBackend {
                 Some(SignalSource::Split(_))
             )
         {
+            if self
+                .inner
+                .metadata()
+                .time_span()
+                .is_some_and(|span| time < span.first().ticks())
+            {
+                return Ok(SampledValue::Integral {
+                    bits: None,
+                    label: None,
+                });
+            }
             let signal = ResolvedSignal {
                 path: resolved.path.clone(),
                 id: resolved.id,
@@ -1210,18 +1228,6 @@ impl OndasBackend {
             mode,
         )
     }
-
-    pub fn should_use_streaming_candidate_collection(
-        &self,
-        _count: usize,
-        from: u64,
-        to: u64,
-        mode: ChangeCandidateCollectionMode,
-    ) -> bool {
-        self.inner.format() != Format::Vcd
-            && from <= to
-            && mode != ChangeCandidateCollectionMode::Random
-    }
 }
 
 // Unpacked array indices are path components in Wavepeek's public hierarchy.
@@ -1270,11 +1276,15 @@ fn public_fst_variable_path(variable: &ondas::Variable<'_>) -> Option<String> {
             if synthetic_scopes.is_empty() && name != variable.name() {
                 return None;
             }
-            for component in synthetic_scopes {
+            for (index, component) in synthetic_scopes.iter().enumerate() {
                 if !parent.is_empty() {
                     parent.push('.');
                 }
-                parent.push_str(&public_component(component, Format::Fst, false));
+                parent.push_str(&public_component(
+                    component,
+                    Format::Fst,
+                    index == 0 && variable.name_was_escaped(),
+                ));
             }
             if !parent.is_empty() {
                 parent.push('.');
@@ -1282,7 +1292,7 @@ fn public_fst_variable_path(variable: &ondas::Variable<'_>) -> Option<String> {
             parent.push_str(&public_component(
                 name,
                 Format::Fst,
-                variable.name_was_escaped(),
+                synthetic_scopes.is_empty() && variable.name_was_escaped(),
             ));
             Some(parent)
         },
@@ -1494,8 +1504,12 @@ impl HierarchyIndex {
                 |mut parent, synthetic_scopes, name, range| {
                     let mut components = scope_keys.get(&parent).cloned().unwrap_or_default();
                     let mut depth = components.len();
-                    for component in synthetic_scopes {
-                        let component = public_component(component, format, false);
+                    for (index, component) in synthetic_scopes.iter().enumerate() {
+                        let component = public_component(
+                            component,
+                            format,
+                            index == 0 && variable.name_was_escaped(),
+                        );
                         components.push(component.to_string());
                         parent = if parent.is_empty() {
                             component.into_owned()
@@ -1515,7 +1529,11 @@ impl HierarchyIndex {
                     if scopes_only {
                         return;
                     }
-                    let public_name = public_component(name, format, variable.name_was_escaped());
+                    let public_name = public_component(
+                        name,
+                        format,
+                        synthetic_scopes.is_empty() && variable.name_was_escaped(),
+                    );
                     let name = public_name.as_ref();
                     let path = if parent.is_empty() {
                         name.to_owned()
@@ -1597,7 +1615,10 @@ impl HierarchyIndex {
                 continue;
             }
             ranges.sort_by_key(|part| part.0);
-            if ranges.windows(2).any(|pair| pair[0].1 >= pair[1].0) {
+            if ranges
+                .windows(2)
+                .any(|pair| pair[0].1.checked_add(1) != Some(pair[1].0))
+            {
                 continue;
             }
             let low = ranges[0].0;

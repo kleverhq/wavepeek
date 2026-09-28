@@ -3,7 +3,9 @@ use std::process::{Command, Stdio};
 
 use super::OndasBackend;
 use crate::expr::{ExprTypeKind, SampledValue};
-use crate::waveform::{STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES};
+use crate::waveform::{
+    ChangeCandidateCollectionMode, STABLE_SCOPE_KIND_ALIASES, STABLE_SIGNAL_KIND_ALIASES,
+};
 
 #[test]
 fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
@@ -648,6 +650,27 @@ fn fsdb_expr_event_occurred_rejects_non_event_signal() {
             .to_string()
             .contains("signal 'top.armed' is not a raw event")
     );
+}
+
+#[test]
+fn fsdb_candidate_window_does_not_preload_sampled_payload() {
+    let fixture = GeneratedFsdbFixture::from_vcd("change_property_events.vcd");
+    let mut backend = OndasBackend::open(fixture.path()).unwrap();
+    let tick = backend.resolve_expr_signal("top.tick").unwrap();
+    let armed = backend.resolve_expr_signal("top.armed").unwrap();
+    let times = backend
+        .collect_expr_candidate_times_with_mode(&[tick], 1, 20, ChangeCandidateCollectionMode::Auto)
+        .unwrap();
+    assert!(!times.is_empty());
+    assert_eq!(backend.traces.len(), 1);
+    assert_eq!(
+        backend.sample_expr_value(&armed, 10).unwrap(),
+        SampledValue::Integral {
+            bits: Some("1".into()),
+            label: None,
+        }
+    );
+    assert_eq!(backend.traces.len(), 1);
 }
 
 #[test]

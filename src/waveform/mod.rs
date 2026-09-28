@@ -588,18 +588,6 @@ impl Waveform {
         self.backend
             .collect_expr_candidate_times_with_mode(resolved, from_raw, to_raw, mode)
     }
-
-    #[allow(dead_code)]
-    pub fn should_use_streaming_candidate_collection(
-        &self,
-        signal_count: usize,
-        from_raw: u64,
-        to_raw: u64,
-        mode: ChangeCandidateCollectionMode,
-    ) -> bool {
-        self.backend
-            .should_use_streaming_candidate_collection(signal_count, from_raw, to_raw, mode)
-    }
 }
 
 pub(crate) fn display_signal_path<'a>(canonical_path: &'a str, scope: Option<&str>) -> &'a str {

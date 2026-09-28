@@ -524,32 +524,6 @@ fn collect_change_times_facade_returns_unique_backend_timestamps() {
 }
 
 #[test]
-fn streaming_candidate_decision_facade_rejects_vcd_inputs() {
-    let fixture = write_fixture(TEST_VCD, "sample.vcd");
-
-    let waveform = Waveform::open(fixture.path()).expect("fixture should open");
-
-    assert!(!waveform.should_use_streaming_candidate_collection(
-        2,
-        0,
-        10,
-        ChangeCandidateCollectionMode::Random,
-    ));
-    assert!(!waveform.should_use_streaming_candidate_collection(
-        2,
-        0,
-        10,
-        ChangeCandidateCollectionMode::Stream,
-    ));
-    assert!(!waveform.should_use_streaming_candidate_collection(
-        2,
-        0,
-        10,
-        ChangeCandidateCollectionMode::Auto,
-    ));
-}
-
-#[test]
 fn streaming_candidate_collection_rejects_derived_signals() {
     let fixture = write_fixture(DERIVED_SPLIT_VCD, "derived-split.vcd");
     let mut waveform = Waveform::open(fixture.path()).expect("fixture should open");
@@ -1265,13 +1239,6 @@ fn candidate_collection_and_time_helpers_exercise_split_paths() {
             .to_string()
             .contains("forced stream candidate collection")
     );
-    assert!(!waveform.should_use_streaming_candidate_collection(
-        1,
-        0,
-        5,
-        ChangeCandidateCollectionMode::Auto,
-    ));
-
     assert!(
         waveform
             .collect_expr_candidate_times_with_mode(
@@ -1684,6 +1651,115 @@ fn unpacked_array_names_preserve_public_scope_components() {
             .collect::<Vec<_>>(),
         ["[0]", "[1]"]
     );
+}
+
+#[test]
+fn cached_event_payload_remains_available_between_occurrences() {
+    let fixture = write_fixture(
+        include_str!("../../tests/fixtures/hand/change_property_events.vcd"),
+        "event-payload.vcd",
+    );
+    let mut waveform = Waveform::open(fixture.path()).unwrap();
+    let resolved = waveform.resolve_signals(&["top.tick".into()]).unwrap();
+    assert_eq!(
+        waveform.sample_resolved_optional(&resolved, 9).unwrap()[0]
+            .bits
+            .as_deref(),
+        Some("")
+    );
+    waveform
+        .preload_resolved_value_changes(&resolved, 0, 25)
+        .unwrap();
+    assert_eq!(
+        waveform.sample_resolved_optional(&resolved, 9).unwrap()[0]
+            .bits
+            .as_deref(),
+        Some("")
+    );
+    let event = waveform.resolve_expr_signal("top.tick").unwrap();
+    assert!(!waveform.expr_event_occurred(&event, 9).unwrap());
+    assert!(waveform.expr_event_occurred(&event, 10).unwrap());
+}
+
+#[test]
+fn gapped_split_vectors_do_not_synthesize_huge_widths() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! a [0] $end\n$var wire 1 \" a [2147483647] $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
+        "gapped-split.vcd",
+    );
+    let waveform = Waveform::open(fixture.path()).unwrap();
+    let error = waveform.resolve_signals(&["top.a".into()]).unwrap_err();
+    assert!(error.to_string().contains("ambiguous"));
+}
+
+#[test]
+fn split_vector_expression_before_dump_and_mixed_event_samples() {
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! sig [0] $end\n$var wire 1 \" sig [1] $end\n$var event 1 # ev $end\n$upscope $end\n$enddefinitions $end\n#10\n0!\n0\"\n1#\n#15\n1!\n",
+        "late-split-event.vcd",
+    );
+    let mut waveform = Waveform::open(fixture.path()).unwrap();
+    let sig = waveform.resolve_expr_signal("top.sig").unwrap();
+    assert_eq!(
+        waveform.sample_expr_value(&sig, 9).unwrap(),
+        crate::expr::SampledValue::Integral {
+            bits: None,
+            label: None,
+        }
+    );
+    let resolved = waveform
+        .resolve_signals(&["top.sig".into(), "top.ev".into()])
+        .unwrap();
+    let values = waveform.sample_resolved_optional(&resolved, 10).unwrap();
+    assert_eq!(values[0].bits.as_deref(), Some("00"));
+    assert_eq!(values[1].bits.as_deref(), Some(""));
+}
+
+#[test]
+fn escaped_unpacked_array_keeps_escape_on_base_component() {
+    let source = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! \\x[0] [7:0] $end\n$var wire 8 \" \\matrix[2][3] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\nb00000010 \"\n",
+        "escaped-array.vcd",
+    );
+    let dir = tempfile::tempdir().unwrap();
+    let fst = dir.path().join("escaped-array.fst");
+    assert!(
+        Command::new("vcd2fst")
+            .arg(source.path())
+            .arg(&fst)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let fst_wave = ondas::open(&fst).unwrap();
+    let paths = [
+        ("top.\\x.[0]", "00000001"),
+        ("top.\\matrix.[2].[3]", "00000010"),
+    ];
+    for (variable, (path, _)) in fst_wave.hierarchy().variables().zip(paths) {
+        assert_eq!(
+            super::public_fst_variable_path(&variable).as_deref(),
+            Some(path)
+        );
+    }
+    for path in [source.path(), fst.as_path()] {
+        let mut waveform = Waveform::open(path).unwrap();
+        for (signal_path, expected) in paths {
+            let signal = waveform.resolve_expr_signal(signal_path).unwrap();
+            assert_eq!(
+                waveform.sample_expr_value(&signal, 0).unwrap(),
+                crate::expr::SampledValue::Integral {
+                    bits: Some(expected.into()),
+                    label: None,
+                }
+            );
+        }
+        assert_eq!(waveform.signals_in_scope("top.\\x").unwrap()[0].name, "[0]");
+        assert_eq!(
+            waveform.signals_in_scope("top.\\matrix.[2]").unwrap()[0].name,
+            "[3]"
+        );
+    }
 }
 
 fn write_fixture(contents: &str, filename: &str) -> NamedTempFile {

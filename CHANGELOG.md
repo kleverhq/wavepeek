@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added on-demand VCD end-to-end benchmark captures for release comparisons.
+
+### Changed
+- Replaced the VCD, FST, and optional FSDB readers with Ondas 1.0.1 while retaining the existing CLI and machine-output contracts.
+
 ## [3.0.1] - 2026-09-17
 
 ### Added

@@ -1275,6 +1275,21 @@ fn candidate_collection_and_time_helpers_exercise_split_paths() {
 }
 
 #[test]
+fn scope_kind_aliases_normalize_interface_references() {
+    for kind in [
+        "interface",
+        "modport",
+        "modport-ref",
+        "modport_ref",
+        "interface-port-ref",
+        "interface_port_ref",
+    ] {
+        assert_eq!(scope_type_alias(kind), "interface", "{kind}");
+    }
+    assert_eq!(scope_type_alias("vendor-scope"), "unknown");
+}
+
+#[test]
 fn fsdb_kind_aliases_stay_inside_stable_contract() {
     for kind in [
         "module",

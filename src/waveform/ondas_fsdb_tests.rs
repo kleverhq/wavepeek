@@ -325,7 +325,7 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
         );
         assert_eq!(listing.omitted_ambiguous_paths, ["top.opcode"]);
     }
-    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in FSDB hierarchy; no candidate was selected";
+    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in FSDB hierarchy; candidates: 1: scope=\"top\" kind=reg width=1 range=none, 2: scope=\"top\" kind=reg width=1 range=none; no candidate was selected";
     let direct = backend.resolve_signals(&["top.opcode".into()]).unwrap_err();
     assert!(matches!(direct, crate::error::WavepeekError::Signal(_)));
     assert_eq!(direct.to_string(), expected);
@@ -344,6 +344,25 @@ fn fsdb_ambiguous_exact_paths_are_quarantined() {
             label: None
         }
     );
+}
+
+#[test]
+fn fsdb_ambiguous_candidate_descriptions_are_order_independent() {
+    let declarations = [
+        "$var wire 8 ! opcode [7:0] $end\n$var reg 1 \" opcode $end\n",
+        "$var reg 1 \" opcode $end\n$var wire 8 ! opcode [7:0] $end\n",
+    ];
+    let expected = "fatal: signal: signal 'top.opcode' is ambiguous in FSDB hierarchy; candidates: 1: scope=\"top\" kind=reg width=1 range=none, 2: scope=\"top\" kind=wire width=8 range=[7:0]; no candidate was selected";
+    for declarations in declarations {
+        let source = format!(
+            "$timescale 1ns $end\n$scope module top $end\n{declarations}$upscope $end\n$enddefinitions $end\n#0\nb0 !\n1\"\n"
+        );
+        let fixture = GeneratedFsdbFixture::from_contents(&source);
+        let backend = OndasBackend::open(fixture.path()).unwrap();
+        let error = backend.resolve_signals(&["top.opcode".into()]).unwrap_err();
+        assert_eq!(error.to_string(), expected);
+        assert_eq!(error.exit_code(), 1);
+    }
 }
 
 #[test]

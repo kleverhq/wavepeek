@@ -262,7 +262,34 @@ impl OndasBackend {
         })?;
         if indices.len() != 1 {
             let message = if self.inner.format() == Format::Fsdb {
-                format!("signal '{path}' is ambiguous in FSDB hierarchy; no candidate was selected")
+                let mut candidates = indices
+                    .iter()
+                    .map(|&candidate| {
+                        let declaration = &index.declarations[candidate];
+                        let width = declaration
+                            .entry
+                            .width
+                            .map_or_else(|| "unknown".into(), |width| width.to_string());
+                        let range = declaration.range.map_or_else(
+                            || "none".into(),
+                            |range| format!("[{}:{}]", range.msb(), range.lsb()),
+                        );
+                        format!(
+                            "scope={:?} kind={} width={width} range={range}",
+                            declaration.parent, declaration.entry.kind,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                candidates.sort();
+                let candidates = candidates
+                    .iter()
+                    .enumerate()
+                    .map(|(index, candidate)| format!("{}: {candidate}", index + 1))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!(
+                    "signal '{path}' is ambiguous in FSDB hierarchy; candidates: {candidates}; no candidate was selected"
+                )
             } else {
                 format!("signal '{path}' is ambiguous in dump")
             };
@@ -1748,7 +1775,12 @@ fn expression_type(variable: &ondas::Variable<'_>, signal: ondas::Signal) -> Opt
 
 fn scope_type_alias(kind: &str) -> String {
     let kind = kind.replace('-', "_");
-    if super::types::STABLE_SCOPE_KIND_ALIASES.contains(&kind.as_str()) {
+    if matches!(
+        kind.as_str(),
+        "modport" | "modport_ref" | "interface_port_ref"
+    ) {
+        "interface".into()
+    } else if super::types::STABLE_SCOPE_KIND_ALIASES.contains(&kind.as_str()) {
         kind
     } else {
         "unknown".into()

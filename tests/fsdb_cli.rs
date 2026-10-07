@@ -473,6 +473,9 @@ fn fsdb_value_preserves_exact_projection_like_path_errors() {
         .stderr(predicate::str::contains(
             "signal 'top.flags[0:0]' is ambiguous in FSDB hierarchy",
         ))
+        .stderr(predicate::str::contains(
+            "candidates: 1: scope=\"top\" kind=wire width=1 range=none, 2: scope=\"top\" kind=wire width=1 range=none",
+        ))
         .stderr(predicate::str::contains("no candidate was selected"));
 }
 

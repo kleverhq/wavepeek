@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Replaced the VCD, FST, and optional FSDB readers with Ondas 1.0.2 while retaining the existing CLI and machine-output contracts.
 
+### Fixed
+- Preserved FSDB modport and interface-reference scope kinds and candidate descriptions for ambiguous signal paths through the Ondas adapter.
+
 ## [3.0.1] - 2026-09-17
 
 ### Added

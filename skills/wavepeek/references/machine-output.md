@@ -277,7 +277,7 @@ warning[WPK-W0002]: <message>
 error[WPK-E0001]: <message>
 ```
 
-With `DEBUG=1`, commands may also write JSON debug events to stderr. Debug events are separate from command diagnostics and fatal errors.
+With `DEBUG=1`, commands may also write JSON debug events to stderr. Debug events are separate from command diagnostics and fatal errors. Enabling debug telemetry does not change the command result or exit status.
 
 ## 5. Fatal errors and exit codes
 

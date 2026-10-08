@@ -143,6 +143,13 @@ impl Waveform {
         self.backend.signals_in_scope(scope_path)
     }
 
+    pub(crate) fn matching_signals(
+        &self,
+        matches: impl Fn(&str, &str) -> bool,
+    ) -> Vec<SignalEntry> {
+        self.backend.matching_signals(matches)
+    }
+
     pub(crate) fn signals_in_scope_report(
         &self,
         scope_path: &str,
@@ -424,8 +431,8 @@ impl Waveform {
         }
     }
 
-    fn validate_direct_value_supported(&self, _path: &str) -> Result<(), WavepeekError> {
-        self.backend.validate_direct_value_supported(_path)
+    fn validate_direct_value_supported(&self, path: &str) -> Result<(), WavepeekError> {
+        self.backend.validate_direct_value_supported(path)
     }
 
     fn signal_candidates(
@@ -532,8 +539,8 @@ impl Waveform {
         &self,
         id: SignalId,
         time_table_idx: u32,
-    ) -> Option<Option<SignalOffsetData>> {
-        Some(self.backend.indexed_signal_offset_at(id, time_table_idx))
+    ) -> Option<SignalOffsetData> {
+        self.backend.indexed_signal_offset_at(id, time_table_idx)
     }
 
     #[inline]
@@ -541,10 +548,9 @@ impl Waveform {
         &self,
         resolved: &ResolvedSignal,
         time_table_idx: u32,
-    ) -> Result<Option<SampledSignalState>, WavepeekError> {
+    ) -> Result<SampledSignalState, WavepeekError> {
         self.backend
             .decode_indexed_signal_at(resolved, time_table_idx)
-            .map(Some)
     }
 
     #[inline]

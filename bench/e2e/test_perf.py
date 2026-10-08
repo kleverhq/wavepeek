@@ -532,11 +532,14 @@ class PerfHelpersTest(unittest.TestCase):
             self.assertIn(name, full_by_name)
             self.assertEqual(test["command"], full_by_name[name]["command"])
 
-    def test_tests_fsdb_catalog_matches_fst_catalog_except_extension(self) -> None:
+    def test_tests_fsdb_catalog_matches_fst_catalog_with_fixture_paths(self) -> None:
         fst_catalog = (perf.SCRIPT_DIR / "tests.json").read_text(encoding="utf-8")
         fsdb_catalog = (perf.SCRIPT_DIR / "tests_fsdb.json").read_text(encoding="utf-8")
 
-        self.assertEqual(fsdb_catalog, fst_catalog.replace(".fst", ".fsdb"))
+        expected = fst_catalog.replace(".fst", ".fsdb").replace(
+            "tests/fixtures/generated/", "tests/fixtures/fsdb/"
+        )
+        self.assertEqual(fsdb_catalog, expected)
 
     def test_cmd_list_resolves_relative_tests_path_from_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

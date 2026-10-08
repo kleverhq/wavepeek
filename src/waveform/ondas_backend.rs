@@ -27,7 +27,7 @@ use super::types::{
 };
 
 const MAX_DIRECT_SIGNALS: usize = 128;
-const MAX_DIRECT_FST_BATCH: usize = 1024;
+const MAX_DIRECT_VCD_FST_BATCH: usize = 1024;
 
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
@@ -49,7 +49,6 @@ impl fmt::Debug for OndasBackend {
 struct Declaration {
     entry: SignalEntry,
     parent: String,
-    parent_order: usize,
     id: Option<SignalId>,
     expr_type: Option<ExprType>,
     range: Option<ondas::BitRange>,
@@ -81,9 +80,17 @@ enum SignalSource {
 
 struct HierarchyIndex {
     scopes: Vec<ScopeEntry>,
+    scope_by_path: HashMap<String, usize>,
     declarations: Vec<Declaration>,
+    declarations_by_scope: Vec<Vec<usize>>,
     by_path: HashMap<String, Vec<usize>>,
     signals: Vec<SignalSource>,
+}
+
+#[derive(Default)]
+struct HierarchySelection {
+    paths: HashSet<String>,
+    scopes: HashSet<String>,
 }
 
 impl OndasBackend {
@@ -201,6 +208,84 @@ impl OndasBackend {
         Ok(self.signals_in_scope_report(path)?.entries)
     }
 
+    pub fn matching_signals(&self, matches: impl Fn(&str, &str) -> bool) -> Vec<SignalEntry> {
+        let temporary;
+        let index = if let Some(index) = self.index.get() {
+            index
+        } else {
+            let format = self.inner.format();
+            let mut selection = HierarchySelection::default();
+            for variable in self.inner.hierarchy().variables() {
+                if variable
+                    .parent()
+                    .is_some_and(|scope| !visible_scope(&scope))
+                {
+                    continue;
+                }
+                with_public_variable(
+                    &variable,
+                    format,
+                    variable.signal(),
+                    |mut parent, synthetic_scopes, name, _| {
+                        for (index, component) in synthetic_scopes.iter().enumerate() {
+                            if !parent.is_empty() {
+                                parent.push('.');
+                            }
+                            parent.push_str(&public_component(
+                                component,
+                                format,
+                                index == 0 && variable.name_was_escaped(),
+                            ));
+                        }
+                        let name = public_component(
+                            name,
+                            format,
+                            synthetic_scopes.is_empty() && variable.name_was_escaped(),
+                        );
+                        let parent_len = parent.len();
+                        if !parent.is_empty() {
+                            parent.push('.');
+                        }
+                        parent.push_str(&name);
+                        if matches(&parent, &name) {
+                            selection.paths.insert(parent.clone());
+                            parent.truncate(parent_len);
+                            selection.scopes.insert(parent);
+                        }
+                    },
+                );
+            }
+            if selection.paths.is_empty() {
+                return Vec::new();
+            }
+            // Keep every declaration of a selected path for ambiguity and split-vector handling.
+            temporary =
+                HierarchyIndex::build(self.inner.hierarchy(), format, false, Some(&selection));
+            &temporary
+        };
+        let mut entries = Vec::new();
+        for (parent, declarations) in index.declarations_by_scope.iter().enumerate() {
+            for &declaration_index in declarations {
+                let declaration = &index.declarations[declaration_index];
+                if declaration.visible
+                    && index.by_path[&declaration.entry.path].len() == 1
+                    && matches(&declaration.entry.path, &declaration.entry.name)
+                {
+                    entries.push((parent, &declaration.entry));
+                }
+            }
+        }
+        entries.sort_by(|(left_parent, left), (right_parent, right)| {
+            left_parent
+                .cmp(right_parent)
+                .then_with(|| left.name.cmp(&right.name))
+        });
+        entries
+            .into_iter()
+            .map(|(_, entry)| entry.clone())
+            .collect()
+    }
+
     pub fn signals_in_scope_report(&self, path: &str) -> Result<SignalListing, WavepeekError> {
         self.signals_in_scope_recursive_report(path, Some(0))
     }
@@ -211,34 +296,37 @@ impl OndasBackend {
         max_depth: Option<usize>,
     ) -> Result<SignalListing, WavepeekError> {
         let index = self.index();
-        let Some(scope_index) = index.scopes.iter().position(|scope| scope.path == path) else {
+        let Some(&scope_index) = index.scope_by_path.get(path) else {
             return Err(WavepeekError::Scope(format!(
                 "scope '{path}' not found in dump"
             )));
         };
         let scope_depth = index.scopes[scope_index].depth;
-        let subtree_end = index.scopes[scope_index + 1..]
-            .iter()
-            .position(|scope| scope.depth <= scope_depth)
-            .map_or(index.scopes.len(), |offset| scope_index + 1 + offset);
-        let subtree_orders = scope_index + 1..subtree_end + 1;
+        let subtree_end = if max_depth == Some(0) {
+            scope_index + 1
+        } else {
+            index.scopes[scope_index + 1..]
+                .iter()
+                .position(|scope| scope.depth <= scope_depth)
+                .map_or(index.scopes.len(), |offset| scope_index + 1 + offset)
+        };
         let mut entries = Vec::new();
         let mut omitted = BTreeSet::new();
-        for declaration in &index.declarations {
-            if !declaration.visible {
-                continue;
-            }
-            if !subtree_orders.contains(&declaration.parent_order) {
-                continue;
-            }
-            let depth = index.scopes[declaration.parent_order - 1].depth - scope_depth;
+        for parent in scope_index..subtree_end {
+            let depth = index.scopes[parent].depth - scope_depth;
             if max_depth.is_some_and(|max| depth > max) {
                 continue;
             }
-            if index.by_path[&declaration.entry.path].len() > 1 {
-                omitted.insert(declaration.entry.path.clone());
-            } else {
-                entries.push((declaration.parent_order, &declaration.entry));
+            for &declaration_index in &index.declarations_by_scope[parent] {
+                let declaration = &index.declarations[declaration_index];
+                if !declaration.visible {
+                    continue;
+                }
+                if index.by_path[&declaration.entry.path].len() > 1 {
+                    omitted.insert(declaration.entry.path.clone());
+                } else {
+                    entries.push((parent, &declaration.entry));
+                }
             }
         }
         entries.sort_by(|(left_parent, left), (right_parent, right)| {
@@ -303,13 +391,12 @@ impl OndasBackend {
             .iter()
             .map(|path| {
                 if let Some(resolved) = self
-                    .direct_fst_signal(path)
+                    .direct_vcd_fst_signal(path)
                     .or_else(|| self.direct_fsdb_signal(path))
                 {
                     return Ok(resolved);
                 }
-                self.validate_direct_value_supported(path)?;
-                let declaration = self.declaration(path)?;
+                let declaration = self.value_declaration(path)?;
                 let width = declaration.entry.width.ok_or_else(|| unsupported(path))?;
                 let id = declaration.id.ok_or_else(|| unsupported(path))?;
                 Ok(ResolvedSignal {
@@ -323,7 +410,7 @@ impl OndasBackend {
 
     pub fn resolve_expr_signal(&self, path: &str) -> Result<ExprResolvedSignal, WavepeekError> {
         if let Some(resolved) = self
-            .direct_fst_signal(path)
+            .direct_vcd_fst_signal(path)
             .or_else(|| self.direct_fsdb_signal(path))
         {
             let offset = (u64::MAX - resolved.id.as_u64()) as usize;
@@ -356,8 +443,8 @@ impl OndasBackend {
             .collect()
     }
 
-    fn direct_fst_signal(&self, path: &str) -> Option<ResolvedSignal> {
-        if self.inner.format() != Format::Fst {
+    fn direct_vcd_fst_signal(&self, path: &str) -> Option<ResolvedSignal> {
+        if !matches!(self.inner.format(), Format::Vcd | Format::Fst) {
             return None;
         }
         if let Some((offset, width)) = self
@@ -415,7 +502,7 @@ impl OndasBackend {
         if canonical != path {
             return None;
         }
-        // Packed FST fragments can have a different SDK name but the same public path.
+        // Packed fragments can have a different reader name but the same public path.
         let prefix = format!("{}[", variable.name());
         let parent_path = variable.parent().map(|scope| scope.path());
         if hierarchy.variables().any(|other| {
@@ -502,12 +589,16 @@ impl OndasBackend {
     }
 
     pub fn prepare_value_signals(&self, paths: &[String]) {
-        if self.index.get().is_some() || !matches!(self.inner.format(), Format::Fst | Format::Fsdb)
+        if self.index.get().is_some()
+            || !matches!(
+                self.inner.format(),
+                Format::Vcd | Format::Fst | Format::Fsdb
+            )
         {
             return;
         }
-        let batch_limit = if self.inner.format() == Format::Fst {
-            MAX_DIRECT_FST_BATCH
+        let batch_limit = if matches!(self.inner.format(), Format::Vcd | Format::Fst) {
+            MAX_DIRECT_VCD_FST_BATCH
         } else {
             MAX_DIRECT_SIGNALS
         };
@@ -518,8 +609,8 @@ impl OndasBackend {
         if paths.len() < 2 {
             return;
         }
-        if self.inner.format() == Format::Fst {
-            self.prepare_fst_signals(paths);
+        if matches!(self.inner.format(), Format::Vcd | Format::Fst) {
+            self.prepare_vcd_fst_signals(paths);
             return;
         }
         let targets = paths.iter().map(String::as_str).collect::<HashSet<_>>();
@@ -578,7 +669,7 @@ impl OndasBackend {
         }
     }
 
-    fn prepare_fst_signals(&self, paths: &[String]) {
+    fn prepare_vcd_fst_signals(&self, paths: &[String]) {
         let targets = paths
             .iter()
             .filter(|path| {
@@ -975,6 +1066,10 @@ impl OndasBackend {
     }
 
     pub fn validate_direct_value_supported(&self, path: &str) -> Result<(), WavepeekError> {
+        self.value_declaration(path).map(|_| ())
+    }
+
+    fn value_declaration(&self, path: &str) -> Result<&Declaration, WavepeekError> {
         let declaration = self.declaration(path)?;
         if declaration.entry.width.is_none() {
             return Err(unsupported(path));
@@ -985,7 +1080,7 @@ impl OndasBackend {
                 return Err(unsupported(path));
             }
         }
-        Ok(())
+        Ok(declaration)
     }
 
     pub fn validate_expr_values_supported(
@@ -1430,16 +1525,16 @@ fn skipped_fsdb_scope(scope: &ondas::Scope<'_>, format: Format) -> bool {
         && scope.packing().is_some()
 }
 
-fn public_scope_component(scope: &ondas::Scope<'_>, format: Format) -> String {
+fn public_scope_component<'h>(scope: &ondas::Scope<'h>, format: Format) -> Cow<'h, str> {
     let name = public_component(scope.name(), format, scope.name_was_escaped());
-    if format == Format::Fsdb {
-        name.replace('/', ".")
+    if format == Format::Fsdb && name.contains('/') {
+        Cow::Owned(name.replace('/', "."))
     } else {
-        name.into_owned()
+        name
     }
 }
 
-fn scope_components(scope: &ondas::Scope<'_>, format: Format) -> Vec<String> {
+fn scope_components<'h>(scope: &ondas::Scope<'h>, format: Format) -> Vec<Cow<'h, str>> {
     let mut components = Vec::new();
     if !skipped_fsdb_scope(scope, format) {
         components.push(public_scope_component(scope, format));
@@ -1475,10 +1570,23 @@ fn visible_scope(scope: &ondas::Scope<'_>) -> bool {
 
 impl HierarchyIndex {
     fn new(hierarchy: &ondas::Hierarchy, format: Format, scopes_only: bool) -> Self {
+        Self::build(hierarchy, format, scopes_only, None)
+    }
+
+    fn build(
+        hierarchy: &ondas::Hierarchy,
+        format: Format,
+        scopes_only: bool,
+        selection: Option<&HierarchySelection>,
+    ) -> Self {
         let mut scope_keys = HashMap::new();
         let mut scopes = hierarchy
             .scopes()
             .filter(|scope| visible_scope(scope) && !skipped_fsdb_scope(scope, format))
+            .filter(|scope| {
+                selection
+                    .is_none_or(|selected| selected.scopes.contains(&scope_path(scope, format)))
+            })
             .map(|scope| {
                 let components = scope_components(&scope, format);
                 let path = components.join(".");
@@ -1513,45 +1621,41 @@ impl HierarchyIndex {
                 continue;
             }
             let signal = variable.signal();
-            let id = if scopes_only {
-                None
-            } else {
-                signal.map(|signal| {
-                    *ids.entry(signal).or_insert_with(|| {
-                        let id = SignalId::from_backend_index(signals.len() as u64);
-                        signals.push(SignalSource::Signal(signal));
-                        id
-                    })
-                })
-            };
             with_public_variable(
                 &variable,
                 format,
                 signal,
                 |mut parent, synthetic_scopes, name, range| {
-                    let mut components = scope_keys.get(&parent).cloned().unwrap_or_default();
-                    let mut depth = components.len();
-                    for (index, component) in synthetic_scopes.iter().enumerate() {
-                        let component = public_component(
-                            component,
-                            format,
-                            index == 0 && variable.name_was_escaped(),
-                        );
-                        components.push(component.to_string());
-                        parent = if parent.is_empty() {
-                            component.into_owned()
-                        } else {
-                            format!("{parent}.{component}")
-                        };
-                        if scope_paths.insert(parent.clone()) {
-                            scope_keys.insert(parent.clone(), components.clone());
-                            scopes.push(ScopeEntry {
-                                path: parent.clone(),
-                                depth,
-                                kind: "unknown".into(),
-                            });
+                    if !synthetic_scopes.is_empty() {
+                        let mut components = variable
+                            .parent()
+                            .map(|scope| scope_components(&scope, format))
+                            .unwrap_or_default();
+                        let mut depth = components.len();
+                        for (index, component) in synthetic_scopes.iter().enumerate() {
+                            let component = public_component(
+                                component,
+                                format,
+                                index == 0 && variable.name_was_escaped(),
+                            );
+                            components.push(Cow::Owned(component.to_string()));
+                            parent = if parent.is_empty() {
+                                component.into_owned()
+                            } else {
+                                format!("{parent}.{component}")
+                            };
+                            if selection.is_none_or(|selected| selected.scopes.contains(&parent))
+                                && scope_paths.insert(parent.clone())
+                            {
+                                scope_keys.insert(parent.clone(), components.clone());
+                                scopes.push(ScopeEntry {
+                                    path: parent.clone(),
+                                    depth,
+                                    kind: "unknown".into(),
+                                });
+                            }
+                            depth += 1;
                         }
-                        depth += 1;
                     }
                     if scopes_only {
                         return;
@@ -1567,6 +1671,16 @@ impl HierarchyIndex {
                     } else {
                         format!("{parent}.{name}")
                     };
+                    if selection.is_some_and(|selected| !selected.paths.contains(&path)) {
+                        return;
+                    }
+                    let id = signal.map(|signal| {
+                        *ids.entry(signal).or_insert_with(|| {
+                            let id = SignalId::from_backend_index(signals.len() as u64);
+                            signals.push(SignalSource::Signal(signal));
+                            id
+                        })
+                    });
                     let width = signal.and_then(|signal| match signal.encoding() {
                         Encoding::Bits { width } => Some(width),
                         Encoding::Event => Some(if format == Format::Fsdb { 1 } else { 0 }),
@@ -1583,7 +1697,6 @@ impl HierarchyIndex {
                     declarations.push(Declaration {
                         entry,
                         parent,
-                        parent_order: 0,
                         id,
                         expr_type,
                         range,
@@ -1593,20 +1706,26 @@ impl HierarchyIndex {
             );
         }
         scopes.sort_by(|left, right| scope_keys[&left.path].cmp(&scope_keys[&right.path]));
+        let mut scope_by_path = HashMap::new();
+        let mut declarations_by_scope = Vec::new();
         if !scopes_only {
-            let order = scopes
+            scope_by_path = scopes
                 .iter()
                 .enumerate()
-                .map(|(index, scope)| (scope.path.as_str(), index + 1))
+                .map(|(index, scope)| (scope.path.clone(), index))
                 .collect::<HashMap<_, _>>();
-            for declaration in &mut declarations {
-                declaration.parent_order =
-                    order.get(declaration.parent.as_str()).copied().unwrap_or(0);
+            declarations_by_scope = vec![Vec::new(); scopes.len()];
+            for (index, declaration) in declarations.iter().enumerate() {
+                if let Some(&parent) = scope_by_path.get(&declaration.parent) {
+                    declarations_by_scope[parent].push(index);
+                }
             }
         }
         let mut index = Self {
             scopes,
+            scope_by_path,
             declarations,
+            declarations_by_scope,
             by_path,
             signals,
         };

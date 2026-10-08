@@ -276,6 +276,14 @@ def build_release(session: CaptureSession) -> None:
             log_path=session.logs_dir / "build-release.log",
         )
     )
+    session.commands.append(
+        run_command(
+            "prepare-waveform-fixtures",
+            ["just", "prepare-waveform-fixtures"],
+            cwd=session.tooling_root,
+            log_path=session.logs_dir / "prepare-waveform-fixtures.log",
+        )
+    )
 
 
 def build_release_fsdb(session: CaptureSession) -> None:

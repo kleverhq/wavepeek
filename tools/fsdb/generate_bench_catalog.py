@@ -26,18 +26,21 @@ def generate_catalog(source_path: pathlib.Path, target: str = "fsdb") -> tuple[s
     try:
         source = source_path.read_text(encoding="utf-8")
     except OSError as error:
-        fail(f"error: fsdb catalog: failed to read {source_path}: {error}")
+        fail(f"error: {target} catalog: failed to read {source_path}: {error}")
 
     try:
         json.loads(source)
     except json.JSONDecodeError as error:
-        fail(f"error: fsdb catalog: invalid JSON in {source_path}: {error}")
+        fail(f"error: {target} catalog: invalid JSON in {source_path}: {error}")
 
     count = source.count(FST_SUFFIX)
     if count == 0:
-        fail(f"error: fsdb catalog: no {FST_SUFFIX} suffixes found in {source_path}")
+        fail(f"error: {target} catalog: no {FST_SUFFIX} suffixes found in {source_path}")
 
-    return source.replace(FST_SUFFIX, f".{target}"), count
+    generated = source.replace(FST_SUFFIX, f".{target}")
+    if target == "fsdb":
+        generated = generated.replace("tests/fixtures/generated/", "tests/fixtures/fsdb/")
+    return generated, count
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,7 +86,7 @@ def main() -> None:
         try:
             current = output_path.read_text(encoding="utf-8")
         except OSError as error:
-            fail(f"error: fsdb catalog: failed to read {output_path}: {error}")
+            fail(f"error: {args.target} catalog: failed to read {output_path}: {error}")
         if current != generated:
             fail(
                 f"error: {args.target} catalog: "

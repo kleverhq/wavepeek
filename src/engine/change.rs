@@ -244,7 +244,6 @@ impl IndexDecodeCache {
 
         let bits = waveform
             .decode_indexed_signal_at(resolved, time_table_idx)?
-            .ok_or_else(indexed_backend_unavailable)?
             .bits;
         self.entries.insert(key, bits.clone());
         Ok(bits)
@@ -1457,12 +1456,9 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
         })?;
         let waveform_ref = waveform.borrow();
         for signal in &tracked_resolved {
-            let offset = waveform_ref
-                .indexed_signal_offset_at(signal.id, previous_idx)
-                .ok_or_else(indexed_backend_unavailable)?;
+            let offset = waveform_ref.indexed_signal_offset_at(signal.id, previous_idx);
             let bits = waveform_ref
                 .decode_indexed_signal_at(signal, previous_idx)?
-                .ok_or_else(indexed_backend_unavailable)?
                 .bits;
             rolling.push(RollingSignalState { offset, bits });
         }
@@ -1508,9 +1504,7 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
         {
             let waveform_ref = waveform.borrow();
             for (tracked_index, signal) in tracked_resolved.iter().enumerate() {
-                let current_offset = waveform_ref
-                    .indexed_signal_offset_at(signal.id, idx_u32)
-                    .ok_or_else(indexed_backend_unavailable)?;
+                let current_offset = waveform_ref.indexed_signal_offset_at(signal.id, idx_u32);
                 if current_offset == rolling[tracked_index].offset {
                     continue;
                 }
@@ -1520,10 +1514,8 @@ fn run_fused_emit<S: ChangeSnapshotSink + ?Sized>(
                 previous_bits[tracked_index] = Some(previous.clone());
 
                 rolling[tracked_index].offset = current_offset;
-                rolling[tracked_index].bits = waveform_ref
-                    .decode_indexed_signal_at(signal, idx_u32)?
-                    .ok_or_else(indexed_backend_unavailable)?
-                    .bits;
+                rolling[tracked_index].bits =
+                    waveform_ref.decode_indexed_signal_at(signal, idx_u32)?.bits;
             }
         }
 
@@ -2467,7 +2459,8 @@ mod tests {
     #[test]
     fn fast_event_eval_builders_exercise_skip_and_missing_previous_paths() {
         let fixture = write_fixture(TEST_VCD, "change-fast-builders.vcd");
-        let host = WaveformExprHost::open(fixture.path()).expect("host should open");
+        let waveform = super::open_shared_waveform(fixture.path()).expect("waveform should open");
+        let host = WaveformExprHost::from_shared(std::rc::Rc::clone(&waveform));
         let handle = host
             .resolve_signal("top.sig")
             .expect("signal should resolve");
@@ -2531,7 +2524,7 @@ mod tests {
         assert!(fused_host.sample_value(SignalHandle(22), 7).is_err());
         assert!(fused_host.sample_value(SignalHandle(23), 7).is_err());
 
-        let mut waveform = Waveform::open(fixture.path()).expect("waveform should open");
+        let mut waveform = waveform.borrow_mut();
         waveform.ensure_indexed_signals_loaded(&[source.id]);
         let mut decode_cache = IndexDecodeCache::default();
         let edge_host = build_edge_fast_event_eval_host(

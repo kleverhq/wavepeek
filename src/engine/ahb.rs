@@ -1346,18 +1346,18 @@ fn collect_include_candidates(
         }
         return Ok(candidates);
     }
-    for scope in waveform.borrow().scopes_depth_first(None)? {
-        for entry in waveform.borrow().signals_in_scope(scope.path.as_str())? {
-            if includes.iter().any(|include| {
-                include.is_match(entry.path.as_str()) || include.is_match(entry.name.as_str())
-            }) && seen_paths.insert(entry.path.clone())
-            {
-                candidates.push(SignalCandidate {
-                    display: entry.path.clone(),
-                    name: entry.name,
-                    path: entry.path,
-                });
-            }
+    let entries = waveform.borrow().matching_signals(|path, name| {
+        includes
+            .iter()
+            .any(|include| include.is_match(path) || include.is_match(name))
+    });
+    for entry in entries {
+        if seen_paths.insert(entry.path.clone()) {
+            candidates.push(SignalCandidate {
+                display: entry.path.clone(),
+                name: entry.name,
+                path: entry.path,
+            });
         }
     }
     Ok(candidates)

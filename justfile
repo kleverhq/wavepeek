@@ -393,11 +393,11 @@ bench-compare golden_dir revised_dir: require-container
     {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
 
 [private]
-bench-e2e-run: check-rtl-artifacts build-release
+bench-e2e-run: check-rtl-artifacts prepare-waveform-fixtures build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
 
 [private]
-bench-e2e-vcd-run: prepare-vcd-rtl-artifacts build-release
+bench-e2e-vcd-run: prepare-vcd-rtl-artifacts prepare-waveform-fixtures build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
 
 [private]

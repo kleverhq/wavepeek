@@ -51,6 +51,8 @@ The gate screens selected benchmarks for regressions on the machine where it run
 
 The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. VCD and FSDB benchmark definitions live in generated `bench/e2e/tests_vcd.json` and `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` is intentionally small; most entries keep 1 measured run and 0 warmups, while sampling-mode smoke entries may use slightly higher counts to reduce timing noise.
 
+Captures also prepare source-backed fixtures from `tests/fixtures/waveform_policy.json`. `extract_large_hierarchy_axi_global_include` searches a hierarchy with 2,048 child instances using `--include` without `--scope` and returns one AXI address event. Its VCD/FST inputs live under `tests/fixtures/generated/`; the FSDB catalog selects the converted input under `tests/fixtures/fsdb/`. For focused `perf.py` runs, first use `just prepare-waveform-fixtures` and, for FSDB, `just prepare-fsdb-test-fixtures`.
+
 Common focused commands:
 
     python3 bench/e2e/perf.py list

@@ -86,7 +86,7 @@ Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates i
 
 `just prepare-fsdb-test-fixtures` limits preparation to the VCD-derived test fixtures. Source-backed VCD fixtures are regenerated first by `just prepare-waveform-fixtures`. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 
-`bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths. Update the FST catalog first, then run:
+`bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by selecting `.fsdb` paths. Repository-generated inputs are mapped from `tests/fixtures/generated/` to `tests/fixtures/fsdb/`; RTL inputs retain their directory. Update the FST catalog first, then run:
 
 ```sh
 just update-bench-e2e-fsdb-catalog

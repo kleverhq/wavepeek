@@ -4230,6 +4230,35 @@
         "eval": "TOP.scr1_top_tb_axi.i_top.i_imem_axi.araddr == 32'h00000200",
         "sampling_mode": "pre-edge"
       }
+    },
+    {
+      "name": "extract_large_hierarchy_axi_global_include",
+      "category": "extract",
+      "runs": 10,
+      "warmup": 5,
+      "command": [
+        "{wavepeek_bin}",
+        "extract",
+        "axi",
+        "--waves",
+        "tests/fixtures/fsdb/extract_global_include.fsdb",
+        "--profile",
+        "axi4-lite",
+        "--include",
+        "^top\\.(aclk|arvalid|arready|araddr)$",
+        "--max",
+        "1",
+        "--json"
+      ],
+      "meta": {
+        "waves": "tests/fixtures/fsdb/extract_global_include.fsdb",
+        "input": "global include",
+        "instances": 2048,
+        "declarations_per_instance": 17,
+        "profile": "axi4-lite",
+        "max": 1,
+        "output": "json"
+      }
     }
   ]
 }

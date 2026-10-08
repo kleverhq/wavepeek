@@ -178,6 +178,41 @@ class GenerateBenchCatalogCliTest(unittest.TestCase):
             self.assertIn("no .fst suffixes found", result.stderr)
             self.assertFalse(output.exists())
 
+    def test_vcd_errors_name_selected_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            source = root / "tests.json"
+            output = root / "tests_vcd.json"
+            args = ["--source", str(source), "--output", str(output), "--target", "vcd"]
+            for contents in (None, "{invalid", '{"tests": []}'):
+                with self.subTest(contents=contents):
+                    if contents is not None:
+                        source.write_text(contents, encoding="utf-8")
+                    result = self.run_script(args, root)
+                    self.assertEqual(result.returncode, 1)
+                    self.assertTrue(result.stderr.startswith("error: vcd catalog:"))
+                    self.assertFalse(output.exists())
+            source.write_text('{"tests": ["sample.fst"]}', encoding="utf-8")
+            result = self.run_script([*args, "--check"], root)
+            self.assertEqual(result.returncode, 1)
+            self.assertTrue(result.stderr.startswith("error: vcd catalog:"))
+
+    def test_generated_waveforms_use_existing_fsdb_fixture_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = pathlib.Path(temp_dir)
+            source = root / "tests.json"
+            output = root / "tests_fsdb.json"
+            source.write_text(
+                '{"tests": ["tests/fixtures/generated/extract_global_include.fst"]}',
+                encoding="utf-8",
+            )
+            result = self.run_script(["--source", str(source), "--output", str(output)], root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                output.read_text(encoding="utf-8"),
+                '{"tests": ["tests/fixtures/fsdb/extract_global_include.fsdb"]}',
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,46 @@ const RECURSIVE_TEST_VCD: &str = "$date\n  2026-02-28\n$end\n$version\n  wavepee
 const DELAYED_VALUE_VCD: &str = "$date\n  2026-03-03\n$end\n$version\n  wavepeek-delayed-value\n$end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! delayed $end\n$upscope $end\n$enddefinitions $end\n#0\n#5\n1!\n";
 
 #[test]
+fn global_matching_preserves_scope_order_and_split_width() {
+    let fixture = write_fixture(TEST_VCD, "global-matching.vcd");
+    let waveform = Waveform::open(fixture.path()).unwrap();
+    let matched = waveform.matching_signals(|_, name| name != "data");
+    assert_eq!(
+        matched
+            .iter()
+            .map(|entry| entry.path.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "top.cfg",
+            "top.clk",
+            "top.cpu.valid",
+            "top.helper.helper_flag",
+            "top.mem.ready"
+        ]
+    );
+    waveform.signals_in_scope("top").unwrap();
+    assert_eq!(waveform.matching_signals(|_, name| name != "data"), matched);
+
+    let fixture = write_fixture(DERIVED_SPLIT_VCD, "global-split.vcd");
+    let waveform = Waveform::open(fixture.path()).unwrap();
+    let entries = waveform.matching_signals(|path, _| path == "top.split");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].width, Some(2));
+
+    let fixture = write_fixture(
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\n",
+        "global-array.vcd",
+    );
+    let waveform = Waveform::open(fixture.path()).unwrap();
+    let entries = waveform.matching_signals(|_, name| name == "[0]");
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].path, "top.memory.[0]");
+    assert_eq!(entries[0].width, Some(8));
+    waveform.signals_in_scope("top.memory").unwrap();
+    assert_eq!(waveform.matching_signals(|_, name| name == "[0]"), entries);
+}
+
+#[test]
 fn open_and_read_metadata_from_vcd() {
     let fixture = write_fixture(TEST_VCD, "sample.vcd");
 
@@ -748,6 +788,12 @@ fn fst_batch_array_alias_remains_ambiguous() {
             .success()
     );
     let path = "top.memory.[0]";
+    assert!(
+        OndasBackend::open(&fst)
+            .unwrap()
+            .matching_signals(|candidate, _| candidate == path)
+            .is_empty()
+    );
     let single = OndasBackend::open(&fst)
         .unwrap()
         .resolve_signals(&[path.into()])
@@ -839,15 +885,12 @@ fn indexed_signal_offset_at_compares_data_position_only() {
 
     let offset_at_0 = waveform
         .indexed_signal_offset_at(resolved[0].id, 0)
-        .expect("Wellen backend supports indexed offsets")
         .expect("offset at #0 should exist");
     let offset_at_5 = waveform
         .indexed_signal_offset_at(resolved[0].id, 1)
-        .expect("Wellen backend supports indexed offsets")
         .expect("offset at #5 should exist");
     let offset_at_10 = waveform
         .indexed_signal_offset_at(resolved[0].id, 2)
-        .expect("Wellen backend supports indexed offsets")
         .expect("offset at #10 should exist");
 
     assert_eq!(offset_at_0, offset_at_5);
@@ -863,10 +906,7 @@ fn indexed_signal_offset_at_returns_none_when_signal_is_not_loaded() {
         .resolve_signals(&["top.data".to_string()])
         .expect("signal should resolve");
 
-    assert_eq!(
-        waveform.indexed_signal_offset_at(resolved[0].id, 0),
-        Some(None)
-    );
+    assert_eq!(waveform.indexed_signal_offset_at(resolved[0].id, 0), None);
 }
 
 #[test]
@@ -885,11 +925,7 @@ fn decode_indexed_signal_at_matches_sample_resolved_optional() {
         .expect("batch sampling should succeed");
     let decoded = resolved
         .iter()
-        .map(|signal| {
-            waveform
-                .decode_indexed_signal_at(signal, 2)
-                .map(|sample| sample.expect("Wellen backend supports indexed decoding"))
-        })
+        .map(|signal| waveform.decode_indexed_signal_at(signal, 2))
         .collect::<Result<Vec<_>, _>>()
         .expect("point decode should succeed");
 
@@ -908,12 +944,10 @@ fn decode_indexed_signal_at_returns_none_when_no_prior_value_exists() {
 
     let sample_before_first_value = waveform
         .decode_indexed_signal_at(&resolved[0], 0)
-        .expect("decode should succeed")
-        .expect("Wellen backend supports indexed decoding");
+        .expect("decode should succeed");
     let sample_after_first_value = waveform
         .decode_indexed_signal_at(&resolved[0], 1)
-        .expect("decode should succeed")
-        .expect("Wellen backend supports indexed decoding");
+        .expect("decode should succeed");
 
     assert_eq!(sample_before_first_value.bits, None);
     assert_eq!(sample_after_first_value.bits.as_deref(), Some("1"));

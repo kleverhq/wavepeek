@@ -415,6 +415,12 @@ fn fsdb_paths_colliding_across_owning_scopes_are_ambiguous() {
     let fixture = GeneratedFsdbFixture::from_contents(
         "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! \\child.opcode  $end\n$scope module child $end\n$var wire 1 \" opcode $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
     );
+    let cold = OndasBackend::open(fixture.path()).unwrap();
+    assert!(cold.matching_signals(|_, name| name == "opcode").is_empty());
+    assert!(
+        cold.matching_signals(|_, name| name == "child.opcode")
+            .is_empty()
+    );
     let backend = OndasBackend::open(fixture.path()).unwrap();
     let path = "top.child.opcode";
     assert_eq!(
@@ -439,6 +445,11 @@ fn fsdb_paths_colliding_across_owning_scopes_are_ambiguous() {
     assert!(direct.entries.iter().all(|entry| entry.path != path));
     assert_eq!(direct.omitted_ambiguous_paths, [path]);
     assert!(backend.signals_in_scope("top.child").unwrap().is_empty());
+    assert!(
+        backend
+            .matching_signals(|_, name| name == "opcode")
+            .is_empty()
+    );
     assert_eq!(
         backend
             .resolve_signals(&[path.into()])

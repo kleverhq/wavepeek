@@ -24,6 +24,8 @@ FST tends to use much less memory than large VCD input and is well suited for sc
 
 FSDB is a compact proprietary waveform format read through the Synopsys Verdi FSDB Reader SDK in FSDB-enabled `wavepeek` builds. FSDB value sampling can be fast after setup, but short one-shot CLI calls may spend most of their time in native reader setup, hierarchy loading, and hierarchy teardown.
 
+FSDB modport and interface-reference scopes use the normalized scope kind `interface`.
+
 This means an FSDB file can be far smaller than a VCD file and still take seconds per independent command. The requested value lookup itself may not be the expensive step; repeated setup can dominate.
 
 Note: FSDB real and string value decoding are not part of the current implementation.

@@ -414,6 +414,37 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
+    let preload_from_raw = if waveform.borrow().format_name() == "vcd" {
+        from_raw.saturating_sub(1)
+    } else {
+        from_raw
+            .checked_sub(1)
+            .filter(|value| *value >= dump_start_raw)
+            .unwrap_or(from_raw)
+    };
+    let preload_values = || -> Result<(), WavepeekError> {
+        preload_extract_value_changes(
+            &waveform,
+            &bound_sources,
+            &event_groups,
+            preload_from_raw,
+            to_raw,
+        )?;
+        debug.event("value.preload.done", || {
+            serde_json::json!({
+                "from_raw": preload_from_raw,
+                "to_raw": to_raw,
+                "backend_stats": waveform.borrow().debug_stats(),
+            })
+        });
+        Ok(())
+    };
+    // Cold VCD traces replay the file; load candidate and payload histories together.
+    let preload_vcd = max_entries.is_none() && waveform.borrow().format_name() == "vcd";
+    if preload_vcd {
+        preload_values()?;
+    }
+
     let group_candidate_times =
         collect_event_group_candidate_times(&waveform, &event_groups, from_raw, to_raw)?;
     let candidate_times = if debug.is_enabled() {
@@ -432,26 +463,9 @@ fn run_open_plan_with_sink<S: ExtractRowSink + ?Sized>(
         })
     });
 
-    if max_entries.is_none() {
-        let preload_from_raw = from_raw
-            .checked_sub(1)
-            .filter(|value| *value >= dump_start_raw)
-            .unwrap_or(from_raw);
-        preload_extract_value_changes(
-            &waveform,
-            &bound_sources,
-            &event_groups,
-            preload_from_raw,
-            to_raw,
-        )?;
-        debug.event("value.preload.done", || {
-            serde_json::json!({
-                "from_raw": preload_from_raw,
-                "to_raw": to_raw,
-                "backend_stats": waveform.borrow().debug_stats(),
-            })
-        });
-    } else {
+    if max_entries.is_none() && !preload_vcd {
+        preload_values()?;
+    } else if max_entries.is_some() {
         debug.event("value.preload.skipped", || {
             serde_json::json!({
                 "reason": "bounded_max",
@@ -843,8 +857,18 @@ fn preload_extract_value_changes(
     }
 
     let mut waveform = waveform.borrow_mut();
-    waveform.preload_expr_value_changes(expr_sources.as_slice(), from_raw, to_raw)?;
-    waveform.preload_resolved_value_changes(payload_sources.as_slice(), from_raw, to_raw)
+    if waveform.format_name() == "vcd" {
+        waveform.validate_expr_values_supported(&expr_sources)?;
+        let ids = expr_sources
+            .iter()
+            .map(|signal| signal.id)
+            .chain(payload_sources.iter().map(|signal| signal.id))
+            .collect::<Vec<_>>();
+        waveform.preload_signal_ids(&ids, from_raw, to_raw)
+    } else {
+        waveform.preload_expr_value_changes(&expr_sources, from_raw, to_raw)?;
+        waveform.preload_resolved_value_changes(&payload_sources, from_raw, to_raw)
+    }
 }
 
 fn extend_unique_expr_sources(

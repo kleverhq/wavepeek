@@ -8,7 +8,7 @@ use crate::engine::time::{
     validate_time_token_to_raw,
 };
 use crate::engine::value_format::format_verilog_literal;
-use crate::engine::{CommandData, CommandName, CommandResult};
+use crate::engine::{CommandData, CommandName, CommandResult, scoped_signal_path};
 use crate::error::WavepeekError;
 use crate::waveform::{SampledSignalState, Waveform, WaveformMetadata, display_signal_path};
 
@@ -157,6 +157,13 @@ fn resolve_requested_signals(
 ) -> Result<Vec<RequestedSignal>, WavepeekError> {
     if let Some(scope) = scope {
         waveform.signals_in_scope(scope)?;
+    } else if args.signals.len() > 1 {
+        let paths = args
+            .signals
+            .iter()
+            .map(|token| scoped_signal_path(token.trim(), None))
+            .collect::<Vec<_>>();
+        waveform.prepare_value_signals(&paths);
     }
 
     let mut resolved = Vec::with_capacity(args.signals.len());

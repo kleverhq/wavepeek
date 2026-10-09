@@ -27,7 +27,7 @@ A default binary that sees FSDB-looking input reports that FSDB support requires
 
 ## Verdi SDK contract
 
-`VERDI_HOME` must point at a local licensed Verdi installation containing the FSDB Reader SDK. FSDB builds also require a system zlib runtime library (`libz.so.1`); Verdi `libnffr.so` uses gzip symbols but may not declare that dependency itself. The build and helper checks expect at least:
+FSDB builds use Ondas's `fsdb-lib` contract on `x86_64-unknown-linux-gnu`. `VERDI_HOME` must point at a local licensed Verdi installation containing the FSDB Reader SDK. Building requires a C++ compiler, `readelf` (binutils), and zlib development files (`zlib1g-dev` on Debian/Ubuntu); running requires `libz.so.1`. The build and helper checks expect at least:
 
 ```text
 $VERDI_HOME/share/FsdbReader/ffrAPI.h
@@ -37,18 +37,13 @@ $VERDI_HOME/share/FsdbReader/<abi>/libnffr.so
 $VERDI_HOME/share/FsdbReader/<abi>/libnsys.so
 ```
 
-The default Reader ABI directory is `linux64`. Override it only for local SDK/toolchain compatibility:
+Ondas selects the first directory containing both Reader libraries from `linux64`, then `LINUX64`. SDK libraries with ELF `SONAME` entries are unsupported. Their canonical absolute paths are embedded in the binary's `DT_NEEDED` entries; no SDK RPATH is required. The SDK must remain available at those paths when running the binary. A devcontainer-built binary therefore uses paths under `/opt/verdi`.
 
-- `WAVEPEEK_FSDB_ABI=<name>` selects `$VERDI_HOME/share/FsdbReader/<name>`; for example `linux64_gcc950`.
-- `WAVEPEEK_FSDB_READER_LIBDIR=<path>` selects an explicit Reader library directory.
-
-`WAVEPEEK_FSDB_READER_LIBDIR` changes the library directory only; `VERDI_HOME` is still required for headers.
-
-By default, `build.rs` embeds the selected Reader library directory as an ELF rpath/RUNPATH. This makes local FSDB binaries runnable without extra `LD_LIBRARY_PATH` setup on the build machine. Set `WAVEPEEK_FSDB_EMBED_RPATH=0` only for packaging or loader environments that provide the Verdi libraries another way.
+The former `WAVEPEEK_FSDB_ABI`, `WAVEPEEK_FSDB_READER_LIBDIR`, and `WAVEPEEK_FSDB_EMBED_RPATH` options are unsupported. Unset them and select the installation with `VERDI_HOME`.
 
 ## Devcontainer behavior
 
-When host `VERDI_HOME` is set, the root `./dev` wrapper validates the FSDB Reader SDK and mounts only the installation at `/opt/verdi`. It forwards `WAVEPEEK_FSDB_ABI`; an explicit `WAVEPEEK_FSDB_READER_LIBDIR` must be inside `VERDI_HOME` and is mapped under `/opt/verdi`. When `VERDI_HOME` is unset, `/opt/verdi` is not mounted and optional FSDB gates skip. Invalid paths or incomplete SDKs fail before container startup.
+When host `VERDI_HOME` is set, the root `./dev` wrapper validates the FSDB Reader SDK and mounts only the installation at `/opt/verdi`. When `VERDI_HOME` is unset, `/opt/verdi` is not mounted and optional FSDB gates skip. Invalid paths, incomplete SDKs, or unsupported Reader overrides fail before container startup.
 
 Use the helper probe to distinguish available, skipped, and broken states:
 
@@ -87,11 +82,11 @@ just bench-e2e-fsdb-smoke-commit
 Do not commit generated `.fsdb` fixtures. `just prepare-fsdb-fixtures` creates ignored FSDB files from two sources:
 
 - VCD test fixtures under `tests/fixtures/hand/` and `tests/fixtures/generated/`, written to `tests/fixtures/fsdb/`;
-- RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity.
+- RTL `.fst` artifacts under `RTL_ARTIFACTS_DIR`, written as neighboring ignored `.fsdb` files for benchmark parity. If a current persistent VCD benchmark artifact already exists beside the FST, the converter reuses it; otherwise it creates and removes a temporary VCD.
 
 `just prepare-fsdb-test-fixtures` limits preparation to the VCD-derived test fixtures. Source-backed VCD fixtures are regenerated first by `just prepare-waveform-fixtures`. FSDB benchmark smoke recipes prepare the narrower RTL subset they execute; full FSDB benchmark helpers prepare and verify the generated FSDB benchmark catalog before applying any gate-local runnable-catalog filtering.
 
-`bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by replacing RTL artifact `.fst` paths with `.fsdb` paths. Update the FST catalog first, then run:
+`bench/e2e/tests_fsdb.json` is generated from `bench/e2e/tests.json` by selecting `.fsdb` paths. Repository-generated inputs are mapped from `tests/fixtures/generated/` to `tests/fixtures/fsdb/`; RTL inputs retain their directory. Update the FST catalog first, then run:
 
 ```sh
 just update-bench-e2e-fsdb-catalog

@@ -78,6 +78,53 @@ fn fsdb_info_json_matches_vcd_derived_fixture() {
 }
 
 #[test]
+fn fsdb_info_debug_preserves_metadata_only_result() {
+    require_vcd2fsdb();
+    let dir = TempDir::new().expect("temporary directory should be available");
+    let source = dir.path().join("scope_collision.vcd");
+    fs::write(
+        &source,
+        "$timescale 1ns $end\n$scope module \\top/a  $end\n$var wire 1 ! first $end\n$upscope $end\n$scope module \\top.a  $end\n$var wire 1 \" second $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
+    )
+    .unwrap();
+    let fixture = convert_vcd_source(dir.path(), &source);
+    let args = ["info", "--waves", fixture.to_str().unwrap(), "--json"];
+    let ordinary = wavepeek_cmd()
+        .env_remove("DEBUG")
+        .args(args)
+        .assert()
+        .success()
+        .stderr(predicate::str::is_empty())
+        .get_output()
+        .clone();
+    let debug = wavepeek_cmd()
+        .env("DEBUG", "1")
+        .args(args)
+        .assert()
+        .success()
+        .get_output()
+        .clone();
+    assert_eq!(ordinary.stdout, debug.stdout);
+    let result: Value = serde_json::from_slice(&debug.stdout).unwrap();
+    assert_eq!(
+        result["data"],
+        json!([{ "time_unit": "1ns", "time_start": "0ns", "time_end": "0ns" }])
+    );
+    let events = String::from_utf8(debug.stderr).unwrap();
+    assert!(!events.is_empty());
+    for line in events.lines() {
+        let event: Value = serde_json::from_str(line).unwrap();
+        assert_eq!(event["kind"], "debug");
+    }
+    wavepeek_cmd()
+        .args(["scope", "--waves", fixture.to_str().unwrap(), "--json"])
+        .assert()
+        .code(2)
+        .stdout(predicate::str::contains("WPK-F0002"))
+        .stdout(predicate::str::contains("ambiguous canonical scope path"));
+}
+
+#[test]
 fn fsdb_scope_json_is_sorted_and_depth_bounded() {
     let fixtures = GeneratedFsdbFixtures::new();
     let fixture = path_str(&fixtures.signal_recursive_depth());
@@ -472,6 +519,9 @@ fn fsdb_value_preserves_exact_projection_like_path_errors() {
         .stdout(predicate::str::is_empty())
         .stderr(predicate::str::contains(
             "signal 'top.flags[0:0]' is ambiguous in FSDB hierarchy",
+        ))
+        .stderr(predicate::str::contains(
+            "candidates: 1: scope=\"top\" kind=wire width=1 range=none, 2: scope=\"top\" kind=wire width=1 range=none",
         ))
         .stderr(predicate::str::contains("no candidate was selected"));
 }
@@ -1334,7 +1384,7 @@ fn fsdb_file_failures_are_clean_file_errors() {
 }
 
 #[test]
-fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_wellen_path() {
+fn fsdb_feature_keeps_valid_vcd_with_fsdb_suffix_on_ondas_path() {
     let mut file = NamedTempFile::with_suffix(".fsdb").expect("temp file should be created");
     file.write_all(
         b"$date\n  test\n$end\n$version wavepeek test $end\n$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! clk $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n#10\n1!\n",
@@ -1627,7 +1677,11 @@ fn require_vcd2fsdb() {
 
 fn convert_vcd_fixture(dir: &Path, name: &str) -> PathBuf {
     let source = fixture_path(name);
-    let output = dir.join(name.replace(".vcd", ".fsdb"));
+    convert_vcd_source(dir, &source)
+}
+
+fn convert_vcd_source(dir: &Path, source: &Path) -> PathBuf {
+    let output = dir.join(source.file_name().unwrap()).with_extension("fsdb");
     let converter_output = Command::new("vcd2fsdb")
         .current_dir(dir)
         .arg(source)
@@ -1639,7 +1693,8 @@ fn convert_vcd_fixture(dir: &Path, name: &str) -> PathBuf {
         .expect("vcd2fsdb should be available from the Verdi environment");
     assert!(
         converter_output.status.success(),
-        "vcd2fsdb should convert {name}; stdout:\n{}\nstderr:\n{}",
+        "vcd2fsdb should convert {}; stdout:\n{}\nstderr:\n{}",
+        source.display(),
         String::from_utf8_lossy(&converter_output.stdout),
         String::from_utf8_lossy(&converter_output.stderr)
     );

@@ -282,6 +282,15 @@
         "tests/fixtures/generated/value_vectors.vcd"
       ],
       "reason": "Ordinary vector value fixture generated from HDL."
+    },
+    {
+      "name": "extract_global_include",
+      "source": "tests/fixtures/source/extract_global_include.v",
+      "outputs": [
+        "tests/fixtures/generated/extract_global_include.vcd",
+        "tests/fixtures/generated/extract_global_include.fst"
+      ],
+      "reason": "Large hierarchy for global protocol include discovery benchmarks."
     }
   ],
   "derived_outputs": [

@@ -8,13 +8,13 @@ Benchmark work must run in the shared devcontainer image so fixture availability
 
 Public benchmark entrypoints are:
 
-    ./dev just bench-gate <baseline-ref> [revised-ref] [fsdb-mode]
-    ./dev just bench-capture [ref] [fsdb-mode]
+    ./dev just bench-gate <baseline-ref> [revised-ref] [fsdb-mode] [vcd-mode]
+    ./dev just bench-capture [ref] [fsdb-mode] [vcd-mode]
     ./dev just bench-compare <golden-capture-dir> <revised-capture-dir>
 
 `./dev just bench-gate vX.Y.Z HEAD` clones both refs under `tmp/bench-gate/` and builds release binaries from those refs. Benchmark scripts, catalogs, fixtures, FSDB preparation helpers, and compare logic come from the current working tree. The helper refuses to run from a dirty current worktree because current benchmark tooling is part of the measurement apparatus and must be reproducible.
 
-Same-format FST and FSDB comparisons use functional checks plus median timing. Timing first fails when revised median time exceeds golden median time by more than `max(5%, 5ms)` by default. When a same-format suite fails only because of median timing, with no functional mismatches, missing/invalid artifacts, or timeout warnings, the gate runs a separate best-sample confirmation over those failed tests using the minimum hyperfine sample from each binary. Timing is accepted when `revised_best - golden_best <= max(golden_best * 5%, 5ms)` for every confirmed test. Mean timing is still recorded by hyperfine but is not a gate metric. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful. Cross-format checks use an explicit ignored-test list for metadata-only hierarchy and signal cases where FST and FSDB expose arrays, memories, or scalar ranges with different path strings; each ignored test and reason is recorded in the compare manifest.
+Same-format FST, VCD, and FSDB comparisons use functional checks plus median timing. Timing first fails when revised median time exceeds golden median time by more than `max(5%, 5ms)` by default. When a same-format suite fails only because of median timing, with no functional mismatches, missing/invalid artifacts, or timeout warnings, the gate runs a separate best-sample confirmation over those failed tests using the minimum hyperfine sample from each binary. Timing is accepted when `revised_best - golden_best <= max(golden_best * 5%, 5ms)` for every confirmed test. Mean timing is still recorded by hyperfine but is not a gate metric. Cross-format FST-vs-FSDB checks are functional-only within each capture because FST and FSDB use different readers and timing them against each other is not meaningful. Cross-format checks use an explicit ignored-test list for metadata-only hierarchy and signal cases where FST and FSDB expose arrays, memories, or scalar ranges with different path strings; each ignored test and reason is recorded in the compare manifest.
 
 Default gate output has this shape:
 
@@ -22,6 +22,9 @@ Default gate output has this shape:
       e2e-fst/
         baseline/     # FST artifacts for the baseline binary
         revised/      # FST artifacts for the revised binary
+      e2e-vcd/        # present with vcd-mode=always
+        baseline/
+        revised/
       e2e-fsdb/       # present when FSDB is captured
         baseline/
         revised/
@@ -38,13 +41,17 @@ Default gate output has this shape:
     just bench-capture HEAD
     just bench-compare tmp/bench-gate/captures/<baseline>/run tmp/bench-gate/captures/<revised>/run
 
+VCD mode defaults to `never`. Pass `always` as the fourth `bench-gate` argument (third `bench-capture` argument) to generate and time VCD from every RTL FST artifact. Conversion writes persistent `.vcd` neighbors under `/opt/rtl-artifacts` on demand; it does not run in `just ci`, `just check`, or ordinary FST/FSDB gates. The eight VCD files require about 39 GiB and are reused until the worktree container is removed. When VCD exists, FSDB fixture preparation reuses it instead of creating a second temporary VCD. Generated VCD artifacts are not committed or baked into the image. VCD capture uses `bench/e2e/tests_vcd.json`, generated from the FST catalog with `just update-bench-e2e-vcd-catalog` and checked with `just check-bench-e2e-vcd-catalog`.
+
 FSDB mode defaults to `auto`. Auto mode skips FSDB when Verdi is unavailable or when both refs lack FSDB support, captures FSDB when Verdi is available and both refs support it, and fails on asymmetric FSDB support because that comparison is not equivalent. FSDB capture uses a generated runnable catalog under each capture directory and records any omitted tests in the manifest; currently this excludes VCD-style scalar element paths such as `foo.[0]` because converted RTL FSDB fixtures expose those signals with FSDB-specific names that old and current release binaries cannot resolve from the FST-derived catalog. Use `just bench-gate <baseline-ref> <revised-ref> never` only when intentionally skipping FSDB performance review, and record that rationale in the release notes or checklist. Use `python3 -B tools/bench/gate.py --baseline-ref <ref> --revised-ref <ref> --fsdb always` when FSDB capture is required and missing support or Verdi should fail immediately.
 
 The gate screens selected benchmarks for regressions on the machine where it runs. It is not a general performance guarantee. Use the previous release tag as the baseline for major and minor releases. For patch releases, either run the gate when the change may affect performance, or record why the gate was skipped for clearly non-performance changes such as documentation-only or release-metadata-only updates.
 
 ## CLI End-to-End Benchmarks
 
-The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. FSDB benchmark definitions live in generated `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` is intentionally small; most entries keep 1 measured run and 0 warmups, while sampling-mode smoke entries may use slightly higher counts to reduce timing noise.
+The end-to-end CLI harness is `bench/e2e/perf.py`. It is Python-stdlib only and uses `hyperfine` for timing. Default FST test definitions live in `bench/e2e/tests.json`. VCD and FSDB benchmark definitions live in generated `bench/e2e/tests_vcd.json` and `bench/e2e/tests_fsdb.json`; `fsdb.md` owns the FSDB catalog, Verdi, and fixture details. Release-gate catalogs should use at least 10 measured hyperfine runs and 5 warmup runs. The pre-commit smoke catalog `bench/e2e/tests_commit.json` is intentionally small; most entries keep 1 measured run and 0 warmups, while sampling-mode smoke entries may use slightly higher counts to reduce timing noise.
+
+Captures also prepare source-backed fixtures from `tests/fixtures/waveform_policy.json`. `extract_large_hierarchy_axi_global_include` searches a hierarchy with 2,048 child instances using `--include` without `--scope` and returns one AXI address event. Its VCD/FST inputs live under `tests/fixtures/generated/`; the FSDB catalog selects the converted input under `tests/fixtures/fsdb/`. For focused `perf.py` runs, first use `just prepare-waveform-fixtures` and, for FSDB, `just prepare-fsdb-test-fixtures`.
 
 Common focused commands:
 
@@ -54,6 +61,8 @@ Common focused commands:
     python3 bench/e2e/perf.py report --run-dir bench/e2e/runs/<run-id>/current
     python3 bench/e2e/perf.py compare --revised <dir> --golden <dir> --max-negative-delta-pct 5 --max-negative-delta-seconds 0.005
     python3 bench/e2e/perf.py confirm --revised <dir> --golden <dir> --test <name> --max-negative-delta-pct 5 --max-negative-delta-seconds 0.005
+    just update-bench-e2e-vcd-catalog
+    just check-bench-e2e-vcd-catalog
     just update-bench-e2e-fsdb-catalog
     just check-bench-e2e-fsdb-catalog
 
@@ -63,6 +72,6 @@ Timing compare mode compares only tests with complete success artifacts on both 
 
 Some E2E catalogs include paired sampling-mode tests with matching names ending in `sample_native` and `sample_pre_edge`. Use the normal run reports to inspect native and pre-edge timings side by side. All `change` and `property` catalog commands must pass `--on` explicitly; wildcard, plain-signal, and mixed-trigger workloads must also pass `--sample-mode native` because the CLI default is pre-edge sampling for edge-only triggers.
 
-Low-level `bench-e2e-run` and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
+Low-level `bench-e2e-run`, `bench-e2e-vcd-run`, and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 
 Use fresh run directories for local experiments. Benchmark run artifacts are evidence, but they are not repository source artifacts unless a maintainer explicitly asks to preserve a specific result outside the ignored run locations.

@@ -42,6 +42,7 @@ class DevTests(unittest.TestCase):
         env.pop("VERDI_HOME", None)
         env.pop("WAVEPEEK_FSDB_ABI", None)
         env.pop("WAVEPEEK_FSDB_READER_LIBDIR", None)
+        env.pop("WAVEPEEK_FSDB_EMBED_RPATH", None)
         env["PATH"] = f"{self.fake_bin}{os.pathsep}{env['PATH']}"
         env["FAKE_LOG"] = str(self.log)
         return env
@@ -239,56 +240,34 @@ os.execvp(command[0], command)
         )
 
         self.log.unlink()
-        abi = "linux64_gcc950"
-        abi_libdir = reader / abi
-        libdir.rename(abi_libdir)
+        uppercase_libdir = reader / "LINUX64"
+        libdir.rename(uppercase_libdir)
         result = self._run(
             self.main,
             "true",
-            env_updates={"VERDI_HOME": str(verdi), "WAVEPEEK_FSDB_ABI": abi},
+            env_updates={"VERDI_HOME": str(verdi)},
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        calls = self._calls()
-        up = next(call for call in calls if call[:2] == ["devcontainer", "up"])
-        execute = next(call for call in calls if call[:2] == ["devcontainer", "exec"])
-        expected_env = f"WAVEPEEK_FSDB_ABI={abi}"
-        self.assertIn(expected_env, up)
-        self.assertIn(expected_env, execute)
+        up = next(call for call in self._calls() if call[:2] == ["devcontainer", "up"])
+        self.assertIn(f"type=bind,source={verdi},target=/opt/verdi", up)
+        self.assertNotIn("--remote-env", up)
 
-        self.log.unlink()
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={
-                "VERDI_HOME": str(verdi),
-                "WAVEPEEK_FSDB_READER_LIBDIR": str(abi_libdir),
-            },
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        calls = self._calls()
-        up = next(call for call in calls if call[:2] == ["devcontainer", "up"])
-        execute = next(call for call in calls if call[:2] == ["devcontainer", "exec"])
-        self.assertEqual(
-            [up[index + 1] for index, value in enumerate(up) if value == "--mount"],
-            [f"type=bind,source={verdi},target=/opt/verdi"],
-        )
-        mapped_libdir = "WAVEPEEK_FSDB_READER_LIBDIR=/opt/verdi/share/FsdbReader/linux64_gcc950"
-        self.assertIn(mapped_libdir, up)
-        self.assertIn(mapped_libdir, execute)
-
-        self.log.unlink()
-        external_libdir = self.tmp / "reader-lib"
-        abi_libdir.rename(external_libdir)
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={
-                "VERDI_HOME": str(verdi),
-                "WAVEPEEK_FSDB_READER_LIBDIR": str(external_libdir),
-            },
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("must be inside VERDI_HOME", result.stderr)
+        for name, value in (
+            ("WAVEPEEK_FSDB_ABI", "linux64_gcc950"),
+            ("WAVEPEEK_FSDB_READER_LIBDIR", str(uppercase_libdir)),
+            ("WAVEPEEK_FSDB_READER_LIBDIR", str(self.tmp / "reader-lib")),
+            ("WAVEPEEK_FSDB_EMBED_RPATH", "0"),
+        ):
+            with self.subTest(override=name, value=value):
+                self.log.unlink(missing_ok=True)
+                result = self._run(
+                    self.main,
+                    "true",
+                    env_updates={"VERDI_HOME": str(verdi), name: value},
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"{name} is not supported by Ondas", result.stderr)
+                self.assertEqual(self._calls(), [])
 
         self.log.unlink(missing_ok=True)
         result = self._run(
@@ -306,7 +285,7 @@ os.execvp(command[0], command)
             env_updates={"WAVEPEEK_FSDB_ABI": "linux64_gcc950"},
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("VERDI_HOME is required", result.stderr)
+        self.assertIn("WAVEPEEK_FSDB_ABI is not supported by Ondas", result.stderr)
 
         invalid = self.tmp / "invalid-verdi"
         invalid.mkdir()

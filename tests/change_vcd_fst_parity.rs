@@ -69,6 +69,47 @@ fn run_change_json_with_tune_modes(
 }
 
 #[test]
+fn event_payload_remains_available_when_cached_between_occurrences() {
+    let fixture = fixture_path("change_property_events.vcd");
+    let fixture = fixture.to_str().unwrap();
+    for (mode, sample_times) in [("native", ["10ns", "25ns"]), ("pre-edge", ["9ns", "24ns"])] {
+        let result = run_change_json(
+            fixture,
+            &[
+                "--signals",
+                "top.tick",
+                "--on",
+                "posedge top.armed",
+                "--sample-mode",
+                mode,
+            ],
+        );
+        let rows = result["data"].as_array().unwrap();
+        assert_eq!(rows.len(), 2);
+        for (row, sample_time) in rows.iter().zip(sample_times) {
+            assert_eq!(row["sample_time"], sample_time);
+            assert_eq!(row["signals"][0]["value"], "0'h0");
+        }
+    }
+}
+
+#[test]
+fn split_vector_edge_after_nonzero_dump_start() {
+    let fixture = tempfile::Builder::new().suffix(".vcd").tempfile().unwrap();
+    std::fs::write(
+        fixture.path(),
+        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! sig [0] $end\n$var wire 1 \" sig [1] $end\n$upscope $end\n$enddefinitions $end\n#10\n0!\n0\"\n#15\n1!\n",
+    )
+    .unwrap();
+    let result = run_change_json(
+        fixture.path().to_str().unwrap(),
+        &["--signals", "top.sig", "--on", "posedge top.sig"],
+    );
+    assert_eq!(result["data"].as_array().unwrap().len(), 1);
+    assert_eq!(result["data"][0]["time"], "15ns");
+}
+
+#[test]
 fn change_vcd_and_fst_payloads_match_for_explicit_wildcard_native_trigger() {
     let vcd_fixture = fixture_path("m2_core.vcd");
     let vcd_fixture = vcd_fixture.to_string_lossy().into_owned();
@@ -132,6 +173,18 @@ fn change_vcd_and_fst_payloads_match_for_named_and_edge_triggers() {
             "data",
             "--on",
             "posedge clk",
+        ],
+        vec![
+            "--from",
+            "0ns",
+            "--to",
+            "10ns",
+            "--scope",
+            "top",
+            "--signals",
+            "clk",
+            "--on",
+            "data",
         ],
     ] {
         let vcd_json = run_change_json(vcd_fixture.as_str(), args.as_slice());

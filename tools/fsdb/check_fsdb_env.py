@@ -44,29 +44,15 @@ def missing_headers(verdi_home: pathlib.Path) -> list[pathlib.Path]:
 
 
 def selected_libdir(verdi_home: pathlib.Path) -> pathlib.Path:
-    explicit_libdir = env_path("WAVEPEEK_FSDB_READER_LIBDIR")
-    if explicit_libdir is not None:
-        return explicit_libdir
-
-    abi = os.environ.get("WAVEPEEK_FSDB_ABI") or "linux64"
-    return reader_root(verdi_home) / abi
+    for abi in ("linux64", "LINUX64"):
+        libdir = reader_root(verdi_home) / abi
+        if not missing_libraries(libdir):
+            return libdir
+    return reader_root(verdi_home) / "linux64"
 
 
 def missing_libraries(libdir: pathlib.Path) -> list[pathlib.Path]:
     return [libdir / name for name in REQUIRED_LIBRARIES if not (libdir / name).is_file()]
-
-
-def configured_home_candidates() -> list[pathlib.Path]:
-    verdi_home = env_path("VERDI_HOME")
-    if verdi_home is None:
-        return []
-    return [verdi_home]
-
-
-def has_explicit_reader_override() -> bool:
-    return env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None or bool(
-        os.environ.get("WAVEPEEK_FSDB_ABI")
-    )
 
 
 def verbose_output_enabled() -> bool:
@@ -80,52 +66,30 @@ def unavailable(required: bool) -> None:
 
 
 def validate_sdk(required: bool) -> tuple[pathlib.Path, pathlib.Path]:
-    candidates = configured_home_candidates()
-    explicit_override = has_explicit_reader_override()
+    for name in (
+        "WAVEPEEK_FSDB_ABI",
+        "WAVEPEEK_FSDB_READER_LIBDIR",
+        "WAVEPEEK_FSDB_EMBED_RPATH",
+    ):
+        if os.environ.get(name):
+            fail(f"{name} is not supported by Ondas; unset it and select the SDK with VERDI_HOME")
 
-    if not candidates:
-        if explicit_override:
-            fail("VERDI_HOME is required when FSDB Reader library overrides are set")
+    verdi_home = env_path("VERDI_HOME")
+    if verdi_home is None or missing_headers(verdi_home):
         unavailable(required)
 
-    for verdi_home in candidates:
-        header_misses = missing_headers(verdi_home)
-        if header_misses:
-            if explicit_override:
-                missing = header_misses[0]
-                missing_text = str(missing) if verbose_output_enabled() else missing.name
-                fail(
-                    "VERDI_HOME does not contain a usable FSDB Reader header root; "
-                    f"missing {missing_text}"
-                )
-            continue
-
-        libdir = selected_libdir(verdi_home)
-        library_misses = missing_libraries(libdir)
-        if library_misses:
-            if (
-                env_path("WAVEPEEK_FSDB_READER_LIBDIR") is not None
-                or libdir.exists()
-                or explicit_override
-            ):
-                missing = library_misses[0]
-                missing_text = str(missing) if verbose_output_enabled() else missing.name
-                fail(
-                    "selected FSDB Reader library directory is incomplete; "
-                    f"missing {missing_text}; set WAVEPEEK_FSDB_READER_LIBDIR or try WAVEPEEK_FSDB_ABI=linux64_gcc950"
-                )
-            continue
-
-        return verdi_home, libdir
-
-    if explicit_override:
-        fail("explicit FSDB Reader library configuration did not resolve to a usable SDK")
-
-    # A devcontainer may set VERDI_HOME to an empty host mount. That is ordinary
-    # no-Verdi availability for optional discovery, but a hard error for targets
-    # that explicitly require Verdi. Yes, this distinction is annoying. So are
-    # proprietary SDKs wired through environment variables.
-    unavailable(required)
+    libdir = selected_libdir(verdi_home)
+    library_misses = missing_libraries(libdir)
+    if library_misses:
+        if libdir.exists():
+            missing = library_misses[0]
+            missing_text = str(missing) if verbose_output_enabled() else missing.name
+            fail(
+                "selected FSDB Reader library directory is incomplete; "
+                f"missing {missing_text}; Ondas requires linux64 or LINUX64 under share/FsdbReader"
+            )
+        unavailable(required)
+    return verdi_home, libdir
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

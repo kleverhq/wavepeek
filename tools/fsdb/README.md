@@ -17,3 +17,5 @@ Focused tests:
     python3 -B -m unittest discover -s tools/fsdb -p "test_*.py"
 
 Keep these helpers deterministic, non-interactive, and free of proprietary Verdi payloads.
+
+Catalog generation selects waveform suffixes for FSDB or VCD. Generated VCD/FST inputs stay under `tests/fixtures/generated/`; their FSDB entries use `tests/fixtures/fsdb/`, matching fixture preparation.

@@ -591,7 +591,7 @@ mod tests {
         let waveform = Waveform::open(fixture.path()).expect("waveform should open");
 
         let schedule = build_candidate_schedule(&waveform, &[0, 7, 10]).expect("schedule");
-        assert_eq!(schedule, vec![(0, None), (7, Some(5)), (10, Some(5))]);
+        assert_eq!(schedule, vec![(0, None), (7, Some(6)), (10, Some(9))]);
     }
 
     #[test]

@@ -24,21 +24,23 @@ fn extract_generic_vcd_and_fst_payloads_match() {
     let fst_fixture = fixture_path("m2_core.fst");
     let fst_fixture = fst_fixture.to_string_lossy().into_owned();
 
-    let args = [
-        "--scope",
-        "top",
-        "--on",
-        "posedge clk",
-        "--when",
-        "1",
-        "--payload",
-        "data[7:4],data[7:4],data[5:2],data",
-        "--max",
-        "5",
-    ];
-    let vcd_json = run_extract_json(vcd_fixture.as_str(), &args);
-    let fst_json = run_extract_json(fst_fixture.as_str(), &args);
+    for max in ["5", "unlimited"] {
+        let args = [
+            "--scope",
+            "top",
+            "--on",
+            "posedge clk",
+            "--when",
+            "1",
+            "--payload",
+            "data[7:4],data[7:4],data[5:2],data",
+            "--max",
+            max,
+        ];
+        let vcd_json = run_extract_json(vcd_fixture.as_str(), &args);
+        let fst_json = run_extract_json(fst_fixture.as_str(), &args);
 
-    assert_eq!(vcd_json["data"], fst_json["data"]);
-    assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
+        assert_eq!(vcd_json["data"], fst_json["data"]);
+        assert_eq!(vcd_json["diagnostics"], fst_json["diagnostics"]);
+    }
 }

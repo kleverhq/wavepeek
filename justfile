@@ -75,6 +75,28 @@ update-bench-e2e-fsdb-catalog: require-container
 check-bench-e2e-fsdb-catalog: require-container
     @{{ python }} tools/fsdb/generate_bench_catalog.py --check
 
+# Generate and validate the VCD benchmark catalog from the FST catalog
+update-bench-e2e-vcd-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd
+
+check-bench-e2e-vcd-catalog: require-container
+    @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd --check
+
+# Keep converted RTL VCD files beside their FST sources for benchmark runs
+prepare-vcd-rtl-artifacts: check-rtl-artifacts check-bench-e2e-vcd-catalog
+    @. ./.devcontainer/env_contract.sh; \
+    for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
+        source="${RTL_ARTIFACTS_DIR}/$fixture"; output="${source%.fst}.vcd"; \
+        if [ -s "$output" ] && [ "$output" -nt "$source" ]; then \
+            printf '%s\n' "info: vcd fixture: up to date $output"; \
+            continue; \
+        fi; \
+        temp="$(mktemp "${output}.tmp.XXXXXXXX")"; \
+        if ! fst2vcd -f "$source" | cat > "$temp"; then rm -f "$temp"; exit 1; fi; \
+        mv "$temp" "$output"; \
+        printf '%s\n' "info: vcd fixture: converted $source -> $output"; \
+    done
+
 # Verify the local devcontainer environment
 dev-setup: require-container
     rustup show >/dev/null
@@ -203,16 +225,15 @@ check-fsdb-build: require-verdi
     cargo check --features fsdb; \
     cargo build --features fsdb; \
     readelf_output="$(readelf -d target/fsdb/debug/wavepeek)"; \
-    if printf '%s\n' "$readelf_output" | grep -Eq '\(NEEDED\).*Shared library: \[/'; then \
-        printf '%s\n' "error: fsdb: built binary must not contain an absolute DT_NEEDED path" >&2; \
-        exit 1; \
-    fi; \
+    for library in libnffr.so libnsys.so; do \
+        library_path="$(readlink -f "$fsdb_libdir/$library")"; \
+        if ! printf '%s\n' "$readelf_output" | grep -F "Shared library: [$library_path]" >/dev/null; then \
+            printf '%s\n' "error: fsdb: built binary must link the Ondas-selected SDK library $library_path" >&2; \
+            exit 1; \
+        fi; \
+    done; \
     if ! printf '%s\n' "$readelf_output" | grep -Eq '\(NEEDED\).*Shared library: \[libz\.so(\.[^]]*)?\]'; then \
         printf '%s\n' "error: fsdb: built binary must contain a libz DT_NEEDED entry" >&2; \
-        exit 1; \
-    fi; \
-    if ! printf '%s\n' "$readelf_output" | grep -E '\((RPATH|RUNPATH)\)' | grep -F -- "$fsdb_libdir" >/dev/null; then \
-        printf '%s\n' "error: fsdb: built binary must contain an ELF RPATH/RUNPATH for $fsdb_libdir" >&2; \
         exit 1; \
     fi; \
     cargo test --features fsdb --lib fsdb_reader_metadata_smoke -- --nocapture; \
@@ -221,7 +242,7 @@ check-fsdb-build: require-verdi
 # Run optional FSDB build smoke tests
 test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
     @export CARGO_TARGET_DIR=target/fsdb; \
-    cargo test --features fsdb --lib fsdb_expr_event_occurred_rejects_non_event_signal -- --nocapture && \
+    cargo test --features fsdb --lib && \
     cargo test --features fsdb --test fsdb_cli
 
 # Run auxiliary Python/unit test suites
@@ -360,20 +381,24 @@ build-release: require-container
     cargo build --release
 
 # Run the manual performance gate for two source refs
-bench-gate baseline_ref revised_ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}"
+bench-gate baseline_ref revised_ref="HEAD" fsdb="auto" vcd="never": require-container
+    {{ python }} tools/bench/gate.py --baseline-ref "{{ baseline_ref }}" --revised-ref "{{ revised_ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
 
 # Capture benchmark artifacts for one source ref
-bench-capture ref="HEAD" fsdb="auto": require-container
-    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}"
+bench-capture ref="HEAD" fsdb="auto" vcd="never": require-container
+    {{ python }} tools/bench/capture.py --ref "{{ ref }}" --fsdb "{{ fsdb }}" --vcd "{{ vcd }}"
 
 # Compare two benchmark capture directories
 bench-compare golden_dir revised_dir: require-container
     {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
 
 [private]
-bench-e2e-run: check-rtl-artifacts build-release
+bench-e2e-run: check-rtl-artifacts prepare-waveform-fixtures build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
+
+[private]
+bench-e2e-vcd-run: prepare-vcd-rtl-artifacts prepare-waveform-fixtures build-release
+    {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
 
 [private]
 bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
@@ -401,11 +426,11 @@ check-commit message=`git rev-parse --git-path COMMIT_EDITMSG`: require-containe
     cz check --commit-msg-file {{ quote(message) }}
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-build docs-site-check playground-test check-commit
+check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-build docs-site-check playground-test check-commit
     @just run-if-verdi check-fsdb-build
 
 # CI quality gate (no commit-msg hook)
-ci: format-check lint check-actions test-aux coverage-src-check check-build docs-site-check playground-test
+ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test
     @just run-if-verdi test-fsdb
 
 # Fix everything

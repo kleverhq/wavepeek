@@ -10,9 +10,11 @@ import sys
 
 
 DEFAULT_SOURCE = pathlib.Path("bench/e2e/tests.json")
-DEFAULT_OUTPUT = pathlib.Path("bench/e2e/tests_fsdb.json")
 FST_SUFFIX = ".fst"
-FSDB_SUFFIX = ".fsdb"
+OUTPUTS = {
+    "fsdb": pathlib.Path("bench/e2e/tests_fsdb.json"),
+    "vcd": pathlib.Path("bench/e2e/tests_vcd.json"),
+}
 
 
 def fail(message: str) -> None:
@@ -20,27 +22,30 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
-def generate_catalog(source_path: pathlib.Path) -> tuple[str, int]:
+def generate_catalog(source_path: pathlib.Path, target: str = "fsdb") -> tuple[str, int]:
     try:
         source = source_path.read_text(encoding="utf-8")
     except OSError as error:
-        fail(f"error: fsdb catalog: failed to read {source_path}: {error}")
+        fail(f"error: {target} catalog: failed to read {source_path}: {error}")
 
     try:
         json.loads(source)
     except json.JSONDecodeError as error:
-        fail(f"error: fsdb catalog: invalid JSON in {source_path}: {error}")
+        fail(f"error: {target} catalog: invalid JSON in {source_path}: {error}")
 
     count = source.count(FST_SUFFIX)
     if count == 0:
-        fail(f"error: fsdb catalog: no {FST_SUFFIX} suffixes found in {source_path}")
+        fail(f"error: {target} catalog: no {FST_SUFFIX} suffixes found in {source_path}")
 
-    return source.replace(FST_SUFFIX, FSDB_SUFFIX), count
+    generated = source.replace(FST_SUFFIX, f".{target}")
+    if target == "fsdb":
+        generated = generated.replace("tests/fixtures/generated/", "tests/fixtures/fsdb/")
+    return generated, count
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate the FSDB e2e benchmark catalog from the FST catalog."
+        description="Generate an e2e benchmark catalog from the FST catalog."
     )
     parser.add_argument(
         "--source",
@@ -48,9 +53,14 @@ def parse_args() -> argparse.Namespace:
         help=f"Source FST benchmark catalog (default: {DEFAULT_SOURCE}).",
     )
     parser.add_argument(
+        "--target",
+        choices=tuple(OUTPUTS),
+        default="fsdb",
+        help="Target waveform format (default: fsdb).",
+    )
+    parser.add_argument(
         "--output",
-        default=str(DEFAULT_OUTPUT),
-        help=f"Output FSDB benchmark catalog (default: {DEFAULT_OUTPUT}).",
+        help="Output catalog (default: bench/e2e/tests_<target>.json).",
     )
     parser.add_argument(
         "--artifact-dir",
@@ -69,25 +79,25 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     source_path = pathlib.Path(args.source)
-    output_path = pathlib.Path(args.output)
-    generated, count = generate_catalog(source_path)
+    output_path = pathlib.Path(args.output) if args.output else OUTPUTS[args.target]
+    generated, count = generate_catalog(source_path, args.target)
 
     if args.check:
         try:
             current = output_path.read_text(encoding="utf-8")
         except OSError as error:
-            fail(f"error: fsdb catalog: failed to read {output_path}: {error}")
+            fail(f"error: {args.target} catalog: failed to read {output_path}: {error}")
         if current != generated:
             fail(
-                "error: fsdb catalog: "
-                f"{output_path} is stale; run `just update-bench-e2e-fsdb-catalog`"
+                f"error: {args.target} catalog: "
+                f"{output_path} is stale; run `just update-bench-e2e-{args.target}-catalog`"
             )
-        print(f"ok: fsdb catalog: {output_path} matches {source_path} ({count} suffixes)")
+        print(f"ok: {args.target} catalog: {output_path} matches {source_path} ({count} suffixes)")
         return
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(generated, encoding="utf-8")
-    print(f"info: fsdb catalog: wrote {output_path} from {source_path} ({count} suffixes)")
+    print(f"info: {args.target} catalog: wrote {output_path} from {source_path} ({count} suffixes)")
 
 
 if __name__ == "__main__":

@@ -37,3 +37,5 @@ wavepeek value --waves dump.vcd --at 10ns --scope top.cpu --signals 'state[7:4],
 Older versions of Verdi can dump two distinct signals with exactly the same metadata under some circumstances. For example, a dump may contain `top.tx.opcode` (`opcode` is a struct field) and `top.opcode` (a logic signal), while the standalone FSDB does not expose enough information to recover both original paths.
 
 If distinct FSDB records map to one canonical signal path, `wavepeek` quarantines that path instead of selecting a backing record. Scopes and unambiguous signals remain available. Signal listings omit quarantined paths with a diagnostic, while an explicit reference to one fails as an ambiguous signal.
+
+Ambiguous-signal errors describe each candidate's scope, kind, width, and declared range in deterministic order. Candidate numbers are local to the diagnostic; they do not select a backing record.

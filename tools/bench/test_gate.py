@@ -22,6 +22,7 @@ class BenchGateHelperTest(unittest.TestCase):
         capture_args = capture.build_parser().parse_args([])
         self.assertEqual(capture_args.ref, "HEAD")
         self.assertEqual(capture_args.fsdb, "auto")
+        self.assertEqual(capture_args.vcd, "never")
         self.assertFalse(hasattr(capture_args, "allow_dirty_source"))
 
         compare_args = compare.build_parser().parse_args(
@@ -33,6 +34,7 @@ class BenchGateHelperTest(unittest.TestCase):
         gate_args = gate.build_parser().parse_args(["--baseline-ref", "v0.1.0"])
         self.assertEqual(gate_args.revised_ref, "HEAD")
         self.assertEqual(gate_args.fsdb, "auto")
+        self.assertEqual(gate_args.vcd, "never")
         self.assertEqual(gate_args.max_negative_delta_pct, common.DEFAULT_TIMING_THRESHOLD_PCT)
         self.assertEqual(gate_args.max_negative_delta_seconds, common.DEFAULT_TIMING_THRESHOLD_SECONDS)
         self.assertFalse(hasattr(gate_args, "allow_dirty_source"))
@@ -213,6 +215,7 @@ class BenchGateHelperTest(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 1)
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "failed")
+        self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "skipped")
         self.assertNotIn("expr", result.manifest["suites"])
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
 
@@ -244,9 +247,9 @@ class BenchGateHelperTest(unittest.TestCase):
             golden = root / "golden"
             revised = root / "revised"
             for base in (golden, revised):
-                for suite in ("e2e-fst", "e2e-fsdb"):
+                for suite in ("e2e-fst", "e2e-vcd", "e2e-fsdb"):
                     (base / suite).mkdir(parents=True)
-                for suite in ("e2e-fst", "e2e-fsdb"):
+                for suite in ("e2e-fst", "e2e-vcd", "e2e-fsdb"):
                     for suffix in ("hyperfine", "wavepeek"):
                         (base / suite / f"case.{suffix}.json").write_text(
                             "{}", encoding="utf-8"
@@ -266,22 +269,23 @@ class BenchGateHelperTest(unittest.TestCase):
             names,
             [
                 "compare-e2e-fst",
+                "compare-e2e-vcd",
                 "compare-e2e-fsdb",
                 "compare-cross-golden-fst-fsdb",
                 "compare-cross-revised-fst-fsdb",
             ],
         )
-        same_format = {name: args for name, args in calls[:2]}
-        self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fst"])
-        self.assertIn("--max-negative-delta-seconds", same_format["compare-e2e-fst"])
-        self.assertIn("--max-negative-delta-pct", same_format["compare-e2e-fsdb"])
-        self.assertIn("--max-negative-delta-seconds", same_format["compare-e2e-fsdb"])
-        for name, args in calls[2:]:
+        same_format = {name: args for name, args in calls[:3]}
+        for name in ("compare-e2e-fst", "compare-e2e-vcd", "compare-e2e-fsdb"):
+            self.assertIn("--max-negative-delta-pct", same_format[name])
+            self.assertIn("--max-negative-delta-seconds", same_format[name])
+        for name, args in calls[3:]:
             self.assertIn("--functional-only", args, name)
             self.assertIn("--allow-golden-extra", args, name)
             self.assertIn("--ignore-functional-test", args, name)
             self.assertNotIn("--max-negative-delta-pct", args, name)
         self.assertFalse(result.manifest["suites"]["e2e-fst"]["functional_only"])
+        self.assertFalse(result.manifest["suites"]["e2e-vcd"]["functional_only"])
         self.assertFalse(result.manifest["suites"]["e2e-fsdb"]["functional_only"])
         cross_suite = result.manifest["suites"]["cross-golden-fst-fsdb"]
         self.assertTrue(cross_suite["functional_only"])
@@ -556,15 +560,17 @@ class BenchGateHelperTest(unittest.TestCase):
             revised = root / "revised"
             (root / "shared/fst/base").mkdir(parents=True)
             (root / "shared/fst/rev").mkdir(parents=True)
+            (root / "shared/vcd/base").mkdir(parents=True)
+            (root / "shared/vcd/rev").mkdir(parents=True)
             golden.mkdir()
             revised.mkdir()
             common.write_json(
                 golden / "manifest.json",
-                {"suites": {"e2e-fst": {"path": "../shared/fst/base"}}},
+                {"suites": {"e2e-fst": {"path": "../shared/fst/base"}, "e2e-vcd": {"path": "../shared/vcd/base"}}},
             )
             common.write_json(
                 revised / "manifest.json",
-                {"suites": {"e2e-fst": {"path": "../shared/fst/rev"}}},
+                {"suites": {"e2e-fst": {"path": "../shared/fst/rev"}, "e2e-vcd": {"path": "../shared/vcd/rev"}}},
             )
 
             with mock.patch.object(compare, "run_e2e_compare", side_effect=fake_run_e2e_compare):
@@ -576,7 +582,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 )
 
         self.assertEqual(result.exit_code, 0)
-        self.assertEqual(calls, [(root / "shared/fst/base", root / "shared/fst/rev")])
+        self.assertEqual(calls, [(root / "shared/fst/base", root / "shared/fst/rev"), (root / "shared/vcd/base", root / "shared/vcd/rev")])
 
     def test_compare_captures_skips_optional_fsdb_and_cross_checks_when_missing(self) -> None:
         calls: list[str] = []
@@ -616,6 +622,7 @@ class BenchGateHelperTest(unittest.TestCase):
 
         self.assertEqual(result.exit_code, 0)
         self.assertEqual(calls, ["compare-e2e-fst"])
+        self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "skipped")
         self.assertEqual(result.manifest["suites"]["e2e-fsdb"]["status"], "skipped")
         self.assertEqual(result.manifest["suites"]["cross-golden-fst-fsdb"]["status"], "skipped")
 
@@ -665,13 +672,18 @@ class BenchGateHelperTest(unittest.TestCase):
                         status="skipped",
                         reason="test skip",
                     ),
+                    vcd_mode="always",
                     environment_note="test env",
                 )
 
         self.assertEqual(result.manifest["suites"]["e2e-fst"]["status"], "passed")
+        self.assertEqual(result.manifest["suites"]["e2e-vcd"]["status"], "passed")
         self.assertEqual(result.manifest["binary_sha"], "abc123")
         self.assertEqual(result.manifest["tooling_sha"], "toolsha")
-        self.assertEqual([call[2] for call in calls], [checkout, tooling])
+        self.assertEqual([call[2] for call in calls], [checkout, tooling, tooling, tooling, tooling])
+        self.assertIn("prepare-waveform-fixtures", calls[1][1])
+        self.assertIn("prepare-vcd-rtl-artifacts", calls[2][1])
+        self.assertIn(str(tooling / "bench/e2e/tests_vcd.json"), calls[4][1])
         e2e_call = next(call for call in calls if call[0] == "bench-e2e-fst")
         self.assertIn("bench/e2e/perf.py", e2e_call[1])
         self.assertEqual(e2e_call[2], tooling)
@@ -706,6 +718,7 @@ class BenchGateHelperTest(unittest.TestCase):
                 revised_ref="v1.0.1",
                 out_dir=out_dir,
                 fsdb="auto",
+                vcd="always",
                 max_negative_delta_pct=5.0,
                 max_negative_delta_seconds=0.005,
                 environment_note="test env",
@@ -718,10 +731,12 @@ class BenchGateHelperTest(unittest.TestCase):
                 mock.patch.object(gate, "resolve_gate_fsdb_plan", return_value=common.FsdbPlan(capture=True, status="available")),
                 mock.patch.object(gate, "init_capture_session", side_effect=fake_init_capture_session),
                 mock.patch.object(gate, "build_release", side_effect=record("build")),
+                mock.patch.object(gate, "prepare_vcd", side_effect=record("prepare-vcd")),
                 mock.patch.object(gate, "build_release_fsdb", side_effect=record("build-fsdb")),
                 mock.patch.object(gate, "prepare_fsdb", side_effect=record("prepare-fsdb")),
                 mock.patch.object(gate, "write_fsdb_capture_catalog", side_effect=record("fsdb-catalog")),
                 mock.patch.object(gate, "run_e2e_fst_many", side_effect=lambda *a, **k: order.append("e2e-fst-many")),
+                mock.patch.object(gate, "run_e2e_vcd_many", side_effect=lambda *a, **k: order.append("e2e-vcd-many")),
                 mock.patch.object(gate, "run_e2e_fsdb_many", side_effect=lambda *a, **k: order.append("e2e-fsdb-many")),
                 mock.patch.object(gate, "finalize_capture", side_effect=record("finalize")),
                 mock.patch.object(gate, "compare_captures", side_effect=fake_compare_captures),
@@ -738,11 +753,13 @@ class BenchGateHelperTest(unittest.TestCase):
                 "init-revised",
                 "build-baseline",
                 "build-revised",
+                "prepare-vcd-baseline",
                 "build-fsdb-baseline",
                 "build-fsdb-revised",
                 "prepare-fsdb-baseline",
                 "fsdb-catalog-revised",
                 "e2e-fst-many",
+                "e2e-vcd-many",
                 "e2e-fsdb-many",
                 "finalize-baseline",
                 "finalize-revised",

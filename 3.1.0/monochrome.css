@@ -1,0 +1,209 @@
+[data-md-color-scheme="default"] {
+  --md-accent-fg-color: #424242;
+  --md-accent-fg-color--transparent: #4242421a;
+  --md-typeset-a-color: #212121;
+}
+
+.md-header__topic:first-child .md-ellipsis::after {
+  content: " deterministic RTL waveform inspection for scripts, CI, and agents";
+  margin-left: 0.35rem;
+  font-size: 0.58rem;
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+body:has(.playground) .md-search {
+  display: none;
+}
+
+@media (max-width: 60rem) {
+  .md-header__topic:first-child .md-ellipsis::after {
+    display: none;
+  }
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] {
+  --md-default-bg-color: #101114;
+  --md-default-bg-color--light: #1011148a;
+  --md-default-bg-color--lighter: #10111442;
+  --md-default-bg-color--lightest: #10111412;
+  --md-default-fg-color: #eceef2;
+  --md-default-fg-color--light: #9fa6b0;
+  --md-default-fg-color--lighter: #9fa6b099;
+  --md-default-fg-color--lightest: #9fa6b01f;
+  --md-code-fg-color: #dce1e8;
+  --md-code-bg-color: #1e2126;
+  --md-code-bg-color--light: #1e2126e6;
+  --md-code-bg-color--lighter: #1e21268a;
+  --md-footer-bg-color: #17191d;
+  --md-footer-bg-color--dark: #101114;
+  --md-accent-fg-color: #eceef2;
+  --md-accent-fg-color--transparent: #eceef21a;
+  --md-typeset-a-color: #d2d7df;
+  --wp-canvas: #101114;
+  --wp-surface: #17191d;
+  --wp-surface-raised: #1e2126;
+  --wp-control: #23262c;
+  --wp-control-hover: #2a2e35;
+  --wp-border: rgba(255, 255, 255, 0.08);
+  --wp-border-strong: rgba(255, 255, 255, 0.14);
+  --wp-text: #eceef2;
+  --wp-text-muted: #9fa6b0;
+  --wp-selected-bg: #eceef2;
+  --wp-selected-fg: #111317;
+  --wp-link: #d2d7df;
+  --wp-focus: rgba(236, 238, 242, 0.75);
+}
+
+.playground__install {
+  --install-border: color-mix(in srgb, var(--md-primary-fg-color) 45%, color-mix(in srgb, var(--md-default-fg-color) 28%, transparent));
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.3rem 0.55rem;
+  min-width: 0;
+  border: 1px solid var(--install-border);
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--md-primary-fg-color) 5%, var(--md-default-bg-color));
+  padding: 0.35rem 0.55rem;
+  font-size: 0.66rem;
+  line-height: 1.6;
+}
+
+.md-main > .playground__install {
+  margin: 0.9rem max(0px, calc(1rem - (100vw - 100%))) 0 1rem;
+}
+
+.playground__install > a {
+  color: var(--md-accent-fg-color);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.playground__install > span {
+  color: var(--md-default-fg-color);
+}
+
+.playground__install .playground__copy-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.playground__install-prompt {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.playground__install-prompt p {
+  overflow: hidden;
+  margin: 0;
+  border: 1px solid var(--install-border);
+  border-radius: 0.25rem 0 0 0.25rem;
+  background: var(--md-code-bg-color);
+  padding: 0.3rem 0.45rem;
+  font-size: 0.64rem;
+  line-height: 1.35;
+}
+
+.playground__install-prompt code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+.playground__install-prompt button {
+  border: 1px solid var(--install-border);
+  border-left: 0;
+  border-radius: 0 0.25rem 0.25rem 0;
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  padding: 0.3rem 0.55rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.playground__install a:focus-visible,
+.playground__install button:focus-visible {
+  outline: 0.1rem solid var(--md-accent-fg-color);
+  outline-offset: 0.12rem;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install {
+  --install-border: var(--wp-border);
+  border-color: var(--wp-border);
+  background: var(--wp-surface);
+  color: var(--wp-text);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install-prompt p {
+  border-color: transparent;
+  background: var(--wp-surface-raised);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install-prompt button {
+  border-color: transparent;
+  background: var(--wp-control);
+  color: var(--wp-text-muted);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install-prompt button:hover {
+  border-color: var(--wp-border-strong);
+  background: var(--wp-control-hover);
+  color: var(--wp-text);
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install > a {
+  color: var(--wp-link);
+  text-decoration: underline;
+  text-decoration-color: var(--wp-border-strong);
+  text-underline-offset: 0.15em;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install > a:hover {
+  color: var(--wp-text);
+  text-decoration-color: currentcolor;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install a:focus-visible,
+[data-md-color-scheme="slate"][data-md-color-primary="black"] .playground__install button:focus-visible {
+  outline-color: var(--wp-focus);
+}
+
+@media (max-width: 72rem) {
+  .md-main > .playground__install {
+    margin-top: 0.5rem;
+  }
+
+  .playground__install {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .playground__install-prompt {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 48rem) {
+  .md-main > .playground__install {
+    margin-right: max(0px, calc(0.6rem - (100vw - 100%)));
+    margin-left: 0.6rem;
+  }
+
+  .playground__install {
+    grid-template-columns: 1fr auto;
+  }
+
+  .playground__install > span:not(.playground__copy-status) {
+    display: none;
+  }
+
+  .playground__install-prompt {
+    grid-column: 1 / -1;
+  }
+}

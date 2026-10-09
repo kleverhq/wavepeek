@@ -1,5 +1,5 @@
 # ---- RTL Fixture Layer --------------------------------------------------------
-FROM ubuntu:24.04 AS rtl_artifacts
+FROM public.ecr.aws/docker/library/ubuntu:24.04 AS rtl_artifacts
 
 ENV DEBIAN_FRONTEND=noninteractive
 COPY .devcontainer/env_contract.sh /tmp/wavepeek-env-contract.sh
@@ -16,7 +16,7 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     done
 
 # ---- Tool Image ---------------------------------------------------------------
-FROM ubuntu:24.04
+FROM public.ecr.aws/docker/library/ubuntu:24.04
 
 ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive

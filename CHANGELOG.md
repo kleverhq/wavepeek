@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-10
+
 ### Added
 - Added on-demand VCD end-to-end benchmark captures for release comparisons.
 - Added a source-backed large-hierarchy benchmark for global AXI include discovery in VCD, FST, and FSDB.
@@ -228,7 +230,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial public release of `wavepeek` CLI.
 
-[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/kleverhq/wavepeek/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/kleverhq/wavepeek/releases/tag/v3.1.0
 [3.0.1]: https://github.com/kleverhq/wavepeek/releases/tag/v3.0.1
 [3.0.0]: https://github.com/kleverhq/wavepeek/releases/tag/v3.0.0
 [2.2.3]: https://github.com/kleverhq/wavepeek/releases/tag/v2.2.3

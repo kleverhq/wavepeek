@@ -262,6 +262,7 @@ convert_ondas_fst_fixtures() {
   for source in "${sources[@]}"; do
     if [ ! -w "${source%/*}" ]; then
       printf '%s\n' "error: fsdb fixture: Ondas fixture directory is not writable: ${source%/*}" >&2
+      printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
       exit 1
     fi
     output="${source%.fst}.fsdb"

@@ -32,7 +32,9 @@ are binary waveform formats. Existing local small-fixture generation remains.
 - [x] (2026-10-10) Passed 1,788 Rust tests across 40 suites, including 24 FSDB tests.
 - [x] (2026-10-10) Passed FST/FSDB smoke, `just check`, and `just ci`; source coverage exceeds all 90% thresholds.
 - [x] (2026-10-10) Passed `just pre-commit` on all files and `just dev-setup` with declared tool versions.
-- [ ] Run OCR with its maximum supported effort, resolve material findings, and commit.
+- [x] (2026-10-10) Committed implementation as `b3ab319` with all hooks passing.
+- [x] (2026-10-10) Completed OCR `high`: 26 files, no failed files or requests, one low maintainability finding; restored the missing devcontainer hint.
+- [x] (2026-10-10) Passed auxiliary tests after the diagnostic fix and completed follow-up OCR `high`: two files, zero findings, no failed files or requests; finalized the plan.
 
 ## Surprises & Discoveries
 
@@ -100,8 +102,12 @@ eight selected FST files with verified size, SHA-256, writable directories, and
 successful CLI parsing. It contains no old fixture directory or environment
 variable. All 1,788 Rust tests pass, including 24 FSDB tests. FST/FSDB smoke,
 `just check`, and `just ci` pass. Coverage is 91.86% regions, 91.66% functions,
-and 93.01% lines. All-file pre-commit and tool setup pass. OCR remains; the clean
-network build limitation is recorded above.
+and 93.01% lines. All-file pre-commit and tool setup pass. Initial OCR `high`
+reviewed 26 files without failed files or requests. Its single low finding
+concerned a missing diagnostic hint; the hint is restored. Auxiliary tests pass
+after the fix, and follow-up OCR `high` reviewed both changed files with zero
+findings and no failed files or requests. No review findings remain unresolved.
+The clean network build limitation is recorded above.
 
 ## Context and Orientation
 
@@ -287,3 +293,14 @@ recorded source coverage and started the all-file pre-commit gate.
 
 Revision note (2026-10-10): Completed all-file pre-commit and verified declared
 tool versions in the new private container; ready for commit and range review.
+
+Revision note (2026-10-10): Committed the migration and completed OCR `high`
+(`tmp/ondas-fixtures/ocr-review.txt`, session
+`e7994c91-3f16-4d08-b108-e0645656faef`). Restored the devcontainer hint reported
+as a low maintainability finding; started focused verification before follow-up.
+
+Revision note (2026-10-10): Auxiliary suites passed after the diagnostic fix.
+Follow-up OCR `high` completed with zero findings
+(`tmp/ondas-fixtures/ocr-review-fix.txt`, session
+`a273f684-54dd-45e4-963e-fc76fcd79ec5`). Recorded the final outcome and the clean
+network build limitation for handoff.

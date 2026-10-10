@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--artifact-dir",
-        default=os.environ.get("RTL_ARTIFACTS_DIR", "/opt/rtl-artifacts"),
+        default=os.environ.get("ONDAS_FIXTURES_DIR", "/opt/ondas-fixtures"),
         help="Compatibility option retained for existing callers; catalog generation "
         "replaces every .fst suffix in the source text.",
     )

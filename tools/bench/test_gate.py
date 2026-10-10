@@ -682,7 +682,7 @@ class BenchGateHelperTest(unittest.TestCase):
         self.assertEqual(result.manifest["tooling_sha"], "toolsha")
         self.assertEqual([call[2] for call in calls], [checkout, tooling, tooling, tooling, tooling])
         self.assertIn("prepare-waveform-fixtures", calls[1][1])
-        self.assertIn("prepare-vcd-rtl-artifacts", calls[2][1])
+        self.assertIn("prepare-vcd-ondas-fixtures", calls[2][1])
         self.assertIn(str(tooling / "bench/e2e/tests_vcd.json"), calls[4][1])
         e2e_call = next(call for call in calls if call[0] == "bench-e2e-fst")
         self.assertIn("bench/e2e/perf.py", e2e_call[1])

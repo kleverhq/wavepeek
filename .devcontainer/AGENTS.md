@@ -22,4 +22,4 @@ This directory owns the public tool-only container definition, fixture provision
 
 ## Safety
 
-Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Large waveform fixtures are baked into the image by the `rtl_artifacts` stage. Runtime tests should not download them from the network. When bumping `WAVEPEEK_RTL_ARTIFACTS_VERSION`, rebuild the container and run `./dev just ci` plus `./dev just pre-commit`.
+Do not store credentials in repository files, `.git/config`, breadcrumbs, logs, or shell history. Selected waveform fixtures are baked into the image by the `ondas_fixtures` stage. Runtime tests should not download them from the network. When changing `WAVEPEEK_ONDAS_FIXTURES_REV` or `WAVEPEEK_ONDAS_FIXTURES`, rebuild the container and run `./dev just ci` plus `./dev just pre-commit`.

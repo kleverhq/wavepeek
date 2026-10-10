@@ -394,7 +394,7 @@ def prepare_vcd(session: CaptureSession) -> None:
     session.commands.append(
         run_command(
             "vcd-prepare-fixtures",
-            ["just", "prepare-vcd-rtl-artifacts"],
+            ["just", "prepare-vcd-ondas-fixtures"],
             cwd=session.tooling_root,
             log_path=session.logs_dir / "vcd-prepare-fixtures.log",
         )

@@ -8,7 +8,7 @@ source "$repo_root/.devcontainer/env_contract.sh"
 hand_fixtures_dir="$repo_root/tests/fixtures/hand"
 generated_fixtures_dir="$repo_root/tests/fixtures/generated"
 fsdb_fixtures_dir="$repo_root/tests/fixtures/fsdb"
-rtl_artifacts_dir="$RTL_ARTIFACTS_DIR"
+ondas_fixtures_dir="$ONDAS_FIXTURES_DIR"
 tmp_root="$repo_root/tmp/fsdb-fixtures"
 mode="all"
 rtl_filter=""
@@ -19,7 +19,7 @@ usage: prepare_fsdb_fixtures.sh [--test-vcd-only | --hand-only | --rtl-only] [--
 
 By default, prepare both VCD-derived FSDB test fixtures and RTL FST-derived
 FSDB benchmark artifacts. Use --rtl-filter with --rtl-only, or the default mode,
-to restrict RTL FST basenames matched for benchmark smoke paths.
+to restrict Ondas fixture directory IDs matched for benchmark smoke paths.
 EOF
 }
 
@@ -159,8 +159,8 @@ convert_fst_to_fsdb() {
     return 0
   fi
 
-  mkdir -p "$tmp_root/rtl-artifacts"
-  tmp_dir="$(mktemp -d "$tmp_root/rtl-artifacts/convert.XXXXXX")"
+  mkdir -p "$tmp_root/ondas-fixtures"
+  tmp_dir="$(mktemp -d "$tmp_root/ondas-fixtures/convert.XXXXXX")"
   tmp_vcd="$tmp_dir/$(basename "${source%.fst}").vcd"
   tmp_fsdb="$output.tmp.$$"
   fst_stdout_log="$tmp_dir/fst2vcd.stdout.log"
@@ -222,51 +222,49 @@ convert_vcd_fixtures() {
   done
 }
 
-convert_rtl_fst_artifacts() {
-  local rtl_dir
+convert_ondas_fst_fixtures() {
+  local fixtures_dir
   local sources=()
-  local filtered_sources=()
+  local fixture
   local source
   local output
 
-  rtl_dir="$rtl_artifacts_dir"
-  if [ ! -d "$rtl_dir" ]; then
-    printf '%s\n' "error: fsdb fixture: RTL artifact directory does not exist: $rtl_dir" >&2
+  fixtures_dir="$ondas_fixtures_dir"
+  if [ ! -d "$fixtures_dir" ]; then
+    printf '%s\n' "error: fsdb fixture: Ondas fixture directory does not exist: $fixtures_dir" >&2
     printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
     exit 1
   fi
 
-  while IFS= read -r -d '' source; do
+  for fixture in $WAVEPEEK_ONDAS_FIXTURES; do
+    if [ -n "$rtl_filter" ] && ! [[ "${fixture##*/}" =~ $rtl_filter ]]; then
+      continue
+    fi
+    source="$fixtures_dir/$fixture/waveform.fst"
+    if [ ! -f "$source" ]; then
+      printf '%s\n' "error: fsdb fixture: required FST fixture missing at $source" >&2
+      exit 1
+    fi
     sources+=("$source")
-  done < <(find "$rtl_dir" -maxdepth 1 -type f -name '*.fst' -print0 | sort -z)
-
-  if [ -n "$rtl_filter" ]; then
-    for source in "${sources[@]}"; do
-      if [[ "$(basename "$source")" =~ $rtl_filter ]]; then
-        filtered_sources+=("$source")
-      fi
-    done
-    sources=("${filtered_sources[@]}")
-  fi
+  done
 
   if [ "${#sources[@]}" -eq 0 ]; then
     if [ -n "$rtl_filter" ]; then
-      printf '%s\n' "error: fsdb fixture: no RTL FST artifacts under $rtl_dir matched filter: $rtl_filter" >&2
+      printf '%s\n' "error: fsdb fixture: no Ondas FST fixtures under $fixtures_dir matched filter: $rtl_filter" >&2
       exit 1
     fi
-    printf '%s\n' "info: fsdb fixture: no RTL FST artifacts found under $rtl_dir"
+    printf '%s\n' "info: fsdb fixture: no Ondas FST fixtures selected under $fixtures_dir"
     return 0
-  fi
-
-  if [ ! -w "$rtl_dir" ]; then
-    printf '%s\n' "error: fsdb fixture: RTL artifact directory is not writable: $rtl_dir" >&2
-    printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
-    exit 1
   fi
 
   require_tool fst2vcd "install GTKWave tools or use the devcontainer before preparing RTL FSDB benchmark fixtures"
 
   for source in "${sources[@]}"; do
+    if [ ! -w "${source%/*}" ]; then
+      printf '%s\n' "error: fsdb fixture: Ondas fixture directory is not writable: ${source%/*}" >&2
+      printf '%s\n' "error: fsdb fixture: rebuild or enter the wavepeek devcontainer before preparing RTL FSDB benchmark fixtures" >&2
+      exit 1
+    fi
     output="${source%.fst}.fsdb"
     convert_fst_to_fsdb "$source" "$output"
   done
@@ -279,13 +277,13 @@ main() {
   case "$mode" in
     all)
       convert_vcd_fixtures
-      convert_rtl_fst_artifacts
+      convert_ondas_fst_fixtures
       ;;
     hand)
       convert_vcd_fixtures
       ;;
     rtl)
-      convert_rtl_fst_artifacts
+      convert_ondas_fst_fixtures
       ;;
     *)
       printf '%s\n' "error: fsdb fixture: internal invalid mode: $mode" >&2

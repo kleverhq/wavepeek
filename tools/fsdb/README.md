@@ -19,3 +19,5 @@ Focused tests:
 Keep these helpers deterministic, non-interactive, and free of proprietary Verdi payloads.
 
 Catalog generation selects waveform suffixes for FSDB or VCD. Generated VCD/FST inputs stay under `tests/fixtures/generated/`; their FSDB entries use `tests/fixtures/fsdb/`, matching fixture preparation.
+
+External inputs use the declared Ondas fixture directories under `ONDAS_FIXTURES_DIR`. Derived VCD/FSDB files stay beside `waveform.fst`; `--rtl-filter` matches fixture directory IDs.

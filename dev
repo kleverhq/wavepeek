@@ -33,7 +33,7 @@ case "${1-}" in
     --exec-only) exec_only=1; shift ;;
     --recreate) recreate=1; shift ;;
 esac
-if [ "$#" -eq 0 ]; then
+if [ "$#" -eq 0 ] || [[ "$1" == -* ]]; then
     printf '%s\n' "usage: ./dev [--recreate | --exec-only] COMMAND [ARG ...]" >&2
     exit 2
 fi
@@ -44,6 +44,7 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
 }
 root="$(cd "$root" && pwd -P)"
 config_override="${WAVEPEEK_DEV_CONFIG-}"
+readonly root config_override exec_only recreate
 if [ -f "$root/.env" ]; then
     set -a
     # shellcheck disable=SC1091

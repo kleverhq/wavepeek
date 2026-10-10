@@ -25,7 +25,7 @@ Use `./dev --exec-only COMMAND [ARG ...]` when a caller must use only an existin
 WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json
 ```
 
-The host sources `.env` as trusted Bash configuration. An explicit host `WAVEPEEK_DEV_CONFIG` overrides its selection. Only values selected by the profile's mounts, `containerEnv`, or `remoteEnv` are passed into the container.
+The host sources `.env` as trusted Bash configuration. Worktree identity, command mode, and any explicit host selection are fixed before loading the file. An explicit host `WAVEPEEK_DEV_CONFIG` overrides its selection. Only values selected by the profile's mounts, `containerEnv`, or `remoteEnv` are passed into the container.
 
 If the selected JSON or required workspace/Git mounts change, `./dev` rejects the existing container. Public containers also reject additional bind mounts. Recreate only the selected container explicitly:
 

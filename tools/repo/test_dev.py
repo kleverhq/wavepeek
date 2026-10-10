@@ -292,6 +292,37 @@ os.execvp(command[0], command)
         self.assertIn("no existing container", result.stderr)
         self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
 
+    def test_dotenv_cannot_override_launcher_state(self) -> None:
+        self._private_profile(self.main)
+        for name, value in (
+            ("root", str(self.tmp)),
+            ("config_override", ".devcontainer/devcontainer.json"),
+            ("exec_only", "0"),
+            ("recreate", "1"),
+        ):
+            with self.subTest(variable=name):
+                (self.main / ".env").write_text(
+                    f"WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json\n{name}={value}\n"
+                )
+                result = self._run(self.main, "--exec-only", "true")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("readonly variable", result.stderr)
+                self.assertEqual(self._calls(), [])
+
+    def test_invalid_launcher_options_do_not_recreate_containers(self) -> None:
+        for args in (
+            ("--recreate", "--exec-only", "true"),
+            ("--exec-only", "--recreate", "true"),
+            ("--recreate", "--recreate", "true"),
+            ("--unknown", "true"),
+            ("--recreate", "-x", "true"),
+        ):
+            with self.subTest(args=args):
+                result = self._run(self.main, *args, env_updates={"FAKE_EXISTING": "1"})
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("usage:", result.stderr)
+                self.assertEqual(self._calls(), [])
+
     def test_rejects_missing_absolute_and_escaping_configuration(self) -> None:
         outside = self.tmp / "outside.json"
         outside.write_text("{}\n")

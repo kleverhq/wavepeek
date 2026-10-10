@@ -41,12 +41,12 @@ class GenerateBenchCatalogCliTest(unittest.TestCase):
                         "{wavepeek_bin}",
                         "value",
                         "--waves",
-                        "/opt/rtl-artifacts/sample.fst",
+                        "/opt/ondas-fixtures/fst/fst0000-sample/waveform.fst",
                         "--signals",
                         "top.fsdbfile,top.trace_file"
                       ],
                       "meta": {
-                        "waves": "/opt/rtl-artifacts/sample.fst",
+                        "waves": "/opt/ondas-fixtures/fst/fst0000-sample/waveform.fst",
                         "note": "rewrite sample.fst text consistently"
                       }
                     }
@@ -71,7 +71,7 @@ class GenerateBenchCatalogCliTest(unittest.TestCase):
             expected = source.read_text(encoding="utf-8").replace(".fst", ".fsdb")
             generated = output.read_text(encoding="utf-8")
             self.assertEqual(generated, expected)
-            self.assertIn("/opt/rtl-artifacts/sample.fsdb", generated)
+            self.assertIn("/opt/ondas-fixtures/fst/fst0000-sample/waveform.fsdb", generated)
             self.assertIn("rewrite sample.fsdb text consistently", generated)
             self.assertIn("top.fsdbfile,top.trace_file", generated)
 

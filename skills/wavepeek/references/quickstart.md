@@ -74,7 +74,7 @@ wavepeek skill ./wavepeek-skill
 
 ## First run
 
-Start with a waveform dump. You can download example `.fst` dumps from [`rtl-artifacts` releases](https://github.com/kleverhq/rtl-artifacts/releases). Pick any you like.
+Start with a waveform dump. Example dumps are available from [Ondas fixtures](https://github.com/kleverhq/ondas-fixtures#installation). Follow its installation instructions to download and verify selected waveforms.
 
 Check the dump bounds and time unit:
 

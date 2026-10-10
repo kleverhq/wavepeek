@@ -3,7 +3,7 @@ use predicates::prelude::*;
 use serde_json::{Value, json};
 
 mod common;
-use common::{fixture_path, rtl_fixture_path, wavepeek_cmd};
+use common::{fixture_path, ondas_fixture_path, wavepeek_cmd};
 
 #[test]
 fn scope_human_output_is_default_for_vcd() {
@@ -582,7 +582,7 @@ fn scope_tree_mode_is_deterministic_for_mixed_scope_kinds() {
 
 #[test]
 fn scope_external_scr1_fixture_keeps_hierarchy_semantics() {
-    let fixture = rtl_fixture_path("scr1_max_axi_coremark.fst");
+    let fixture = ondas_fixture_path("fst/fst0022-scr1-max-axi-coremark");
     assert!(
         fixture.exists(),
         "required external fixture is missing: {}",

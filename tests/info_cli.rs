@@ -4,7 +4,7 @@ use serde_json::Value;
 use std::io::Write;
 
 mod common;
-use common::{fixture_path, rtl_fixture_path, wavepeek_cmd};
+use common::{fixture_path, ondas_fixture_path, wavepeek_cmd};
 
 #[test]
 fn info_human_output_is_default_for_vcd_fixture() {
@@ -105,7 +105,7 @@ fn info_json_output_is_deterministic_across_runs() {
 
 #[test]
 fn info_json_contract_for_external_picorv32_fixture() {
-    let fixture = rtl_fixture_path("picorv32_test_vcd.fst");
+    let fixture = ondas_fixture_path("fst/fst0013-picorv32-test-vcd");
     assert!(
         fixture.exists(),
         "required external fixture is missing: {}",

@@ -49,7 +49,7 @@ Run `./dev just dev-setup` after container creation or rebuild to verify tools. 
 
 ## Fixture Location
 
-Large RTL fixtures are baked into the image at `RTL_ARTIFACTS_DIR=/opt/rtl-artifacts`, their required runtime location.
+Selected [Ondas fixtures](https://github.com/kleverhq/ondas-fixtures) are baked into the image at `ONDAS_FIXTURES_DIR=/opt/ondas-fixtures`. Each FST input lives at `fst/<fixture-id>/waveform.fst` beside its `fixture.json` metadata. The Docker build uses the pinned upstream installer to download only the declared fixtures and verify their sizes and SHA-256 checksums. Fixture directories are writable by the container user for derived VCD/FSDB files.
 
 `./dev just prepare-waveform-fixtures` regenerates small fixtures from `tests/fixtures/source/` into ignored `tests/fixtures/generated/`.
 

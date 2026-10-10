@@ -89,7 +89,7 @@ RUN . /tmp/wavepeek-env-contract.sh && \
     install -m 0755 "$tmp_dir/gh_${WAVEPEEK_GH_VERSION}_linux_${gh_arch}/bin/gh" /usr/local/bin/gh && \
     rm -rf "$tmp_dir"
 
-# Expose selected command-line Verdi FSDB utilities when /opt/verdi is mounted.
+# Expose selected Verdi FSDB utilities for private profiles setting VERDI_HOME.
 COPY --chmod=0755 .devcontainer/verdi-tool-wrapper.sh /usr/local/bin/wavepeek-verdi-tool
 RUN for tool in \
         vcd2fsdb fsdb2vcd fsdbdebug fsdbreport fsdbextract fsdbmerge \
@@ -103,7 +103,6 @@ RUN for tool in \
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
-ENV VERDI_HOME=/opt/verdi
 ENV PATH="/opt/wavepeek-python/bin:/home/ubuntu/.local/bin:/home/ubuntu/.cargo/bin:${PATH}"
 
 RUN install -d -m 0755 -o ubuntu -g ubuntu /home/ubuntu/.local /home/ubuntu/.local/bin /workspaces

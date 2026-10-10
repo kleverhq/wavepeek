@@ -28,12 +28,13 @@ if [ "${1-}" = "--install-hooks" ]; then
 fi
 
 exec_only=0
-if [ "${1-}" = "--exec-only" ]; then
-    exec_only=1
-    shift
-fi
+recreate=0
+case "${1-}" in
+    --exec-only) exec_only=1; shift ;;
+    --recreate) recreate=1; shift ;;
+esac
 if [ "$#" -eq 0 ]; then
-    printf '%s\n' "usage: ./dev [--exec-only] COMMAND [ARG ...]" >&2
+    printf '%s\n' "usage: ./dev [--recreate | --exec-only] COMMAND [ARG ...]" >&2
     exit 2
 fi
 
@@ -42,6 +43,34 @@ root="$(git rev-parse --show-toplevel 2>/dev/null)" || {
     exit 1
 }
 root="$(cd "$root" && pwd -P)"
+config_override="${WAVEPEEK_DEV_CONFIG-}"
+if [ -f "$root/.env" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    source "$root/.env"
+    set +a
+fi
+export WAVEPEEK_DEV_CONFIG="${config_override:-${WAVEPEEK_DEV_CONFIG:-.devcontainer/devcontainer.json}}"
+if [[ "$WAVEPEEK_DEV_CONFIG" == /* ]]; then
+    printf '%s\n' "error: dev: WAVEPEEK_DEV_CONFIG must be relative to the worktree root" >&2
+    exit 1
+fi
+config="$(realpath -m -- "$root/$WAVEPEEK_DEV_CONFIG")"
+case "$config" in
+    "$root"/*) ;;
+    *)
+        printf '%s\n' "error: dev: WAVEPEEK_DEV_CONFIG escapes the worktree root" >&2
+        exit 1
+        ;;
+esac
+if [ ! -f "$config" ]; then
+    printf '%s\n' "error: dev: devcontainer config not found: $WAVEPEEK_DEV_CONFIG" >&2
+    exit 1
+fi
+config_hash="$(sha256sum "$config" | cut -d ' ' -f 1)"
+identity_args=(--id-label "dev.wavepeek.worktree=$root" --id-label "dev.wavepeek.config=$config")
+container_filters=(--filter "label=dev.wavepeek.worktree=$root" --filter "label=dev.wavepeek.config=$config")
+
 if ! command -v docker >/dev/null; then
     printf '%s\n' "error: dev: Docker is unavailable; install it, then start this worktree explicitly with: ./dev true" >&2
     exit 1
@@ -62,41 +91,44 @@ if [ "$common_dir" != "$root/.git" ]; then
     mount_args+=(--mount "type=bind,source=$common_dir,target=$common_dir")
     expected_mounts+=("$common_dir"$'\t'"$common_dir")
 fi
-if [ -n "${WAVEPEEK_FSDB_ABI-}${WAVEPEEK_FSDB_READER_LIBDIR-}${WAVEPEEK_FSDB_EMBED_RPATH-}" ]; then
-    python3 -B "$root/tools/fsdb/check_fsdb_env.py" --require >/dev/null
-fi
-if [ -n "${VERDI_HOME-}" ]; then
-    if [ ! -d "$VERDI_HOME" ]; then
-        printf '%s\n' "error: dev: VERDI_HOME is not a directory: $VERDI_HOME" >&2
-        exit 1
-    fi
-    verdi_home="$(cd "$VERDI_HOME" && pwd -P)"
-    VERDI_HOME="$verdi_home" python3 -B "$root/tools/fsdb/check_fsdb_env.py" --require >/dev/null
-    mount_args+=(--mount "type=bind,source=$verdi_home,target=/opt/verdi")
-    expected_mounts+=("$verdi_home"$'\t'/opt/verdi)
-fi
 
-mapfile -t containers < <(docker ps -aq --filter "label=devcontainer.local_folder=$root")
+mapfile -t containers < <(docker ps -aq "${container_filters[@]}")
 if [ "${#containers[@]}" -gt 1 ]; then
-    printf '%s\n' "error: dev: multiple containers exist for $root; remove the obsolete containers manually" >&2
+    printf '%s\n' "error: dev: multiple containers exist for $root with $WAVEPEEK_DEV_CONFIG; remove the obsolete containers manually" >&2
     exit 1
 fi
 container_id="${containers[0]-}"
 
-if [ -n "$container_id" ]; then
+if [ "$recreate" -eq 1 ] && [ -n "$container_id" ]; then
+    docker rm -f "$container_id" >/dev/null
+    container_id=""
+fi
+
+if [ -n "$container_id" ] && [ "$recreate" -eq 0 ]; then
+    previous_hash="$(docker inspect --format '{{ index .Config.Labels "dev.wavepeek.config_hash" }}' "$container_id")"
     mapfile -t actual_mounts < <(docker inspect --format '{{range .Mounts}}{{if eq .Type "bind"}}{{printf "%s\t%s\n" .Source .Destination}}{{end}}{{end}}' "$container_id" | grep -v '^$')
-    if [ "$(printf '%s\n' "${expected_mounts[@]}" | sort)" != "$(printf '%s\n' "${actual_mounts[@]}" | sort)" ]; then
-        printf '%s\n' "error: dev: existing container has stale worktree, Git common-directory, or Verdi mounts" >&2
-        printf 'recreate with:' >&2
-        printf ' %q' devcontainer up --workspace-folder "$root" "${mount_args[@]}" --remove-existing-container >&2
+    stale=0
+    for expected in "${expected_mounts[@]}"; do
+        if ! printf '%s\n' "${actual_mounts[@]}" | grep -Fxq -- "$expected"; then
+            stale=1
+        fi
+    done
+    if [ "$config" = "$root/.devcontainer/devcontainer.json" ] && \
+        [ "$(printf '%s\n' "${expected_mounts[@]}" | sort)" != "$(printf '%s\n' "${actual_mounts[@]}" | sort)" ]; then
+        stale=1
+    fi
+    if [ "$previous_hash" != "$config_hash" ] || [ "$stale" -eq 1 ]; then
+        printf '%s\n' "error: dev: existing container has stale configuration or worktree/Git mounts" >&2
+        printf 'recreate with: WAVEPEEK_DEV_CONFIG=%q ./dev --recreate true' "$WAVEPEEK_DEV_CONFIG" >&2
         printf '\n' >&2
         exit 1
     fi
 fi
 
 if [ "$exec_only" -eq 0 ]; then
-    devcontainer up --workspace-folder "$root" "${mount_args[@]}"
-    mapfile -t containers < <(docker ps -q --filter "label=devcontainer.local_folder=$root")
+    up_args=(--workspace-folder "$root" --config "$config" "${identity_args[@]}" --id-label "dev.wavepeek.config_hash=$config_hash" "${mount_args[@]}")
+    devcontainer up "${up_args[@]}"
+    mapfile -t containers < <(docker ps -q "${container_filters[@]}")
     if [ "${#containers[@]}" -ne 1 ]; then
         printf '%s\n' "error: dev: expected one running container for $root" >&2
         exit 1
@@ -138,7 +170,7 @@ runner=(python3)
 if [ ! -t 0 ]; then
     runner=(setsid --wait python3)
 fi
-devcontainer exec --container-id "$container_id" -- \
+devcontainer exec --container-id "$container_id" --workspace-folder "$root" --config "$config" -- \
     "${runner[@]}" "$workspace/tools/repo/dev_exec.py" \
     "$token" "$pidfile" "$statusfile" "$container_dir" "$@" <&0 &
 exec_pid=$!

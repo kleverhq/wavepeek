@@ -2,7 +2,7 @@
 
 ## Scope
 
-This directory owns the single tool-only container definition, fixture provisioning, and environment-contract helpers used by local development and automation.
+This directory owns the public tool-only container definition, fixture provisioning, and environment-contract helpers used by local development and automation.
 
 ## Source of Truth
 
@@ -13,7 +13,8 @@ This directory owns the single tool-only container definition, fixture provision
 ## Local Guidance
 
 - `Dockerfile` has one final image for local development, CI, release checks, and docs staging.
-- The root `../dev` wrapper starts one container per absolute Git worktree and adds only the linked-worktree Git common-directory and optional Verdi mounts.
+- Root `../dev` starts one container per worktree and configuration, adding the linked-worktree Git common-directory mount.
+- Keep proprietary tools, mounts, and environment in ignored `.devcontainer.local/` profiles selected by `WAVEPEEK_DEV_CONFIG`. Public profiles must not discover or mount host SDKs.
 - Keep the container credentialless. Do not mount agent state, host GitHub state, token files, or broad host directories.
 - `verdi-tool-wrapper.sh` exposes selected command-line Verdi FSDB utilities and invokes their launchers with Bash for compatibility.
 - Host networking is intentional for VPN-heavy environments.

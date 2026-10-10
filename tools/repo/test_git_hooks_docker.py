@@ -27,7 +27,7 @@ class DockerGitHookSmokeTests(unittest.TestCase):
                 name: value
                 for name, value in os.environ.items()
                 if not name.startswith(("GIT_", "WAVEPEEK_FSDB_"))
-                and name != "VERDI_HOME"
+                and name not in {"VERDI_HOME", "WAVEPEEK_DEV_CONFIG"}
             }
             containers: list[str] = []
             try:
@@ -73,7 +73,7 @@ class DockerGitHookSmokeTests(unittest.TestCase):
                             "ps",
                             "-q",
                             "--filter",
-                            f"label=devcontainer.local_folder={worktree}",
+                            f"label=dev.wavepeek.worktree={worktree}",
                         ],
                         env=env,
                         check=True,

@@ -37,13 +37,13 @@ $VERDI_HOME/share/FsdbReader/<abi>/libnffr.so
 $VERDI_HOME/share/FsdbReader/<abi>/libnsys.so
 ```
 
-Ondas selects the first directory containing both Reader libraries from `linux64`, then `LINUX64`. SDK libraries with ELF `SONAME` entries are unsupported. Their canonical absolute paths are embedded in the binary's `DT_NEEDED` entries; no SDK RPATH is required. The SDK must remain available at those paths when running the binary. A devcontainer-built binary therefore uses paths under `/opt/verdi`.
+Ondas selects the first directory containing both Reader libraries from `linux64`, then `LINUX64`. SDK libraries with ELF `SONAME` entries are unsupported. Their canonical absolute paths are embedded in the binary's `DT_NEEDED` entries; no SDK RPATH is required. The SDK must remain available at those paths when running the binary. Container builds embed the container's SDK paths.
 
 The former `WAVEPEEK_FSDB_ABI`, `WAVEPEEK_FSDB_READER_LIBDIR`, and `WAVEPEEK_FSDB_EMBED_RPATH` options are unsupported. Unset them and select the installation with `VERDI_HOME`.
 
 ## Devcontainer behavior
 
-When host `VERDI_HOME` is set, the root `./dev` wrapper validates the FSDB Reader SDK and mounts only the installation at `/opt/verdi`. When `VERDI_HOME` is unset, `/opt/verdi` is not mounted and optional FSDB gates skip. Invalid paths, incomplete SDKs, or unsupported Reader overrides fail before container startup.
+FSDB requires a private profile with `VERDI_HOME`; public-container gates skip. See [environment.md](environment.md) for setup.
 
 Use the helper probe to distinguish available, skipped, and broken states:
 
@@ -52,7 +52,7 @@ Use the helper probe to distinguish available, skipped, and broken states:
 ./dev python3 -B tools/fsdb/check_fsdb_env.py --require
 ```
 
-The devcontainer also exposes selected Verdi FSDB utilities on `PATH` through `.devcontainer/verdi-tool-wrapper.sh`, including tools such as `vcd2fsdb`, `fsdb2vcd`, `fsdbdebug`, and `fsdbextract`. GTKWave conversion tools such as `vcd2fst` and `fst2vcd` come from the base image. Use wrapper commands for local debugging and fixture conversion instead of hard-coding `$VERDI_HOME/bin/...` paths.
+`.devcontainer/verdi-tool-wrapper.sh` exposes Verdi FSDB utilities on `PATH` when the profile supplies an installation. Use these wrappers for conversion and debugging. Public GTKWave converters remain available independently.
 
 ## Quality gates
 

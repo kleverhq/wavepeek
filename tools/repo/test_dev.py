@@ -40,6 +40,7 @@ class DevTests(unittest.TestCase):
         for name in GIT_LOCAL_ENV:
             env.pop(name, None)
         env.pop("VERDI_HOME", None)
+        env.pop("WAVEPEEK_DEV_CONFIG", None)
         env.pop("WAVEPEEK_FSDB_ABI", None)
         env.pop("WAVEPEEK_FSDB_READER_LIBDIR", None)
         env.pop("WAVEPEEK_FSDB_EMBED_RPATH", None)
@@ -51,18 +52,26 @@ class DevTests(unittest.TestCase):
         docker = self.fake_bin / "docker"
         docker.write_text(
             """#!/usr/bin/env python3
-import json, os, pathlib, signal, sys
+import hashlib, json, os, pathlib, signal, sys
 with open(os.environ["FAKE_LOG"], "a", encoding="utf-8") as log:
     log.write(json.dumps(["docker", *sys.argv[1:]]) + "\\n")
 args = sys.argv[1:]
 if args[:1] == ["ps"]:
-    if "-aq" in args and os.environ.get("FAKE_EXISTING") == "1":
+    existing_config = os.environ.get("FAKE_EXISTING_CONFIG")
+    matches = not existing_config or f"label=dev.wavepeek.config={existing_config}" in args
+    if "-aq" in args and os.environ.get("FAKE_EXISTING") == "1" and matches:
         print("container-1")
     elif "-q" in args and not (any(value == "id=container-1" for value in args) and os.environ.get("FAKE_STOPPED") == "1"):
         print("container-1")
 elif args[:1] == ["inspect"]:
-    for source, target in json.loads(os.environ.get("FAKE_MOUNTS", "[]")):
-        print(f"{source}\\t{target}")
+    if "dev.wavepeek.config_hash" in args[args.index("--format") + 1]:
+        config = pathlib.Path(os.environ["FAKE_ROOT"]) / os.environ.get("WAVEPEEK_DEV_CONFIG", ".devcontainer/devcontainer.json")
+        print(os.environ.get("FAKE_CONFIG_HASH", hashlib.sha256(config.read_bytes()).hexdigest()))
+    else:
+        for source, target in json.loads(os.environ.get("FAKE_MOUNTS", "[]")):
+            print(f"{source}\\t{target}")
+elif args[:3] == ["rm", "-f", "container-1"]:
+    pass
 elif args[:2] == ["exec", "container-1"]:
     if args[2] in {"cat", "rm"}:
         command = args[2:]
@@ -130,9 +139,6 @@ os.execvp(command[0], command)
         for root in (self.main, self.linked):
             (root / ".devcontainer").mkdir()
             (root / ".devcontainer" / "devcontainer.json").write_text("{}\n")
-            checker = root / "tools" / "fsdb" / "check_fsdb_env.py"
-            checker.parent.mkdir(parents=True)
-            checker.write_bytes((REPO_ROOT / "tools/fsdb/check_fsdb_env.py").read_bytes())
             helper = root / "tools" / "repo" / "dev_exec.py"
             helper.parent.mkdir(parents=True)
             helper.write_bytes((REPO_ROOT / "tools/repo/dev_exec.py").read_bytes())
@@ -196,6 +202,7 @@ os.execvp(command[0], command)
         up = next(call for call in calls if call[:2] == ["devcontainer", "up"])
         self.assertEqual(up[up.index("--workspace-folder") + 1], str(self.main))
         execute = next(call for call in calls if call[:2] == ["devcontainer", "exec"])
+        self.assertEqual(execute[execute.index("--workspace-folder") + 1], str(self.main))
         self.assertIn("/workspaces/main/one/two", execute)
 
     def test_main_and_linked_worktrees_have_distinct_identity_and_git_mount(self) -> None:
@@ -217,85 +224,141 @@ os.execvp(command[0], command)
                     [f"type=bind,source={common},target={common}"],
                 )
 
-    def test_optional_verdi_mount_and_validation(self) -> None:
-        verdi = self.tmp / "verdi"
-        reader = verdi / "share" / "FsdbReader"
-        libdir = reader / "linux64"
-        libdir.mkdir(parents=True)
-        for name in ("ffrAPI.h", "ffrKit.h", "fsdbShr.h"):
-            (reader / name).touch()
-        for name in ("libnffr.so", "libnsys.so"):
-            (libdir / name).touch()
-
+    def test_public_profile_ignores_host_sdk_environment(self) -> None:
         result = self._run(
             self.main,
             "true",
-            env_updates={"VERDI_HOME": str(verdi / ".." / "verdi")},
+            env_updates={
+                "VERDI_HOME": str(self.tmp / "missing-verdi"),
+                "WAVEPEEK_FSDB_ABI": "unsupported",
+                "WAVEPEEK_FSDB_READER_LIBDIR": "/missing",
+                "WAVEPEEK_FSDB_EMBED_RPATH": "0",
+            },
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         up = next(call for call in self._calls() if call[:2] == ["devcontainer", "up"])
-        self.assertIn(
-            f"type=bind,source={verdi},target=/opt/verdi",
-            up,
-        )
+        self.assertNotIn("--mount", up)
+        self.assertNotIn("--remote-env", up)
+        self.assertEqual(up[up.index("--config") + 1], str(self.main / ".devcontainer/devcontainer.json"))
+
+    def _private_profile(self, root: Path) -> Path:
+        config = root / ".devcontainer.local/devcontainer.json"
+        config.parent.mkdir()
+        config.write_text('{"image": "private-tools", "mounts": ["type=bind,source=/sdk,target=/tools"]}\n')
+        return config
+
+    def test_dotenv_selection_and_environment_override_from_nested_directory(self) -> None:
+        private = self._private_profile(self.main)
+        (self.main / ".env").write_text("WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json\n")
+        nested = self.main / "nested"
+        nested.mkdir()
+        for override, expected in (({}, private), ({"WAVEPEEK_DEV_CONFIG": ".devcontainer/devcontainer.json"}, self.main / ".devcontainer/devcontainer.json")):
+            with self.subTest(override=override):
+                self.log.unlink(missing_ok=True)
+                result = self._run(self.main, "true", cwd=nested, env_updates=override)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                for call in self._calls():
+                    if call[0] == "devcontainer":
+                        self.assertEqual(call[call.index("--config") + 1], str(expected))
+                    elif call[:2] == ["docker", "ps"] and not any(value.startswith("id=") for value in call):
+                        self.assertIn(f"label=dev.wavepeek.config={expected}", call)
+
+    def test_private_profile_accepts_its_own_mounts_and_requires_git_mount(self) -> None:
+        self._private_profile(self.linked)
+        common = str((self.main / ".git").resolve())
+        mounts = [[str(self.linked), "/workspaces/linked"], ["/sdk", "/tools"]]
+        env = {
+            "WAVEPEEK_DEV_CONFIG": ".devcontainer.local/devcontainer.json",
+            "FAKE_EXISTING": "1",
+            "FAKE_MOUNTS": json.dumps([*mounts, [common, common]]),
+        }
+        result = self._run(self.linked, "--exec-only", "true", env_updates=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(any(call[:2] == ["devcontainer", "up"] for call in self._calls()))
 
         self.log.unlink()
-        uppercase_libdir = reader / "LINUX64"
-        libdir.rename(uppercase_libdir)
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={"VERDI_HOME": str(verdi)},
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
-        up = next(call for call in self._calls() if call[:2] == ["devcontainer", "up"])
-        self.assertIn(f"type=bind,source={verdi},target=/opt/verdi", up)
-        self.assertNotIn("--remote-env", up)
+        env["FAKE_MOUNTS"] = json.dumps(mounts)
+        result = self._run(self.linked, "--exec-only", "true", env_updates=env)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("stale configuration or worktree/Git mounts", result.stderr)
+        self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
 
+    def test_exec_only_does_not_select_another_profile_container(self) -> None:
+        private = self._private_profile(self.main)
+        result = self._run(self.main, "--exec-only", "true", env_updates={
+            "FAKE_EXISTING": "1", "FAKE_EXISTING_CONFIG": str(private),
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no existing container", result.stderr)
+        self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
+
+    def test_dotenv_cannot_override_launcher_state(self) -> None:
+        self._private_profile(self.main)
         for name, value in (
-            ("WAVEPEEK_FSDB_ABI", "linux64_gcc950"),
-            ("WAVEPEEK_FSDB_READER_LIBDIR", str(uppercase_libdir)),
-            ("WAVEPEEK_FSDB_READER_LIBDIR", str(self.tmp / "reader-lib")),
-            ("WAVEPEEK_FSDB_EMBED_RPATH", "0"),
+            ("root", str(self.tmp)),
+            ("config_override", ".devcontainer/devcontainer.json"),
+            ("exec_only", "0"),
+            ("recreate", "1"),
         ):
-            with self.subTest(override=name, value=value):
-                self.log.unlink(missing_ok=True)
-                result = self._run(
-                    self.main,
-                    "true",
-                    env_updates={"VERDI_HOME": str(verdi), name: value},
+            with self.subTest(variable=name):
+                (self.main / ".env").write_text(
+                    f"WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json\n{name}={value}\n"
                 )
+                result = self._run(self.main, "--exec-only", "true")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(f"{name} is not supported by Ondas", result.stderr)
+                self.assertIn("readonly variable", result.stderr)
                 self.assertEqual(self._calls(), [])
 
-        self.log.unlink(missing_ok=True)
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={"VERDI_HOME": str(self.tmp / "missing")},
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("VERDI_HOME is not a directory", result.stderr)
-        self.assertEqual(self._calls(), [])
+    def test_invalid_launcher_options_do_not_recreate_containers(self) -> None:
+        for args in (
+            ("--recreate", "--exec-only", "true"),
+            ("--exec-only", "--recreate", "true"),
+            ("--recreate", "--recreate", "true"),
+            ("--unknown", "true"),
+            ("--recreate", "-x", "true"),
+        ):
+            with self.subTest(args=args):
+                result = self._run(self.main, *args, env_updates={"FAKE_EXISTING": "1"})
+                self.assertEqual(result.returncode, 2)
+                self.assertIn("usage:", result.stderr)
+                self.assertEqual(self._calls(), [])
 
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={"WAVEPEEK_FSDB_ABI": "linux64_gcc950"},
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("WAVEPEEK_FSDB_ABI is not supported by Ondas", result.stderr)
+    def test_rejects_missing_absolute_and_escaping_configuration(self) -> None:
+        outside = self.tmp / "outside.json"
+        outside.write_text("{}\n")
+        (self.main / "outside.json").symlink_to(outside)
+        for value, message in (
+            ("missing.json", "devcontainer config not found"),
+            (str(outside), "must be relative"),
+            ("../outside.json", "escapes the worktree root"),
+            ("outside.json", "escapes the worktree root"),
+        ):
+            with self.subTest(config=value):
+                result = self._run(self.main, "true", env_updates={"WAVEPEEK_DEV_CONFIG": value})
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+                self.assertEqual(self._calls(), [])
 
-        invalid = self.tmp / "invalid-verdi"
-        invalid.mkdir()
-        result = self._run(
-            self.main,
-            "true",
-            env_updates={"VERDI_HOME": str(invalid)},
-        )
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Verdi FSDB Reader SDK not found", result.stderr)
+    def test_stale_configuration_requires_explicit_profile_recreation(self) -> None:
+        private = self._private_profile(self.main)
+        env = {
+            "WAVEPEEK_DEV_CONFIG": ".devcontainer.local/devcontainer.json",
+            "FAKE_EXISTING": "1", "FAKE_CONFIG_HASH": "old-config",
+            "FAKE_MOUNTS": json.dumps([[str(self.main), "/workspaces/main"]]),
+        }
+        for mode in ([], ["--exec-only"]):
+            result = self._run(self.main, *mode, "true", env_updates=env)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("./dev --recreate true", result.stderr)
+            self.assertIn("WAVEPEEK_DEV_CONFIG=.devcontainer.local/devcontainer.json", result.stderr)
+            self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
+
+        result = self._run(self.main, "--recreate", "true", env_updates=env)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        up = next(call for call in self._calls() if call[:2] == ["devcontainer", "up"])
+        self.assertIn(f"dev.wavepeek.config={private}", up)
+        removals = [call for call in self._calls() if call[:2] == ["docker", "rm"]]
+        self.assertEqual(removals, [["docker", "rm", "-f", "container-1"]])
 
     def test_stale_mounts_are_rejected_with_recreation_command(self) -> None:
         env = {
@@ -305,9 +368,17 @@ os.execvp(command[0], command)
         result = self._run(self.main, "true", env_updates=env)
 
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("stale worktree, Git common-directory, or Verdi mounts", result.stderr)
-        self.assertIn("devcontainer up", result.stderr)
-        self.assertIn("--remove-existing-container", result.stderr)
+        self.assertIn("stale configuration or worktree/Git mounts", result.stderr)
+        self.assertIn("./dev --recreate", result.stderr)
+        self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
+
+    def test_public_profile_rejects_extra_sdk_mount(self) -> None:
+        result = self._run(self.main, "--exec-only", "true", env_updates={
+            "FAKE_EXISTING": "1",
+            "FAKE_MOUNTS": json.dumps([[str(self.main), "/workspaces/main"], ["/sdk", "/opt/verdi"]]),
+        })
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("stale configuration or worktree/Git mounts", result.stderr)
         self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
 
     def test_exec_only_uses_existing_container_without_up(self) -> None:
@@ -334,6 +405,12 @@ os.execvp(command[0], command)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("no existing container", result.stderr)
         self.assertIn("./dev true", result.stderr)
+        self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
+
+        self.log.unlink()
+        result = self._run(self.linked, "--exec-only", "true", env_updates=env | {"FAKE_STOPPED": "1"})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("container is stopped", result.stderr)
         self.assertFalse(any(call[0] == "devcontainer" for call in self._calls()))
 
     def test_interactive_tty_is_preserved(self) -> None:

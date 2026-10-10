@@ -1,4 +1,6 @@
 tmp/
+/.env
+/.devcontainer.local/
 /tests/fixtures/generated/
 *.fsdb
 *.fsdb.*

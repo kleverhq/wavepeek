@@ -16,7 +16,7 @@ Run container commands from the host through `./dev`.
 
 ## Devcontainer Lifecycle
 
-The root `./dev` wrapper is the host lifecycle entrypoint. It selects one runtime container per absolute Git worktree, supplies linked-worktree Git and optional Verdi mounts, and then executes the requested command. Agents and Git remote operations stay on the host; repository tools run in the container. Keep `./dev` aligned with `.devcontainer/devcontainer.json` and `environment.md`.
+Root `./dev` manages a container per worktree and configuration. Profile selection, private SDK setup, and host/container responsibilities are documented in [environment.md](environment.md).
 
 GitHub Actions uses `.devcontainer/devcontainer.json` directly. Workflows use job-scoped runner authentication when required; the development container does not provision local credentials.
 

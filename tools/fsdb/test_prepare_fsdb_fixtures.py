@@ -19,7 +19,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             repo = sandbox / "repo"
             script = repo / "tools" / "fsdb" / "prepare_fsdb_fixtures.sh"
             hand_fixtures = repo / "tests" / "fixtures" / "hand"
-            rtl_artifacts = repo / "rtl-artifacts"
+            ondas_fixtures = repo / "ondas-fixtures"
             bin_dir = sandbox / "bin"
             root_log = repo / "vcd2fsdbLog"
             sentinel = root_log / "sentinel.txt"
@@ -29,10 +29,11 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             os.chmod(script, 0o755)
             (repo / ".devcontainer").mkdir()
             (repo / ".devcontainer" / "env_contract.sh").write_text(
-                f'RTL_ARTIFACTS_DIR="{rtl_artifacts}"\n', encoding="utf-8"
+                f'ONDAS_FIXTURES_DIR="{ondas_fixtures}"\nWAVEPEEK_ONDAS_FIXTURES=""\n',
+                encoding="utf-8",
             )
             hand_fixtures.mkdir(parents=True)
-            rtl_artifacts.mkdir()
+            ondas_fixtures.mkdir()
             bin_dir.mkdir()
             (hand_fixtures / "tiny.vcd").write_text(
                 "$date today $end\n$enddefinitions $end\n",
@@ -91,13 +92,16 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             script.write_text(SCRIPT_PATH.read_text(encoding="utf-8"), encoding="utf-8")
             (repo / ".devcontainer").mkdir()
             artifacts = repo / "artifacts"
-            artifacts.mkdir()
+            fixture = artifacts / "fst/fst0000-sample"
+            fixture.mkdir(parents=True)
             (repo / ".devcontainer/env_contract.sh").write_text(
-                f'RTL_ARTIFACTS_DIR="{artifacts}"\n', encoding="utf-8"
+                f'ONDAS_FIXTURES_DIR="{artifacts}"\n'
+                'WAVEPEEK_ONDAS_FIXTURES="fst/fst0000-sample"\n',
+                encoding="utf-8",
             )
-            source = artifacts / "sample.fst"
+            source = fixture / "waveform.fst"
             source.write_text("fst", encoding="utf-8")
-            vcd = artifacts / "sample.vcd"
+            vcd = fixture / "waveform.vcd"
             vcd.write_text("persistent vcd", encoding="utf-8")
             os.utime(vcd, (source.stat().st_mtime + 2,) * 2)
             bin_dir = repo / "bin"
@@ -117,7 +121,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
                 env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"},
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual((artifacts / "sample.fsdb").read_text(), "fsdb")
+            self.assertEqual((fixture / "waveform.fsdb").read_text(), "fsdb")
             self.assertEqual(vcd.read_text(), "persistent vcd")
 
     def test_rtl_filter_limits_converted_artifacts(self) -> None:
@@ -125,7 +129,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             sandbox = pathlib.Path(temp_dir)
             repo = sandbox / "repo"
             script = repo / "tools" / "fsdb" / "prepare_fsdb_fixtures.sh"
-            rtl_artifacts = repo / "rtl-artifacts"
+            ondas_fixtures = repo / "ondas-fixtures"
             bin_dir = sandbox / "bin"
 
             script.parent.mkdir(parents=True)
@@ -133,12 +137,17 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             os.chmod(script, 0o755)
             (repo / ".devcontainer").mkdir()
             (repo / ".devcontainer" / "env_contract.sh").write_text(
-                f'RTL_ARTIFACTS_DIR="{rtl_artifacts}"\n', encoding="utf-8"
+                f'ONDAS_FIXTURES_DIR="{ondas_fixtures}"\n'
+                'WAVEPEEK_ONDAS_FIXTURES="fst/fst0000-needed fst/fst0001-ignored"\n',
+                encoding="utf-8",
             )
-            rtl_artifacts.mkdir()
+            needed = ondas_fixtures / "fst/fst0000-needed"
+            ignored = ondas_fixtures / "fst/fst0001-ignored"
+            needed.mkdir(parents=True)
+            ignored.mkdir()
             bin_dir.mkdir()
-            (rtl_artifacts / "needed.fst").write_text("needed\n", encoding="utf-8")
-            (rtl_artifacts / "ignored.fst").write_text("ignored\n", encoding="utf-8")
+            (needed / "waveform.fst").write_text("needed\n", encoding="utf-8")
+            (ignored / "waveform.fst").write_text("ignored\n", encoding="utf-8")
             (bin_dir / "fst2vcd").write_text(
                 "#!/usr/bin/env sh\nset -eu\nprintf '%s\\n' vcd\n",
                 encoding="utf-8",
@@ -177,7 +186,7 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
                     str(script),
                     "--rtl-only",
                     "--rtl-filter",
-                    "^needed[.]fst$",
+                    "^fst0000-needed$",
                 ],
                 check=False,
                 capture_output=True,
@@ -187,8 +196,8 @@ class PrepareFsdbFixturesTest(unittest.TestCase):
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue((rtl_artifacts / "needed.fsdb").is_file())
-            self.assertFalse((rtl_artifacts / "ignored.fsdb").exists())
+            self.assertTrue((needed / "waveform.fsdb").is_file())
+            self.assertFalse((ignored / "waveform.fsdb").exists())
 
 
 if __name__ == "__main__":

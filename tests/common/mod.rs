@@ -30,10 +30,11 @@ pub fn fixture_path(filename: &str) -> PathBuf {
 }
 
 #[allow(dead_code)]
-pub fn rtl_fixture_path(filename: &str) -> PathBuf {
+pub fn ondas_fixture_path(fixture: &str) -> PathBuf {
     PathBuf::from(
-        std::env::var("RTL_ARTIFACTS_DIR")
-            .expect("RTL_ARTIFACTS_DIR must be set by the wavepeek container"),
+        std::env::var("ONDAS_FIXTURES_DIR")
+            .expect("ONDAS_FIXTURES_DIR must be set by the wavepeek container"),
     )
-    .join(filename)
+    .join(fixture)
+    .join("waveform.fst")
 }

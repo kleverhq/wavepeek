@@ -9,7 +9,7 @@
         "{wavepeek_bin}",
         "change",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "--to",
         "1000ps",
         "--scope",
@@ -24,7 +24,7 @@
         "1000"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "scope": "TOP.scr1_top_tb_axi.i_top.i_imem_axi",
         "signal_count": 1,
         "window_to": "1000ps",
@@ -40,7 +40,7 @@
         "{wavepeek_bin}",
         "change",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--signals",
         "TOP.clk",
         "--from",
@@ -53,7 +53,7 @@
         "native"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "size": "3.5M",
         "window_size": "2ns",
         "signal_count": 1,
@@ -69,11 +69,11 @@
         "{wavepeek_bin}",
         "info",
         "--waves",
-        "/opt/rtl-artifacts/picorv32_test_ez_vcd.fst",
+        "/opt/ondas-fixtures/fst/fst0012-picorv32-test-ez-vcd/waveform.fst",
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/picorv32_test_ez_vcd.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0012-picorv32-test-ez-vcd/waveform.fst",
         "size": "17K"
       }
     },
@@ -86,11 +86,11 @@
         "{wavepeek_bin}",
         "info",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst",
+        "/opt/ondas-fixtures/fst/fst0025-scr1-max-axi-isr-sample/waveform.fst",
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_isr_sample.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0025-scr1-max-axi-isr-sample/waveform.fst",
         "size": "69K"
       }
     },
@@ -103,7 +103,7 @@
         "{wavepeek_bin}",
         "scope",
         "--waves",
-        "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "/opt/ondas-fixtures/fst/fst0002-chipyard-clusteredrocketconfig-mt-memcpy/waveform.fst",
         "--max",
         "200000",
         "--max-depth",
@@ -111,7 +111,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/chipyard_ClusteredRocketConfig_mt-memcpy.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0002-chipyard-clusteredrocketconfig-mt-memcpy/waveform.fst",
         "size": "411M",
         "filter": ".*",
         "max_depth": 13,
@@ -127,7 +127,7 @@
         "{wavepeek_bin}",
         "scope",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--max",
         "200000",
         "--max-depth",
@@ -135,7 +135,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "size": "4M",
         "filter": ".*",
         "max_depth": 7,
@@ -151,7 +151,7 @@
         "{wavepeek_bin}",
         "signal",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--scope",
         "TOP",
         "--recursive",
@@ -162,7 +162,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "scope": "TOP",
         "filter": ".*",
         "recursive": true,
@@ -178,7 +178,7 @@
         "{wavepeek_bin}",
         "signal",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--scope",
         "TOP",
         "--recursive",
@@ -189,7 +189,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "scope": "TOP",
         "filter": "(?i).*valid.*",
         "recursive": true,
@@ -205,14 +205,14 @@
         "{wavepeek_bin}",
         "value",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--signals",
         "TOP.clk",
         "--at",
         "940092ps"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "size": "4M",
         "signal_count": 1
       }
@@ -226,14 +226,14 @@
         "{wavepeek_bin}",
         "value",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "--signals",
         "TOP.clk,TOP.scr1_top_tb_axi.ADDR_START,TOP.scr1_top_tb_axi.ADDR_TRAP_DEFAULT,TOP.scr1_top_tb_axi.ADDR_TRAP_VECTOR,TOP.scr1_top_tb_axi.ARCH,TOP.scr1_top_tb_axi.COMPLIANCE,TOP.scr1_top_tb_axi.SCR1_MEM_SIZE,TOP.scr1_top_tb_axi.TIMEOUT,TOP.scr1_top_tb_axi.clk,TOP.scr1_top_tb_axi.dmem_req_ack_stall",
         "--at",
         "940092ps"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_riscv_compliance.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0027-scr1-max-axi-riscv-compliance/waveform.fst",
         "size": "4M",
         "signal_count": 10
       }
@@ -247,7 +247,7 @@
         "{wavepeek_bin}",
         "change",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "--to",
         "1000ps",
         "--signals",
@@ -260,7 +260,7 @@
         "1000"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "size": "3.5M",
         "window_to": "1000ps",
         "signal_count": 1,
@@ -277,7 +277,7 @@
         "{wavepeek_bin}",
         "property",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "--to",
         "200ps",
         "--on",
@@ -291,7 +291,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "size": "3.5M",
         "window_to": "200ps",
         "capture": "match",
@@ -309,7 +309,7 @@
         "{wavepeek_bin}",
         "change",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "--to",
         "1000ps",
         "--signals",
@@ -322,7 +322,7 @@
         "1000"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "size": "3.5M",
         "window_to": "1000ps",
         "signal_count": 1,
@@ -339,7 +339,7 @@
         "{wavepeek_bin}",
         "property",
         "--waves",
-        "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "--to",
         "200ps",
         "--on",
@@ -353,7 +353,7 @@
         "--json"
       ],
       "meta": {
-        "waves": "/opt/rtl-artifacts/scr1_max_axi_coremark.fst",
+        "waves": "/opt/ondas-fixtures/fst/fst0022-scr1-max-axi-coremark/waveform.fst",
         "size": "3.5M",
         "window_to": "200ps",
         "capture": "match",

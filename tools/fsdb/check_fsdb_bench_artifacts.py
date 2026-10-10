@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify converted FSDB benchmark artifacts exist under RTL_ARTIFACTS_DIR."""
+"""Verify converted FSDB benchmark artifacts exist under ONDAS_FIXTURES_DIR."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import re
 import sys
 from typing import Any
 
-RTL_ARTIFACTS_ENV = "RTL_ARTIFACTS_DIR"
+ONDAS_FIXTURES_ENV = "ONDAS_FIXTURES_DIR"
 
 
 def collect_canonical_fsdb_paths(
@@ -85,15 +85,15 @@ def filter_catalog(catalog: Any, pattern: str | None) -> Any:
 
 def main(argv: list[str]) -> int:
     args = parse_args(argv)
-    rtl_dir_value = os.environ.get(RTL_ARTIFACTS_ENV)
-    if not rtl_dir_value:
+    fixtures_dir_value = os.environ.get(ONDAS_FIXTURES_ENV)
+    if not fixtures_dir_value:
         print(
-            f"error: file: {RTL_ARTIFACTS_ENV} is not set by the wavepeek container",
+            f"error: file: {ONDAS_FIXTURES_ENV} is not set by the wavepeek container",
             file=sys.stderr,
         )
         return 1
 
-    rtl_dir = Path(rtl_dir_value)
+    fixtures_dir = Path(fixtures_dir_value)
     catalog_path = Path(args.catalog)
     catalog = load_catalog(catalog_path)
     if catalog is None:
@@ -103,20 +103,20 @@ def main(argv: list[str]) -> int:
         return 1
 
     required: set[str] = set()
-    artifact_path_re = re.compile(rf"{re.escape(str(rtl_dir))}/([^/]+\.fsdb)\Z")
+    artifact_path_re = re.compile(rf"{re.escape(str(fixtures_dir))}/(fst/[^/]+/waveform\.fsdb)\Z")
     collect_canonical_fsdb_paths(catalog, required, artifact_path_re)
 
-    missing = sorted(path for path in required if not (rtl_dir / path).is_file())
+    missing = sorted(path for path in required if not (fixtures_dir / path).is_file())
     if missing:
         for path in missing:
             print(
-                f"error: file: required FSDB benchmark fixture missing at {rtl_dir / path}",
+                f"error: file: required FSDB benchmark fixture missing at {fixtures_dir / path}",
                 file=sys.stderr,
             )
         return 1
 
     print(
-        f"info: fsdb fixture: verified {len(required)} RTL benchmark FSDB artifacts under {rtl_dir}"
+        f"info: fsdb fixture: verified {len(required)} Ondas benchmark FSDB artifacts under {fixtures_dir}"
     )
     return 0
 

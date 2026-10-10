@@ -1,9 +1,9 @@
 set shell := ["bash", "-euo", "pipefail", "-c"]
 
-export RTL_ARTIFACTS_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$RTL_ARTIFACTS_DIR"`
+export ONDAS_FIXTURES_DIR := `. ./.devcontainer/env_contract.sh; printf '%s\n' "$ONDAS_FIXTURES_DIR"`
 bench_e2e_fsdb_tests := "bench/e2e/tests_fsdb.json"
 bench_e2e_fsdb_smoke_filter := "^(info_picorv32_ez|scope_scr1_all_depth7_json|signal_scr1_top_recursive_depth2_json|value_scr1_signals_1|change_scr1_signals_1_window_2ns_trigger_any)$"
-bench_e2e_fsdb_smoke_artifact_filter := "^(picorv32_test_ez_vcd|scr1_max_axi_riscv_compliance)[.]fst$"
+bench_e2e_fsdb_smoke_artifact_filter := "^(fst0012-picorv32-test-ez-vcd|fst0027-scr1-max-axi-riscv-compliance)$"
 wavepeek_release_bin := "./target/release/wavepeek"
 wavepeek_fsdb_release_bin := "./target/fsdb/release/wavepeek"
 python := "python3 -B"
@@ -50,11 +50,11 @@ run-if-verdi recipe: require-container
     fi
 
 [private]
-check-rtl-artifacts: require-container
+check-ondas-fixtures: require-container
     @. ./.devcontainer/env_contract.sh; \
-    for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
-        if [ ! -f "${RTL_ARTIFACTS_DIR}/$fixture" ]; then \
-            printf '%s\n' "error: file: required fixture missing at ${RTL_ARTIFACTS_DIR}/$fixture" >&2; \
+    for fixture in $WAVEPEEK_ONDAS_FIXTURES; do \
+        if [ ! -f "${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst" ]; then \
+            printf '%s\n' "error: file: required fixture missing at ${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst" >&2; \
             exit 1; \
         fi; \
     done
@@ -83,10 +83,10 @@ check-bench-e2e-vcd-catalog: require-container
     @{{ python }} tools/fsdb/generate_bench_catalog.py --target vcd --check
 
 # Keep converted RTL VCD files beside their FST sources for benchmark runs
-prepare-vcd-rtl-artifacts: check-rtl-artifacts check-bench-e2e-vcd-catalog
+prepare-vcd-ondas-fixtures: check-ondas-fixtures check-bench-e2e-vcd-catalog
     @. ./.devcontainer/env_contract.sh; \
-    for fixture in $WAVEPEEK_RTL_ARTIFACT_FILES; do \
-        source="${RTL_ARTIFACTS_DIR}/$fixture"; output="${source%.fst}.vcd"; \
+    for fixture in $WAVEPEEK_ONDAS_FIXTURES; do \
+        source="${ONDAS_FIXTURES_DIR}/$fixture/waveform.fst"; output="${source%.fst}.vcd"; \
         if [ -s "$output" ] && [ "$output" -nt "$source" ]; then \
             printf '%s\n' "info: vcd fixture: up to date $output"; \
             continue; \
@@ -149,12 +149,12 @@ check-build: require-container
     cargo check
 
 # Run tests with cargo
-test: require-container check-rtl-artifacts prepare-waveform-fixtures
+test: require-container check-ondas-fixtures prepare-waveform-fixtures
     cargo test -q
     just run-if-verdi test-fsdb
 
 [private]
-coverage-src-data: require-container check-rtl-artifacts prepare-waveform-fixtures
+coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
     @mkdir -p tmp/coverage
     cargo llvm-cov --workspace --summary-only --json --ignore-filename-regex '(/tests/|/target/|/\.cargo/registry/|/rustc/)' > tmp/coverage/coverage-src-summary.json
 
@@ -198,18 +198,18 @@ prepare-fsdb-test-fixtures: require-verdi prepare-waveform-fixtures
     bash tools/fsdb/prepare_fsdb_fixtures.sh --test-vcd-only
 
 # Verify FSDB benchmark artifacts exist next to required RTL FST fixtures
-check-fsdb-rtl-artifacts: require-verdi check-rtl-artifacts
+check-fsdb-ondas-fixtures: require-verdi check-ondas-fixtures
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
 # Prepare and verify FSDB benchmark artifacts in dependency order
-prepare-and-check-fsdb-rtl-artifacts: require-verdi
-    just check-rtl-artifacts
+prepare-and-check-fsdb-ondas-fixtures: require-verdi
+    just check-ondas-fixtures
     just prepare-fsdb-fixtures
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}"
 
 # Prepare and verify only FSDB RTL artifacts required by the pre-commit smoke
-prepare-and-check-fsdb-smoke-rtl-artifacts: require-verdi
-    just check-rtl-artifacts
+prepare-and-check-fsdb-smoke-ondas-fixtures: require-verdi
+    just check-ondas-fixtures
     just check-bench-e2e-fsdb-catalog
     bash tools/fsdb/prepare_fsdb_fixtures.sh --rtl-only --rtl-filter '{{ bench_e2e_fsdb_smoke_artifact_filter }}'
     {{ python }} tools/fsdb/check_fsdb_bench_artifacts.py "{{ bench_e2e_fsdb_tests }}" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
@@ -393,32 +393,32 @@ bench-compare golden_dir revised_dir: require-container
     {{ python }} tools/bench/compare.py --golden "{{ golden_dir }}" --revised "{{ revised_dir }}"
 
 [private]
-bench-e2e-run: check-rtl-artifacts prepare-waveform-fixtures build-release
+bench-e2e-run: check-ondas-fixtures prepare-waveform-fixtures build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}"
 
 [private]
-bench-e2e-vcd-run: prepare-vcd-rtl-artifacts prepare-waveform-fixtures build-release
+bench-e2e-vcd-run: prepare-vcd-ondas-fixtures prepare-waveform-fixtures build-release
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_vcd.json
 
 [private]
-bench-e2e-fsdb-run: prepare-and-check-fsdb-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-run: prepare-and-check-fsdb-ondas-fixtures build-release-fsdb
     {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}"
 
 # Run lightweight benchmark e2e smoke for pre-commit
 [private]
-bench-e2e-smoke-commit: check-rtl-artifacts build-release
+bench-e2e-smoke-commit: check-ondas-fixtures build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 [private]
-bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-rtl-artifacts build-release-fsdb
+bench-e2e-fsdb-smoke-commit: prepare-and-check-fsdb-smoke-ondas-fixtures build-release-fsdb
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_fsdb_release_bin }}" --tests "{{ bench_e2e_fsdb_tests }}" --run-dir "$tmp_revised" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
 
 # Run pre-commit hooks on all files
-pre-commit: require-container check-rtl-artifacts prepare-waveform-fixtures
+pre-commit: require-container check-ondas-fixtures prepare-waveform-fixtures
     pre-commit run --all-files
 
 # Check a commit message, defaulting to Git's standard message file

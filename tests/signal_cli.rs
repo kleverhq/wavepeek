@@ -3,11 +3,11 @@ use predicates::prelude::*;
 use serde_json::{Value, json};
 
 mod common;
-use common::{fixture_path, rtl_fixture_path, wavepeek_cmd};
+use common::{fixture_path, ondas_fixture_path, wavepeek_cmd};
 
 #[test]
 fn signal_fst_packed_suffix_keeps_vector_in_owning_scope() {
-    let fixture = rtl_fixture_path("scr1_max_axi_riscv_compliance.fst");
+    let fixture = ondas_fixture_path("fst/fst0027-scr1-max-axi-riscv-compliance");
     let output = wavepeek_cmd()
         .args([
             "signal",
@@ -871,7 +871,7 @@ fn signal_recursive_json_output_is_bit_for_bit_deterministic_across_runs() {
 
 #[test]
 fn signal_external_picorv32_fixture_uses_short_names_by_default() {
-    let fixture = rtl_fixture_path("picorv32_test_vcd.fst");
+    let fixture = ondas_fixture_path("fst/fst0013-picorv32-test-vcd");
     assert!(
         fixture.exists(),
         "required external fixture is missing: {}",

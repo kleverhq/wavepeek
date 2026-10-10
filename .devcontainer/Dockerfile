@@ -1,19 +1,27 @@
-# ---- RTL Fixture Layer --------------------------------------------------------
-FROM public.ecr.aws/docker/library/ubuntu:24.04 AS rtl_artifacts
+# ---- Waveform Fixture Layer ---------------------------------------------------
+FROM public.ecr.aws/docker/library/ubuntu:24.04 AS ondas_fixtures
 
 ENV DEBIAN_FRONTEND=noninteractive
 COPY .devcontainer/env_contract.sh /tmp/wavepeek-env-contract.sh
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates curl && \
+    apt-get install -y --no-install-recommends ca-certificates curl python3 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN . /tmp/wavepeek-env-contract.sh && \
-    mkdir -p "${RTL_ARTIFACTS_DIR}" && \
-    for artifact in ${WAVEPEEK_RTL_ARTIFACT_FILES}; do \
-      curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o "${RTL_ARTIFACTS_DIR}/${artifact}" \
-        "https://github.com/kleverhq/rtl-artifacts/releases/download/${WAVEPEEK_RTL_ARTIFACTS_VERSION}/${artifact}"; \
-    done
+RUN set -eu; \
+    . /tmp/wavepeek-env-contract.sh; \
+    curl --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 -fsSL -o /tmp/ondas-fixtures.tar.gz \
+        "https://github.com/kleverhq/ondas-fixtures/archive/${WAVEPEEK_ONDAS_FIXTURES_REV}.tar.gz"; \
+    mkdir -p /tmp/ondas-fixtures "${ONDAS_FIXTURES_DIR}"; \
+    tar -xzf /tmp/ondas-fixtures.tar.gz -C /tmp/ondas-fixtures --strip-components=1; \
+    cd /tmp/ondas-fixtures; \
+    python3 -B scripts/install.py ${WAVEPEEK_ONDAS_FIXTURES}; \
+    for fixture in ${WAVEPEEK_ONDAS_FIXTURES}; do \
+        mkdir -p "${ONDAS_FIXTURES_DIR}/${fixture}"; \
+        cp "${fixture}/fixture.json" "${fixture}/waveform.fst" "${ONDAS_FIXTURES_DIR}/${fixture}/"; \
+    done; \
+    cp -a LICENSES "${ONDAS_FIXTURES_DIR}/"; \
+    rm -rf /tmp/ondas-fixtures /tmp/ondas-fixtures.tar.gz
 
 # ---- Tool Image ---------------------------------------------------------------
 FROM public.ecr.aws/docker/library/ubuntu:24.04
@@ -102,12 +110,12 @@ RUN for tool in \
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
-ENV RTL_ARTIFACTS_DIR=/opt/rtl-artifacts
+ENV ONDAS_FIXTURES_DIR=/opt/ondas-fixtures
 ENV PATH="/opt/wavepeek-python/bin:/home/ubuntu/.local/bin:/home/ubuntu/.cargo/bin:${PATH}"
 
 RUN install -d -m 0755 -o ubuntu -g ubuntu /home/ubuntu/.local /home/ubuntu/.local/bin /workspaces
 
-COPY --from=rtl_artifacts --chown=ubuntu:ubuntu /opt/rtl-artifacts ${RTL_ARTIFACTS_DIR}
+COPY --from=ondas_fixtures --chown=ubuntu:ubuntu /opt/ondas-fixtures ${ONDAS_FIXTURES_DIR}
 
 USER ubuntu
 ENV HOME=/home/ubuntu

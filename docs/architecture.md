@@ -54,6 +54,7 @@ Key architectural consequences:
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
 - The engine is format-agnostic for waveform commands. Ondas format handling and optional native reader access stay behind the waveform facade.
 - The lazy hierarchy index maps scope paths and groups declarations by owning scope. Direct listings visit that scope's declarations; global include matching reuses that index or builds temporary metadata for selected canonical paths, retaining all declarations of each path for ambiguity and split-vector handling.
+- Exact bit lookups use the same canonical builder for every format, with a temporary index limited to selected declarations. Cached physical handles avoid a full index; ambiguous paths, split vectors, events, and rich values retain full resolution.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.
 

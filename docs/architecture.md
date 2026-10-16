@@ -136,7 +136,7 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `ondas` | =1.0.2 | VCD/FST parsing and optional FSDB access | FSDB forwards to `ondas/fsdb-lib`; VCD/FST support byte input for WASM |
+| `ondas` | =1.1.0 | VCD/FST parsing and optional FSDB access | FSDB forwards to `ondas/fsdb-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |

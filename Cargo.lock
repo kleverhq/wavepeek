@@ -411,9 +411,9 @@ checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
 
 [[package]]
 name = "ondas"
-version = "1.0.2"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0deb39cfb4897527eaeeb9e20bade3ef66c3a820beb8d3cfeeb2499618036b7f"
+checksum = "8d359bd3d8d245a9003e58fbc519de74d7002bd73fcf7d40f8caa081188e99d2"
 dependencies = [
  "cc",
  "fst-reader",

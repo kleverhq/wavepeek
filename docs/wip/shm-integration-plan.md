@@ -138,7 +138,3 @@ Revision 2026-10-16: Recorded successful private/default CI and combined-feature
 Revision 2026-10-16: Completed benchmark captures and FST functional verification. Preserve native reader metadata; document the observed 0ps versus 1ps start bounds and initial-row differences rather than adjusting SHM to another format. Keep the timing headline restricted to identical-payload pairs.
 
 Revision 2026-10-16: Completed final hooks and `just check`; preserved measured binaries and raw results under `tmp/shm/comparison/`. The benchmark report records all validation, timing ratios, existing FSDB exclusions, and SHM/FST metadata and initial-row differences.
-
-Revision 2026-10-16: Follow-up performance work is tracked in
-`shm-performance-plan.md`; its per-scenario 2x target and common-API constraint
-supersede the completed integration slice's optimization non-goal.

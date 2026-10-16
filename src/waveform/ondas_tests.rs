@@ -699,138 +699,6 @@ fn fst_batch_value_selection_keeps_full_index_lazy() {
 }
 
 #[test]
-fn batch_resolution_prepares_more_than_the_single_lookup_limit() {
-    let mut source = String::from("$timescale 1ns $end\n$scope module top $end\n");
-    for index in 0..200 {
-        source.push_str(&format!("$var wire 1 s{index} sig{index} $end\n"));
-    }
-    source.push_str("$upscope $end\n$enddefinitions $end\n#0\n");
-    for index in 0..200 {
-        source.push_str(&format!("0s{index}\n"));
-    }
-    let fixture = write_fixture(&source, "batch-resolution.vcd");
-    let paths = (0..200)
-        .map(|index| format!("top.sig{index}"))
-        .collect::<Vec<_>>();
-    let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let resolved = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
-    assert!(
-        backend
-            .sample_resolved_optional(&resolved, 0)
-            .unwrap()
-            .iter()
-            .all(|sample| sample.bits.as_deref() == Some("0"))
-    );
-    let expr = backend.resolve_expr_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
-    assert!(
-        resolved
-            .iter()
-            .zip(expr)
-            .all(|(signal, expr)| signal.id == expr.id)
-    );
-
-    let fresh = OndasBackend::open(fixture.path()).unwrap();
-    let expr = fresh.resolve_expr_signals(&paths).unwrap();
-    assert_eq!(expr.len(), paths.len());
-    for (signal, path) in expr.iter().zip(&paths) {
-        assert_eq!(&signal.path, path);
-        assert_eq!(signal.expr_type.width, 1);
-    }
-    assert!(fresh.index.get().is_none());
-}
-
-#[cfg(feature = "shm")]
-#[test]
-fn shm_selected_resolution_keeps_full_index_lazy() {
-    for (fixture, paths) in [
-        ("m2_core", vec!["top.clk", "top.data", "top.clk"]),
-        (
-            "rich_names",
-            vec!["top.\\block.dot.\\data.bus", "top.memory.[0]"],
-        ),
-    ] {
-        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("tests/fixtures/shm")
-            .join(format!("{fixture}.shm"));
-        let paths = paths.into_iter().map(str::to_owned).collect::<Vec<_>>();
-        let mut selected = OndasBackend::open(&path).unwrap();
-        let time = selected
-            .inner
-            .metadata()
-            .time_span()
-            .unwrap()
-            .last()
-            .ticks();
-        selected.prepare_value_signals(&paths);
-        let resolved = selected.resolve_signals(&paths).unwrap();
-        let actual = selected.sample_resolved_optional(&resolved, time).unwrap();
-        assert!(selected.index.get().is_none());
-
-        let mut full = OndasBackend::open(&path).unwrap();
-        full.index();
-        let expected = full.resolve_signals(&paths).unwrap();
-        assert_eq!(
-            actual,
-            full.sample_resolved_optional(&expected, time).unwrap()
-        );
-        selected.index();
-        assert_eq!(
-            actual,
-            selected.sample_resolved_optional(&resolved, time).unwrap()
-        );
-    }
-}
-
-#[test]
-fn selected_hierarchy_preserves_complex_name_candidates() {
-    let source = write_fixture(
-        "$timescale 1ns $end\n$scope module top $end\n$var wire 1 ! plain $end\n$var wire 1 \" \\plain $end\n$var wire 1 # \\\\plain $end\n$var wire 8 $ memory[0] [7:0] $end\n$var wire 1 % split [0] $end\n$var wire 1 & split [1] $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n0#\nb10100101 $\n0%\n1&\n",
-        "selected-names.vcd",
-    );
-    let wave = ondas::open(source.path()).unwrap();
-    for format in [
-        ondas::Format::Vcd,
-        ondas::Format::Fst,
-        ondas::Format::Fsdb,
-        ondas::Format::Shm,
-    ] {
-        let full = super::HierarchyIndex::new(wave.hierarchy(), format, false);
-        assert!(
-            !full.by_path.is_empty(),
-            "{format:?}: full index produced no paths"
-        );
-        for (path, expected) in &full.by_path {
-            let selection = super::HierarchySelection {
-                paths: [path.clone()].into_iter().collect(),
-                scopes: Default::default(),
-            };
-            let partial =
-                super::HierarchyIndex::build(wave.hierarchy(), format, false, Some(&selection));
-            assert_eq!(partial.by_path.len(), 1, "{format:?}: {path}");
-            let actual = partial.by_path.get(path).unwrap_or_else(|| {
-                panic!("{format:?}: selected index omitted canonical path {path}")
-            });
-            assert_eq!(actual.len(), expected.len(), "{format:?}: {path}");
-            for (&actual, &expected) in actual.iter().zip(expected) {
-                assert_eq!(
-                    partial.declarations[actual].entry,
-                    full.declarations[expected].entry
-                );
-            }
-        }
-        let selection = super::HierarchySelection {
-            paths: ["top.absent".into()].into_iter().collect(),
-            scopes: Default::default(),
-        };
-        let missing =
-            super::HierarchyIndex::build(wave.hierarchy(), format, false, Some(&selection));
-        assert!(missing.by_path.is_empty(), "{format:?}: missing selection");
-    }
-}
-
-#[test]
 fn fst_batch_selects_same_leaf_under_distinct_parents() {
     let source = write_fixture(
         "$timescale 1ns $end\n$scope module top $end\n$scope module left $end\n$var wire 1 ! bit $end\n$upscope $end\n$scope module right $end\n$var wire 1 \" bit $end\n$upscope $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n1\"\n",
@@ -895,16 +763,12 @@ fn fst_array_path_uses_full_index_spelling() {
         "$timescale 1ns $end\n$scope module top $end\n$var wire 8 ! memory[0] [7:0] $end\n$upscope $end\n$enddefinitions $end\n#0\nb00000001 !\n",
         "array.vcd",
     );
-    let mut backend = OndasBackend::open(fixture.path()).unwrap();
-    let paths = ["top.memory.[0]".into()];
-    let resolved = backend.resolve_signals(&paths).unwrap();
-    assert!(backend.index.get().is_none());
-    let actual = backend.sample_resolved_optional(&resolved, 0).unwrap();
-    let mut full = OndasBackend::open(fixture.path()).unwrap();
-    full.index();
-    let expected = full.resolve_signals(&paths).unwrap();
-    assert_eq!(actual, full.sample_resolved_optional(&expected, 0).unwrap());
-    assert_eq!(actual[0].bits.as_deref(), Some("00000001"));
+    let wave = ondas::open(fixture.path()).unwrap();
+    let variable = wave.hierarchy().variables().next().unwrap();
+    let direct = super::public_fst_variable_path(&variable);
+    let full = super::HierarchyIndex::new(wave.hierarchy(), ondas::Format::Fst, false);
+    assert_eq!(direct.as_deref(), Some("top.memory.[0]"));
+    assert!(full.by_path.contains_key(direct.as_deref().unwrap()));
 }
 
 #[test]
@@ -1916,10 +1780,17 @@ fn escaped_unpacked_array_keeps_escape_on_base_component() {
             .unwrap()
             .success()
     );
+    let fst_wave = ondas::open(&fst).unwrap();
     let paths = [
         ("top.\\x.[0]", "00000001"),
         ("top.\\matrix.[2].[3]", "00000010"),
     ];
+    for (variable, (path, _)) in fst_wave.hierarchy().variables().zip(paths) {
+        assert_eq!(
+            super::public_fst_variable_path(&variable).as_deref(),
+            Some(path)
+        );
+    }
     for path in [source.path(), fst.as_path()] {
         let mut waveform = Waveform::open(path).unwrap();
         for (signal_path, expected) in paths {

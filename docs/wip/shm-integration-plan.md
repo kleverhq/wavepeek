@@ -22,7 +22,7 @@ This work covers the native CLI and optional local Cadence integration. Browser 
 - [x] (2026-10-16) Add the 156-case SHM catalog, focused E2E runner, and conditional smoke recipe.
 - [x] (2026-10-16) Measure all 156 SHM cases and 144 FSDB cases; confirm the 12 FSDB failures match existing exclusions, and compare all 156 FST functional captures.
 - [x] (2026-10-16) Update user/maintainer documentation; pass `just ci` with SDKs and with both SDK variables unset, plus combined `fsdb,shm` library/CLI tests.
-- [ ] Complete host commit hooks and `just check`, then report results and stop.
+- [x] (2026-10-16) Pass normal host hooks for `e317ec1`, including both native benchmark smokes, and pass `just check`; record the final benchmark report.
 
 ## Surprises & Discoveries
 
@@ -44,7 +44,7 @@ Prepare benchmark inputs through FST-to-VCD-to-SHM conversion, reusing valid exi
 
 ## Outcomes & Retrospective
 
-Native integration and all regression suites are implemented. `just ci` passed with SDKs and without their environment variables; combined `fsdb,shm` tests passed. Source coverage: 93.01% lines, 91.85% regions, 91.66% functions. SHM completed 156/156 benchmark scenarios; FSDB completed 144/156 with only its 12 existing scalar-array exclusions. The 134 identical-payload pairs have a median SHM/FSDB ratio of 1.776. FST reference captures account for eight SHM differences in declaration kinds and initial bounds/rows. Final host hooks and local handoff checks remain pending. GitHub's open issues and milestones were inspected; no SHM integration issue was present. No issue or pull request was created.
+Native integration and all regression suites are implemented. `just ci` passed with SDKs and without their environment variables; combined `fsdb,shm` tests passed. Source coverage: 93.01% lines, 91.85% regions, 91.66% functions. SHM completed 156/156 benchmark scenarios; FSDB completed 144/156 with only its 12 existing scalar-array exclusions. The 134 identical-payload pairs have a median SHM/FSDB ratio of 1.776. FST reference captures account for eight SHM differences in declaration kinds and initial bounds/rows. Normal host hooks and `just check` passed. The implementation is committed as `e317ec1`; `docs/wip/shm-benchmark-report.md` records the measured performance, exclusions, and functional differences. No additional optimization or multi-ref benchmark integration is planned in this slice. GitHub's open issues and milestones were inspected; no SHM integration issue was present. No issue or pull request was created.
 
 ## Context and Orientation
 
@@ -136,3 +136,5 @@ Revision 2026-10-16: Reduced benchmark scope to the existing E2E harness under t
 Revision 2026-10-16: Recorded successful private/default CI and combined-feature validation. Native recording uses `probe -all -dynamic` to retain strings. All benchmark inputs are prepared; sequential measurements use five samples and two warmups per scenario.
 
 Revision 2026-10-16: Completed benchmark captures and FST functional verification. Preserve native reader metadata; document the observed 0ps versus 1ps start bounds and initial-row differences rather than adjusting SHM to another format. Keep the timing headline restricted to identical-payload pairs.
+
+Revision 2026-10-16: Completed final hooks and `just check`; preserved measured binaries and raw results under `tmp/shm/comparison/`. The benchmark report records all validation, timing ratios, existing FSDB exclusions, and SHM/FST metadata and initial-row differences.

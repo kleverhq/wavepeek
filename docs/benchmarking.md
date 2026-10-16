@@ -75,3 +75,17 @@ Some E2E catalogs include paired sampling-mode tests with matching names ending 
 Low-level `bench-e2e-run`, `bench-e2e-vcd-run`, and `bench-e2e-fsdb-run` just recipes are private development helpers. They capture ad hoc ignored runs and do not update committed baselines.
 
 Use fresh run directories for local experiments. Benchmark run artifacts are evidence, but they are not repository source artifacts unless a maintainer explicitly asks to preserve a specific result outside the ignored run locations.
+
+## SHM versus FSDB
+
+`./dev just bench-e2e-shm-run [test-name-regex]` prepares the selected SHM inputs
+and runs the existing E2E harness against a release binary. It uses
+`bench/e2e/tests_shm.json`, derived from the FST catalog through
+`just update-bench-e2e-shm-catalog`. Conversion is outside the measured command.
+For comparisons with FSDB, capture each format in a separate run directory with
+the same workload names, run counts, and warmups, using `bench/e2e/perf.py run`.
+Use its `report --compare` command for timing deltas. Compare command payloads
+separately from format-specific declaration metadata.
+
+The multi-ref `bench-gate` and `bench-capture` commands retain their existing
+format options. SHM runs currently use the focused E2E entrypoint.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import pathlib
 import subprocess
 import tempfile
@@ -13,6 +14,17 @@ SCRIPT_PATH = pathlib.Path(__file__).with_name("generate_bench_catalog.py").reso
 
 
 class GenerateBenchCatalogCliTest(unittest.TestCase):
+    def test_shm_catalog_maps_generated_inputs_and_checks_freshness(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            source, output = root / "tests.json", root / "tests_shm.json"
+            source.write_text('{"tests": ["tests/fixtures/generated/sample.fst"]}')
+            args = ["--source", str(source), "--output", str(output), "--target", "shm"]
+            result = self.run_script(args, root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads(output.read_text()), {"tests": ["tests/fixtures/shm/sample.shm"]})
+            self.assertEqual(self.run_script([*args, "--check"], root).returncode, 0)
+
     def run_script(
         self, args: list[str], cwd: pathlib.Path
     ) -> subprocess.CompletedProcess[str]:

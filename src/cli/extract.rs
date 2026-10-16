@@ -189,7 +189,7 @@ impl std::fmt::Display for AhbProfileArg {
 
 #[derive(Debug, Args)]
 pub struct AhbArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// AHB profile from Arm IHI 0033C
@@ -318,7 +318,7 @@ impl std::fmt::Display for PreadyModeArg {
 
 #[derive(Debug, Args)]
 pub struct ApbArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// APB profile from Arm IHI 0024E
@@ -432,7 +432,7 @@ impl std::fmt::Display for AtbProfileArg {
 
 #[derive(Debug, Args)]
 pub struct AtbArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// ATB profile from Arm IHI 0032C Issue C
@@ -595,7 +595,7 @@ impl std::fmt::Display for TreadyModeArg {
 
 #[derive(Debug, Args)]
 pub struct AxiArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// AXI profile from Arm IHI 0022H.c or IHI 0022L
@@ -662,7 +662,7 @@ pub struct AxiArgs {
 
 #[derive(Debug, Args)]
 pub struct AxiStreamArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// AXI-Stream profile from Arm IHI 0051B Issue B
@@ -740,7 +740,7 @@ pub struct AxiStreamArgs {
 
 #[derive(Debug, Args)]
 pub struct GenericArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// JSON file for multi-source extraction (for example, fifo-sources.json)

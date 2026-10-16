@@ -42,7 +42,7 @@ fn waveform_fixture_policy_manifest_matches_repository_layout() {
     assert_hand_dumps_are_manifested(&root, &policy);
     assert_source_fixtures_are_manifested(&root, &policy);
     assert_generated_outputs_exist(&root, &policy);
-    assert_no_tracked_fsdb_fixtures(&root);
+    assert_no_tracked_proprietary_fixtures(&root);
     assert_generated_directory_is_ignored(&root);
 }
 
@@ -171,15 +171,15 @@ fn assert_generated_output(root: &Path, output: &str) {
     );
 }
 
-fn assert_no_tracked_fsdb_fixtures(root: &Path) {
+fn assert_no_tracked_proprietary_fixtures(root: &Path) {
     let tracked = tracked_files(root).unwrap_or_default();
-    let fsdb = tracked
+    let native_dumps = tracked
         .iter()
-        .filter(|path| path.ends_with(".fsdb") || path.contains(".fsdb."))
+        .filter(|path| path.ends_with(".fsdb") || path.contains(".fsdb.") || path.contains(".shm/"))
         .collect::<Vec<_>>();
     assert!(
-        fsdb.is_empty(),
-        "FSDB fixtures must not be tracked: {fsdb:?}"
+        native_dumps.is_empty(),
+        "FSDB and SHM fixtures must not be tracked: {native_dumps:?}"
     );
 }
 

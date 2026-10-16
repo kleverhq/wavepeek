@@ -49,6 +49,29 @@ $ wavepeek --help | grep FSDB
 - FSDB - enabled
 ```
 
+## Install with SHM
+
+SHM support requires Linux x86_64 GNU and a compatible Xcelium reader (2021 or later).
+Set `XCELIUM_HOME` to that installation before building:
+
+```bash
+cargo install wavepeek --features shm
+```
+
+Keep the selected installation available at runtime. If its `libsst2.so` has a
+SONAME, configure the dynamic loader to find the same library. For example:
+
+```bash
+mkdir -p "$HOME/.local/lib/wavepeek-shm"
+ln -sfn "$XCELIUM_HOME/tools/lib/64bit/libsst2.so" "$HOME/.local/lib/wavepeek-shm/libsst2.so"
+export LD_LIBRARY_PATH="$HOME/.local/lib/wavepeek-shm${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+wavepeek info --waves recording.shm
+```
+
+Use the complete SHM directory containing its `.dsn` and `.trn` files.
+`--features fsdb,shm` enables both optional readers. `wavepeek --help` reports
+which features are enabled. See [Waveform formats](waveforms.md) for limits.
+
 ## Setup skill
 
 The `wavepeek` skill is bundled into the binary. Besides `SKILL.md`, it includes reference documentation, examples and helper scripts.
@@ -93,7 +116,7 @@ wavepeek scope --waves your_waves.fst --tree
 Learn concepts:
 
 - [Commands](commands.md) - command model and common conventions.
-- [Waveform formats](waveforms.md) - formats, performance, and FSDB support.
+- [Waveform formats](waveforms.md) - formats, performance, and optional native readers.
 - [Paths, signals and scopes](paths.md) - canonical paths, relative paths, and bit projections.
 - [Time units and windows](timeunits.md) - time tokens and query boundaries.
 - [Clocks and sampling](sampling.md) - event times, sample times, and pre-edge sampling.

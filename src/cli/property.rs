@@ -17,7 +17,7 @@ pub enum CaptureMode {
 
 #[derive(Debug, Args)]
 pub struct PropertyArgs {
-    /// Path to a VCD, FST, or FSDB waveform file (for example, dump.fst)
+    /// Path to a VCD, FST, or FSDB file, or an SHM database directory
     #[arg(long, value_name = "FILE", help_heading = "Input options")]
     pub waves: PathBuf,
     /// Start of the inclusive time range (for example, 1234ns; default: dump start)

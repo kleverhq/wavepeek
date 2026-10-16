@@ -35,3 +35,12 @@ Focused FSDB recipes include `just check-fsdb-env`, `just lint-fsdb`, `just chec
 Coverage failures should be fixed by adding meaningful tests, not by lowering thresholds. If `just check-commit` fails before any commit exists because `.git/COMMIT_EDITMSG` is missing or stale, create the commit normally and let the commit-msg hook validate the actual message.
 
 Keep stdout and stderr from project tools deterministic. If a gate reports unstable output, treat that as a product-contract problem rather than noisy tooling.
+
+## Optional SHM gates
+
+`just lint`, `just check`, `just test`, `just ci`, and pre-commit benchmark smoke
+probe `XCELIUM_HOME` and run the matching SHM gates when configured. An unset
+installation skips; a configured missing library fails. Focused recipes are
+`check-shm-env`, `lint-shm`, `check-shm-build`, `test-shm`, and
+`bench-e2e-shm-smoke-commit`. The build gate launches outside Cargo to verify
+runtime library loading. See [shm.md](shm.md).

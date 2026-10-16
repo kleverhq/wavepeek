@@ -1,11 +1,11 @@
 ---
 name: wavepeek
-description: Use the wavepeek CLI for deterministic VCD, FST, or FSDB waveform inspection, including metadata and hierarchy discovery, timestamped values and transitions, Boolean properties, generic synchronous events, AMBA protocol extraction, and JSON or JSONL post-processing.
+description: Use the wavepeek CLI for deterministic VCD, FST, FSDB, or SHM waveform inspection, including metadata and hierarchy discovery, timestamped values and transitions, Boolean properties, generic synchronous events, AMBA protocol extraction, and JSON or JSONL post-processing.
 ---
 
 # Wavepeek
 
-Use `wavepeek` for deterministic, scriptable questions about RTL waveform dumps. Treat VCD, FST, and FSDB files as waveform inputs to the CLI, not as text or binary files to inspect directly.
+Use `wavepeek` for deterministic, scriptable questions about RTL waveform dumps. Treat VCD, FST, and FSDB files and SHM database directories as waveform inputs to the CLI, not as text or binary files to inspect directly.
 
 Wavepeek is a stateless command-line tool. Each invocation opens one dump, runs one query, writes human-readable, JSON, or JSONL output, and exits. It is useful for focused debug, repeatable analysis, and agent workflows. It is not a GUI waveform viewer, a live simulator connection, or a waveform comparison service.
 
@@ -167,7 +167,7 @@ A successful JSONL stream starts with `begin`, contains zero or more `data` and 
 
 ## Safety and inquiry discipline
 
-- Never inspect `.fst` or `.fsdb` with generic text or binary tools. Avoid reading raw `.vcd` directly; dumps can be large and timing-sensitive.
+- Never inspect `.fst`, `.fsdb`, or SHM components with generic text or binary tools. Avoid reading raw `.vcd` directly; dumps can be large and timing-sensitive.
 - Use `info` before inventing timestamps for an unfamiliar dump. Explicit time tokens require an integer plus `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, or `s`; bare numbers and decimal tokens are invalid Wavepeek input.
 - Keep queries bounded with scopes, filters, signal lists, time windows, hierarchy depth, and row limits. Prefer narrowing a query over dumping more rows.
 - With `--scope`, ordinary query names may be relative to that scope or canonical paths inside it. Without `--scope`, use canonical dump-derived paths. Protocol mappings are relative to their selected scope.
@@ -224,12 +224,12 @@ Read only the files needed for the current question.
 ### Start here
 
 - [Overview](references/index.md): purpose, operating model, and the full documentation entry points.
-- [Quickstart](references/quickstart.md): installation, optional FSDB build, skill extraction, and first run.
+- [Quickstart](references/quickstart.md): installation, optional FSDB/SHM builds, skill extraction, and first run.
 
 ### Concepts
 
 - [Commands](references/commands.md): command selection, output modes, limits, summaries, and deterministic ordering.
-- [Waveform formats](references/waveforms.md): VCD, FST, FSDB support, performance, and repeated-query costs.
+- [Waveform formats](references/waveforms.md): VCD, FST, FSDB, SHM support, performance, and repeated-query costs.
 - [Paths, signals and scopes](references/paths.md): canonical and scoped names, bit projections, and ambiguous FSDB paths.
 - [Time units and windows](references/timeunits.md): accepted time tokens, inclusive windows, alignment errors, and helper scripts.
 - [Clocks and sampling](references/sampling.md): event expressions, native and pre-edge modes, `time`, `sample_time`, and boundary behavior.

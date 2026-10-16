@@ -12,7 +12,7 @@ Benchmarks are maintained through `bench/e2e/perf.py` for end-to-end CLI scenari
 
 ### Compatibility
 
-The default VCD/FST tool is intended to stay OS-agnostic across Linux, macOS, and Windows. Optional FSDB support is Linux x86_64-only because it links against the local Verdi FSDB Reader SDK; see `fsdb.md`.
+The default VCD/FST tool is intended to stay OS-agnostic across Linux, macOS, and Windows. Optional FSDB and SHM support are Linux x86_64-only and use local Verdi or Xcelium readers; see `fsdb.md` and `shm.md`.
 
 ### Output Stability
 
@@ -30,7 +30,7 @@ The repository ships agent-facing workflow assets plus deterministic `--json` an
 |-----------|--------|-----------|
 | Language | Rust stable (MSRV 1.93) | Performance, memory safety, and predictable resource use on large dumps |
 | CLI framework | `clap` derive API | Self-documenting command definitions with compile-time validation |
-| Waveform parsing | `ondas` | Unified VCD/FST access and optional SDK-backed FSDB access |
+| Waveform parsing | `ondas` | Unified VCD/FST access and optional SDK-backed FSDB/SHM access |
 | Serialization | `serde` + `serde_json` | Standard JSON and JSONL rendering for machine output |
 | Pattern matching | `regex` | Shared filtering surface for hierarchy and signal discovery |
 | Error handling | `thiserror` | Typed error enums without runtime boxing |
@@ -43,7 +43,7 @@ wavepeek is organized as three execution layers plus two shared support modules.
 
 1. **CLI layer** (`src/cli/`) parses arguments, owns help text, normalizes clap errors, and dispatches typed command structs.
 2. **Engine layer** (`src/engine/`) implements command behavior, shared time handling, shared value formatting, expression-runtime helpers, and command dispatch.
-3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB access when the `fsdb` feature is enabled. FSDB-specific build and SDK details live in `fsdb.md`.
+3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB/SHM access through the `fsdb` and `shm` features. Native reader setup lives in `fsdb.md` and `shm.md`.
 4. **Embedded skill runtime** (`src/skill.rs`) extracts the packaged agent skill from repository assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode, strict JSON result and fatal values, and JSONL stream records.
 6. **Browser adapter** (`src/browser.rs`) supplies explicit argv, output buffers, and one invocation-scoped VCD/FST byte source to the same CLI and waveform layers. It rejects FSDB, `skill`, and extraction `--source` before dispatch.
@@ -52,7 +52,7 @@ Key architectural consequences:
 
 - Execution is stateless. Every command opens the dump and runs once; the native wrapper exits, while the browser worker returns stdout, stderr, and status. The plain-JavaScript terminal keeps only in-tab command navigation and a bounded newest-first visible transcript.
 - Local preview composes the separately generated current Playground and documentation under `/wavepeek/` and `/wavepeek/latest/`; production uses the same paths while Mike retains historical documentation versions.
-- The engine is format-agnostic for waveform commands. Ondas format handling and optional FSDB Reader access stay behind the waveform facade.
+- The engine is format-agnostic for waveform commands. Ondas format handling and optional native reader access stay behind the waveform facade.
 - The lazy hierarchy index maps scope paths and groups declarations by owning scope. Direct listings visit that scope's declarations; global include matching reuses that index or builds temporary metadata for selected canonical paths, retaining all declarations of each path for ambiguity and split-vector handling.
 - The skill helper keeps its source of truth in packaged files instead of duplicated Rust string tables.
 - JSON and JSONL contracts are covered by direct serialization and command-runtime tests.

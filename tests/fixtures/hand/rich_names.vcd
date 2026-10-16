@@ -1,0 +1,20 @@
+$version wavepeek rich names fixture $end
+$timescale 1ns $end
+$scope module top $end
+$var string 1 ! message $end
+$var wire 8 " memory[0] [7:0] $end
+$scope module \block.dot $end
+$var wire 8 # \data.bus [7:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+#0
+sgo !
+b10100101 "
+b00000000 #
+#5
+sstop !
+b01011010 "
+b11110000 #
+#10
+sgo !

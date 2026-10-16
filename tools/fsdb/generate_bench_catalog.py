@@ -14,6 +14,7 @@ FST_SUFFIX = ".fst"
 OUTPUTS = {
     "fsdb": pathlib.Path("bench/e2e/tests_fsdb.json"),
     "vcd": pathlib.Path("bench/e2e/tests_vcd.json"),
+    "shm": pathlib.Path("bench/e2e/tests_shm.json"),
 }
 
 
@@ -38,8 +39,8 @@ def generate_catalog(source_path: pathlib.Path, target: str = "fsdb") -> tuple[s
         fail(f"error: {target} catalog: no {FST_SUFFIX} suffixes found in {source_path}")
 
     generated = source.replace(FST_SUFFIX, f".{target}")
-    if target == "fsdb":
-        generated = generated.replace("tests/fixtures/generated/", "tests/fixtures/fsdb/")
+    if target in ("fsdb", "shm"):
+        generated = generated.replace("tests/fixtures/generated/", f"tests/fixtures/{target}/")
     return generated, count
 
 

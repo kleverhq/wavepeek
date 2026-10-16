@@ -2,6 +2,7 @@ tmp/
 /.env
 /.devcontainer.local/
 /tests/fixtures/generated/
+/tests/fixtures/shm/
 *.fsdb
 *.fsdb.*
 *Log/

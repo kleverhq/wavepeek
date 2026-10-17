@@ -46,7 +46,7 @@ wavepeek is organized as three execution layers plus two shared support modules.
 3. **Waveform layer** (`src/waveform/`) is the backend-neutral facade for file opening, format detection, hierarchy traversal, sampled-value access, and candidate-time queries. Ondas supplies VCD/FST access in default builds and SDK-backed FSDB/SHM access through the `fsdb` and `shm` features. Native reader setup lives in `fsdb.md` and `shm.md`.
 4. **Embedded skill runtime** (`src/skill.rs`) extracts the packaged agent skill from repository assets.
 5. **Output module** (`src/output.rs`) owns stdout rendering for human mode, strict JSON result and fatal values, and JSONL stream records.
-6. **Browser adapter** (`src/browser.rs`) supplies explicit argv, output buffers, and one invocation-scoped VCD/FST byte source to the same CLI and waveform layers. It rejects FSDB, `skill`, and extraction `--source` before dispatch.
+6. **Browser adapter** (`src/browser.rs`) supplies explicit argv, output buffers, and one invocation-scoped VCD/FST byte source to the same CLI and waveform layers. It rejects FSDB, SHM, `skill`, and extraction `--source` before dispatch.
 
 Key architectural consequences:
 
@@ -136,7 +136,7 @@ src/
 
 | Crate | Version | Purpose | Notes |
 |-------|---------|---------|-------|
-| `ondas` | =1.1.0 | VCD/FST parsing and optional FSDB access | FSDB forwards to `ondas/fsdb-lib`; VCD/FST support byte input for WASM |
+| `ondas` | =1.1.1 | VCD/FST parsing and optional FSDB/SHM access | Native features forward to `ondas/fsdb-lib` and `ondas/shm-lib`; VCD/FST support byte input for WASM |
 | `clap` | ~4 | CLI argument parsing | Derive API for declarative CLI definitions |
 | `serde` | ~1 | Serialization | Used for machine-readable output structures |
 | `serde_json` | ~1 | JSON output | Envelope and JSONL record rendering |

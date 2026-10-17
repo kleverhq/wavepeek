@@ -495,7 +495,7 @@ check-commit message=`git rev-parse --git-path COMMIT_EDITMSG`: require-containe
     cz check --commit-msg-file {{ quote(message) }}
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-build docs-site-check playground-test check-commit
+check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test check-commit
     @just run-if-verdi check-fsdb-build
     @just run-if-xcelium check-shm-build
 

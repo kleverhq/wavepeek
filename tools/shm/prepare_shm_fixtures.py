@@ -37,7 +37,31 @@ def identity(path: Path) -> list[str | int]:
     return [str(path.resolve()), stat.st_size, stat.st_mtime_ns]
 
 
+def publish(staged: Path, output: Path) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    transaction = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
+    previous = transaction / "previous"
+    published = False
+    try:
+        replacement = transaction / "database"
+        shutil.copytree(staged, replacement)
+        if output.exists():
+            output.rename(previous)
+        try:
+            replacement.rename(output)
+            published = True
+        except BaseException:
+            if previous.exists():
+                previous.rename(output)
+            raise
+    finally:
+        # Retain the backup if rollback itself fails.
+        if published or not previous.exists():
+            shutil.rmtree(transaction)
+
+
 def prepare(source: Path, output: Path, converter: Path) -> None:
+    converter = converter.expanduser().resolve()
     stamp = {"source": identity(source), "converter": identity(converter)}
     if source.suffix == ".sv":
         stamp["probe"] = NATIVE_PROBE
@@ -63,7 +87,8 @@ def prepare(source: Path, output: Path, converter: Path) -> None:
                     subprocess.run(["fst2vcd", "-f", str(source)], stdout=stream, check=True)
         staged = work / output.name
         env = dict(os.environ)
-        home = Path(env["XCELIUM_HOME"])
+        home = Path(env["XCELIUM_HOME"]).expanduser().resolve()
+        env["XCELIUM_HOME"] = str(home)
         env["PATH"] = f"{home}/tools/bin/64bit:{home}/tools/bin:{env.get('PATH', '')}"
         if source.suffix == ".sv":
             script = work / "record.tcl"
@@ -78,10 +103,7 @@ def prepare(source: Path, output: Path, converter: Path) -> None:
         if result.returncode or not complete_database(staged):
             raise RuntimeError(f"conversion failed for {source}:\n{result.stdout}\n{result.stderr}")
         (staged / STAMP).write_text(json.dumps(stamp) + "\n")
-        output.parent.mkdir(parents=True, exist_ok=True)
-        if output.exists():
-            shutil.rmtree(output)
-        shutil.move(str(staged), output)
+        publish(staged, output)
     print(f"info: shm fixture: converted {source} -> {output}", flush=True)
 
 
@@ -92,7 +114,8 @@ def main() -> None:
     mode.add_argument("--bench-only", action="store_true")
     parser.add_argument("--filter", default="", help="benchmark test-name regex")
     args = parser.parse_args()
-    converter = Path(os.environ["XCELIUM_HOME"]) / "tools/bin/64bit/simvisdbutil"
+    home = Path(os.environ["XCELIUM_HOME"]).expanduser().resolve()
+    converter = home / "tools/bin/64bit/simvisdbutil"
     if not converter.is_file():
         parser.error(f"missing converter: {converter}")
     if not args.bench_only:
@@ -105,7 +128,7 @@ def main() -> None:
         prepare(
             ROOT / "tests/fixtures/source/shm_rich.sv",
             ROOT / "tests/fixtures/shm/shm_rich.shm",
-            Path(os.environ["XCELIUM_HOME"]) / "tools/bin/64bit/xrun",
+            home / "tools/bin/64bit/xrun",
         )
     if not args.tests_only:
         catalog = json.loads((ROOT / "bench/e2e/tests.json").read_text())

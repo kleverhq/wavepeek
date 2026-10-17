@@ -24,7 +24,10 @@ class ShmEnvironmentTest(unittest.TestCase):
 
     def test_absent_sdk_skips_but_required_or_configured_broken_sdk_fails(self) -> None:
         self.assertEqual(self.probe("").returncode, 77)
-        self.assertEqual(self.probe("", "--require").returncode, 1)
+        required = self.probe("", "--require")
+        self.assertEqual(required.returncode, 1)
+        self.assertEqual(required.stdout, "")
+        self.assertIn("set XCELIUM_HOME", required.stderr)
         with tempfile.TemporaryDirectory() as temporary:
             self.assertEqual(self.probe(temporary).returncode, 1)
             library = Path(temporary) / "tools/lib/64bit/libsst2.so"
@@ -84,6 +87,63 @@ class ShmPreparationTest(unittest.TestCase):
                 prepare.prepare(self.source, self.output, self.converter)
         self.assertEqual((self.output / prepare.STAMP).read_text(), original)
         self.assertTrue(prepare.complete_database(self.output))
+
+    def test_sdk_paths_are_normalized_before_launch(self) -> None:
+        homes = (f"~/{self.root.name}", os.path.relpath(self.root))
+        for home in homes:
+            with self.subTest(home=home), patch.dict(
+                os.environ, {"HOME": str(self.root.parent), "XCELIUM_HOME": home},
+            ), patch.object(prepare.subprocess, "run", side_effect=self.convert) as run:
+                self.source.write_text(home)
+                prepare.prepare(self.source, self.output, Path(home) / self.converter.name)
+                self.assertEqual(run.call_args.args[0][0], str(self.converter))
+                env = run.call_args.kwargs["env"]
+                self.assertEqual(env["XCELIUM_HOME"], str(self.root))
+                self.assertTrue(env["PATH"].startswith(str(self.root / "tools/bin/64bit")))
+
+    def test_failed_copy_preserves_existing_database(self) -> None:
+        with patch.object(prepare.subprocess, "run", side_effect=self.convert):
+            prepare.prepare(self.source, self.output, self.converter)
+        original = (self.output / prepare.STAMP).read_text()
+        self.source.write_text("new input")
+
+        def fail_copy(source: Path, destination: Path) -> None:
+            destination.mkdir()
+            (destination / "partial").touch()
+            raise OSError("copy failure")
+
+        with patch.object(prepare.subprocess, "run", side_effect=self.convert), patch.object(
+            prepare.shutil, "copytree", side_effect=fail_copy,
+        ):
+            with self.assertRaisesRegex(OSError, "copy failure"):
+                prepare.prepare(self.source, self.output, self.converter)
+        self.assertEqual((self.output / prepare.STAMP).read_text(), original)
+        self.assertTrue(prepare.complete_database(self.output))
+        self.assertEqual(list(self.root.glob(f".{self.output.name}.*")), [])
+
+    def test_failed_publication_restores_existing_database(self) -> None:
+        with patch.object(prepare.subprocess, "run", side_effect=self.convert):
+            prepare.prepare(self.source, self.output, self.converter)
+        original = (self.output / prepare.STAMP).read_text()
+        self.source.write_text("new input")
+        rename = Path.rename
+        failed = False
+
+        def fail_publish(source: Path, destination: Path) -> Path:
+            nonlocal failed
+            if destination == self.output and not failed:
+                failed = True
+                raise OSError("publication failure")
+            return rename(source, destination)
+
+        with patch.object(prepare.subprocess, "run", side_effect=self.convert), patch.object(
+            Path, "rename", fail_publish,
+        ):
+            with self.assertRaisesRegex(OSError, "publication failure"):
+                prepare.prepare(self.source, self.output, self.converter)
+        self.assertEqual((self.output / prepare.STAMP).read_text(), original)
+        self.assertTrue(prepare.complete_database(self.output))
+        self.assertEqual(list(self.root.glob(f".{self.output.name}.*")), [])
 
     def test_rejects_unowned_database_and_incomplete_converter_output(self) -> None:
         self.output.mkdir()

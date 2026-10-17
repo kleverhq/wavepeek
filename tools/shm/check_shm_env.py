@@ -18,7 +18,8 @@ def main() -> None:
     home = os.environ.get("XCELIUM_HOME")
     if not home:
         message = "Xcelium reader not configured; set XCELIUM_HOME"
-        print(f"{'error' if args.require else 'skip'}: shm: {message}")
+        print(f"{'error' if args.require else 'skip'}: shm: {message}",
+              file=sys.stderr if args.require else sys.stdout)
         sys.exit(1 if args.require else 77)
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         sys.exit("error: shm: Ondas requires Linux x86_64 GNU")

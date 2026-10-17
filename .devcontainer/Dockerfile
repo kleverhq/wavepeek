@@ -1,5 +1,5 @@
 # ---- Waveform Fixture Layer ---------------------------------------------------
-FROM public.ecr.aws/docker/library/ubuntu:24.04 AS ondas_fixtures
+FROM ubuntu:24.04 AS ondas_fixtures
 
 ENV DEBIAN_FRONTEND=noninteractive
 COPY .devcontainer/env_contract.sh /tmp/wavepeek-env-contract.sh
@@ -24,7 +24,7 @@ RUN set -eu; \
     rm -rf /tmp/ondas-fixtures /tmp/ondas-fixtures.tar.gz
 
 # ---- Tool Image ---------------------------------------------------------------
-FROM public.ecr.aws/docker/library/ubuntu:24.04
+FROM ubuntu:24.04
 
 ARG TARGETARCH
 ENV DEBIAN_FRONTEND=noninteractive

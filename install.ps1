@@ -6,12 +6,12 @@
 <#
 .SYNOPSIS
 
-The installer for wavepeek 3.1.0
+The installer for wavepeek 3.2.0
 
 .DESCRIPTION
 
 This script detects what platform you're on and fetches an appropriate archive from
-https://github.com/kleverhq/wavepeek/releases/download/v3.1.0
+https://github.com/kleverhq/wavepeek/releases/download/v3.2.0
 then unpacks the binaries and installs them to the first of the following locations
 
     $env:XDG_BIN_HOME
@@ -36,25 +36,25 @@ param (
 )
 
 $app_name = 'wavepeek'
-$app_version = '3.1.0'
+$app_version = '3.2.0'
 if ($env:WAVEPEEK_DOWNLOAD_URL) {
   $ArtifactDownloadUrls = @($env:WAVEPEEK_DOWNLOAD_URL)
 } elseif ($env:INSTALLER_DOWNLOAD_URL) {
   $ArtifactDownloadUrls = @($env:INSTALLER_DOWNLOAD_URL)
 } elseif ($env:WAVEPEEK_INSTALLER_GHE_BASE_URL) {
   $installer_base_url = $env:WAVEPEEK_INSTALLER_GHE_BASE_URL
-  $ArtifactDownloadUrls = @("$installer_base_url/kleverhq/wavepeek/releases/download/v3.1.0")
+  $ArtifactDownloadUrls = @("$installer_base_url/kleverhq/wavepeek/releases/download/v3.2.0")
 } elseif ($env:WAVEPEEK_INSTALLER_GITHUB_BASE_URL) {
   $installer_base_url = $env:WAVEPEEK_INSTALLER_GITHUB_BASE_URL
-  $ArtifactDownloadUrls = @("$installer_base_url/kleverhq/wavepeek/releases/download/v3.1.0")
+  $ArtifactDownloadUrls = @("$installer_base_url/kleverhq/wavepeek/releases/download/v3.2.0")
 } else {
-  $ArtifactDownloadUrls = @("https://github.com/kleverhq/wavepeek/releases/download/v3.1.0")
+  $ArtifactDownloadUrls = @("https://github.com/kleverhq/wavepeek/releases/download/v3.2.0")
 }
 
 $auth_token = $env:WAVEPEEK_GITHUB_TOKEN
 
 $receipt = @"
-{"binaries":["CARGO_DIST_BINS"],"binary_aliases":{},"cdylibs":["CARGO_DIST_DYLIBS"],"cstaticlibs":["CARGO_DIST_STATICLIBS"],"install_layout":"unspecified","install_prefix":"AXO_INSTALL_PREFIX","modify_path":true,"provider":{"source":"cargo-dist","version":"0.32.0"},"source":{"app_name":"wavepeek","name":"wavepeek","owner":"kleverhq","release_type":"github"},"version":"3.1.0"}
+{"binaries":["CARGO_DIST_BINS"],"binary_aliases":{},"cdylibs":["CARGO_DIST_DYLIBS"],"cstaticlibs":["CARGO_DIST_STATICLIBS"],"install_layout":"unspecified","install_prefix":"AXO_INSTALL_PREFIX","modify_path":true,"provider":{"source":"cargo-dist","version":"0.32.0"},"source":{"app_name":"wavepeek","name":"wavepeek","owner":"kleverhq","release_type":"github"},"version":"3.2.0"}
 "@
 if ($env:XDG_CONFIG_HOME) {
   $receipt_home = "${env:XDG_CONFIG_HOME}\wavepeek"

@@ -24,19 +24,19 @@ has_local 2>/dev/null || alias local=typeset
 set -u
 
 APP_NAME="wavepeek"
-APP_VERSION="3.1.0"
+APP_VERSION="3.2.0"
 if [ -n "${WAVEPEEK_DOWNLOAD_URL:-}" ]; then
     ARTIFACT_DOWNLOAD_URLS="$WAVEPEEK_DOWNLOAD_URL"
 elif [ -n "${INSTALLER_DOWNLOAD_URL:-}" ]; then
     ARTIFACT_DOWNLOAD_URLS="$INSTALLER_DOWNLOAD_URL"
 elif [ -n "${WAVEPEEK_INSTALLER_GHE_BASE_URL:-}" ]; then
     INSTALLER_BASE_URL="$WAVEPEEK_INSTALLER_GHE_BASE_URL"
-    ARTIFACT_DOWNLOAD_URLS="${INSTALLER_BASE_URL}/kleverhq/wavepeek/releases/download/v3.1.0"
+    ARTIFACT_DOWNLOAD_URLS="${INSTALLER_BASE_URL}/kleverhq/wavepeek/releases/download/v3.2.0"
 elif [ -n "${WAVEPEEK_INSTALLER_GITHUB_BASE_URL:-}" ]; then
     INSTALLER_BASE_URL="$WAVEPEEK_INSTALLER_GITHUB_BASE_URL"
-    ARTIFACT_DOWNLOAD_URLS="${INSTALLER_BASE_URL}/kleverhq/wavepeek/releases/download/v3.1.0"
+    ARTIFACT_DOWNLOAD_URLS="${INSTALLER_BASE_URL}/kleverhq/wavepeek/releases/download/v3.2.0"
 else
-    ARTIFACT_DOWNLOAD_URLS="https://github.com/kleverhq/wavepeek/releases/download/v3.1.0"
+    ARTIFACT_DOWNLOAD_URLS="https://github.com/kleverhq/wavepeek/releases/download/v3.2.0"
 fi
 if [ -n "${WAVEPEEK_PRINT_VERBOSE:-}" ]; then
     PRINT_VERBOSE="$WAVEPEEK_PRINT_VERBOSE"
@@ -66,7 +66,7 @@ fi
 AUTH_TOKEN="${WAVEPEEK_GITHUB_TOKEN:-}"
 
 read -r RECEIPT <<EORECEIPT
-{"binaries":["CARGO_DIST_BINS"],"binary_aliases":{},"cdylibs":["CARGO_DIST_DYLIBS"],"cstaticlibs":["CARGO_DIST_STATICLIBS"],"install_layout":"unspecified","install_prefix":"AXO_INSTALL_PREFIX","modify_path":true,"provider":{"source":"cargo-dist","version":"0.32.0"},"source":{"app_name":"wavepeek","name":"wavepeek","owner":"kleverhq","release_type":"github"},"version":"3.1.0"}
+{"binaries":["CARGO_DIST_BINS"],"binary_aliases":{},"cdylibs":["CARGO_DIST_DYLIBS"],"cstaticlibs":["CARGO_DIST_STATICLIBS"],"install_layout":"unspecified","install_prefix":"AXO_INSTALL_PREFIX","modify_path":true,"provider":{"source":"cargo-dist","version":"0.32.0"},"source":{"app_name":"wavepeek","name":"wavepeek","owner":"kleverhq","release_type":"github"},"version":"3.2.0"}
 EORECEIPT
 
 # Some Linux distributions don't set HOME
@@ -120,10 +120,10 @@ usage() {
     cat <<EOF
 wavepeek-installer.sh
 
-The installer for wavepeek 3.1.0
+The installer for wavepeek 3.2.0
 
 This script detects what platform you're on and fetches an appropriate archive from
-https://github.com/kleverhq/wavepeek/releases/download/v3.1.0
+https://github.com/kleverhq/wavepeek/releases/download/v3.2.0
 then unpacks the binaries and installs them to the first of the following locations
 
     \$XDG_BIN_HOME
@@ -228,7 +228,7 @@ download_binary_and_run_installer() {
             _arch="aarch64-apple-darwin"
             _zip_ext=".tar.gz"
             _checksum_style="sha256"
-            _checksum_value="0a4d6738fc3675852702c7a23314e6d7f274584a1f3ce661f491d07bfb7e8796"
+            _checksum_value="59562574b191ad0bc310d112046f446950bf074c82a16aca1e112afc37d512b6"
             _bins="wavepeek"
             _bins_js_array='"wavepeek"'
             _libs=""
@@ -242,7 +242,7 @@ download_binary_and_run_installer() {
             _arch="aarch64-unknown-linux-gnu"
             _zip_ext=".tar.gz"
             _checksum_style="sha256"
-            _checksum_value="001210cc201e54c0843ef334a2c3f13d57a95662a25b207bff0977c25b058527"
+            _checksum_value="d93c5407b59a8607d8d049fcde2e90e1a08ed53d37992ac9dfef3f16efa21376"
             _bins="wavepeek"
             _bins_js_array='"wavepeek"'
             _libs=""
@@ -256,7 +256,7 @@ download_binary_and_run_installer() {
             _arch="x86_64-apple-darwin"
             _zip_ext=".tar.gz"
             _checksum_style="sha256"
-            _checksum_value="709a0ab51573b315c7773b4a193bb6a597d34f7990621fc24fa01807a87c742b"
+            _checksum_value="051eac19b7d0bbeae585a654e3d84870068702417ccd07a390458001274d9692"
             _bins="wavepeek"
             _bins_js_array='"wavepeek"'
             _libs=""
@@ -270,7 +270,7 @@ download_binary_and_run_installer() {
             _arch="x86_64-pc-windows-msvc"
             _zip_ext=".zip"
             _checksum_style="sha256"
-            _checksum_value="3541bdf12d76a168b2c20eaed2ba9537c9c24e0566c77eff2f23e90ce806cd03"
+            _checksum_value="ffa4a07db32a9244067b1d5d855b5c91a868c3dcc6adbbab6b99d4b50991554c"
             _bins="wavepeek.exe"
             _bins_js_array='"wavepeek.exe"'
             _libs=""
@@ -284,7 +284,7 @@ download_binary_and_run_installer() {
             _arch="x86_64-unknown-linux-gnu"
             _zip_ext=".tar.gz"
             _checksum_style="sha256"
-            _checksum_value="8b64fe5d087b76b94cf58663ffcb735409080f2b704d56fe4384d2bf6c651645"
+            _checksum_value="8dc788e7c8b065fc422e5274e54d9466ace52ed748c673f54d9b7aedb9b5b711"
             _bins="wavepeek"
             _bins_js_array='"wavepeek"'
             _libs=""
@@ -298,7 +298,7 @@ download_binary_and_run_installer() {
             _arch="x86_64-unknown-linux-musl-static"
             _zip_ext=".tar.gz"
             _checksum_style="sha256"
-            _checksum_value="a2f93683950ac26780f593332826b0748df0104f7f6318f5eb553951ef9da082"
+            _checksum_value="d4c3ce88a35fab8aa71a7e483da0f6c54081a8414acd1a2831c9cad62b191278"
             _bins="wavepeek"
             _bins_js_array='"wavepeek"'
             _libs=""

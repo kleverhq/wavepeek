@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.1.0/">
+        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.2.0/">
       
       
       
@@ -1431,7 +1431,7 @@
 <p><code>wavepeek</code> is a stateless CLI. It starts on demand and does not require a background service. It is not a GUI or TUI waveform viewer. It does not provide real-time waveform streaming, live simulator connections, or waveform comparison.</p>
 <p>The main usage flow is simple:</p>
 <ul>
-<li>Provide a VCD/FST/FSDB waveform dump.</li>
+<li>Provide a VCD/FST/FSDB file or SHM database directory.</li>
 <li>Specify an inspection command and its arguments.</li>
 <li>Get results in human-readable, JSON, or JSONL format.</li>
 <li>Analyze the output and repeat.</li>
@@ -1444,7 +1444,7 @@
 <h2 id="concepts">Concepts<a class="headerlink" href="#concepts" title="Permanent link">&para;</a></h2>
 <ul>
 <li><a href="commands/">Commands</a> - command model and common conventions.</li>
-<li><a href="waveforms/">Waveform formats</a> - formats, performance, and FSDB support.</li>
+<li><a href="waveforms/">Waveform formats</a> - formats, performance, and optional native readers.</li>
 <li><a href="paths/">Paths, signals and scopes</a> - canonical paths, relative paths, and bit projections.</li>
 <li><a href="timeunits/">Time units and windows</a> - time tokens and query boundaries.</li>
 <li><a href="sampling/">Clocks and sampling</a> - event times, sample times, and pre-edge sampling.</li>

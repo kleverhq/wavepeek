@@ -1,87 +1,87 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/boolean-expressions/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/boolean-expressions/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/cli-reference/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/cli-reference/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/commands/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/commands/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/evaluate-properties/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/evaluate-properties/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/event-expressions/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/event-expressions/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/explore-dump/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/explore-dump/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-ahb/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-ahb/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-apb/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-apb/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-atb/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-atb/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-axi/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-axi/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-axis/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-axis/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/extract-transfers/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/extract-transfers/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/inspect-values/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/inspect-values/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/machine-output/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/machine-output/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/paths/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/paths/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/predicates/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/predicates/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/quickstart/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/quickstart/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/sampling/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/sampling/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/timeunits/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/timeunits/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
     <url>
-         <loc>https://kleverhq.github.io/wavepeek/3.1.0/waveforms/</loc>
-         <lastmod>2026-10-09</lastmod>
+         <loc>https://kleverhq.github.io/wavepeek/3.2.0/waveforms/</loc>
+         <lastmod>2026-10-17</lastmod>
     </url>
 </urlset>

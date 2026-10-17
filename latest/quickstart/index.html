@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.1.0/quickstart/">
+        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.2.0/quickstart/">
       
       
         <link rel="prev" href="..">
@@ -580,6 +580,17 @@
     <span class="md-ellipsis">
       
         Install with FSDB
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#install-with-shm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install with SHM
       
     </span>
   </a>
@@ -1419,6 +1430,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#install-with-shm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install with SHM
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#setup-skill" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1497,6 +1519,21 @@
 <pre><code class="language-text">$ wavepeek --help | grep FSDB
 - FSDB - enabled
 </code></pre>
+<h2 id="install-with-shm">Install with SHM<a class="headerlink" href="#install-with-shm" title="Permanent link">&para;</a></h2>
+<p>SHM support requires Linux x86_64 GNU and a compatible Xcelium reader (2021 or later).
+Set <code>XCELIUM_HOME</code> to that installation before building:</p>
+<pre><code class="language-bash">cargo install wavepeek --features shm
+</code></pre>
+<p>Keep the selected installation available at runtime. If its <code>libsst2.so</code> has a
+SONAME, configure the dynamic loader to find the same library. For example:</p>
+<pre><code class="language-bash">mkdir -p &quot;$HOME/.local/lib/wavepeek-shm&quot;
+ln -sfn &quot;$XCELIUM_HOME/tools/lib/64bit/libsst2.so&quot; &quot;$HOME/.local/lib/wavepeek-shm/libsst2.so&quot;
+export LD_LIBRARY_PATH=&quot;$HOME/.local/lib/wavepeek-shm${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}&quot;
+wavepeek info --waves recording.shm
+</code></pre>
+<p>Use the complete SHM directory containing its <code>.dsn</code> and <code>.trn</code> files.
+<code>--features fsdb,shm</code> enables both optional readers. <code>wavepeek --help</code> reports
+which features are enabled. See <a href="../waveforms/">Waveform formats</a> for limits.</p>
 <h2 id="setup-skill">Setup skill<a class="headerlink" href="#setup-skill" title="Permanent link">&para;</a></h2>
 <p>The <code>wavepeek</code> skill is bundled into the binary. Besides <code>SKILL.md</code>, it includes reference documentation, examples and helper scripts.
 To extract the skill bundle, use:</p>
@@ -1514,7 +1551,7 @@ wavepeek skill ./wavepeek-skill
 `wavepeek skill &lt;DIRECTORY&gt;` extracts the complete, version-matched skill package into a new or empty directory. Install the entire extracted package according to your agent harness's skill rules. Replace the older skill entirely if the extracted version is newer.
 </code></pre>
 <h2 id="first-run">First run<a class="headerlink" href="#first-run" title="Permanent link">&para;</a></h2>
-<p>Start with a waveform dump. You can download example <code>.fst</code> dumps from <a href="https://github.com/kleverhq/rtl-artifacts/releases"><code>rtl-artifacts</code> releases</a>. Pick any you like.</p>
+<p>Start with a waveform dump. Example dumps are available from <a href="https://github.com/kleverhq/ondas-fixtures#installation">Ondas fixtures</a>. Follow its installation instructions to download and verify selected waveforms.</p>
 <p>Check the dump bounds and time unit:</p>
 <pre><code class="language-bash">wavepeek info --waves your_waves.fst
 </code></pre>
@@ -1525,7 +1562,7 @@ wavepeek skill ./wavepeek-skill
 <p>Learn concepts:</p>
 <ul>
 <li><a href="../commands/">Commands</a> - command model and common conventions.</li>
-<li><a href="../waveforms/">Waveform formats</a> - formats, performance, and FSDB support.</li>
+<li><a href="../waveforms/">Waveform formats</a> - formats, performance, and optional native readers.</li>
 <li><a href="../paths/">Paths, signals and scopes</a> - canonical paths, relative paths, and bit projections.</li>
 <li><a href="../timeunits/">Time units and windows</a> - time tokens and query boundaries.</li>
 <li><a href="../sampling/">Clocks and sampling</a> - event times, sample times, and pre-edge sampling.</li>

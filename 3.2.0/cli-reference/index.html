@@ -1,0 +1,2826 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic RTL waveform inspection for scripts, CI, and agents.">
+      
+      
+      
+        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.2.0/cli-reference/">
+      
+      
+        <link rel="prev" href="../extract-atb/">
+      
+      
+        <link rel="next" href="../machine-output/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../wavepeek-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>CLI help reference - wavepeek</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../monochrome.css">
+    
+    <script>__md_scope=new URL("/wavepeek/",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#cli-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="wavepeek" class="md-header__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  <img src="../wavepeek-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            wavepeek
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              CLI help reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="/wavepeek/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="wavepeek" class="md-nav__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  <img src="../wavepeek-icon.svg" alt="logo">
+
+    </a>
+    wavepeek
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="/wavepeek/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../waveforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waveform formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../paths/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Paths, signals and scopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeunits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time units and windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clocks and sampling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../predicates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boolean conditions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explore-dump/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore dump
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inspect-values/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inspect values
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluate-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluate properties
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract transfers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-axi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AXI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-axis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AXI-Stream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-ahb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AHB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-apb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA APB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-atb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA ATB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI help reference
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI help reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek signal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek value
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek change
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-property" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek property
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-ahb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract ahb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-apb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract apb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-atb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract atb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-axi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract axi
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-axistream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract axistream
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract generic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek skill
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek help
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../machine-output/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Machine output format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../event-expressions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event expression language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../boolean-expressions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boolean expression language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-info" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek info
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-signal" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek signal
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek value
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek change
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-property" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek property
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-ahb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract ahb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-apb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract apb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-atb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract atb
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-axi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract axi
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-axistream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract axistream
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-extract-generic" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek extract generic
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-skill" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek skill
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wavepeek-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wavepeek help
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<!-- Generated by `just update-cli-reference`; do not edit. -->
+<h1 id="cli-reference">CLI reference<a class="headerlink" href="#cli-reference" title="Permanent link">&para;</a></h1>
+<p>This page contains the detailed help from the version-matched <code>wavepeek</code> binary.</p>
+<h2 id="wavepeek"><code>wavepeek</code><a class="headerlink" href="#wavepeek" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">wavepeek queries saved RTL waveform dumps.
+
+Behavior:
+- Each waveform command opens one waveform dump, runs one query, writes its output, and exits.
+- Every build supports VCD and FST. FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
+- SHM directories require Linux x86_64, Cargo feature `shm`, and a compatible Xcelium reader selected by XCELIUM_HOME.
+- Waveform commands write text by default. Use `--json` for one JSON value or `--jsonl` for a stream of JSON records.
+- Time values use an integer and an explicit unit, for example `250ps`, `10ns`, or `2us`. Supported units are `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, and `s`.
+
+Examples:
+  wavepeek info --waves dump.fst
+  wavepeek scope --waves dump.fst --tree --max-depth 2
+  wavepeek help extract axi
+
+Notes:
+- Count and traversal limits keep output bounded by default. Use `unlimited` only when the full result is needed.
+- Parsed times use the dump's `time_unit`. The `--from` and `--to` boundaries are inclusive.
+- Text failures use `fatal: &lt;category&gt;: &lt;message&gt;`. JSON and JSONL use typed fatal records.
+- Names ending in `.md` refer to files in the packaged skill. Run `wavepeek skill ./wavepeek-skill` to extract it, then open the files under `./wavepeek-skill/references/`.
+- See machine-output.md for machine output and timeunits.md for time syntax.
+
+Usage: wavepeek [OPTIONS] [COMMAND]
+
+Waveform commands:
+  info      Show metadata for one waveform dump.
+  scope     List scopes in a waveform hierarchy.
+  signal    List signals in one waveform scope.
+  value     Read selected signal values at one or more times.
+  change    Read signal values at selected events over a time range.
+  property  Evaluate a Boolean expression at selected events.
+  extract   Extract event rows from waveform signals.
+
+Helper commands:
+  skill     Extract the packaged agent skill into a directory.
+  help      Show detailed help for a command path.
+
+Options:
+  -V
+          Print semver version
+
+      --version
+          Print full version
+
+  -h, --help
+          Print help (see a summary with '-h')
+
+Optional features:
+- FSDB - disabled (FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK)
+- SHM - disabled (SHM requires Linux x86_64, Cargo flag `--features shm`, and a compatible XCELIUM_HOME)
+</code></pre>
+<h2 id="wavepeek-info"><code>wavepeek info</code><a class="headerlink" href="#wavepeek-info" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Show metadata for one waveform dump.
+
+Behavior:
+- Reports the dump time unit, start time, and end time.
+- Text output uses a simple field list. JSON and JSONL use the standard machine output records.
+
+Example:
+  wavepeek info --waves dump.fst
+
+Notes:
+- Run `info` before choosing values for `--at`, `--from`, or `--to`.
+- See explore-dump.md for the usual inspection flow and timeunits.md for time rules.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek info [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+Output options:
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-scope"><code>wavepeek scope</code><a class="headerlink" href="#wavepeek-scope" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">List scopes in a waveform hierarchy.
+
+Behavior:
+- Matches `--filter` against full scope paths and reports each scope's name, depth, and kind.
+- Uses stable pre-order depth-first traversal with lexicographic child ordering.
+- Reports normalized scope kinds for modules and other recorded hierarchy objects.
+- `--tree` prints an indented hierarchy and includes the ancestors of matching scopes.
+- Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
+
+Examples:
+  wavepeek scope --waves dump.fst --tree --max-depth 2 --max 30
+  wavepeek scope --waves dump.fst --filter '.*(cpu|axi|uart).*'
+
+Notes:
+- Use `scope` before commands that need an exact scope path.
+- See explore-dump.md for a hierarchy walkthrough and paths.md for path rules.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek scope [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+Selection options:
+      --max-depth &lt;MAX_DEPTH&gt;
+          Maximum traversal depth (`unlimited` disables depth truncation)
+
+          [default: 5]
+
+      --filter &lt;FILTER&gt;
+          Regex filter for full scope path
+
+          [default: .*]
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of matching scopes (tree ancestors do not count; `unlimited` disables truncation)
+
+          [default: 50]
+
+      --tree
+          Render hierarchy as an indented tree
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-signal"><code>wavepeek signal</code><a class="headerlink" href="#wavepeek-signal" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">List signals in one waveform scope.
+
+Behavior:
+- Matches `--filter` against signal names and reports each signal's name, kind, and available metadata such as width.
+- Lists direct signals by default. `--recursive` also visits child scopes in stable depth-first order.
+- Reports normalized signal kinds for wires and other recorded objects.
+- Omits ambiguous FSDB paths instead of choosing a backing record and produces a coded diagnostic.
+- Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
+
+Examples:
+  wavepeek signal --waves dump.fst \
+    --scope tb.dut.cpu \
+    --filter '.*(clk|reset|state).*'
+
+  wavepeek signal --waves dump.fst \
+    --scope tb.dut --recursive --max-depth 2 --abs
+
+Notes:
+- Use `--abs` to print canonical paths that can be copied into later commands.
+- See explore-dump.md for signal discovery and paths.md for path rules.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek signal [OPTIONS] --waves &lt;FILE&gt; --scope &lt;SCOPE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --scope &lt;SCOPE&gt;
+          Exact scope path (for example, top.cpu)
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of entries (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Show canonical signal paths
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Selection options:
+      --filter &lt;FILTER&gt;
+          Regex filter for signal name
+
+          [default: .*]
+
+      --recursive
+          Recursively include nested child scopes
+
+      --max-depth &lt;MAX_DEPTH&gt;
+          Maximum recursion depth below --scope; requires --recursive (`unlimited` disables this limit)
+
+          [default: 5]
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-value"><code>wavepeek value</code><a class="headerlink" href="#wavepeek-value" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Read selected signal values at one or more times.
+
+Behavior:
+- `--at` and `--signals` accept comma-separated values, repeated options, or both. The command prints one row per `--at` value and preserves request order and duplicates.
+- Uses canonical signal paths by default. With `--scope`, names may be relative or canonical paths inside that scope, and both forms may be mixed.
+- A trailing `[msb:lsb]` selects bits from a flat integral signal. Use `[n:n]` for one bit; `[n]` remains part of an ordinary waveform path.
+- Exact waveform paths take precedence over projection syntax.
+- Text values use Verilog literals such as `8'h0f`, including `x` and `z` digits.
+- The command fails if a signal cannot be resolved or a requested time is finer than the dump resolution.
+
+Examples:
+  wavepeek value --waves dump.fst \
+    --scope tb.dut.cpu --at 120ns --signals state,pc
+
+  wavepeek value --waves dump.fst \
+    --at 100ns,110ns --signals 'top.status[7:4]'
+
+Notes:
+- Time values need explicit units and must align with dump precision.
+- To reproduce a `change` or `property` row, pass its `sample_time` to `--at`. In `pre-edge` mode, `time` is the trigger time and `sample_time` is the value sample time.
+- See inspect-values.md for examples, paths.md for signal names, and timeunits.md for time rules.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek value [OPTIONS] --waves &lt;FILE&gt; --at &lt;AT&gt; --signals &lt;SIGNALS&gt;...
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+Selection options:
+      --at &lt;AT&gt;
+          Time points with explicit units, comma-separated or repeated (for example, 1337ns or 10ns,20ns)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative signal names (for example, top.cpu)
+
+      --signals &lt;SIGNALS&gt;...
+          Signal paths or flat projections, comma-separated or repeated (for example, state,pc or status[7:4])
+
+Output options:
+      --abs
+          Show canonical signal paths
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-change"><code>wavepeek change</code><a class="headerlink" href="#wavepeek-change" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Read signal values at selected events over a time range.
+
+Behavior:
+- `--on` selects events, and `--signals` selects the values printed for each event. `--signals` accepts comma-separated values, repeated options, or both.
+- Signal names may end in `[msb:lsb]`. Sparse rows, delta rows, and wildcard comparisons use the projected values. Exact waveform paths take precedence, and `[n]` remains path syntax.
+- `--row-mode dense` prints every sampled event. `sparse` prints only samples that changed from the previous selected sample.
+- `--row-values full` prints every requested value. `delta` prints changed values, except that its first row is always full.
+- Pre-edge sampling reads values before edge-only triggers while keeping the trigger timestamp as the row time. Events without an earlier representable sample are skipped.
+- Native sampling reads values at the event timestamp and is required for wildcard triggers such as `--on '*'`.
+- Range boundaries are inclusive. In sparse mode, `--from` provides the comparison baseline and does not force a row.
+- Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
+
+Examples:
+  wavepeek change --waves dump.fst \
+    --scope tb.dut.cpu --on 'posedge clk' \
+    --signals state,req,ack
+
+  wavepeek change --waves dump.fst \
+    --from 100ns --to 160ns --on '*' --sample-mode native \
+    --signals top.req,top.ack
+
+Notes:
+- JSON and JSONL rows contain `time` for the selected event and `sample_time` for the sampled values. Text shows `sample@&lt;time&gt;` only when they differ.
+- See inspect-values.md for common queries, sampling.md for sampling modes, and event-expressions.md for `--on` syntax.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek change [OPTIONS] --waves &lt;FILE&gt; --signals &lt;SIGNALS&gt;... --on &lt;ON&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive time range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive time range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative signal and trigger names (for example, top.cpu)
+
+      --signals &lt;SIGNALS&gt;...
+          Signal paths or flat projections, comma-separated or repeated (for example, state,req or status[7:4])
+
+      --on &lt;ON&gt;
+          Event trigger expression (for example, 'posedge clk'; use `*` only with `--sample-mode native`)
+
+      --sample-mode &lt;MODE&gt;
+          Value sampling mode for event-selected rows
+
+          [default: pre-edge]
+          [possible values: native, pre-edge]
+
+Output options:
+      --row-mode &lt;MODE&gt;
+          Select whether every sampled event or only changed samples become rows
+
+          [default: dense]
+          [possible values: dense, sparse]
+
+      --row-values &lt;VALUES&gt;
+          Select whether rows contain all values or only changed values
+
+          [default: full]
+          [possible values: full, delta]
+
+      --max &lt;MAX&gt;
+          Maximum number of snapshot rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Print canonical paths
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-property"><code>wavepeek property</code><a class="headerlink" href="#wavepeek-property" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Evaluate a Boolean expression at selected events.
+
+Behavior:
+- `--on` selects events, and `--eval` defines the expression checked at each event.
+- `--capture match` prints every selected event where the expression is true.
+- `--capture switch` prints both result transitions. `assert` prints false-to-true transitions, and `deassert` prints true-to-false transitions.
+- Pre-edge sampling checks the expression before edge-only triggers while keeping the trigger timestamp as the row time.
+- Native sampling checks at the event timestamp and is required for wildcard triggers such as `--on '*'`.
+- Truncation produces a coded diagnostic. An empty text result prints a short message unless `--summary` is set.
+
+Examples:
+  wavepeek property --waves dump.fst \
+    --scope tb.dut --on 'posedge clk' \
+    --eval 'req &amp;&amp; !ack'
+
+  wavepeek property --waves dump.fst \
+    --on '*' --sample-mode native \
+    --eval &quot;top.error != 8'h00&quot; --capture assert
+
+Notes:
+- This is a sampled Boolean check, not a SystemVerilog temporal assertion.
+- JSON and JSONL rows contain `time` for the selected event and `sample_time` for the expression sample. Text shows `sample@&lt;time&gt;` only when they differ.
+- See evaluate-properties.md for common queries, boolean-expressions.md for `--eval`, and sampling.md for sampling modes.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek property [OPTIONS] --waves &lt;FILE&gt; --on &lt;ON&gt; --eval &lt;EVAL&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive time range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive time range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative event and expression names (for example, top.cpu)
+
+      --on &lt;ON&gt;
+          Event trigger expression (for example, 'posedge clk'; use `*` only with `--sample-mode native`)
+
+      --sample-mode &lt;MODE&gt;
+          Value sampling mode for event-selected rows
+
+          [default: pre-edge]
+          [possible values: native, pre-edge]
+
+      --eval &lt;EVAL&gt;
+          Logical expression evaluated at selected events (for example, 'ready &amp;&amp; !stall')
+
+Output options:
+      --capture &lt;MODE&gt;
+          Capture mode: level (`match`) or edge (`switch`, `assert`, `deassert`)
+
+          [default: switch]
+          [possible values: match, switch, assert, deassert]
+
+      --max &lt;MAX&gt;
+          Maximum number of property rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract"><code>wavepeek extract</code><a class="headerlink" href="#wavepeek-extract" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract event rows from waveform signals.
+
+Behavior:
+- `generic` selects clocked events with an event expression and Boolean predicate, then samples an ordered payload.
+- Protocol extractors map standard interface signals and emit protocol-specific channel or phase events.
+
+Examples:
+  wavepeek extract generic --waves dump.fst \
+    --scope top.fifo --on 'posedge clk' \
+    --when 'valid &amp;&amp; ready' --payload data
+
+  wavepeek extract axi --waves dump.fst \
+    --scope top.axi --profile axi4 \
+    --map aclk=clk --include '^m_axi_'
+
+Notes:
+- Extractors report sampled events. They do not perform full protocol checking or reconstruct high-level transactions.
+- See extract-transfers.md for generic extraction and extract-axi.md, extract-axis.md, extract-ahb.md, extract-apb.md, or extract-atb.md for AMBA examples.
+
+Usage: wavepeek extract &lt;COMMAND&gt;
+
+Commands:
+  ahb        Extract manager-facing AHB address and data-phase events.
+  apb        Extract APB Setup and Access events.
+  atb        Extract ATB transfer, flush, and synchronization-request events.
+  axi        Extract AXI-family ready/valid channel transfers.
+  axistream  Extract AXI-Stream transfers.
+  generic    Extract custom synchronous events and their payload values.
+  help       Show detailed help for a command path.
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-ahb"><code>wavepeek extract ahb</code><a class="headerlink" href="#wavepeek-extract-ahb" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract manager-facing AHB address and data-phase events.
+
+Behavior:
+- Supports AHB-Lite and AHB5 from Arm IHI 0033C, Issue C.
+- Tracks one accepted address phase so data completions remain separate from idle clocks.
+- Emits address, data-complete, reset, and desynchronized events by default. The include flags add stall, idle, or busy cycle events.
+- Samples control and payload one dump tick before each rising HCLK edge.
+- Uses manager-facing HREADY. HREADYOUT, HSELx, and parity or check signals are outside this interface.
+- Explicit `STD_NAME=WAVES_NAME` mappings override signals found by include regexes.
+- A source file can provide the profile, output name, include flags, regexes, and mappings.
+
+Example:
+  wavepeek extract ahb --waves dump.fst \
+    --scope tb.dut.ahb_m --profile ahb-lite \
+    --map hclk=clk --include '^m_ahb_'
+
+Notes:
+- `--source` conflicts with `--profile`, `--name`, `--map`, `--include`, `--include-stall`, `--include-idle`, and `--include-busy`.
+- Pipeline warm-up starts before `--from`, so an in-range completion may belong to an earlier address phase. JSON field `initial_data_phase` records that state.
+- JSON context includes the Issue C profile, resolved mappings, and ordered event rows.
+- The extractor does not reconstruct bursts, combine transactions, or join address and data phases.
+- See extract-ahb.md for mapping and stall examples. See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract ahb [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --profile &lt;PROFILE&gt;
+          AHB profile from Arm IHI 0033C
+
+          [default: ahb-lite]
+          [possible values: ahb-lite, ahb5]
+
+      --source &lt;FILE&gt;
+          JSON AHB source file with profile, include flags, name, regexes, and mappings (for example, ahb-source.json)
+
+      --name &lt;NAME&gt;
+          Interface name stored in output metadata (default: ahb)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative AHB signal names and include regexes (for example, top.ahb_m)
+
+Signal mapping options:
+      --map &lt;STD=WAVES&gt;
+          Explicit AHB signal mapping; may be repeated (for example, haddr=dmem_haddr)
+
+      --include &lt;REGEX&gt;
+          Regex for AHB auto-mapping candidates; may be repeated (for example, '^m_ahb_')
+
+Event options:
+      --include-stall
+          Emit one data-stall event for each active low-HREADY cycle
+
+      --include-idle
+          Emit one idle event for each known-ready IDLE slot
+
+      --include-busy
+          Emit one busy event for each known-ready BUSY slot
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of public AHB event rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --abs
+          Print canonical mapping paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-apb"><code>wavepeek extract apb</code><a class="headerlink" href="#wavepeek-extract-apb" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract APB Setup and Access events.
+
+Behavior:
+- Supports APB3, APB4, and APB5 from Arm IHI 0024E.
+- Emits setup and access-complete rows by default. `--include-wait` adds one row for each waited Access cycle.
+- Mapped PREADY mode requires `pready`. Implicit-high mode forbids `pready` and wait rows.
+- Maps one concrete Completer PSELx signal as `psel`.
+- Samples reset, predicates, direction, and payload at the pre-edge sample point.
+- Explicit `STD_NAME=WAVES_NAME` mappings override signals found by include regexes.
+- A source file can provide the profile, PREADY mode, wait flag, output name, regexes, and mappings. Source files use canonical lowercase profile and mode values.
+
+Example:
+  wavepeek extract apb --waves dump.fst \
+    --scope tb.dut.uart_apb --profile apb4 \
+    --map pclk=clk --include '^uart_'
+
+Notes:
+- `--source` conflicts with `--profile`, `--pready-mode`, `--include-wait`, `--name`, `--map`, and `--include`.
+- JSON context includes APB metadata, resolved mappings, and event rows.
+- Rows are independent sampled events. The extractor does not correlate or validate transactions.
+- See extract-apb.md for mapping and wait-state examples. See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract apb [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --profile &lt;PROFILE&gt;
+          APB profile from Arm IHI 0024E
+
+          [default: apb4]
+          [possible values: apb3, apb4, apb5]
+
+      --pready-mode &lt;MODE&gt;
+          PREADY handling mode
+
+          [default: mapped]
+          [possible values: mapped, implicit-high]
+
+      --include-wait
+          Emit one access-wait row per waited Access cycle
+
+      --source &lt;FILE&gt;
+          JSON APB source file with profile, PREADY mode, wait flag, name, regexes, and mappings (for example, apb-source.json)
+
+      --name &lt;NAME&gt;
+          Interface name stored in output metadata (default: apb)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative APB signal names and include regexes (for example, top.uart_apb)
+
+Signal mapping options:
+      --map &lt;STD=WAVES&gt;
+          Explicit APB signal mapping; may be repeated (for example, psel=uart_psel)
+
+      --include &lt;REGEX&gt;
+          Regex for APB auto-mapping candidates; may be repeated (for example, '^uart_apb_')
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of extracted event rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Print canonical mapping and payload paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-atb"><code>wavepeek extract atb</code><a class="headerlink" href="#wavepeek-extract-atb" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract ATB transfer, flush, and synchronization-request events.
+
+Behavior:
+- Supports ATB-A, ATB-B, and ATB-C from Arm IHI 0032C, Issue C.
+- Builds separate event sources for complete ATVALID/ATREADY and AFVALID/AFREADY handshakes.
+- A mapped SYNCREQ signal on ATB-B or ATB-C adds synchronization-request events.
+- Samples reset, predicates, and transfer payload at the pre-edge sample point.
+- Orders same-edge events as transfer, flush, then synchronization request.
+- Preserves mapped ATBYTES, ATDATA, and ATID values without trace decoding.
+- Explicit `STD_NAME=WAVES_NAME` mappings override signals found by include regexes.
+- A source file can provide the profile, output name, regexes, and mappings. Source files use canonical hyphenated profile names.
+
+Example:
+  wavepeek extract atb --waves dump.fst \
+    --scope tb.dut.etm --profile atb-c \
+    --map atclk=trace_clk --include '^trace_(at|af|sync)'
+
+Notes:
+- `--source` conflicts with `--profile`, `--name`, `--map`, and `--include`.
+- CLI profile aliases are `atb_a`, `atb_b`, `atb_c`, `atbv1.0`, and `atbv1.1`.
+- JSON context includes ATB metadata, resolved mappings, and event rows.
+- Rows are stateless sampled events. The extractor does not reconstruct packets, stalls, flush episodes, or synchronization episodes.
+- See extract-atb.md for mapping examples. See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract atb [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --profile &lt;PROFILE&gt;
+          ATB profile from Arm IHI 0032C Issue C
+
+          [default: atb-c]
+          [possible values: atb-a, atb-b, atb-c]
+
+      --source &lt;FILE&gt;
+          JSON ATB source file with profile, name, regexes, and mappings (for example, atb-source.json)
+
+      --name &lt;NAME&gt;
+          Interface name stored in output metadata (default: atb)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative ATB signal names and include regexes (for example, top.etm)
+
+Signal mapping options:
+      --map &lt;STD=WAVES&gt;
+          Explicit ATB signal mapping; may be repeated (for example, atvalid=etm_atvalid)
+
+      --include &lt;REGEX&gt;
+          Regex for ATB auto-mapping candidates; may be repeated (for example, '^etm_(at|af)')
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of extracted event rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Print canonical mapping and payload paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-axi"><code>wavepeek extract axi</code><a class="headerlink" href="#wavepeek-extract-axi" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract AXI-family ready/valid channel transfers.
+
+Behavior:
+- Supports AXI3, AXI4, AXI4-Lite, AXI5, AXI5-Lite, ACE, ACE-Lite, ACE5, ACE5-Lite, ACE5-LiteDVM, and ACE5-LiteACP.
+- AXI3, AXI4, AXI4-Lite, ACE, ACE-Lite, and ACE5 use Arm IHI 0022H.c. The remaining profiles use the Arm IHI 0022L ready/valid transport.
+- Builds one event source for each complete ready/valid channel. AXI5 and ACE5-LiteDVM can add DVM `ac` and `cr` channels, but not `cd`.
+- Samples reset, ready and valid predicates, and payload at the pre-edge sample point.
+- Explicit `STD_NAME=WAVES_NAME` mappings override signals found by include regexes.
+- A source file can provide the profile, output name, regexes, and mappings. Source files use canonical hyphenated profile names.
+
+Example:
+  wavepeek extract axi --waves dump.fst \
+    --scope tb.dut.axi_m --profile axi4 \
+    --map aclk=clk --include '^m_axi_(aw|w|b|ar|r)'
+
+Notes:
+- `--source` conflicts with `--profile`, `--name`, `--map`, and `--include`.
+- CLI aliases include `ace5_lite`, `ace5-litedvm`, `ace5_litedvm`, `ace5_lite_dvm`, `ace5-liteacp`, `ace5_liteacp`, and `ace5_lite_acp`.
+- JSON context includes AXI metadata, resolved mappings, and transfer rows.
+- Rows are raw channel transfers, including eligible `ac` and `cr` transfers. The extractor does not decode DVM messages or coherency state. It does not reconstruct bursts, ordering, or outstanding request state.
+- See extract-axi.md for mapping examples. See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract axi [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --profile &lt;PROFILE&gt;
+          AXI profile from Arm IHI 0022H.c or IHI 0022L
+
+          [default: axi4]
+          [possible values: axi3, axi4, axi4-lite, axi5, axi5-lite, ace, ace-lite, ace5, ace5-lite, ace5-lite-dvm, ace5-lite-acp]
+
+      --source &lt;FILE&gt;
+          JSON AXI source file with profile, name, regexes, and mappings (for example, axi-source.json)
+
+      --name &lt;NAME&gt;
+          Interface name stored in output metadata (default: axi)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative AXI signal names and include regexes (for example, top.axi_m)
+
+Signal mapping options:
+      --map &lt;STD=WAVES&gt;
+          Explicit AXI signal mapping; may be repeated (for example, awvalid=cpu_dmem_awvalid)
+
+      --include &lt;REGEX&gt;
+          Regex for AXI auto-mapping candidates; may be repeated (for example, '^axi_(aw|w|b|ar|r)_')
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of extracted transfer rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Print canonical mapping and payload paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-axistream"><code>wavepeek extract axistream</code><a class="headerlink" href="#wavepeek-extract-axistream" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract AXI-Stream transfers.
+
+Behavior:
+- Supports AXI4-Stream and AXI5-Stream from Arm IHI 0051B, Issue B.
+- Mapped TREADY mode requires `tvalid` and `tready`. Implicit-high mode declares that physical TREADY is absent.
+- Samples reset, handshake predicates, and payload at the pre-edge sample point for each rising ACLK edge.
+- One invocation maps one stream interface and emits one row per completed transfer without adding a channel name.
+- Explicit `STD_NAME=WAVES_NAME` mappings override signals found by include regexes.
+- A source file can provide the profile, TREADY mode, output name, regexes, and mappings.
+
+Example:
+  wavepeek extract axistream --waves dump.fst \
+    --scope tb.dut.video_out --profile axi4-stream \
+    --map aclk=clk --include '^video_'
+
+Notes:
+- `--source` conflicts with `--profile`, `--tready-mode`, `--name`, `--map`, and `--include`.
+- AXI5-Stream wake-up, parity, and check signals are outside this extractor.
+- See extract-axis.md for mapping and implicit-high examples. See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract axistream [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --profile &lt;PROFILE&gt;
+          AXI-Stream profile from Arm IHI 0051B Issue B
+
+          [default: axi4-stream]
+          [possible values: axi4-stream, axi5-stream]
+
+      --tready-mode &lt;MODE&gt;
+          Whether TREADY is mapped or physically omitted and implicitly HIGH
+
+          [default: mapped]
+          [possible values: mapped, implicit-high]
+
+      --source &lt;FILE&gt;
+          JSON AXI-Stream source file with profile, TREADY mode, name, regexes, and mappings (for example, axistream-source.json)
+
+      --name &lt;NAME&gt;
+          Interface name stored in output metadata (default: axistream)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative AXI-Stream signal names and include regexes (for example, top.video_out)
+
+Signal mapping options:
+      --map &lt;STD=WAVES&gt;
+          Explicit AXI-Stream signal mapping; may be repeated (for example, tvalid=video_tvalid)
+
+      --include &lt;REGEX&gt;
+          Regex for AXI-Stream auto-mapping candidates; may be repeated (for example, '^video_')
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of extracted transfer rows (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --abs
+          Print canonical mapping and payload paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-extract-generic"><code>wavepeek extract generic</code><a class="headerlink" href="#wavepeek-extract-generic" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract custom synchronous events and their payload values.
+
+Behavior:
+- `--on` selects edge-only events. `--when` and `--payload` are always sampled at the pre-edge sample point.
+- `--payload` accepts comma-separated values, repeated options, or both. Entries may end in `[msb:lsb]`, and request order and duplicates are preserved.
+- Use `[n:n]` for one bit. Exact waveform paths take precedence, and `[n]` remains path syntax.
+- In CLI mode, `--on`, `--when`, and `--payload` define one source named by `--name`.
+- A source file can define one or more sources. `--source` conflicts with `--name`, `--on`, `--when`, and `--payload`.
+- JSON and JSONL rows include `time`, `sample_time`, `source`, and ordered payload values.
+
+Examples:
+  wavepeek extract generic --waves dump.fst \
+    --scope tb.dut.queue --on 'posedge clk' \
+    --when 'valid &amp;&amp; ready' --payload data,last
+
+  wavepeek extract generic --waves dump.fst \
+    --scope tb.dut --source fifo-sources.json
+
+Notes:
+- Use a protocol extractor when it already supports the interface.
+- See extract-transfers.md for generic extraction examples, boolean-expressions.md for `--when`, and event-expressions.md for `--on`.
+- See machine-output.md for JSON and JSONL records.
+
+Usage: wavepeek extract generic [OPTIONS] --waves &lt;FILE&gt;
+
+Input options:
+      --waves &lt;FILE&gt;
+          Path to a VCD, FST, or FSDB file, or an SHM database directory (for example, dump.fst)
+
+      --source &lt;FILE&gt;
+          JSON file for multi-source extraction (for example, fifo-sources.json)
+
+Selection options:
+      --from &lt;FROM&gt;
+          Start of the inclusive event range (for example, 1234ns; default: dump start)
+
+      --to &lt;TO&gt;
+          End of the inclusive event range (for example, 2000ns; default: dump end)
+
+      --scope &lt;SCOPE&gt;
+          Scope for relative event, predicate, and payload names (for example, top.fifo)
+
+      --name &lt;NAME&gt;
+          Source name for single-source CLI mode (default: transfer)
+
+      --on &lt;ON&gt;
+          Edge-only event expression for single-source CLI mode (for example, 'posedge clk')
+
+      --when &lt;WHEN&gt;
+          Pre-edge predicate for single-source CLI mode (for example, 'valid &amp;&amp; ready')
+
+      --payload &lt;SIGNAL[,SIGNAL...]&gt;...
+          Payload paths or flat projections, comma-separated or repeated (for example, data,last or status[7:4])
+
+Output options:
+      --max &lt;MAX&gt;
+          Maximum number of extracted rows across all sources (`unlimited` disables truncation, value must be &gt; 0)
+
+          [default: 50]
+
+      --summary
+          Suppress result rows while retaining context and completeness metadata
+
+      --abs
+          Print canonical payload paths in human output
+
+      --json
+          Machine-readable JSON output
+
+      --jsonl
+          Stream newline-delimited JSON output
+
+Other options:
+  -h
+          Print help (see more with '--help')
+
+      --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-skill"><code>wavepeek skill</code><a class="headerlink" href="#wavepeek-skill" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Extract the packaged agent skill into a directory.
+
+Behavior:
+- Writes the skill package that matches the installed `wavepeek` version.
+- Requires a new or empty destination directory.
+
+Example:
+  wavepeek skill ./wavepeek-skill
+
+Notes:
+- Follow your agent harness's instructions to install the extracted directory.
+- See quickstart.md for extraction and installation.
+
+Usage: wavepeek skill &lt;DIRECTORY&gt;
+
+Arguments:
+  &lt;DIRECTORY&gt;
+          New or empty destination directory (for example, ./wavepeek-skill)
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+</code></pre>
+<h2 id="wavepeek-help"><code>wavepeek help</code><a class="headerlink" href="#wavepeek-help" title="Permanent link">&para;</a></h2>
+<pre><code class="language-text">Show detailed help for a command path.
+
+Behavior:
+- With no command path, prints top-level help.
+- With a command path, prints help for that command or nested subcommand.
+
+Examples:
+  wavepeek help
+  wavepeek help value
+  wavepeek help extract axi
+
+Notes:
+- See commands.md for a summary of the command groups.
+
+Usage: wavepeek help [COMMAND]...
+
+Arguments:
+  [COMMAND]...  Command path to describe (for example, extract axi)
+</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../install-strip.js"></script>
+      
+    
+  </body>
+</html>

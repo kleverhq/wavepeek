@@ -1,0 +1,2009 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Deterministic RTL waveform inspection for scripts, CI, and agents.">
+      
+      
+      
+        <link rel="canonical" href="https://kleverhq.github.io/wavepeek/3.2.0/machine-output/">
+      
+      
+        <link rel="prev" href="../cli-reference/">
+      
+      
+        <link rel="next" href="../event-expressions/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../wavepeek-icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Machine output format - wavepeek</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../monochrome.css">
+    
+    <script>__md_scope=new URL("/wavepeek/",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#machine-output-contract" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="wavepeek" class="md-header__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  <img src="../wavepeek-icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            wavepeek
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Machine output format
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="/wavepeek/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Playground
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href=".." class="md-tabs__link">
+          
+  
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="wavepeek" class="md-nav__button md-logo" aria-label="wavepeek" data-md-component="logo">
+      
+  <img src="../wavepeek-icon.svg" alt="logo">
+
+    </a>
+    wavepeek
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/kleverhq/wavepeek" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    kleverhq/wavepeek
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="/wavepeek/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Playground
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Documentation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_1" id="__nav_2_1_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Start here
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_1">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Start here
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_2" id="__nav_2_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../waveforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Waveform formats
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../paths/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Paths, signals and scopes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timeunits/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Time units and windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sampling/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Clocks and sampling
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../predicates/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boolean conditions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_3" id="__nav_2_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Usage
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Usage
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../explore-dump/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Explore dump
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../inspect-values/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Inspect values
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../evaluate-properties/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Evaluate properties
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-transfers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract transfers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-axi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AXI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-axis/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AXI-Stream
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-ahb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA AHB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-apb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA APB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extract-atb/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract AMBA ATB
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_4" id="__nav_2_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI help reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Machine output format
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Machine output format
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-stdout-and-stderr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Stdout and stderr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-json-envelopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. JSON envelopes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. JSON envelopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-data-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command data contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Command data contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extract-ahb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract ahb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-apb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract apb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-atb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract atb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-axi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract axi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-axistream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract axistream
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-jsonl-streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. JSONL streams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fatal-errors-and-exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fatal errors and exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../event-expressions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Event expression language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../boolean-expressions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Boolean expression language
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-stdout-and-stderr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Stdout and stderr
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-json-envelopes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. JSON envelopes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. JSON envelopes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-data-contracts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command data contracts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Command data contracts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#extract-ahb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract ahb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-apb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract apb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-atb" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract atb
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-axi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract axi
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extract-axistream" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        extract axistream
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-jsonl-streams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. JSONL streams
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-diagnostics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Diagnostics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-fatal-errors-and-exit-codes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Fatal errors and exit codes
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="machine-output-contract">Machine output contract<a class="headerlink" href="#machine-output-contract" title="Permanent link">&para;</a></h1>
+<p>This document is normative for stdout, stderr, JSON-mode behavior, JSONL stream behavior, diagnostics, and exit codes.</p>
+<h2 id="1-stdout-and-stderr">1. Stdout and stderr<a class="headerlink" href="#1-stdout-and-stderr" title="Permanent link">&para;</a></h2>
+<p>On success, a command writes its main payload to stdout. Without <code>--summary</code>, empty human results use a short command-specific stdout message or retain protocol context with an empty row section.</p>
+<ul>
+<li>Human-readable mode writes non-fatal diagnostics to stderr as plain text.</li>
+<li><code>--json</code> carries non-fatal diagnostics inside one JSON result.</li>
+<li><code>--jsonl</code> writes one JSON object per stdout line and carries diagnostics as stream records.</li>
+</ul>
+<p>If a downstream consumer intentionally closes stdout early, <code>wavepeek</code> stops writing and exits successfully. Human-mode failures leave stdout empty and write the fatal error to stderr. Machine-mode failures write a fatal object to stdout and do not duplicate it on stderr. With <code>DEBUG=1</code>, debug telemetry remains JSON on stderr in every mode.</p>
+<h2 id="2-json-envelopes">2. JSON envelopes<a class="headerlink" href="#2-json-envelopes" title="Permanent link">&para;</a></h2>
+<p>A successful <code>--json</code> command emits <code>type</code>, <code>command</code>, optional <code>context</code>, optional <code>data</code>, optional <code>summary</code>, and <code>diagnostics</code>. <code>type</code> is <code>result</code>. When present, <code>data</code> is an array; <code>diagnostics</code> is an array. <code>info</code> returns one metadata row; an empty query returns <code>data: []</code>. Commands with numeric or unlimited <code>--max</code> always include <code>summary</code>.</p>
+<pre><code class="language-json">{&quot;type&quot;:&quot;result&quot;,&quot;command&quot;:&quot;info&quot;,&quot;data&quot;:[{&quot;time_unit&quot;:&quot;1ns&quot;,&quot;time_start&quot;:&quot;0ns&quot;,&quot;time_end&quot;:&quot;10ns&quot;}],&quot;diagnostics&quot;:[]}
+</code></pre>
+<pre><code class="language-json">{&quot;type&quot;:&quot;result&quot;,&quot;command&quot;:&quot;value&quot;,&quot;context&quot;:{&quot;scope&quot;:&quot;top&quot;},&quot;data&quot;:[{&quot;time&quot;:&quot;5ns&quot;,&quot;signals&quot;:[{&quot;path&quot;:&quot;top.clk&quot;,&quot;relative_path&quot;:&quot;clk&quot;,&quot;value&quot;:&quot;1'h1&quot;}]}],&quot;diagnostics&quot;:[]}
+</code></pre>
+<p>A <code>signal</code> row contains the leaf <code>name</code>, canonical <code>path</code>, path relative to the exact selected scope in <code>relative_path</code>, normalized <code>kind</code>, and optional <code>width</code>. Immediate children use their basename as <code>relative_path</code>; descendants retain the child scope path:</p>
+<pre><code class="language-json">{&quot;type&quot;:&quot;result&quot;,&quot;command&quot;:&quot;signal&quot;,&quot;context&quot;:{&quot;scope&quot;:&quot;top&quot;},&quot;data&quot;:[{&quot;name&quot;:&quot;valid&quot;,&quot;path&quot;:&quot;top.cpu.valid&quot;,&quot;relative_path&quot;:&quot;cpu.valid&quot;,&quot;kind&quot;:&quot;wire&quot;,&quot;width&quot;:1}],&quot;summary&quot;:{&quot;complete&quot;:true,&quot;returned&quot;:1,&quot;limit&quot;:50,&quot;total&quot;:1},&quot;diagnostics&quot;:[]}
+</code></pre>
+<p>Protocol extractors put command-wide metadata in <code>context</code> and rows directly in <code>data</code>:</p>
+<pre><code class="language-json">{&quot;type&quot;:&quot;result&quot;,&quot;command&quot;:&quot;extract apb&quot;,&quot;context&quot;:{&quot;name&quot;:&quot;apb&quot;,&quot;profile&quot;:&quot;apb4&quot;,&quot;issue&quot;:&quot;E&quot;,&quot;pready_mode&quot;:&quot;mapped&quot;,&quot;include_wait&quot;:false,&quot;mappings&quot;:{&quot;pclk&quot;:{&quot;path&quot;:&quot;top.uart_apb_p_clk_i&quot;},&quot;penable&quot;:{&quot;path&quot;:&quot;top.uart_apb_penable_o&quot;},&quot;pready&quot;:{&quot;path&quot;:&quot;top.uart_apb_pready_i&quot;},&quot;psel&quot;:{&quot;path&quot;:&quot;top.uart_apb_psel_o&quot;},&quot;pwrite&quot;:{&quot;path&quot;:&quot;top.uart_apb_pwrite_o&quot;}}},&quot;data&quot;:[{&quot;time&quot;:&quot;5ns&quot;,&quot;sample_time&quot;:&quot;4ns&quot;,&quot;profile&quot;:&quot;apb4&quot;,&quot;event&quot;:&quot;setup&quot;,&quot;direction&quot;:&quot;write&quot;,&quot;payload&quot;:{&quot;pwrite&quot;:&quot;1'h1&quot;}}],&quot;summary&quot;:{&quot;complete&quot;:true,&quot;returned&quot;:1,&quot;limit&quot;:50,&quot;total&quot;:1},&quot;diagnostics&quot;:[]}
+</code></pre>
+<p>Machine-readable <code>path</code> fields are canonical. For a flat <code>[msb:lsb]</code> projection in <code>value</code>, <code>change</code>, or <code>extract generic</code>, <code>path</code> is the canonical source path plus the range and <code>relative_path</code> is the scoped relative source path plus the same range; no separate projection field is emitted. Scoped <code>signal</code>, <code>value</code>, <code>change</code>, and <code>extract generic</code> results include the exact selected scope in <code>context.scope</code>, including when <code>data</code> is empty. Their signal or payload rows also include <code>relative_path</code>; immediate children use a basename and descendants retain their child scope components. Without <code>--scope</code>, <code>value</code>, <code>change</code>, and <code>extract generic</code> omit both <code>context</code> and <code>relative_path</code> in JSON; their JSONL <code>begin</code> records also omit <code>context</code>. Command-specific context and row fields are defined below. Waveform commands support JSON envelopes. Unsupported <code>--json</code> combinations fail as argument errors.</p>
+<h3 id="command-data-contracts">Command data contracts<a class="headerlink" href="#command-data-contracts" title="Permanent link">&para;</a></h3>
+<p>In the compact record notation below, <code>?</code> marks a field that is omitted when it does not apply. <code>Time</code> is a normalized integer time token, <code>Path</code> is a canonical waveform path, and <code>Value</code> is a normalized Verilog-style sampled value such as <code>8'h0f</code>.</p>
+<p>The non-protocol commands use these contexts and rows:</p>
+<pre><code class="language-text">info
+  context: none
+  row: { time_unit: string, time_start: Time, time_end: Time }
+
+scope
+  context: none
+  row: { path: Path, depth: integer, kind: ScopeKind }
+
+signal
+  context: { scope: Path }
+  row: { name: string, path: Path, relative_path: string,
+         kind: SignalKind, width?: integer }
+
+value
+  context?: { scope: Path }
+  row: { time: Time,
+         signals: [{ path: Path, relative_path?: string, value: Value }] }
+
+change
+  context?: { scope: Path }
+  row: { time: Time, sample_time: Time,
+         signals: [{ path: Path, relative_path?: string, value: Value }] }
+
+property
+  context: none
+  row: { time: Time, sample_time: Time,
+         kind: &quot;match&quot; | &quot;assert&quot; | &quot;deassert&quot; }
+
+extract generic
+  context?: { scope: Path }
+  row: { time: Time, sample_time: Time, source: string,
+         payload: [{ path: Path, relative_path?: string, value: Value }] }
+</code></pre>
+<p><code>change.signals</code> follows <code>--row-values</code>: full rows contain every requested signal, while delta rows may contain a subset or be empty. The first emitted delta row is full. <code>extract generic.payload</code> preserves the declared order and duplicates.</p>
+<p><code>ScopeKind</code> is <code>module</code>, <code>task</code>, <code>function</code>, <code>begin</code>, <code>fork</code>, <code>generate</code>, <code>struct</code>, <code>union</code>, <code>class</code>, <code>interface</code>, <code>package</code>, <code>program</code>, or <code>unknown</code>.</p>
+<p><code>SignalKind</code> is one of:</p>
+<pre><code class="language-text">event integer parameter real reg supply0 supply1 time
+tri triand trior trireg tri0 tri1 wand wire wor string
+port sparse_array real_time real_parameter bit logic int
+short_int long_int byte enum short_real boolean bit_vector
+</code></pre>
+<p>Protocol extractors use a common mapping form:</p>
+<pre><code class="language-text">mappings: { &quot;&lt;standard-signal-name&gt;&quot;: { &quot;path&quot;: Path }, ... }
+payload:  { &quot;&lt;standard-signal-name&gt;&quot;: Value, ... }
+</code></pre>
+<p>Payload paths are available through <code>context.mappings</code>. Every protocol row repeats the <code>profile</code> from its context.</p>
+<h4 id="extract-ahb"><code>extract ahb</code><a class="headerlink" href="#extract-ahb" title="Permanent link">&para;</a></h4>
+<pre><code class="language-text">context: {
+  name: string,
+  profile: &quot;ahb-lite&quot; | &quot;ahb5&quot;,
+  issue: &quot;C&quot;,
+  include_stall: boolean,
+  include_idle: boolean,
+  include_busy: boolean,
+  initial_data_phase: {
+    state: &quot;empty&quot; | &quot;pending&quot; | &quot;desynchronized&quot;,
+    address?: { time: Time, sample_time: Time,
+                transfer: &quot;nonseq&quot; | &quot;seq&quot;,
+                direction: &quot;read&quot; | &quot;write&quot; | &quot;unknown&quot;,
+                payload: object }
+  },
+  mappings: object
+}
+row: {
+  time: Time,
+  sample_time: Time,
+  profile: &quot;ahb-lite&quot; | &quot;ahb5&quot;,
+  event: &quot;address&quot; | &quot;idle&quot; | &quot;busy&quot; | &quot;data-stall&quot; |
+         &quot;data-complete&quot; | &quot;reset&quot; | &quot;desynchronized&quot;,
+  transfer?: &quot;idle&quot; | &quot;busy&quot; | &quot;nonseq&quot; | &quot;seq&quot;,
+  direction?: &quot;read&quot; | &quot;write&quot; | &quot;unknown&quot;,
+  payload?: object
+}
+</code></pre>
+<p>AHB-Lite mappings may use <code>hclk</code>, <code>hresetn</code>, <code>htrans</code>, <code>hready</code>, <code>hwrite</code>, <code>haddr</code>, <code>hburst</code>, <code>hmastlock</code>, <code>hprot</code>, <code>hsize</code>, <code>hauser</code>, <code>hwdata</code>, <code>hwstrb</code>, <code>hwuser</code>, <code>hrdata</code>, <code>hruser</code>, <code>hbuser</code>, and <code>hresp</code>. AHB5 also allows <code>hnonsec</code>, <code>hexcl</code>, <code>hmaster</code>, and <code>hexokay</code>.</p>
+<p>Address rows use mapped address-phase fields. Data rows may contain <code>hresp</code>, write fields (<code>hwdata</code>, <code>hwstrb</code>, <code>hwuser</code>), read fields (<code>hrdata</code>, <code>hruser</code>), and successful-completion fields (<code>hbuser</code>, <code>hexokay</code>) when applicable and mapped. An <code>unknown</code> direction combines eligible read and write fields. Empty row payloads are omitted. <code>initial_data_phase.address</code> appears only for <code>pending</code>.</p>
+<h4 id="extract-apb"><code>extract apb</code><a class="headerlink" href="#extract-apb" title="Permanent link">&para;</a></h4>
+<pre><code class="language-text">context: { name: string, profile: &quot;apb3&quot; | &quot;apb4&quot; | &quot;apb5&quot;,
+           issue: &quot;E&quot;, pready_mode: &quot;mapped&quot; | &quot;implicit-high&quot;,
+           include_wait: boolean, mappings: object }
+row: { time: Time, sample_time: Time,
+       profile: &quot;apb3&quot; | &quot;apb4&quot; | &quot;apb5&quot;,
+       event: &quot;setup&quot; | &quot;access-wait&quot; | &quot;access-complete&quot;,
+       direction: &quot;read&quot; | &quot;write&quot; | &quot;unknown&quot;,
+       payload: object }
+</code></pre>
+<p>APB3 mappings use <code>pclk</code>, <code>presetn</code>, <code>psel</code>, <code>penable</code>, <code>pwrite</code>, <code>pready</code>, <code>paddr</code>, <code>pwdata</code>, <code>prdata</code>, and <code>pslverr</code>. APB4 adds <code>pprot</code> and <code>pstrb</code>; APB5 adds <code>pnse</code>, <code>pauser</code>, <code>pwuser</code>, <code>pruser</code>, and <code>pbuser</code>.</p>
+<p>Payloads exclude <code>pclk</code>, <code>presetn</code>, <code>psel</code>, <code>penable</code>, and <code>pready</code>. Only <code>access-complete</code> may contain <code>prdata</code>, <code>pslverr</code>, <code>pruser</code>, or <code>pbuser</code>. Read rows omit <code>pwdata</code> and <code>pwuser</code>; write rows omit <code>prdata</code> and <code>pruser</code>. An unknown direction retains either side when mapped. <code>access-wait</code> appears only when <code>include_wait</code> is true.</p>
+<h4 id="extract-atb"><code>extract atb</code><a class="headerlink" href="#extract-atb" title="Permanent link">&para;</a></h4>
+<pre><code class="language-text">context: { name: string, profile: &quot;atb-a&quot; | &quot;atb-b&quot; | &quot;atb-c&quot;,
+           issue: &quot;C&quot;, mappings: object }
+row: { time: Time, sample_time: Time,
+       profile: &quot;atb-a&quot; | &quot;atb-b&quot; | &quot;atb-c&quot;,
+       event: &quot;transfer&quot; | &quot;flush&quot; | &quot;sync-request&quot;,
+       payload: object }
+</code></pre>
+<p>ATB mappings use <code>atclk</code>, <code>atresetn</code>, <code>atvalid</code>, <code>atready</code>, <code>atbytes</code>, <code>atdata</code>, <code>atid</code>, <code>afvalid</code>, and <code>afready</code>. ATB-B and ATB-C also allow <code>syncreq</code>. Transfer payloads may contain <code>atbytes</code>, <code>atdata</code>, and <code>atid</code>; flush and synchronization-request payloads are empty.</p>
+<h4 id="extract-axi"><code>extract axi</code><a class="headerlink" href="#extract-axi" title="Permanent link">&para;</a></h4>
+<pre><code class="language-text">context: { name: string, profile: AxiProfile,
+           issue: &quot;H.c&quot; | &quot;L&quot;, mappings: object }
+row: { time: Time, sample_time: Time, profile: AxiProfile,
+       channel: &quot;aw&quot; | &quot;w&quot; | &quot;b&quot; | &quot;ar&quot; | &quot;r&quot; | &quot;ac&quot; | &quot;cr&quot; | &quot;cd&quot;,
+       payload: object }
+</code></pre>
+<p>The profile determines the issue and available channels:</p>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>Issue</th>
+<th>Channels</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>axi3</code>, <code>axi4</code>, <code>axi4-lite</code></td>
+<td><code>H.c</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code></td>
+</tr>
+<tr>
+<td><code>axi5</code></td>
+<td><code>L</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code>, <code>ac</code>, <code>cr</code></td>
+</tr>
+<tr>
+<td><code>axi5-lite</code></td>
+<td><code>L</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code></td>
+</tr>
+<tr>
+<td><code>ace</code></td>
+<td><code>H.c</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code>, <code>ac</code>, <code>cr</code>, <code>cd</code></td>
+</tr>
+<tr>
+<td><code>ace-lite</code></td>
+<td><code>H.c</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code></td>
+</tr>
+<tr>
+<td><code>ace5</code></td>
+<td><code>H.c</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code>, <code>ac</code>, <code>cr</code>, <code>cd</code></td>
+</tr>
+<tr>
+<td><code>ace5-lite</code></td>
+<td><code>L</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code></td>
+</tr>
+<tr>
+<td><code>ace5-lite-dvm</code></td>
+<td><code>L</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code>, <code>ac</code>, <code>cr</code></td>
+</tr>
+<tr>
+<td><code>ace5-lite-acp</code></td>
+<td><code>L</code></td>
+<td><code>aw</code>, <code>w</code>, <code>b</code>, <code>ar</code>, <code>r</code></td>
+</tr>
+</tbody>
+</table>
+<p>Mappings contain <code>aclk</code>, optional <code>aresetn</code>, and mapped standard signals allowed by the selected profile. A row payload contains the mapped signals for its channel except the channel's <code>valid</code> and <code>ready</code> signals. It may be empty.</p>
+<h4 id="extract-axistream"><code>extract axistream</code><a class="headerlink" href="#extract-axistream" title="Permanent link">&para;</a></h4>
+<pre><code class="language-text">context: { name: string,
+           profile: &quot;axi4-stream&quot; | &quot;axi5-stream&quot;,
+           issue: &quot;B&quot;, tready_mode: &quot;mapped&quot; | &quot;implicit-high&quot;,
+           mappings: object }
+row: { time: Time, sample_time: Time,
+       profile: &quot;axi4-stream&quot; | &quot;axi5-stream&quot;,
+       payload: object }
+</code></pre>
+<p>AXI-Stream mappings use <code>aclk</code>, <code>aresetn</code>, <code>tvalid</code>, <code>tready</code>, <code>tdata</code>, <code>tstrb</code>, <code>tkeep</code>, <code>tlast</code>, <code>tid</code>, <code>tdest</code>, and <code>tuser</code>. Payloads may contain the mapped <code>tdata</code>, <code>tstrb</code>, <code>tkeep</code>, <code>tlast</code>, <code>tid</code>, <code>tdest</code>, and <code>tuser</code> fields, and may be empty.</p>
+<p>The summary fields describe the selected public result set after filtering:</p>
+<pre><code class="language-json">{&quot;complete&quot;:false,&quot;returned&quot;:50,&quot;limit&quot;:50,&quot;total&quot;:null}
+</code></pre>
+<ul>
+<li><code>complete</code> is false only after the command finds another matching public item beyond the numeric limit.</li>
+<li><code>returned</code> is the number of accepted public items, independent of whether rendering suppresses their rows.</li>
+<li><code>limit</code> is the numeric <code>--max</code>, or <code>null</code> for <code>--max unlimited</code>.</li>
+<li><code>total</code> is exact when execution reaches the selected result-set end or the command already knows the full selected count; otherwise it is <code>null</code>.</li>
+</ul>
+<p><code>--max-depth</code> changes the selected hierarchy set and does not itself make <code>complete</code> false. <code>--max unlimited</code> scans the selected set to completion, so <code>complete</code> is true and <code>total</code> equals <code>returned</code>.</p>
+<p>With <code>--summary</code>, JSON keeps <code>type</code>, <code>command</code>, optional <code>context</code>, <code>summary</code>, and <code>diagnostics</code>, but omits <code>data</code>. Selection, filtering, limit enforcement, early stopping, summary values, and diagnostics remain identical to the same invocation without <code>--summary</code>.</p>
+<p>A diagnostic has <code>kind</code>, <code>message</code>, and, for warnings and errors, a stable <code>code</code>:</p>
+<pre><code class="language-json">{&quot;kind&quot;:&quot;warning&quot;,&quot;code&quot;:&quot;WPK-W0002&quot;,&quot;message&quot;:&quot;truncated output to 1 entries (use --max to increase limit)&quot;}
+</code></pre>
+<p><code>kind</code> is <code>info</code>, <code>warning</code>, or <code>error</code>. Warning and error codes match <code>WPK-W####</code> or <code>WPK-E####</code>; information diagnostics omit <code>code</code>.</p>
+<h2 id="3-jsonl-streams">3. JSONL streams<a class="headerlink" href="#3-jsonl-streams" title="Permanent link">&para;</a></h2>
+<p>Waveform commands support <code>--jsonl</code> for incremental consumption. Each stdout line is an independent JSON object:</p>
+<pre><code class="language-jsonl">{&quot;type&quot;:&quot;begin&quot;,&quot;seq&quot;:0,&quot;command&quot;:&quot;change&quot;,&quot;context&quot;:{&quot;scope&quot;:&quot;top&quot;}}
+{&quot;type&quot;:&quot;data&quot;,&quot;seq&quot;:1,&quot;data&quot;:{&quot;time&quot;:&quot;5ns&quot;,&quot;sample_time&quot;:&quot;5ns&quot;,&quot;signals&quot;:[{&quot;path&quot;:&quot;top.clk&quot;,&quot;relative_path&quot;:&quot;clk&quot;,&quot;value&quot;:&quot;1'h1&quot;}]}}
+{&quot;type&quot;:&quot;diagnostic&quot;,&quot;seq&quot;:2,&quot;diagnostic&quot;:{&quot;kind&quot;:&quot;warning&quot;,&quot;code&quot;:&quot;WPK-W0002&quot;,&quot;message&quot;:&quot;truncated output to 1 entries (use --max to increase limit)&quot;}}
+{&quot;type&quot;:&quot;end&quot;,&quot;seq&quot;:3,&quot;records&quot;:{&quot;data&quot;:1,&quot;diagnostics&quot;:1},&quot;summary&quot;:{&quot;complete&quot;:false,&quot;returned&quot;:1,&quot;limit&quot;:1,&quot;total&quot;:null}}
+</code></pre>
+<p>A successful stream obeys these rules:</p>
+<ul>
+<li><code>begin</code> is first with <code>seq: 0</code>; it is the only record containing <code>command</code>.</li>
+<li><code>seq</code> increases by one for every record.</li>
+<li>Scoped <code>signal</code>, <code>value</code>, <code>change</code>, and <code>extract generic</code> <code>begin</code> records include <code>context.scope</code> identical to the JSON result context.</li>
+<li>Protocol extractor <code>begin</code> records include <code>context</code> identical to the JSON result context.</li>
+<li>Each <code>data.data</code> is identical to one element of the JSON result <code>data</code> array, including the single <code>info</code> row.</li>
+<li><code>diagnostic.diagnostic</code> has the same shape as one JSON result diagnostic and may appear between data records.</li>
+<li><code>end</code> is last and its required <code>records</code> object counts emitted data and diagnostic records.</li>
+<li>For commands with <code>--max</code>, <code>end.summary</code> is identical to the JSON result summary.</li>
+</ul>
+<p><code>change</code>, <code>property</code>, and extraction rows use <code>time</code> for the selected event and <code>sample_time</code> for the sampled values. A <code>change</code> row's <code>signals</code> array follows <code>--row-values</code>: full rows contain every requested signal, while delta rows can contain a subset or be empty. The first emitted delta row is always full. Protocol rows repeat <code>profile</code>; it must match the begin context. If the process exits non-zero or no final <code>end</code> appears, treat the stream as incomplete.</p>
+<p>With <code>--summary</code>, JSONL still emits <code>begin</code>, optional context, diagnostics, and <code>end</code>, but no <code>data</code> records. The terminal <code>records.data</code> is therefore zero even when <code>summary.returned</code> is nonzero:</p>
+<pre><code class="language-jsonl">{&quot;type&quot;:&quot;begin&quot;,&quot;seq&quot;:0,&quot;command&quot;:&quot;change&quot;}
+{&quot;type&quot;:&quot;diagnostic&quot;,&quot;seq&quot;:1,&quot;diagnostic&quot;:{&quot;kind&quot;:&quot;warning&quot;,&quot;code&quot;:&quot;WPK-W0002&quot;,&quot;message&quot;:&quot;truncated output to 1 entries (use --max to increase limit)&quot;}}
+{&quot;type&quot;:&quot;end&quot;,&quot;seq&quot;:2,&quot;records&quot;:{&quot;data&quot;:0,&quot;diagnostics&quot;:1},&quot;summary&quot;:{&quot;complete&quot;:false,&quot;returned&quot;:1,&quot;limit&quot;:1,&quot;total&quot;:null}}
+</code></pre>
+<p><code>--summary</code> also suppresses human result rows. Human mode retains command-wide context when present, prints the four summary fields, and writes diagnostics to stderr as usual.</p>
+<p><code>--json</code> and <code>--jsonl</code> are mutually exclusive selectors and may appear before or after the complete waveform command path. They are recognized only as options before the <code>--</code> option terminator, not inside another option's value. When both are present, their argument error uses JSONL. JSONL is available on waveform commands only. Help and version output remain human-readable and ignore either selector.</p>
+<h2 id="4-diagnostics">4. Diagnostics<a class="headerlink" href="#4-diagnostics" title="Permanent link">&para;</a></h2>
+<p>Diagnostics do not change the exit code. Common cases are truncation, unmatched protocol extraction candidates, and ambiguous FSDB signals. Explicitly unlimited limits do not emit diagnostics, and valid queries with no matching rows do not emit an empty-result diagnostic; machine clients distinguish those outcomes through <code>summary.limit</code>, available data, and the result counts.</p>
+<p>Human-readable diagnostics use:</p>
+<pre><code class="language-text">info: &lt;message&gt;
+warning[WPK-W0002]: &lt;message&gt;
+error[WPK-E0001]: &lt;message&gt;
+</code></pre>
+<p>With <code>DEBUG=1</code>, commands may also write JSON debug events to stderr. Debug events are separate from command diagnostics and fatal errors. Enabling debug telemetry does not change the command result or exit status.</p>
+<h2 id="5-fatal-errors-and-exit-codes">5. Fatal errors and exit codes<a class="headerlink" href="#5-fatal-errors-and-exit-codes" title="Permanent link">&para;</a></h2>
+<p>Process-level failures are fail-fast. Human mode writes this form to stderr:</p>
+<pre><code class="language-text">fatal: &lt;category&gt;: &lt;message&gt;
+</code></pre>
+<p><code>--json</code> instead writes exactly one flat object to stdout:</p>
+<pre><code class="language-json">{&quot;type&quot;:&quot;fatal&quot;,&quot;code&quot;:&quot;WPK-F0002&quot;,&quot;message&quot;:&quot;cannot open 'missing.vcd': No such file or directory&quot;}
+</code></pre>
+<p><code>--jsonl</code> writes the same flat fields plus <code>seq</code>. A failure before <code>begin</code> has <code>seq: 0</code>. A failure after records have been written uses the next sequence number, is the last record, and replaces <code>end</code>. Fatal records never contain <code>command</code>.</p>
+<pre><code class="language-jsonl">{&quot;type&quot;:&quot;fatal&quot;,&quot;seq&quot;:0,&quot;code&quot;:&quot;WPK-F0001&quot;,&quot;message&quot;:&quot;unrecognized subcommand 'unknown'&quot;}
+</code></pre>
+<p>The stable fatal codes are:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Category</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WPK-F0001</code></td>
+<td>arguments</td>
+</tr>
+<tr>
+<td><code>WPK-F0002</code></td>
+<td>file</td>
+</tr>
+<tr>
+<td><code>WPK-F0003</code></td>
+<td>scope</td>
+</tr>
+<tr>
+<td><code>WPK-F0004</code></td>
+<td>signal, including a missing signal</td>
+</tr>
+<tr>
+<td><code>WPK-F0005</code></td>
+<td>expression</td>
+</tr>
+<tr>
+<td><code>WPK-F0006</code></td>
+<td>internal</td>
+</tr>
+<tr>
+<td><code>WPK-F0007</code></td>
+<td>unimplemented operation</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>message</code> is the error text without the human <code>fatal: &lt;category&gt;:</code> prefix. Fatal objects are never wrapped in a JSON success envelope. A successful JSON invocation still emits exactly one result; a successful JSONL stream still ends with exactly one <code>end</code>.</p>
+<p>Exit codes do not depend on output mode:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>Success, including an intentional downstream broken pipe</td>
+</tr>
+<tr>
+<td><code>1</code></td>
+<td>User-facing or internal failure such as bad arguments, missing scopes/signals, or invalid expressions</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>File-level failure such as open, parse, or unsupported-format failures</td>
+</tr>
+</tbody>
+</table>
+<p>If stdout cannot be serialized or written, including a broken pipe, a fatal object is not guaranteed. Ordinary diagnostics retain the forms described above.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "navigation.expand"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+        <script src="../install-strip.js"></script>
+      
+    
+  </body>
+</html>

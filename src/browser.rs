@@ -43,15 +43,18 @@ pub(crate) fn invoke(argv: Vec<String>, filename: String, bytes: &[u8]) -> Brows
     {
         return BrowserResult::unsupported("--source is not supported in the browser");
     }
-    if is_fsdb_filename(&filename)
-        || argv
-            .windows(2)
-            .any(|args| args[0] == "--waves" && is_fsdb_filename(args[1].as_str()))
-        || argv
-            .iter()
-            .any(|arg| arg.strip_prefix("--waves=").is_some_and(is_fsdb_filename))
-    {
-        return BrowserResult::unsupported("FSDB is not supported in the browser");
+    let paths = std::iter::once(filename.as_str())
+        .chain(
+            argv.windows(2)
+                .filter_map(|args| (args[0] == "--waves").then_some(args[1].as_str())),
+        )
+        .chain(argv.iter().filter_map(|arg| arg.strip_prefix("--waves=")));
+    for path in paths {
+        if let Some(format) = native_format(path) {
+            return BrowserResult::unsupported(&format!(
+                "{format} is not supported in the browser"
+            ));
+        }
     }
 
     let mut stdout = Vec::new();
@@ -82,9 +85,15 @@ pub(crate) fn invoke(argv: Vec<String>, filename: String, bytes: &[u8]) -> Brows
     }
 }
 
-fn is_fsdb_filename(filename: &str) -> bool {
+fn native_format(filename: &str) -> Option<&'static str> {
     let filename = filename.to_ascii_lowercase();
-    filename.ends_with(".fsdb") || filename.ends_with(".fsdb.gz")
+    if filename.ends_with(".fsdb") || filename.ends_with(".fsdb.gz") {
+        Some("FSDB")
+    } else if filename.ends_with(".shm") {
+        Some("SHM")
+    } else {
+        None
+    }
 }
 
 fn browser_command(argv: &[String]) -> Option<&str> {
@@ -183,6 +192,11 @@ $enddefinitions $end
                 "demo.vcd",
                 "FSDB is not supported",
             ),
+            (
+                vec!["wavepeek", "info", "--waves=other.SHM"],
+                "demo.vcd",
+                "SHM is not supported",
+            ),
         ] {
             let result = invoke(
                 args.into_iter().map(str::to_string).collect(),
@@ -200,7 +214,7 @@ $enddefinitions $end
         let root = run(&["wavepeek", "--help"]);
         assert_eq!(root.status, 0);
         assert!(!root.stdout.contains("Extract the packaged agent skill"));
-        assert!(root.stdout.contains("FSDB input, skill"));
+        assert!(root.stdout.contains("FSDB/SHM input, skill"));
 
         for command in ["ahb", "apb", "atb", "axi", "axistream", "generic"] {
             let extract = run(&["wavepeek", "extract", command, "--help"]);

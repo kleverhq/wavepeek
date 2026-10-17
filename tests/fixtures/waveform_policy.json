@@ -21,6 +21,10 @@
       "reason": "Contains multiple value changes for the same signal at one timestamp to cover VCD event-order semantics."
     },
     {
+      "path": "tests/fixtures/hand/rich_names.vcd",
+      "reason": "Combines VCD string records with escaped dotted components and an indexed declaration for cross-format path and expression coverage."
+    },
+    {
       "path": "tests/fixtures/hand/scope_mixed_kinds.vcd",
       "reason": "Uses explicit VCD scope kinds for module, function, and task metadata."
     },

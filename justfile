@@ -34,6 +34,70 @@ require-verdi: require-container
     @{{ python }} tools/fsdb/check_fsdb_env.py --require >/dev/null
 
 [private]
+require-xcelium: require-container
+    @{{ python }} tools/shm/check_shm_env.py --require >/dev/null
+
+[private]
+run-if-xcelium recipe: require-container
+    @set +e; \
+    output="$({{ python }} tools/shm/check_shm_env.py 2>&1)"; status="$?"; \
+    set -e; \
+    if [ "$status" -eq 0 ]; then \
+        printf '%s\n' "$output"; just "{{ recipe }}"; \
+    elif [ "$status" -eq 77 ]; then \
+        printf '%s\n' "$output"; \
+    else \
+        printf '%s\n' "$output" >&2; exit "$status"; \
+    fi
+
+# Check local Xcelium reader availability
+check-shm-env: require-container
+    @set +e; {{ python }} tools/shm/check_shm_env.py; status="$?"; \
+    if [ "$status" -eq 77 ]; then exit 0; fi; exit "$status"
+
+# Lint optional SHM support
+lint-shm: require-xcelium
+    CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo clippy --features shm --all-targets -- -D warnings
+
+# Build and launch outside Cargo to verify native reader loading
+check-shm-build: require-xcelium
+    CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo build --features shm
+    bash tools/shm/with_shm_env.sh target/shm/debug/wavepeek --version
+
+# Build release binary with optional SHM support
+build-release-shm: require-xcelium
+    CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo build --release --features shm
+
+# Generate or check the SHM benchmark catalog
+update-bench-e2e-shm-catalog: require-container
+    {{ python }} tools/fsdb/generate_bench_catalog.py --target shm
+
+check-bench-e2e-shm-catalog: require-container
+    {{ python }} tools/fsdb/generate_bench_catalog.py --target shm --check
+
+# Prepare small SHM regression inputs
+prepare-shm-test-fixtures: require-xcelium prepare-waveform-fixtures
+    {{ python }} tools/shm/prepare_shm_fixtures.py --tests-only
+
+# Prepare SHM inputs for selected benchmark scenarios
+prepare-shm-fixtures filter="": require-xcelium check-ondas-fixtures prepare-waveform-fixtures check-bench-e2e-shm-catalog
+    {{ python }} tools/shm/prepare_shm_fixtures.py --bench-only --filter '{{ filter }}'
+
+# Run SHM regression tests with the selected native reader
+test-shm: prepare-shm-test-fixtures
+    CARGO_TARGET_DIR=target/shm bash tools/shm/with_shm_env.sh cargo test --features shm
+
+# Run selected SHM benchmark scenarios
+bench-e2e-shm-run filter="": (prepare-shm-fixtures filter) build-release-shm
+    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --filter '{{ filter }}'
+
+[private]
+bench-e2e-shm-smoke-commit: (prepare-shm-fixtures bench_e2e_fsdb_smoke_filter) build-release-shm
+    @mkdir -p tmp/shm-smoke; \
+    run_dir="$(mktemp -d tmp/shm-smoke/run.XXXXXXXX)"; trap 'rm -rf "$run_dir"' EXIT; \
+    bash tools/shm/with_shm_env.sh {{ python }} bench/e2e/perf.py run --binary subject=./target/shm/release/wavepeek --tests bench/e2e/tests_shm.json --run-dir "$run_dir" --filter '{{ bench_e2e_fsdb_smoke_filter }}'
+
+[private]
 run-if-verdi recipe: require-container
     @set +e; \
     output="$({{ python }} tools/fsdb/check_fsdb_env.py 2>&1)"; \
@@ -139,6 +203,7 @@ format-check: require-container
 lint: require-container
     cargo clippy --all-targets -- -D warnings
     just run-if-verdi lint-fsdb
+    just run-if-xcelium lint-shm
 
 # Fix linting with clippy
 lint-fix: require-container
@@ -152,6 +217,7 @@ check-build: require-container
 test: require-container check-ondas-fixtures prepare-waveform-fixtures
     cargo test -q
     just run-if-verdi test-fsdb
+    just run-if-xcelium test-shm
 
 [private]
 coverage-src-data: require-container check-ondas-fixtures prepare-waveform-fixtures
@@ -248,12 +314,14 @@ test-fsdb: check-fsdb-build prepare-fsdb-test-fixtures
 # Run auxiliary Python/unit test suites
 test-aux: require-container
     @just check-bench-e2e-fsdb-catalog
+    @just check-bench-e2e-shm-catalog
     {{ python }} -m unittest discover -s bench/e2e -p "test_*.py"
     {{ python }} -m unittest discover -s tools/bench -p "test_*.py"
     {{ python }} -m unittest discover -s tools/docs -p "test_*.py"
     {{ python }} -m unittest discover -s tools/release -p "test_*.py"
     {{ python }} -m unittest tools/coverage/test_check_coverage.py
     {{ python }} -m unittest discover -s tools/fsdb -p "test_*.py"
+    {{ python }} -m unittest discover -s tools/shm -p "test_*.py"
     {{ python }} -m unittest discover -s tools/repo -p "test_*.py"
     {{ python }} -m unittest discover -s tools/skill -p "test_*.py"
 
@@ -410,6 +478,7 @@ bench-e2e-smoke-commit: check-ondas-fixtures build-release
     @tmp_revised="$(mktemp -d)"; trap 'rm -rf "$tmp_revised"' EXIT; \
         {{ python }} bench/e2e/perf.py run --binary subject="{{ wavepeek_release_bin }}" --tests bench/e2e/tests_commit.json --run-dir "$tmp_revised"
     @just run-if-verdi bench-e2e-fsdb-smoke-commit
+    @just run-if-xcelium bench-e2e-shm-smoke-commit
 
 # Run lightweight FSDB benchmark e2e smoke for pre-commit
 [private]
@@ -426,12 +495,14 @@ check-commit message=`git rev-parse --git-path COMMIT_EDITMSG`: require-containe
     cz check --commit-msg-file {{ quote(message) }}
 
 # Check everything
-check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-build docs-site-check playground-test check-commit
+check: format-check lint check-actions check-bench-e2e-fsdb-catalog check-bench-e2e-vcd-catalog check-bench-e2e-shm-catalog check-build docs-site-check playground-test check-commit
     @just run-if-verdi check-fsdb-build
+    @just run-if-xcelium check-shm-build
 
 # CI quality gate (no commit-msg hook)
 ci: format-check lint check-actions check-bench-e2e-vcd-catalog test-aux coverage-src-check check-build docs-site-check playground-test
     @just run-if-verdi test-fsdb
+    @just run-if-xcelium test-shm
 
 # Fix everything
 fix: format lint-fix

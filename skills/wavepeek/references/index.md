@@ -8,7 +8,7 @@ The primary use cases are LLM-driven debugging workflows and other automation. F
 
 The main usage flow is simple:
 
-- Provide a VCD/FST/FSDB waveform dump.
+- Provide a VCD/FST/FSDB file or SHM database directory.
 - Specify an inspection command and its arguments.
 - Get results in human-readable, JSON, or JSONL format.
 - Analyze the output and repeat.
@@ -25,7 +25,7 @@ To run `wavepeek` on your machine, see [Quickstart](quickstart.md) or try it in 
 ## Concepts
 
 - [Commands](commands.md) - command model and common conventions.
-- [Waveform formats](waveforms.md) - formats, performance, and FSDB support.
+- [Waveform formats](waveforms.md) - formats, performance, and optional native readers.
 - [Paths, signals and scopes](paths.md) - canonical paths, relative paths, and bit projections.
 - [Time units and windows](timeunits.md) - time tokens and query boundaries.
 - [Clocks and sampling](sampling.md) - event times, sample times, and pre-edge sampling.

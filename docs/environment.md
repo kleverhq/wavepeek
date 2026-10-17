@@ -49,7 +49,7 @@ Run `./dev just dev-setup` after container creation or rebuild to verify tools. 
 
 ## Fixture Location
 
-Selected [Ondas fixtures](https://github.com/kleverhq/ondas-fixtures) are baked into the image at `ONDAS_FIXTURES_DIR=/opt/ondas-fixtures`. Each FST input lives at `fst/<fixture-id>/waveform.fst` beside its `fixture.json` metadata. The Docker build uses the pinned upstream installer to download only the declared fixtures and verify their sizes and SHA-256 checksums. Fixture directories are writable by the container user for derived VCD/FSDB files.
+Selected [Ondas fixtures](https://github.com/kleverhq/ondas-fixtures) are baked into the image at `ONDAS_FIXTURES_DIR=/opt/ondas-fixtures`. Each FST input lives at `fst/<fixture-id>/waveform.fst` beside its `fixture.json` metadata. The Docker build uses the pinned upstream installer to download only the declared fixtures and verify their sizes and SHA-256 checksums. Fixture directories are writable by the container user for derived VCD/FSDB files and SHM directories.
 
 `./dev just prepare-waveform-fixtures` regenerates small fixtures from `tests/fixtures/source/` into ignored `tests/fixtures/generated/`.
 
@@ -112,3 +112,10 @@ See [fsdb.md](fsdb.md) for SDK requirements and FSDB gates.
 ## Temporary Files
 
 Use ignored root `tmp/` for scratch files and logs. Never clean it globally or delete others' files. Move artifacts requiring tracked review or handoff into `docs/wip/` with a reason.
+
+## Private Xcelium / SHM development
+
+The optional `shm` feature requires a private profile with `XCELIUM_HOME` and a
+read-only Xcelium installation mount. Converter recipes additionally need a local
+Cadence license configured in that profile. Keep license files and values outside
+tracked configuration. See [shm.md](shm.md) for recipes and runtime library setup.

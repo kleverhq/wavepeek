@@ -32,6 +32,7 @@ use crate::output_mode::OutputMode;
 Behavior:
 - Each waveform command opens one waveform dump, runs one query, writes its output, and exits.
 - Every build supports VCD and FST. FSDB requires Linux x86_64, Cargo feature `fsdb`, and the Synopsys Verdi FSDB Reader SDK.
+- SHM directories require Linux x86_64, Cargo feature `shm`, and a compatible Xcelium reader selected by XCELIUM_HOME.
 - Waveform commands write text by default. Use `--json` for one JSON value or `--jsonl` for a stream of JSON records.
 - Time values use an integer and an explicit unit, for example `250ps`, `10ns`, or `2us`. Supported units are `zs`, `as`, `fs`, `ps`, `ns`, `us`, `ms`, and `s`.
 
@@ -292,22 +293,29 @@ struct OptionalFeatureHelp {
     disabled_hint: &'static str,
 }
 
-const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[OptionalFeatureHelp {
-    name: "FSDB",
-    enabled: cfg!(feature = "fsdb"),
-    disabled_hint: "FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK",
-}];
+const OPTIONAL_FEATURES: &[OptionalFeatureHelp] = &[
+    OptionalFeatureHelp {
+        name: "FSDB",
+        enabled: cfg!(feature = "fsdb"),
+        disabled_hint: "FSDB support is currently Linux x86_64 only; reinstall with Cargo flag `--features fsdb` and provide the Synopsys Verdi FSDB Reader SDK",
+    },
+    OptionalFeatureHelp {
+        name: "SHM",
+        enabled: cfg!(feature = "shm"),
+        disabled_hint: "SHM requires Linux x86_64, Cargo flag `--features shm`, and a compatible XCELIUM_HOME",
+    },
+];
 
 const BROWSER_LONG_ABOUT: &str = r#"wavepeek queries saved RTL waveform dumps.
 
 Browser behavior:
 - Waveform commands read the active demo or local VCD or FST file.
 - Parsing and queries run locally in the browser worker.
-- FSDB, `skill`, and extraction `--source <FILE>` options are not available.
+- FSDB, SHM, `skill`, and extraction `--source <FILE>` options are not available.
 - Output and time rules match the native `wavepeek` CLI."#;
 const BROWSER_HELP_TEMPLATE: &str = "{about-with-newline}\nUsage: {usage}\n\nWaveform commands:\n  info      Show metadata for one waveform dump.\n  scope     List scopes in a waveform hierarchy.\n  signal    List signals in one waveform scope.\n  value     Read selected signal values at one or more times.\n  change    Read signal values at selected events over a time range.\n  property  Evaluate a Boolean expression at selected events.\n  extract   Extract event rows from waveform signals.\n\nHelper commands:\n  help      Show detailed help for a command path.\n\nOptions:\n{options}{after-help}";
 const BROWSER_NEXT_STEPS: &str =
-    "Browser limits: FSDB input, skill, and extraction --source files are unavailable.";
+    "Browser limits: FSDB/SHM input, skill, and extraction --source files are unavailable.";
 
 fn root_after_long_help() -> String {
     let mut help = String::from("Optional features:\n");

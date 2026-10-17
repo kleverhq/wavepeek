@@ -2,7 +2,7 @@
 
 This page describes the supported waveform dump formats.
 
-All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB support is optional and requires a manual build with Verdi libraries; see [Quickstart](quickstart.md).
+All dump-orientation and waveform-inspection commands require `--waves <FILE>` and operate on a single dump per invocation. The path can be a file or a complete SHM database directory. Default builds support VCD (Value Change Dump) and FST (Fast Signal Trace). FSDB and SHM support are optional and require source builds with local Verdi or Xcelium libraries; see [Quickstart](quickstart.md).
 
 `wavepeek` performance depends on the waveform format, file size, selected command, requested signals, storage speed, and machine memory. Each waveform command opens the requested dump, executes the query, writes output, and exits. If a script runs many independent `wavepeek` commands, format setup costs are paid by each process. When command semantics allow it, prefer one command that requests the needed scopes, signals, timestamps, or time window over many tiny commands.
 
@@ -29,6 +29,27 @@ FSDB modport and interface-reference scopes use the normalized scope kind `inter
 This means an FSDB file can be far smaller than a VCD file and still take seconds per independent command. The requested value lookup itself may not be the expensive step; repeated setup can dominate.
 
 Note: FSDB real and string value decoding are not part of the current implementation.
+
+## SHM
+
+SHM is a Cadence database directory containing design (`.dsn`) and transition
+(`.trn`) components. Build with `--features shm` and select a compatible Xcelium
+reader through `XCELIUM_HOME`; see [Quickstart](quickstart.md#install-with-shm).
+Keep the complete directory available throughout the query. Individual components
+and browser uploads are unsupported.
+
+SHM uses the same native commands and output formats as VCD/FST. Integral values,
+real/string expressions, and recorded event occurrences use the shared query
+engine. Available declaration metadata depends on the recording and reader:
+signedness and enumeration labels are unavailable, and VCD conversion can expose
+`wire`, `reg`, and parameter declarations as generic `bit_vector` kinds.
+
+Recorded start bounds can differ between converted formats. `info` reports the
+SHM reader's bounds; an earlier start can add an initial row to `change` output.
+Compare bounds and initial rows when validating a conversion.
+
+Each invocation opens the native reader. Query cost also depends on the selected
+histories and window; use measurements from your design to compare SHM with FSDB.
 
 ## Performance expectations
 

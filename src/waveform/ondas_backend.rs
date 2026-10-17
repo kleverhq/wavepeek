@@ -149,6 +149,7 @@ impl OndasBackend {
             Format::Vcd => "vcd",
             Format::Fst => "fst",
             Format::Fsdb => "fsdb",
+            Format::Shm => "shm",
             _ => "unknown",
         }
     }
@@ -1380,9 +1381,14 @@ fn packed_name_range(name: &str, width: u32) -> Option<(&str, ondas::BitRange)> 
 }
 
 fn public_component(name: &str, format: Format, escaped: bool) -> Cow<'_, str> {
+    let name = if format == Format::Shm {
+        name.strip_prefix('\\').unwrap_or(name)
+    } else {
+        name
+    };
     match format {
         Format::Fsdb => Cow::Borrowed(name.strip_prefix('\\').unwrap_or(name)),
-        Format::Vcd | Format::Fst if escaped || name.contains(['.', '/']) => {
+        Format::Vcd | Format::Fst | Format::Shm if escaped || name.contains(['.', '/']) => {
             Cow::Owned(format!("\\{name}"))
         }
         _ => Cow::Borrowed(name),
@@ -1480,7 +1486,7 @@ fn with_public_variable<R>(
         None
     };
     let mut name = fsdb_name.as_deref().unwrap_or_else(|| variable.name());
-    if matches!(format, Format::Vcd | Format::Fst)
+    if matches!(format, Format::Vcd | Format::Fst | Format::Shm)
         && range.is_none()
         && let Some(Encoding::Bits { width }) = signal.map(|signal| signal.encoding())
         && let Some((base, packed_range)) = packed_name_range(name, width)
@@ -1489,7 +1495,7 @@ fn with_public_variable<R>(
         range = Some(packed_range);
     }
     let mut synthetic_scopes = Vec::new();
-    if matches!(format, Format::Vcd | Format::Fst) && name.ends_with(']') {
+    if matches!(format, Format::Vcd | Format::Fst | Format::Shm) && name.ends_with(']') {
         let parts = array_name_parts(name);
         synthetic_scopes.extend(parts[..parts.len() - 1].iter().copied());
         name = parts[parts.len() - 1];
@@ -1729,7 +1735,7 @@ impl HierarchyIndex {
             by_path,
             signals,
         };
-        if !scopes_only && matches!(format, Format::Vcd | Format::Fst) {
+        if !scopes_only && matches!(format, Format::Vcd | Format::Fst | Format::Shm) {
             index.join_split_vectors();
         }
         index
@@ -1954,6 +1960,17 @@ fn unsupported(path: &str) -> WavepeekError {
 }
 
 fn open_error(path: &Path, error: ondas::Error) -> WavepeekError {
+    #[cfg(not(feature = "shm"))]
+    if matches!(
+        error,
+        ondas::Error::NoBackend {
+            format: Format::Shm
+        }
+    ) {
+        return WavepeekError::File(
+            "SHM input requires Linux x86_64, --features shm, and a compatible XCELIUM_HOME".into(),
+        );
+    }
     let operation = if matches!(error, ondas::Error::Io(_)) {
         "open"
     } else {

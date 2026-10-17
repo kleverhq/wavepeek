@@ -15,7 +15,6 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml?query=event%3Apull_request"><img src="https://github.com/kleverhq/wavepeek/actions/workflows/ci.yml/badge.svg?event=pull_request" alt="PR CI"></a>
   <a href="https://github.com/kleverhq/wavepeek/releases"><img src="https://img.shields.io/github/v/release/kleverhq/wavepeek" alt="GitHub release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/kleverhq/wavepeek" alt="Apache-2.0 license"></a>
 </p>

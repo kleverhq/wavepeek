@@ -62,7 +62,14 @@ def publish(staged: Path, output: Path) -> None:
 
 def prepare(source: Path, output: Path, converter: Path) -> None:
     converter = converter.expanduser().resolve()
+    vcd = source
+    if source.suffix == ".fst":
+        persistent = source.with_suffix(".vcd")
+        if persistent.is_file() and persistent.stat().st_mtime_ns >= source.stat().st_mtime_ns:
+            vcd = persistent
     stamp = {"source": identity(source), "converter": identity(converter)}
+    if vcd != source:
+        stamp["vcd"] = identity(vcd)
     if source.suffix == ".sv":
         stamp["probe"] = NATIVE_PROBE
     marker = output / STAMP
@@ -76,15 +83,10 @@ def prepare(source: Path, output: Path, converter: Path) -> None:
     scratch.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=scratch) as temporary:
         work = Path(temporary)
-        vcd = source
-        if source.suffix == ".fst":
-            persistent = source.with_suffix(".vcd")
-            if persistent.is_file() and persistent.stat().st_mtime_ns >= source.stat().st_mtime_ns:
-                vcd = persistent
-            else:
-                vcd = work / "input.vcd"
-                with vcd.open("wb") as stream:
-                    subprocess.run(["fst2vcd", "-f", str(source)], stdout=stream, check=True)
+        if source.suffix == ".fst" and vcd == source:
+            vcd = work / "input.vcd"
+            with vcd.open("wb") as stream:
+                subprocess.run(["fst2vcd", "-f", str(source)], stdout=stream, check=True)
         staged = work / output.name
         env = dict(os.environ)
         home = Path(env["XCELIUM_HOME"]).expanduser().resolve()

@@ -76,6 +76,20 @@ class ShmPreparationTest(unittest.TestCase):
             prepare.prepare(self.source, self.output, self.converter)
             self.assertEqual(run.call_count, 4)
 
+    def test_cache_invalidates_when_reused_vcd_changes(self) -> None:
+        fst = self.root / "source.fst"
+        fst.write_bytes(b"FST placeholder")
+        os.utime(fst, ns=(1, 1))
+        with patch.object(prepare.subprocess, "run", side_effect=self.convert) as run:
+            prepare.prepare(fst, self.output, self.converter)
+            prepare.prepare(fst, self.output, self.converter)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args.args[0][-1], str(self.source))
+            self.source.write_text("changed neighboring VCD")
+            prepare.prepare(fst, self.output, self.converter)
+            self.assertEqual(run.call_count, 2)
+            self.assertEqual(run.call_args.args[0][-1], str(self.source))
+
     def test_failed_conversion_preserves_existing_database(self) -> None:
         with patch.object(prepare.subprocess, "run", side_effect=self.convert):
             prepare.prepare(self.source, self.output, self.converter)

@@ -11,4 +11,4 @@
 - Prefer invoking helpers through `just` recipes or workflow steps; helper paths are implementation detail unless documented here or in `../docs/automation.md`.
 - Keep helper tests next to the helper group they cover, and update `just test-aux` when adding or moving helper tests.
 - Each helper group must have a concise purpose/usage description either in script header comments or in a companion `README.md`; use a README when a group has multiple scripts or workflow-facing behavior.
-- Avoid generated state in this tree. Python cache files, temporary logs, and ad hoc outputs belong in ignored locations such as `../tmp/`.
+- Keep generated helper state, including Python caches and temporary logs, in ignored locations such as `../tmp/`.

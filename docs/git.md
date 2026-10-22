@@ -6,9 +6,7 @@ Commit small logical milestones. For broad refactors, commit after each independ
 
 Do not bypass hooks with `--no-verify` unless the user or maintainer explicitly asks. If a hook fails, fix the cause, rerun the relevant command, and retry the commit.
 
-Use repository-root `tmp/` for ignored scratch files, logs, and ad hoc outputs. Do not globally clean it or delete arbitrary existing files because another agent or the user may own them.
-
-Use `docs/wip/` for branch-local tracked artifacts that need review or must survive across agent sessions. Those artifacts should be removed before merging to the default branch unless a maintainer intentionally keeps them for handoff.
+Keep generated tool outputs and logs in ignored repository-root `tmp/`. Never clean it globally or delete files owned by others.
 
 ## GitHub and Fork Remotes
 

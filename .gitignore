@@ -1,4 +1,6 @@
 tmp/
+/.bb/
+/.worktreeinclude
 /.env
 /.devcontainer.local/
 /tests/fixtures/generated/

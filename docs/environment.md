@@ -111,7 +111,7 @@ See [fsdb.md](fsdb.md) for SDK requirements and FSDB gates.
 
 ## Temporary Files
 
-Use ignored root `tmp/` for scratch files and logs. Never clean it globally or delete others' files. Move artifacts requiring tracked review or handoff into `docs/wip/` with a reason.
+Use ignored root `tmp/` for generated tool outputs and logs. Never clean it globally or delete files owned by others.
 
 ## Private Xcelium / SHM development
 

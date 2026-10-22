@@ -7,14 +7,14 @@
 - Development tasks are run through root `justfile` recipes.
 - Standard quality gate: `just ci`.
 - Local pre-handoff gate: `just check`.
-- Use repository-root `tmp/` for disposable scratch, logs, and ad hoc outputs, but never delete arbitrary existing files there because they may belong to the user or another agent.
+- Use ignored repository-root `tmp/` for generated tool outputs and logs. Never clean it globally or delete files owned by others.
 - Treat binary waveform dumps such as `.fst` as binary data; inspect them through `wavepeek`, fixtures, or purpose-built tools rather than text-reading them directly.
 - Do not bypass hooks unless the user explicitly requests it.
 - Read the nearest applicable `AGENTS.md` before editing files; local breadcrumbs may contain extra rules and gotchas.
 
 ## Writing Style
 
-- Keep Markdown, comments, breadcrumbs, execution plans, and PR text concise, minimal, precise, and neutral.
+- Keep Markdown, comments, breadcrumbs, and PR text concise, minimal, precise, and neutral.
 - Describe current behavior and durable rationale directly. Do not frame current docs around retrospective bugs or removed behavior unless the history is necessary for migration or troubleshooting.
 - Avoid jokes, sarcasm, editorial asides, and colorful phrasing in repository artifacts.
 
@@ -39,5 +39,5 @@ Maintainer workflow lives under `docs/`:
 - `bench/` — end-to-end benchmark harnesses.
 - `.github/workflows/` — CI and release workflows.
 - `.devcontainer/` — shared development and automation container setup.
-- `docs/` — maintainer workflow, quality, style, release, backlog, and roadmap docs, with branch-local artifacts under `docs/wip/`.
+- `docs/` — maintainer workflow, quality, style, release, backlog, and roadmap docs.
 - `skills/wavepeek/` — canonical source for the packaged Wavepeek skill.

@@ -10,5 +10,4 @@
 ## Local Guidance
 
 - Keep packaged user guidance under `../skills/wavepeek/`.
-- Keep branch-local tracked artifacts under `wip/` and clear them before merge unless a maintainer wants handoff context.
 - Do not use breadcrumbs as directory indexes; point to the authoritative doc and add only local gotchas.

@@ -11,7 +11,7 @@ use std::borrow::Cow;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fmt;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use ondas::{Encoding, Format, Time, TimeRange, Trace, Value, ValueRef};
@@ -21,6 +21,7 @@ use crate::expr::{
     EnumLabelInfo, ExprStorage, ExprType, ExprTypeKind, IntegerLikeKind, SampledValue,
 };
 
+use super::ondas_error::{open_error, read_error};
 use super::types::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
     ScopeEntry, SignalEntry, SignalId, SignalListing, SignalOffsetData, WaveformMetadata,
@@ -31,6 +32,7 @@ const MAX_DIRECT_VCD_FST_BATCH: usize = 1024;
 
 pub(super) struct OndasBackend {
     inner: ondas::Waveform,
+    path: PathBuf,
     index: OnceCell<HierarchyIndex>,
     direct: RefCell<Vec<DirectSignal>>,
     traces: HashMap<SignalId, CachedTrace>,
@@ -95,11 +97,7 @@ struct HierarchySelection {
 
 impl OndasBackend {
     pub fn open(path: &Path) -> Result<Self, WavepeekError> {
-        #[cfg(feature = "fsdb")]
-        let result = super::fsdb_output::quiet(|| ondas::open(path))?;
-        #[cfg(not(feature = "fsdb"))]
-        let result = ondas::open(path);
-        let inner = result.map_err(|error| open_error(path, error))?;
+        let inner = ondas::open(path).map_err(|error| open_error(path, error))?;
         if inner.format() == Format::Fsdb {
             let mut paths = BTreeSet::new();
             for scope in inner
@@ -115,7 +113,7 @@ impl OndasBackend {
                 }
             }
         }
-        Ok(Self::new(inner))
+        Ok(Self::new(inner, path))
     }
 
     pub fn open_bytes(path: &Path, bytes: Arc<[u8]>) -> Result<Self, WavepeekError> {
@@ -126,12 +124,13 @@ impl OndasBackend {
                 "the browser supports only VCD and FST waveforms".into(),
             ));
         }
-        Ok(Self::new(inner))
+        Ok(Self::new(inner, path))
     }
 
-    fn new(inner: ondas::Waveform) -> Self {
+    fn new(inner: ondas::Waveform, path: &Path) -> Self {
         Self {
             inner,
+            path: path.to_owned(),
             index: OnceCell::new(),
             direct: RefCell::new(Vec::new()),
             traces: HashMap::new(),
@@ -159,11 +158,8 @@ impl OndasBackend {
     }
 
     pub fn read_metadata(path: &Path) -> Result<WaveformMetadata, WavepeekError> {
-        #[cfg(feature = "fsdb")]
-        let result = super::fsdb_output::quiet(|| ondas::read_metadata(path))?;
-        #[cfg(not(feature = "fsdb"))]
-        let result = ondas::read_metadata(path);
-        let metadata = result.map_err(|error| open_error(path, error))?;
+        let metadata = ondas::read_metadata(path)
+            .map_err(|error| read_error(path, "read metadata from", error))?;
         Self::format_metadata(&metadata)
     }
 
@@ -888,7 +884,7 @@ impl OndasBackend {
             let samples = self
                 .inner
                 .samples(&signals, Time::from_ticks(time))
-                .map_err(query_error)?;
+                .map_err(|error| read_error(&self.path, "read samples from", error))?;
             for ((index, _), sample) in missing.into_iter().zip(samples) {
                 result[index] = match sample {
                     ondas::Sample::Value { value, .. } => Some(value),
@@ -1142,7 +1138,7 @@ impl OndasBackend {
                 &signals,
                 TimeRange::closed(Time::from_ticks(from), Time::from_ticks(to)),
             )
-            .map_err(query_error)?;
+            .map_err(|error| read_error(&self.path, "read traces from", error))?;
         for ((id, _), trace) in missing.into_iter().zip(traces) {
             self.traces.insert(
                 id,
@@ -1891,7 +1887,7 @@ fn expression_type(variable: &ondas::Variable<'_>, signal: ondas::Signal) -> Opt
                 .variants()
                 .map(|variant| EnumLabelInfo {
                     name: variant.label.to_owned(),
-                    bits: variant.encoded.to_owned(),
+                    bits: variant.encoded.to_string(),
                 })
                 .collect()
         }),
@@ -1957,31 +1953,4 @@ fn unsupported(path: &str) -> WavepeekError {
     WavepeekError::Signal(format!(
         "signal '{path}' has unsupported non-bit-vector encoding"
     ))
-}
-
-fn open_error(path: &Path, error: ondas::Error) -> WavepeekError {
-    #[cfg(not(feature = "shm"))]
-    if matches!(
-        error,
-        ondas::Error::NoBackend {
-            format: Format::Shm
-        }
-    ) {
-        return WavepeekError::File(
-            "SHM input requires Linux x86_64, --features shm, and a compatible XCELIUM_HOME".into(),
-        );
-    }
-    let operation = if matches!(error, ondas::Error::Io(_)) {
-        "open"
-    } else {
-        "parse"
-    };
-    WavepeekError::File(format!("cannot {operation} '{}': {error}", path.display()))
-}
-
-fn query_error(error: ondas::Error) -> WavepeekError {
-    match error {
-        ondas::Error::UnsupportedSignal { .. } => WavepeekError::Signal(error.to_string()),
-        _ => WavepeekError::File(error.to_string()),
-    }
 }

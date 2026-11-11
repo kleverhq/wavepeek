@@ -139,7 +139,10 @@ fn info_missing_file_is_file_error_with_exit_code_two() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file: cannot open"));
+        .stderr(
+            predicate::str::starts_with("fatal: file: cannot read metadata from")
+                .and(predicate::str::contains("I/O error")),
+        );
 }
 
 #[test]
@@ -158,5 +161,8 @@ fn info_invalid_file_is_parse_error_with_exit_code_two() {
         .failure()
         .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file: cannot parse"));
+        .stderr(
+            predicate::str::starts_with("fatal: file: cannot read metadata from")
+                .and(predicate::str::contains("unknown waveform format")),
+        );
 }

@@ -38,3 +38,14 @@ pub fn ondas_fixture_path(fixture: &str) -> PathBuf {
     .join(fixture)
     .join("waveform.fst")
 }
+
+#[cfg(feature = "fsdb")]
+#[allow(dead_code)]
+pub fn assert_no_wavepeek_diagnostic(stderr: &[u8]) {
+    // Native stderr is visible; WavePeek machine diagnostics belong in stdout.
+    for line in String::from_utf8_lossy(stderr).lines() {
+        assert!(!line.starts_with("fatal:"), "{line}");
+        assert!(!line.starts_with("warning[WPK-"), "{line}");
+        assert!(!line.starts_with("error[WPK-"), "{line}");
+    }
+}

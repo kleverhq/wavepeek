@@ -58,7 +58,7 @@ fn missing_paths_keep_io_errors_and_content_detection_precedes_suffix() {
         .unwrap();
     assert_eq!(output.status.code(), Some(2));
     let stderr = String::from_utf8(output.stderr).unwrap();
-    assert!(stderr.contains("cannot open"));
+    assert!(stderr.contains("I/O error"));
     assert!(!stderr.contains("--features shm"));
     std::fs::copy(fixture_path("m2_core.vcd"), &path).unwrap();
     let output = wavepeek_cmd()

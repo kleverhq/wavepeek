@@ -11,7 +11,7 @@ use serde_json::{Value, json};
 use tempfile::{NamedTempFile, TempDir};
 
 mod common;
-use common::{fixture_path, wavepeek_cmd};
+use common::{assert_no_wavepeek_diagnostic, fixture_path, wavepeek_cmd};
 
 const SCOPE_KIND_ALIASES: &[&str] = &[
     "module",
@@ -94,7 +94,6 @@ fn fsdb_info_debug_preserves_metadata_only_result() {
         .args(args)
         .assert()
         .success()
-        .stderr(predicate::str::is_empty())
         .get_output()
         .clone();
     let debug = wavepeek_cmd()
@@ -104,6 +103,8 @@ fn fsdb_info_debug_preserves_metadata_only_result() {
         .success()
         .get_output()
         .clone();
+    assert_no_wavepeek_diagnostic(&ordinary.stderr);
+    assert_no_wavepeek_diagnostic(&debug.stderr);
     assert_eq!(ordinary.stdout, debug.stdout);
     let result: Value = serde_json::from_slice(&debug.stdout).unwrap();
     assert_eq!(
@@ -112,10 +113,13 @@ fn fsdb_info_debug_preserves_metadata_only_result() {
     );
     let events = String::from_utf8(debug.stderr).unwrap();
     assert!(!events.is_empty());
-    for line in events.lines() {
+    let mut debug_events = 0;
+    for line in events.lines().filter(|line| line.starts_with('{')) {
         let event: Value = serde_json::from_str(line).unwrap();
         assert_eq!(event["kind"], "debug");
+        debug_events += 1;
     }
+    assert!(debug_events > 0);
     wavepeek_cmd()
         .args(["scope", "--waves", fixture.to_str().unwrap(), "--json"])
         .assert()
@@ -255,7 +259,7 @@ fn fsdb_signal_reports_missing_scope_with_scope_category() {
         .failure()
         .code(1)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: scope:"))
+        .stderr(predicate::str::contains("fatal: scope:"))
         .stderr(predicate::str::contains(
             "scope 'top.missing' not found in dump",
         ));
@@ -1344,19 +1348,19 @@ fn fsdb_repeated_value_change_property_queries_are_stable() {
 }
 
 #[test]
-fn fsdb_file_failures_are_clean_file_errors() {
+fn fsdb_file_failures_keep_wavepeek_diagnostics() {
     let temp_dir = tempfile::tempdir().expect("tempdir should be created");
     let missing = temp_dir.path().join("missing.fsdb");
-    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&missing).as_str()]);
+    assert_fsdb_file_error(&["info", "--waves", path_str(&missing).as_str()]);
 
     let empty = temp_dir.path().join("empty.fsdb");
     fs::write(&empty, []).expect("empty temp FSDB should be writable");
-    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&empty).as_str()]);
+    assert_fsdb_file_error(&["info", "--waves", path_str(&empty).as_str()]);
 
     let garbage = temp_dir.path().join("garbage.fsdb");
     fs::write(&garbage, b"not an fsdb and not a waveform\n")
         .expect("garbage temp FSDB should be writable");
-    assert_clean_fsdb_file_error(&["info", "--waves", path_str(&garbage).as_str()]);
+    assert_fsdb_file_error(&["info", "--waves", path_str(&garbage).as_str()]);
 
     let fixtures = GeneratedChangePropertyFsdbFixtures::new();
     let truncated = temp_dir.path().join("truncated.fsdb");
@@ -1370,7 +1374,7 @@ fn fsdb_file_failures_are_clean_file_errors() {
         .expect("truncated fixture should open for writing")
         .set_len((len / 3).max(1))
         .expect("truncated fixture length should be set");
-    assert_clean_fsdb_file_error(&[
+    assert_fsdb_file_error(&[
         "value",
         "--waves",
         path_str(&truncated).as_str(),
@@ -1412,11 +1416,8 @@ fn run_json_success(args: &[&str]) -> Value {
         }
     }
 
-    let assert = wavepeek_cmd()
-        .args(normalized_args)
-        .assert()
-        .success()
-        .stderr(predicate::str::is_empty());
+    let assert = wavepeek_cmd().args(normalized_args).assert().success();
+    assert_no_wavepeek_diagnostic(&assert.get_output().stderr);
     parse_json(&assert.get_output().stdout)
 }
 
@@ -1436,30 +1437,18 @@ fn run_json_success_with_waves(waves: &str, args: &[&str]) -> Value {
 }
 
 fn run_stdout_success(args: &[&str]) -> String {
-    let assert = wavepeek_cmd()
-        .args(args)
-        .assert()
-        .success()
-        .stderr(predicate::str::is_empty());
+    let assert = wavepeek_cmd().args(args).assert().success();
     String::from_utf8(assert.get_output().stdout.clone())
         .expect("command output should be valid UTF-8")
 }
 
-fn assert_clean_fsdb_file_error(args: &[&str]) {
-    let assert = wavepeek_cmd()
+fn assert_fsdb_file_error(args: &[&str]) {
+    wavepeek_cmd()
         .args(args)
         .assert()
-        .failure()
+        .code(2)
         .stdout(predicate::str::is_empty())
-        .stderr(predicate::str::starts_with("fatal: file:"));
-    let stderr = String::from_utf8(assert.get_output().stderr.clone())
-        .expect("stderr should be valid UTF-8");
-    for forbidden in ["Novas", "SpringSoft", "Verdi"] {
-        assert!(
-            !stderr.contains(forbidden),
-            "stderr should not leak native banner text {forbidden:?}: {stderr}"
-        );
-    }
+        .stderr(predicate::str::contains("fatal: file:"));
 }
 
 fn parse_json(stdout: &[u8]) -> Value {

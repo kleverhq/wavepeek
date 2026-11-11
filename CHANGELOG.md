@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Update Ondas to 2.1.0. FSDB native diagnostics remain visible on stderr while stdout retains the command output contract.
+
+### Fixed
+- Preserve typed waveform error causes regardless of file extension and classify unsupported values and invalid internal requests separately from file failures.
+
 ## [3.2.0] - 2026-10-17
 
 ### Added

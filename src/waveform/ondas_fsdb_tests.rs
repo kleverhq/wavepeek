@@ -23,8 +23,8 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
             .collect::<Vec<_>>(),
         ["top.block.inside"]
     );
-    let sibling = backend.signals_in_scope("top.\\block.dot").unwrap();
-    assert_eq!(sibling[0].path, "top.\\block.dot.outside");
+    let sibling = backend.signals_in_scope("top.block.dot").unwrap();
+    assert_eq!(sibling[0].path, "top.block.dot.outside");
     let bounded = backend
         .signals_in_scope_recursive_report("top", Some(1))
         .unwrap();
@@ -34,7 +34,7 @@ fn fsdb_recursive_listing_uses_structural_depth_for_escaped_scopes() {
             .iter()
             .map(|entry| entry.path.as_str())
             .collect::<Vec<_>>(),
-        ["top.\\block.dot.outside", "top.block.inside"]
+        ["top.block.inside", "top.block.dot.outside"]
     );
 }
 
@@ -370,10 +370,10 @@ fn fsdb_scope_slashes_use_public_dots_and_reject_collisions() {
     let source = "$timescale 1ns $end\n$scope module \\top/a  $end\n$var wire 1 ! first $end\n$upscope $end\n$enddefinitions $end\n#0\n0!\n";
     let fixture = GeneratedFsdbFixture::from_contents(source);
     let backend = OndasBackend::open(fixture.path()).unwrap();
-    assert_eq!(backend.scopes_depth_first(None).unwrap()[0].path, "\\top.a");
+    assert_eq!(backend.scopes_depth_first(None).unwrap()[0].path, "top.a");
     assert_eq!(
-        backend.signals_in_scope("\\top.a").unwrap()[0].path,
-        "\\top.a.first"
+        backend.signals_in_scope("top.a").unwrap()[0].path,
+        "top.a.first"
     );
 
     let collision = source.replace(
@@ -386,7 +386,7 @@ fn fsdb_scope_slashes_use_public_dots_and_reject_collisions() {
     assert_eq!(error.exit_code(), 2);
     assert_eq!(
         error.to_string(),
-        "fatal: file: FSDB hierarchy contains ambiguous canonical scope path '\\top.a'"
+        "fatal: file: FSDB hierarchy contains ambiguous canonical scope path 'top.a'"
     );
     // Metadata-only info does not load or validate the declaration hierarchy.
     let metadata = crate::waveform::Waveform::read_metadata(fixture.path()).unwrap();

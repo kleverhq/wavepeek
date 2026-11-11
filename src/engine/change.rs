@@ -11,9 +11,9 @@ use crate::debug_trace::DebugTrace;
 use crate::diagnostic::{Diagnostic, WarningDiagnosticCode};
 use crate::engine::expr_runtime::{
     SharedWaveform, bind_waveform_event_expr, candidate_sources_for_handles,
-    event_candidate_handles, event_expr_contains_wildcard, event_expr_is_any_tracked_only,
-    event_expr_is_edge_only, event_expr_matches, event_expr_matches_with_any_tracked,
-    expr_diagnostic, open_shared_waveform,
+    eval_with_waveform_errors, event_candidate_handles, event_expr_contains_wildcard,
+    event_expr_is_any_tracked_only, event_expr_is_edge_only, event_expr_matches,
+    event_expr_matches_with_any_tracked, open_shared_waveform,
 };
 use crate::engine::signal_projection::{ProjectedSignal, resolve_projected_signal};
 use crate::engine::time::{
@@ -26,6 +26,7 @@ use crate::error::WavepeekError;
 use crate::expr::{
     BoundEventExpr, EventEvalFrame, ExprTypeKind, ExpressionHost, SampledValue, SignalHandle,
 };
+use crate::waveform::expr_host::RuntimeExpressionHost;
 use crate::waveform::{
     ChangeCandidateCollectionMode, ExprResolvedSignal, ResolvedSignal, SampledSignalState,
     SignalId, SignalOffsetData, Waveform, display_signal_path, expr_host::WaveformExprHost,
@@ -159,6 +160,12 @@ struct FastEventEvalHost<'a> {
     base: &'a WaveformExprHost,
     current_timestamp: u64,
     cached: HashMap<SignalHandle, CachedEventSamples>,
+}
+
+impl RuntimeExpressionHost for FastEventEvalHost<'_> {
+    fn take_waveform_error(&self) -> Option<WavepeekError> {
+        self.base.take_waveform_error()
+    }
 }
 
 impl ExpressionHost for FastEventEvalHost<'_> {
@@ -1749,20 +1756,19 @@ fn collect_unprojected_event_handles(
 }
 
 fn any_event_occurred(
-    host: &dyn ExpressionHost,
+    host: &dyn RuntimeExpressionHost,
     handles: &[SignalHandle],
     timestamp: u64,
     event_expr_source: &str,
 ) -> Result<bool, WavepeekError> {
-    for handle in handles {
-        if host
-            .event_occurred(*handle, timestamp)
-            .map_err(|error| expr_diagnostic(event_expr_source, error))?
-        {
-            return Ok(true);
+    eval_with_waveform_errors(event_expr_source, host, || {
+        for handle in handles {
+            if host.event_occurred(*handle, timestamp)? {
+                return Ok(true);
+            }
         }
-    }
-    Ok(false)
+        Ok(false)
+    })
 }
 
 fn sample_values(samples: &[SampledSignalState]) -> Vec<Option<String>> {

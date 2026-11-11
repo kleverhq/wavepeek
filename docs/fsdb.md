@@ -23,7 +23,9 @@ wavepeek property --waves dump.fsdb --scope top.u0 --on 'posedge clk' --eval 'va
 
 Supported FSDB command coverage is digital bit-vector/integral data for `info`, `scope`, `signal`, `value`, `change`, and `property`. Real and string FSDB value decoding are not supported; commands that need those values fail with the existing `signal` error category.
 
-A default binary that sees FSDB-looking input reports that FSDB support requires rebuilding with the `fsdb` Cargo feature and a local Verdi SDK.
+When Ondas recognizes FSDB but no reader is available, WavePeek reports the missing backend and the required `fsdb` Cargo feature and local Verdi SDK. File extensions do not override a detected error cause.
+
+Ondas suppresses FSDB SDK stdout by default throughout opening, metadata access, reading, and closing. Native stderr remains visible, including in machine modes; WavePeek does not redirect process output descriptors.
 
 ## Verdi SDK contract
 

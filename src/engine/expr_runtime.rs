@@ -14,7 +14,8 @@ use crate::expr::{
     eval_logical_expr_at, event_matches_at, event_matches_at_with_any_tracked,
     parse_event_expr_ast, parse_logical_expr_ast,
 };
-use crate::waveform::{ExprResolvedSignal, Waveform, expr_host::WaveformExprHost};
+use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
+use crate::waveform::{ExprResolvedSignal, Waveform};
 
 pub(crate) type SharedWaveform = Rc<RefCell<Waveform>>;
 
@@ -23,13 +24,19 @@ pub(crate) fn open_shared_waveform(path: &Path) -> Result<SharedWaveform, Wavepe
 }
 
 pub(crate) struct ScopedExprHost<'a> {
-    inner: &'a dyn ExpressionHost,
+    inner: &'a dyn RuntimeExpressionHost,
     scope: Option<&'a str>,
 }
 
 impl<'a> ScopedExprHost<'a> {
-    pub(crate) fn new(inner: &'a dyn ExpressionHost, scope: Option<&'a str>) -> Self {
+    pub(crate) fn new(inner: &'a dyn RuntimeExpressionHost, scope: Option<&'a str>) -> Self {
         Self { inner, scope }
+    }
+}
+
+impl RuntimeExpressionHost for ScopedExprHost<'_> {
+    fn take_waveform_error(&self) -> Option<WavepeekError> {
+        self.inner.take_waveform_error()
     }
 }
 
@@ -84,11 +91,11 @@ pub(crate) fn bind_waveform_logical_expr(
 pub(crate) fn eval_bound_logical_truth(
     source: &str,
     expr: &BoundLogicalExpr,
-    host: &dyn ExpressionHost,
+    host: &dyn RuntimeExpressionHost,
     timestamp: u64,
 ) -> Result<bool, WavepeekError> {
-    let value = eval_logical_expr_at(expr, host, timestamp)
-        .map_err(|diagnostic| expr_diagnostic(source, diagnostic))?;
+    let value =
+        eval_with_waveform_errors(source, host, || eval_logical_expr_at(expr, host, timestamp))?;
     match value.payload {
         ExprValuePayload::Integral { bits, .. } => Ok(bits.chars().any(|bit| bit == '1')),
         ExprValuePayload::Real { value } => Ok(value != 0.0),
@@ -99,21 +106,37 @@ pub(crate) fn eval_bound_logical_truth(
 pub(crate) fn event_expr_matches(
     source: &str,
     expr: &BoundEventExpr,
-    host: &dyn ExpressionHost,
+    host: &dyn RuntimeExpressionHost,
     frame: &EventEvalFrame<'_>,
 ) -> Result<bool, WavepeekError> {
-    event_matches_at(expr, host, frame).map_err(|diagnostic| expr_diagnostic(source, diagnostic))
+    eval_with_waveform_errors(source, host, || event_matches_at(expr, host, frame))
 }
 
 pub(crate) fn event_expr_matches_with_any_tracked(
     source: &str,
     expr: &BoundEventExpr,
-    host: &dyn ExpressionHost,
+    host: &dyn RuntimeExpressionHost,
     frame: &EventEvalFrame<'_>,
     any_tracked: bool,
 ) -> Result<bool, WavepeekError> {
-    event_matches_at_with_any_tracked(expr, host, frame, any_tracked)
-        .map_err(|diagnostic| expr_diagnostic(source, diagnostic))
+    eval_with_waveform_errors(source, host, || {
+        event_matches_at_with_any_tracked(expr, host, frame, any_tracked)
+    })
+}
+
+pub(super) fn eval_with_waveform_errors<T>(
+    source: &str,
+    host: &dyn RuntimeExpressionHost,
+    evaluate: impl FnOnce() -> Result<T, ExprDiagnostic>,
+) -> Result<T, WavepeekError> {
+    // Each evaluation owns its failure; an earlier handled host read must not
+    // replace this expression's diagnostic.
+    host.take_waveform_error();
+    let result = evaluate();
+    if let Some(error) = host.take_waveform_error() {
+        return Err(error);
+    }
+    result.map_err(|diagnostic| expr_diagnostic(source, diagnostic))
 }
 
 pub(crate) fn expr_diagnostic(source: &str, diagnostic: ExprDiagnostic) -> WavepeekError {
@@ -286,7 +309,7 @@ mod tests {
         DiagnosticLayer, ExprDiagnostic, ExprStorage, ExprType, ExprTypeKind, ExpressionHost,
         IntegerLikeKind, SampledValue, SignalHandle, Span,
     };
-    use crate::waveform::expr_host::WaveformExprHost;
+    use crate::waveform::expr_host::{RuntimeExpressionHost, WaveformExprHost};
 
     use super::{
         ScopedExprHost, bind_waveform_event_expr, bind_waveform_logical_expr,
@@ -322,6 +345,8 @@ mod tests {
 
     #[derive(Default)]
     struct StubHost;
+
+    impl RuntimeExpressionHost for StubHost {}
 
     impl ExpressionHost for StubHost {
         fn resolve_signal(&self, name: &str) -> Result<SignalHandle, ExprDiagnostic> {
@@ -718,6 +743,8 @@ mod tests {
     #[test]
     fn scoped_host_forwarders_and_error_wrappers_exercise_edge_branches() {
         struct FailingHost;
+
+        impl RuntimeExpressionHost for FailingHost {}
 
         impl ExpressionHost for FailingHost {
             fn resolve_signal(&self, _name: &str) -> Result<SignalHandle, ExprDiagnostic> {

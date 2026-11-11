@@ -37,7 +37,7 @@ fn json_serializes_parse_and_file_failures_without_stderr() {
     let fatal = json_stdout(&file);
     assert_eq!(fatal["type"], "fatal");
     assert_eq!(fatal["code"], "WPK-F0002");
-    assert!(fatal["message"].as_str().unwrap().contains("cannot open"));
+    assert!(fatal["message"].as_str().unwrap().contains("I/O error"));
 }
 
 #[test]

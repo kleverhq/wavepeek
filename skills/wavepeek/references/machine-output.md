@@ -10,7 +10,7 @@ On success, a command writes its main payload to stdout. Without `--summary`, em
 - `--json` carries non-fatal diagnostics inside one JSON result.
 - `--jsonl` writes one JSON object per stdout line and carries diagnostics as stream records.
 
-If a downstream consumer intentionally closes stdout early, `wavepeek` stops writing and exits successfully. Human-mode failures leave stdout empty and write the fatal error to stderr. Machine-mode failures write a fatal object to stdout and do not duplicate it on stderr. Native readers may also write diagnostics to stderr in any mode. FSDB reader stdout is suppressed by Ondas; native stderr remains visible. With `DEBUG=1`, WavePeek debug telemetry remains JSON on stderr in every mode.
+If a downstream consumer intentionally closes stdout early, `wavepeek` stops writing and exits successfully. Human-mode failures leave stdout empty and write the fatal error to stderr. Machine-mode failures write a fatal object to stdout and do not duplicate it on stderr. Native readers may also write diagnostics to stderr in any mode. Ondas suppresses FSDB reader stdout. With `DEBUG=1`, WavePeek debug telemetry remains JSON on stderr in every mode.
 
 ## 2. JSON envelopes
 
